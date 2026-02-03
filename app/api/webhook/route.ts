@@ -12,9 +12,10 @@ const supabaseAdmin = createClient(
 )
 
 // Map Stripe price IDs to membership levels
+// Replace these with your actual Price IDs
 const PRICE_TO_MEMBERSHIP: Record<string, string> = {
-  'price_1SwcFWCeca9TSF9AWfCnn2yk': 'contributing',  // Replace with your Contributing price ID
-  'price_1SwcJeCeca9TSF9AetEiWuUB': 'founding',      // Replace with your Founding price ID
+  'price_1SwcFWCeca9TSF9AWfCnn2yk': 'contributing',
+  'price_1SwcJeCeca9TSF9AetEiWuUB': 'founding',
 }
 
 export async function POST(request: Request) {
@@ -50,6 +51,8 @@ export async function POST(request: Request) {
             .from('profiles')
             .update({
               membership_level: membershipLevel,
+              subscription_status: 'active',
+              subscription_ends_at: null,
               updated_at: new Date().toISOString(),
             })
             .eq('id', userId)
@@ -70,18 +73,46 @@ export async function POST(request: Request) {
 
         console.log('Subscription updated:', subscription.id, 'price:', priceId)
 
-        // Get the new membership level from the price ID
-        const newMembershipLevel = PRICE_TO_MEMBERSHIP[priceId]
+        // Get customer email
+        const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer
+        
+        if (!customer.email) {
+          console.error('No email found for customer:', customerId)
+          break
+        }
 
-        if (newMembershipLevel) {
-          // Find user by Stripe customer ID (via email)
-          const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer
-          
-          if (customer.email) {
+        // Check if subscription is set to cancel at period end
+        if (subscription.cancel_at_period_end) {
+          // Use type assertion to access current_period_end
+          const subscriptionData = subscription as any
+          const endsAt = new Date(subscriptionData.current_period_end * 1000)
+          console.log(`Subscription for ${customer.email} will cancel on ${endsAt.toISOString()}`)
+
+          const { error } = await supabaseAdmin
+            .from('profiles')
+            .update({
+              subscription_status: 'canceling',
+              subscription_ends_at: endsAt.toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('email', customer.email)
+
+          if (error) {
+            console.error('Failed to update cancellation status:', error)
+          } else {
+            console.log(`Marked subscription as canceling for ${customer.email}, ends ${endsAt.toISOString()}`)
+          }
+        } else {
+          // Subscription is active (not canceling) - might be a plan change
+          const newMembershipLevel = PRICE_TO_MEMBERSHIP[priceId]
+
+          if (newMembershipLevel) {
             const { error } = await supabaseAdmin
               .from('profiles')
               .update({
                 membership_level: newMembershipLevel,
+                subscription_status: 'active',
+                subscription_ends_at: null,
                 updated_at: new Date().toISOString(),
               })
               .eq('email', customer.email)
@@ -110,6 +141,8 @@ export async function POST(request: Request) {
             .from('profiles')
             .update({
               membership_level: 'free',
+              subscription_status: 'cancelled',
+              subscription_ends_at: null,
               updated_at: new Date().toISOString(),
             })
             .eq('email', customer.email)

@@ -67,23 +67,24 @@ export default function Navigation() {
 const mainNavItems = [
   { href: '/', label: 'Home' },
   { href: '/store', label: 'Zero Dollar Store' },
-  { href: '/articles', label: 'Articles' },  // ← Make sure this is here
-  { href: '/microgrants', label: 'Microgrants' },
+  { href: '/articles', label: 'Articles' },
+  { href: '/grants/apply', label: 'Microgrants' },
   { href: '/perks', label: 'Member Perks' },
   { href: '/about', label: 'About' },
 ]
 
   const userNavItems = user ? [
+    { href: '/dashboard', label: 'Dashboard' },
     { href: '/profile', label: 'My Profile' },
     { href: '/store/my-claims', label: 'My Claims' },
-    { href: '/microgrants/my-applications', label: 'My Applications' },
-  ] : []
+    { href: '/grants/my-applications', label: 'My Applications' },
+] : []
 
 const adminNavItems = profile?.is_admin ? [
-  { href: '/admin/articles', label: 'Manage Articles' },  // ← Add this
+  { href: '/admin/articles', label: 'Manage Articles' },
   { href: '/admin/claims', label: 'Manage Claims' },
   { href: '/admin/items', label: 'Manage Items' },
-  { href: '/admin/microgrants', label: 'Manage Microgrants' },
+  { href: '/admin/grants', label: 'Manage Grants' },
   { href: '/admin/members', label: 'Manage Members' },
 ] : []
 

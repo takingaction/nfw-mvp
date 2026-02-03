@@ -23,22 +23,24 @@ export default async function ProfilePage() {
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user }, error } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (error || !user) {
     redirect('/auth/login')
   }
 
-  // Fetch user profile
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')
-    .eq('id', session.user.id)
+    .eq('id', user.id)
     .single()
 
   const membershipLevel = profile?.membership_level || 'free'
+  const subscriptionStatus = profile?.subscription_status || 'active'
+  const subscriptionEndsAt = profile?.subscription_ends_at 
+    ? new Date(profile.subscription_ends_at) 
+    : null
 
-  // Format membership display
   const membershipDisplay: Record<string, { label: string; color: string }> = {
     free: { label: 'Free Member', color: 'bg-gray-100 text-gray-800' },
     contributing: { label: 'Contributing Member', color: 'bg-blue-100 text-blue-800' },
@@ -50,7 +52,6 @@ export default async function ProfilePage() {
   return (
     <main className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-2xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Your Profile</h1>
           <p className="text-gray-600">
@@ -58,7 +59,6 @@ export default async function ProfilePage() {
           </p>
         </div>
 
-        {/* Membership Status Card */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
           <div className="flex items-center justify-between">
             <div>
@@ -66,18 +66,23 @@ export default async function ProfilePage() {
               <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${currentMembership.color}`}>
                 {currentMembership.label}
               </span>
+              
+              {subscriptionStatus === 'canceling' && subscriptionEndsAt && (
+                <p className="text-sm text-orange-600 mt-2">
+                  ⚠️ Your membership will end on {subscriptionEndsAt.toLocaleDateString()}
+                </p>
+              )}
             </div>
             <ManageSubscription membershipLevel={membershipLevel} />
           </div>
 
           {membershipLevel === 'free' && (
             <p className="text-sm text-gray-500 mt-4">
-              Upgrade your membership to unlock exclusive perks and support NFW's mission.
+              Upgrade your membership to unlock exclusive perks and support NFW&apos;s mission.
             </p>
           )}
         </div>
 
-        {/* Profile Information */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
           <h2 className="text-lg font-semibold mb-4">Profile Information</h2>
           
@@ -89,7 +94,7 @@ export default async function ProfilePage() {
               </div>
               <div>
                 <span className="text-sm text-gray-500">Email</span>
-                <p className="font-medium">{session.user.email}</p>
+                <p className="font-medium">{user.email}</p>
               </div>
               <div>
                 <span className="text-sm text-gray-500">Location</span>
@@ -113,12 +118,11 @@ export default async function ProfilePage() {
           )}
         </div>
 
-        {/* Profile Form */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4">
-            {profile ? 'Update Your Profile' : 'Complete Your Profile'}
+            {profile?.full_name ? 'Update Your Profile' : 'Complete Your Profile'}
           </h2>
-          <ProfileCompletionForm userId={session.user.id} />
+          <ProfileCompletionForm userId={user.id} existingProfile={profile} />
         </div>
       </div>
     </main>
