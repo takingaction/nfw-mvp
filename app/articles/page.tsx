@@ -1,0 +1,123 @@
+import { createClient } from '@/lib/supabase/server'
+import ArticlesClient from '@/components/ArticlesClient'
+
+async function ArticlesContent({
+  searchParams
+}: {
+  searchParams: Promise<{ search?: string; category?: string }>
+}) {
+  const params = await searchParams
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Build query
+  let query = supabase
+    .from('articles')
+    .select('*')
+    .eq('is_published', true)
+
+  // Apply search filter
+  if (params.search) {
+    query = query.textSearch('search_vector', params.search, {
+      type: 'websearch',
+      config: 'english'
+    })
+  }
+
+  // Apply category filter
+  if (params.category) {
+    const { data: category } = await supabase
+      .from('article_categories')
+      .select('id')
+      .eq('slug', params.category)
+      .single()
+    
+    if (category) {
+      query = query.eq('category_id', category.id)
+    }
+  }
+
+  const { data: articles, error } = await query.order('published_at', { ascending: false })
+
+  if (error) {
+    return (
+      <main className="min-h-screen p-8 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-4xl font-bold mb-4 text-red-600">Error Loading Articles</h1>
+          <pre className="bg-white p-6 rounded-lg shadow">
+            {JSON.stringify(error, null, 2)}
+          </pre>
+        </div>
+      </main>
+    )
+  }
+
+  // Fetch categories
+  const { data: categories } = await supabase
+    .from('article_categories')
+    .select('*')
+    .order('display_order', { ascending: true })
+
+  // Get user's liked articles
+  let likedArticleIds: string[] = []
+  if (user) {
+    const { data: likes } = await supabase
+      .from('article_likes')
+      .select('article_id')
+      .eq('user_id', user.id)
+    
+    likedArticleIds = likes?.map(like => like.article_id) || []
+  }
+
+  // Enhance articles with category and author data
+  const articlesWithDetails = await Promise.all(
+    (articles || []).map(async (article) => {
+      // Fetch category
+      let category = null
+      if (article.category_id) {
+        const { data: categoryData } = await supabase
+          .from('article_categories')
+          .select('*')
+          .eq('id', article.category_id)
+          .single()
+        category = categoryData
+      }
+
+      // Fetch author
+      let author = null
+      if (article.author_id) {
+        const { data: authorData } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', article.author_id)
+          .single()
+        author = authorData
+      }
+
+      return {
+        ...article,
+        category,
+        author,
+        user_has_liked: likedArticleIds.includes(article.id)
+      }
+    })
+  )
+
+  return (
+    <ArticlesClient
+      articles={articlesWithDetails}
+      categories={categories || []}
+      currentCategory={params.category}
+      currentSearch={params.search}
+      userId={user?.id}
+    />
+  )
+}
+
+export default async function ArticlesPage({
+  searchParams
+}: {
+  searchParams: Promise<{ search?: string; category?: string }>
+}) {
+  return <ArticlesContent searchParams={searchParams} />
+}
