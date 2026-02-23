@@ -65,6 +65,12 @@ interface ProfileFormData {
 }
 
 export default function ProfileCompletionForm() {
+  interface ProfileCompletionFormProps {
+  userId: string
+  existingProfile: any
+}
+
+export default function ProfileCompletionForm({ userId, existingProfile }: ProfileCompletionFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
