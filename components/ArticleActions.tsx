@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { Heart } from 'lucide-react'
 
 export default function ArticleActions({
   articleId,
@@ -56,14 +57,18 @@ export default function ArticleActions({
       <button
         onClick={handleLike}
         disabled={loading}
-        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+        className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-all disabled:opacity-50 ${
           userHasLiked
-            ? 'bg-red-100 text-red-600 hover:bg-red-200'
-            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-        } disabled:opacity-50`}
+            ? 'bg-[#d4f1ad] text-[#2d1239] hover:bg-[#d4f1ad]/70'
+            : 'bg-[#BCAFCF]/20 text-[#2d1239]/60 hover:bg-[#BCAFCF]/40 hover:text-[#2d1239]'
+        }`}
       >
-        <span className="text-xl">{userHasLiked ? '❤️' : '🤍'}</span>
-        <span>{likeCount}</span>
+        <Heart
+          className={`w-4 h-4 transition-all ${
+            userHasLiked ? 'fill-[#2d1239] stroke-[#2d1239]' : 'stroke-[#2d1239]/60'
+          }`}
+        />
+        <span className="text-sm">{likeCount}</span>
       </button>
     </div>
   )

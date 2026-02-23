@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { X, Package, Loader2 } from 'lucide-react'
 
 type Variant = {
   name: string
@@ -97,31 +98,48 @@ export default function ClaimItemModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
-        <h2 className="text-2xl font-bold mb-4">Claim Item</h2>
-        
-        <div className="mb-6">
-          <p className="text-gray-700 mb-4">
-            You're about to claim: <strong>{item.name}</strong>
-          </p>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="bg-[#f8f7fa] px-6 py-4 border-b border-[#2d1239]/10 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#BCAFCF]/30 rounded-full flex items-center justify-center">
+              <Package className="w-5 h-5 text-[#2d1239]" />
+            </div>
+            <h2 className="text-xl font-bold text-[#2d1239]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Claim Item
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={claiming}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#2d1239]/10 transition-colors text-[#2d1239]/60 hover:text-[#2d1239]"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          <p className="text-[#2d1239]/70 mb-1">You're about to claim:</p>
+          <p className="text-[#2d1239] font-semibold text-lg mb-6">{item.name}</p>
 
           {/* Variant Selection */}
           {item.variants && item.variants.length > 0 && (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600 font-medium">Please select your preferences:</p>
+            <div className="space-y-4 mb-6">
+              <p className="text-sm text-[#2d1239]/60 font-medium">Please select your preferences:</p>
               
               {item.variants.map((variant) => (
                 <div key={variant.name}>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {variant.name} *
+                  <label className="block text-sm font-medium text-[#2d1239] mb-2">
+                    {variant.name} <span className="text-[#BCAFCF]">*</span>
                   </label>
                   <select
                     value={selectedVariants[variant.name] || ''}
                     onChange={(e) => handleVariantChange(variant.name, e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-[#2d1239]/20 rounded-lg text-[#2d1239] bg-white focus:outline-none focus:ring-2 focus:ring-[#BCAFCF] focus:border-transparent transition-all"
                   >
-                    <option value="">Select {variant.name}</option>
+                    <option value="" className="text-[#2d1239]/40">Select {variant.name}</option>
                     {variant.options.map((option) => (
                       <option key={option} value={option}>
                         {option}
@@ -133,34 +151,43 @@ export default function ClaimItemModal({
             </div>
           )}
 
-          {!item.variants || item.variants.length === 0 && (
-            <p className="text-sm text-gray-600">
+          {(!item.variants || item.variants.length === 0) && (
+            <p className="text-sm text-[#2d1239]/60 mb-6">
               Click "Claim Item" to confirm your claim.
             </p>
           )}
-        </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm">
-            {error}
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">
+              {error}
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleClaim}
+              disabled={claiming}
+              className="flex-1 bg-[#2d1239] text-white px-6 py-3 rounded-xl hover:bg-[#2d1239]/90 font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+            >
+              {claiming ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Claiming...
+                </>
+              ) : (
+                'Claim Item'
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              disabled={claiming}
+              className="flex-1 bg-[#f8f7fa] text-[#2d1239] px-6 py-3 rounded-xl hover:bg-[#2d1239]/10 font-medium transition-colors border border-[#2d1239]/10"
+            >
+              Cancel
+            </button>
           </div>
-        )}
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleClaim}
-            disabled={claiming}
-            className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
-          >
-            {claiming ? 'Claiming...' : 'Claim Item'}
-          </button>
-          <button
-            onClick={onClose}
-            disabled={claiming}
-            className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 font-medium"
-          >
-            Cancel
-          </button>
         </div>
       </div>
     </div>

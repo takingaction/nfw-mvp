@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
-import Footer from "@/components/Footer";
+import Footer from "@/components/landing/Footer";
+import BackToTop from "@/components/BackToTop";
+import "./fonts.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,10 +33,9 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <Navigation />
-        <main className="min-h-screen">
-          {children}
-        </main>
+        {children}
         <Footer />
+        <BackToTop />
       </body>
     </html>
   );

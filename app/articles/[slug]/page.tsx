@@ -20,9 +20,7 @@ export async function generateMetadata({
     .single()
 
   if (!article) {
-    return {
-      title: 'Article Not Found'
-    }
+    return { title: 'Article Not Found' }
   }
 
   return {
@@ -51,7 +49,6 @@ export default async function ArticlePage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Fetch article
   const { data: article, error } = await supabase
     .from('articles')
     .select('*')
@@ -63,7 +60,6 @@ export default async function ArticlePage({
     notFound()
   }
 
-  // Fetch category separately if exists
   let category = null
   if (article.category_id) {
     const { data: categoryData } = await supabase
@@ -74,7 +70,6 @@ export default async function ArticlePage({
     category = categoryData
   }
 
-  // Fetch author separately if exists
   let author = null
   if (article.author_id) {
     const { data: authorData } = await supabase
@@ -85,7 +80,6 @@ export default async function ArticlePage({
     author = authorData
   }
 
-  // Check if user has liked
   let userHasLiked = false
   if (user) {
     const { data: like } = await supabase
@@ -94,7 +88,6 @@ export default async function ArticlePage({
       .eq('article_id', article.id)
       .eq('user_id', user.id)
       .single()
-    
     userHasLiked = !!like
   }
 
@@ -105,7 +98,6 @@ export default async function ArticlePage({
     .eq('id', article.id)
     .then()
 
-  // Fetch related articles (same category)
   const { data: relatedArticles } = await supabase
     .from('articles')
     .select('id, title, slug, featured_image_url, excerpt, published_at')
@@ -116,28 +108,28 @@ export default async function ArticlePage({
     .limit(3)
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      {/* Hero Image */}
-      {article.hero_image_url && (
-        <div className="relative h-96 w-full">
-          <Image
-            src={article.hero_image_url}
-            alt={article.title}
-            fill
-            sizes="100vw"
-            className="object-cover"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        </div>
-      )}
-
+    <main className="min-h-screen bg-[#f8f7fa]">
       <article className="max-w-4xl mx-auto px-8 py-12">
+
+        {/* Hero Image - constrained to article body width */}
+        {article.hero_image_url && (
+          <div className="relative h-80 w-full rounded-xl overflow-hidden mb-8">
+            <Image
+              src={article.hero_image_url}
+              alt={article.title}
+              fill
+              sizes="(max-width: 896px) 100vw, 896px"
+              className="object-cover"
+              priority
+            />
+          </div>
+        )}
+
         {/* Breadcrumb Navigation */}
         <nav className="mb-6">
           <a 
             href="/articles" 
-            className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-2"
+            className="text-[#2d1239]/60 hover:text-[#2d1239] font-medium flex items-center gap-2 transition-colors w-fit"
           >
             <span>←</span>
             <span>Back to All Articles</span>
@@ -146,22 +138,24 @@ export default async function ArticlePage({
 
         {/* Header */}
         <header className="mb-8">
+          {/* Category Tag */}
           {category && (
-            <span
-              className="inline-block text-sm px-3 py-1 rounded mb-4 font-medium"
-              style={{
-                backgroundColor: `${category.color}20`,
-                color: category.color
-              }}
-            >
+            <span className="inline-block text-sm px-3 py-1 rounded-full mb-4 font-medium bg-[#BCAFCF]/20 text-[#2d1239]">
               {category.icon} {category.name}
             </span>
           )}
-          
-          <h1 className="text-5xl font-bold mb-4">{article.title}</h1>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4 text-gray-600">
+
+          {/* Title */}
+          <h1
+            className="text-4xl sm:text-5xl font-bold mb-4 text-[#2d1239]"
+            style={{ fontFamily: 'Montserrat, sans-serif' }}
+          >
+            {article.title}
+          </h1>
+
+          {/* Meta row */}
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3 text-[#2d1239]/50 text-sm">
               <span>By {author?.full_name || 'NFW Team'}</span>
               <span>•</span>
               <span>
@@ -178,24 +172,49 @@ export default async function ArticlePage({
               userId={user?.id}
             />
           </div>
+
+          {/* Divider */}
+          <div className="mt-6 border-t border-[#2d1239]/10" />
         </header>
 
-        {/* Content */}
-        <div className="bg-white rounded-lg shadow-md p-8 mb-8">
-          <div 
-            className="prose prose-lg max-w-none"
+        {/* Article Content */}
+        <div className="mb-8">
+          <div
+            className="prose prose-lg max-w-none
+              prose-headings:text-[#2d1239] prose-headings:font-bold
+              prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
+              prose-p:text-[#2d1239]/80 prose-p:leading-relaxed
+              prose-a:text-[#2d1239] prose-a:underline prose-a:underline-offset-2
+              hover:prose-a:text-[#2d1239]/70
+              prose-strong:text-[#2d1239]
+              prose-em:text-[#2d1239]/80
+              prose-blockquote:border-l-4 prose-blockquote:border-[#BCAFCF]
+              prose-blockquote:text-[#2d1239]/60 prose-blockquote:not-italic
+              prose-blockquote:bg-[#BCAFCF]/10 prose-blockquote:rounded-r-lg
+              prose-blockquote:py-1 prose-blockquote:pr-4
+              prose-code:text-[#2d1239] prose-code:bg-[#BCAFCF]/20
+              prose-code:rounded prose-code:px-1.5 prose-code:py-0.5
+              prose-code:text-sm prose-code:font-mono
+              prose-pre:bg-[#2d1239] prose-pre:text-[#f8f7fa]
+              prose-hr:border-[#2d1239]/10
+              prose-ul:text-[#2d1239]/80 prose-ol:text-[#2d1239]/80
+              prose-li:text-[#2d1239]/80
+              prose-img:rounded-xl prose-img:shadow-sm
+              prose-table:text-[#2d1239]/80
+              prose-th:text-[#2d1239] prose-th:bg-[#BCAFCF]/20
+              prose-td:border-[#2d1239]/10"
             dangerouslySetInnerHTML={{ __html: article.content }}
           />
         </div>
 
         {/* Tags */}
         {article.tags && article.tags.length > 0 && (
-          <div className="mb-8">
+          <div className="mb-8 pt-6 border-t border-[#2d1239]/10">
             <div className="flex flex-wrap gap-2">
               {article.tags.map((tag: string) => (
                 <span
                   key={tag}
-                  className="bg-gray-100 text-gray-700 text-sm px-3 py-1 rounded-full"
+                  className="bg-[#BCAFCF]/20 text-[#2d1239] text-sm px-3 py-1 rounded-full font-medium"
                 >
                   #{tag}
                 </span>
@@ -206,41 +225,50 @@ export default async function ArticlePage({
 
         {/* Related Articles */}
         {relatedArticles && relatedArticles.length > 0 && (
-          <div className="mt-12">
-            <h2 className="text-2xl font-bold mb-6">Related Articles</h2>
+          <div className="mt-12 pt-8 border-t border-[#2d1239]/10">
+            <h2
+              className="text-2xl font-bold mb-6 text-[#2d1239]"
+              style={{ fontFamily: 'Montserrat, sans-serif' }}
+            >
+              Related Articles
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {relatedArticles.map(related => (
                 <a
                   key={related.id}
                   href={`/articles/${related.slug}`}
-                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                  className="bg-white rounded-xl border border-[#2d1239]/10 overflow-hidden hover:border-[#BCAFCF] hover:shadow-md transition-all group"
                 >
                   {related.featured_image_url && (
-                    <div className="relative h-32 bg-gray-200">
+                    <div className="relative h-32 bg-[#f8f7fa]">
                       <Image
                         src={related.featured_image_url}
                         alt={related.title}
                         fill
                         sizes="(max-width: 768px) 100vw, 33vw"
-                        className="object-cover"
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     </div>
                   )}
                   <div className="p-4">
-                    <h3 className="font-semibold mb-2 line-clamp-2 text-gray-900">
+                    <h3 className="font-semibold mb-2 line-clamp-2 text-[#2d1239]">
                       {related.title}
                     </h3>
                     {related.excerpt && (
-                      <p className="text-sm text-gray-600 line-clamp-2">
+                      <p className="text-sm text-[#2d1239]/50 line-clamp-2">
                         {related.excerpt}
                       </p>
                     )}
+                    <p className="text-xs text-[#2d1239]/40 mt-2">
+                      {new Date(related.published_at).toLocaleDateString()}
+                    </p>
                   </div>
                 </a>
               ))}
             </div>
           </div>
         )}
+
       </article>
     </main>
   )

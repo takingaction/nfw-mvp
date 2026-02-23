@@ -41,12 +41,14 @@ async function ArticlesContent({
 
   if (error) {
     return (
-      <main className="min-h-screen p-8 bg-gray-50">
+      <main className="min-h-screen p-8 bg-white">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-4xl font-bold mb-4 text-red-600">Error Loading Articles</h1>
-          <pre className="bg-white p-6 rounded-lg shadow">
-            {JSON.stringify(error, null, 2)}
-          </pre>
+          <h1 className="text-4xl font-black font-neonblitz mb-4 text-[#2d1239]">Error Loading Articles</h1>
+          <div className="bg-white/40 backdrop-blur-md rounded-3xl p-6 border-2 border-white/50 shadow-xl">
+            <pre className="text-[#2d1239]/70 overflow-auto">
+              {JSON.stringify(error, null, 2)}
+            </pre>
+          </div>
         </div>
       </main>
     )

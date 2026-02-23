@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
 
 interface GrantCycle {
   id: string
@@ -121,10 +122,8 @@ export default function GrantApplicationForm({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      // Add new files to existing documents array
       const newFiles = Array.from(e.target.files)
       setDocuments(prev => [...prev, ...newFiles])
-      // Clear the input so the same file can be selected again if needed
       e.target.value = ''
     }
   }
@@ -134,16 +133,16 @@ export default function GrantApplicationForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-8">
+    <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-[#2d1239]/10 p-8">
       {/* Grant Cycle Selection */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Grant Cycle *
+        <label className="block text-sm font-medium text-[#2d1239] mb-2">
+          Grant Cycle <span className="text-[#BCAFCF]">*</span>
         </label>
         <select
           value={formData.cycle_id}
           onChange={(e) => setFormData({ ...formData, cycle_id: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-4 py-2.5 border border-[#2d1239]/20 rounded-lg text-[#2d1239] bg-white focus:outline-none focus:ring-2 focus:ring-[#BCAFCF] focus:border-transparent transition-all"
           required
         >
           {cycles.map((cycle) => (
@@ -156,16 +155,16 @@ export default function GrantApplicationForm({
 
       {/* Category Selection */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Grant Category *
+        <label className="block text-sm font-medium text-[#2d1239] mb-2">
+          Grant Category <span className="text-[#BCAFCF]">*</span>
         </label>
         <select
           value={formData.category}
           onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-4 py-2.5 border border-[#2d1239]/20 rounded-lg text-[#2d1239] bg-white focus:outline-none focus:ring-2 focus:ring-[#BCAFCF] focus:border-transparent transition-all"
           required
         >
-          <option value="">Select a category...</option>
+          <option value="" className="text-[#2d1239]/40">Select a category...</option>
           {GRANT_CATEGORIES.map((cat) => (
             <option key={cat.value} value={cat.value}>
               {cat.label}
@@ -176,44 +175,44 @@ export default function GrantApplicationForm({
 
       {/* Title */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Grant Title *
+        <label className="block text-sm font-medium text-[#2d1239] mb-2">
+          Grant Title <span className="text-[#BCAFCF]">*</span>
         </label>
         <input
           type="text"
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           placeholder="e.g., Car Repair for Work Transportation"
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-4 py-2.5 border border-[#2d1239]/20 rounded-lg text-[#2d1239] placeholder-[#2d1239]/40 bg-white focus:outline-none focus:ring-2 focus:ring-[#BCAFCF] focus:border-transparent transition-all"
           required
         />
       </div>
 
       {/* Description */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Description *
+        <label className="block text-sm font-medium text-[#2d1239] mb-2">
+          Description <span className="text-[#BCAFCF]">*</span>
         </label>
         <textarea
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           placeholder="Explain your need and how this grant will help you..."
           rows={6}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-4 py-2.5 border border-[#2d1239]/20 rounded-lg text-[#2d1239] placeholder-[#2d1239]/40 bg-white focus:outline-none focus:ring-2 focus:ring-[#BCAFCF] focus:border-transparent transition-all resize-none"
           required
         />
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-[#2d1239]/50 mt-1">
           Be specific about your situation and how the funds will be used.
         </p>
       </div>
 
       {/* Amount Requested */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Amount Requested *
+        <label className="block text-sm font-medium text-[#2d1239] mb-2">
+          Amount Requested <span className="text-[#BCAFCF]">*</span>
         </label>
         <div className="relative">
-          <span className="absolute left-4 top-2 text-gray-500">$</span>
+          <span className="absolute left-4 top-2.5 text-[#2d1239]/50">$</span>
           <input
             type="number"
             step="0.01"
@@ -221,7 +220,7 @@ export default function GrantApplicationForm({
             value={formData.amount_requested}
             onChange={(e) => setFormData({ ...formData, amount_requested: e.target.value })}
             placeholder="0.00"
-            className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-8 pr-4 py-2.5 border border-[#2d1239]/20 rounded-lg text-[#2d1239] placeholder-[#2d1239]/40 bg-white focus:outline-none focus:ring-2 focus:ring-[#BCAFCF] focus:border-transparent transition-all"
             required
           />
         </div>
@@ -229,38 +228,38 @@ export default function GrantApplicationForm({
 
       {/* Document Upload */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Supporting Documents (Optional)
+        <label className="block text-sm font-medium text-[#2d1239] mb-2">
+          Supporting Documents <span className="text-[#2d1239]/50">(Optional)</span>
         </label>
         <input
           type="file"
           multiple
           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
           onChange={handleFileChange}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-4 py-2.5 border border-[#2d1239]/20 rounded-lg text-[#2d1239] bg-white focus:outline-none focus:ring-2 focus:ring-[#BCAFCF] focus:border-transparent transition-all file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-sm file:font-medium file:bg-[#BCAFCF]/20 file:text-[#2d1239] hover:file:bg-[#BCAFCF]/30"
         />
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-[#2d1239]/50 mt-1">
           Upload receipts, quotes, or other supporting documents (PDF, JPG, PNG, DOC). You can select multiple files at once or add more files separately.
         </p>
         
         {/* Display selected documents with remove option */}
         {documents.length > 0 && (
           <div className="mt-3 space-y-2">
-            <p className="text-sm font-medium text-gray-700">
+            <p className="text-sm font-medium text-[#2d1239]">
               Selected files ({documents.length}):
             </p>
             {documents.map((file, index) => (
               <div 
                 key={index} 
-                className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded border border-gray-200"
+                className="flex items-center justify-between bg-[#f8f7fa] px-3 py-2 rounded-lg border border-[#2d1239]/10"
               >
-                <span className="text-sm text-gray-700 truncate flex-1">
+                <span className="text-sm text-[#2d1239]/70 truncate flex-1">
                   {file.name} ({(file.size / 1024).toFixed(1)} KB)
                 </span>
                 <button
                   type="button"
                   onClick={() => removeDocument(index)}
-                  className="ml-2 text-red-600 hover:text-red-800 text-sm font-medium"
+                  className="ml-2 text-red-500 hover:text-red-700 text-sm font-medium transition-colors"
                 >
                   Remove
                 </button>
@@ -272,7 +271,7 @@ export default function GrantApplicationForm({
 
       {/* Error Message */}
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4">
           <p className="text-red-800">{error}</p>
         </div>
       )}
@@ -282,21 +281,22 @@ export default function GrantApplicationForm({
         <button
           type="submit"
           disabled={loading || uploadingDocs}
-          className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+          className="flex-1 bg-[#2d1239] text-white px-6 py-3 rounded-xl hover:bg-[#2d1239]/90 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors flex items-center justify-center gap-2"
         >
+          {(loading || uploadingDocs) && <Loader2 className="w-4 h-4 animate-spin" />}
           {uploadingDocs ? 'Uploading Documents...' : loading ? 'Submitting...' : 'Submit Application'}
         </button>
         <button
           type="button"
           onClick={() => router.push('/grants/my-applications')}
-          className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50"
+          className="px-6 py-3 border border-[#2d1239]/20 text-[#2d1239] rounded-xl hover:bg-[#2d1239]/5 font-medium transition-colors"
         >
           Cancel
         </button>
       </div>
 
-      <p className="text-sm text-gray-500 mt-4">
-        * Required fields. Your application will be reviewed by our team.
+      <p className="text-sm text-[#2d1239]/50 mt-4">
+        <span className="text-[#BCAFCF]">*</span> Required fields. Your application will be reviewed by our team.
       </p>
     </form>
   )

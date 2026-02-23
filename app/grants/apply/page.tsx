@@ -43,15 +43,21 @@ export default async function ApplyForGrantPage() {
     .single()
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Apply for a Microgrant</h1>
-          <p className="text-gray-600">
+    <main className="min-h-screen bg-white">
+      {/* Lean Header */}
+      <div className="bg-white pt-8 pb-6 border-b border-[#2d1239]/10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#2d1239] mb-2" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            Apply for a Microgrant
+          </h2>
+          <p className="text-[#2d1239]/60">
             NFW microgrants help with real-life needs like childcare, medical costs, car repairs, and more.
           </p>
         </div>
+      </div>
 
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {cycles && cycles.length > 0 ? (
           <GrantApplicationForm 
             userId={user.id} 
@@ -59,11 +65,11 @@ export default async function ApplyForGrantPage() {
             userProfile={profile}
           />
         ) : (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-yellow-900 mb-2">
+          <div className="bg-[#fdf493]/20 border border-[#fdf493] rounded-xl p-6">
+            <h3 className="text-lg font-semibold text-[#2d1239] mb-2">
               No Grant Cycles Available
-            </h2>
-            <p className="text-yellow-800">
+            </h3>
+            <p className="text-[#2d1239]/70">
               There are currently no open grant cycles. Please check back later or contact us for more information.
             </p>
           </div>
