@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2 } from 'lucide-react'
@@ -64,8 +64,7 @@ interface ProfileFormData {
   }
 }
 
-export default function ProfileCompletionForm() {
-  interface ProfileCompletionFormProps {
+interface ProfileCompletionFormProps {
   userId: string
   existingProfile: any
 }
@@ -74,65 +73,20 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
-  const [existingProfile, setExistingProfile] = useState<any>(null)
 
   const [formData, setFormData] = useState<ProfileFormData>({
-    full_name: '',
-    age_range: '',
-    phone_number: '',
-    address_line1: '',
-    address_line2: '',
-    city: '',
-    state: '',
-    zip: '',
-    household_income: '',
-    identities: [],
-    social_handles: {}
+    full_name: existingProfile?.full_name || '',
+    age_range: existingProfile?.age_range || '',
+    phone_number: existingProfile?.phone_number || '',
+    address_line1: existingProfile?.address_line1 || '',
+    address_line2: existingProfile?.address_line2 || '',
+    city: existingProfile?.city || '',
+    state: existingProfile?.state || '',
+    zip: existingProfile?.zip || '',
+    household_income: existingProfile?.household_income || '',
+    identities: existingProfile?.identities || [],
+    social_handles: existingProfile?.social_handles || {}
   })
-
-  useEffect(() => {
-    loadProfile()
-  }, [])
-
-  const loadProfile = async () => {
-    try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-
-      if (!user) {
-        router.push('/login')
-        return
-      }
-
-      setUserId(user.id)
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
-      if (profile) {
-        setExistingProfile(profile)
-        setFormData({
-          full_name: profile.full_name || '',
-          age_range: profile.age_range || '',
-          phone_number: profile.phone_number || '',
-          address_line1: profile.address_line1 || '',
-          address_line2: profile.address_line2 || '',
-          city: profile.city || '',
-          state: profile.state || '',
-          zip: profile.zip || '',
-          household_income: profile.household_income || '',
-          identities: profile.identities || [],
-          social_handles: profile.social_handles || {}
-        })
-      }
-    } catch (err) {
-      console.error('Error loading profile:', err)
-    }
-  }
 
   const handleIdentityToggle = (identity: string) => {
     setFormData(prev => ({
@@ -159,10 +113,6 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
     setError(null)
 
     try {
-      if (!userId) {
-        throw new Error('User not authenticated')
-      }
-
       const supabase = createClient()
 
       const { error } = await supabase
@@ -203,7 +153,6 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
     }
   }
 
-  // Input class for reuse
   const inputClass = "w-full px-4 py-2.5 border border-[#2d1239]/20 rounded-lg text-[#2d1239] placeholder-[#2d1239]/40 bg-white focus:outline-none focus:ring-2 focus:ring-[#BCAFCF] focus:border-transparent transition-all"
   const labelClass = "block text-sm font-medium text-[#2d1239] mb-2"
 
@@ -240,7 +189,7 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
           onChange={(e) => setFormData({ ...formData, age_range: e.target.value })}
           className={inputClass}
         >
-          <option value="" className="text-[#2d1239]/40">Select age range</option>
+          <option value="">Select age range</option>
           {AGE_RANGES.map(range => (
             <option key={range} value={range}>{range}</option>
           ))}
@@ -350,7 +299,7 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
           onChange={(e) => setFormData({ ...formData, household_income: e.target.value })}
           className={inputClass}
         >
-          <option value="" className="text-[#2d1239]/40">Select income range</option>
+          <option value="">Select income range</option>
           {INCOME_RANGES.map(range => (
             <option key={range} value={range}>{range}</option>
           ))}
