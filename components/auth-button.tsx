@@ -14,20 +14,34 @@ export function AuthButton() {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    const supabase = createClient();
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('full_name, is_admin')
-      .eq('id', userId)
-      .single();
-    setProfile(profileData);
-    setIsAdmin(profileData?.is_admin || false);
+    try {
+      const supabase = createClient();
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('full_name, is_admin')
+        .eq('id', userId)
+        .single();
+      setProfile(profileData);
+      setIsAdmin(profileData?.is_admin || false);
+    } catch (err) {
+      console.error('Profile fetch error:', err);
+    }
   }
 
   useEffect(() => {
     const supabase = createClient();
 
-    // ✅ onAuthStateChange handles EVERYTHING including initial session
+    // ✅ Step 1: Get current session immediately on mount
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        await fetchProfile(currentUser.id);
+      }
+      setLoading(false);
+    });
+
+    // ✅ Step 2: Listen for future auth changes (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         const currentUser = session?.user ?? null;
@@ -79,10 +93,7 @@ export function AuthButton() {
 
       {isOpen && (
         <>
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setIsOpen(false)}
-          />
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
           <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-[#2d1239]/10 py-2 z-20">
             <div className="px-4 py-2 border-b border-[#2d1239]/10">
               <p className="text-sm font-semibold text-[#2d1239]">
