@@ -11,76 +11,73 @@ export function AuthButton() {
   const [profile, setProfile] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const fetchProfile = async (userId: string) => {
-    try {
-      const supabase = createClient();
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('full_name, is_admin')
-        .eq('id', userId)
-        .single();
-      setProfile(profileData);
-      setIsAdmin(profileData?.is_admin || false);
-    } catch (err) {
-      console.error('Profile fetch error:', err);
-    }
-  }
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
 
-    // ✅ Step 1: Get current session immediately on mount
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (currentUser) {
-        await fetchProfile(currentUser.id);
-      }
-      setLoading(false);
-    });
+    const init = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        setUser(user ?? null)
 
-    // ✅ Step 2: Listen for future auth changes (login/logout)
+        if (user) {
+          const { data } = await supabase
+            .from('profiles')
+            .select('full_name, is_admin')
+            .eq('id', user.id)
+            .single()
+          setProfile(data)
+          setIsAdmin(data?.is_admin || false)
+        }
+      } catch (e) {
+        console.error('Auth init error:', e)
+      } finally {
+        setReady(true)
+      }
+    }
+
+    init()
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        setIsOpen(false);
+        const currentUser = session?.user ?? null
+        setUser(currentUser)
+        setIsOpen(false)
 
         if (currentUser) {
-          await fetchProfile(currentUser.id);
+          const { data } = await supabase
+            .from('profiles')
+            .select('full_name, is_admin')
+            .eq('id', currentUser.id)
+            .single()
+          setProfile(data)
+          setIsAdmin(data?.is_admin || false)
         } else {
-          setProfile(null);
-          setIsAdmin(false);
+          setProfile(null)
+          setIsAdmin(false)
         }
-
-        setLoading(false);
+        setReady(true)
       }
-    );
+    )
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+    return () => subscription.unsubscribe()
+  }, [])
 
-  if (loading) {
-    return (
-      <div className="w-10 h-10 rounded-full bg-[#2d1239]/20 animate-pulse" />
-    );
-  }
+  // ✅ Show nothing (not a pulsing circle) until ready
+  if (!ready) return null
 
   if (!user) {
     return (
       <Button asChild size="sm" variant="default">
         <Link href="/auth/login">Login</Link>
       </Button>
-    );
+    )
   }
 
   const firstLetter = profile?.full_name
     ? profile.full_name.charAt(0).toUpperCase()
-    : user.email?.charAt(0).toUpperCase() || 'U';
+    : user.email?.charAt(0).toUpperCase() || 'U'
 
   return (
     <div className="relative">
@@ -138,5 +135,5 @@ export function AuthButton() {
         </>
       )}
     </div>
-  );
+  )
 }
