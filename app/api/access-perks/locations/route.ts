@@ -71,12 +71,12 @@ const accessToken = process.env.ACCESS_OFFERS_TOKEN
     console.log('🔑 Token exists:', !!accessToken)
 
     // Build query parameters
-    const params = new URLSearchParams({
+ const params = new URLSearchParams({
   member_key: user.id,
-  postal_code: searchPostalCode ?? '',  // ✅ converts null to empty string
+  postal_code: searchPostalCode ?? '',
   distance: distance,
   page: page,
-  per_page: per_page,
+  per_page: perPage,  // ✅ correct variable name
 })
 
     if (offerGroup) {
