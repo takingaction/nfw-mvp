@@ -13,29 +13,21 @@ export function AuthButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const fetchProfile = async (userId: string) => {
+    const supabase = createClient();
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('full_name, is_admin')
+      .eq('id', userId)
+      .single();
+    setProfile(profileData);
+    setIsAdmin(profileData?.is_admin || false);
+  }
+
   useEffect(() => {
     const supabase = createClient();
 
-    // Get initial user
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-
-      if (user) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('full_name, is_admin')
-          .eq('id', user.id)
-          .single();
-        setProfile(profileData);
-        setIsAdmin(profileData?.is_admin || false);
-      }
-      setLoading(false);
-    };
-
-    getUser();
-
-    // ✅ Listen for auth state changes - updates instantly on login/logout
+    // ✅ onAuthStateChange handles EVERYTHING including initial session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         const currentUser = session?.user ?? null;
@@ -43,16 +35,8 @@ export function AuthButton() {
         setIsOpen(false);
 
         if (currentUser) {
-          // Fetch profile for the newly logged in user
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('full_name, is_admin')
-            .eq('id', currentUser.id)
-            .single();
-          setProfile(profileData);
-          setIsAdmin(profileData?.is_admin || false);
+          await fetchProfile(currentUser.id);
         } else {
-          // User logged out - clear profile
           setProfile(null);
           setIsAdmin(false);
         }
@@ -61,20 +45,17 @@ export function AuthButton() {
       }
     );
 
-    // Cleanup subscription on unmount
     return () => {
       subscription.unsubscribe();
     };
   }, []);
 
-  // Show nothing while loading to prevent flash of login button
   if (loading) {
     return (
       <div className="w-10 h-10 rounded-full bg-[#2d1239]/20 animate-pulse" />
     );
   }
 
-  // Not logged in - show login button
   if (!user) {
     return (
       <Button asChild size="sm" variant="default">
@@ -83,14 +64,12 @@ export function AuthButton() {
     );
   }
 
-  // Get first letter for avatar
   const firstLetter = profile?.full_name
     ? profile.full_name.charAt(0).toUpperCase()
     : user.email?.charAt(0).toUpperCase() || 'U';
 
   return (
     <div className="relative">
-      {/* Avatar Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-10 h-10 rounded-full bg-[#2d1239] text-white font-bold text-lg flex items-center justify-center hover:opacity-80 transition-opacity"
@@ -98,17 +77,13 @@ export function AuthButton() {
         {firstLetter}
       </button>
 
-      {/* Dropdown */}
       {isOpen && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          {/* Menu */}
           <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-[#2d1239]/10 py-2 z-20">
-            {/* User info */}
             <div className="px-4 py-2 border-b border-[#2d1239]/10">
               <p className="text-sm font-semibold text-[#2d1239]">
                 {profile?.full_name || 'Member'}
@@ -116,63 +91,34 @@ export function AuthButton() {
               <p className="text-xs text-[#2d1239]/50">{user.email}</p>
             </div>
 
-            {/* User Links */}
-            <Link
-              href="/dashboard"
-              className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
+            <Link href="/dashboard" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors" onClick={() => setIsOpen(false)}>
               Dashboard
             </Link>
-            <Link
-              href="/profile"
-              className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
+            <Link href="/profile" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors" onClick={() => setIsOpen(false)}>
               My Profile
             </Link>
-            <Link
-              href="/grants/my-applications"
-              className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
+            <Link href="/grants/my-applications" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors" onClick={() => setIsOpen(false)}>
               My Grants
             </Link>
 
-            {/* Admin Links */}
             {isAdmin && (
               <>
                 <div className="border-t border-[#2d1239]/10 my-2" />
                 <div className="px-4 py-1">
-                  <p className="text-xs font-semibold text-[#2d1239]/40 uppercase tracking-wider">
-                    Admin
-                  </p>
+                  <p className="text-xs font-semibold text-[#2d1239]/40 uppercase tracking-wider">Admin</p>
                 </div>
-                <Link
-                  href="/admin/grants"
-                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors"
-                  onClick={() => setIsOpen(false)}
-                >
+                <Link href="/admin/grants" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors" onClick={() => setIsOpen(false)}>
                   Manage Grants
                 </Link>
-                <Link
-                  href="/admin/articles"
-                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors"
-                  onClick={() => setIsOpen(false)}
-                >
+                <Link href="/admin/articles" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors" onClick={() => setIsOpen(false)}>
                   Manage Articles
                 </Link>
-                <Link
-                  href="/admin/members"
-                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors"
-                  onClick={() => setIsOpen(false)}
-                >
+                <Link href="/admin/members" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors" onClick={() => setIsOpen(false)}>
                   Manage Members
                 </Link>
               </>
             )}
 
-            {/* Logout */}
             <div className="border-t border-[#2d1239]/10 my-2" />
             <div className="px-4 py-2">
               <LogoutButton />
