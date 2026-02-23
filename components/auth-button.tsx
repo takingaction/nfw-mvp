@@ -2,70 +2,17 @@
 
 import Link from "next/link";
 import { Button } from "./ui/button";
-import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useState } from "react";
 import { LogoutButton } from "./logout-button";
 
-export function AuthButton() {
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-  const [ready, setReady] = useState(false);
+interface AuthButtonProps {
+  user: any
+  profile: any
+}
 
-  useEffect(() => {
-    const supabase = createClient();
-
-    const init = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        setUser(user ?? null)
-
-        if (user) {
-          const { data } = await supabase
-            .from('profiles')
-            .select('full_name, is_admin')
-            .eq('id', user.id)
-            .single()
-          setProfile(data)
-          setIsAdmin(data?.is_admin || false)
-        }
-      } catch (e) {
-        console.error('Auth init error:', e)
-      } finally {
-        setReady(true)
-      }
-    }
-
-    init()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        const currentUser = session?.user ?? null
-        setUser(currentUser)
-        setIsOpen(false)
-
-        if (currentUser) {
-          const { data } = await supabase
-            .from('profiles')
-            .select('full_name, is_admin')
-            .eq('id', currentUser.id)
-            .single()
-          setProfile(data)
-          setIsAdmin(data?.is_admin || false)
-        } else {
-          setProfile(null)
-          setIsAdmin(false)
-        }
-        setReady(true)
-      }
-    )
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  // ✅ Show nothing (not a pulsing circle) until ready
-  if (!ready) return null
+export function AuthButton({ user, profile }: AuthButtonProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const isAdmin = profile?.is_admin || false
 
   if (!user) {
     return (
