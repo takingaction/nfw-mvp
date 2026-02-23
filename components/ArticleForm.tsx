@@ -62,9 +62,9 @@ export default function ArticleForm({
 
     try {
       const tagsArray = formData.tags
-        .split(',')
-        .map(tag => tag.trim())
-        .filter(tag => tag.length > 0)
+  .split(',')
+  .map((tag: string) => tag.trim())
+  .filter((tag: string) => tag.length > 0)
 
       const articleData = {
         title: formData.title,
