@@ -201,7 +201,7 @@ export default function ArticlesClient({
                       className="inline-block text-xs px-2.5 py-1 rounded-full mb-3 font-medium"
                       style={{
                         backgroundColor: `${article.category.color}15`,
-                        color: article.category.color
+                        color: article.category.color ?? undefined
                       }}
                     >
                       {article.category.icon} {article.category.name}
