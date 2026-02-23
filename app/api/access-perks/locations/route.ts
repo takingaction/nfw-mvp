@@ -72,12 +72,12 @@ const accessToken = process.env.ACCESS_OFFERS_TOKEN
 
     // Build query parameters
     const params = new URLSearchParams({
-      member_key: user.id,
-      postal_code: searchPostalCode,
-      distance: distance,
-      page: page,
-      per_page: perPage,
-    })
+  member_key: user.id,
+  postal_code: searchPostalCode ?? '',  // ✅ converts null to empty string
+  distance: distance,
+  page: page,
+  per_page: per_page,
+})
 
     if (offerGroup) {
       params.append('offer_group', offerGroup)
