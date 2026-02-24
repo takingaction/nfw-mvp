@@ -1,3 +1,6 @@
+cat > ~/nfw-mvp/app/not-found.tsx << 'EOF'
+'use client'
+
 import Link from 'next/link'
 
 export default function NotFound() {
@@ -17,3 +20,4 @@ export default function NotFound() {
     </div>
   )
 }
+EOF
