@@ -10,50 +10,50 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 lg:gap-12 mb-12">
           {/* Brand Column */}
-<div className="md:col-span-1">
-  <img
-    src="/images/footer-logo.png"
-    alt="NFW Logo"
-    className="h-32 w-auto mb-4"
-    onError={(e) => {
-      e.currentTarget.style.display = 'none'
-      const fallback = document.createElement('h3')
-      fallback.className = 'text-2xl font-black font-neonblitz mb-4 text-white'
-      fallback.textContent = 'NFW'
-      e.currentTarget.parentElement?.insertBefore(fallback, e.currentTarget)
-    }}
-  />
-  <p className="text-[#bcafcf] text-sm leading-relaxed">
-    A space to celebrate, listen, and uplift American women.
-  </p>
-</div>
+          <div className="md:col-span-1">
+            <img
+              src="/images/footer-logo.png"
+              alt="NFW Logo"
+              className="h-32 w-auto mb-4"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+                const fallback = document.createElement('h3')
+                fallback.className = 'text-2xl font-black font-neonblitz mb-4 text-white'
+                fallback.textContent = 'NFW'
+                e.currentTarget.parentElement?.insertBefore(fallback, e.currentTarget)
+              }}
+            />
+            <p className="text-[#bcafcf] text-sm leading-relaxed">
+              A space to celebrate, listen, and uplift American women.
+            </p>
+          </div>
 
           {/* Quick Links */}
           <div>
             <h4 className="font-bold mb-4">Quick Links</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/about" className="text-[#bcafcf] hover:text-white transition-colors">
+                <Link prefetch={false} href="/about" className="text-[#bcafcf] hover:text-white transition-colors">
                   About Us
                 </Link>
               </li>
               <li>
-                <Link href="/grants" className="text-[#bcafcf] hover:text-white transition-colors">
+                <Link prefetch={false} href="/grants" className="text-[#bcafcf] hover:text-white transition-colors">
                   Microgrants
                 </Link>
               </li>
               <li>
-                <Link href="/perks" className="text-[#bcafcf] hover:text-white transition-colors">
+                <Link prefetch={false} href="/perks" className="text-[#bcafcf] hover:text-white transition-colors">
                   Perks & Discounts
                 </Link>
               </li>
               <li>
-                <Link href="/store" className="text-[#bcafcf] hover:text-white transition-colors">
+                <Link prefetch={false} href="/store" className="text-[#bcafcf] hover:text-white transition-colors">
                   Zero Dollar Store
                 </Link>
               </li>
               <li>
-                <Link href="/events" className="text-[#bcafcf] hover:text-white transition-colors">
+                <Link prefetch={false} href="/events" className="text-[#bcafcf] hover:text-white transition-colors">
                   Events
                 </Link>
               </li>
@@ -65,22 +65,22 @@ export default function Footer() {
             <h4 className="font-bold mb-4">Support</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/contact" className="text-[#bcafcf] hover:text-white transition-colors">
+                <Link prefetch={false} href="/contact" className="text-[#bcafcf] hover:text-white transition-colors">
                   Contact Us
                 </Link>
               </li>
               <li>
-                <Link href="/faq" className="text-[#bcafcf] hover:text-white transition-colors">
+                <Link prefetch={false} href="/faq" className="text-[#bcafcf] hover:text-white transition-colors">
                   FAQ
                 </Link>
               </li>
               <li>
-                <Link href="/help" className="text-[#bcafcf] hover:text-white transition-colors">
+                <Link prefetch={false} href="/help" className="text-[#bcafcf] hover:text-white transition-colors">
                   Help Center
                 </Link>
               </li>
               <li>
-                <Link href="/membership" className="text-[#bcafcf] hover:text-white transition-colors">
+                <Link prefetch={false} href="/membership" className="text-[#bcafcf] hover:text-white transition-colors">
                   Membership Info
                 </Link>
               </li>
@@ -92,17 +92,17 @@ export default function Footer() {
             <h4 className="font-bold mb-4">Legal</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/privacy" className="text-[#bcafcf] hover:text-white transition-colors">
+                <Link prefetch={false} href="/privacy" className="text-[#bcafcf] hover:text-white transition-colors">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="text-[#bcafcf] hover:text-white transition-colors">
+                <Link prefetch={false} href="/terms" className="text-[#bcafcf] hover:text-white transition-colors">
                   Terms of Service
                 </Link>
               </li>
               <li>
-                <Link href="/accessibility" className="text-[#bcafcf] hover:text-white transition-colors">
+                <Link prefetch={false} href="/accessibility" className="text-[#bcafcf] hover:text-white transition-colors">
                   Accessibility
                 </Link>
               </li>
@@ -116,55 +116,15 @@ export default function Footer() {
             © {currentYear} National Fund for Women. All rights reserved.
           </p>
           
-          {/* Social Links with Images - 2x bigger */}
           <div className="flex gap-6 items-center">
-            <a
-              href="https://www.facebook.com/nationalfundforwomen/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:opacity-80 transition-opacity"
-              aria-label="Facebook"
-            >
-              <img
-                src="/images/social/White-Lavender-Facebook.png"
-                alt="Facebook"
-                className="h-12 w-12"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none'
-                }}
-              />
+            <a href="https://www.facebook.com/nationalfundforwomen/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" aria-label="Facebook">
+              <img src="/images/social/White-Lavender-Facebook.png" alt="Facebook" className="h-12 w-12" onError={(e) => { e.currentTarget.style.display = 'none' }} />
             </a>
-            <a
-              href="https://www.instagram.com/nationalfundforwomen"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:opacity-80 transition-opacity"
-              aria-label="Instagram"
-            >
-              <img
-                src="/images/social/White-Lavender-Instagram.png"
-                alt="Instagram"
-                className="h-12 w-12"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none'
-                }}
-              />
+            <a href="https://www.instagram.com/nationalfundforwomen" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" aria-label="Instagram">
+              <img src="/images/social/White-Lavender-Instagram.png" alt="Instagram" className="h-12 w-12" onError={(e) => { e.currentTarget.style.display = 'none' }} />
             </a>
-            <a
-              href="https://www.tiktok.com/@nationalfundforwomen"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:opacity-80 transition-opacity"
-              aria-label="TikTok"
-            >
-              <img
-                src="/images/social/White-Lavender-TikTok.png"
-                alt="TikTok"
-                className="h-12 w-12"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none'
-                }}
-              />
+            <a href="https://www.tiktok.com/@nationalfundforwomen" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" aria-label="TikTok">
+              <img src="/images/social/White-Lavender-TikTok.png" alt="TikTok" className="h-12 w-12" onError={(e) => { e.currentTarget.style.display = 'none' }} />
             </a>
           </div>
         </div>
