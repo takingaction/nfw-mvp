@@ -1,18 +1,16 @@
 'use client'
 
-import Link from "next/link";
-import { Button } from "./ui/button";
-import { useState } from "react";
-import { LogoutButton } from "./logout-button";
+import Link from "next/link"
+import { Button } from "./ui/button"
+import { useState } from "react"
+import { LogoutButton } from "./logout-button"
+import { useAuth } from "./SupabaseProvider"
 
-interface AuthButtonProps {
-  user: any
-  profile: any
-}
-
-export function AuthButton({ user, profile }: AuthButtonProps) {
+export function AuthButton() {
+  const { user, profile, isAdmin, loading } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
-  const isAdmin = profile?.is_admin || false
+
+  if (loading) return null
 
   if (!user) {
     return (
