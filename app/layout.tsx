@@ -5,7 +5,6 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/landing/Footer";
 import BackToTop from "@/components/BackToTop";
 import "./fonts.css";
-import { SupabaseProvider } from "@/components/SupabaseProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,12 +32,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <SupabaseProvider>
-          <Navigation />
-          {children}
-          <Footer />
-          <BackToTop />
-        </SupabaseProvider>
+        <Navigation />
+        {children}
+        <Footer />
+        <BackToTop />
       </body>
     </html>
   );
