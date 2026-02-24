@@ -2,25 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { hasEnvVars } from "../utils";
 
-// ✅ Public routes - no auth required
-const PUBLIC_ROUTES = [
-  '/',
-  '/about',
-  '/mission',
-  '/team',
-  '/contact',
-  '/articles',
-  '/pricing',
-  '/membership',
-  '/events',
-  '/grants',
-  '/store',
-  '/perks',
-  '/auth',
-  '/login',
-]
-
-// ✅ Protected routes - auth required
+// Protected routes - auth required
 const PROTECTED_ROUTES = [
   '/dashboard',
   '/profile',
@@ -39,17 +21,7 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  const pathname = request.nextUrl.pathname
-
-  // Allow public routes without auth check
-  const isPublicRoute = PUBLIC_ROUTES.some(route => 
-    pathname === route || pathname.startsWith(route + '/')
-  )
-
-  if (isPublicRoute) {
-    return supabaseResponse
-  }
-
+  // ✅ ALWAYS create client and refresh session on EVERY route
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -73,13 +45,16 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
+  // ✅ ALWAYS refresh session - keeps auth cookies fresh on ALL pages
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
-  // Only redirect to login for explicitly protected routes
+  const pathname = request.nextUrl.pathname;
+
+  // ✅ Only redirect to login for protected routes
   const isProtectedRoute = PROTECTED_ROUTES.some(route =>
     pathname === route || pathname.startsWith(route + '/')
-  )
+  );
 
   if (isProtectedRoute && !user) {
     const url = request.nextUrl.clone();
@@ -87,5 +62,6 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // ✅ Return response with refreshed cookies for ALL routes
   return supabaseResponse;
 }
