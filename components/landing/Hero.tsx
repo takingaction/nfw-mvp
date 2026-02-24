@@ -25,7 +25,7 @@ export default function Hero() {
             </div>
 
             {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight font-neonblitz">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight font-bold">
               Feel supported.
               <br />
               <span className="text-[#fdf493]">Feel empowered.</span>
@@ -102,7 +102,7 @@ export default function Hero() {
 
                 {/* Text content */}
                 <div className="text-center space-y-4">
-                  <h3 className="text-2xl lg:text-3xl font-black text-white font-neonblitz leading-tight">
+                  <h3 className="text-2xl lg:text-3xl font-black text-white font-bold leading-tight">
                     Real support.
                     <br />
                     Real results.

@@ -25,7 +25,7 @@ export default function NavigationClient({ side }: NavigationClientProps) {
             e.currentTarget.style.display = 'none'
             const parent = e.currentTarget.parentElement
             if (parent) {
-              parent.innerHTML = '<span class="text-2xl font-black font-neonblitz text-[#2d1239]">NFW</span>'
+              parent.innerHTML = '<span class="text-2xl font-black font-bold text-[#2d1239]">NFW</span>'
             }
           }}
         />

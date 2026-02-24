@@ -88,7 +88,7 @@ function StatCounter({ stat, isVisible, delay }: { stat: Stat; isVisible: boolea
 
   return (
     <div className="text-center">
-      <div className="text-5xl lg:text-6xl font-black text-[#fdf493] mb-2 font-neonblitz">
+      <div className="text-5xl lg:text-6xl font-black text-[#fdf493] mb-2 font-bold">
         {stat.prefix}{displayValue}{stat.suffix}
       </div>
       <div className="text-lg text-[#bcafcf]">{stat.label}</div>

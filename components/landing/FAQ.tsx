@@ -51,7 +51,7 @@ export default function FAQ() {
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-12">
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] mb-6 font-neonblitz">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] mb-6 font-bold">
             Questions? We've got answers.
           </h2>
           <p className="text-lg text-[#2d1239]/70 max-w-2xl mx-auto">

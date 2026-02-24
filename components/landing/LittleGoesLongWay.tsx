@@ -44,7 +44,7 @@ export default function LittleGoesLongWay() {
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] mb-6 font-neonblitz leading-tight">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] mb-6 font-bold leading-tight">
             A little goes a<br className="hidden sm:block" /> long way
           </h2>
           <p className="text-xl text-[#2d1239]/80 mb-8">

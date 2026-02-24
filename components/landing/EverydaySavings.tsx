@@ -47,7 +47,7 @@ export default function EverydaySavings() {
             <div className="text-sm font-semibold text-[#2d1239]/60 uppercase tracking-wide">
               Perks and Discounts
             </div>
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] font-neonblitz">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] font-bold">
               Everyday savings you can feel
             </h2>
             <p className="text-lg text-[#2d1239]/80">

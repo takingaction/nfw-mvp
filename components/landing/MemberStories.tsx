@@ -44,7 +44,7 @@ export default function MemberStories() {
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#2d1239]/10 rounded-full text-sm font-semibold text-[#2d1239] mb-4">
             Trusted by Women Across the Country
           </div>
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] mb-6 font-neonblitz">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] mb-6 font-bold">
             From small towns to big cities,
             <br />
             <span className="text-[#2d1239]/60">we're here to help.</span>
@@ -77,7 +77,7 @@ export default function MemberStories() {
               {/* Content overlay */}
               <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
                 <div className="mb-3">
-                  <div className="text-2xl font-black font-neonblitz">{story.name}</div>
+                  <div className="text-2xl font-black font-bold">{story.name}</div>
                   <div className="text-sm text-white/80">{story.location}</div>
                 </div>
                 

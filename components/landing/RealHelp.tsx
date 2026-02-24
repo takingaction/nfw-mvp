@@ -26,7 +26,7 @@ export default function RealHelp() {
             <div className="text-sm font-semibold text-[#2d1239]/60 uppercase tracking-wide">
               Microgrants
             </div>
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] font-neonblitz">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] font-bold">
               Real help when life gets hard
             </h2>
             <p className="text-lg text-[#2d1239]/80">

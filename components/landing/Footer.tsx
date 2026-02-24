@@ -18,7 +18,7 @@ export default function Footer() {
               onError={(e) => {
                 e.currentTarget.style.display = 'none'
                 const fallback = document.createElement('h3')
-                fallback.className = 'text-2xl font-black font-neonblitz mb-4 text-white'
+                fallback.className = 'text-2xl font-black font-bold mb-4 text-white'
                 fallback.textContent = 'NFW'
                 e.currentTarget.parentElement?.insertBefore(fallback, e.currentTarget)
               }}

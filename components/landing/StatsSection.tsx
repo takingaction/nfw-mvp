@@ -83,7 +83,7 @@ function AnimatedStat({ value, label, color, delay }: StatProps) {
       }`}
       style={{ transitionDelay: `${delay}ms` }}
     >
-      <div className={`text-4xl sm:text-5xl lg:text-6xl font-black font-neonblitz mb-2 ${color}`}>
+      <div className={`text-4xl sm:text-5xl lg:text-6xl font-black font-bold mb-2 ${color}`}>
         {displayValue}
       </div>
       <div className="text-[#bcafcf] text-sm sm:text-base font-medium">

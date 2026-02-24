@@ -42,7 +42,7 @@ export default function GrantImpact() {
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#2d1239]/10 rounded-full text-sm font-semibold text-[#2d1239] mb-4">
             Grant Impact
           </div>
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] mb-6 font-neonblitz">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] mb-6 font-bold">
             What $1,000 can do
             <br />
             <span className="text-[#2d1239]/60">for real women.</span>
@@ -68,7 +68,7 @@ export default function GrantImpact() {
                   </div>
 
                   {/* Content */}
-                  <h3 className={`text-2xl lg:text-3xl font-black ${impact.iconColor} mb-3 font-neonblitz`}>
+                  <h3 className={`text-2xl lg:text-3xl font-black ${impact.iconColor} mb-3 font-bold`}>
                     {impact.title}
                   </h3>
                   <p className={`text-lg ${impact.iconColor}/80 leading-relaxed`}>

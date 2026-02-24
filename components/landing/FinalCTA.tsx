@@ -14,7 +14,7 @@ export default function FinalCTA() {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
         {/* Headline */}
-        <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-6 font-neonblitz">
+        <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-6 font-bold">
           Ready to feel supported?
         </h2>
         <p className="text-xl text-[#bcafcf] mb-8 max-w-2xl mx-auto">

@@ -11,8 +11,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        neonblitz: ['Neonblitz', 'Montserrat', 'sans-serif'],
-        sans: ['Montserrat', 'sans-serif'],
+         sans: ['Montserrat', 'sans-serif'],
       },
       colors: {
         background: "hsl(var(--background))",

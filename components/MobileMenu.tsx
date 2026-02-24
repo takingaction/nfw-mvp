@@ -86,7 +86,7 @@ export default function MobileMenu() {
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-white/10">
-            <span className="text-xl font-black font-neonblitz text-white">Menu</span>
+            <span className="text-xl font-black font-bold text-white">Menu</span>
             <button
               onClick={closeMenu}
               className="p-2 text-white hover:bg-white/10 rounded-lg transition-colors"

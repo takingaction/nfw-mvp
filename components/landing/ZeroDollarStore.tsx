@@ -26,7 +26,7 @@ export default function ZeroDollarStore() {
             <div className="text-sm font-semibold text-[#2d1239]/60 uppercase tracking-wide">
               Zero Dollar Store
             </div>
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] font-neonblitz">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] font-bold">
               Free items you can claim anytime
             </h2>
             <p className="text-lg text-[#2d1239]/80">

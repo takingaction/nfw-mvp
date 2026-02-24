@@ -17,7 +17,7 @@ export default function SmallWins() {
           
           {/* Left Column - Text */}
           <div className="space-y-6">
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] font-neonblitz">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] font-bold">
               Small wins matter. Let's celebrate yours.
             </h2>
             <p className="text-lg text-[#2d1239]/80">

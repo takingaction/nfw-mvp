@@ -56,7 +56,7 @@ export default function WhatWeOffer() {
             What We Offer
           </div>
           {/* Section Headline - NEONBLITZ FONT */}
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] mb-6 font-neonblitz">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] mb-6 font-bold">
             Small wins that add up to
             <br />
             <span className="text-[#2d1239]/60">big support.</span>
@@ -86,7 +86,7 @@ export default function WhatWeOffer() {
                     </div>
 
                     {/* Card Title - NEONBLITZ FONT */}
-                    <h3 className={`text-3xl lg:text-4xl font-black ${offering.textColor} mb-4 font-neonblitz`}>
+                    <h3 className={`text-3xl lg:text-4xl font-black ${offering.textColor} mb-4 font-bold`}>
                       {offering.title}
                     </h3>
                     <p className={`text-lg ${offering.textColor}/80 mb-6 leading-relaxed`}>
