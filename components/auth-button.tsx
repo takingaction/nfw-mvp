@@ -18,8 +18,10 @@ export function AuthButton() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // ✅ Only clear user on explicit SIGNED_OUT - ignore null sessions from 404s
+        const currentUser = session?.user ?? null;
+
         if (event === 'SIGNED_OUT') {
+          // Explicit logout - clear everything
           setUser(null);
           setProfile(null);
           setIsAdmin(false);
@@ -27,9 +29,8 @@ export function AuthButton() {
           return;
         }
 
-        const currentUser = session?.user ?? null;
-
         if (currentUser) {
+          // User is logged in - fetch profile
           setUser(currentUser);
           setIsOpen(false);
           const { data } = await supabase
@@ -39,8 +40,14 @@ export function AuthButton() {
             .single();
           setProfile(data);
           setIsAdmin(data?.is_admin || false);
+        } else {
+          // No user (404, unprotected page, etc.) - show login button
+          setUser(null);
+          setProfile(null);
+          setIsAdmin(false);
         }
 
+        // ✅ Always mark as ready regardless of user state
         setReady(true);
       }
     );
@@ -48,7 +55,6 @@ export function AuthButton() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Render nothing until auth state is known
   if (!ready) return null;
 
   if (!user) {
