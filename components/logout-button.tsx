@@ -1,17 +1,15 @@
-"use client";
+"use client"
 
-import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button"
 
 export function LogoutButton() {
-  const router = useRouter();
-
   const logout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/auth/login");
-  };
+    // Clear session storage cache
+    sessionStorage.removeItem('nfw_profile')
+    
+    // Hard redirect to logout API route which handles signOut server-side
+    window.location.href = "/auth/logout"
+  }
 
-  return <Button onClick={logout}>Logout</Button>;
+  return <Button onClick={logout}>Logout</Button>
 }

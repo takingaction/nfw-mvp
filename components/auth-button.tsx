@@ -7,43 +7,70 @@ import { createClient } from "@/lib/supabase/client";
 import { LogoutButton } from "./logout-button";
 
 export function AuthButton() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(undefined); // undefined = not yet checked
   const [profile, setProfile] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
+  const supabase = createClient();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        setIsOpen(false);
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('full_name, is_admin')
+      .eq('id', userId)
+      .single();
+    if (data) {
+      setProfile(data);
+      setIsAdmin(data?.is_admin || false);
+      // ✅ Cache profile in sessionStorage so it survives remounts
+      sessionStorage.setItem('nfw_profile', JSON.stringify(data));
+    }
+  };
 
-        if (currentUser) {
-          const { data } = await supabase
-            .from('profiles')
-            .select('full_name, is_admin')
-            .eq('id', currentUser.id)
-            .single();
-          setProfile(data);
-          setIsAdmin(data?.is_admin || false);
-        } else {
-          setProfile(null);
-          setIsAdmin(false);
-        }
+  // ✅ Check sessionStorage first for instant render
+  const cachedProfile = sessionStorage.getItem('nfw_profile');
+  if (cachedProfile) {
+    const parsed = JSON.parse(cachedProfile);
+    setProfile(parsed);
+    setIsAdmin(parsed?.is_admin || false);
+  }
 
-        setReady(true);
+  supabase.auth.getSession().then(async ({ data: { session } }) => {
+    const currentUser = session?.user ?? null;
+    setUser(currentUser);
+    if (currentUser) {
+      await fetchProfile(currentUser.id);
+    }
+  });
+
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    async (event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      setIsOpen(false);
+
+      if (event === 'SIGNED_OUT') {
+        setProfile(null);
+        setIsAdmin(false);
+        sessionStorage.removeItem('nfw_profile');
+        return;
       }
-    );
 
-    return () => subscription.unsubscribe();
-  }, []);
+      if (currentUser) {
+        await fetchProfile(currentUser.id);
+      }
+    }
+  );
 
-  if (!ready) return null;
+  return () => subscription.unsubscribe();
+}, []);
 
+  // undefined = still checking, render nothing briefly
+  if (user === undefined) return null;
+
+  // null = confirmed not logged in
   if (!user) {
     return (
       <Button asChild size="sm" variant="default">
