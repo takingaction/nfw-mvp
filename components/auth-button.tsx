@@ -19,20 +19,10 @@ export function AuthButton() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         const currentUser = session?.user ?? null;
-
-        if (event === 'SIGNED_OUT') {
-          // Explicit logout - clear everything
-          setUser(null);
-          setProfile(null);
-          setIsAdmin(false);
-          setReady(true);
-          return;
-        }
+        setUser(currentUser);
+        setIsOpen(false);
 
         if (currentUser) {
-          // User is logged in - fetch profile
-          setUser(currentUser);
-          setIsOpen(false);
           const { data } = await supabase
             .from('profiles')
             .select('full_name, is_admin')
@@ -41,13 +31,10 @@ export function AuthButton() {
           setProfile(data);
           setIsAdmin(data?.is_admin || false);
         } else {
-          // No user (404, unprotected page, etc.) - show login button
-          setUser(null);
           setProfile(null);
           setIsAdmin(false);
         }
 
-        // ✅ Always mark as ready regardless of user state
         setReady(true);
       }
     );
@@ -83,40 +70,23 @@ export function AuthButton() {
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
           <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-[#2d1239]/10 py-2 z-20">
             <div className="px-4 py-2 border-b border-[#2d1239]/10">
-              <p className="text-sm font-semibold text-[#2d1239]">
-                {profile?.full_name || 'Member'}
-              </p>
+              <p className="text-sm font-semibold text-[#2d1239]">{profile?.full_name || 'Member'}</p>
               <p className="text-xs text-[#2d1239]/50">{user.email}</p>
             </div>
-
-            <Link href="/dashboard" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors" onClick={() => setIsOpen(false)}>
-              Dashboard
-            </Link>
-            <Link href="/profile" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors" onClick={() => setIsOpen(false)}>
-              My Profile
-            </Link>
-            <Link href="/grants/my-applications" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors" onClick={() => setIsOpen(false)}>
-              My Grants
-            </Link>
-
+            <Link href="/dashboard" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>Dashboard</Link>
+            <Link href="/profile" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>My Profile</Link>
+            <Link href="/grants/my-applications" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>My Grants</Link>
             {isAdmin && (
               <>
                 <div className="border-t border-[#2d1239]/10 my-2" />
                 <div className="px-4 py-1">
                   <p className="text-xs font-semibold text-[#2d1239]/40 uppercase tracking-wider">Admin</p>
                 </div>
-                <Link href="/admin/grants" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors" onClick={() => setIsOpen(false)}>
-                  Manage Grants
-                </Link>
-                <Link href="/admin/articles" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors" onClick={() => setIsOpen(false)}>
-                  Manage Articles
-                </Link>
-                <Link href="/admin/members" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa] transition-colors" onClick={() => setIsOpen(false)}>
-                  Manage Members
-                </Link>
+                <Link href="/admin/grants" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>Manage Grants</Link>
+                <Link href="/admin/articles" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>Manage Articles</Link>
+                <Link href="/admin/members" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>Manage Members</Link>
               </>
             )}
-
             <div className="border-t border-[#2d1239]/10 my-2" />
             <div className="px-4 py-2">
               <LogoutButton />
