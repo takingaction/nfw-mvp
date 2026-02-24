@@ -24,11 +24,12 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   const fetchProfile = async (userId: string) => {
     try {
       const supabase = createClient()
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('full_name, is_admin')
         .eq('id', userId)
         .single()
+      console.log('📋 Profile fetch:', data, error)
       setProfile(data)
       setIsAdmin(data?.is_admin || false)
     } catch (e) {
@@ -39,16 +40,25 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const supabase = createClient()
 
-    // Get initial session
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      setUser(user ?? null)
-      if (user) await fetchProfile(user.id)
-      setLoading(false)
-    })
+    const init = async () => {
+      try {
+        console.log('🔐 Initializing auth...')
+        const { data: { user }, error } = await supabase.auth.getUser()
+        console.log('👤 getUser result:', user?.email, error)
+        setUser(user ?? null)
+        if (user) await fetchProfile(user.id)
+      } catch (e) {
+        console.error('Auth init error:', e)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-    // Listen for auth changes
+    init()
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('🔄 Auth state change:', event, session?.user?.email)
         const currentUser = session?.user ?? null
         setUser(currentUser)
 
