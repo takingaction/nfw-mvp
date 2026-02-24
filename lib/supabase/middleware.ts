@@ -46,8 +46,7 @@ export async function updateSession(request: NextRequest) {
   );
 
   // ✅ ALWAYS refresh session - keeps auth cookies fresh on ALL pages
-  const { data } = await supabase.auth.getClaims();
-  const user = data?.claims;
+const { data: { user } } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
 
