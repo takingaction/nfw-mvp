@@ -153,7 +153,7 @@ export default function MobileMenu() {
                 {membershipOpen && (
                   <div className="ml-4 mt-2 space-y-1">
                     <Link
-                      href="/auth/signup"
+                      href="/auth/sign-up"
                       onClick={closeMenu}
                       className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
                     >
@@ -332,7 +332,7 @@ export default function MobileMenu() {
                   Sign in
                 </Link>
                 <Link
-                  href="/auth/signup"
+                  href="/auth/sign-up"
                   onClick={closeMenu}
                   className="block w-full text-center px-4 py-2 bg-[#fdf493] text-[#2d1239] rounded-lg font-semibold hover:bg-[#fdf493]/90 transition-colors"
                 >

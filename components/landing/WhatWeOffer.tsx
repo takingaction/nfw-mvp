@@ -114,7 +114,7 @@ export default function WhatWeOffer() {
             Ready to experience all these benefits?
           </p>
           <Link
-            href="/auth/signup"
+            href="/auth/sign-up"
             className="group relative inline-flex items-center justify-center px-8 py-4 bg-[#2d1239] text-white rounded-xl font-bold text-lg overflow-hidden transition-all shadow-lg"
           >
             <span className="absolute inset-0 bg-gradient-to-r from-[#2d1239] to-[#4a1f5c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>

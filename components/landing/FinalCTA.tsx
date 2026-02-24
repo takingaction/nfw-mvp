@@ -54,7 +54,7 @@ export default function FinalCTA() {
 
         {/* CTA Button */}
         <Link
-          href="/auth/signup"
+          href="/auth/sign-up"
           className="group relative inline-flex items-center justify-center px-10 py-5 bg-[#fdf493] text-[#2d1239] rounded-xl font-bold text-xl overflow-hidden transition-all shadow-2xl"
         >
           <span className="absolute inset-0 bg-gradient-to-r from-[#fdf493] to-[#d4f1ad] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>

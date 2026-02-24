@@ -88,7 +88,7 @@ export default function NavigationClient({ side }: NavigationClientProps) {
               className="absolute top-full left-0 pt-0"
             >
               <div className="w-48 bg-white rounded-lg shadow-xl py-2 border border-[#BCAFCF]/20">
-                <Link href="/auth/signup" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
+                <Link href="/auth/sign-up" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
                   Join Now
                 </Link>
                 <Link href="/membership" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">

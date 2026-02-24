@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Search, X } from 'lucide-react'
+import { Search, X, Heart } from 'lucide-react'
 import { ArticleWithDetails, ArticleCategory } from '@/types/articles'
 import { createClient } from '@/lib/supabase/client'
 
@@ -66,12 +66,8 @@ export default function ArticlesClient({
       } else {
         await supabase
           .from('article_likes')
-          .insert({
-            article_id: articleId,
-            user_id: userId
-          })
+          .insert({ article_id: articleId, user_id: userId })
       }
-
       router.refresh()
     } catch (error) {
       console.error('Error toggling like:', error)
@@ -82,13 +78,16 @@ export default function ArticlesClient({
 
   return (
     <main className="min-h-screen bg-white">
-      {/* Lean Header */}
-      <div className="bg-white pt-8 pb-6 border-b border-[#2d1239]/10">
+      {/* Header */}
+      <div className="bg-[#2d1239] pt-8 pb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl sm:text-4xl font-bold text-[#2d1239] mb-2" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          <h2
+            className="text-3xl sm:text-4xl font-black text-[#fffef1] mb-2"
+            style={{ fontFamily: 'Montserrat, sans-serif' }}
+          >
             Articles & Resources
           </h2>
-          <p className="text-[#2d1239]/60">
+          <p className="text-[#bcafcf]">
             Stories, tips, and resources to help you thrive.
           </p>
         </div>
@@ -96,8 +95,9 @@ export default function ArticlesClient({
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
         {/* Search Bar */}
-        <div className="bg-[#f8f7fa] rounded-xl p-4 mb-6">
+        <div className="bg-[#f8f7fa] rounded-xl p-4 mb-6 border border-[#2d1239]/10">
           <form onSubmit={handleSearch}>
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -107,12 +107,12 @@ export default function ArticlesClient({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search articles..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#2d1239]/10 rounded-lg text-[#2d1239] placeholder-[#2d1239]/40 focus:outline-none focus:ring-2 focus:ring-[#BCAFCF] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#2d1239]/10 rounded-lg text-[#2d1239] placeholder-[#2d1239]/40 focus:outline-none focus:ring-2 focus:ring-[#bcafcf] focus:border-transparent"
                 />
               </div>
               <button
                 type="submit"
-                className="px-5 py-2.5 bg-[#2d1239] text-white rounded-lg font-medium hover:bg-[#2d1239]/90 transition-colors"
+                className="px-5 py-2.5 bg-[#2d1239] text-[#fffef1] rounded-lg font-semibold hover:bg-[#2d1239]/90 transition-colors"
               >
                 Search
               </button>
@@ -137,10 +137,10 @@ export default function ArticlesClient({
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button
               onClick={() => handleCategoryFilter(null)}
-              className={`px-4 py-2 rounded-full whitespace-nowrap font-medium transition-colors ${
+              className={`px-4 py-2 rounded-full whitespace-nowrap font-semibold transition-colors text-sm ${
                 !currentCategory
-                  ? 'bg-[#2d1239] text-white'
-                  : 'bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#2d1239]/5'
+                  ? 'bg-[#2d1239] text-[#fffef1]'
+                  : 'bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#bcafcf]/20'
               }`}
             >
               All Articles ({articles.length})
@@ -149,10 +149,10 @@ export default function ArticlesClient({
               <button
                 key={category.id}
                 onClick={() => handleCategoryFilter(category.slug)}
-                className={`px-4 py-2 rounded-full whitespace-nowrap font-medium transition-colors ${
+                className={`px-4 py-2 rounded-full whitespace-nowrap font-semibold transition-colors text-sm ${
                   currentCategory === category.slug
-                    ? 'bg-[#2d1239] text-white'
-                    : 'bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#2d1239]/5'
+                    ? 'bg-[#2d1239] text-[#fffef1]'
+                    : 'bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#bcafcf]/20'
                 }`}
               >
                 {category.icon} {category.name} ({category.article_count})
@@ -175,11 +175,11 @@ export default function ArticlesClient({
             {articles.map(article => (
               <div
                 key={article.id}
-                className="group bg-white rounded-xl border border-[#2d1239]/10 overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+                className="group bg-white rounded-2xl border border-[#2d1239]/10 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
               >
                 <Link href={`/articles/${article.slug}`}>
                   {article.featured_image_url ? (
-                    <div className="relative h-48 bg-[#f8f7fa] overflow-hidden">
+                    <div className="relative h-48 bg-[#bcafcf]/20 overflow-hidden">
                       <Image
                         src={article.featured_image_url}
                         alt={article.title}
@@ -189,37 +189,40 @@ export default function ArticlesClient({
                       />
                     </div>
                   ) : (
-                    <div className="relative h-48 bg-[#f8f7fa] flex items-center justify-center">
-                      <span className="text-5xl opacity-20">📄</span>
+                    <div className="relative h-48 bg-[#bcafcf]/20 flex items-center justify-center">
+                      <span className="text-5xl opacity-30">📄</span>
                     </div>
                   )}
                 </Link>
-                
+
                 <div className="p-5">
                   {article.category && (
                     <span
-                      className="inline-block text-xs px-2.5 py-1 rounded-full mb-3 font-medium"
+                      className="inline-block text-xs px-2.5 py-1 rounded-full mb-3 font-semibold"
                       style={{
-                        backgroundColor: `${article.category.color}15`,
+                        backgroundColor: `${article.category.color}20`,
                         color: article.category.color ?? undefined
                       }}
                     >
                       {article.category.icon} {article.category.name}
                     </span>
                   )}
-                  
+
                   <Link href={`/articles/${article.slug}`}>
-                    <h3 className="text-lg font-semibold text-[#2d1239] mb-2 group-hover:text-[#2d1239]/80 transition-colors line-clamp-2">
+                    <h3
+                      className="text-lg font-bold text-[#2d1239] mb-2 group-hover:text-[#2d1239]/75 transition-colors line-clamp-2"
+                      style={{ fontFamily: 'Montserrat, sans-serif' }}
+                    >
                       {article.title}
                     </h3>
                   </Link>
-                  
+
                   {article.excerpt && (
                     <p className="text-[#2d1239]/60 text-sm mb-4 line-clamp-2">
                       {article.excerpt}
                     </p>
                   )}
-                  
+
                   <div className="flex items-center justify-between text-sm pt-4 border-t border-[#2d1239]/10">
                     <div className="flex items-center gap-2 text-[#2d1239]/50">
                       <span>{article.author?.full_name || 'NFW Team'}</span>
@@ -231,21 +234,27 @@ export default function ArticlesClient({
                         })}
                       </span>
                     </div>
-                    
+
                     <button
                       onClick={(e) => {
                         e.preventDefault()
                         handleLike(article.id, article.user_has_liked || false)
                       }}
                       disabled={likingArticleId === article.id}
-                      className={`flex items-center gap-1 px-2 py-1 rounded-full transition-colors ${
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-all disabled:opacity-50 ${
                         article.user_has_liked
-                          ? 'text-red-500'
-                          : 'text-[#2d1239]/40 hover:text-red-500'
-                      } disabled:opacity-50`}
+                          ? 'bg-[#d4f1ad] text-[#2d1239] hover:bg-[#d4f1ad]/70'
+                          : 'bg-[#bcafcf]/20 text-[#2d1239]/60 hover:bg-[#bcafcf]/40 hover:text-[#2d1239]'
+                      }`}
                     >
-                      <span>{article.user_has_liked ? '❤️' : '🤍'}</span>
-                      <span className="text-xs">{article.like_count}</span>
+                      <Heart
+                        className={`w-4 h-4 transition-all ${
+                          article.user_has_liked
+                            ? 'fill-[#2d1239] stroke-[#2d1239]'
+                            : 'stroke-[#2d1239]/60'
+                        }`}
+                      />
+                      <span className="text-sm">{article.like_count}</span>
                     </button>
                   </div>
                 </div>
