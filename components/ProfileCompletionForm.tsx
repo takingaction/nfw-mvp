@@ -81,28 +81,22 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
     }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
     setSuccess(false)
 
     try {
-      const supabase = createClient()
+      const response = await fetch('/api/profile/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      })
 
-      const { error: upsertError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: userId,
-          ...formData,
-          updated_at: new Date().toISOString()
-        })
+      const result = await response.json()
 
-      if (upsertError) throw upsertError
-
-      // Access Perks sync disabled — AMT staging API not yet permissioned
-      // Re-enable when production AMT credentials are available:
-      // await fetch('/api/access-perks/sync-member', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) })
+      if (!response.ok) throw new Error(result.error || 'Failed to save profile')
 
       setSuccess(true)
       setLoading(false)
