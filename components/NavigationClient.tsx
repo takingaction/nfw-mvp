@@ -66,6 +66,9 @@ export default function NavigationClient({ side }: NavigationClientProps) {
                 <Link href="/contact" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
                   Contact Us
                 </Link>
+                <Link href="/faq" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
+                  FAQ
+                </Link>
               </div>
             </div>
           )}
