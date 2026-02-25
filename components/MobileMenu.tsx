@@ -160,7 +160,7 @@ export default function MobileMenu() {
                       Join Now
                     </Link>
                     <Link
-                      href="/membership"
+                      href="/pricing"
                       onClick={closeMenu}
                       className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
                     >
@@ -203,7 +203,7 @@ export default function MobileMenu() {
                       Microgrants
                     </Link>
                     <Link
-                      href="/perks"
+                      href="/perks/info"
                       onClick={closeMenu}
                       className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
                     >
@@ -217,7 +217,7 @@ export default function MobileMenu() {
                       Zero Dollar Store
                     </Link>
                     <Link
-                      href="/events"
+                      href="/events" className="hidden"
                       onClick={closeMenu}
                       className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
                     >

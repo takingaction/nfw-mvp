@@ -91,7 +91,7 @@ export default function NavigationClient({ side }: NavigationClientProps) {
                 <Link href="/auth/sign-up" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
                   Join Now
                 </Link>
-                <Link href="/membership" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
+                <Link href="/pricing" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
                   Benefits
                 </Link>
                 <Link href="/pricing" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
@@ -131,13 +131,13 @@ export default function NavigationClient({ side }: NavigationClientProps) {
               <Link href="/grants" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
                 Microgrants
               </Link>
-              <Link href="/perks" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
+              <Link href="/perks/info" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
                 Perks & Discounts
               </Link>
               <Link href="/store" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
                 Zero Dollar Store
               </Link>
-              <Link href="/events" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
+              <Link href="/events" className="hidden" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
                 Events
               </Link>
             </div>
