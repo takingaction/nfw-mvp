@@ -125,33 +125,34 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
 
       if (error) throw error
 
-      // Sync with Access Perks (non-blocking)
-      try {
-        const syncResponse = await fetch('/api/access-perks/sync-member', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId })
-        })
+      // Sync with Access Perks (non-blocking, 5s timeout)
+try {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 5000)
 
-        if (!syncResponse.ok) {
-          const errorText = await syncResponse.text()
-          console.error('Access Perks sync failed:', errorText)
-        } else {
-          const result = await syncResponse.json()
-          console.log('✅ Successfully synced member with Access Perks:', result)
-        }
-      } catch (syncError) {
-        console.error('Access Perks sync error:', syncError)
-      }
+  const syncResponse = await fetch('/api/access-perks/sync-member', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+    signal: controller.signal
+  })
 
-      router.refresh()
-      router.push('/dashboard')
-    } catch (err: any) {
-      setError(err.message || 'Failed to save profile')
-    } finally {
-      setLoading(false)
-    }
+  clearTimeout(timeoutId)
+
+  if (!syncResponse.ok) {
+    const errorText = await syncResponse.text()
+    console.error('Access Perks sync failed:', errorText)
+  } else {
+    const result = await syncResponse.json()
+    console.log('✅ Successfully synced member with Access Perks:', result)
   }
+} catch (syncError: any) {
+  if (syncError.name === 'AbortError') {
+    console.warn('Access Perks sync timed out — continuing without sync')
+  } else {
+    console.error('Access Perks sync error:', syncError)
+  }
+}
 
   const inputClass = "w-full px-4 py-2.5 border border-[#2d1239]/20 rounded-lg text-[#2d1239] placeholder-[#2d1239]/40 bg-white focus:outline-none focus:ring-2 focus:ring-[#BCAFCF] focus:border-transparent transition-all"
   const labelClass = "block text-sm font-medium text-[#2d1239] mb-2"
