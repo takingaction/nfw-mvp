@@ -129,10 +129,6 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
       // Re-enable when production AMT credentials are available:
       // await fetch('/api/access-perks/sync-member', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) })
 
-      router.refresh()
-      router.push('/dashboard')
-
-      router.refresh()
       router.push('/dashboard')
     } catch (err: any) {
       setError(err.message || 'Failed to save profile')
