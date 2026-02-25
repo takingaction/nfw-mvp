@@ -1,5 +1,3 @@
-'use client'
-
 import { useState } from 'react'
 import Link from 'next/link'
 import { Mail, MessageCircle, Clock, Heart } from 'lucide-react'
