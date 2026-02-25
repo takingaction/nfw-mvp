@@ -1,40 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2 } from 'lucide-react'
 
-const AGE_RANGES = [
-  '18-24',
-  '25-34',
-  '35-44',
-  '45-54',
-  '55-64',
-  '65+'
-]
+const AGE_RANGES = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+']
 
-const INCOME_RANGES = [
-  'Under $20k',
-  '$20k - $40k',
-  '$40k - $60k',
-  '$60k - $80k',
-  '$80k+'
-]
+const INCOME_RANGES = ['Under $20k', '$20k - $40k', '$40k - $60k', '$60k - $80k', '$80k+']
 
 const IDENTITY_OPTIONS = [
-  'AAPI',
-  'Indigenous',
-  'Latinx',
-  'LGBTQIA+',
-  'Middle Eastern',
-  'Multiracial',
-  'Woman',
-  'GNB or GNC',
-  'Disabled',
-  'Immigrant',
-  'Prefer Not to Say',
-  'Other'
+  'AAPI', 'Indigenous', 'Latinx', 'LGBTQIA+', 'Middle Eastern',
+  'Multiracial', 'Woman', 'GNB or GNC', 'Disabled', 'Immigrant',
+  'Prefer Not to Say', 'Other'
 ]
 
 const US_STATES = [
@@ -70,9 +47,9 @@ interface ProfileCompletionFormProps {
 }
 
 export default function ProfileCompletionForm({ userId, existingProfile }: ProfileCompletionFormProps) {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
 
   const [formData, setFormData] = useState<ProfileFormData>({
     full_name: existingProfile?.full_name || '',
@@ -100,10 +77,7 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
   const handleSocialHandleChange = (platform: string, value: string) => {
     setFormData(prev => ({
       ...prev,
-      social_handles: {
-        ...prev.social_handles,
-        [platform]: value
-      }
+      social_handles: { ...prev.social_handles, [platform]: value }
     }))
   }
 
@@ -111,11 +85,12 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setSuccess(false)
 
     try {
       const supabase = createClient()
 
-      const { error } = await supabase
+      const { error: upsertError } = await supabase
         .from('profiles')
         .upsert({
           id: userId,
@@ -123,16 +98,17 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
           updated_at: new Date().toISOString()
         })
 
-            if (error) throw error
+      if (upsertError) throw upsertError
 
       // Access Perks sync disabled — AMT staging API not yet permissioned
       // Re-enable when production AMT credentials are available:
       // await fetch('/api/access-perks/sync-member', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) })
 
-      router.push('/dashboard')
+      setSuccess(true)
+      setLoading(false)
+      window.location.href = '/dashboard'
     } catch (err: any) {
       setError(err.message || 'Failed to save profile')
-    } finally {
       setLoading(false)
     }
   }
@@ -148,11 +124,15 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
         </div>
       )}
 
+      {success && (
+        <div className="p-4 bg-[#d4f1ad]/40 border border-[#d4f1ad] rounded-xl">
+          <p className="text-[#2d1239] font-semibold">Profile saved! Redirecting...</p>
+        </div>
+      )}
+
       {/* Full Name */}
       <div>
-        <label className={labelClass}>
-          Full Name <span className="text-[#BCAFCF]">*</span>
-        </label>
+        <label className={labelClass}>Full Name <span className="text-[#BCAFCF]">*</span></label>
         <input
           type="text"
           required
@@ -164,9 +144,7 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
 
       {/* Age Range */}
       <div>
-        <label className={labelClass}>
-          Age Range <span className="text-[#BCAFCF]">*</span>
-        </label>
+        <label className={labelClass}>Age Range <span className="text-[#BCAFCF]">*</span></label>
         <select
           required
           value={formData.age_range}
@@ -174,17 +152,13 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
           className={inputClass}
         >
           <option value="">Select age range</option>
-          {AGE_RANGES.map(range => (
-            <option key={range} value={range}>{range}</option>
-          ))}
+          {AGE_RANGES.map(range => <option key={range} value={range}>{range}</option>)}
         </select>
       </div>
 
       {/* Phone Number */}
       <div>
-        <label className={labelClass}>
-          Phone Number <span className="text-[#BCAFCF]">*</span>
-        </label>
+        <label className={labelClass}>Phone Number <span className="text-[#BCAFCF]">*</span></label>
         <input
           type="tel"
           required
@@ -198,9 +172,7 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
       {/* Address */}
       <div className="space-y-4">
         <div>
-          <label className={labelClass}>
-            Address Line 1 <span className="text-[#BCAFCF]">*</span>
-          </label>
+          <label className={labelClass}>Address Line 1 <span className="text-[#BCAFCF]">*</span></label>
           <input
             type="text"
             required
@@ -210,11 +182,8 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
             className={inputClass}
           />
         </div>
-
         <div>
-          <label className={labelClass}>
-            Address Line 2 <span className="text-[#2d1239]/50">(Optional)</span>
-          </label>
+          <label className={labelClass}>Address Line 2 <span className="text-[#2d1239]/50">(Optional)</span></label>
           <input
             type="text"
             value={formData.address_line2}
@@ -223,12 +192,9 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
             className={inputClass}
           />
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className={labelClass}>
-              City <span className="text-[#BCAFCF]">*</span>
-            </label>
+            <label className={labelClass}>City <span className="text-[#BCAFCF]">*</span></label>
             <input
               type="text"
               required
@@ -237,11 +203,8 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
               className={inputClass}
             />
           </div>
-
           <div>
-            <label className={labelClass}>
-              State <span className="text-[#BCAFCF]">*</span>
-            </label>
+            <label className={labelClass}>State <span className="text-[#BCAFCF]">*</span></label>
             <select
               required
               value={formData.state}
@@ -249,16 +212,11 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
               className={inputClass}
             >
               <option value="">Select</option>
-              {US_STATES.map(state => (
-                <option key={state} value={state}>{state}</option>
-              ))}
+              {US_STATES.map(state => <option key={state} value={state}>{state}</option>)}
             </select>
           </div>
-
           <div>
-            <label className={labelClass}>
-              ZIP Code <span className="text-[#BCAFCF]">*</span>
-            </label>
+            <label className={labelClass}>ZIP Code <span className="text-[#BCAFCF]">*</span></label>
             <input
               type="text"
               required
@@ -274,9 +232,7 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
 
       {/* Household Income */}
       <div>
-        <label className={labelClass}>
-          Annual Household Income <span className="text-[#BCAFCF]">*</span>
-        </label>
+        <label className={labelClass}>Annual Household Income <span className="text-[#BCAFCF]">*</span></label>
         <select
           required
           value={formData.household_income}
@@ -284,17 +240,13 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
           className={inputClass}
         >
           <option value="">Select income range</option>
-          {INCOME_RANGES.map(range => (
-            <option key={range} value={range}>{range}</option>
-          ))}
+          {INCOME_RANGES.map(range => <option key={range} value={range}>{range}</option>)}
         </select>
       </div>
 
       {/* Identities */}
       <div>
-        <label className={labelClass}>
-          I identify as <span className="text-[#2d1239]/50">(select all that apply)</span>
-        </label>
+        <label className={labelClass}>I identify as <span className="text-[#2d1239]/50">(select all that apply)</span></label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {IDENTITY_OPTIONS.map(identity => (
             <label
@@ -319,38 +271,12 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
 
       {/* Social Handles */}
       <div>
-        <label className={labelClass}>
-          Social Media Handles <span className="text-[#2d1239]/50">(Optional)</span>
-        </label>
+        <label className={labelClass}>Social Media Handles <span className="text-[#2d1239]/50">(Optional)</span></label>
         <div className="space-y-3">
-          <input
-            type="text"
-            placeholder="Instagram (@username)"
-            value={formData.social_handles.instagram || ''}
-            onChange={(e) => handleSocialHandleChange('instagram', e.target.value)}
-            className={inputClass}
-          />
-          <input
-            type="text"
-            placeholder="Twitter (@username)"
-            value={formData.social_handles.twitter || ''}
-            onChange={(e) => handleSocialHandleChange('twitter', e.target.value)}
-            className={inputClass}
-          />
-          <input
-            type="text"
-            placeholder="Facebook (profile URL)"
-            value={formData.social_handles.facebook || ''}
-            onChange={(e) => handleSocialHandleChange('facebook', e.target.value)}
-            className={inputClass}
-          />
-          <input
-            type="text"
-            placeholder="LinkedIn (profile URL)"
-            value={formData.social_handles.linkedin || ''}
-            onChange={(e) => handleSocialHandleChange('linkedin', e.target.value)}
-            className={inputClass}
-          />
+          <input type="text" placeholder="Instagram (@username)" value={formData.social_handles.instagram || ''} onChange={(e) => handleSocialHandleChange('instagram', e.target.value)} className={inputClass} />
+          <input type="text" placeholder="Twitter (@username)" value={formData.social_handles.twitter || ''} onChange={(e) => handleSocialHandleChange('twitter', e.target.value)} className={inputClass} />
+          <input type="text" placeholder="Facebook (profile URL)" value={formData.social_handles.facebook || ''} onChange={(e) => handleSocialHandleChange('facebook', e.target.value)} className={inputClass} />
+          <input type="text" placeholder="LinkedIn (profile URL)" value={formData.social_handles.linkedin || ''} onChange={(e) => handleSocialHandleChange('linkedin', e.target.value)} className={inputClass} />
         </div>
       </div>
 
