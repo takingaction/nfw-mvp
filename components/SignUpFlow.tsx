@@ -202,7 +202,7 @@ export default function SignUpFlow() {
   )
 
   return (
-    <div className="min-h-screen bg-[#fffef1] flex">
+    <div className="min-h-screen bg-white flex">
 
       {/* Left — Form */}
       <div className="flex-1 flex flex-col justify-center px-6 py-12 lg:px-12 xl:px-16">
