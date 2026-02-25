@@ -123,33 +123,14 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
           updated_at: new Date().toISOString()
         })
 
-      if (error) throw error
+            if (error) throw error
 
-      // Sync with Access Perks (non-blocking, 5s timeout)
-      try {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 5000)
-        const syncResponse = await fetch('/api/access-perks/sync-member', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId }),
-          signal: controller.signal
-        })
-        clearTimeout(timeoutId)
-        if (syncResponse.ok) {
-          const result = await syncResponse.json()
-          console.log('Successfully synced member with Access Perks:', result)
-        } else {
-          const errorText = await syncResponse.text()
-          console.error('Access Perks sync failed:', errorText)
-        }
-      } catch (syncError: any) {
-        if (syncError.name === 'AbortError') {
-          console.warn('Access Perks sync timed out — continuing without sync')
-        } else {
-          console.error('Access Perks sync error:', syncError)
-        }
-      }
+      // Access Perks sync disabled — AMT staging API not yet permissioned
+      // Re-enable when production AMT credentials are available:
+      // await fetch('/api/access-perks/sync-member', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) })
+
+      router.refresh()
+      router.push('/dashboard')
 
       router.refresh()
       router.push('/dashboard')
