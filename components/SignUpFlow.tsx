@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, Check, ChevronRight, ArrowLeft } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 const AGE_RANGES = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+']
@@ -80,7 +81,9 @@ const BENEFITS = [
 const STEPS = ['Account', 'Personal Info', 'Identity', 'Membership']
 
 export default function SignUpFlow() {
-  const [step, setStep] = useState(0)
+  const searchParams = useSearchParams()
+  const initialStep = parseInt(searchParams.get('step') || '0')
+  const [step, setStep] = useState(initialStep)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -93,6 +96,8 @@ export default function SignUpFlow() {
   const [fullName, setFullName] = useState('')
   const [ageRange, setAgeRange] = useState('')
   const [phone, setPhone] = useState('')
+  const [addressLine1, setAddressLine1] = useState('')
+  const [addressLine2, setAddressLine2] = useState('')
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
   const [zip, setZip] = useState('')
@@ -143,7 +148,16 @@ export default function SignUpFlow() {
     setLoading(true)
     setError(null)
     try {
-      await saveProfile({ full_name: fullName, age_range: ageRange, phone_number: phone, city, state, zip })
+      await saveProfile({
+        full_name: fullName,
+        age_range: ageRange,
+        phone_number: phone,
+        address_line1: addressLine1,
+        address_line2: addressLine2,
+        city,
+        state,
+        zip,
+      })
       setStep(2)
     } catch (err: any) {
       setError(err.message || 'Failed to save profile')
@@ -152,13 +166,24 @@ export default function SignUpFlow() {
     }
   }
 
-  // Step 2 — Save identity/income
+  // Step 2 — Save identity/income (full profile save)
   const handleIdentity = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
     try {
-      await saveProfile({ full_name: fullName, age_range: ageRange, phone_number: phone, city, state, zip, household_income: income, identities })
+      await saveProfile({
+        full_name: fullName,
+        age_range: ageRange,
+        phone_number: phone,
+        address_line1: addressLine1,
+        address_line2: addressLine2,
+        city,
+        state,
+        zip,
+        household_income: income,
+        identities,
+      })
       setStep(3)
     } catch (err: any) {
       setError(err.message || 'Failed to save')
@@ -179,7 +204,11 @@ export default function SignUpFlow() {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId: plan.priceId, membershipLevel: plan.id })
+        body: JSON.stringify({
+          priceId: plan.priceId,
+          membershipLevel: plan.id,
+          cancelUrl: `${window.location.origin}/auth/sign-up?step=3`
+        })
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
@@ -309,6 +338,14 @@ export default function SignUpFlow() {
               <div>
                 <label className={labelClass}>Phone number <span className="text-[#bcafcf]">*</span></label>
                 <input type="tel" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 123-4567" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Address line 1 <span className="text-[#bcafcf]">*</span></label>
+                <input type="text" required value={addressLine1} onChange={e => setAddressLine1(e.target.value)} placeholder="Street address" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Address line 2 <span className="text-[#2d1239]/40 font-normal">(Optional)</span></label>
+                <input type="text" value={addressLine2} onChange={e => setAddressLine2(e.target.value)} placeholder="Apt, suite, unit, etc." className={inputClass} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

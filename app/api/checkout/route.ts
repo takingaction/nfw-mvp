@@ -9,7 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: Request) {
   try {
-    const { priceId, membershipLevel } = await request.json()
+    const { priceId, membershipLevel, cancelUrl } = await request.json()
 
     // Get authenticated user
     const cookieStore = await cookies()
@@ -46,8 +46,8 @@ export async function POST(request: Request) {
           quantity: 1,
         },
       ],
-      success_url: `${request.headers.get('origin')}/membership/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${request.headers.get('origin')}/membership/cancel`,
+      success_url: `${request.headers.get('origin')}/auth/welcome`,
+      cancel_url: cancelUrl || `${request.headers.get('origin')}/membership`,
       customer_email: session.user.email,
       metadata: {
         userId: session.user.id,
