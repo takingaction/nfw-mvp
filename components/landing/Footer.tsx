@@ -43,18 +43,13 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link prefetch={false} href="/perks" className="text-[#bcafcf] hover:text-white transition-colors">
+                <Link prefetch={false} href="/perks/info" className="text-[#bcafcf] hover:text-white transition-colors">
                   Perks & Discounts
                 </Link>
               </li>
               <li>
                 <Link prefetch={false} href="/store" className="text-[#bcafcf] hover:text-white transition-colors">
                   Zero Dollar Store
-                </Link>
-              </li>
-              <li>
-                <Link prefetch={false} href="/events" className="text-[#bcafcf] hover:text-white transition-colors">
-                  Events
                 </Link>
               </li>
             </ul>
@@ -75,12 +70,12 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link prefetch={false} href="/help" className="text-[#bcafcf] hover:text-white transition-colors">
+                <Link prefetch={false} href="/contact" className="text-[#bcafcf] hover:text-white transition-colors">
                   Help Center
                 </Link>
               </li>
               <li>
-                <Link prefetch={false} href="/membership" className="text-[#bcafcf] hover:text-white transition-colors">
+                <Link prefetch={false} href="/pricing" className="text-[#bcafcf] hover:text-white transition-colors">
                   Membership Info
                 </Link>
               </li>
