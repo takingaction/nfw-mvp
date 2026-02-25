@@ -70,11 +70,6 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link prefetch={false} href="/contact" className="text-[#bcafcf] hover:text-white transition-colors">
-                  Help Center
-                </Link>
-              </li>
-              <li>
                 <Link prefetch={false} href="/pricing" className="text-[#bcafcf] hover:text-white transition-colors">
                   Membership Info
                 </Link>
