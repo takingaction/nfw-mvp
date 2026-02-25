@@ -15,6 +15,11 @@ import {
   MapPin
 } from 'lucide-react'
 
+export const metadata = {
+  title: 'Travel Deals',
+  description: 'Exclusive travel deals and discounts for NFW members.',
+}
+
 export default async function TravelComingSoonPage() {
   const cookieStore = await cookies()
   const supabase = createServerClient(

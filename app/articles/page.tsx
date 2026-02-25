@@ -1,6 +1,17 @@
 import { createClient } from '@/lib/supabase/server'
 import ArticlesClient from '@/components/ArticlesClient'
 
+export const metadata = {
+  title: 'Articles',
+  description: 'News, stories, and resources for women from the National Fund for Women.',
+  openGraph: {
+    title: 'Articles | National Fund for Women',
+    description: 'News, stories, and resources for women.',
+    url: 'https://nationalfundforwomen.org/articles',
+    images: [{ url: '/images/og-default.jpg', width: 1200, height: 630 }],
+  },
+}
+
 async function ArticlesContent({
   searchParams
 }: {

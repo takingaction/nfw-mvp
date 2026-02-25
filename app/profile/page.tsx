@@ -4,6 +4,11 @@ import { redirect } from 'next/navigation'
 import ManageSubscription from '../../components/ManageSubscription'
 import ProfileCompletionForm from '../../components/ProfileCompletionForm'
 
+export const metadata = {
+  title: 'My Profile',
+  description: 'Manage your National Fund for Women member profile.',
+}
+
 export default async function ProfilePage() {
   const cookieStore = await cookies()
   const supabase = createServerClient(

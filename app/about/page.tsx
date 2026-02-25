@@ -1,6 +1,17 @@
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 
+export const metadata = {
+  title: 'About Us',
+  description: 'A space to celebrate, listen, and uplift American women. Learn about the National Fund for Women mission.',
+  openGraph: {
+    title: 'About Us | National Fund for Women',
+    description: 'A space to celebrate, listen, and uplift American women.',
+    url: 'https://nationalfundforwomen.org/about',
+    images: [{ url: '/images/og-default.jpg', width: 1200, height: 630 }],
+  },
+}
+
 export default function AboutPage() {
   return (
     <main className="min-h-screen bg-white">

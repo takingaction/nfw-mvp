@@ -14,6 +14,11 @@ import {
   Plus
 } from 'lucide-react'
 
+export const metadata = {
+  title: 'Dashboard',
+  description: 'Your National Fund for Women member dashboard.',
+}
+
 export default async function DashboardPage() {
   const cookieStore = await cookies()
   const supabase = createServerClient(

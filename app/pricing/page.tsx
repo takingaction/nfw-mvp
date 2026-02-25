@@ -69,6 +69,17 @@ const allBenefits = [
   { label: 'Priority grant review', free: false, contributing: false, founding: true },
 ]
 
+export const metadata = {
+  title: 'Membership Plans',
+  description: 'Join the National Fund for Women for $15/year and unlock microgrants, 1,000+ perks, the Zero Dollar Store, and more.',
+  openGraph: {
+    title: 'Membership Plans | National Fund for Women',
+    description: 'Join NFW for $15/year and unlock microgrants, perks, and more.',
+    url: 'https://nationalfundforwomen.org/pricing',
+    images: [{ url: '/images/og-default.jpg', width: 1200, height: 630 }],
+  },
+}
+
 export default function PricingPage() {
   return (
     <main className="min-h-screen bg-white">

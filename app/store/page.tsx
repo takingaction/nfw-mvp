@@ -1,6 +1,17 @@
 import { createClient } from '@/lib/supabase/server'
 import StoreClient from '@/components/StoreClient'
 
+export const metadata = {
+  title: 'Zero Dollar Store',
+  description: 'Free items for NFW members. Claim yours today — no cost, no catch.',
+  openGraph: {
+    title: 'Zero Dollar Store | National Fund for Women',
+    description: 'Free items for NFW members. Claim yours today.',
+    url: 'https://nationalfundforwomen.org/store',
+    images: [{ url: '/images/og-default.jpg', width: 1200, height: 630 }],
+  },
+}
+
 async function StoreContent({
   searchParams
 }: {

@@ -29,6 +29,11 @@ const testimonials = [
   { quote: 'As a student, every bit of savings helps. The travel and grocery perks have been game-changing for me.', name: 'Priya, 47', role: 'Administrative Coordinator' },
 ]
 
+export const metadata = {
+  title: 'Member Perks',
+  description: 'Learn about the exclusive perks and discounts available to NFW members.',
+}
+
 export default function PerksInfoPage() {
   return (
     <main className="min-h-screen bg-white">
