@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { Check, FileText, Eye, Banknote } from 'lucide-react'
 
