@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import Link from 'next/link'
 import { ChevronDown } from 'lucide-react'
@@ -118,11 +120,6 @@ const faqs = [
     ]
   },
 ]
-
-export const metadata = {
-  title: 'FAQ',
-  description: 'Frequently asked questions about NFW membership, microgrants, perks, and more.',
-}
 
 export default function FAQPage() {
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({ '0-0': true })
