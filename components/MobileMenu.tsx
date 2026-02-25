@@ -188,6 +188,7 @@ export default function MobileMenu() {
                         <Link href="/admin/grants" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Manage Grants</Link>
                         <Link href="/admin/articles" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Manage Articles</Link>
                         <Link href="/admin/members" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Manage Members</Link>
+                        <Link href="/admin/analytics" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Analytics</Link>
                       </>
                     )}
 
