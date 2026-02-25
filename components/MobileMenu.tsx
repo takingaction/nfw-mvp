@@ -102,7 +102,7 @@ export default function MobileMenu() {
                   <div className="ml-4 mt-2 space-y-1">
                     <Link href="/about" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Our Story</Link>
                     <Link href="/mission" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Mission & Values</Link>
-                    <Link href="/team" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Our Team</Link>
+
                     <Link href="/contact" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Contact Us</Link>
                   </div>
                 )}
