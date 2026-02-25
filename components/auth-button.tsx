@@ -108,6 +108,8 @@ export function AuthButton() {
                 <Link href="/admin/grants" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>Manage Grants</Link>
                 <Link href="/admin/articles" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>Manage Articles</Link>
                 <Link href="/admin/members" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>Manage Members</Link>
+                <Link href="/admin/analytics" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>Analytics</Link>
+
               </>
             )}
             <div className="border-t border-[#2d1239]/10 my-2" />
