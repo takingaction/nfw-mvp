@@ -9,7 +9,7 @@ export default function FAQ() {
   const faqs = [
     {
       question: 'How much does membership cost?',
-      answer: 'Membership is just $9.99 per month or $99 per year. This gives you access to all our benefits including microgrants, perks, the Zero Dollar Store, and our community.'
+      answer: 'NFW membership starts free. A Contributing Membership is $15/year and unlocks microgrants, the perks & discounts platform, the Zero Dollar Store, and voting rights. A Founding Membership is $100/year and includes everything in Contributing, plus founding member recognition, priority grant review, and direct input on NFW initiatives. Visit our Pricing page to compare all plans.'
     },
     {
       question: 'How do microgrants work?',

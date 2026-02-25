@@ -92,9 +92,6 @@ export default function NavigationClient({ side }: NavigationClientProps) {
                   Join Now
                 </Link>
                 <Link href="/pricing" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
-                  Benefits
-                </Link>
-                <Link href="/pricing" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
                   Pricing
                 </Link>
               </div>
@@ -108,7 +105,7 @@ export default function NavigationClient({ side }: NavigationClientProps) {
   // Right Menu
   return (
     <div className="flex items-center gap-6">
-      {/* Community Dropdown - ADDED ARTICLES */}
+      {/* Community Dropdown */}
       <div className="relative">
         <button
           onMouseEnter={() => setCommunityOpen(true)}
@@ -136,9 +133,6 @@ export default function NavigationClient({ side }: NavigationClientProps) {
               </Link>
               <Link href="/store" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
                 Zero Dollar Store
-              </Link>
-              <Link href="/events" className="hidden" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
-                Events
               </Link>
             </div>
           </div>

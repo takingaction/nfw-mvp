@@ -62,22 +62,15 @@ export default function MobileMenu() {
         className="p-2 text-[#2d1239] hover:bg-white/10 rounded-lg transition-colors"
         aria-label="Toggle menu"
       >
-        {isOpen ? (
-          <X className="w-6 h-6" />
-        ) : (
-          <Menu className="w-6 h-6" />
-        )}
+        {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
       </button>
 
       {/* Backdrop */}
       {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40"
-          onClick={closeMenu}
-        />
+        <div className="fixed inset-0 bg-black/50 z-40" onClick={closeMenu} />
       )}
 
-      {/* Slide-out Menu - Dark Purple Background */}
+      {/* Slide-out Menu */}
       <div
         className={`fixed top-0 right-0 h-full w-80 bg-[#2d1239] shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
@@ -87,10 +80,7 @@ export default function MobileMenu() {
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-white/10">
             <span className="text-xl font-black font-bold text-white">Menu</span>
-            <button
-              onClick={closeMenu}
-              className="p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
-            >
+            <button onClick={closeMenu} className="p-2 text-white hover:bg-white/10 rounded-lg transition-colors">
               <X className="w-6 h-6" />
             </button>
           </div>
@@ -98,6 +88,7 @@ export default function MobileMenu() {
           {/* Menu Items */}
           <div className="flex-1 overflow-y-auto p-4">
             <nav className="space-y-2">
+
               {/* About Dropdown */}
               <div>
                 <button
@@ -109,34 +100,10 @@ export default function MobileMenu() {
                 </button>
                 {aboutOpen && (
                   <div className="ml-4 mt-2 space-y-1">
-                    <Link
-                      href="/about"
-                      onClick={closeMenu}
-                      className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      Our Story
-                    </Link>
-                    <Link
-                      href="/mission"
-                      onClick={closeMenu}
-                      className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      Mission & Values
-                    </Link>
-                    <Link
-                      href="/team"
-                      onClick={closeMenu}
-                      className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      Our Team
-                    </Link>
-                    <Link
-                      href="/contact"
-                      onClick={closeMenu}
-                      className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      Contact Us
-                    </Link>
+                    <Link href="/about" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Our Story</Link>
+                    <Link href="/mission" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Mission & Values</Link>
+                    <Link href="/team" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Our Team</Link>
+                    <Link href="/contact" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Contact Us</Link>
                   </div>
                 )}
               </div>
@@ -152,27 +119,8 @@ export default function MobileMenu() {
                 </button>
                 {membershipOpen && (
                   <div className="ml-4 mt-2 space-y-1">
-                    <Link
-                      href="/auth/sign-up"
-                      onClick={closeMenu}
-                      className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      Join Now
-                    </Link>
-                    <Link
-                      href="/pricing"
-                      onClick={closeMenu}
-                      className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      Benefits
-                    </Link>
-                    <Link
-                      href="/pricing"
-                      onClick={closeMenu}
-                      className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      Pricing
-                    </Link>
+                    <Link href="/auth/sign-up" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Join Now</Link>
+                    <Link href="/pricing" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Pricing</Link>
                   </div>
                 )}
               </div>
@@ -188,53 +136,24 @@ export default function MobileMenu() {
                 </button>
                 {communityOpen && (
                   <div className="ml-4 mt-2 space-y-1">
-                    <Link
-                      href="/articles"
-                      onClick={closeMenu}
-                      className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      Articles
-                    </Link>
-                    <Link
-                      href="/grants"
-                      onClick={closeMenu}
-                      className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      Microgrants
-                    </Link>
-                    <Link
-                      href="/perks/info"
-                      onClick={closeMenu}
-                      className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      Perks & Discounts
-                    </Link>
-                    <Link
-                      href="/store"
-                      onClick={closeMenu}
-                      className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      Zero Dollar Store
-                    </Link>
-                    <Link
-                      href="/events" className="hidden"
-                      onClick={closeMenu}
-                      className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      Events
-                    </Link>
+                    <Link href="/articles" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Articles</Link>
+                    <Link href="/grants" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Microgrants</Link>
+                    <Link href="/perks/info" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Perks & Discounts</Link>
+                    <Link href="/store" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Zero Dollar Store</Link>
                   </div>
                 )}
               </div>
 
-              {/* Donate Link */}
+              {/* Donate */}
               <Link
-                href="/donate"
+                href="https://www.zeffy.com/en-US/donation-form/national-fund-for-women-foundation"
+                target="_blank"
                 onClick={closeMenu}
                 className="block px-4 py-3 text-white font-semibold hover:bg-white/10 rounded-lg transition-colors"
               >
                 Donate
               </Link>
+
             </nav>
           </div>
 
@@ -242,7 +161,6 @@ export default function MobileMenu() {
           <div className="p-4 border-t border-white/10">
             {user ? (
               <div>
-                {/* User Avatar Button */}
                 <button
                   onClick={() => setAuthOpen(!authOpen)}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg transition-colors"
@@ -257,61 +175,22 @@ export default function MobileMenu() {
                   <ChevronDown className={`w-4 h-4 text-white transition-transform ${authOpen ? 'rotate-180' : ''}`} />
                 </button>
 
-                {/* Auth Dropdown */}
                 {authOpen && (
                   <div className="mt-2 space-y-1">
-                    <Link
-                      href="/dashboard"
-                      onClick={closeMenu}
-                      className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      Dashboard
-                    </Link>
-                    <Link
-                      href="/profile"
-                      onClick={closeMenu}
-                      className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      My Profile
-                    </Link>
-                    <Link
-                      href="/grants/my-applications"
-                      onClick={closeMenu}
-                      className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      My Grants
-                    </Link>
+                    <Link href="/dashboard" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Dashboard</Link>
+                    <Link href="/profile" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">My Profile</Link>
+                    <Link href="/grants/my-applications" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">My Grants</Link>
 
-                    {/* Admin Links */}
                     {isAdmin && (
                       <>
                         <div className="border-t border-white/10 my-2"></div>
                         <p className="px-4 py-1 text-xs font-semibold text-white/60 uppercase">Admin</p>
-                        <Link
-                          href="/admin/grants"
-                          onClick={closeMenu}
-                          className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                        >
-                          Manage Grants
-                        </Link>
-                        <Link
-                          href="/admin/articles"
-                          onClick={closeMenu}
-                          className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                        >
-                          Manage Articles
-                        </Link>
-                        <Link
-                          href="/admin/members"
-                          onClick={closeMenu}
-                          className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                        >
-                          Manage Members
-                        </Link>
+                        <Link href="/admin/grants" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Manage Grants</Link>
+                        <Link href="/admin/articles" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Manage Articles</Link>
+                        <Link href="/admin/members" onClick={closeMenu} className="block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors">Manage Members</Link>
                       </>
                     )}
 
-                    {/* Logout */}
                     <div className="border-t border-white/10 my-2"></div>
                     <button
                       onClick={handleLogout}
@@ -324,18 +203,10 @@ export default function MobileMenu() {
               </div>
             ) : (
               <div className="space-y-2">
-                <Link
-                  href="/auth/login"
-                  onClick={closeMenu}
-                  className="block w-full text-center px-4 py-2 bg-white/10 text-white rounded-lg font-semibold hover:bg-white/20 transition-colors"
-                >
+                <Link href="/auth/login" onClick={closeMenu} className="block w-full text-center px-4 py-2 bg-white/10 text-white rounded-lg font-semibold hover:bg-white/20 transition-colors">
                   Sign in
                 </Link>
-                <Link
-                  href="/auth/sign-up"
-                  onClick={closeMenu}
-                  className="block w-full text-center px-4 py-2 bg-[#fdf493] text-[#2d1239] rounded-lg font-semibold hover:bg-[#fdf493]/90 transition-colors"
-                >
+                <Link href="/auth/sign-up" onClick={closeMenu} className="block w-full text-center px-4 py-2 bg-[#fdf493] text-[#2d1239] rounded-lg font-semibold hover:bg-[#fdf493]/90 transition-colors">
                   Sign up
                 </Link>
               </div>
