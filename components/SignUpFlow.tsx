@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, Check, ChevronRight } from 'lucide-react'
+import { Loader2, Check, ChevronRight, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 const AGE_RANGES = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+']
@@ -43,7 +43,6 @@ const PLANS = [
     priceId: 'price_1SwcFWCeca9TSF9AWfCnn2yk',
     highlighted: true,
     badge: 'Most Popular',
-    color: 'border-[#2d1239] bg-[#2d1239]',
   },
   {
     id: 'founding',
@@ -55,7 +54,6 @@ const PLANS = [
     priceId: 'price_1SwcJeCeca9TSF9AetEiWuUB',
     highlighted: false,
     badge: 'Most Impact',
-    color: 'border-[#2d1239]/20 bg-white',
   },
   {
     id: 'free',
@@ -67,7 +65,6 @@ const PLANS = [
     priceId: null,
     highlighted: false,
     badge: null,
-    color: 'border-[#2d1239]/20 bg-white',
   },
 ]
 
@@ -111,17 +108,21 @@ export default function SignUpFlow() {
   const inputClass = "w-full px-4 py-3 border border-[#2d1239]/20 rounded-xl text-[#2d1239] placeholder-[#2d1239]/30 bg-white focus:outline-none focus:ring-2 focus:ring-[#bcafcf] focus:border-transparent transition-all text-sm"
   const labelClass = "block text-sm font-semibold text-[#2d1239] mb-1.5"
 
+  const saveProfile = async (data: Record<string, any>) => {
+    const res = await fetch('/api/profile/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    const result = await res.json()
+    if (!res.ok) throw new Error(result.error || 'Failed to save')
+  }
+
   // Step 0 — Create account
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (password !== repeatPassword) {
-      setError('Passwords do not match')
-      return
-    }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters')
-      return
-    }
+    if (password !== repeatPassword) { setError('Passwords do not match'); return }
+    if (password.length < 6) { setError('Password must be at least 6 characters'); return }
     setLoading(true)
     setError(null)
     try {
@@ -142,20 +143,7 @@ export default function SignUpFlow() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/profile/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          full_name: fullName,
-          age_range: ageRange,
-          phone_number: phone,
-          city,
-          state,
-          zip,
-        })
-      })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.error || 'Failed to save')
+      await saveProfile({ full_name: fullName, age_range: ageRange, phone_number: phone, city, state, zip })
       setStep(2)
     } catch (err: any) {
       setError(err.message || 'Failed to save profile')
@@ -170,13 +158,7 @@ export default function SignUpFlow() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/profile/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ household_income: income, identities })
-      })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.error || 'Failed to save')
+      await saveProfile({ full_name: fullName, age_range: ageRange, phone_number: phone, city, state, zip, household_income: income, identities })
       setStep(3)
     } catch (err: any) {
       setError(err.message || 'Failed to save')
@@ -208,6 +190,17 @@ export default function SignUpFlow() {
     }
   }
 
+  const BackButton = ({ toStep }: { toStep: number }) => (
+    <button
+      type="button"
+      onClick={() => { setError(null); setStep(toStep) }}
+      className="flex items-center gap-1.5 text-sm text-[#2d1239]/50 hover:text-[#2d1239] transition-colors mb-6"
+    >
+      <ArrowLeft className="w-4 h-4" />
+      Back
+    </button>
+  )
+
   return (
     <div className="min-h-screen bg-[#fffef1] flex">
 
@@ -221,24 +214,20 @@ export default function SignUpFlow() {
               src="/images/header-logo.png"
               alt="NFW"
               className="h-12 w-auto"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-              }}
+              onError={(e) => { e.currentTarget.style.display = 'none' }}
             />
           </Link>
 
           {/* Progress bar — steps 1-3 only */}
           {step > 0 && (
             <div className="mb-8">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-3">
                 {STEPS.slice(1).map((s, i) => (
                   <div key={s} className="flex items-center gap-2">
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black transition-all ${
-                      step > i + 1
-                        ? 'bg-[#d4f1ad] text-[#2d1239]'
-                        : step === i + 1
-                        ? 'bg-[#2d1239] text-white'
-                        : 'bg-[#2d1239]/10 text-[#2d1239]/40'
+                      step > i + 1 ? 'bg-[#d4f1ad] text-[#2d1239]'
+                      : step === i + 1 ? 'bg-[#2d1239] text-white'
+                      : 'bg-[#2d1239]/10 text-[#2d1239]/40'
                     }`}>
                       {step > i + 1 ? <Check className="w-3.5 h-3.5" /> : i + 1}
                     </div>
@@ -250,7 +239,7 @@ export default function SignUpFlow() {
               <div className="h-1.5 bg-[#2d1239]/10 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-[#2d1239] rounded-full transition-all duration-500"
-                  style={{ width: `${((step) / 3) * 100}%` }}
+                  style={{ width: `${(step / 3) * 100}%` }}
                 />
               </div>
             </div>
@@ -275,7 +264,6 @@ export default function SignUpFlow() {
                   <Link href="/auth/login" className="text-[#2d1239] font-semibold underline">Sign in</Link>
                 </p>
               </div>
-
               <div>
                 <label className={labelClass}>Email address</label>
                 <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@email.com" className={inputClass} />
@@ -288,12 +276,10 @@ export default function SignUpFlow() {
                 <label className={labelClass}>Confirm password</label>
                 <input type="password" required value={repeatPassword} onChange={e => setRepeatPassword(e.target.value)} placeholder="Repeat your password" className={inputClass} />
               </div>
-
               <button type="submit" disabled={loading} className="w-full py-3.5 bg-[#2d1239] text-white rounded-xl font-bold text-base hover:bg-[#2d1239]/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 {loading ? 'Creating account...' : 'Continue →'}
               </button>
-
               <p className="text-xs text-[#2d1239]/40 text-center">
                 By signing up you agree to our{' '}
                 <Link href="/terms" className="underline">Terms</Link> and{' '}
@@ -309,7 +295,6 @@ export default function SignUpFlow() {
                 <h2 className="text-2xl font-black text-[#2d1239] mb-1" style={{ fontFamily: 'Montserrat, sans-serif' }}>Personal information</h2>
                 <p className="text-[#2d1239]/60 text-sm">Help us get to know you a little better.</p>
               </div>
-
               <div>
                 <label className={labelClass}>Full name <span className="text-[#bcafcf]">*</span></label>
                 <input type="text" required value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Your full name" className={inputClass} />
@@ -342,7 +327,6 @@ export default function SignUpFlow() {
                 <label className={labelClass}>ZIP code <span className="text-[#bcafcf]">*</span></label>
                 <input type="text" required value={zip} onChange={e => setZip(e.target.value)} maxLength={5} pattern="[0-9]{5}" placeholder="12345" className={inputClass} />
               </div>
-
               <button type="submit" disabled={loading} className="w-full py-3.5 bg-[#2d1239] text-white rounded-xl font-bold text-base hover:bg-[#2d1239]/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 {loading ? 'Saving...' : 'Continue →'}
@@ -353,11 +337,11 @@ export default function SignUpFlow() {
           {/* ── STEP 2: Identity & Income ── */}
           {step === 2 && (
             <form onSubmit={handleIdentity} className="space-y-6">
+              <BackButton toStep={1} />
               <div>
                 <h2 className="text-2xl font-black text-[#2d1239] mb-1" style={{ fontFamily: 'Montserrat, sans-serif' }}>Context & identity</h2>
                 <p className="text-[#2d1239]/60 text-sm">This helps us serve you better. All information is private.</p>
               </div>
-
               <div>
                 <label className={labelClass}>Which best describes your current annual income? <span className="text-[#bcafcf]">*</span></label>
                 <div className="space-y-2 mt-2">
@@ -369,7 +353,6 @@ export default function SignUpFlow() {
                   ))}
                 </div>
               </div>
-
               <div>
                 <label className={labelClass}>Which identities do you identify with? <span className="text-[#2d1239]/40 font-normal">Select all that apply.</span></label>
                 <div className="grid grid-cols-2 gap-2 mt-2">
@@ -381,7 +364,6 @@ export default function SignUpFlow() {
                   ))}
                 </div>
               </div>
-
               <button type="submit" disabled={loading || !income} className="w-full py-3.5 bg-[#2d1239] text-white rounded-xl font-bold text-base hover:bg-[#2d1239]/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 {loading ? 'Saving...' : 'Continue →'}
@@ -392,13 +374,11 @@ export default function SignUpFlow() {
           {/* ── STEP 3: Membership ── */}
           {step === 3 && (
             <div className="space-y-5">
+              <BackButton toStep={2} />
               <div>
                 <h2 className="text-2xl font-black text-[#2d1239] mb-1" style={{ fontFamily: 'Montserrat, sans-serif' }}>Choose your membership</h2>
                 <p className="text-[#2d1239]/60 text-sm">Every tier supports the mission. Upgrade anytime.</p>
               </div>
-
-              {error && <p className="text-red-500 text-sm">{error}</p>}
-
               <div className="space-y-3">
                 {PLANS.map(plan => (
                   <div key={plan.id} className={`rounded-2xl border-2 p-5 transition-all ${plan.highlighted ? 'border-[#2d1239] bg-[#2d1239]' : 'border-[#2d1239]/10 bg-white hover:border-[#2d1239]/30'}`}>
@@ -471,7 +451,6 @@ export default function SignUpFlow() {
           <p className="text-[#bcafcf] text-sm mb-10 leading-relaxed">
             NFW membership gives you access to real financial support, everyday savings, and a community of women who get it.
           </p>
-
           <div className="space-y-4 mb-10">
             {BENEFITS.map(b => (
               <div key={b} className="flex items-center gap-3">
@@ -482,7 +461,6 @@ export default function SignUpFlow() {
               </div>
             ))}
           </div>
-
           <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-[#bcafcf]/30 flex items-center justify-center text-lg flex-shrink-0">T</div>
