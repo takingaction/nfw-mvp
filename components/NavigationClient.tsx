@@ -57,12 +57,6 @@ export default function NavigationClient({ side }: NavigationClientProps) {
                 <Link href="/about" prefetch={false} className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
                   Our Story
                 </Link>
-                <Link href="/mission" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
-                  Mission & Values
-                </Link>
-                <Link href="/team" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
-                  Our Team
-                </Link>
                 <Link href="/contact" className="block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors">
                   Contact Us
                 </Link>
@@ -144,7 +138,8 @@ export default function NavigationClient({ side }: NavigationClientProps) {
 
       {/* Donate Link */}
       <Link
-        href="https://www.zeffy.com/en-US/donation-form/national-fund-for-women-foundation" target="_blank"
+        href="https://www.zeffy.com/en-US/donation-form/national-fund-for-women-foundation"
+        target="_blank"
         className="text-[#2d1239] font-semibold hover:text-[#2d1239]/80 transition-colors"
       >
         Donate
