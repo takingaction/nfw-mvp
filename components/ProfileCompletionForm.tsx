@@ -6,12 +6,33 @@ import { Loader2 } from 'lucide-react'
 
 const AGE_RANGES = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+']
 
-const INCOME_RANGES = ['Under $20k', '$20k - $40k', '$40k - $60k', '$60k - $80k', '$80k+']
+const INCOME_RANGES = [
+  'Less than $25k',
+  '$25k-50k',
+  '$50-75k',
+  '$75-$100k',
+  '$100-150k',
+  '$150-200k',
+  '$200-250k',
+  'More than $250k',
+]
 
 const IDENTITY_OPTIONS = [
-  'AAPI', 'Indigenous', 'Latinx', 'LGBTQIA+', 'Middle Eastern',
-  'Multiracial', 'Woman', 'GNB or GNC', 'Disabled', 'Immigrant',
-  'Prefer Not to Say', 'Other'
+  'AAPI',
+  'Black',
+  'Indigenous',
+  'Latinx',
+  'LGBTQIA+',
+  'Immigrant',
+  'Middle Eastern',
+  'Multi-racial',
+  'Woman',
+  'GNB or GNC',
+  'Disabled',
+  'Parent',
+  'Caregiver',
+  "I'd rather not say",
+  'Other',
 ]
 
 const US_STATES = [
@@ -81,7 +102,7 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
     }))
   }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
@@ -226,7 +247,9 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
 
       {/* Household Income */}
       <div>
-        <label className={labelClass}>Annual Household Income <span className="text-[#BCAFCF]">*</span></label>
+        <label className={labelClass}>
+          Which of the following best describes your current annual income? <span className="text-[#BCAFCF]">*</span>
+        </label>
         <select
           required
           value={formData.household_income}
@@ -240,7 +263,9 @@ export default function ProfileCompletionForm({ userId, existingProfile }: Profi
 
       {/* Identities */}
       <div>
-        <label className={labelClass}>I identify as <span className="text-[#2d1239]/50">(select all that apply)</span></label>
+        <label className={labelClass}>
+          Which of the following identities do you identify with? <span className="text-[#2d1239]/50">Please check all that apply.</span>
+        </label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {IDENTITY_OPTIONS.map(identity => (
             <label
