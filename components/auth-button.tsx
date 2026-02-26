@@ -15,23 +15,20 @@ export function AuthButton() {
   useEffect(() => {
     const supabase = createClient();
 
-  const fetchProfile = async (userId: string) => {
-  const { data } = await supabase
-    .from('profiles')
-    .select('full_name, is_admin')
-    .eq('id', userId)
-    .single();
-  if (data) {
-    setProfile(data);
-    // Only update isAdmin if we got a definitive true value
-    // Never downgrade from true to false on a re-fetch
-    if (data.is_admin === true) {
-      setIsAdmin(true);
-    }
-    localStorage.setItem('nfw_profile', JSON.stringify(data));
-  }
-};
+    const fetchProfile = async (userId: string) => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name, is_admin')
+        .eq('id', userId)
+        .single();
+      if (data) {
+        setProfile(data);
+        setIsAdmin(data.is_admin === true);
+        localStorage.setItem('nfw_profile', JSON.stringify(data));
+      }
+    };
 
+    // Load from cache immediately
     const cachedProfile = localStorage.getItem('nfw_profile');
     if (cachedProfile) {
       const parsed = JSON.parse(cachedProfile);
@@ -39,34 +36,34 @@ export function AuthButton() {
       setIsAdmin(parsed?.is_admin === true);
     }
 
+    // Get session and fetch fresh profile
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      if (currentUser && !localStorage.getItem('nfw_profile')) {
-        // Only fetch if no cache exists
+      if (currentUser) {
         await fetchProfile(currentUser.id);
       }
     });
 
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-  async (event, session) => {
-    const currentUser = session?.user ?? null;
-    setUser(currentUser);
-    setIsOpen(false);
+      async (event, session) => {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        setIsOpen(false);
 
-    if (event === 'SIGNED_OUT') {
-      setProfile(null);
-      setIsAdmin(false);
-      localStorage.removeItem('nfw_profile');
-      return;
-    }
+        if (event === 'SIGNED_OUT') {
+          setProfile(null);
+          setIsAdmin(false);
+          localStorage.removeItem('nfw_profile');
+          return;
+        }
 
-    // Only fetch profile on actual sign-in events, not on TOKEN_REFRESHED or navigation
-    if (currentUser && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
-      await fetchProfile(currentUser.id);
-    }
-  }
-);
+        if (currentUser && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
+          await fetchProfile(currentUser.id);
+        }
+      }
+    );
 
     return () => subscription.unsubscribe();
   }, []);
@@ -115,7 +112,6 @@ export function AuthButton() {
                 <Link href="/admin/articles" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>Manage Articles</Link>
                 <Link href="/admin/members" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>Manage Members</Link>
                 <Link href="/admin/analytics" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>Analytics</Link>
-
               </>
             )}
             <div className="border-t border-[#2d1239]/10 my-2" />
