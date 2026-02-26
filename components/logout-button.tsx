@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 export function LogoutButton() {
   const logout = async () => {
     // Clear session storage cache
-    sessionStorage.removeItem('nfw_profile')
+    localStorage.removeItem('nfw_profile')
     
     // Hard redirect to logout API route which handles signOut server-side
     window.location.href = "/auth/logout"
