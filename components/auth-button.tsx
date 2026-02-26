@@ -15,7 +15,7 @@ export function AuthButton() {
   useEffect(() => {
     const supabase = createClient();
 
-    const fetchProfile = async (userId: string) => {
+        const fetchProfile = async (userId: string) => {
       const { data } = await supabase
         .from('profiles')
         .select('full_name, is_admin')
@@ -23,22 +23,24 @@ export function AuthButton() {
         .single();
       if (data) {
         setProfile(data);
-        setIsAdmin(data?.is_admin || false);
+        setIsAdmin(data?.is_admin === true);
         sessionStorage.setItem('nfw_profile', JSON.stringify(data));
       }
+      // If data is null, keep existing cached values — do NOT reset isAdmin
     };
 
     const cachedProfile = sessionStorage.getItem('nfw_profile');
     if (cachedProfile) {
       const parsed = JSON.parse(cachedProfile);
       setProfile(parsed);
-      setIsAdmin(parsed?.is_admin || false);
+      setIsAdmin(parsed?.is_admin === true);
     }
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      if (currentUser) {
+      if (currentUser && !sessionStorage.getItem('nfw_profile')) {
+        // Only fetch if no cache exists
         await fetchProfile(currentUser.id);
       }
     });
