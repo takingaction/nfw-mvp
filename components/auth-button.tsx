@@ -15,19 +15,22 @@ export function AuthButton() {
   useEffect(() => {
     const supabase = createClient();
 
-        const fetchProfile = async (userId: string) => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('full_name, is_admin')
-        .eq('id', userId)
-        .single();
-      if (data) {
-        setProfile(data);
-        setIsAdmin(data?.is_admin === true);
-        sessionStorage.setItem('nfw_profile', JSON.stringify(data));
-      }
-      // If data is null, keep existing cached values — do NOT reset isAdmin
-    };
+  const fetchProfile = async (userId: string) => {
+  const { data } = await supabase
+    .from('profiles')
+    .select('full_name, is_admin')
+    .eq('id', userId)
+    .single();
+  if (data) {
+    setProfile(data);
+    // Only update isAdmin if we got a definitive true value
+    // Never downgrade from true to false on a re-fetch
+    if (data.is_admin === true) {
+      setIsAdmin(true);
+    }
+    sessionStorage.setItem('nfw_profile', JSON.stringify(data));
+  }
+};
 
     const cachedProfile = sessionStorage.getItem('nfw_profile');
     if (cachedProfile) {
