@@ -44,23 +44,24 @@ export function AuthButton() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        setIsOpen(false);
+  async (event, session) => {
+    const currentUser = session?.user ?? null;
+    setUser(currentUser);
+    setIsOpen(false);
 
-        if (event === 'SIGNED_OUT') {
-          setProfile(null);
-          setIsAdmin(false);
-          sessionStorage.removeItem('nfw_profile');
-          return;
-        }
+    if (event === 'SIGNED_OUT') {
+      setProfile(null);
+      setIsAdmin(false);
+      sessionStorage.removeItem('nfw_profile');
+      return;
+    }
 
-        if (currentUser) {
-          await fetchProfile(currentUser.id);
-        }
-      }
-    );
+    // Only fetch profile on actual sign-in events, not on TOKEN_REFRESHED or navigation
+    if (currentUser && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
+      await fetchProfile(currentUser.id);
+    }
+  }
+);
 
     return () => subscription.unsubscribe();
   }, []);
