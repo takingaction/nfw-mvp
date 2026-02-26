@@ -28,11 +28,11 @@ export function AuthButton() {
     if (data.is_admin === true) {
       setIsAdmin(true);
     }
-    sessionStorage.setItem('nfw_profile', JSON.stringify(data));
+    localStorage.setItem('nfw_profile', JSON.stringify(data));
   }
 };
 
-    const cachedProfile = sessionStorage.getItem('nfw_profile');
+    const cachedProfile = localStorage.getItem('nfw_profile');
     if (cachedProfile) {
       const parsed = JSON.parse(cachedProfile);
       setProfile(parsed);
@@ -42,7 +42,7 @@ export function AuthButton() {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      if (currentUser && !sessionStorage.getItem('nfw_profile')) {
+      if (currentUser && !localStorage.getItem('nfw_profile')) {
         // Only fetch if no cache exists
         await fetchProfile(currentUser.id);
       }
@@ -57,7 +57,7 @@ export function AuthButton() {
     if (event === 'SIGNED_OUT') {
       setProfile(null);
       setIsAdmin(false);
-      sessionStorage.removeItem('nfw_profile');
+      localStorage.removeItem('nfw_profile');
       return;
     }
 
