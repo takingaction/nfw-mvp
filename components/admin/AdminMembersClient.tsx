@@ -103,12 +103,7 @@ export default function AdminMembersClient({ members: initialMembers, currentUse
     }
   }
 
-    // Update local state
-    const updated = { ...selected, ...updates }
-    setMembers(prev => prev.map(m => m.id === selected.id ? updated : m))
-    setSaving(false)
-    closeEdit()
-  }
+
 
   const statusBadge = (status: string | null) => {
     if (status === 'active') return (
