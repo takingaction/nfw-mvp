@@ -70,33 +70,38 @@ export default function AdminMembersClient({ members: initialMembers, currentUse
     setPendingChanges(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleSave = async () => {
+      const handleSave = async () => {
     if (!selected) return
     setSaving(true)
-    setSaveError('')
 
-    const supabase = createClient()
     const updates: any = {}
-
     if ('is_admin' in pendingChanges) updates.is_admin = pendingChanges.is_admin
     if ('subscription_status' in pendingChanges) updates.subscription_status = pendingChanges.subscription_status
 
     if (Object.keys(updates).length === 0) {
       setSaving(false)
-      closeEdit()
       return
     }
 
-    const { error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', selected.id)
+    try {
+      const res = await fetch('/api/admin/update-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId: selected.id, updates })
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Failed to save')
 
-    if (error) {
-      setSaveError(error.message)
+      const updated = { ...selected, ...updates }
+      setMembers(prev => prev.map(m => m.id === selected.id ? updated : m))
+      setSelected(updated)
+      setPendingChanges({})
+    } catch (err: any) {
+      alert(err.message || 'Failed to save changes')
+    } finally {
       setSaving(false)
-      return
     }
+  }
 
     // Update local state
     const updated = { ...selected, ...updates }
