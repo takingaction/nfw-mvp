@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import GrantDocuments from '@/components/grants/GrantDocuments'
 
 export default async function GrantDetailPage({ params }: { params: { id: string } }) {
   const cookieStore = await cookies()
@@ -192,31 +193,9 @@ export default async function GrantDetailPage({ params }: { params: { id: string
         </div>
 
         {/* Supporting Documents */}
-        {documents && documents.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-8 mb-6">
-            <h3 className="font-semibold mb-4">Supporting Documents</h3>
-            <div className="space-y-3">
-              {documents.map((doc) => (
-                <div key={doc.id} className="flex items-center justify-between bg-gray-50 p-4 rounded-lg">
-                  <div>
-                    <div className="font-medium">{doc.file_name}</div>
-                    <div className="text-sm text-gray-500">
-                      Uploaded {new Date(doc.uploaded_at).toLocaleDateString()} • {(doc.file_size / 1024).toFixed(1)} KB
-                    </div>
-                  </div>
-                  <a
-                    href={doc.document_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    View →
-                  </a>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+{documents && documents.length > 0 && (
+  <GrantDocuments documents={documents} grantId={params.id} />
+)}
 
         {/* Action Buttons */}
         {grant.status === 'approved' && !grant.profiles?.stripe_connect_account_id && (

@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
     // Upload to Supabase Storage
     const fileName = `${grantId}/${Date.now()}-${file.name}`
-    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+    const { error: uploadError } = await supabaseAdmin.storage
       .from('grant-documents')
       .upload(fileName, file)
 
@@ -27,18 +27,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: uploadError.message }, { status: 500 })
     }
 
-    // Get public URL
-    const { data: { publicUrl } } = supabaseAdmin.storage
-      .from('grant-documents')
-      .getPublicUrl(fileName)
-
-    // Save document record to database
+    // Store file path only — NOT a public URL
     const { error: dbError } = await supabaseAdmin
       .from('grant_documents')
       .insert({
         grant_id: grantId,
         document_type: 'supporting_doc',
-        document_url: publicUrl,
+        document_url: fileName, // store path, not public URL
         file_name: file.name,
         file_size: file.size,
       })
@@ -48,7 +43,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: dbError.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, url: publicUrl })
+    return NextResponse.json({ success: true, path: fileName })
   } catch (error: any) {
     console.error('Document upload error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
