@@ -10,7 +10,8 @@ export default function Navigation() {
         <div className="flex items-center justify-between h-20">
           
           {/* Mobile: Logo centered, Hamburger right */}
-          <div className="flex lg:hidden items-center justify-between w-full">
+          <div className="flex lg:hidden items-center w-full">
+            <div className="w-10 flex-shrink-0" />
             <div className="flex-1 flex justify-center">
               <NavigationClient side="center" />
             </div>
