@@ -72,9 +72,12 @@ export function AuthButton() {
 
   if (!user) {
     return (
-      <Button asChild size="sm" variant="default">
-        <Link href="/auth/login">Login</Link>
-      </Button>
+      <Link
+        href="/auth/login"
+        className="inline-flex items-center justify-center px-4 h-10 bg-[#2d1239] text-white rounded-lg font-bold text-sm hover:bg-[#2d1239]/90 transition-all shadow-sm"
+      >
+        Login
+      </Link>
     );
   }
 
