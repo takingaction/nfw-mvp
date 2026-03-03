@@ -27,7 +27,7 @@ export default function GrantApplicationForm({
   const [isNominating, setIsNominating] = useState(false)
 
   const [formData, setFormData] = useState({
-    cycle_id: cycles[0]?.id || '',
+    cycle_id: cycles.length === 1 ? cycles[0].id : '',
     who_are_you: '',
     biggest_challenge: '',
     fund_usage: '',
@@ -58,7 +58,6 @@ export default function GrantApplicationForm({
       })
 
       const data = await response.json()
-
       if (data.error) throw new Error(data.error)
 
       const grantId = data.grantId
@@ -93,8 +92,54 @@ export default function GrantApplicationForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
 
-      {/* Grant Cycle Info */}
-      {selectedCycle && (
+      {/* Grant Cycle Selection — multiple cycles */}
+      {cycles.length > 1 && (
+        <div>
+          <p className={labelClass}>Which grant are you applying for? <span className="text-[#bcafcf]">*</span></p>
+          <div className="space-y-2">
+            {cycles.map(cycle => (
+              <label
+                key={cycle.id}
+                className={`flex items-start justify-between gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  formData.cycle_id === cycle.id
+                    ? 'border-[#2d1239] bg-[#2d1239]/5'
+                    : 'border-[#2d1239]/10 hover:border-[#2d1239]/30'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="cycle_id"
+                    value={cycle.id}
+                    checked={formData.cycle_id === cycle.id}
+                    onChange={() => setFormData({ ...formData, cycle_id: cycle.id })}
+                    className="accent-[#2d1239] mt-1"
+                    required
+                  />
+                  <div>
+                    <p className="font-bold text-[#2d1239]">{cycle.cycle_name}</p>
+                    <p className="text-xs text-[#2d1239]/50 mt-0.5">
+                      Deadline: {new Date(cycle.end_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </p>
+                    {cycle.description && (
+                      <p className="text-xs text-[#2d1239]/60 mt-1">{cycle.description}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-lg font-black text-[#2d1239]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                    ${cycle.amount_per_grant?.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-[#2d1239]/50">{cycle.grants_available} available</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Single cycle info card */}
+      {cycles.length === 1 && selectedCycle && (
         <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] rounded-2xl p-5">
           <div className="flex items-start justify-between">
             <div>
@@ -155,15 +200,13 @@ export default function GrantApplicationForm({
       {/* Question 1 */}
       <div>
         <label className={labelClass}>
-          {isNominating
-            ? 'Tell us about the person you\'re nominating.'
-            : 'Who are you?'
-          } <span className="text-[#bcafcf]">*</span>
+          {isNominating ? "Tell us about the person you're nominating." : 'Who are you?'}
+          {' '}<span className="text-[#bcafcf]">*</span>
         </label>
         <p className="text-xs text-[#2d1239]/50 mb-2">
           {isNominating
-            ? 'Share their name, background, and why you\'re nominating them.'
-            : 'Tell us a little about yourself — your situation, your life, what matters to you.'
+            ? "Share their name, background, and why you're nominating them."
+            : "Tell us a little about yourself — your situation, your life, what matters to you."
           }
         </p>
         <textarea
@@ -181,10 +224,8 @@ export default function GrantApplicationForm({
       {/* Question 2 */}
       <div>
         <label className={labelClass}>
-          {isNominating
-            ? 'What is their biggest challenge right now?'
-            : 'What\'s the biggest challenge you\'re facing right now?'
-          } <span className="text-[#bcafcf]">*</span>
+          {isNominating ? "What is their biggest challenge right now?" : "What's the biggest challenge you're facing right now?"}
+          {' '}<span className="text-[#bcafcf]">*</span>
         </label>
         <p className="text-xs text-[#2d1239]/50 mb-2">
           Be specific. The more we understand the situation, the better we can help.
@@ -204,15 +245,13 @@ export default function GrantApplicationForm({
       {/* Question 3 */}
       <div>
         <label className={labelClass}>
-          {isNominating
-            ? 'How do you imagine they would use the microgrant funds?'
-            : 'What would you do with the microgrant funds?'
-          } <span className="text-[#bcafcf]">*</span>
+          {isNominating ? "How do you imagine they would use the microgrant funds?" : "What would you do with the microgrant funds?"}
+          {' '}<span className="text-[#bcafcf]">*</span>
         </label>
         <p className="text-xs text-[#2d1239]/50 mb-2">
           {isNominating
-            ? 'Describe how you think the funds would make a difference for them.'
-            : 'Tell us exactly how you\'d use the money and what difference it would make.'
+            ? "Describe how you think the funds would make a difference for them."
+            : "Tell us exactly how you'd use the money and what difference it would make."
           }
         </p>
         <textarea
@@ -251,7 +290,11 @@ export default function GrantApplicationForm({
             {documents.map((file, index) => (
               <div key={index} className="flex items-center justify-between bg-[#f8f7fa] px-3 py-2 rounded-lg border border-[#2d1239]/10">
                 <span className="text-sm text-[#2d1239]/70 truncate flex-1">{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
-                <button type="button" onClick={() => setDocuments(prev => prev.filter((_, i) => i !== index))} className="ml-2 text-red-500 hover:text-red-700 text-sm font-medium">
+                <button
+                  type="button"
+                  onClick={() => setDocuments(prev => prev.filter((_, i) => i !== index))}
+                  className="ml-2 text-red-500 hover:text-red-700 text-sm font-medium"
+                >
                   Remove
                 </button>
               </div>
@@ -271,7 +314,7 @@ export default function GrantApplicationForm({
       <div className="flex gap-4 pt-2">
         <button
           type="submit"
-          disabled={loading || uploadingDocs}
+          disabled={loading || uploadingDocs || !formData.cycle_id}
           className="flex-1 bg-[#2d1239] text-white px-6 py-4 rounded-xl hover:bg-[#2d1239]/90 disabled:opacity-50 disabled:cursor-not-allowed font-bold transition-colors flex items-center justify-center gap-2"
         >
           {(loading || uploadingDocs) && <Loader2 className="w-4 h-4 animate-spin" />}
