@@ -9,13 +9,14 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export default async function AdminGrantCyclePage({ params }: { params: { id: string } }) {
+export default async function AdminGrantCyclePage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin()
+  const { id } = await params
 
   const { data: cycle } = await supabaseAdmin
     .from('grant_cycles')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (!cycle) return <div className="p-8 text-red-600">Grant cycle not found.</div>
@@ -26,7 +27,7 @@ export default async function AdminGrantCyclePage({ params }: { params: { id: st
       *,
       profiles:user_id (full_name, email, city, state, age_range, household_income)
     `)
-    .eq('cycle_id', params.id)
+    .eq('cycle_id', id)
     .order('submitted_at', { ascending: false })
 
   const { data: documents } = await supabaseAdmin
