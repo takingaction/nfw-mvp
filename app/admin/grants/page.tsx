@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
-import { createClient as createServerClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/middleware/adminCheck'
 import Link from 'next/link'
-import { Plus, Users, DollarSign, Clock } from 'lucide-react'
+import { Plus } from 'lucide-react'
+import DeleteCycleButton from '@/components/admin/DeleteCycleButton'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -125,12 +125,20 @@ export default async function AdminGrantsPage() {
                     ))}
                   </div>
 
-                  <Link
-                    href={`/admin/grants/${cycle.id}`}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#2d1239]/5 text-[#2d1239] rounded-lg font-semibold text-sm hover:bg-[#2d1239]/10 transition-colors"
-                  >
-                    Review Applications →
-                  </Link>
+                  {/* Actions */}
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/admin/grants/${cycle.id}`}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-[#2d1239]/5 text-[#2d1239] rounded-lg font-semibold text-sm hover:bg-[#2d1239]/10 transition-colors"
+                    >
+                      Review Applications →
+                    </Link>
+                    <DeleteCycleButton
+                      cycleId={cycle.id}
+                      cycleName={cycle.cycle_name}
+                      applicationCount={stats.total}
+                    />
+                  </div>
                 </div>
               )
             })
