@@ -133,6 +133,12 @@ export default async function AdminGrantsPage() {
                     >
                       Review Applications →
                     </Link>
+                    <Link
+                      href={`/admin/grants/${cycle.id}/edit`}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-[#bcafcf]/10 text-[#2d1239] rounded-lg font-semibold text-sm hover:bg-[#bcafcf]/20 transition-colors"
+                    >
+                      Edit
+                    </Link>
                     <DeleteCycleButton
                       cycleId={cycle.id}
                       cycleName={cycle.cycle_name}
