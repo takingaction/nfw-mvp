@@ -62,13 +62,18 @@ export default function GrantApplicationForm({
 
       const grantId = data.grantId
 
-      if (documents.length > 0) {
+            if (documents.length > 0) {
         setUploadingDocs(true)
         for (const file of documents) {
           const fd = new FormData()
           fd.append('file', file)
           fd.append('grantId', grantId)
-          await fetch('/api/grants/upload-document', { method: 'POST', body: fd })
+          const uploadRes = await fetch('/api/grants/upload-document', { method: 'POST', body: fd })
+          const uploadData = await uploadRes.json()
+          if (!uploadRes.ok) {
+            console.error('Upload failed:', uploadData.error)
+            throw new Error(`Failed to upload ${file.name}: ${uploadData.error}`)
+          }
         }
       }
 
