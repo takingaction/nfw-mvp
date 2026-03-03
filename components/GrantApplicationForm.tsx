@@ -279,17 +279,17 @@ export default function GrantApplicationForm({
         <p className="text-xs text-[#2d1239]/50 mb-3">
           Upload receipts, quotes, or other supporting documents. PDF, JPG, PNG, DOC accepted.
         </p>
-        <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-[#2d1239]/20 rounded-xl cursor-pointer hover:border-[#2d1239]/40 hover:bg-[#2d1239]/5 transition-all">
+        <div className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-[#2d1239]/20 rounded-xl hover:border-[#2d1239]/40 hover:bg-[#2d1239]/5 transition-all relative">
           <p className="text-sm text-[#2d1239]/50 font-medium">Click to upload files</p>
-          <p className="text-xs text-[#2d1239]/30 mt-1">or drag and drop</p>
+          <p className="text-xs text-[#2d1239]/30 mt-1">PDF, JPG, PNG, DOC accepted</p>
           <input
             type="file"
             multiple
             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
             onChange={handleFileChange}
-            className="hidden"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
-        </label>
+        </div>
         {documents.length > 0 && (
           <div className="mt-3 space-y-2">
             {documents.map((file, index) => (
