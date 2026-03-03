@@ -1,0 +1,52 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { createClient as createServerClient } from '@/lib/supabase/server'
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+const VALID_STATUSES = ['submitted', 'in_review', 'approved', 'not_approved', 'payment_pending', 'payment_sent']
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createServerClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile?.is_admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+    const { grantId, status, amount_approved, admin_notes } = await request.json()
+
+    if (!VALID_STATUSES.includes(status)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    }
+
+    const updates: any = { status }
+    if (amount_approved !== undefined) updates.amount_approved = amount_approved
+    if (admin_notes !== undefined) updates.admin_notes = admin_notes
+    if (status === 'approved') updates.reviewed_at = new Date().toISOString()
+    if (status === 'payment_sent') updates.funded_at = new Date().toISOString()
+
+    const { error } = await supabaseAdmin
+      .from('grants')
+      .update(updates)
+      .eq('id', grantId)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // TODO: Send email notification via Resend when set up
+    console.log(`Grant ${grantId} status updated to ${status}`)
+
+    return NextResponse.json({ success: true })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}

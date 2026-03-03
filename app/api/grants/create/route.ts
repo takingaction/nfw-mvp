@@ -1,47 +1,46 @@
 import { NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
+import { createClient as createServerClient } from '@/lib/supabase/server'
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { user_id, cycle_id, category, title, description, amount_requested } = body
-
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options)
-            })
-          },
-        },
-      }
-    )
-
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (!session || session.user.id !== user_id) {
+    const supabase = await createServerClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Create grant application
-    const { data: grant, error } = await supabase
+    const body = await request.json()
+    const { cycle_id, who_are_you, biggest_challenge, fund_usage, is_nominating } = body
+
+    // Check for duplicate application
+    const { data: existing } = await supabaseAdmin
+      .from('grants')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('cycle_id', cycle_id)
+      .single()
+
+    if (existing) {
+      return NextResponse.json({ error: 'You have already applied for this grant cycle.' }, { status: 409 })
+    }
+
+    const { data: grant, error } = await supabaseAdmin
       .from('grants')
       .insert({
-        user_id,
+        user_id: user.id,
         cycle_id,
-        category,
-        title,
-        description,
-        amount_requested,
-        status: 'draft',
+        who_are_you,
+        biggest_challenge,
+        fund_usage,
+        is_nominating: is_nominating || false,
+        status: 'submitted',
+        submitted_at: new Date().toISOString(),
       })
       .select()
       .single()
@@ -53,7 +52,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, grantId: grant.id })
   } catch (error: any) {
-    console.error('Grant creation error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
