@@ -62,7 +62,7 @@ export default async function ApplyForGrantPage() {
           <GrantApplicationForm 
             userId={user.id} 
             cycles={cycles}
-            userProfile={profile}
+            
           />
         ) : (
           <div className="bg-[#fdf493]/20 border border-[#fdf493] rounded-xl p-6">
