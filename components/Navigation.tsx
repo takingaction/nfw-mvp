@@ -1,4 +1,3 @@
-cat > components/Navigation.tsx << 'EOF'
 import { AuthButton } from './auth-button'
 import { Suspense } from 'react'
 import NavigationClient from './NavigationClient'
@@ -57,4 +56,3 @@ export default function Navigation() {
     </nav>
   )
 }
-EOF
