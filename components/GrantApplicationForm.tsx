@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-
 import { useRouter } from 'next/navigation'
 import { Loader2, User, Users } from 'lucide-react'
 
@@ -26,6 +25,8 @@ export default function GrantApplicationForm({
   const [error, setError] = useState('')
   const [uploadingDocs, setUploadingDocs] = useState(false)
   const [isNominating, setIsNominating] = useState(false)
+  const [documents, setDocuments] = useState<File[]>([])
+  const [fileInputKey, setFileInputKey] = useState(0)
 
   const [formData, setFormData] = useState({
     cycle_id: cycles.length === 1 ? cycles[0].id : '',
@@ -33,8 +34,6 @@ export default function GrantApplicationForm({
     biggest_challenge: '',
     fund_usage: '',
   })
-
-  const [documents, setDocuments] = useState<File[]>([])
 
   const inputClass = "w-full px-4 py-3 border border-[#2d1239]/20 rounded-xl text-[#2d1239] placeholder-[#2d1239]/30 bg-white focus:outline-none focus:ring-2 focus:ring-[#bcafcf] focus:border-transparent transition-all text-sm"
   const labelClass = "block text-sm font-semibold text-[#2d1239] mb-1.5"
@@ -87,10 +86,17 @@ export default function GrantApplicationForm({
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setDocuments(prev => [...prev, ...Array.from(e.target.files!)])
-      e.target.value = ''
+    const files = e.target.files
+    if (files && files.length > 0) {
+      const newFiles = Array.from(files)
+      setDocuments(prev => [...prev, ...newFiles])
+      // Reset input by changing key so same file can be selected again
+      setFileInputKey(prev => prev + 1)
     }
+  }
+
+  const removeDocument = (index: number) => {
+    setDocuments(prev => prev.filter((_, i) => i !== index))
   }
 
   const selectedCycle = cycles.find(c => c.id === formData.cycle_id)
@@ -104,8 +110,9 @@ export default function GrantApplicationForm({
           <p className={labelClass}>Which grant are you applying for? <span className="text-[#bcafcf]">*</span></p>
           <div className="space-y-2">
             {cycles.map(cycle => (
-              <label
+              <div
                 key={cycle.id}
+                onClick={() => setFormData(prev => ({ ...prev, cycle_id: cycle.id }))}
                 className={`flex items-start justify-between gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
                   formData.cycle_id === cycle.id
                     ? 'border-[#2d1239] bg-[#2d1239]/5'
@@ -113,15 +120,13 @@ export default function GrantApplicationForm({
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <input
-                    type="radio"
-                    name="cycle_id"
-                    value={cycle.id}
-                    checked={formData.cycle_id === cycle.id}
-                    onChange={() => setFormData({ ...formData, cycle_id: cycle.id })}
-                    className="accent-[#2d1239] mt-1"
-                    required
-                  />
+                  <div className={`w-4 h-4 rounded-full border-2 mt-1 flex-shrink-0 flex items-center justify-center ${
+                    formData.cycle_id === cycle.id ? 'border-[#2d1239]' : 'border-[#2d1239]/30'
+                  }`}>
+                    {formData.cycle_id === cycle.id && (
+                      <div className="w-2 h-2 rounded-full bg-[#2d1239]" />
+                    )}
+                  </div>
                   <div>
                     <p className="font-bold text-[#2d1239]">{cycle.cycle_name}</p>
                     <p className="text-xs text-[#2d1239]/50 mt-0.5">
@@ -138,7 +143,7 @@ export default function GrantApplicationForm({
                   </p>
                   <p className="text-xs text-[#2d1239]/50">{cycle.grants_available} available</p>
                 </div>
-              </label>
+              </div>
             ))}
           </div>
         </div>
@@ -217,7 +222,7 @@ export default function GrantApplicationForm({
         </p>
         <textarea
           value={formData.who_are_you}
-          onChange={(e) => setFormData({ ...formData, who_are_you: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, who_are_you: e.target.value }))}
           rows={4}
           maxLength={500}
           placeholder={isNominating ? "Her name is Maria. She's a single mom of three..." : "I'm a single mom living in Atlanta..."}
@@ -238,7 +243,7 @@ export default function GrantApplicationForm({
         </p>
         <textarea
           value={formData.biggest_challenge}
-          onChange={(e) => setFormData({ ...formData, biggest_challenge: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, biggest_challenge: e.target.value }))}
           rows={5}
           maxLength={1000}
           placeholder={isNominating ? "She lost her job last month and her car needs repairs to get to interviews..." : "My car broke down last month and I can't get to work without it..."}
@@ -262,7 +267,7 @@ export default function GrantApplicationForm({
         </p>
         <textarea
           value={formData.fund_usage}
-          onChange={(e) => setFormData({ ...formData, fund_usage: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, fund_usage: e.target.value }))}
           rows={4}
           maxLength={500}
           placeholder={isNominating ? "The funds would cover her car repair so she can get back to work..." : "I would use the funds to repair my car so I can get back to work..."}
@@ -281,6 +286,7 @@ export default function GrantApplicationForm({
           Upload receipts, quotes, or other supporting documents. PDF, JPG, PNG, DOC accepted.
         </p>
         <input
+          key={fileInputKey}
           type="file"
           multiple
           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
@@ -296,7 +302,7 @@ export default function GrantApplicationForm({
                 </span>
                 <button
                   type="button"
-                  onClick={() => setDocuments(prev => prev.filter((_, i) => i !== index))}
+                  onClick={() => removeDocument(index)}
                   className="ml-2 text-red-500 hover:text-red-700 text-sm font-medium"
                 >
                   Remove
