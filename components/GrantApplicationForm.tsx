@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 
 import { useRouter } from 'next/navigation'
 import { Loader2, User, Users } from 'lucide-react'
@@ -22,7 +22,6 @@ export default function GrantApplicationForm({
   cycles: GrantCycle[]
 }) {
   const router = useRouter()
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [uploadingDocs, setUploadingDocs] = useState(false)
@@ -36,20 +35,6 @@ export default function GrantApplicationForm({
   })
 
   const [documents, setDocuments] = useState<File[]>([])
-
-  useEffect(() => {
-    const input = fileInputRef.current
-    if (!input) return
-    const handler = (e: Event) => {
-      const target = e.target as HTMLInputElement
-      if (target.files && target.files.length > 0) {
-        setDocuments(prev => [...prev, ...Array.from(target.files!)])
-        target.value = ''
-      }
-    }
-    input.addEventListener('change', handler)
-    return () => input.removeEventListener('change', handler)
-  }, [])
 
   const inputClass = "w-full px-4 py-3 border border-[#2d1239]/20 rounded-xl text-[#2d1239] placeholder-[#2d1239]/30 bg-white focus:outline-none focus:ring-2 focus:ring-[#bcafcf] focus:border-transparent transition-all text-sm"
   const labelClass = "block text-sm font-semibold text-[#2d1239] mb-1.5"
@@ -295,20 +280,12 @@ export default function GrantApplicationForm({
         <p className="text-xs text-[#2d1239]/50 mb-3">
           Upload receipts, quotes, or other supporting documents. PDF, JPG, PNG, DOC accepted.
         </p>
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-[#2d1239]/20 rounded-xl hover:border-[#2d1239]/40 hover:bg-[#2d1239]/5 transition-all cursor-pointer"
-        >
-          <p className="text-sm text-[#2d1239]/50 font-medium">Click to upload files</p>
-          <p className="text-xs text-[#2d1239]/30 mt-1">PDF, JPG, PNG, DOC accepted</p>
-        </button>
         <input
-          ref={fileInputRef}
           type="file"
           multiple
           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-          className="hidden"
+          onChange={handleFileChange}
+          className="w-full text-sm text-[#2d1239]/60 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-[#2d1239] file:text-white hover:file:bg-[#2d1239]/90 file:cursor-pointer cursor-pointer border border-[#2d1239]/20 rounded-xl p-2"
         />
         {documents.length > 0 && (
           <div className="mt-3 space-y-2">
