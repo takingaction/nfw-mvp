@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+
 import { useRouter } from 'next/navigation'
 import { Loader2, User, Users } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
 
 interface GrantCycle {
   id: string
