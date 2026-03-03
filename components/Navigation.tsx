@@ -1,3 +1,4 @@
+cat > components/Navigation.tsx << 'EOF'
 import { AuthButton } from './auth-button'
 import { Suspense } from 'react'
 import NavigationClient from './NavigationClient'
@@ -19,34 +20,34 @@ export default function Navigation() {
             <MobileMenu />
           </div>
 
-          {/* Desktop: True centered layout */}
-          <div className="hidden lg:flex items-center justify-between w-full">
+          {/* Desktop: 3-column grid for true centering */}
+          <div className="hidden lg:grid w-full h-full" style={{ gridTemplateColumns: '1fr auto 1fr' }}>
 
-            {/* Left side: invisible spacer matching right side width */}
-            <div className="flex items-center gap-3 invisible">
-              <div className="w-10 h-10" />
-              <div className="h-10 w-20" />
-            </div>
-
-            {/* Center: nav items + logo */}
-            <div className="flex items-center gap-12">
+            {/* Left: nav items — right aligned */}
+            <div className="flex items-center justify-end">
               <NavigationClient side="left" />
-              <NavigationClient side="center" />
-              <NavigationClient side="right" />
             </div>
 
-            {/* Right side: Auth + Donate */}
-            <div className="flex items-center gap-3">
-              <Suspense fallback={<div className="w-10 h-10 rounded-full bg-[#2d1239]/40" />}>
-                <AuthButton />
-              </Suspense>
-              <Link
-                href="https://www.zeffy.com/en-US/donation-form/national-fund-for-women-foundation"
-                target="_blank"
-                className="inline-flex items-center justify-center px-4 h-10 bg-[#fdf493] text-[#2d1239] rounded-lg font-bold text-sm hover:bg-[#fdf493]/80 transition-all shadow-sm"
-              >
-                Donate
-              </Link>
+            {/* Center: logo — perfectly centered */}
+            <div className="flex items-center justify-center px-8">
+              <NavigationClient side="center" />
+            </div>
+
+            {/* Right: nav items + auth + donate — left aligned */}
+            <div className="flex items-center justify-start gap-8">
+              <NavigationClient side="right" />
+              <div className="flex items-center gap-3 ml-auto">
+                <Suspense fallback={<div className="w-10 h-10 rounded-full bg-[#2d1239]/40" />}>
+                  <AuthButton />
+                </Suspense>
+                <Link
+                  href="https://www.zeffy.com/en-US/donation-form/national-fund-for-women-foundation"
+                  target="_blank"
+                  className="inline-flex items-center justify-center px-4 h-10 bg-[#fdf493] text-[#2d1239] rounded-lg font-bold text-sm hover:bg-[#fdf493]/80 transition-all shadow-sm"
+                >
+                  Donate
+                </Link>
+              </div>
             </div>
 
           </div>
@@ -56,3 +57,4 @@ export default function Navigation() {
     </nav>
   )
 }
+EOF
