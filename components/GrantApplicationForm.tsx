@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, User, Users } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
 
 interface GrantCycle {
   id: string
@@ -22,6 +23,19 @@ export default function GrantApplicationForm({
 }) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
+    useEffect(() => {
+    const input = fileInputRef.current
+    if (!input) return
+    const handler = (e: Event) => {
+      const target = e.target as HTMLInputElement
+      if (target.files && target.files.length > 0) {
+        setDocuments(prev => [...prev, ...Array.from(target.files!)])
+        target.value = ''
+      }
+    }
+    input.addEventListener('change', handler)
+    return () => input.removeEventListener('change', handler)
+  }, [])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [uploadingDocs, setUploadingDocs] = useState(false)
@@ -293,7 +307,6 @@ export default function GrantApplicationForm({
           type="file"
           multiple
           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-          onChange={handleFileChange}
           className="hidden"
         />
         {documents.length > 0 && (
