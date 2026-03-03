@@ -1,28 +1,19 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import GrantDocuments from '@/components/grants/GrantDocuments'
+import ConnectBankButton from '@/components/grants/ConnectBankButton'
 
-export default async function GrantDetailPage({ params }: { params: { id: string } }) {
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options)
-          })
-        },
-      },
-    }
-  )
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
+export default async function GrantDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+
+  const supabase = await createServerClient()
   const { data: { user }, error } = await supabase.auth.getUser()
 
   if (error || !user) {
@@ -30,7 +21,7 @@ export default async function GrantDetailPage({ params }: { params: { id: string
   }
 
   // Fetch grant details
-  const { data: grant } = await supabase
+  const { data: grant } = await supabaseAdmin
     .from('grants')
     .select(`
       *,
@@ -39,16 +30,11 @@ export default async function GrantDetailPage({ params }: { params: { id: string
         description,
         start_date,
         end_date,
-        total_funds,
-        available_funds
-      ),
-      profiles (
-        full_name,
-        email,
-        stripe_connect_account_id
+        amount_per_grant,
+        grants_available
       )
     `)
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id)
     .single()
 
@@ -57,134 +43,140 @@ export default async function GrantDetailPage({ params }: { params: { id: string
   }
 
   // Fetch documents
-  const { data: documents } = await supabase
+  const { data: documents } = await supabaseAdmin
     .from('grant_documents')
     .select('*')
-    .eq('grant_id', params.id)
+    .eq('grant_id', id)
     .order('uploaded_at', { ascending: false })
 
-  const categoryLabels: Record<string, string> = {
-    childcare_support: 'Childcare Support',
-    emergency_care: 'Emergency Care',
-    education_essentials: 'Education & Essentials',
-    medical_medicine: 'Medical & Medicine',
-    rent_transportation: 'Rent & Transportation',
-    school_supplies: 'School Supplies',
-    food_essentials: 'Food Essentials',
-    car_repair: 'Car Repair',
-    small_business_starter: 'Small Business Starter',
-    other: 'Other',
-  }
-
   const statusColors: Record<string, string> = {
-    draft: 'bg-gray-100 text-gray-800',
     submitted: 'bg-blue-100 text-blue-800',
-    under_review: 'bg-yellow-100 text-yellow-800',
+    in_review: 'bg-yellow-100 text-yellow-800',
     approved: 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-800',
-    funded: 'bg-purple-100 text-purple-800',
+    not_approved: 'bg-red-100 text-red-800',
+    payment_pending: 'bg-orange-100 text-orange-800',
+    payment_sent: 'bg-purple-100 text-purple-800',
   }
 
   const statusLabels: Record<string, string> = {
-    draft: 'Pending',
-    submitted: 'Submitted - Awaiting Review',
-    under_review: 'Being Reviewed',
+    submitted: 'Submitted — Awaiting Review',
+    in_review: 'Being Reviewed',
     approved: 'Approved',
-    rejected: 'Not Approved',
-    funded: 'Funded',
+    not_approved: 'Not Approved',
+    payment_pending: 'Payment Being Processed',
+    payment_sent: 'Payment Sent',
   }
 
   return (
     <main className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-4xl mx-auto">
+
         {/* Back Button */}
         <Link
           href="/grants/my-applications"
-          className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6"
+          className="inline-flex items-center text-[#2d1239] hover:text-[#2d1239]/70 mb-6 font-medium transition-colors"
         >
           ← Back to My Applications
         </Link>
 
         {/* Header */}
-        <div className="bg-white rounded-lg shadow p-8 mb-6">
-          <div className="flex items-start justify-between mb-4">
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 mb-6">
+          <div className="flex items-start justify-between mb-6">
             <div className="flex-1">
-              <h1 className="text-3xl font-bold mb-2">{grant.title}</h1>
-              <div className="flex items-center gap-3 mb-4">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[grant.status]}`}>
-                  {statusLabels[grant.status]}
+              <div className="flex items-center gap-3 mb-2">
+                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[grant.status] || 'bg-gray-100 text-gray-800'}`}>
+                  {statusLabels[grant.status] || grant.status}
                 </span>
-                <span className="text-gray-600">
-                  {categoryLabels[grant.category]}
-                </span>
+                {grant.is_nominating && (
+                  <span className="px-3 py-1 rounded-full text-sm font-semibold bg-[#bcafcf]/20 text-[#2d1239]">
+                    Nomination
+                  </span>
+                )}
               </div>
+              <h1 className="text-2xl font-black text-[#2d1239]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                {grant.grant_cycles?.cycle_name || 'Grant Application'}
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Submitted {grant.submitted_at ? new Date(grant.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
+              </p>
             </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold text-blue-600">
-                ${grant.amount_requested.toLocaleString()}
+            {grant.amount_approved && (
+              <div className="text-right">
+                <p className="text-3xl font-black text-[#2d1239]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                  ${grant.amount_approved.toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-500">Approved Amount</p>
               </div>
-              <div className="text-sm text-gray-500">Requested Amount</div>
-            </div>
+            )}
           </div>
 
           {/* Grant Cycle Info */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold mb-2">Grant Cycle</h3>
-            <p className="text-gray-700">{grant.grant_cycles?.cycle_name}</p>
-            <p className="text-sm text-gray-500">
-              {new Date(grant.grant_cycles?.start_date).toLocaleDateString()} - {new Date(grant.grant_cycles?.end_date).toLocaleDateString()}
-            </p>
-          </div>
+          {grant.grant_cycles && (
+            <div className="bg-gray-50 rounded-xl p-4 mb-6">
+              <h3 className="font-semibold text-[#2d1239] mb-1">Grant Cycle</h3>
+              <p className="text-sm text-gray-600">
+                {new Date(grant.grant_cycles.start_date).toLocaleDateString()} — {new Date(grant.grant_cycles.end_date).toLocaleDateString()}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                ${grant.grant_cycles.amount_per_grant?.toLocaleString()} per grant · {grant.grant_cycles.grants_available} available
+              </p>
+            </div>
+          )}
 
-          {/* Description */}
-          <div className="mb-6">
-            <h3 className="font-semibold mb-2">Description</h3>
-            <p className="text-gray-700 whitespace-pre-wrap">{grant.description}</p>
+          {/* Application Answers */}
+          <div className="space-y-6">
+            {grant.who_are_you && (
+              <div>
+                <h3 className="font-semibold text-[#2d1239] mb-2">
+                  {grant.is_nominating ? 'About the Nominee' : 'Who are you?'}
+                </h3>
+                <p className="text-gray-700 whitespace-pre-wrap">{grant.who_are_you}</p>
+              </div>
+            )}
+            {grant.biggest_challenge && (
+              <div>
+                <h3 className="font-semibold text-[#2d1239] mb-2">Biggest Challenge</h3>
+                <p className="text-gray-700 whitespace-pre-wrap">{grant.biggest_challenge}</p>
+              </div>
+            )}
+            {grant.fund_usage && (
+              <div>
+                <h3 className="font-semibold text-[#2d1239] mb-2">
+                  {grant.is_nominating ? 'How They Would Use the Funds' : 'How You Would Use the Funds'}
+                </h3>
+                <p className="text-gray-700 whitespace-pre-wrap">{grant.fund_usage}</p>
+              </div>
+            )}
           </div>
 
           {/* Timeline */}
-          <div className="border-t pt-6">
-            <h3 className="font-semibold mb-4">Application Timeline</h3>
+          <div className="border-t border-gray-100 pt-6 mt-6">
+            <h3 className="font-semibold text-[#2d1239] mb-4">Application Timeline</h3>
             <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                <div>
-                  <div className="font-medium">Application Created</div>
-                  <div className="text-sm text-gray-500">
-                    {new Date(grant.created_at).toLocaleString()}
-                  </div>
-                </div>
-              </div>
               {grant.submitted_at && (
                 <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
                   <div>
-                    <div className="font-medium">Submitted for Review</div>
-                    <div className="text-sm text-gray-500">
-                      {new Date(grant.submitted_at).toLocaleString()}
-                    </div>
+                    <p className="font-medium text-[#2d1239] text-sm">Submitted for Review</p>
+                    <p className="text-xs text-gray-500">{new Date(grant.submitted_at).toLocaleString()}</p>
                   </div>
                 </div>
               )}
               {grant.reviewed_at && (
                 <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0" />
                   <div>
-                    <div className="font-medium">Reviewed</div>
-                    <div className="text-sm text-gray-500">
-                      {new Date(grant.reviewed_at).toLocaleString()}
-                    </div>
+                    <p className="font-medium text-[#2d1239] text-sm">Reviewed</p>
+                    <p className="text-xs text-gray-500">{new Date(grant.reviewed_at).toLocaleString()}</p>
                   </div>
                 </div>
               )}
               {grant.funded_at && (
                 <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-purple-500 rounded-full flex-shrink-0" />
                   <div>
-                    <div className="font-medium">Funded</div>
-                    <div className="text-sm text-gray-500">
-                      {new Date(grant.funded_at).toLocaleString()}
-                    </div>
+                    <p className="font-medium text-[#2d1239] text-sm">Payment Sent</p>
+                    <p className="text-xs text-gray-500">{new Date(grant.funded_at).toLocaleString()}</p>
                   </div>
                 </div>
               )}
@@ -193,50 +185,55 @@ export default async function GrantDetailPage({ params }: { params: { id: string
         </div>
 
         {/* Supporting Documents */}
-{documents && documents.length > 0 && (
-  <GrantDocuments documents={documents} grantId={params.id} />
-)}
+        {documents && documents.length > 0 && (
+          <GrantDocuments documents={documents} grantId={id} />
+        )}
 
-        {/* Action Buttons */}
-        {grant.status === 'approved' && !grant.profiles?.stripe_connect_account_id && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-            <h3 className="font-semibold text-green-900 mb-2">
+        {/* Status-specific Action Sections */}
+        {grant.status === 'approved' && !grant.stripe_connect_account_id && (
+          <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] rounded-2xl p-6 mt-6">
+            <h3 className="font-black text-[#2d1239] mb-2" style={{ fontFamily: 'Montserrat, sans-serif' }}>
               🎉 Your Grant Has Been Approved!
             </h3>
-            <p className="text-green-800 mb-4">
-              To receive your funds, you need to connect your bank account. This is a secure process handled by Stripe.
+            <p className="text-[#2d1239]/70 mb-4">
+              To receive your funds, please connect your bank account. This is a secure process handled by Stripe — NFW never sees your banking details.
             </p>
-            <Link
-              href="/grants/connect-bank"
-              className="inline-block bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 font-semibold"
-            >
-              Connect Bank Account
-            </Link>
+            <ConnectBankButton grantId={grant.id} />
           </div>
         )}
 
-        {grant.status === 'funded' && (
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
-            <h3 className="font-semibold text-purple-900 mb-2">
-              ✅ Grant Funded
-            </h3>
-            <p className="text-purple-800">
-              Your grant of ${grant.payout_amount?.toLocaleString()} has been disbursed to your bank account.
-              {grant.payout_date && ` Sent on ${new Date(grant.payout_date).toLocaleDateString()}.`}
+        {grant.status === 'approved' && grant.stripe_connect_account_id && (
+          <div className="bg-[#b2d1ee]/20 border border-[#b2d1ee] rounded-2xl p-6 mt-6">
+            <h3 className="font-black text-[#2d1239] mb-2">✅ Bank Account Connected</h3>
+            <p className="text-[#2d1239]/70">Your bank account is connected. Our team will process your payment shortly.</p>
+          </div>
+        )}
+
+        {grant.status === 'payment_pending' && (
+          <div className="bg-[#fdf493]/20 border border-[#fdf493] rounded-2xl p-6 mt-6">
+            <h3 className="font-black text-[#2d1239] mb-2">💸 Payment Being Processed</h3>
+            <p className="text-[#2d1239]/70">Your grant payment is being processed and will arrive in your bank account within 1-3 business days.</p>
+          </div>
+        )}
+
+        {grant.status === 'payment_sent' && (
+          <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] rounded-2xl p-6 mt-6">
+            <h3 className="font-black text-[#2d1239] mb-2">🎉 Payment Sent!</h3>
+            <p className="text-[#2d1239]/70">
+              Your grant payment{grant.amount_approved ? ` of $${grant.amount_approved.toLocaleString()}` : ''} has been sent to your bank account. Please allow 1-3 business days for it to appear.
             </p>
           </div>
         )}
 
-        {grant.status === 'rejected' && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-            <h3 className="font-semibold text-red-900 mb-2">
-              Application Not Approved
-            </h3>
-            <p className="text-red-800">
-              Unfortunately, your application was not approved at this time. You may apply again in future grant cycles.
+        {grant.status === 'not_approved' && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mt-6">
+            <h3 className="font-black text-[#2d1239] mb-2">Application Not Approved</h3>
+            <p className="text-[#2d1239]/70">
+              Unfortunately, your application was not approved at this time. You may apply again in a future grant cycle.
             </p>
           </div>
         )}
+
       </div>
     </main>
   )

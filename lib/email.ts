@@ -1,0 +1,53 @@
+import { Resend } from 'resend'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
+
+const FROM = process.env.RESEND_FROM_EMAIL || 'NFW <noreply@nationalfundforwomen.org>'
+
+export async function sendGrantStatusEmail({
+  to,
+  name,
+  status,
+  grantCycleName,
+  amountApproved,
+}: {
+  to: string
+  name: string
+  status: string
+  grantCycleName: string
+  amountApproved?: number
+}) {
+  const subjects: Record<string, string> = {
+    in_review: 'Your NFW grant application is being reviewed',
+    approved: '🎉 Your NFW grant application has been approved!',
+    not_approved: 'Update on your NFW grant application',
+    payment_pending: 'Your NFW grant payment is being processed',
+    payment_sent: '💰 Your NFW grant payment has been sent!',
+  }
+
+  const bodies: Record<string, string> = {
+    in_review: `Hi ${name},\n\nGreat news — your application for the ${grantCycleName} is now being reviewed by our team. We'll be in touch soon with a decision.\n\nThank you for applying.\n\nWith love,\nThe NFW Team`,
+    approved: `Hi ${name},\n\nWe're thrilled to let you know that your application for the ${grantCycleName} has been approved${amountApproved ? ` for $${amountApproved.toLocaleString()}` : ''}!\n\nPlease log in to your dashboard to connect your bank account so we can send your funds.\n\nWith love,\nThe NFW Team`,
+    not_approved: `Hi ${name},\n\nThank you for applying to the ${grantCycleName}. After careful review, we were unable to approve your application at this time.\n\nWe encourage you to apply again in a future cycle. We're rooting for you.\n\nWith love,\nThe NFW Team`,
+    payment_pending: `Hi ${name},\n\nYour grant payment of${amountApproved ? ` $${amountApproved.toLocaleString()}` : ''} is being processed and will arrive in your bank account within 1-3 business days.\n\nWith love,\nThe NFW Team`,
+    payment_sent: `Hi ${name},\n\nYour grant payment of${amountApproved ? ` $${amountApproved.toLocaleString()}` : ''} has been sent! Please allow 1-3 business days for it to appear in your account.\n\nThank you for being part of NFW.\n\nWith love,\nThe NFW Team`,
+  }
+
+  const subject = subjects[status]
+  const text = bodies[status]
+
+  if (!subject || !text) return // Don't send for 'submitted' status
+
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to,
+      subject,
+      text,
+    })
+    console.log(`Email sent to ${to} for status: ${status}`)
+  } catch (err) {
+    console.error('Failed to send email:', err)
+    // Don't throw — email failure shouldn't break the status update
+  }
+}

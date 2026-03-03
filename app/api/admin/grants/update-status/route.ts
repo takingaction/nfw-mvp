@@ -42,7 +42,31 @@ export async function POST(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    // TODO: Send email notification via Resend when set up
+    // Send email notification
+const { data: grantData } = await supabaseAdmin
+  .from('grants')
+  .select('user_id, grant_cycles(cycle_name)')
+  .eq('id', grantId)
+  .single()
+
+if (grantData) {
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('full_name, email')
+    .eq('id', grantData.user_id)
+    .single()
+
+  if (profile?.email) {
+    const { sendGrantStatusEmail } = await import('@/lib/email')
+    await sendGrantStatusEmail({
+      to: profile.email,
+      name: profile.full_name || 'Member',
+      status,
+      grantCycleName: (grantData.grant_cycles as any)?.cycle_name || 'NFW Microgrant',
+      amountApproved: amount_approved,
+    })
+  }
+}
     console.log(`Grant ${grantId} status updated to ${status}`)
 
     return NextResponse.json({ success: true })
