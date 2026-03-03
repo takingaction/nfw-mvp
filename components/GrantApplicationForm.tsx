@@ -23,19 +23,6 @@ export default function GrantApplicationForm({
 }) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
-    useEffect(() => {
-    const input = fileInputRef.current
-    if (!input) return
-    const handler = (e: Event) => {
-      const target = e.target as HTMLInputElement
-      if (target.files && target.files.length > 0) {
-        setDocuments(prev => [...prev, ...Array.from(target.files!)])
-        target.value = ''
-      }
-    }
-    input.addEventListener('change', handler)
-    return () => input.removeEventListener('change', handler)
-  }, [])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [uploadingDocs, setUploadingDocs] = useState(false)
@@ -49,6 +36,20 @@ export default function GrantApplicationForm({
   })
 
   const [documents, setDocuments] = useState<File[]>([])
+
+  useEffect(() => {
+    const input = fileInputRef.current
+    if (!input) return
+    const handler = (e: Event) => {
+      const target = e.target as HTMLInputElement
+      if (target.files && target.files.length > 0) {
+        setDocuments(prev => [...prev, ...Array.from(target.files!)])
+        target.value = ''
+      }
+    }
+    input.addEventListener('change', handler)
+    return () => input.removeEventListener('change', handler)
+  }, [])
 
   const inputClass = "w-full px-4 py-3 border border-[#2d1239]/20 rounded-xl text-[#2d1239] placeholder-[#2d1239]/30 bg-white focus:outline-none focus:ring-2 focus:ring-[#bcafcf] focus:border-transparent transition-all text-sm"
   const labelClass = "block text-sm font-semibold text-[#2d1239] mb-1.5"

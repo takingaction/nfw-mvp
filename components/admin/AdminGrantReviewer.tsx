@@ -329,24 +329,26 @@ export default function AdminGrantReviewer({ grants, cycle }: { grants: any[], c
               </button>
               {/* Delete Button */}
               <button
-                onClick={async () => {
-                  if (!confirm(`Are you sure you want to permanently delete this application from ${selected.profiles?.full_name || 'this applicant'}? This cannot be undone.`)) return
-                  setSaving(true)
-                  try {
-                    const res = await fetch('/api/admin/grants/delete', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ grantId: selected.id })
-                    })
-                    const data = await res.json()
-                    if (!res.ok) throw new Error(data.error || 'Failed to delete')
-                    setLocalGrants(prev => prev.filter(g => g.id !== selected.id))
-                    setSelected(null)
-                  } catch (err: any) {
-                    setError(err.message)
-                  } finally {
-                    setSaving(false)
-                  }
+                                onClick={() => {
+                  setTimeout(async () => {
+                    if (!confirm(`Are you sure you want to permanently delete this application from ${selected.profiles?.full_name || 'this applicant'}? This cannot be undone.`)) return
+                    setSaving(true)
+                    try {
+                      const res = await fetch('/api/admin/grants/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ grantId: selected.id })
+                      })
+                      const data = await res.json()
+                      if (!res.ok) throw new Error(data.error || 'Failed to delete')
+                      setLocalGrants(prev => prev.filter(g => g.id !== selected.id))
+                      setSelected(null)
+                    } catch (err: any) {
+                      setError(err.message)
+                    } finally {
+                      setSaving(false)
+                    }
+                  }, 0)
                 }}
                 disabled={saving}
                 className="w-full py-3 bg-red-50 text-red-600 border border-red-200 rounded-xl font-bold hover:bg-red-100 disabled:opacity-50 transition-colors text-sm"
