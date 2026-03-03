@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, User, Users } from 'lucide-react'
 
@@ -21,6 +21,7 @@ export default function GrantApplicationForm({
   cycles: GrantCycle[]
 }) {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [uploadingDocs, setUploadingDocs] = useState(false)
@@ -62,7 +63,7 @@ export default function GrantApplicationForm({
 
       const grantId = data.grantId
 
-            if (documents.length > 0) {
+      if (documents.length > 0) {
         setUploadingDocs(true)
         for (const file of documents) {
           const fd = new FormData()
@@ -86,7 +87,7 @@ export default function GrantApplicationForm({
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
+    if (e.target.files && e.target.files.length > 0) {
       setDocuments(prev => [...prev, ...Array.from(e.target.files!)])
       e.target.value = ''
     }
@@ -279,22 +280,29 @@ export default function GrantApplicationForm({
         <p className="text-xs text-[#2d1239]/50 mb-3">
           Upload receipts, quotes, or other supporting documents. PDF, JPG, PNG, DOC accepted.
         </p>
-        <div className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-[#2d1239]/20 rounded-xl hover:border-[#2d1239]/40 hover:bg-[#2d1239]/5 transition-all relative">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-[#2d1239]/20 rounded-xl hover:border-[#2d1239]/40 hover:bg-[#2d1239]/5 transition-all cursor-pointer"
+        >
           <p className="text-sm text-[#2d1239]/50 font-medium">Click to upload files</p>
           <p className="text-xs text-[#2d1239]/30 mt-1">PDF, JPG, PNG, DOC accepted</p>
-          <input
-            type="file"
-            multiple
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-            onChange={handleFileChange}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          />
-        </div>
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+          onChange={handleFileChange}
+          className="hidden"
+        />
         {documents.length > 0 && (
           <div className="mt-3 space-y-2">
             {documents.map((file, index) => (
               <div key={index} className="flex items-center justify-between bg-[#f8f7fa] px-3 py-2 rounded-lg border border-[#2d1239]/10">
-                <span className="text-sm text-[#2d1239]/70 truncate flex-1">{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
+                <span className="text-sm text-[#2d1239]/70 truncate flex-1">
+                  {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                </span>
                 <button
                   type="button"
                   onClick={() => setDocuments(prev => prev.filter((_, i) => i !== index))}
