@@ -1,3 +1,4 @@
+cat > components/Navigation.tsx << 'EOF'
 import { AuthButton } from './auth-button'
 import { Suspense } from 'react'
 import NavigationClient from './NavigationClient'
@@ -19,30 +20,36 @@ export default function Navigation() {
             <MobileMenu />
           </div>
 
-          {/* Desktop: Centered layout with items close to logo */}
-          <div className="hidden lg:flex items-center justify-center w-full gap-12">
-            {/* Left Menu Items */}
-            <NavigationClient side="left" />
+          {/* Desktop: True centered layout */}
+          <div className="hidden lg:flex items-center justify-between w-full">
 
-            {/* Center Logo */}
-            <NavigationClient side="center" />
+            {/* Left side: invisible spacer matching right side width */}
+            <div className="flex items-center gap-3 invisible">
+              <div className="w-10 h-10" />
+              <div className="h-10 w-20" />
+            </div>
 
-            {/* Right Menu Items */}
-            <NavigationClient side="right" />
+            {/* Center: nav items + logo */}
+            <div className="flex items-center gap-12">
+              <NavigationClient side="left" />
+              <NavigationClient side="center" />
+              <NavigationClient side="right" />
+            </div>
 
-            {/* Auth + Donate — Far right */}
-            <div className="absolute right-4 flex items-center gap-3">
+            {/* Right side: Auth + Donate */}
+            <div className="flex items-center gap-3">
               <Suspense fallback={<div className="w-10 h-10 rounded-full bg-[#2d1239]/40" />}>
                 <AuthButton />
               </Suspense>
               <Link
                 href="https://www.zeffy.com/en-US/donation-form/national-fund-for-women-foundation"
                 target="_blank"
-                className="inline-flex items-center justify-center px-4 py-2 bg-[#fdf493] text-[#2d1239] rounded-lg font-bold text-sm hover:bg-[#fdf493]/80 transition-all shadow-sm h-10"
+                className="inline-flex items-center justify-center px-4 h-10 bg-[#fdf493] text-[#2d1239] rounded-lg font-bold text-sm hover:bg-[#fdf493]/80 transition-all shadow-sm"
               >
                 Donate
               </Link>
             </div>
+
           </div>
 
         </div>
@@ -50,3 +57,4 @@ export default function Navigation() {
     </nav>
   )
 }
+EOF
