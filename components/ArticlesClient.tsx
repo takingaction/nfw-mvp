@@ -1,80 +1,80 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
-import { Search, X, Heart } from 'lucide-react'
-import { ArticleWithDetails, ArticleCategory } from '@/types/articles'
-import { createClient } from '@/lib/supabase/client'
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { Search, X, Heart } from "lucide-react";
+import { ArticleWithDetails, ArticleCategory } from "@/types/articles";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ArticlesClient({
   articles,
   categories,
   currentCategory,
   currentSearch,
-  userId
+  userId,
 }: {
-  articles: ArticleWithDetails[]
-  categories: ArticleCategory[]
-  currentCategory?: string
-  currentSearch?: string
-  userId?: string
+  articles: ArticleWithDetails[];
+  categories: ArticleCategory[];
+  currentCategory?: string;
+  currentSearch?: string;
+  userId?: string;
 }) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const [searchQuery, setSearchQuery] = useState(currentSearch || '')
-  const [likingArticleId, setLikingArticleId] = useState<string | null>(null)
-  const supabase = createClient()
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(currentSearch || "");
+  const [likingArticleId, setLikingArticleId] = useState<string | null>(null);
+  const supabase = createClient();
 
   const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    const params = new URLSearchParams(searchParams.toString())
+    e.preventDefault();
+    const params = new URLSearchParams(searchParams.toString());
     if (searchQuery) {
-      params.set('search', searchQuery)
+      params.set("search", searchQuery);
     } else {
-      params.delete('search')
+      params.delete("search");
     }
-    router.push(`/articles?${params.toString()}`)
-  }
+    router.push(`/articles?${params.toString()}`);
+  };
 
   const handleCategoryFilter = (categorySlug: string | null) => {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(searchParams.toString());
     if (categorySlug) {
-      params.set('category', categorySlug)
+      params.set("category", categorySlug);
     } else {
-      params.delete('category')
+      params.delete("category");
     }
-    router.push(`/articles?${params.toString()}`)
-  }
+    router.push(`/articles?${params.toString()}`);
+  };
 
   const handleLike = async (articleId: string, currentlyLiked: boolean) => {
     if (!userId) {
-      router.push('/auth/login')
-      return
+      router.push("/auth/login");
+      return;
     }
 
-    setLikingArticleId(articleId)
+    setLikingArticleId(articleId);
 
     try {
       if (currentlyLiked) {
         await supabase
-          .from('article_likes')
+          .from("article_likes")
           .delete()
-          .eq('article_id', articleId)
-          .eq('user_id', userId)
+          .eq("article_id", articleId)
+          .eq("user_id", userId);
       } else {
         await supabase
-          .from('article_likes')
-          .insert({ article_id: articleId, user_id: userId })
+          .from("article_likes")
+          .insert({ article_id: articleId, user_id: userId });
       }
-      router.refresh()
+      router.refresh();
     } catch (error) {
-      console.error('Error toggling like:', error)
+      console.error("Error toggling like:", error);
     } finally {
-      setLikingArticleId(null)
+      setLikingArticleId(null);
     }
-  }
+  };
 
   return (
     <main className="min-h-screen bg-white">
@@ -83,7 +83,7 @@ export default function ArticlesClient({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2
             className="text-3xl sm:text-4xl font-black text-[#fffef1] mb-2"
-            style={{ fontFamily: 'Montserrat, sans-serif' }}
+            style={{ fontFamily: "Montserrat, sans-serif" }}
           >
             Articles & Resources
           </h2>
@@ -95,7 +95,6 @@ export default function ArticlesClient({
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
         {/* Search Bar */}
         <div className="bg-[#f8f7fa] rounded-xl p-4 mb-6 border border-[#2d1239]/10">
           <form onSubmit={handleSearch}>
@@ -120,8 +119,8 @@ export default function ArticlesClient({
                 <button
                   type="button"
                   onClick={() => {
-                    setSearchQuery('')
-                    router.push('/articles')
+                    setSearchQuery("");
+                    router.push("/articles");
                   }}
                   className="px-3 py-2.5 bg-white border border-[#2d1239]/10 text-[#2d1239]/60 rounded-lg hover:bg-[#2d1239]/5 transition-colors"
                 >
@@ -139,20 +138,20 @@ export default function ArticlesClient({
               onClick={() => handleCategoryFilter(null)}
               className={`px-4 py-2 rounded-full whitespace-nowrap font-semibold transition-colors text-sm ${
                 !currentCategory
-                  ? 'bg-[#2d1239] text-[#fffef1]'
-                  : 'bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#bcafcf]/20'
+                  ? "bg-[#2d1239] text-[#fffef1]"
+                  : "bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#bcafcf]/20"
               }`}
             >
               All Articles ({articles.length})
             </button>
-            {categories.map(category => (
+            {categories.map((category) => (
               <button
                 key={category.id}
                 onClick={() => handleCategoryFilter(category.slug)}
                 className={`px-4 py-2 rounded-full whitespace-nowrap font-semibold transition-colors text-sm ${
                   currentCategory === category.slug
-                    ? 'bg-[#2d1239] text-[#fffef1]'
-                    : 'bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#bcafcf]/20'
+                    ? "bg-[#2d1239] text-[#fffef1]"
+                    : "bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#bcafcf]/20"
                 }`}
               >
                 {category.icon} {category.name} ({category.article_count})
@@ -166,13 +165,13 @@ export default function ArticlesClient({
           <div className="text-center py-16">
             <p className="text-[#2d1239]/60 text-lg">
               {currentSearch || currentCategory
-                ? 'No articles found matching your criteria.'
-                : 'No articles published yet.'}
+                ? "No articles found matching your criteria."
+                : "No articles published yet."}
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {articles.map(article => (
+            {articles.map((article) => (
               <div
                 key={article.id}
                 className="group bg-white rounded-2xl border border-[#2d1239]/10 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
@@ -201,7 +200,7 @@ export default function ArticlesClient({
                       className="inline-block text-xs px-2.5 py-1 rounded-full mb-3 font-semibold"
                       style={{
                         backgroundColor: `${article.category.color}20`,
-                        color: article.category.color ?? undefined
+                        color: article.category.color ?? undefined,
                       }}
                     >
                       {article.category.icon} {article.category.name}
@@ -211,7 +210,7 @@ export default function ArticlesClient({
                   <Link href={`/articles/${article.slug}`}>
                     <h3
                       className="text-lg font-bold text-[#2d1239] mb-2 group-hover:text-[#2d1239]/75 transition-colors line-clamp-2"
-                      style={{ fontFamily: 'Montserrat, sans-serif' }}
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
                     >
                       {article.title}
                     </h3>
@@ -225,33 +224,35 @@ export default function ArticlesClient({
 
                   <div className="flex items-center justify-between text-sm pt-4 border-t border-[#2d1239]/10">
                     <div className="flex items-center gap-2 text-[#2d1239]/50">
-                      <span>{article.author?.full_name || 'NFW Team'}</span>
+                      <span>{article.author?.full_name || "NFW Team"}</span>
                       <span>•</span>
                       <span>
-                        {new Date(article.published_at || article.created_at).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric'
+                        {new Date(
+                          article.published_at || article.created_at,
+                        ).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
                         })}
                       </span>
                     </div>
 
                     <button
                       onClick={(e) => {
-                        e.preventDefault()
-                        handleLike(article.id, article.user_has_liked || false)
+                        e.preventDefault();
+                        handleLike(article.id, article.user_has_liked || false);
                       }}
                       disabled={likingArticleId === article.id}
                       className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-all disabled:opacity-50 ${
                         article.user_has_liked
-                          ? 'bg-[#d4f1ad] text-[#2d1239] hover:bg-[#d4f1ad]/70'
-                          : 'bg-[#bcafcf]/20 text-[#2d1239]/60 hover:bg-[#bcafcf]/40 hover:text-[#2d1239]'
+                          ? "bg-[#d4f1ad] text-[#2d1239] hover:bg-[#d4f1ad]/70"
+                          : "bg-[#bcafcf]/20 text-[#2d1239]/60 hover:bg-[#bcafcf]/40 hover:text-[#2d1239]"
                       }`}
                     >
                       <Heart
                         className={`w-4 h-4 transition-all ${
                           article.user_has_liked
-                            ? 'fill-[#2d1239] stroke-[#2d1239]'
-                            : 'stroke-[#2d1239]/60'
+                            ? "fill-[#2d1239] stroke-[#2d1239]"
+                            : "stroke-[#2d1239]/60"
                         }`}
                       />
                       <span className="text-sm">{article.like_count}</span>
@@ -264,5 +265,5 @@ export default function ArticlesClient({
         )}
       </div>
     </main>
-  )
+  );
 }

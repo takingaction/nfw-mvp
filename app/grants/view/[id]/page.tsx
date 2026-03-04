@@ -1,29 +1,37 @@
-import { createClient } from '@supabase/supabase-js'
-import { createClient as createServerClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import GrantDocuments from '@/components/grants/GrantDocuments'
-import ConnectBankButton from '@/components/grants/ConnectBankButton'
+import { createClient } from "@supabase/supabase-js";
+import { createClient as createServerClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import GrantDocuments from "@/components/grants/GrantDocuments";
+import ConnectBankButton from "@/components/grants/ConnectBankButton";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
-export default async function GrantDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+export default async function GrantDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
 
-  const supabase = await createServerClient()
-  const { data: { user }, error } = await supabase.auth.getUser()
+  const supabase = await createServerClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
   if (error || !user) {
-    redirect('/auth/login')
+    redirect("/auth/login");
   }
 
   // Fetch grant details
   const { data: grant } = await supabaseAdmin
-    .from('grants')
-    .select(`
+    .from("grants")
+    .select(
+      `
       *,
       grant_cycles (
         cycle_name,
@@ -33,44 +41,44 @@ export default async function GrantDetailPage({ params }: { params: Promise<{ id
         amount_per_grant,
         grants_available
       )
-    `)
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .single()
+    `,
+    )
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
 
   if (!grant) {
-    redirect('/grants/my-applications')
+    redirect("/grants/my-applications");
   }
 
   // Fetch documents
   const { data: documents } = await supabaseAdmin
-    .from('grant_documents')
-    .select('*')
-    .eq('grant_id', id)
-    .order('uploaded_at', { ascending: false })
+    .from("grant_documents")
+    .select("*")
+    .eq("grant_id", id)
+    .order("uploaded_at", { ascending: false });
 
   const statusColors: Record<string, string> = {
-    submitted: 'bg-blue-100 text-blue-800',
-    in_review: 'bg-yellow-100 text-yellow-800',
-    approved: 'bg-green-100 text-green-800',
-    not_approved: 'bg-red-100 text-red-800',
-    payment_pending: 'bg-orange-100 text-orange-800',
-    payment_sent: 'bg-purple-100 text-purple-800',
-  }
+    submitted: "bg-blue-100 text-blue-800",
+    in_review: "bg-yellow-100 text-yellow-800",
+    approved: "bg-green-100 text-green-800",
+    not_approved: "bg-red-100 text-red-800",
+    payment_pending: "bg-orange-100 text-orange-800",
+    payment_sent: "bg-purple-100 text-purple-800",
+  };
 
   const statusLabels: Record<string, string> = {
-    submitted: 'Submitted — Awaiting Review',
-    in_review: 'Being Reviewed',
-    approved: 'Approved',
-    not_approved: 'Not Approved',
-    payment_pending: 'Payment Being Processed',
-    payment_sent: 'Payment Sent',
-  }
+    submitted: "Submitted — Awaiting Review",
+    in_review: "Being Reviewed",
+    approved: "Approved",
+    not_approved: "Not Approved",
+    payment_pending: "Payment Being Processed",
+    payment_sent: "Payment Sent",
+  };
 
   return (
     <main className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-4xl mx-auto">
-
         {/* Back Button */}
         <Link
           href="/grants/my-applications"
@@ -84,7 +92,9 @@ export default async function GrantDetailPage({ params }: { params: Promise<{ id
           <div className="flex items-start justify-between mb-6">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[grant.status] || 'bg-gray-100 text-gray-800'}`}>
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[grant.status] || "bg-gray-100 text-gray-800"}`}
+                >
                   {statusLabels[grant.status] || grant.status}
                 </span>
                 {grant.is_nominating && (
@@ -93,16 +103,29 @@ export default async function GrantDetailPage({ params }: { params: Promise<{ id
                   </span>
                 )}
               </div>
-              <h1 className="text-2xl font-black text-[#2d1239]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                {grant.grant_cycles?.cycle_name || 'Grant Application'}
+              <h1
+                className="text-2xl font-black text-[#2d1239]"
+                style={{ fontFamily: "Montserrat, sans-serif" }}
+              >
+                {grant.grant_cycles?.cycle_name || "Grant Application"}
               </h1>
               <p className="text-sm text-gray-500 mt-1">
-                Submitted {grant.submitted_at ? new Date(grant.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
+                Submitted{" "}
+                {grant.submitted_at
+                  ? new Date(grant.submitted_at).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "—"}
               </p>
             </div>
             {grant.amount_approved && (
               <div className="text-right">
-                <p className="text-3xl font-black text-[#2d1239]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                <p
+                  className="text-3xl font-black text-[#2d1239]"
+                  style={{ fontFamily: "Montserrat, sans-serif" }}
+                >
                   ${grant.amount_approved.toLocaleString()}
                 </p>
                 <p className="text-sm text-gray-500">Approved Amount</p>
@@ -115,10 +138,12 @@ export default async function GrantDetailPage({ params }: { params: Promise<{ id
             <div className="bg-gray-50 rounded-xl p-4 mb-6">
               <h3 className="font-semibold text-[#2d1239] mb-1">Grant Cycle</h3>
               <p className="text-sm text-gray-600">
-                {new Date(grant.grant_cycles.start_date).toLocaleDateString()} — {new Date(grant.grant_cycles.end_date).toLocaleDateString()}
+                {new Date(grant.grant_cycles.start_date).toLocaleDateString()} —{" "}
+                {new Date(grant.grant_cycles.end_date).toLocaleDateString()}
               </p>
               <p className="text-sm text-gray-500 mt-1">
-                ${grant.grant_cycles.amount_per_grant?.toLocaleString()} per grant · {grant.grant_cycles.grants_available} available
+                ${grant.grant_cycles.amount_per_grant?.toLocaleString()} per
+                grant · {grant.grant_cycles.grants_available} available
               </p>
             </div>
           )}
@@ -128,37 +153,53 @@ export default async function GrantDetailPage({ params }: { params: Promise<{ id
             {grant.who_are_you && (
               <div>
                 <h3 className="font-semibold text-[#2d1239] mb-2">
-                  {grant.is_nominating ? 'About the Nominee' : 'Who are you?'}
+                  {grant.is_nominating ? "About the Nominee" : "Who are you?"}
                 </h3>
-                <p className="text-gray-700 whitespace-pre-wrap">{grant.who_are_you}</p>
+                <p className="text-gray-700 whitespace-pre-wrap">
+                  {grant.who_are_you}
+                </p>
               </div>
             )}
             {grant.biggest_challenge && (
               <div>
-                <h3 className="font-semibold text-[#2d1239] mb-2">Biggest Challenge</h3>
-                <p className="text-gray-700 whitespace-pre-wrap">{grant.biggest_challenge}</p>
+                <h3 className="font-semibold text-[#2d1239] mb-2">
+                  Biggest Challenge
+                </h3>
+                <p className="text-gray-700 whitespace-pre-wrap">
+                  {grant.biggest_challenge}
+                </p>
               </div>
             )}
             {grant.fund_usage && (
               <div>
                 <h3 className="font-semibold text-[#2d1239] mb-2">
-                  {grant.is_nominating ? 'How They Would Use the Funds' : 'How You Would Use the Funds'}
+                  {grant.is_nominating
+                    ? "How They Would Use the Funds"
+                    : "How You Would Use the Funds"}
                 </h3>
-                <p className="text-gray-700 whitespace-pre-wrap">{grant.fund_usage}</p>
+                <p className="text-gray-700 whitespace-pre-wrap">
+                  {grant.fund_usage}
+                </p>
               </div>
             )}
           </div>
 
           {/* Timeline */}
           <div className="border-t border-gray-100 pt-6 mt-6">
-            <h3 className="font-semibold text-[#2d1239] mb-4">Application Timeline</h3>
+            <h3 className="font-semibold text-[#2d1239] mb-4">
+              Application Timeline
+            </h3>
             <div className="space-y-3">
               {grant.submitted_at && (
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
                   <div>
-                    <p className="font-medium text-[#2d1239] text-sm">Submitted for Review</p>
-                    <p className="text-xs text-gray-500">{new Date(grant.submitted_at).toLocaleString()}</p>
+                    <p className="font-medium text-[#2d1239] text-sm">
+                      Submitted for Review
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(grant.submitted_at).toLocaleString()}
+                    </p>
                   </div>
                 </div>
               )}
@@ -166,8 +207,12 @@ export default async function GrantDetailPage({ params }: { params: Promise<{ id
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0" />
                   <div>
-                    <p className="font-medium text-[#2d1239] text-sm">Reviewed</p>
-                    <p className="text-xs text-gray-500">{new Date(grant.reviewed_at).toLocaleString()}</p>
+                    <p className="font-medium text-[#2d1239] text-sm">
+                      Reviewed
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(grant.reviewed_at).toLocaleString()}
+                    </p>
                   </div>
                 </div>
               )}
@@ -175,8 +220,12 @@ export default async function GrantDetailPage({ params }: { params: Promise<{ id
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-purple-500 rounded-full flex-shrink-0" />
                   <div>
-                    <p className="font-medium text-[#2d1239] text-sm">Payment Sent</p>
-                    <p className="text-xs text-gray-500">{new Date(grant.funded_at).toLocaleString()}</p>
+                    <p className="font-medium text-[#2d1239] text-sm">
+                      Payment Sent
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(grant.funded_at).toLocaleString()}
+                    </p>
                   </div>
                 </div>
               )}
@@ -190,51 +239,73 @@ export default async function GrantDetailPage({ params }: { params: Promise<{ id
         )}
 
         {/* Status-specific Action Sections */}
-        {grant.status === 'approved' && !grant.stripe_connect_account_id && (
+        {grant.status === "approved" && !grant.stripe_connect_account_id && (
           <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] rounded-2xl p-6 mt-6">
-            <h3 className="font-black text-[#2d1239] mb-2" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            <h3
+              className="font-black text-[#2d1239] mb-2"
+              style={{ fontFamily: "Montserrat, sans-serif" }}
+            >
               🎉 Your Grant Has Been Approved!
             </h3>
             <p className="text-[#2d1239]/70 mb-4">
-              To receive your funds, please connect your bank account. This is a secure process handled by Stripe — NFW never sees your banking details.
+              To receive your funds, please connect your bank account. This is a
+              secure process handled by Stripe — NFW never sees your banking
+              details.
             </p>
             <ConnectBankButton grantId={grant.id} />
           </div>
         )}
 
-        {grant.status === 'approved' && grant.stripe_connect_account_id && (
+        {grant.status === "approved" && grant.stripe_connect_account_id && (
           <div className="bg-[#b2d1ee]/20 border border-[#b2d1ee] rounded-2xl p-6 mt-6">
-            <h3 className="font-black text-[#2d1239] mb-2">✅ Bank Account Connected</h3>
-            <p className="text-[#2d1239]/70">Your bank account is connected. Our team will process your payment shortly.</p>
+            <h3 className="font-black text-[#2d1239] mb-2">
+              ✅ Bank Account Connected
+            </h3>
+            <p className="text-[#2d1239]/70">
+              Your bank account is connected. Our team will process your payment
+              shortly.
+            </p>
           </div>
         )}
 
-        {grant.status === 'payment_pending' && (
+        {grant.status === "payment_pending" && (
           <div className="bg-[#fdf493]/20 border border-[#fdf493] rounded-2xl p-6 mt-6">
-            <h3 className="font-black text-[#2d1239] mb-2">💸 Payment Being Processed</h3>
-            <p className="text-[#2d1239]/70">Your grant payment is being processed and will arrive in your bank account within 1-3 business days.</p>
+            <h3 className="font-black text-[#2d1239] mb-2">
+              💸 Payment Being Processed
+            </h3>
+            <p className="text-[#2d1239]/70">
+              Your grant payment is being processed and will arrive in your bank
+              account within 1-3 business days.
+            </p>
           </div>
         )}
 
-        {grant.status === 'payment_sent' && (
+        {grant.status === "payment_sent" && (
           <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] rounded-2xl p-6 mt-6">
             <h3 className="font-black text-[#2d1239] mb-2">🎉 Payment Sent!</h3>
             <p className="text-[#2d1239]/70">
-              Your grant payment{grant.amount_approved ? ` of $${grant.amount_approved.toLocaleString()}` : ''} has been sent to your bank account. Please allow 1-3 business days for it to appear.
+              Your grant payment
+              {grant.amount_approved
+                ? ` of $${grant.amount_approved.toLocaleString()}`
+                : ""}{" "}
+              has been sent to your bank account. Please allow 1-3 business days
+              for it to appear.
             </p>
           </div>
         )}
 
-        {grant.status === 'not_approved' && (
+        {grant.status === "not_approved" && (
           <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mt-6">
-            <h3 className="font-black text-[#2d1239] mb-2">Application Not Approved</h3>
+            <h3 className="font-black text-[#2d1239] mb-2">
+              Application Not Approved
+            </h3>
             <p className="text-[#2d1239]/70">
-              Unfortunately, your application was not approved at this time. You may apply again in a future grant cycle.
+              Unfortunately, your application was not approved at this time. You
+              may apply again in a future grant cycle.
             </p>
           </div>
         )}
-
       </div>
     </main>
-  )
+  );
 }

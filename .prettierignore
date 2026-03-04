@@ -1,0 +1,22 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+build
+.next
+
+# Supabase
+supabase/.temp
+supabase/functions/_shared
+
+# Auto-generated files
+*.min.js
+*.min.css
+
+# Environment files
+.env
+.env.local
+
+# Vercel
+.vercel

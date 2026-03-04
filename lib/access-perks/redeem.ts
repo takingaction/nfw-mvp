@@ -4,10 +4,10 @@
  */
 
 export interface RedeemParams {
-  offer_key: string
-  member_key: string
-  first_name: string
-  last_name: string
+  offer_key: string;
+  member_key: string;
+  first_name: string;
+  last_name: string;
 }
 
 /**
@@ -19,28 +19,30 @@ export async function getRedemptionOptions(params: RedeemParams) {
       access_token: process.env.ACCESS_REDEEM_TOKEN!,
       member_key: params.member_key,
       first_name: params.first_name,
-      last_name: params.last_name
-    })
+      last_name: params.last_name,
+    });
 
     const response = await fetch(
       `${process.env.ACCESS_REDEEM_API_URL}/v1/redeem/${params.offer_key}?${queryParams.toString()}`,
       {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Accept': 'application/json'
-        }
-      }
-    )
+          Accept: "application/json",
+        },
+      },
+    );
 
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(`Redeem API Error: ${error.message || response.statusText}`)
+      const error = await response.json();
+      throw new Error(
+        `Redeem API Error: ${error.message || response.statusText}`,
+      );
     }
 
-    return await response.json()
+    return await response.json();
   } catch (error) {
-    console.error('Failed to get redemption options:', error)
-    throw error
+    console.error("Failed to get redemption options:", error);
+    throw error;
   }
 }
 
@@ -53,28 +55,30 @@ export async function redeemInstore(params: RedeemParams) {
       access_token: process.env.ACCESS_REDEEM_TOKEN!,
       member_key: params.member_key,
       first_name: params.first_name,
-      last_name: params.last_name
-    })
+      last_name: params.last_name,
+    });
 
     const response = await fetch(
       `${process.env.ACCESS_REDEEM_API_URL}/v1/redeem/${params.offer_key}/instore?${queryParams.toString()}`,
       {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Accept': 'application/json'
-        }
-      }
-    )
+          Accept: "application/json",
+        },
+      },
+    );
 
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(`Redeem API Error: ${error.message || response.statusText}`)
+      const error = await response.json();
+      throw new Error(
+        `Redeem API Error: ${error.message || response.statusText}`,
+      );
     }
 
-    return await response.json()
+    return await response.json();
   } catch (error) {
-    console.error('Failed to redeem instore:', error)
-    throw error
+    console.error("Failed to redeem instore:", error);
+    throw error;
   }
 }
 
@@ -87,28 +91,30 @@ export async function redeemInstorePrint(params: RedeemParams) {
       access_token: process.env.ACCESS_REDEEM_TOKEN!,
       member_key: params.member_key,
       first_name: params.first_name,
-      last_name: params.last_name
-    })
+      last_name: params.last_name,
+    });
 
     const response = await fetch(
       `${process.env.ACCESS_REDEEM_API_URL}/v1/redeem/${params.offer_key}/instore_print?${queryParams.toString()}`,
       {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Accept': 'application/json'
-        }
-      }
-    )
+          Accept: "application/json",
+        },
+      },
+    );
 
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(`Redeem API Error: ${error.message || response.statusText}`)
+      const error = await response.json();
+      throw new Error(
+        `Redeem API Error: ${error.message || response.statusText}`,
+      );
     }
 
-    return await response.json()
+    return await response.json();
   } catch (error) {
-    console.error('Failed to redeem instore print:', error)
-    throw error
+    console.error("Failed to redeem instore print:", error);
+    throw error;
   }
 }
 
@@ -121,28 +127,30 @@ export async function redeemLink(params: RedeemParams) {
       access_token: process.env.ACCESS_REDEEM_TOKEN!,
       member_key: params.member_key,
       first_name: params.first_name,
-      last_name: params.last_name
-    })
+      last_name: params.last_name,
+    });
 
     const response = await fetch(
       `${process.env.ACCESS_REDEEM_API_URL}/v1/redeem/${params.offer_key}/link?${queryParams.toString()}`,
       {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Accept': 'application/json'
-        }
-      }
-    )
+          Accept: "application/json",
+        },
+      },
+    );
 
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(`Redeem API Error: ${error.message || response.statusText}`)
+      const error = await response.json();
+      throw new Error(
+        `Redeem API Error: ${error.message || response.statusText}`,
+      );
     }
 
-    return await response.json()
+    return await response.json();
   } catch (error) {
-    console.error('Failed to redeem link:', error)
-    throw error
+    console.error("Failed to redeem link:", error);
+    throw error;
   }
 }
 
@@ -155,27 +163,29 @@ export async function redeemCall(params: RedeemParams) {
       access_token: process.env.ACCESS_REDEEM_TOKEN!,
       member_key: params.member_key,
       first_name: params.first_name,
-      last_name: params.last_name
-    })
+      last_name: params.last_name,
+    });
 
     const response = await fetch(
       `${process.env.ACCESS_REDEEM_API_URL}/v1/redeem/${params.offer_key}/call?${queryParams.toString()}`,
       {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Accept': 'application/json'
-        }
-      }
-    )
+          Accept: "application/json",
+        },
+      },
+    );
 
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(`Redeem API Error: ${error.message || response.statusText}`)
+      const error = await response.json();
+      throw new Error(
+        `Redeem API Error: ${error.message || response.statusText}`,
+      );
     }
 
-    return await response.json()
+    return await response.json();
   } catch (error) {
-    console.error('Failed to redeem call:', error)
-    throw error
+    console.error("Failed to redeem call:", error);
+    throw error;
   }
 }

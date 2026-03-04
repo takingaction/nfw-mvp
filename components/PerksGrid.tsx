@@ -1,115 +1,119 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { Loader2 } from 'lucide-react'
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Loader2 } from "lucide-react";
 
 interface Offer {
-  id: string
-  type: string
+  id: string;
+  type: string;
   attributes: {
-    offer_key: string
-    title: string
-    teaser: string
-    terms: string
-    offer_value: string
-    offer_type: string
-    redemption_method: string
-    start_date: string
-    end_date: string
-  }
+    offer_key: string;
+    title: string;
+    teaser: string;
+    terms: string;
+    offer_value: string;
+    offer_type: string;
+    redemption_method: string;
+    start_date: string;
+    end_date: string;
+  };
   relationships?: {
     merchant?: {
       data: {
-        id: string
-        type: string
-      }
-    }
+        id: string;
+        type: string;
+      };
+    };
     categories?: {
-      data: Array<{ id: string; type: string }>
-    }
-  }
+      data: Array<{ id: string; type: string }>;
+    };
+  };
 }
 
 interface Category {
-  id: string
+  id: string;
   attributes: {
-    category_key: string
-    name: string
-    icon_url?: string
-  }
+    category_key: string;
+    name: string;
+    icon_url?: string;
+  };
 }
 
 export default function PerksGrid() {
-  const [offers, setOffers] = useState<Offer[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [postalCode, setPostalCode] = useState('')
-  const [searchZip, setSearchZip] = useState('')
-  const [page, setPage] = useState(1)
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [postalCode, setPostalCode] = useState("");
+  const [searchZip, setSearchZip] = useState("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     async function fetchCategories() {
       try {
-        const res = await fetch('/api/perks/categories')
+        const res = await fetch("/api/perks/categories");
         if (res.ok) {
-          const data = await res.json()
-          setCategories(data.categories)
+          const data = await res.json();
+          setCategories(data.categories);
         }
       } catch (err) {
-        console.error('Failed to load categories')
+        console.error("Failed to load categories");
       }
     }
-    fetchCategories()
-  }, [])
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     async function fetchOffers() {
-      setLoading(true)
+      setLoading(true);
       try {
         const params = new URLSearchParams({
           page: page.toString(),
-          per_page: '20',
-        })
-        if (searchZip) params.append('postal_code', searchZip)
-        if (selectedCategory) params.append('category_key', selectedCategory)
+          per_page: "20",
+        });
+        if (searchZip) params.append("postal_code", searchZip);
+        if (selectedCategory) params.append("category_key", selectedCategory);
 
-        const res = await fetch(`/api/perks?${params.toString()}`)
+        const res = await fetch(`/api/perks?${params.toString()}`);
         if (!res.ok) {
-          if (res.status === 401) throw new Error('Please sign in to view perks')
-          throw new Error('Failed to load offers')
+          if (res.status === 401)
+            throw new Error("Please sign in to view perks");
+          throw new Error("Failed to load offers");
         }
-        const data = await res.json()
-        setOffers(data.offers)
+        const data = await res.json();
+        setOffers(data.offers);
         if (data.user?.postal_code && !searchZip) {
-          setPostalCode(data.user.postal_code)
+          setPostalCode(data.user.postal_code);
         }
       } catch (err: any) {
-        setError(err.message)
+        setError(err.message);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-    fetchOffers()
-  }, [page, searchZip, selectedCategory])
+    fetchOffers();
+  }, [page, searchZip, selectedCategory]);
 
   const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    setSearchZip(postalCode)
-    setPage(1)
-  }
+    e.preventDefault();
+    setSearchZip(postalCode);
+    setPage(1);
+  };
 
   if (error) {
     return (
       <div className="text-center py-12">
         <p className="text-red-500 mb-4">{error}</p>
-        <a href="/auth/login" className="text-[#2d1239] underline hover:text-[#2d1239]/70 font-medium">
+        <a
+          href="/auth/login"
+          className="text-[#2d1239] underline hover:text-[#2d1239]/70 font-medium"
+        >
           Sign in to continue
         </a>
       </div>
-    )
+    );
   }
 
   return (
@@ -135,11 +139,14 @@ export default function PerksGrid() {
       {/* Category Filters */}
       <div className="flex gap-2 mb-6 flex-wrap">
         <button
-          onClick={() => { setSelectedCategory(null); setPage(1) }}
+          onClick={() => {
+            setSelectedCategory(null);
+            setPage(1);
+          }}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-            !selectedCategory 
-              ? 'bg-[#2d1239] text-white' 
-              : 'bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#2d1239]/5'
+            !selectedCategory
+              ? "bg-[#2d1239] text-white"
+              : "bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#2d1239]/5"
           }`}
         >
           All
@@ -147,11 +154,14 @@ export default function PerksGrid() {
         {categories.map((cat) => (
           <button
             key={cat.id}
-            onClick={() => { setSelectedCategory(cat.attributes.category_key); setPage(1) }}
+            onClick={() => {
+              setSelectedCategory(cat.attributes.category_key);
+              setPage(1);
+            }}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
               selectedCategory === cat.attributes.category_key
-                ? 'bg-[#2d1239] text-white'
-                : 'bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#2d1239]/5'
+                ? "bg-[#2d1239] text-white"
+                : "bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#2d1239]/5"
             }`}
           >
             {cat.attributes.name}
@@ -185,8 +195,12 @@ export default function PerksGrid() {
                     {offer.attributes.offer_type}
                   </span>
                 </div>
-                <h3 className="font-semibold text-lg text-[#2d1239] mb-2">{offer.attributes.title}</h3>
-                <p className="text-sm text-[#2d1239]/60 mb-3 line-clamp-2">{offer.attributes.teaser}</p>
+                <h3 className="font-semibold text-lg text-[#2d1239] mb-2">
+                  {offer.attributes.title}
+                </h3>
+                <p className="text-sm text-[#2d1239]/60 mb-3 line-clamp-2">
+                  {offer.attributes.teaser}
+                </p>
                 <div className="text-xs text-[#2d1239]/40">
                   {offer.attributes.redemption_method}
                 </div>
@@ -222,5 +236,5 @@ export default function PerksGrid() {
         </div>
       )}
     </div>
-  )
+  );
 }

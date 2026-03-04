@@ -1,8 +1,8 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { 
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import {
   ArrowLeft,
   Plane,
   Hotel,
@@ -12,77 +12,80 @@ import {
   Calendar,
   Bell,
   Sparkles,
-  MapPin
-} from 'lucide-react'
+  MapPin,
+} from "lucide-react";
 
 export const metadata = {
-  title: 'Travel Deals',
-  description: 'Exclusive travel deals and discounts for NFW members.',
-}
+  title: "Travel Deals",
+  description: "Exclusive travel deals and discounts for NFW members.",
+};
 
 export default async function TravelComingSoonPage() {
-  const cookieStore = await cookies()
+  const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() {
-          return cookieStore.getAll()
+          return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options)
-          })
+            cookieStore.set(name, value, options);
+          });
         },
       },
-    }
-  )
+    },
+  );
 
-  const { data: { user }, error } = await supabase.auth.getUser()
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
   if (error || !user) {
-    redirect('/auth/login')
+    redirect("/auth/login");
   }
 
   const travelFeatures = [
     {
       icon: Hotel,
-      title: 'Hotels',
-      description: 'Exclusive rates at thousands of hotels worldwide',
-      color: 'bg-[#BCAFCF]'
+      title: "Hotels",
+      description: "Exclusive rates at thousands of hotels worldwide",
+      color: "bg-[#BCAFCF]",
     },
     {
       icon: Plane,
-      title: 'Flights',
-      description: 'Discounted airfare to destinations everywhere',
-      color: 'bg-[#fdf493]'
+      title: "Flights",
+      description: "Discounted airfare to destinations everywhere",
+      color: "bg-[#fdf493]",
     },
     {
       icon: Car,
-      title: 'Car Rentals',
-      description: 'Save on rental cars from top providers',
-      color: 'bg-[#d4f1ad]'
+      title: "Car Rentals",
+      description: "Save on rental cars from top providers",
+      color: "bg-[#d4f1ad]",
     },
     {
       icon: Ship,
-      title: 'Cruises',
-      description: 'Special deals on cruise vacations',
-      color: 'bg-[#BCAFCF]'
+      title: "Cruises",
+      description: "Special deals on cruise vacations",
+      color: "bg-[#BCAFCF]",
     },
     {
       icon: Ticket,
-      title: 'Theme Parks',
-      description: 'Discounted tickets to 100+ attractions',
-      color: 'bg-[#fdf493]'
+      title: "Theme Parks",
+      description: "Discounted tickets to 100+ attractions",
+      color: "bg-[#fdf493]",
     },
     {
       icon: Calendar,
-      title: 'Events',
-      description: 'Access to concerts, sports & more',
-      color: 'bg-[#d4f1ad]'
+      title: "Events",
+      description: "Access to concerts, sports & more",
+      color: "bg-[#d4f1ad]",
     },
-  ]
+  ];
 
   return (
     <div className="min-h-screen bg-[#f8f7fa]">
@@ -105,7 +108,9 @@ export default async function TravelComingSoonPage() {
           {/* Coming Soon Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#fdf493]/30 border border-[#fdf493] rounded-full mb-6">
             <Sparkles className="w-4 h-4 text-[#2d1239]" />
-            <span className="text-sm font-medium text-[#2d1239]">Coming Soon</span>
+            <span className="text-sm font-medium text-[#2d1239]">
+              Coming Soon
+            </span>
           </div>
 
           {/* Main Icon */}
@@ -117,14 +122,17 @@ export default async function TravelComingSoonPage() {
             Travel Perks
           </h1>
           <p className="text-lg text-[#2d1239]/70 max-w-2xl mx-auto mb-8">
-            We&apos;re putting the finishing touches on an amazing travel experience just for NFW members. 
-            Get ready for exclusive discounts on hotels, flights, car rentals, cruises, theme parks, and more!
+            We&apos;re putting the finishing touches on an amazing travel
+            experience just for NFW members. Get ready for exclusive discounts
+            on hotels, flights, car rentals, cruises, theme parks, and more!
           </p>
 
           {/* Launch Timeline */}
           <div className="inline-flex items-center gap-3 px-6 py-3 bg-white rounded-xl border border-[#2d1239]/10 shadow-sm">
             <Calendar className="w-5 h-5 text-[#2d1239]" />
-            <span className="text-[#2d1239] font-medium">Expected Launch: Spring 2026</span>
+            <span className="text-[#2d1239] font-medium">
+              Expected Launch: Spring 2026
+            </span>
           </div>
         </div>
 
@@ -139,11 +147,17 @@ export default async function TravelComingSoonPage() {
                 key={feature.title}
                 className="bg-white rounded-xl border border-[#2d1239]/10 p-5 text-center hover:shadow-md transition-shadow"
               >
-                <div className={`w-12 h-12 mx-auto mb-3 rounded-xl ${feature.color} flex items-center justify-center`}>
+                <div
+                  className={`w-12 h-12 mx-auto mb-3 rounded-xl ${feature.color} flex items-center justify-center`}
+                >
                   <feature.icon className="w-6 h-6 text-[#2d1239]" />
                 </div>
-                <h3 className="font-semibold text-[#2d1239] mb-1">{feature.title}</h3>
-                <p className="text-sm text-[#2d1239]/60">{feature.description}</p>
+                <h3 className="font-semibold text-[#2d1239] mb-1">
+                  {feature.title}
+                </h3>
+                <p className="text-sm text-[#2d1239]/60">
+                  {feature.description}
+                </p>
               </div>
             ))}
           </div>
@@ -154,7 +168,8 @@ export default async function TravelComingSoonPage() {
           <Bell className="w-10 h-10 mx-auto mb-4 opacity-90" />
           <h3 className="text-xl font-semibold mb-2">Be the First to Know</h3>
           <p className="text-white/80 mb-6 max-w-md mx-auto">
-            We&apos;ll notify you as soon as Travel Perks launches. In the meantime, check out our other member benefits!
+            We&apos;ll notify you as soon as Travel Perks launches. In the
+            meantime, check out our other member benefits!
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
@@ -190,5 +205,5 @@ export default async function TravelComingSoonPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

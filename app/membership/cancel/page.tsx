@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from "next/link";
 
 export default function CancelPage() {
   return (
@@ -16,5 +16,5 @@ export default function CancelPage() {
         </Link>
       </div>
     </main>
-  )
+  );
 }

@@ -1,82 +1,90 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
+import { useState } from "react";
 
 const plans = [
   {
-    id: 'free',
-    name: 'Free Member',
-    price: '$0',
-    period: 'forever',
-    description: 'Basic access to NFW community',
-    features: ['Community access', 'Newsletter', 'Event notifications'],
+    id: "free",
+    name: "Free Member",
+    price: "$0",
+    period: "forever",
+    description: "Basic access to NFW community",
+    features: ["Community access", "Newsletter", "Event notifications"],
     priceId: null,
   },
   {
-    id: 'contributing',
-    name: 'Contributing Member',
-    price: '$15',
-    period: '/year',
-    description: 'Support NFW and unlock perks',
-    features: ['All Free features', 'Member perks & discounts', 'Voting rights', 'Member badge'],
-    priceId: 'price_1SwcFWCeca9TSF9AWfCnn2yk',  // ← Replace with your actual Contributing Price ID
+    id: "contributing",
+    name: "Contributing Member",
+    price: "$15",
+    period: "/year",
+    description: "Support NFW and unlock perks",
+    features: [
+      "All Free features",
+      "Member perks & discounts",
+      "Voting rights",
+      "Member badge",
+    ],
+    priceId: "price_1SwcFWCeca9TSF9AWfCnn2yk", // ← Replace with your actual Contributing Price ID
   },
   {
-    id: 'founding',
-    name: 'Founding Member',
-    price: '$100',
-    period: '/year',
-    description: 'Maximum support for NFW mission',
-    features: ['All Contributing features', 'Founding member recognition', 'Early access to events', 'Direct input on initiatives'],
-    priceId: 'price_1SwcFWCeca9TSF9AWfCnn2yk',  // ← Replace with your actual Founding Price ID
+    id: "founding",
+    name: "Founding Member",
+    price: "$100",
+    period: "/year",
+    description: "Maximum support for NFW mission",
+    features: [
+      "All Contributing features",
+      "Founding member recognition",
+      "Early access to events",
+      "Direct input on initiatives",
+    ],
+    priceId: "price_1SwcFWCeca9TSF9AWfCnn2yk", // ← Replace with your actual Founding Price ID
     highlighted: true,
   },
-]
+];
 
 export default function MembershipSelector() {
-  const [loading, setLoading] = useState<string | null>(null)
-  const [error, setError] = useState('')
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
-  const handleSelectPlan = async (plan: typeof plans[0]) => {
+  const handleSelectPlan = async (plan: (typeof plans)[0]) => {
     if (!plan.priceId) {
       // Free plan - just update profile
-      window.location.href = '/profile'
-      return
+      window.location.href = "/profile";
+      return;
     }
 
-    setLoading(plan.id)
-    setError('')
+    setLoading(plan.id);
+    setError("");
 
     try {
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           priceId: plan.priceId,
           membershipLevel: plan.id,
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (data.error) {
-        throw new Error(data.error)
+        throw new Error(data.error);
       }
 
       // Redirect to Stripe Checkout
-      window.location.href = data.url
+      window.location.href = data.url;
     } catch (err: any) {
-      setError(err.message || 'Something went wrong')
-      setLoading(null)
+      setError(err.message || "Something went wrong");
+      setLoading(null);
     }
-  }
+  };
 
   return (
     <div className="max-w-5xl mx-auto">
       {error && (
-        <div className="bg-red-100 text-red-700 p-4 rounded mb-6">
-          {error}
-        </div>
+        <div className="bg-red-100 text-red-700 p-4 rounded mb-6">{error}</div>
       )}
 
       <div className="grid md:grid-cols-3 gap-6">
@@ -85,8 +93,8 @@ export default function MembershipSelector() {
             key={plan.id}
             className={`border rounded-lg p-6 ${
               plan.highlighted
-                ? 'border-blue-500 ring-2 ring-blue-500 bg-blue-50'
-                : 'border-gray-200 bg-white'
+                ? "border-blue-500 ring-2 ring-blue-500 bg-blue-50"
+                : "border-gray-200 bg-white"
             }`}
           >
             {plan.highlighted && (
@@ -130,15 +138,19 @@ export default function MembershipSelector() {
               disabled={loading === plan.id}
               className={`w-full py-3 px-4 rounded-lg font-medium transition ${
                 plan.highlighted
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "bg-gray-100 text-gray-800 hover:bg-gray-200"
               } disabled:opacity-50`}
             >
-              {loading === plan.id ? 'Loading...' : plan.priceId ? 'Select Plan' : 'Continue Free'}
+              {loading === plan.id
+                ? "Loading..."
+                : plan.priceId
+                  ? "Select Plan"
+                  : "Continue Free"}
             </button>
           </div>
         ))}
       </div>
     </div>
-  )
+  );
 }

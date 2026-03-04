@@ -1,103 +1,115 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { 
-  Gift, 
-  ExternalLink, 
-  Phone, 
-  Copy, 
+import { useState, useEffect } from "react";
+import {
+  Gift,
+  ExternalLink,
+  Phone,
+  Copy,
   Check,
   ChevronRight,
   Loader2,
-  AlertCircle
-} from 'lucide-react'
-import Link from 'next/link'
+  AlertCircle,
+} from "lucide-react";
+import Link from "next/link";
 
 interface Redemption {
-  id: string
-  offer_key: string
-  offer_title: string
-  store_name: string | null
-  redeem_type: string
-  coupon_code: string | null
-  phone_number: string | null
-  redemption_url: string | null
-  instructions: string | null
-  status: 'active' | 'used' | 'expired'
-  redeemed_at: string
-  expires_at: string | null
+  id: string;
+  offer_key: string;
+  offer_title: string;
+  store_name: string | null;
+  redeem_type: string;
+  coupon_code: string | null;
+  phone_number: string | null;
+  redemption_url: string | null;
+  instructions: string | null;
+  status: "active" | "used" | "expired";
+  redeemed_at: string;
+  expires_at: string | null;
 }
 
 export default function RecentRedemptions() {
-  const [redemptions, setRedemptions] = useState<Redemption[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [redemptions, setRedemptions] = useState<Redemption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchRedemptions()
-  }, [])
+    fetchRedemptions();
+  }, []);
 
   const fetchRedemptions = async () => {
     try {
-      const response = await fetch('/api/access-perks/redemptions?status=active&limit=5')
-      
+      const response = await fetch(
+        "/api/access-perks/redemptions?status=active&limit=5",
+      );
+
       if (!response.ok) {
-        throw new Error('Failed to fetch redemptions')
+        throw new Error("Failed to fetch redemptions");
       }
 
-      const data = await response.json()
-      setRedemptions(data.redemptions || [])
+      const data = await response.json();
+      setRedemptions(data.redemptions || []);
     } catch (err: any) {
-      console.error('Fetch redemptions error:', err)
-      setError(err.message || 'Failed to load redemptions')
+      console.error("Fetch redemptions error:", err);
+      setError(err.message || "Failed to load redemptions");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const copyCode = async (code: string, id: string) => {
     try {
-      await navigator.clipboard.writeText(code)
-      setCopiedId(id)
-      setTimeout(() => setCopiedId(null), 2000)
+      await navigator.clipboard.writeText(code);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err)
+      console.error("Failed to copy:", err);
     }
-  }
+  };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffTime = Math.abs(now.getTime() - date.getTime())
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
-    if (diffDays === 0) return 'Today'
-    if (diffDays === 1) return 'Yesterday'
-    if (diffDays < 7) return `${diffDays} days ago`
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  }
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
 
   const getRedemptionTypeLabel = (type: string) => {
     switch (type) {
-      case 'link': return 'Online'
-      case 'instore': return 'In-Store'
-      case 'instore_print': return 'Print'
-      case 'call': return 'Call'
-      default: return type
+      case "link":
+        return "Online";
+      case "instore":
+        return "In-Store";
+      case "instore_print":
+        return "Print";
+      case "call":
+        return "Call";
+      default:
+        return type;
     }
-  }
+  };
 
   const getRedemptionTypeColor = (type: string) => {
     switch (type) {
-      case 'link': return 'bg-[#2d1239] text-white'
-      case 'instore': return 'bg-[#BCAFCF] text-[#2d1239]'
-      case 'instore_print': return 'bg-[#b2d1ee] text-[#2d1239]'
-      case 'call': return 'bg-[#d4f1ad] text-[#2d1239]'
-      default: return 'bg-gray-100 text-gray-700'
+      case "link":
+        return "bg-[#2d1239] text-white";
+      case "instore":
+        return "bg-[#BCAFCF] text-[#2d1239]";
+      case "instore_print":
+        return "bg-[#b2d1ee] text-[#2d1239]";
+      case "call":
+        return "bg-[#d4f1ad] text-[#2d1239]";
+      default:
+        return "bg-gray-100 text-gray-700";
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -106,7 +118,7 @@ export default function RecentRedemptions() {
           <Loader2 className="w-6 h-6 animate-spin text-[#BCAFCF]" />
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -118,7 +130,7 @@ export default function RecentRedemptions() {
         </div>
         <p className="text-sm text-gray-600">{error}</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -131,8 +143,12 @@ export default function RecentRedemptions() {
               <Gift className="w-5 h-5 text-[#2d1239]" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-[#2d1239]">My Recent Redemptions</h2>
-              <p className="text-sm text-[#2d1239]/60">Active offers you've redeemed</p>
+              <h2 className="text-lg font-semibold text-[#2d1239]">
+                My Recent Redemptions
+              </h2>
+              <p className="text-sm text-[#2d1239]/60">
+                Active offers you've redeemed
+              </p>
             </div>
           </div>
           <Link
@@ -161,7 +177,10 @@ export default function RecentRedemptions() {
           </div>
         ) : (
           redemptions.map((redemption) => (
-            <div key={redemption.id} className="p-4 hover:bg-[#f8f7fa] transition-colors">
+            <div
+              key={redemption.id}
+              className="p-4 hover:bg-[#f8f7fa] transition-colors"
+            >
               <div className="flex items-start gap-3">
                 {/* Icon */}
                 <div className="flex-shrink-0 mt-1">
@@ -186,7 +205,9 @@ export default function RecentRedemptions() {
 
                   {/* Type & Date */}
                   <div className="flex items-center gap-2 mb-3">
-                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${getRedemptionTypeColor(redemption.redeem_type)}`}>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded font-medium ${getRedemptionTypeColor(redemption.redeem_type)}`}
+                    >
                       {getRedemptionTypeLabel(redemption.redeem_type)}
                     </span>
                     <span className="text-xs text-[#2d1239]/40">
@@ -199,7 +220,9 @@ export default function RecentRedemptions() {
                     {/* Coupon Code */}
                     {redemption.coupon_code && (
                       <button
-                        onClick={() => copyCode(redemption.coupon_code!, redemption.id)}
+                        onClick={() =>
+                          copyCode(redemption.coupon_code!, redemption.id)
+                        }
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#2d1239] text-white rounded-lg hover:bg-[#2d1239]/90 transition-colors text-xs font-medium"
                       >
                         {copiedId === redemption.id ? (
@@ -256,5 +279,5 @@ export default function RecentRedemptions() {
         )}
       </div>
     </div>
-  )
+  );
 }

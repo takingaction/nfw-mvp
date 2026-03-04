@@ -18,7 +18,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "National Fund for Women",
-  description: "Empowering women through financial support, resources, and community",
+  description:
+    "Empowering women through financial support, resources, and community",
 };
 
 export default function RootLayout({

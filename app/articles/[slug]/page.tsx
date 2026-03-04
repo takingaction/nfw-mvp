@@ -1,116 +1,117 @@
-import { createClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
-import Image from 'next/image'
-import ArticleActions from '@/components/ArticleActions'
-import type { Metadata } from 'next'
+import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
+import Image from "next/image";
+import ArticleActions from "@/components/ArticleActions";
+import type { Metadata } from "next";
 
-export async function generateMetadata({ 
-  params 
-}: { 
-  params: Promise<{ slug: string }> 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params
-  const supabase = await createClient()
-  
+  const { slug } = await params;
+  const supabase = await createClient();
+
   const { data: article } = await supabase
-    .from('articles')
-    .select('title, excerpt, meta_title, meta_description, featured_image_url')
-    .eq('slug', slug)
-    .eq('is_published', true)
-    .single()
+    .from("articles")
+    .select("title, excerpt, meta_title, meta_description, featured_image_url")
+    .eq("slug", slug)
+    .eq("is_published", true)
+    .single();
 
   if (!article) {
-    return { title: 'Article Not Found' }
+    return { title: "Article Not Found" };
   }
 
   return {
     title: article.meta_title || article.title,
-    description: article.meta_description || article.excerpt || '',
+    description: article.meta_description || article.excerpt || "",
     openGraph: {
       title: article.meta_title || article.title,
-      description: article.meta_description || article.excerpt || '',
+      description: article.meta_description || article.excerpt || "",
       images: article.featured_image_url ? [article.featured_image_url] : [],
     },
     twitter: {
-      card: 'summary_large_image',
+      card: "summary_large_image",
       title: article.meta_title || article.title,
-      description: article.meta_description || article.excerpt || '',
+      description: article.meta_description || article.excerpt || "",
       images: article.featured_image_url ? [article.featured_image_url] : [],
-    }
-  }
+    },
+  };
 }
 
-export default async function ArticlePage({ 
-  params 
-}: { 
-  params: Promise<{ slug: string }>
+export default async function ArticlePage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { slug } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { data: article, error } = await supabase
-    .from('articles')
-    .select('*')
-    .eq('slug', slug)
-    .eq('is_published', true)
-    .single()
+    .from("articles")
+    .select("*")
+    .eq("slug", slug)
+    .eq("is_published", true)
+    .single();
 
   if (error || !article) {
-    notFound()
+    notFound();
   }
 
-  let category = null
+  let category = null;
   if (article.category_id) {
     const { data: categoryData } = await supabase
-      .from('article_categories')
-      .select('*')
-      .eq('id', article.category_id)
-      .single()
-    category = categoryData
+      .from("article_categories")
+      .select("*")
+      .eq("id", article.category_id)
+      .single();
+    category = categoryData;
   }
 
-  let author = null
+  let author = null;
   if (article.author_id) {
     const { data: authorData } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', article.author_id)
-      .single()
-    author = authorData
+      .from("profiles")
+      .select("full_name")
+      .eq("id", article.author_id)
+      .single();
+    author = authorData;
   }
 
-  let userHasLiked = false
+  let userHasLiked = false;
   if (user) {
     const { data: like } = await supabase
-      .from('article_likes')
-      .select('id')
-      .eq('article_id', article.id)
-      .eq('user_id', user.id)
-      .single()
-    userHasLiked = !!like
+      .from("article_likes")
+      .select("id")
+      .eq("article_id", article.id)
+      .eq("user_id", user.id)
+      .single();
+    userHasLiked = !!like;
   }
 
   // Increment view count (fire and forget)
   supabase
-    .from('articles')
+    .from("articles")
     .update({ view_count: article.view_count + 1 })
-    .eq('id', article.id)
-    .then()
+    .eq("id", article.id)
+    .then();
 
   const { data: relatedArticles } = await supabase
-    .from('articles')
-    .select('id, title, slug, featured_image_url, excerpt, published_at')
-    .eq('category_id', article.category_id)
-    .eq('is_published', true)
-    .neq('id', article.id)
-    .order('published_at', { ascending: false })
-    .limit(3)
+    .from("articles")
+    .select("id, title, slug, featured_image_url, excerpt, published_at")
+    .eq("category_id", article.category_id)
+    .eq("is_published", true)
+    .neq("id", article.id)
+    .order("published_at", { ascending: false })
+    .limit(3);
 
   return (
     <main className="min-h-screen bg-[#f8f7fa]">
       <article className="max-w-4xl mx-auto px-8 py-12">
-
         {/* Hero Image - constrained to article body width */}
         {article.hero_image_url && (
           <div className="relative h-80 w-full rounded-xl overflow-hidden mb-8">
@@ -127,8 +128,8 @@ export default async function ArticlePage({
 
         {/* Breadcrumb Navigation */}
         <nav className="mb-6">
-          <a 
-            href="/articles" 
+          <a
+            href="/articles"
             className="text-[#2d1239]/60 hover:text-[#2d1239] font-medium flex items-center gap-2 transition-colors w-fit"
           >
             <span>←</span>
@@ -148,7 +149,7 @@ export default async function ArticlePage({
           {/* Title */}
           <h1
             className="text-4xl sm:text-5xl font-bold mb-4 text-[#2d1239]"
-            style={{ fontFamily: 'Montserrat, sans-serif' }}
+            style={{ fontFamily: "Montserrat, sans-serif" }}
           >
             {article.title}
           </h1>
@@ -156,10 +157,12 @@ export default async function ArticlePage({
           {/* Meta row */}
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3 text-[#2d1239]/50 text-sm">
-              <span>By {author?.full_name || 'NFW Team'}</span>
+              <span>By {author?.full_name || "NFW Team"}</span>
               <span>•</span>
               <span>
-                {new Date(article.published_at || article.created_at).toLocaleDateString()}
+                {new Date(
+                  article.published_at || article.created_at,
+                ).toLocaleDateString()}
               </span>
               <span>•</span>
               <span>{article.view_count} views</span>
@@ -228,12 +231,12 @@ export default async function ArticlePage({
           <div className="mt-12 pt-8 border-t border-[#2d1239]/10">
             <h2
               className="text-2xl font-bold mb-6 text-[#2d1239]"
-              style={{ fontFamily: 'Montserrat, sans-serif' }}
+              style={{ fontFamily: "Montserrat, sans-serif" }}
             >
               Related Articles
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {relatedArticles.map(related => (
+              {relatedArticles.map((related) => (
                 <a
                   key={related.id}
                   href={`/articles/${related.slug}`}
@@ -268,8 +271,7 @@ export default async function ArticlePage({
             </div>
           </div>
         )}
-
       </article>
     </main>
-  )
+  );
 }

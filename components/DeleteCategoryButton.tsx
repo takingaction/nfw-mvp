@@ -1,48 +1,50 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export default function DeleteCategoryButton({
   categoryId,
   categoryName,
-  itemCount
+  itemCount,
 }: {
-  categoryId: string
-  categoryName: string
-  itemCount: number
+  categoryId: string;
+  categoryName: string;
+  itemCount: number;
 }) {
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const router = useRouter()
-  const supabase = createClient()
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const router = useRouter();
+  const supabase = createClient();
 
   const handleDelete = async () => {
     if (itemCount > 0) {
-      alert(`Cannot delete category with ${itemCount} items. Please reassign or delete the items first.`)
-      setShowConfirm(false)
-      return
+      alert(
+        `Cannot delete category with ${itemCount} items. Please reassign or delete the items first.`,
+      );
+      setShowConfirm(false);
+      return;
     }
 
-    setDeleting(true)
+    setDeleting(true);
 
     try {
       const { error } = await supabase
-        .from('zero_dollar_categories')
+        .from("zero_dollar_categories")
         .delete()
-        .eq('id', categoryId)
+        .eq("id", categoryId);
 
-      if (error) throw error
+      if (error) throw error;
 
-      router.refresh()
-      setShowConfirm(false)
+      router.refresh();
+      setShowConfirm(false);
     } catch (err: any) {
-      alert('Error deleting category: ' + err.message)
+      alert("Error deleting category: " + err.message);
     } finally {
-      setDeleting(false)
+      setDeleting(false);
     }
-  }
+  };
 
   return (
     <>
@@ -62,7 +64,8 @@ export default function DeleteCategoryButton({
             </p>
             {itemCount > 0 && (
               <p className="text-sm text-red-600 mb-6">
-                ⚠️ This category has {itemCount} items. You must reassign or delete them first.
+                ⚠️ This category has {itemCount} items. You must reassign or
+                delete them first.
               </p>
             )}
             <div className="flex items-center gap-3">
@@ -71,7 +74,7 @@ export default function DeleteCategoryButton({
                 disabled={deleting || itemCount > 0}
                 className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium disabled:opacity-50"
               >
-                {deleting ? 'Deleting...' : 'Yes, Delete'}
+                {deleting ? "Deleting..." : "Yes, Delete"}
               </button>
               <button
                 onClick={() => setShowConfirm(false)}
@@ -85,5 +88,5 @@ export default function DeleteCategoryButton({
         </div>
       )}
     </>
-  )
+  );
 }

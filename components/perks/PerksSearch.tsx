@@ -1,62 +1,66 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Search, MapPin, Filter, X } from 'lucide-react'
+import { useState } from "react";
+import { Search, MapPin, Filter, X } from "lucide-react";
 
 interface PerksSearchProps {
-  onSearch: (params: any) => void
-  categories?: any[]
+  onSearch: (params: any) => void;
+  categories?: any[];
 }
 
-export default function PerksSearch({ onSearch, categories = [] }: PerksSearchProps) {
-  const [query, setQuery] = useState('')
-  const [postalCode, setPostalCode] = useState('')
-  const [distance, setDistance] = useState('25mi')
-  const [selectedCategory, setSelectedCategory] = useState('')
-  const [offerType, setOfferType] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
+export default function PerksSearch({
+  onSearch,
+  categories = [],
+}: PerksSearchProps) {
+  const [query, setQuery] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [distance, setDistance] = useState("25mi");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [offerType, setOfferType] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
 
   const handleSearch = () => {
-    const params: any = {}
-    
+    const params: any = {};
+
     if (query && query.trim()) {
-      params.query = query.trim()
+      params.query = query.trim();
     } else {
       if (offerType && offerType.trim()) {
-        params.offer_type = offerType
+        params.offer_type = offerType;
       }
     }
-    
+
     if (postalCode && postalCode.trim()) {
-      const cleanZip = postalCode.trim()
+      const cleanZip = postalCode.trim();
       if (/^\d{5}$/.test(cleanZip)) {
-        params.postal_code = cleanZip
-        params.distance = distance
+        params.postal_code = cleanZip;
+        params.distance = distance;
       } else {
-        alert('Please enter a valid 5-digit ZIP code')
-        return
+        alert("Please enter a valid 5-digit ZIP code");
+        return;
       }
     }
-    
+
     if (selectedCategory && selectedCategory.trim()) {
-      params.category_key = selectedCategory
+      params.category_key = selectedCategory;
     }
-    
-    console.log('Search params being sent:', params)
-    onSearch(params)
-  }
+
+    console.log("Search params being sent:", params);
+    onSearch(params);
+  };
 
   const clearFilters = () => {
-    setQuery('')
-    setPostalCode('')
-    setDistance('25mi')
-    setSelectedCategory('')
-    setOfferType('')
-    onSearch({})
-  }
+    setQuery("");
+    setPostalCode("");
+    setDistance("25mi");
+    setSelectedCategory("");
+    setOfferType("");
+    onSearch({});
+  };
 
   // Reusable input class
-  const inputClass = "w-full px-3 py-2.5 border border-[#2d1239]/20 rounded-lg text-[#2d1239] placeholder-[#2d1239]/40 bg-white focus:outline-none focus:ring-2 focus:ring-[#BCAFCF] focus:border-transparent transition-all"
+  const inputClass =
+    "w-full px-3 py-2.5 border border-[#2d1239]/20 rounded-lg text-[#2d1239] placeholder-[#2d1239]/40 bg-white focus:outline-none focus:ring-2 focus:ring-[#BCAFCF] focus:border-transparent transition-all";
 
   return (
     <div>
@@ -69,24 +73,24 @@ export default function PerksSearch({ onSearch, categories = [] }: PerksSearchPr
             placeholder="Search for restaurants, activities, stores..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            onKeyPress={(e) => e.key === "Enter" && handleSearch()}
             className="w-full pl-10 pr-4 py-2.5 border border-[#2d1239]/20 rounded-lg text-[#2d1239] placeholder-[#2d1239]/40 bg-white focus:outline-none focus:ring-2 focus:ring-[#BCAFCF] focus:border-transparent transition-all"
           />
         </div>
-        
+
         <button
           onClick={handleSearch}
           className="px-5 py-2.5 bg-[#2d1239] text-white rounded-lg hover:bg-[#2d1239]/90 transition-colors font-medium"
         >
           Search
         </button>
-        
+
         <button
           onClick={() => setShowFilters(!showFilters)}
           className={`px-4 py-2.5 border rounded-lg transition-colors flex items-center gap-2 font-medium ${
-            showFilters 
-              ? 'border-[#BCAFCF] bg-[#BCAFCF]/10 text-[#2d1239]' 
-              : 'border-[#2d1239]/20 text-[#2d1239]/70 hover:bg-[#2d1239]/5'
+            showFilters
+              ? "border-[#BCAFCF] bg-[#BCAFCF]/10 text-[#2d1239]"
+              : "border-[#2d1239]/20 text-[#2d1239]/70 hover:bg-[#2d1239]/5"
           }`}
         >
           <Filter className="w-5 h-5" />
@@ -171,7 +175,9 @@ export default function PerksSearch({ onSearch, categories = [] }: PerksSearchPr
           {/* Note about search limitations */}
           {query && offerType && (
             <div className="bg-[#fdf493]/20 border border-[#fdf493] rounded-xl p-3 text-sm text-[#2d1239]">
-              <strong>Note:</strong> When searching by keyword, offer type filter is automatically disabled. Clear your search to use offer type filtering.
+              <strong>Note:</strong> When searching by keyword, offer type
+              filter is automatically disabled. Clear your search to use offer
+              type filtering.
             </div>
           )}
 
@@ -188,5 +194,5 @@ export default function PerksSearch({ onSearch, categories = [] }: PerksSearchPr
         </div>
       )}
     </div>
-  )
+  );
 }

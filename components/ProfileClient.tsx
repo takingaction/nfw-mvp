@@ -1,69 +1,69 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 type ShippingAddress = {
-  street: string
-  city: string
-  state: string
-  zip: string
-  country: string
-}
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
+};
 
 export default function ProfileClient({
   profile,
-  userEmail
+  userEmail,
 }: {
-  profile: any
-  userEmail: string
+  profile: any;
+  userEmail: string;
 }) {
-  const router = useRouter()
-  const supabase = createClient()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
+  const router = useRouter();
+  const supabase = createClient();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    full_name: profile?.full_name || '',
-    phone: profile?.phone || '',
-  })
+    full_name: profile?.full_name || "",
+    phone: profile?.phone || "",
+  });
 
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
-    street: profile?.shipping_address?.street || '',
-    city: profile?.shipping_address?.city || '',
-    state: profile?.shipping_address?.state || '',
-    zip: profile?.shipping_address?.zip || '',
-    country: profile?.shipping_address?.country || 'USA',
-  })
+    street: profile?.shipping_address?.street || "",
+    city: profile?.shipping_address?.city || "",
+    state: profile?.shipping_address?.state || "",
+    zip: profile?.shipping_address?.zip || "",
+    country: profile?.shipping_address?.country || "USA",
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setSuccess(null)
-    setLoading(true)
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
 
     try {
       const { error: updateError } = await supabase
-        .from('profiles')
+        .from("profiles")
         .update({
           full_name: formData.full_name,
           phone: formData.phone,
           shipping_address: shippingAddress,
         })
-        .eq('id', profile.id)
+        .eq("id", profile.id);
 
-      if (updateError) throw updateError
+      if (updateError) throw updateError;
 
-      setSuccess('Profile updated successfully!')
-      router.refresh()
+      setSuccess("Profile updated successfully!");
+      router.refresh();
     } catch (err: any) {
-      setError(err.message || 'Error updating profile')
+      setError(err.message || "Error updating profile");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -97,7 +97,9 @@ export default function ProfileClient({
               disabled
               className="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-500"
             />
-            <p className="text-sm text-gray-500 mt-1">Email cannot be changed</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Email cannot be changed
+            </p>
           </div>
 
           {/* Full Name */}
@@ -109,7 +111,9 @@ export default function ProfileClient({
               type="text"
               required
               value={formData.full_name}
-              onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, full_name: e.target.value }))
+              }
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
               placeholder="Jane Doe"
             />
@@ -123,7 +127,9 @@ export default function ProfileClient({
             <input
               type="tel"
               value={formData.phone}
-              onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, phone: e.target.value }))
+              }
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
               placeholder="(555) 123-4567"
             />
@@ -146,7 +152,12 @@ export default function ProfileClient({
               type="text"
               required
               value={shippingAddress.street}
-              onChange={(e) => setShippingAddress(prev => ({ ...prev, street: e.target.value }))}
+              onChange={(e) =>
+                setShippingAddress((prev) => ({
+                  ...prev,
+                  street: e.target.value,
+                }))
+              }
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
               placeholder="123 Main Street, Apt 4B"
             />
@@ -162,7 +173,12 @@ export default function ProfileClient({
                 type="text"
                 required
                 value={shippingAddress.city}
-                onChange={(e) => setShippingAddress(prev => ({ ...prev, city: e.target.value }))}
+                onChange={(e) =>
+                  setShippingAddress((prev) => ({
+                    ...prev,
+                    city: e.target.value,
+                  }))
+                }
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="New York"
               />
@@ -176,7 +192,12 @@ export default function ProfileClient({
                 type="text"
                 required
                 value={shippingAddress.state}
-                onChange={(e) => setShippingAddress(prev => ({ ...prev, state: e.target.value }))}
+                onChange={(e) =>
+                  setShippingAddress((prev) => ({
+                    ...prev,
+                    state: e.target.value,
+                  }))
+                }
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="NY"
                 maxLength={2}
@@ -191,7 +212,12 @@ export default function ProfileClient({
                 type="text"
                 required
                 value={shippingAddress.zip}
-                onChange={(e) => setShippingAddress(prev => ({ ...prev, zip: e.target.value }))}
+                onChange={(e) =>
+                  setShippingAddress((prev) => ({
+                    ...prev,
+                    zip: e.target.value,
+                  }))
+                }
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="10001"
               />
@@ -206,7 +232,12 @@ export default function ProfileClient({
             <select
               required
               value={shippingAddress.country}
-              onChange={(e) => setShippingAddress(prev => ({ ...prev, country: e.target.value }))}
+              onChange={(e) =>
+                setShippingAddress((prev) => ({
+                  ...prev,
+                  country: e.target.value,
+                }))
+              }
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="USA">United States</option>
@@ -223,7 +254,7 @@ export default function ProfileClient({
             disabled={loading}
             className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
           >
-            {loading ? 'Saving...' : 'Save Changes'}
+            {loading ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </form>
@@ -253,5 +284,5 @@ export default function ProfileClient({
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,32 +1,35 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { Gift, Store, Users } from 'lucide-react'
+import Link from "next/link";
+import { Gift, Store, Users } from "lucide-react";
 
 export default function LittleGoesLongWay() {
   const features = [
     {
       icon: Gift,
-      title: 'Perks Platform',
-      description: 'Save hundreds on everyday purchases with exclusive member discounts',
-      color: 'from-[#d4f1ad] to-[#b2d1ee]',
-      iconColor: 'text-[#2d1239]'
+      title: "Perks Platform",
+      description:
+        "Save hundreds on everyday purchases with exclusive member discounts",
+      color: "from-[#d4f1ad] to-[#b2d1ee]",
+      iconColor: "text-[#2d1239]",
     },
     {
       icon: Store,
-      title: 'Zero Dollar Store',
-      description: 'Claim free essentials whenever you need them, no questions asked',
-      color: 'from-[#b2d1ee] to-[#bcafcf]',
-      iconColor: 'text-[#2d1239]'
+      title: "Zero Dollar Store",
+      description:
+        "Claim free essentials whenever you need them, no questions asked",
+      color: "from-[#b2d1ee] to-[#bcafcf]",
+      iconColor: "text-[#2d1239]",
     },
     {
       icon: Users,
-      title: 'Community',
-      description: 'Connect with women who understand your journey and celebrate your wins',
-      color: 'from-[#fdf493] to-[#d4f1ad]',
-      iconColor: 'text-[#2d1239]'
-    }
-  ]
+      title: "Community",
+      description:
+        "Connect with women who understand your journey and celebrate your wins",
+      color: "from-[#fdf493] to-[#d4f1ad]",
+      iconColor: "text-[#2d1239]",
+    },
+  ];
 
   return (
     <div className="relative bg-white py-16 lg:pt-24 pb-40 overflow-hidden">
@@ -51,7 +54,8 @@ export default function LittleGoesLongWay() {
             Support that feels good & does good.
           </p>
           <p className="text-lg text-[#2d1239]/70 mb-8 max-w-2xl mx-auto">
-            Membership means getting help when you need it, on your terms. You control what benefits you use and when, no pressure, no judgment.
+            Membership means getting help when you need it, on your terms. You
+            control what benefits you use and when, no pressure, no judgment.
           </p>
           <Link
             href="/auth/sign-up"
@@ -75,27 +79,29 @@ export default function LittleGoesLongWay() {
           <div className="relative bg-white/40 backdrop-blur-md rounded-3xl p-8 lg:p-12 border-2 border-white/50 shadow-2xl transform rotate-1 hover:rotate-1 transition-all duration-500">
             {/* Subtle gradient overlay inside glass card */}
             <div className="absolute inset-0 bg-gradient-to-br from-[#fffef1]/10 via-transparent to-[#b2d1ee]/10 rounded-3xl pointer-events-none"></div>
-            
+
             {/* Decorative corner accent */}
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/20 rounded-full -mr-12 -mt-12"></div>
-            
+
             {/* Features Grid */}
             <div className="relative grid md:grid-cols-3 gap-8 lg:gap-12">
               {features.map((feature, index) => {
-                const IconComponent = feature.icon
+                const IconComponent = feature.icon;
                 return (
                   <div key={index} className="text-center group">
-                    <div className={`inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br ${feature.color} rounded-full mb-6 shadow-lg group-hover:scale-110 group-hover:rotate-12 transition-all duration-300`}>
-                      <IconComponent className={`w-10 h-10 ${feature.iconColor}`} />
+                    <div
+                      className={`inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br ${feature.color} rounded-full mb-6 shadow-lg group-hover:scale-110 group-hover:rotate-12 transition-all duration-300`}
+                    >
+                      <IconComponent
+                        className={`w-10 h-10 ${feature.iconColor}`}
+                      />
                     </div>
                     <h3 className="text-xl font-bold text-[#2d1239] mb-3">
                       {feature.title}
                     </h3>
-                    <p className="text-[#2d1239]/70">
-                      {feature.description}
-                    </p>
+                    <p className="text-[#2d1239]/70">{feature.description}</p>
                   </div>
-                )
+                );
               })}
             </div>
           </div>
@@ -109,10 +115,18 @@ export default function LittleGoesLongWay() {
 
       {/* Wave Divider at Bottom */}
       <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none">
-        <svg className="relative block w-full h-24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
-          <path d="M985.66,92.83C906.67,72,823.78,31,743.84,14.19c-82.26-17.34-168.06-16.33-250.45.39-57.84,11.73-114,31.07-172,41.86A600.21,600.21,0,0,1,0,27.35V120H1200V95.8C1132.19,118.92,1055.71,111.31,985.66,92.83Z" fill="#BCAFCF"></path>
+        <svg
+          className="relative block w-full h-24"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 1200 120"
+          preserveAspectRatio="none"
+        >
+          <path
+            d="M985.66,92.83C906.67,72,823.78,31,743.84,14.19c-82.26-17.34-168.06-16.33-250.45.39-57.84,11.73-114,31.07-172,41.86A600.21,600.21,0,0,1,0,27.35V120H1200V95.8C1132.19,118.92,1055.71,111.31,985.66,92.83Z"
+            fill="#BCAFCF"
+          ></path>
         </svg>
       </div>
     </div>
-  )
+  );
 }

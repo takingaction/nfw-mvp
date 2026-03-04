@@ -6,10 +6,11 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       auth: {
-        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        storage:
+          typeof window !== "undefined" ? window.localStorage : undefined,
         persistSession: true,
         detectSessionInUrl: true,
-      }
-    }
+      },
+    },
   );
 }

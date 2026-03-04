@@ -1,47 +1,49 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import DeleteCategoryButton from '@/components/DeleteCategoryButton'
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import DeleteCategoryButton from "@/components/DeleteCategoryButton";
 
 export default async function AdminCategoriesPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/auth/login')
+    redirect("/auth/login");
   }
 
   // Check if user is admin
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
 
   if (!profile?.is_admin) {
-    redirect('/')
+    redirect("/");
   }
 
   // Fetch all categories
   const { data: categories } = await supabase
-    .from('zero_dollar_categories')
-    .select('*')
-    .order('display_order', { ascending: true })
+    .from("zero_dollar_categories")
+    .select("*")
+    .order("display_order", { ascending: true });
 
   // Get item count for each category
   const categoriesWithCounts = await Promise.all(
     (categories || []).map(async (category) => {
       const { count } = await supabase
-        .from('zero_dollar_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('category_id', category.id)
-      
+        .from("zero_dollar_items")
+        .select("*", { count: "exact", head: true })
+        .eq("category_id", category.id);
+
       return {
         ...category,
-        item_count: count || 0
-      }
-    })
-  )
+        item_count: count || 0,
+      };
+    }),
+  );
 
   return (
     <main className="min-h-screen p-8 bg-gray-50">
@@ -49,7 +51,9 @@ export default async function AdminCategoriesPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl font-bold">Manage Categories</h1>
-            <p className="text-gray-600 mt-2">Organize your store items by category</p>
+            <p className="text-gray-600 mt-2">
+              Organize your store items by category
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <Link
@@ -90,7 +94,7 @@ export default async function AdminCategoriesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {categoriesWithCounts.map(category => (
+              {categoriesWithCounts.map((category) => (
                 <tr key={category.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {category.display_order}
@@ -98,7 +102,9 @@ export default async function AdminCategoriesPage() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <span className="text-2xl">{category.icon}</span>
-                      <span className="font-medium text-gray-900">{category.name}</span>
+                      <span className="font-medium text-gray-900">
+                        {category.name}
+                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
@@ -115,8 +121,8 @@ export default async function AdminCategoriesPage() {
                       >
                         Edit
                       </Link>
-                      <DeleteCategoryButton 
-                        categoryId={category.id} 
+                      <DeleteCategoryButton
+                        categoryId={category.id}
                         categoryName={category.name}
                         itemCount={category.item_count}
                       />
@@ -130,7 +136,9 @@ export default async function AdminCategoriesPage() {
           {categoriesWithCounts.length === 0 && (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">📁</div>
-              <p className="text-gray-500 mb-4">No categories yet. Create your first category!</p>
+              <p className="text-gray-500 mb-4">
+                No categories yet. Create your first category!
+              </p>
               <Link
                 href="/admin/categories/new"
                 className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
@@ -142,5 +150,5 @@ export default async function AdminCategoriesPage() {
         </div>
       </div>
     </main>
-  )
+  );
 }

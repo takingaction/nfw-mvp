@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { Check, Sparkles } from 'lucide-react'
+import Link from "next/link";
+import { Check, Sparkles } from "lucide-react";
 
 export default function Hero() {
   return (
@@ -15,13 +15,14 @@ export default function Hero() {
 
       <div className="relative max-w-7xl mx-auto">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center px-4 sm:px-6 lg:px-8 py-12">
-          
           {/* Left Column - Text Content */}
           <div className="text-white space-y-6">
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#bcafcf]/20 border border-[#bcafcf]/30 rounded-full text-sm">
               <Sparkles className="w-4 h-4 text-[#fdf493]" />
-              <span className="text-[#fffef1]">Join thousands of members nationwide</span>
+              <span className="text-[#fffef1]">
+                Join thousands of members nationwide
+              </span>
             </div>
 
             {/* Headline */}
@@ -35,7 +36,8 @@ export default function Hero() {
 
             {/* Subheadline */}
             <p className="text-lg sm:text-xl text-[#bcafcf] max-w-xl">
-              Join the membership community that champions American women through direct grants, exclusive perks, and real support.
+              Join the membership community that champions American women
+              through direct grants, exclusive perks, and real support.
             </p>
 
             {/* Benefits Checklist - TIGHTENED SPACING */}
@@ -44,19 +46,25 @@ export default function Hero() {
                 <div className="flex-shrink-0 w-6 h-6 bg-[#d4f1ad] rounded-full flex items-center justify-center">
                   <Check className="w-4 h-4 text-[#2d1239]" />
                 </div>
-                <span className="text-[#fffef1] font-medium">Apply for microgrants up to $1,000</span>
+                <span className="text-[#fffef1] font-medium">
+                  Apply for microgrants up to $1,000
+                </span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex-shrink-0 w-6 h-6 bg-[#fdf493] rounded-full flex items-center justify-center">
                   <Check className="w-4 h-4 text-[#2d1239]" />
                 </div>
-                <span className="text-[#fffef1] font-medium">Save hundreds with exclusive perks & discounts</span>
+                <span className="text-[#fffef1] font-medium">
+                  Save hundreds with exclusive perks & discounts
+                </span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex-shrink-0 w-6 h-6 bg-[#b2d1ee] rounded-full flex items-center justify-center">
                   <Check className="w-4 h-4 text-[#2d1239]" />
                 </div>
-                <span className="text-[#fffef1] font-medium">Access the Zero Dollar Store for free essentials</span>
+                <span className="text-[#fffef1] font-medium">
+                  Access the Zero Dollar Store for free essentials
+                </span>
               </div>
             </div>
 
@@ -84,7 +92,7 @@ export default function Hero() {
             <div className="relative w-full max-w-md mx-auto">
               {/* Large decorative gradient circle */}
               <div className="absolute inset-0 bg-gradient-to-br from-[#bcafcf] to-[#fdf493] rounded-full opacity-30 blur-3xl"></div>
-              
+
               {/* Frosted glass card - slightly rotated */}
               <div className="relative bg-white/10 backdrop-blur-md rounded-3xl p-6 lg:p-8 border-2 border-white/20 shadow-2xl transform rotate-2 hover:rotate-2 transition-all duration-500">
                 {/* Photo */}
@@ -94,8 +102,9 @@ export default function Hero() {
                     alt="Diverse group of women supporting each other"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                      e.currentTarget.parentElement!.style.background = 'linear-gradient(135deg, #d4f1ad 0%, #fdf493 50%, #b2d1ee 100%)'
+                      e.currentTarget.style.display = "none";
+                      e.currentTarget.parentElement!.style.background =
+                        "linear-gradient(135deg, #d4f1ad 0%, #fdf493 50%, #b2d1ee 100%)";
                     }}
                   />
                 </div>
@@ -108,7 +117,8 @@ export default function Hero() {
                     Real results.
                   </h3>
                   <p className="text-[#bcafcf] text-base lg:text-lg leading-relaxed">
-                    Join thousands of women who've already transformed their lives with NFW.
+                    Join thousands of women who've already transformed their
+                    lives with NFW.
                   </p>
                 </div>
 
@@ -125,5 +135,5 @@ export default function Hero() {
         </div>
       </div>
     </div>
-  )
+  );
 }

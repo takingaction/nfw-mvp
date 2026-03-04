@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
+import Link from "next/link";
 
 export default function SmallWins() {
   return (
@@ -14,7 +14,6 @@ export default function SmallWins() {
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          
           {/* Left Column - Text */}
           <div className="space-y-6">
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#2d1239] font-bold">
@@ -44,7 +43,7 @@ export default function SmallWins() {
                     alt="NFW Member"
                     className="w-full h-full object-cover rounded"
                     onError={(e) => {
-                      e.currentTarget.style.display = 'none'
+                      e.currentTarget.style.display = "none";
                     }}
                   />
                 </div>
@@ -58,7 +57,7 @@ export default function SmallWins() {
                     alt="NFW Member"
                     className="w-full h-full object-cover rounded"
                     onError={(e) => {
-                      e.currentTarget.style.display = 'none'
+                      e.currentTarget.style.display = "none";
                     }}
                   />
                 </div>
@@ -72,7 +71,7 @@ export default function SmallWins() {
                     alt="NFW Member"
                     className="w-full h-full object-cover rounded"
                     onError={(e) => {
-                      e.currentTarget.style.display = 'none'
+                      e.currentTarget.style.display = "none";
                     }}
                   />
                 </div>
@@ -86,7 +85,7 @@ export default function SmallWins() {
                     alt="NFW Member"
                     className="w-full h-full object-cover rounded"
                     onError={(e) => {
-                      e.currentTarget.style.display = 'none'
+                      e.currentTarget.style.display = "none";
                     }}
                   />
                 </div>
@@ -104,5 +103,5 @@ export default function SmallWins() {
       <div className="absolute top-10 right-1/4 w-12 h-12 bg-[#fdf493] rounded-full opacity-30"></div>
       <div className="absolute bottom-20 left-10 w-16 h-16 bg-[#bcafcf] rounded-full opacity-30"></div>
     </div>
-  )
+  );
 }

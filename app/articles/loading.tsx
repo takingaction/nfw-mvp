@@ -6,5 +6,5 @@ export default function Loading() {
         <p className="text-gray-600">Loading articles...</p>
       </div>
     </main>
-  )
+  );
 }

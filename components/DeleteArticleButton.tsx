@@ -1,40 +1,40 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export default function DeleteArticleButton({
   articleId,
-  articleTitle
+  articleTitle,
 }: {
-  articleId: string
-  articleTitle: string
+  articleId: string;
+  articleTitle: string;
 }) {
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const router = useRouter()
-  const supabase = createClient()
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const router = useRouter();
+  const supabase = createClient();
 
   const handleDelete = async () => {
-    setDeleting(true)
+    setDeleting(true);
 
     try {
       const { error } = await supabase
-        .from('articles')
+        .from("articles")
         .delete()
-        .eq('id', articleId)
+        .eq("id", articleId);
 
-      if (error) throw error
+      if (error) throw error;
 
-      router.refresh()
-      setShowConfirm(false)
+      router.refresh();
+      setShowConfirm(false);
     } catch (err: any) {
-      alert('Error deleting article: ' + err.message)
+      alert("Error deleting article: " + err.message);
     } finally {
-      setDeleting(false)
+      setDeleting(false);
     }
-  }
+  };
 
   return (
     <>
@@ -50,7 +50,8 @@ export default function DeleteArticleButton({
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-xl font-bold mb-4">Delete Article?</h3>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to delete "<strong>{articleTitle}</strong>"? This action cannot be undone.
+              Are you sure you want to delete "<strong>{articleTitle}</strong>"?
+              This action cannot be undone.
             </p>
             <div className="flex items-center gap-3">
               <button
@@ -58,7 +59,7 @@ export default function DeleteArticleButton({
                 disabled={deleting}
                 className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium disabled:opacity-50"
               >
-                {deleting ? 'Deleting...' : 'Yes, Delete'}
+                {deleting ? "Deleting..." : "Yes, Delete"}
               </button>
               <button
                 onClick={() => setShowConfirm(false)}
@@ -72,5 +73,5 @@ export default function DeleteArticleButton({
         </div>
       )}
     </>
-  )
+  );
 }

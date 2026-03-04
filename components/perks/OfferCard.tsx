@@ -1,17 +1,17 @@
-'use client'
+"use client";
 
-import { MapPin, Clock } from 'lucide-react'
-import Link from 'next/link'
-import { useEffect, useRef } from 'react'
+import { MapPin, Clock } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useRef } from "react";
 
 interface OfferCardProps {
-  offer: any
+  offer: any;
 }
 
 export default function OfferCard({ offer }: OfferCardProps) {
-  const titleRef = useRef<HTMLHeadingElement>(null)
-  const storeNameRef = useRef<HTMLDivElement>(null)
-  
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const storeNameRef = useRef<HTMLDivElement>(null);
+
   const {
     offer_key,
     title,
@@ -23,42 +23,47 @@ export default function OfferCard({ offer }: OfferCardProps) {
     physical_location,
     search_distance,
     redemption_methods,
-    categories
-  } = offer
+    categories,
+  } = offer;
 
   useEffect(() => {
     if (titleRef.current && title) {
-      const textarea = document.createElement('textarea')
-      textarea.innerHTML = title
-      titleRef.current.innerHTML = textarea.value
+      const textarea = document.createElement("textarea");
+      textarea.innerHTML = title;
+      titleRef.current.innerHTML = textarea.value;
     }
-    
+
     if (storeNameRef.current && offer_store?.name) {
-      const textarea = document.createElement('textarea')
-      textarea.innerHTML = offer_store.name
-      storeNameRef.current.innerHTML = textarea.value
+      const textarea = document.createElement("textarea");
+      textarea.innerHTML = offer_store.name;
+      storeNameRef.current.innerHTML = textarea.value;
     }
-  }, [title, offer_store?.name])
+  }, [title, offer_store?.name]);
 
   const formatDistance = (distance: number) => {
-    if (!distance) return null
-    return `${distance.toFixed(1)} mi`
-  }
+    if (!distance) return null;
+    return `${distance.toFixed(1)} mi`;
+  };
 
   const formatExpiry = (date: string) => {
-    if (!date) return null
-    const expiryDate = new Date(date)
-    const now = new Date()
-    const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    
-    if (daysUntilExpiry < 0) return 'Expired'
-    if (daysUntilExpiry === 0) return 'Today'
-    if (daysUntilExpiry === 1) return 'Tomorrow'
-    if (daysUntilExpiry <= 7) return `${daysUntilExpiry} days`
-    return expiryDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  }
+    if (!date) return null;
+    const expiryDate = new Date(date);
+    const now = new Date();
+    const daysUntilExpiry = Math.ceil(
+      (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+    );
 
-  const imageUrl = offer_photo_url || logo_url
+    if (daysUntilExpiry < 0) return "Expired";
+    if (daysUntilExpiry === 0) return "Today";
+    if (daysUntilExpiry === 1) return "Tomorrow";
+    if (daysUntilExpiry <= 7) return `${daysUntilExpiry} days`;
+    return expiryDate.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const imageUrl = offer_photo_url || logo_url;
 
   return (
     <Link href={`/perks/${offer_key}`} className="block h-full">
@@ -80,7 +85,7 @@ export default function OfferCard({ offer }: OfferCardProps) {
 
           <div className="flex-1 min-w-0 flex flex-col">
             {offer_store?.name && (
-              <div 
+              <div
                 ref={storeNameRef}
                 className="text-sm font-semibold text-[#2d1239] mb-1 break-words [&_sup]:text-[0.6em] [&_sup]:align-super"
               >
@@ -88,7 +93,7 @@ export default function OfferCard({ offer }: OfferCardProps) {
               </div>
             )}
 
-            <h3 
+            <h3
               ref={titleRef}
               className="text-[#2d1239]/70 text-sm mb-2 line-clamp-2 leading-tight flex-1 [&_sup]:text-[0.6em] [&_sup]:align-super"
             >
@@ -102,31 +107,33 @@ export default function OfferCard({ offer }: OfferCardProps) {
                   {savings_amount}
                 </span>
               )}
-              
-              {categories && categories.slice(0, 1).map((cat: any) => (
-                <span
-                  key={cat.category_key}
-                  className="text-xs bg-[#f8f7fa] text-[#2d1239]/60 px-2 py-0.5 rounded-full"
-                >
-                  {cat.category_name}
-                </span>
-              ))}
+
+              {categories &&
+                categories.slice(0, 1).map((cat: any) => (
+                  <span
+                    key={cat.category_key}
+                    className="text-xs bg-[#f8f7fa] text-[#2d1239]/60 px-2 py-0.5 rounded-full"
+                  >
+                    {cat.category_name}
+                  </span>
+                ))}
             </div>
 
             {/* Redemption Type Row - Distinct Style */}
             {redemption_methods && redemption_methods.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                {redemption_methods.includes('link') && (
+                {redemption_methods.includes("link") && (
                   <span className="text-xs bg-[#2d1239] text-white px-2.5 py-0.5 rounded font-medium">
                     Online
                   </span>
                 )}
-                {(redemption_methods.includes('instore') || redemption_methods.includes('instore_print')) && (
+                {(redemption_methods.includes("instore") ||
+                  redemption_methods.includes("instore_print")) && (
                   <span className="text-xs bg-[#2d1239] text-white px-2.5 py-0.5 rounded font-medium">
                     In-Store
                   </span>
                 )}
-                {redemption_methods.includes('call') && (
+                {redemption_methods.includes("call") && (
                   <span className="text-xs bg-[#2d1239] text-white px-2.5 py-0.5 rounded font-medium">
                     Call
                   </span>
@@ -143,7 +150,7 @@ export default function OfferCard({ offer }: OfferCardProps) {
                   {search_distance && ` · ${formatDistance(search_distance)}`}
                 </span>
               )}
-              
+
               {expires_on && (
                 <span className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
@@ -155,5 +162,5 @@ export default function OfferCard({ offer }: OfferCardProps) {
         </div>
       </div>
     </Link>
-  )
+  );
 }

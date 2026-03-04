@@ -1,59 +1,62 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import ImageUpload from './ImageUpload'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import ImageUpload from "./ImageUpload";
 
 type Category = {
-  id: string
-  name: string
-  slug: string
-}
+  id: string;
+  name: string;
+  slug: string;
+};
 
 type Variant = {
-  name: string
-  options: string[]
-  optionsInput?: string
-}
+  name: string;
+  options: string[];
+  optionsInput?: string;
+};
 
 export default function ItemForm({
   categories,
-  item
+  item,
 }: {
-  categories: Category[]
-  item?: any
+  categories: Category[];
+  item?: any;
 }) {
-  const router = useRouter()
-  const supabase = createClient()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter();
+  const supabase = createClient();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    name: item?.name || '',
-    description: item?.description || '',
-    image_url: item?.image_url || '',
-    category_id: item?.category_id || '',
+    name: item?.name || "",
+    description: item?.description || "",
+    image_url: item?.image_url || "",
+    category_id: item?.category_id || "",
     quantity_available: item?.quantity_available || 0,
     max_claims_per_member: item?.max_claims_per_member || 1,
     is_active: item?.is_active ?? true,
-  })
+  });
 
   const [variants, setVariants] = useState<Variant[]>(
     item?.variants?.map((v: any) => ({
       ...v,
-      optionsInput: v.options.join(', ')
-    })) || []
-  )
+      optionsInput: v.options.join(", "),
+    })) || [],
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setLoading(true)
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
 
     try {
       // Clean up variants before saving (remove optionsInput)
-      const cleanVariants = variants.map(({ name, options }) => ({ name, options }))
+      const cleanVariants = variants.map(({ name, options }) => ({
+        name,
+        options,
+      }));
 
       const itemData = {
         name: formData.name,
@@ -61,60 +64,62 @@ export default function ItemForm({
         image_url: formData.image_url || null,
         category_id: formData.category_id || null,
         quantity_available: parseInt(formData.quantity_available.toString()),
-        max_claims_per_member: parseInt(formData.max_claims_per_member.toString()),
+        max_claims_per_member: parseInt(
+          formData.max_claims_per_member.toString(),
+        ),
         variants: cleanVariants.length > 0 ? cleanVariants : null,
         is_active: formData.is_active,
-      }
+      };
 
       if (item) {
         // Update existing item
         const { error: updateError } = await supabase
-          .from('zero_dollar_items')
+          .from("zero_dollar_items")
           .update(itemData)
-          .eq('id', item.id)
+          .eq("id", item.id);
 
-        if (updateError) throw updateError
+        if (updateError) throw updateError;
       } else {
         // Create new item
         const { error: insertError } = await supabase
-          .from('zero_dollar_items')
-          .insert(itemData)
+          .from("zero_dollar_items")
+          .insert(itemData);
 
-        if (insertError) throw insertError
+        if (insertError) throw insertError;
       }
 
-      router.push('/admin/items')
-      router.refresh()
+      router.push("/admin/items");
+      router.refresh();
     } catch (err: any) {
-      setError(err.message || 'An error occurred')
+      setError(err.message || "An error occurred");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const addVariant = () => {
-    setVariants([...variants, { name: '', options: [], optionsInput: '' }])
-  }
+    setVariants([...variants, { name: "", options: [], optionsInput: "" }]);
+  };
 
   const removeVariant = (index: number) => {
-    setVariants(variants.filter((_, i) => i !== index))
-  }
+    setVariants(variants.filter((_, i) => i !== index));
+  };
 
   const updateVariantName = (index: number, name: string) => {
-    const updated = [...variants]
-    updated[index].name = name
-    setVariants(updated)
-  }
+    const updated = [...variants];
+    updated[index].name = name;
+    setVariants(updated);
+  };
 
   const updateVariantOptions = (index: number, input: string) => {
-    const updated = [...variants]
-    updated[index].optionsInput = input
+    const updated = [...variants];
+    updated[index].optionsInput = input;
     updated[index].options = input
-      .split(',')
-      .map(o => o.trim())
-      .filter(o => o.length > 0)
-    setVariants(updated)
-  }
+      .split(",")
+      .map((o) => o.trim())
+      .filter((o) => o.length > 0);
+    setVariants(updated);
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -133,7 +138,9 @@ export default function ItemForm({
           type="text"
           required
           value={formData.name}
-          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, name: e.target.value }))
+          }
           className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
           placeholder="e.g., Winter Coat, Laptop, Gift Card"
         />
@@ -146,7 +153,9 @@ export default function ItemForm({
         </label>
         <textarea
           value={formData.description}
-          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, description: e.target.value }))
+          }
           rows={4}
           className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
           placeholder="Describe the item, its features, and any important details"
@@ -157,7 +166,7 @@ export default function ItemForm({
       <ImageUpload
         label="Item Image"
         currentUrl={formData.image_url}
-        onUpload={(url) => setFormData(prev => ({ ...prev, image_url: url }))}
+        onUpload={(url) => setFormData((prev) => ({ ...prev, image_url: url }))}
         bucket="store-items"
       />
 
@@ -169,11 +178,13 @@ export default function ItemForm({
         <select
           required
           value={formData.category_id}
-          onChange={(e) => setFormData(prev => ({ ...prev, category_id: e.target.value }))}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, category_id: e.target.value }))
+          }
           className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
         >
           <option value="">Select a category</option>
-          {categories.map(category => (
+          {categories.map((category) => (
             <option key={category.id} value={category.id}>
               {category.name}
             </option>
@@ -192,7 +203,12 @@ export default function ItemForm({
             required
             min="0"
             value={formData.quantity_available}
-            onChange={(e) => setFormData(prev => ({ ...prev, quantity_available: parseInt(e.target.value) || 0 }))}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                quantity_available: parseInt(e.target.value) || 0,
+              }))
+            }
             className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
           />
           <p className="text-sm text-gray-500 mt-1">Total items in stock</p>
@@ -207,10 +223,17 @@ export default function ItemForm({
             required
             min="1"
             value={formData.max_claims_per_member}
-            onChange={(e) => setFormData(prev => ({ ...prev, max_claims_per_member: parseInt(e.target.value) || 1 }))}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                max_claims_per_member: parseInt(e.target.value) || 1,
+              }))
+            }
             className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
           />
-          <p className="text-sm text-gray-500 mt-1">How many each member can claim</p>
+          <p className="text-sm text-gray-500 mt-1">
+            How many each member can claim
+          </p>
         </div>
       </div>
 
@@ -219,7 +242,9 @@ export default function ItemForm({
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold">Variants (Optional)</h3>
-            <p className="text-sm text-gray-500">Add size, color, or other options</p>
+            <p className="text-sm text-gray-500">
+              Add size, color, or other options
+            </p>
           </div>
           <button
             type="button"
@@ -252,13 +277,16 @@ export default function ItemForm({
                   </label>
                   <input
                     type="text"
-                    value={variant.optionsInput || ''}
-                    onChange={(e) => updateVariantOptions(index, e.target.value)}
+                    value={variant.optionsInput || ""}
+                    onChange={(e) =>
+                      updateVariantOptions(index, e.target.value)
+                    }
                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="Small, Medium, Large, X-Large"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Separate each option with a comma (e.g., Small, Medium, Large)
+                    Separate each option with a comma (e.g., Small, Medium,
+                    Large)
                   </p>
                 </div>
               </div>
@@ -275,7 +303,8 @@ export default function ItemForm({
 
         {variants.length === 0 && (
           <p className="text-gray-500 text-sm italic">
-            No variants added. Click "Add Variant" to add size, color, or other options.
+            No variants added. Click "Add Variant" to add size, color, or other
+            options.
           </p>
         )}
       </div>
@@ -286,10 +315,15 @@ export default function ItemForm({
           type="checkbox"
           id="is_active"
           checked={formData.is_active}
-          onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, is_active: e.target.checked }))
+          }
           className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
         />
-        <label htmlFor="is_active" className="text-sm font-medium text-gray-700">
+        <label
+          htmlFor="is_active"
+          className="text-sm font-medium text-gray-700"
+        >
           Active (visible to members in the store)
         </label>
       </div>
@@ -301,16 +335,16 @@ export default function ItemForm({
           disabled={loading}
           className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
         >
-          {loading ? 'Saving...' : item ? 'Update Item' : 'Create Item'}
+          {loading ? "Saving..." : item ? "Update Item" : "Create Item"}
         </button>
         <button
           type="button"
-          onClick={() => router.push('/admin/items')}
+          onClick={() => router.push("/admin/items")}
           className="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 font-medium"
         >
           Cancel
         </button>
       </div>
     </form>
-  )
+  );
 }

@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { Check } from 'lucide-react'
+import Link from "next/link";
+import { Check } from "lucide-react";
 
 export default function FinalCTA() {
   return (
@@ -18,7 +18,8 @@ export default function FinalCTA() {
           Ready to feel supported?
         </h2>
         <p className="text-xl text-[#bcafcf] mb-8 max-w-2xl mx-auto">
-          Join thousands of women who've already transformed their lives with NFW. Your journey to empowerment starts here.
+          Join thousands of women who've already transformed their lives with
+          NFW. Your journey to empowerment starts here.
         </p>
 
         {/* Benefits recap */}
@@ -29,7 +30,9 @@ export default function FinalCTA() {
             </div>
             <div>
               <div className="text-white font-bold mb-1">Microgrants</div>
-              <div className="text-[#bcafcf] text-sm">Up to $1,000 in support</div>
+              <div className="text-[#bcafcf] text-sm">
+                Up to $1,000 in support
+              </div>
             </div>
           </div>
           <div className="flex items-start gap-3 text-left">
@@ -67,5 +70,5 @@ export default function FinalCTA() {
         </p>
       </div>
     </div>
-  )
+  );
 }

@@ -1,31 +1,33 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import ItemForm from '@/components/ItemForm'
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import ItemForm from "@/components/ItemForm";
 
 export default async function NewItemPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/auth/login')
+    redirect("/auth/login");
   }
 
   // Check if user is admin
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
 
   if (!profile?.is_admin) {
-    redirect('/')
+    redirect("/");
   }
 
   // Fetch categories
   const { data: categories } = await supabase
-    .from('zero_dollar_categories')
-    .select('*')
-    .order('name', { ascending: true })
+    .from("zero_dollar_categories")
+    .select("*")
+    .order("name", { ascending: true });
 
   return (
     <main className="min-h-screen p-8 bg-gray-50">
@@ -36,5 +38,5 @@ export default async function NewItemPage() {
         </div>
       </div>
     </main>
-  )
+  );
 }

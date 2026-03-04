@@ -1,5 +1,5 @@
-import Link from 'next/link'
-import { Check } from 'lucide-react'
+import Link from "next/link";
+import { Check } from "lucide-react";
 
 export default function WelcomePage() {
   return (
@@ -18,12 +18,14 @@ export default function WelcomePage() {
 
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#bcafcf]/20 border border-[#bcafcf]/30 rounded-full text-sm mb-6">
           <span className="w-2 h-2 bg-[#d4f1ad] rounded-full"></span>
-          <span className="text-[#fffef1] font-semibold">Welcome to the community</span>
+          <span className="text-[#fffef1] font-semibold">
+            Welcome to the community
+          </span>
         </div>
 
         <h1
           className="text-4xl sm:text-5xl font-black text-white mb-4 leading-tight"
-          style={{ fontFamily: 'Montserrat, sans-serif' }}
+          style={{ fontFamily: "Montserrat, sans-serif" }}
         >
           You&apos;re officially
           <br />
@@ -31,17 +33,24 @@ export default function WelcomePage() {
         </h1>
 
         <p className="text-[#bcafcf] text-lg mb-10 max-w-md mx-auto leading-relaxed">
-          Welcome to NFW. You now have access to everything we offer — microgrants, perks, the Zero Dollar Store, and a community that has your back.
+          Welcome to NFW. You now have access to everything we offer —
+          microgrants, perks, the Zero Dollar Store, and a community that has
+          your back.
         </p>
 
         <div className="grid grid-cols-3 gap-4 mb-10 max-w-sm mx-auto">
           {[
-            { color: 'bg-[#d4f1ad]', label: 'Microgrants', sub: 'Apply today' },
-            { color: 'bg-[#fdf493]', label: 'Perks', sub: '1,000+ deals' },
-            { color: 'bg-[#b2d1ee]', label: 'Store', sub: 'Free items' },
-          ].map(item => (
-            <div key={item.label} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-              <div className={`w-8 h-8 ${item.color} rounded-full mx-auto mb-2 flex items-center justify-center`}>
+            { color: "bg-[#d4f1ad]", label: "Microgrants", sub: "Apply today" },
+            { color: "bg-[#fdf493]", label: "Perks", sub: "1,000+ deals" },
+            { color: "bg-[#b2d1ee]", label: "Store", sub: "Free items" },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center"
+            >
+              <div
+                className={`w-8 h-8 ${item.color} rounded-full mx-auto mb-2 flex items-center justify-center`}
+              >
                 <Check className="w-4 h-4 text-[#2d1239]" />
               </div>
               <p className="text-white font-bold text-sm">{item.label}</p>
@@ -66,9 +75,15 @@ export default function WelcomePage() {
         </div>
 
         <p className="text-[#bcafcf]/50 text-xs mt-8">
-          Questions? <a href="mailto:michelle@nationalfundforwomen.org" className="underline hover:text-[#bcafcf] transition-colors">Contact us</a>
+          Questions?{" "}
+          <a
+            href="mailto:michelle@nationalfundforwomen.org"
+            className="underline hover:text-[#bcafcf] transition-colors"
+          >
+            Contact us
+          </a>
         </p>
       </div>
     </main>
-  )
+  );
 }

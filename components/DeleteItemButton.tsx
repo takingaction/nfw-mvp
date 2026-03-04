@@ -1,55 +1,57 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export default function DeleteItemButton({
   itemId,
-  itemName
+  itemName,
 }: {
-  itemId: string
-  itemName: string
+  itemId: string;
+  itemName: string;
 }) {
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const router = useRouter()
-  const supabase = createClient()
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const router = useRouter();
+  const supabase = createClient();
 
   const handleDelete = async () => {
-    setDeleting(true)
+    setDeleting(true);
 
     try {
       // Check if item has claims
       const { data: claims } = await supabase
-        .from('zero_dollar_claims')
-        .select('id')
-        .eq('item_id', itemId)
-        .limit(1)
+        .from("zero_dollar_claims")
+        .select("id")
+        .eq("item_id", itemId)
+        .limit(1);
 
       if (claims && claims.length > 0) {
-        alert('Cannot delete item with existing claims. Set it to inactive instead.')
-        setShowConfirm(false)
-        setDeleting(false)
-        return
+        alert(
+          "Cannot delete item with existing claims. Set it to inactive instead.",
+        );
+        setShowConfirm(false);
+        setDeleting(false);
+        return;
       }
 
       // Delete item
       const { error } = await supabase
-        .from('zero_dollar_items')
+        .from("zero_dollar_items")
         .delete()
-        .eq('id', itemId)
+        .eq("id", itemId);
 
-      if (error) throw error
+      if (error) throw error;
 
-      router.refresh()
-      setShowConfirm(false)
+      router.refresh();
+      setShowConfirm(false);
     } catch (err: any) {
-      alert('Error deleting item: ' + err.message)
+      alert("Error deleting item: " + err.message);
     } finally {
-      setDeleting(false)
+      setDeleting(false);
     }
-  }
+  };
 
   return (
     <>
@@ -65,7 +67,7 @@ export default function DeleteItemButton({
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-xl font-bold mb-4">Delete Item?</h3>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to delete "<strong>{itemName}</strong>"? 
+              Are you sure you want to delete "<strong>{itemName}</strong>"?
               This action cannot be undone.
             </p>
             <p className="text-sm text-gray-500 mb-6">
@@ -77,7 +79,7 @@ export default function DeleteItemButton({
                 disabled={deleting}
                 className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium disabled:opacity-50"
               >
-                {deleting ? 'Deleting...' : 'Yes, Delete'}
+                {deleting ? "Deleting..." : "Yes, Delete"}
               </button>
               <button
                 onClick={() => setShowConfirm(false)}
@@ -91,5 +93,5 @@ export default function DeleteItemButton({
         </div>
       )}
     </>
-  )
+  );
 }

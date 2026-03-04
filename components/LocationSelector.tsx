@@ -1,34 +1,34 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { MapPin, Search, X, Loader2 } from 'lucide-react'
+import { useState, useEffect } from "react";
+import { MapPin, Search, X, Loader2 } from "lucide-react";
 
 interface Location {
   physical_location: {
-    location_key: number
-    location_name: string
-    street_address: string
-    extended_street_address?: string
-    city_locality: string
-    state_region: string
-    postal_code: string
-    country: string
-    phone_number?: string
-    web_address?: string
+    location_key: number;
+    location_name: string;
+    street_address: string;
+    extended_street_address?: string;
+    city_locality: string;
+    state_region: string;
+    postal_code: string;
+    country: string;
+    phone_number?: string;
+    web_address?: string;
     geolocation?: {
-      lat: number
-      lon: number
-    }
-  }
-  search_distance?: number
+      lat: number;
+      lon: number;
+    };
+  };
+  search_distance?: number;
 }
 
 interface LocationSelectorProps {
-  offerGroupKey: string
-  offerTitle: string
-  onSelectLocation: (locationKey: string, locationName: string) => void
-  onClose: () => void
-  userZip?: string
+  offerGroupKey: string;
+  offerTitle: string;
+  onSelectLocation: (locationKey: string, locationName: string) => void;
+  onClose: () => void;
+  userZip?: string;
 }
 
 export default function LocationSelector({
@@ -38,80 +38,88 @@ export default function LocationSelector({
   onClose,
   userZip,
 }: LocationSelectorProps) {
-  const [locations, setLocations] = useState<Location[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [searchZip, setSearchZip] = useState(userZip || '')
-  const [selectedLocationKey, setSelectedLocationKey] = useState<string | null>(null)
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(false)
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [searchZip, setSearchZip] = useState(userZip || "");
+  const [selectedLocationKey, setSelectedLocationKey] = useState<string | null>(
+    null,
+  );
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
-    fetchLocations()
-  }, [offerGroupKey, page])
+    fetchLocations();
+  }, [offerGroupKey, page]);
 
   const fetchLocations = async () => {
-  setLoading(true)
-  setError('')
-  
-  try {
-    const params = new URLSearchParams({
-      offer_group: offerGroupKey,
-      page: page.toString(),
-      per_page: '20',
-    })
+    setLoading(true);
+    setError("");
 
-    if (searchZip) {
-      params.append('postal_code', searchZip)
+    try {
+      const params = new URLSearchParams({
+        offer_group: offerGroupKey,
+        page: page.toString(),
+        per_page: "20",
+      });
+
+      if (searchZip) {
+        params.append("postal_code", searchZip);
+      }
+
+      const response = await fetch(
+        `/api/access-perks/locations?${params.toString()}`,
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to load locations");
+      }
+
+      const data = await response.json();
+
+      // ADD THIS DEBUG LOG
+      console.log("🔍 LOCATION SELECTOR - Full API Response:", data);
+      console.log("🔍 LOCATION SELECTOR - Locations array:", data.locations);
+      console.log(
+        "🔍 LOCATION SELECTOR - Locations count:",
+        data.locations?.length || 0,
+      );
+
+      setLocations(data.locations || []);
+      setHasMore(data.meta?.total_count > page * 20);
+    } catch (err: any) {
+      setError(err.message || "Failed to load locations");
+    } finally {
+      setLoading(false);
     }
-
-    const response = await fetch(`/api/access-perks/locations?${params.toString()}`)
-    
-    if (!response.ok) {
-      throw new Error('Failed to load locations')
-    }
-
-    const data = await response.json()
-    
-    // ADD THIS DEBUG LOG
-    console.log('🔍 LOCATION SELECTOR - Full API Response:', data)
-    console.log('🔍 LOCATION SELECTOR - Locations array:', data.locations)
-    console.log('🔍 LOCATION SELECTOR - Locations count:', data.locations?.length || 0)
-    
-    setLocations(data.locations || [])
-    setHasMore(data.meta?.total_count > page * 20)
-  } catch (err: any) {
-    setError(err.message || 'Failed to load locations')
-  } finally {
-    setLoading(false)
-  }
-}
+  };
 
   const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    setPage(1)
-    fetchLocations()
-  }
+    e.preventDefault();
+    setPage(1);
+    fetchLocations();
+  };
 
   const handleSelectLocation = () => {
-    if (!selectedLocationKey) return
-    
+    if (!selectedLocationKey) return;
+
     const selected = locations.find(
-      loc => loc.physical_location.location_key.toString() === selectedLocationKey
-    )
-    
+      (loc) =>
+        loc.physical_location.location_key.toString() === selectedLocationKey,
+    );
+
     if (selected) {
       onSelectLocation(
         selected.physical_location.location_key.toString(),
-        selected.physical_location.location_name
-      )
+        selected.physical_location.location_name,
+      );
     }
-  }
+  };
 
   const formatDistance = (distance?: number) => {
-    if (!distance) return ''
-    return `${distance.toFixed(1)} mi`
-  }
+    if (!distance) return "";
+    return `${distance.toFixed(1)} mi`;
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -190,9 +198,10 @@ export default function LocationSelector({
                 <label
                   key={location.physical_location.location_key}
                   className={`block p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                    selectedLocationKey === location.physical_location.location_key.toString()
-                      ? 'border-[#2d1239] bg-[#2d1239]/5'
-                      : 'border-[#2d1239]/10 hover:border-[#2d1239]/30'
+                    selectedLocationKey ===
+                    location.physical_location.location_key.toString()
+                      ? "border-[#2d1239] bg-[#2d1239]/5"
+                      : "border-[#2d1239]/10 hover:border-[#2d1239]/30"
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -200,7 +209,10 @@ export default function LocationSelector({
                       type="radio"
                       name="location"
                       value={location.physical_location.location_key.toString()}
-                      checked={selectedLocationKey === location.physical_location.location_key.toString()}
+                      checked={
+                        selectedLocationKey ===
+                        location.physical_location.location_key.toString()
+                      }
                       onChange={(e) => setSelectedLocationKey(e.target.value)}
                       className="mt-1"
                     />
@@ -217,11 +229,13 @@ export default function LocationSelector({
                       </div>
                       <p className="text-sm text-[#2d1239]/70">
                         {location.physical_location.street_address}
-                        {location.physical_location.extended_street_address && 
+                        {location.physical_location.extended_street_address &&
                           `, ${location.physical_location.extended_street_address}`}
                       </p>
                       <p className="text-sm text-[#2d1239]/70">
-                        {location.physical_location.city_locality}, {location.physical_location.state_region} {location.physical_location.postal_code}
+                        {location.physical_location.city_locality},{" "}
+                        {location.physical_location.state_region}{" "}
+                        {location.physical_location.postal_code}
                       </p>
                       {location.physical_location.phone_number && (
                         <p className="text-sm text-[#2d1239]/60 mt-1">
@@ -235,7 +249,7 @@ export default function LocationSelector({
 
               {hasMore && (
                 <button
-                  onClick={() => setPage(p => p + 1)}
+                  onClick={() => setPage((p) => p + 1)}
                   className="w-full py-3 text-[#2d1239] hover:bg-[#2d1239]/5 rounded-lg transition-colors font-medium"
                 >
                   Load More Locations
@@ -257,5 +271,5 @@ export default function LocationSelector({
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,106 +1,136 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Loader2, ArrowLeft } from 'lucide-react'
-import Link from 'next/link'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 export default function NewGrantCyclePage() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const [formData, setFormData] = useState({
-    cycle_name: '',
-    description: '',
-    start_date: '',
-    end_date: '',
-    amount_per_grant: '',
-    grants_available: '',
-  })
+    cycle_name: "",
+    description: "",
+    start_date: "",
+    end_date: "",
+    amount_per_grant: "",
+    grants_available: "",
+  });
 
-  const inputClass = "w-full px-4 py-3 border border-[#2d1239]/20 rounded-xl text-[#2d1239] placeholder-[#2d1239]/30 bg-white focus:outline-none focus:ring-2 focus:ring-[#bcafcf] focus:border-transparent transition-all"
-  const labelClass = "block text-sm font-semibold text-[#2d1239] mb-1.5"
+  const inputClass =
+    "w-full px-4 py-3 border border-[#2d1239]/20 rounded-xl text-[#2d1239] placeholder-[#2d1239]/30 bg-white focus:outline-none focus:ring-2 focus:ring-[#bcafcf] focus:border-transparent transition-all";
+  const labelClass = "block text-sm font-semibold text-[#2d1239] mb-1.5";
 
-  const totalFunds = formData.amount_per_grant && formData.grants_available
-    ? parseFloat(formData.amount_per_grant) * parseInt(formData.grants_available)
-    : 0
+  const totalFunds =
+    formData.amount_per_grant && formData.grants_available
+      ? parseFloat(formData.amount_per_grant) *
+        parseInt(formData.grants_available)
+      : 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
     try {
-      const res = await fetch('/api/admin/grants/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/grants/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to create grant cycle')
-      router.push('/admin/grants')
+      });
+      const data = await res.json();
+      if (!res.ok)
+        throw new Error(data.error || "Failed to create grant cycle");
+      router.push("/admin/grants");
     } catch (err: any) {
-      setError(err.message)
-      setLoading(false)
+      setError(err.message);
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <main className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-2xl mx-auto">
-        <Link href="/admin/grants" className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#2d1239] mb-6 transition-colors">
+        <Link
+          href="/admin/grants"
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#2d1239] mb-6 transition-colors"
+        >
           <ArrowLeft className="w-4 h-4" /> Back to Grants
         </Link>
 
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-[#2d1239] mb-2">New Grant Cycle</h1>
-          <p className="text-gray-600">Create a new microgrant cycle for members to apply to.</p>
+          <h1 className="text-4xl font-bold text-[#2d1239] mb-2">
+            New Grant Cycle
+          </h1>
+          <p className="text-gray-600">
+            Create a new microgrant cycle for members to apply to.
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-200 p-8 space-y-6">
-
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white rounded-2xl border border-gray-200 p-8 space-y-6"
+        >
           <div>
-            <label className={labelClass}>Grant Cycle Name <span className="text-[#bcafcf]">*</span></label>
+            <label className={labelClass}>
+              Grant Cycle Name <span className="text-[#bcafcf]">*</span>
+            </label>
             <input
               type="text"
               required
               value={formData.cycle_name}
-              onChange={e => setFormData({ ...formData, cycle_name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, cycle_name: e.target.value })
+              }
               placeholder="e.g., Spring 2026 Microgrants"
               className={inputClass}
             />
           </div>
 
           <div>
-            <label className={labelClass}>Description <span className="text-[#2d1239]/40 font-normal">(Optional)</span></label>
+            <label className={labelClass}>
+              Description{" "}
+              <span className="text-[#2d1239]/40 font-normal">(Optional)</span>
+            </label>
             <textarea
               value={formData.description}
-              onChange={e => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               placeholder="Describe this grant cycle..."
               rows={3}
-              className={inputClass + ' resize-none'}
+              className={inputClass + " resize-none"}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>Start Date <span className="text-[#bcafcf]">*</span></label>
+              <label className={labelClass}>
+                Start Date <span className="text-[#bcafcf]">*</span>
+              </label>
               <input
                 type="date"
                 required
                 value={formData.start_date}
-                onChange={e => setFormData({ ...formData, start_date: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, start_date: e.target.value })
+                }
                 className={inputClass}
               />
             </div>
             <div>
-              <label className={labelClass}>End Date <span className="text-[#bcafcf]">*</span></label>
+              <label className={labelClass}>
+                End Date <span className="text-[#bcafcf]">*</span>
+              </label>
               <input
                 type="date"
                 required
                 value={formData.end_date}
-                onChange={e => setFormData({ ...formData, end_date: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, end_date: e.target.value })
+                }
                 className={inputClass}
               />
             </div>
@@ -108,29 +138,42 @@ export default function NewGrantCyclePage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>Amount Per Grant <span className="text-[#bcafcf]">*</span></label>
+              <label className={labelClass}>
+                Amount Per Grant <span className="text-[#bcafcf]">*</span>
+              </label>
               <div className="relative">
-                <span className="absolute left-4 top-3.5 text-[#2d1239]/50 text-sm">$</span>
+                <span className="absolute left-4 top-3.5 text-[#2d1239]/50 text-sm">
+                  $
+                </span>
                 <input
                   type="number"
                   required
                   min="1"
                   step="0.01"
                   value={formData.amount_per_grant}
-                  onChange={e => setFormData({ ...formData, amount_per_grant: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      amount_per_grant: e.target.value,
+                    })
+                  }
                   placeholder="500.00"
-                  className={inputClass + ' pl-8'}
+                  className={inputClass + " pl-8"}
                 />
               </div>
             </div>
             <div>
-              <label className={labelClass}>Number of Grants <span className="text-[#bcafcf]">*</span></label>
+              <label className={labelClass}>
+                Number of Grants <span className="text-[#bcafcf]">*</span>
+              </label>
               <input
                 type="number"
                 required
                 min="1"
                 value={formData.grants_available}
-                onChange={e => setFormData({ ...formData, grants_available: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, grants_available: e.target.value })
+                }
                 placeholder="10"
                 className={inputClass}
               />
@@ -140,11 +183,16 @@ export default function NewGrantCyclePage() {
           {totalFunds > 0 && (
             <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] rounded-xl p-4">
               <p className="text-sm text-[#2d1239]/60">Total funds committed</p>
-              <p className="text-2xl font-black text-[#2d1239]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              <p
+                className="text-2xl font-black text-[#2d1239]"
+                style={{ fontFamily: "Montserrat, sans-serif" }}
+              >
                 ${totalFunds.toLocaleString()}
               </p>
               <p className="text-xs text-[#2d1239]/50 mt-1">
-                {formData.grants_available} grants × ${parseFloat(formData.amount_per_grant || '0').toLocaleString()} each
+                {formData.grants_available} grants × $
+                {parseFloat(formData.amount_per_grant || "0").toLocaleString()}{" "}
+                each
               </p>
             </div>
           )}
@@ -162,7 +210,7 @@ export default function NewGrantCyclePage() {
               className="flex-1 py-3 bg-[#2d1239] text-white rounded-xl font-bold hover:bg-[#2d1239]/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {loading ? 'Creating...' : 'Create Grant Cycle'}
+              {loading ? "Creating..." : "Create Grant Cycle"}
             </button>
             <Link
               href="/admin/grants"
@@ -174,5 +222,5 @@ export default function NewGrantCyclePage() {
         </form>
       </div>
     </main>
-  )
+  );
 }

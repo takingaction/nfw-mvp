@@ -1,40 +1,42 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect, notFound } from 'next/navigation'
-import CategoryForm from '@/components/CategoryForm'
+import { createClient } from "@/lib/supabase/server";
+import { redirect, notFound } from "next/navigation";
+import CategoryForm from "@/components/CategoryForm";
 
 export default async function EditCategoryPage({
-  params
+  params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { id } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/auth/login')
+    redirect("/auth/login");
   }
 
   // Check if user is admin
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
 
   if (!profile?.is_admin) {
-    redirect('/')
+    redirect("/");
   }
 
   // Fetch the category
   const { data: category, error } = await supabase
-    .from('zero_dollar_categories')
-    .select('*')
-    .eq('id', id)
-    .single()
+    .from("zero_dollar_categories")
+    .select("*")
+    .eq("id", id)
+    .single();
 
   if (error || !category) {
-    notFound()
+    notFound();
   }
 
   return (
@@ -46,5 +48,5 @@ export default async function EditCategoryPage({
         </div>
       </div>
     </main>
-  )
+  );
 }

@@ -1,97 +1,102 @@
-'use client'
+"use client";
 
-import { useState, useMemo } from 'react'
-import Image from 'next/image'
+import { useState, useMemo } from "react";
+import Image from "next/image";
 
 type ClaimWithItem = {
-  id: string
-  item_id: string
-  member_id: string
-  claimed_at: string
+  id: string;
+  item_id: string;
+  member_id: string;
+  claimed_at: string;
   shipping_address: {
-    full_name: string
-    address_line1: string
-    address_line2?: string
-    city: string
-    state: string
-    zip: string
-    phone: string
-  }
+    full_name: string;
+    address_line1: string;
+    address_line2?: string;
+    city: string;
+    state: string;
+    zip: string;
+    phone: string;
+  };
   selected_variant: {
-    size?: string
-    color?: string
-    [key: string]: string | undefined
-  } | null
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
-  tracking_number: string | null
-  notes: string | null
-  shipped_at: string | null
-  delivered_at: string | null
+    size?: string;
+    color?: string;
+    [key: string]: string | undefined;
+  } | null;
+  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+  tracking_number: string | null;
+  notes: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
   item: {
-    id: string
-    name: string
-    description: string | null
-    image_url: string | null
-    category: { name: string } | null
-  }
-}
+    id: string;
+    name: string;
+    description: string | null;
+    image_url: string | null;
+    category: { name: string } | null;
+  };
+};
 
 const STATUS_INFO = {
   pending: {
-    label: 'Pending',
-    color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    icon: '⏳',
-    description: 'Your claim is being processed'
+    label: "Pending",
+    color: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    icon: "⏳",
+    description: "Your claim is being processed",
   },
   processing: {
-    label: 'Processing',
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
-    icon: '📦',
-    description: 'Your item is being prepared for shipment'
+    label: "Processing",
+    color: "bg-blue-100 text-blue-800 border-blue-200",
+    icon: "📦",
+    description: "Your item is being prepared for shipment",
   },
   shipped: {
-    label: 'Shipped',
-    color: 'bg-purple-100 text-purple-800 border-purple-200',
-    icon: '🚚',
-    description: 'Your item is on its way'
+    label: "Shipped",
+    color: "bg-purple-100 text-purple-800 border-purple-200",
+    icon: "🚚",
+    description: "Your item is on its way",
   },
   delivered: {
-    label: 'Delivered',
-    color: 'bg-green-100 text-green-800 border-green-200',
-    icon: '✅',
-    description: 'Your item has been delivered'
+    label: "Delivered",
+    color: "bg-green-100 text-green-800 border-green-200",
+    icon: "✅",
+    description: "Your item has been delivered",
   },
   cancelled: {
-    label: 'Cancelled',
-    color: 'bg-red-100 text-red-800 border-red-200',
-    icon: '❌',
-    description: 'This claim was cancelled'
-  }
-}
+    label: "Cancelled",
+    color: "bg-red-100 text-red-800 border-red-200",
+    icon: "❌",
+    description: "This claim was cancelled",
+  },
+};
 
-export default function MyClaimsClient({ 
-  claims, 
-  userName 
-}: { 
-  claims: ClaimWithItem[]
-  userName: string 
+export default function MyClaimsClient({
+  claims,
+  userName,
+}: {
+  claims: ClaimWithItem[];
+  userName: string;
 }) {
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null)
-  const [selectedClaim, setSelectedClaim] = useState<ClaimWithItem | null>(null)
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [selectedClaim, setSelectedClaim] = useState<ClaimWithItem | null>(
+    null,
+  );
 
   // Filter claims by status
   const filteredClaims = useMemo(() => {
-    if (!selectedStatus) return claims
-    return claims.filter(claim => claim.status === selectedStatus)
-  }, [claims, selectedStatus])
+    if (!selectedStatus) return claims;
+    return claims.filter((claim) => claim.status === selectedStatus);
+  }, [claims, selectedStatus]);
 
   // Count claims by status
   const statusCounts = useMemo(() => {
-    return Object.keys(STATUS_INFO).reduce((acc, status) => {
-      acc[status] = claims.filter(c => c.status === status).length
-      return acc
-    }, {} as Record<string, number>)
-  }, [claims])
+    return Object.keys(STATUS_INFO).reduce(
+      (acc, status) => {
+        acc[status] = claims.filter((c) => c.status === status).length;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+  }, [claims]);
 
   if (claims.length === 0) {
     return (
@@ -108,7 +113,7 @@ export default function MyClaimsClient({
           Browse Available Items
         </a>
       </div>
-    )
+    );
   }
 
   return (
@@ -120,8 +125,8 @@ export default function MyClaimsClient({
             onClick={() => setSelectedStatus(null)}
             className={`px-4 py-2 rounded-lg whitespace-nowrap font-medium ${
               selectedStatus === null
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border'
+                ? "bg-blue-600 text-white"
+                : "bg-white text-gray-700 hover:bg-gray-50 border"
             }`}
           >
             All Claims ({claims.length})
@@ -132,8 +137,8 @@ export default function MyClaimsClient({
               onClick={() => setSelectedStatus(status)}
               className={`px-4 py-2 rounded-lg whitespace-nowrap font-medium ${
                 selectedStatus === status
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 border'
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-700 hover:bg-gray-50 border"
               }`}
             >
               {info.icon} {info.label} ({statusCounts[status] || 0})
@@ -149,8 +154,8 @@ export default function MyClaimsClient({
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredClaims.map(claim => {
-            const statusInfo = STATUS_INFO[claim.status]
+          {filteredClaims.map((claim) => {
+            const statusInfo = STATUS_INFO[claim.status];
             return (
               <div
                 key={claim.id}
@@ -183,7 +188,9 @@ export default function MyClaimsClient({
                             </span>
                           )}
                         </div>
-                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium border ${statusInfo.color}`}>
+                        <span
+                          className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium border ${statusInfo.color}`}
+                        >
                           {statusInfo.icon} {statusInfo.label}
                         </span>
                       </div>
@@ -198,9 +205,10 @@ export default function MyClaimsClient({
                       {claim.selected_variant && (
                         <div className="mb-3">
                           <span className="text-sm text-gray-600">
-                            Selected: {Object.entries(claim.selected_variant)
+                            Selected:{" "}
+                            {Object.entries(claim.selected_variant)
                               .map(([key, value]) => `${key}: ${value}`)
-                              .join(', ')}
+                              .join(", ")}
                           </span>
                         </div>
                       )}
@@ -225,18 +233,18 @@ export default function MyClaimsClient({
                       {/* Timeline */}
                       <div className="flex items-center gap-4 text-sm text-gray-500">
                         <div>
-                          <span className="font-medium">Claimed:</span>{' '}
+                          <span className="font-medium">Claimed:</span>{" "}
                           {new Date(claim.claimed_at).toLocaleDateString()}
                         </div>
                         {claim.shipped_at && (
                           <div>
-                            <span className="font-medium">Shipped:</span>{' '}
+                            <span className="font-medium">Shipped:</span>{" "}
                             {new Date(claim.shipped_at).toLocaleDateString()}
                           </div>
                         )}
                         {claim.delivered_at && (
                           <div>
-                            <span className="font-medium">Delivered:</span>{' '}
+                            <span className="font-medium">Delivered:</span>{" "}
                             {new Date(claim.delivered_at).toLocaleDateString()}
                           </div>
                         )}
@@ -253,7 +261,7 @@ export default function MyClaimsClient({
                   </div>
                 </div>
               </div>
-            )
+            );
           })}
         </div>
       )}
@@ -301,8 +309,11 @@ export default function MyClaimsClient({
             {/* Status */}
             <div className="mb-6">
               <h4 className="font-semibold mb-2">Status</h4>
-              <span className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border ${STATUS_INFO[selectedClaim.status].color}`}>
-                {STATUS_INFO[selectedClaim.status].icon} {STATUS_INFO[selectedClaim.status].label}
+              <span
+                className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border ${STATUS_INFO[selectedClaim.status].color}`}
+              >
+                {STATUS_INFO[selectedClaim.status].icon}{" "}
+                {STATUS_INFO[selectedClaim.status].label}
               </span>
               <p className="text-sm text-gray-600 mt-2">
                 {STATUS_INFO[selectedClaim.status].description}
@@ -331,7 +342,9 @@ export default function MyClaimsClient({
                   <div>{selectedClaim.shipping_address.address_line2}</div>
                 )}
                 <div>
-                  {selectedClaim.shipping_address.city}, {selectedClaim.shipping_address.state} {selectedClaim.shipping_address.zip}
+                  {selectedClaim.shipping_address.city},{" "}
+                  {selectedClaim.shipping_address.state}{" "}
+                  {selectedClaim.shipping_address.zip}
                 </div>
                 <div>Phone: {selectedClaim.shipping_address.phone}</div>
               </div>
@@ -379,5 +392,5 @@ export default function MyClaimsClient({
         </div>
       )}
     </div>
-  )
+  );
 }

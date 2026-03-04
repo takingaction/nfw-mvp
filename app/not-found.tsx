@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
+import Link from "next/link";
 
 export default function NotFound() {
   return (
@@ -10,12 +10,12 @@ export default function NotFound() {
       <p className="text-[#2d1239]/60 max-w-md">
         Sorry, we couldn&apos;t find the page you&apos;re looking for.
       </p>
-      <Link 
+      <Link
         href="/"
         className="mt-4 px-6 py-3 bg-[#2d1239] text-white rounded-lg font-semibold hover:opacity-80 transition-opacity"
       >
         Go Home
       </Link>
     </div>
-  )
+  );
 }

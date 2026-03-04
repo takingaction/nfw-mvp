@@ -1,33 +1,38 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 export default function FAQ() {
-  const [openIndex, setOpenIndex] = useState<number | null>(0)
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   const faqs = [
     {
-      question: 'How much does membership cost?',
-      answer: 'NFW membership starts free. A Contributing Membership is $15/year and unlocks microgrants, the perks & discounts platform, the Zero Dollar Store, and voting rights. A Founding Membership is $100/year and includes everything in Contributing, plus founding member recognition, priority grant review, and direct input on NFW initiatives. Visit our Pricing page to compare all plans.'
+      question: "How much does membership cost?",
+      answer:
+        "NFW membership starts free. A Contributing Membership is $15/year and unlocks microgrants, the perks & discounts platform, the Zero Dollar Store, and voting rights. A Founding Membership is $100/year and includes everything in Contributing, plus founding member recognition, priority grant review, and direct input on NFW initiatives. Visit our Pricing page to compare all plans.",
     },
     {
-      question: 'How do microgrants work?',
-      answer: 'Members can apply for microgrants up to $1,000 to help with unexpected expenses. Applications are reviewed within 48 hours, and approved funds are sent directly to your bank account.'
+      question: "How do microgrants work?",
+      answer:
+        "Members can apply for microgrants up to $1,000 to help with unexpected expenses. Applications are reviewed within 48 hours, and approved funds are sent directly to your bank account.",
     },
     {
-      question: 'What is the Zero Dollar Store?',
-      answer: 'The Zero Dollar Store is our free marketplace where members can claim essential items at no cost. Items are restocked regularly and include hygiene products, household items, and more.'
+      question: "What is the Zero Dollar Store?",
+      answer:
+        "The Zero Dollar Store is our free marketplace where members can claim essential items at no cost. Items are restocked regularly and include hygiene products, household items, and more.",
     },
     {
-      question: 'Who is eligible to join?',
-      answer: 'NFW membership is open to all women 18 and older residing in the United States. We welcome women from all backgrounds and circumstances.'
+      question: "Who is eligible to join?",
+      answer:
+        "NFW membership is open to all women 18 and older residing in the United States. We welcome women from all backgrounds and circumstances.",
     },
     {
-      question: 'Can I cancel my membership anytime?',
-      answer: 'Yes! You can cancel your membership at any time with no cancellation fees. Your benefits will continue until the end of your current billing period.'
-    }
-  ]
+      question: "Can I cancel my membership anytime?",
+      answer:
+        "Yes! You can cancel your membership at any time with no cancellation fees. Your benefits will continue until the end of your current billing period.",
+    },
+  ];
 
   return (
     <div className="relative bg-white py-16 lg:py-24 overflow-hidden">
@@ -40,9 +45,18 @@ export default function FAQ() {
 
       {/* Floating accent circles */}
       <div className="absolute top-16 right-16 w-20 h-20 bg-gradient-to-br from-[#fdf493] to-[#d4f1ad] rounded-full opacity-40 animate-float"></div>
-      <div className="absolute bottom-32 left-12 w-16 h-16 bg-gradient-to-br from-[#b2d1ee] to-[#bcafcf] rounded-full opacity-40 animate-float" style={{ animationDelay: '1s' }}></div>
-      <div className="absolute top-1/3 left-8 w-12 h-12 bg-gradient-to-br from-[#d4f1ad] to-[#b2d1ee] rounded-full opacity-30 animate-float" style={{ animationDelay: '2s' }}></div>
-      <div className="absolute bottom-1/4 right-8 w-14 h-14 bg-gradient-to-br from-[#fdf493] to-[#bcafcf] rounded-full opacity-35 animate-float" style={{ animationDelay: '1.5s' }}></div>
+      <div
+        className="absolute bottom-32 left-12 w-16 h-16 bg-gradient-to-br from-[#b2d1ee] to-[#bcafcf] rounded-full opacity-40 animate-float"
+        style={{ animationDelay: "1s" }}
+      ></div>
+      <div
+        className="absolute top-1/3 left-8 w-12 h-12 bg-gradient-to-br from-[#d4f1ad] to-[#b2d1ee] rounded-full opacity-30 animate-float"
+        style={{ animationDelay: "2s" }}
+      ></div>
+      <div
+        className="absolute bottom-1/4 right-8 w-14 h-14 bg-gradient-to-br from-[#fdf493] to-[#bcafcf] rounded-full opacity-35 animate-float"
+        style={{ animationDelay: "1.5s" }}
+      ></div>
 
       {/* Gradient overlays in corners */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-[#fdf493]/5 to-transparent pointer-events-none"></div>
@@ -73,7 +87,9 @@ export default function FAQ() {
                   className="border-b border-[#2d1239]/10 last:border-b-0"
                 >
                   <button
-                    onClick={() => setOpenIndex(openIndex === index ? null : index)}
+                    onClick={() =>
+                      setOpenIndex(openIndex === index ? null : index)
+                    }
                     className="w-full flex items-center justify-between py-4 text-left group"
                   >
                     <span className="text-lg font-semibold text-[#2d1239] group-hover:text-[#2d1239]/80 transition-colors pr-4">
@@ -81,13 +97,13 @@ export default function FAQ() {
                     </span>
                     <ChevronDown
                       className={`w-5 h-5 text-[#2d1239] flex-shrink-0 transition-transform duration-300 ${
-                        openIndex === index ? 'rotate-180' : ''
+                        openIndex === index ? "rotate-180" : ""
                       }`}
                     />
                   </button>
                   <div
                     className={`overflow-hidden transition-all duration-300 ${
-                      openIndex === index ? 'max-h-96 pb-4' : 'max-h-0'
+                      openIndex === index ? "max-h-96 pb-4" : "max-h-0"
                     }`}
                   >
                     <p className="text-[#2d1239]/70 leading-relaxed">
@@ -101,5 +117,5 @@ export default function FAQ() {
         </div>
       </div>
     </div>
-  )
+  );
 }

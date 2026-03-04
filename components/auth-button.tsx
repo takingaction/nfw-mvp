@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import Link from "next/link";
 import { Button } from "./ui/button";
@@ -17,19 +17,19 @@ export function AuthButton() {
 
     const fetchProfile = async (userId: string) => {
       const { data } = await supabase
-        .from('profiles')
-        .select('full_name, is_admin')
-        .eq('id', userId)
+        .from("profiles")
+        .select("full_name, is_admin")
+        .eq("id", userId)
         .single();
       if (data) {
         setProfile(data);
         setIsAdmin(data.is_admin === true);
-        localStorage.setItem('nfw_profile', JSON.stringify(data));
+        localStorage.setItem("nfw_profile", JSON.stringify(data));
       }
     };
 
     // Load from cache immediately
-    const cachedProfile = localStorage.getItem('nfw_profile');
+    const cachedProfile = localStorage.getItem("nfw_profile");
     if (cachedProfile) {
       const parsed = JSON.parse(cachedProfile);
       setProfile(parsed);
@@ -46,24 +46,24 @@ export function AuthButton() {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        setIsOpen(false);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      setIsOpen(false);
 
-        if (event === 'SIGNED_OUT') {
-          setProfile(null);
-          setIsAdmin(false);
-          localStorage.removeItem('nfw_profile');
-          return;
-        }
-
-        if (currentUser && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
-          await fetchProfile(currentUser.id);
-        }
+      if (event === "SIGNED_OUT") {
+        setProfile(null);
+        setIsAdmin(false);
+        localStorage.removeItem("nfw_profile");
+        return;
       }
-    );
+
+      if (currentUser && (event === "SIGNED_IN" || event === "USER_UPDATED")) {
+        await fetchProfile(currentUser.id);
+      }
+    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -83,7 +83,7 @@ export function AuthButton() {
 
   const firstLetter = profile?.full_name
     ? profile.full_name.charAt(0).toUpperCase()
-    : user.email?.charAt(0).toUpperCase() || 'U';
+    : user.email?.charAt(0).toUpperCase() || "U";
 
   return (
     <div className="relative">
@@ -96,25 +96,74 @@ export function AuthButton() {
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => setIsOpen(false)}
+          />
           <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-[#2d1239]/10 py-2 z-20">
             <div className="px-4 py-2 border-b border-[#2d1239]/10">
-              <p className="text-sm font-semibold text-[#2d1239]">{profile?.full_name || 'Member'}</p>
+              <p className="text-sm font-semibold text-[#2d1239]">
+                {profile?.full_name || "Member"}
+              </p>
               <p className="text-xs text-[#2d1239]/50">{user.email}</p>
             </div>
-            <Link href="/dashboard" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>Dashboard</Link>
-            <Link href="/profile" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>My Profile</Link>
-            <Link href="/grants/my-applications" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>My Grants</Link>
+            <Link
+              href="/dashboard"
+              className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+              onClick={() => setIsOpen(false)}
+            >
+              Dashboard
+            </Link>
+            <Link
+              href="/profile"
+              className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+              onClick={() => setIsOpen(false)}
+            >
+              My Profile
+            </Link>
+            <Link
+              href="/grants/my-applications"
+              className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+              onClick={() => setIsOpen(false)}
+            >
+              My Grants
+            </Link>
             {isAdmin && (
               <>
                 <div className="border-t border-[#2d1239]/10 my-2" />
                 <div className="px-4 py-1">
-                  <p className="text-xs font-semibold text-[#2d1239]/40 uppercase tracking-wider">Admin</p>
+                  <p className="text-xs font-semibold text-[#2d1239]/40 uppercase tracking-wider">
+                    Admin
+                  </p>
                 </div>
-                <Link href="/admin/grants" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>Manage Grants</Link>
-                <Link href="/admin/articles" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>Manage Articles</Link>
-                <Link href="/admin/members" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>Manage Members</Link>
-                <Link href="/admin/analytics" className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]" onClick={() => setIsOpen(false)}>Analytics</Link>
+                <Link
+                  href="/admin/grants"
+                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Manage Grants
+                </Link>
+                <Link
+                  href="/admin/articles"
+                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Manage Articles
+                </Link>
+                <Link
+                  href="/admin/members"
+                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Manage Members
+                </Link>
+                <Link
+                  href="/admin/analytics"
+                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Analytics
+                </Link>
               </>
             )}
             <div className="border-t border-[#2d1239]/10 my-2" />

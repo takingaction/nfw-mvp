@@ -1,47 +1,49 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect, notFound } from 'next/navigation'
-import ArticleForm from '@/components/ArticleForm'
+import { createClient } from "@/lib/supabase/server";
+import { redirect, notFound } from "next/navigation";
+import ArticleForm from "@/components/ArticleForm";
 
 export default async function EditArticlePage({
-  params
+  params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { id } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/auth/login')
+    redirect("/auth/login");
   }
 
   // Check if user is admin
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
 
   if (!profile?.is_admin) {
-    redirect('/')
+    redirect("/");
   }
 
   // Fetch the article
   const { data: article, error } = await supabase
-    .from('articles')
-    .select('*')
-    .eq('id', id)
-    .single()
+    .from("articles")
+    .select("*")
+    .eq("id", id)
+    .single();
 
   if (error || !article) {
-    notFound()
+    notFound();
   }
 
   // Fetch categories
   const { data: categories } = await supabase
-    .from('article_categories')
-    .select('*')
-    .order('display_order', { ascending: true })
+    .from("article_categories")
+    .select("*")
+    .order("display_order", { ascending: true });
 
   return (
     <main className="min-h-screen p-8 bg-gray-50">
@@ -56,12 +58,12 @@ export default async function EditArticlePage({
             View Article →
           </a>
         </div>
-        <ArticleForm 
-          categories={categories || []} 
+        <ArticleForm
+          categories={categories || []}
           userId={user.id}
           article={article}
         />
       </div>
     </main>
-  )
+  );
 }

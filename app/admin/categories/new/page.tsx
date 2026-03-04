@@ -1,24 +1,26 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import CategoryForm from '@/components/CategoryForm'
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import CategoryForm from "@/components/CategoryForm";
 
 export default async function NewCategoryPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/auth/login')
+    redirect("/auth/login");
   }
 
   // Check if user is admin
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
 
   if (!profile?.is_admin) {
-    redirect('/')
+    redirect("/");
   }
 
   return (
@@ -30,5 +32,5 @@ export default async function NewCategoryPage() {
         </div>
       </div>
     </main>
-  )
+  );
 }

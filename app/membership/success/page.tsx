@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from "next/link";
 
 export default function SuccessPage() {
   return (
@@ -17,5 +17,5 @@ export default function SuccessPage() {
         </Link>
       </div>
     </main>
-  )
+  );
 }

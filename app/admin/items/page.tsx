@@ -1,64 +1,69 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
-import DeleteItemButton from '@/components/DeleteItemButton'
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import DeleteItemButton from "@/components/DeleteItemButton";
 
 export default async function AdminItemsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/auth/login')
+    redirect("/auth/login");
   }
 
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
 
   if (!profile?.is_admin) {
-    redirect('/')
+    redirect("/");
   }
 
   const { data: items, error: itemsError } = await supabase
-    .from('zero_dollar_items')
-    .select(`
+    .from("zero_dollar_items")
+    .select(
+      `
       *,
       category:zero_dollar_categories(name, slug)
-    `)
-    .order('created_at', { ascending: false })
+    `,
+    )
+    .order("created_at", { ascending: false });
 
   if (itemsError) {
-    console.error('Error fetching items:', itemsError)
+    console.error("Error fetching items:", itemsError);
     return (
       <main className="min-h-screen p-8 bg-[#f8f7fa]">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-4 text-red-600">Error Loading Items</h1>
+          <h1 className="text-3xl font-bold mb-4 text-red-600">
+            Error Loading Items
+          </h1>
           <pre className="bg-white p-6 rounded-xl border border-[#2d1239]/10">
             {JSON.stringify(itemsError, null, 2)}
           </pre>
         </div>
       </main>
-    )
+    );
   }
 
   const { data: categories } = await supabase
-    .from('zero_dollar_categories')
-    .select('*')
-    .order('name', { ascending: true })
+    .from("zero_dollar_categories")
+    .select("*")
+    .order("name", { ascending: true });
 
   return (
     <main className="min-h-screen p-8 bg-[#f8f7fa]">
       <div className="max-w-7xl mx-auto">
-
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1
               className="text-3xl font-bold text-[#2d1239]"
-              style={{ fontFamily: 'Montserrat, sans-serif' }}
+              style={{ fontFamily: "Montserrat, sans-serif" }}
             >
               Manage Store Items
             </h1>
@@ -92,14 +97,14 @@ export default async function AdminItemsPage() {
           </div>
           <div className="bg-white rounded-xl border border-[#2d1239]/10 p-5">
             <div className="text-3xl font-bold text-[#2d1239]">
-              {items?.filter(i => i.is_active).length || 0}
+              {items?.filter((i) => i.is_active).length || 0}
             </div>
             <div className="text-[#2d1239]/50 text-sm mt-1">Active Items</div>
             <div className="mt-2 h-1 w-8 rounded-full bg-[#d4f1ad]" />
           </div>
           <div className="bg-white rounded-xl border border-[#2d1239]/10 p-5">
             <div className="text-3xl font-bold text-[#2d1239]">
-              {items?.filter(i => i.quantity_available === 0).length || 0}
+              {items?.filter((i) => i.quantity_available === 0).length || 0}
             </div>
             <div className="text-[#2d1239]/50 text-sm mt-1">Out of Stock</div>
             <div className="mt-2 h-1 w-8 rounded-full bg-[#fdf493]" />
@@ -139,8 +144,11 @@ export default async function AdminItemsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#2d1239]/5">
-              {items?.map(item => (
-                <tr key={item.id} className="hover:bg-[#f8f7fa] transition-colors">
+              {items?.map((item) => (
+                <tr
+                  key={item.id}
+                  className="hover:bg-[#f8f7fa] transition-colors"
+                >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
                       {item.image_url ? (
@@ -159,7 +167,9 @@ export default async function AdminItemsPage() {
                         </div>
                       )}
                       <div>
-                        <div className="font-medium text-[#2d1239]">{item.name}</div>
+                        <div className="font-medium text-[#2d1239]">
+                          {item.name}
+                        </div>
                         {item.description && (
                           <div className="text-sm text-[#2d1239]/40 line-clamp-1 max-w-xs">
                             {item.description}
@@ -178,21 +188,25 @@ export default async function AdminItemsPage() {
                     )}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex px-2.5 py-1 text-xs font-semibold rounded-full ${
-                      item.is_active
-                        ? 'bg-[#d4f1ad] text-[#2d1239]'
-                        : 'bg-[#2d1239]/10 text-[#2d1239]/50'
-                    }`}>
-                      {item.is_active ? 'Active' : 'Inactive'}
+                    <span
+                      className={`inline-flex px-2.5 py-1 text-xs font-semibold rounded-full ${
+                        item.is_active
+                          ? "bg-[#d4f1ad] text-[#2d1239]"
+                          : "bg-[#2d1239]/10 text-[#2d1239]/50"
+                      }`}
+                    >
+                      {item.is_active ? "Active" : "Inactive"}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm">
-                      <div className={`font-medium ${
-                        item.quantity_available === 0
-                          ? 'text-red-500'
-                          : 'text-[#2d1239]'
-                      }`}>
+                      <div
+                        className={`font-medium ${
+                          item.quantity_available === 0
+                            ? "text-red-500"
+                            : "text-[#2d1239]"
+                        }`}
+                      >
                         {item.quantity_available} available
                       </div>
                       {item.quantity_claimed > 0 && (
@@ -232,7 +246,9 @@ export default async function AdminItemsPage() {
           {items?.length === 0 && (
             <div className="text-center py-16">
               <div className="text-5xl mb-4">📦</div>
-              <p className="text-[#2d1239]/50 mb-6">No items yet. Add your first item!</p>
+              <p className="text-[#2d1239]/50 mb-6">
+                No items yet. Add your first item!
+              </p>
               <Link
                 href="/admin/items/new"
                 className="inline-block bg-[#2d1239] text-white px-6 py-2.5 rounded-xl hover:bg-[#2d1239]/90 font-medium transition-colors text-sm"
@@ -242,8 +258,7 @@ export default async function AdminItemsPage() {
             </div>
           )}
         </div>
-
       </div>
     </main>
-  )
+  );
 }

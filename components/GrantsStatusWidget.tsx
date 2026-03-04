@@ -1,25 +1,27 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { 
-  FileText, 
-  Clock, 
-  CheckCircle, 
+import Link from "next/link";
+import {
+  FileText,
+  Clock,
+  CheckCircle,
   DollarSign,
   Plus,
-  ChevronRight
-} from 'lucide-react'
+  ChevronRight,
+} from "lucide-react";
 
 interface GrantsStatusWidgetProps {
   statusCounts: {
-    total: number
-    in_process: number
-    approved: number
-    funded: number
-  }
+    total: number;
+    in_process: number;
+    approved: number;
+    funded: number;
+  };
 }
 
-export default function GrantsStatusWidget({ statusCounts }: GrantsStatusWidgetProps) {
+export default function GrantsStatusWidget({
+  statusCounts,
+}: GrantsStatusWidgetProps) {
   return (
     <div className="bg-white rounded-xl border border-[#2d1239]/10 overflow-hidden">
       <div className="p-6">
@@ -29,7 +31,9 @@ export default function GrantsStatusWidget({ statusCounts }: GrantsStatusWidgetP
             <div className="w-10 h-10 rounded-lg bg-[#d4f1ad]/30 flex items-center justify-center">
               <FileText className="w-5 h-5 text-[#2d1239]" />
             </div>
-            <h3 className="text-lg font-semibold text-[#2d1239]">Microgrant Applications</h3>
+            <h3 className="text-lg font-semibold text-[#2d1239]">
+              Microgrant Applications
+            </h3>
           </div>
           <Link
             href="/grants/apply"
@@ -48,7 +52,9 @@ export default function GrantsStatusWidget({ statusCounts }: GrantsStatusWidgetP
               <FileText className="w-4 h-4 text-[#2d1239]/40" />
               <span className="text-xs text-[#2d1239]/60">Total</span>
             </div>
-            <p className="text-2xl font-bold text-[#2d1239]">{statusCounts.total}</p>
+            <p className="text-2xl font-bold text-[#2d1239]">
+              {statusCounts.total}
+            </p>
           </div>
 
           {/* In Process */}
@@ -57,7 +63,9 @@ export default function GrantsStatusWidget({ statusCounts }: GrantsStatusWidgetP
               <Clock className="w-4 h-4 text-[#2d1239]/60" />
               <span className="text-xs text-[#2d1239]/60">In Review</span>
             </div>
-            <p className="text-2xl font-bold text-[#2d1239]">{statusCounts.in_process}</p>
+            <p className="text-2xl font-bold text-[#2d1239]">
+              {statusCounts.in_process}
+            </p>
           </div>
 
           {/* Approved */}
@@ -66,7 +74,9 @@ export default function GrantsStatusWidget({ statusCounts }: GrantsStatusWidgetP
               <CheckCircle className="w-4 h-4 text-[#2d1239]/60" />
               <span className="text-xs text-[#2d1239]/60">Approved</span>
             </div>
-            <p className="text-2xl font-bold text-[#2d1239]">{statusCounts.approved}</p>
+            <p className="text-2xl font-bold text-[#2d1239]">
+              {statusCounts.approved}
+            </p>
           </div>
 
           {/* Funded */}
@@ -75,7 +85,9 @@ export default function GrantsStatusWidget({ statusCounts }: GrantsStatusWidgetP
               <DollarSign className="w-4 h-4 text-[#2d1239]/60" />
               <span className="text-xs text-[#2d1239]/60">Funded</span>
             </div>
-            <p className="text-2xl font-bold text-[#2d1239]">{statusCounts.funded}</p>
+            <p className="text-2xl font-bold text-[#2d1239]">
+              {statusCounts.funded}
+            </p>
           </div>
         </div>
 
@@ -91,5 +103,5 @@ export default function GrantsStatusWidget({ statusCounts }: GrantsStatusWidgetP
         )}
       </div>
     </div>
-  )
+  );
 }
