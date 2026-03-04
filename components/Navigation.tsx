@@ -7,8 +7,8 @@ import Link from 'next/link'
 export default function Navigation() {
   return (
     <nav className="w-full bg-[#BCAFCF] sticky top-0 z-50 shadow-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center h-20">
+        <div className="max-w-7xl mx-auto px-4">
+        <div className="flex items-center justify-between h-20">
 
           {/* Mobile: Logo centered, Hamburger right */}
           <div className="flex lg:hidden items-center w-full">
@@ -19,34 +19,34 @@ export default function Navigation() {
             <MobileMenu />
           </div>
 
-          {/* Desktop */}
-          <div className="hidden lg:flex items-center w-full relative">
+          {/* Desktop: 3-column grid for true centering */}
+          <div className="hidden lg:grid w-full h-full" style={{ gridTemplateColumns: '1fr auto 1fr' }}>
 
-            {/* Truly centered nav + logo */}
-            <div className="absolute inset-0 flex items-center justify-center gap-12 pointer-events-none">
-              <div className="pointer-events-auto">
-                <NavigationClient side="left" />
-              </div>
-              <div className="pointer-events-auto">
-                <NavigationClient side="center" />
-              </div>
-              <div className="pointer-events-auto">
-                <NavigationClient side="right" />
-              </div>
+            {/* Left: nav items — right aligned */}
+            <div className="flex items-center justify-end">
+              <NavigationClient side="left" />
             </div>
 
-            {/* Auth + Donate — pushed to far right */}
-            <div className="ml-auto flex items-center gap-3 relative z-10">
-              <Suspense fallback={<div className="w-10 h-10 rounded-full bg-[#2d1239]/40" />}>
-                <AuthButton />
-              </Suspense>
-              <Link
-                href="https://www.zeffy.com/en-US/donation-form/national-fund-for-women-foundation"
-                target="_blank"
-                className="inline-flex items-center justify-center px-4 h-10 bg-[#fdf493] text-[#2d1239] rounded-lg font-bold text-sm hover:bg-[#fdf493]/80 transition-all shadow-sm"
-              >
-                Donate
-              </Link>
+            {/* Center: logo — perfectly centered */}
+            <div className="flex items-center justify-center px-8">
+              <NavigationClient side="center" />
+            </div>
+
+            {/* Right: nav items + auth + donate — right aligned */}
+            <div className="flex items-center justify-end gap-4">
+              <NavigationClient side="right" />
+              <div className="flex items-center gap-3 ml-auto">
+                <Suspense fallback={<div className="w-10 h-10 rounded-full bg-[#2d1239]/40" />}>
+                  <AuthButton />
+                </Suspense>
+                <Link
+                  href="https://www.zeffy.com/en-US/donation-form/national-fund-for-women-foundation"
+                  target="_blank"
+                  className="inline-flex items-center justify-center px-4 h-10 bg-[#fdf493] text-[#2d1239] rounded-lg font-bold text-sm hover:bg-[#fdf493]/80 transition-all shadow-sm"
+                >
+                  Donate
+                </Link>
+              </div>
             </div>
 
           </div>
