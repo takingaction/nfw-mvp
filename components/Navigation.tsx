@@ -19,11 +19,24 @@ export default function Navigation() {
             <MobileMenu />
           </div>
 
-          {/* Desktop: Auth+Donate fixed right, everything else centered */}
-          <div className="hidden lg:flex items-center w-full">
+          {/* Desktop */}
+          <div className="hidden lg:flex items-center w-full relative">
 
-            {/* Auth + Donate — fixed to far right */}
-            <div className="flex items-center gap-3 ml-auto order-last">
+            {/* Truly centered nav + logo */}
+            <div className="absolute inset-0 flex items-center justify-center gap-12 pointer-events-none">
+              <div className="pointer-events-auto">
+                <NavigationClient side="left" />
+              </div>
+              <div className="pointer-events-auto">
+                <NavigationClient side="center" />
+              </div>
+              <div className="pointer-events-auto">
+                <NavigationClient side="right" />
+              </div>
+            </div>
+
+            {/* Auth + Donate — pushed to far right */}
+            <div className="ml-auto flex items-center gap-3 relative z-10">
               <Suspense fallback={<div className="w-10 h-10 rounded-full bg-[#2d1239]/40" />}>
                 <AuthButton />
               </Suspense>
@@ -34,13 +47,6 @@ export default function Navigation() {
               >
                 Donate
               </Link>
-            </div>
-
-            {/* Nav + Logo — centered in remaining space */}
-            <div className="flex-1 flex items-center justify-center gap-12">
-              <NavigationClient side="left" />
-              <NavigationClient side="center" />
-              <NavigationClient side="right" />
             </div>
 
           </div>
