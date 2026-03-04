@@ -35,7 +35,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/store" className="hover:text-white">
+                <Link href="/store/info" className="hover:text-white">
                   Zero Dollar Store
                 </Link>
               </li>

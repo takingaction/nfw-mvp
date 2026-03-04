@@ -66,7 +66,7 @@ export default function Footer() {
               <li>
                 <Link
                   prefetch={false}
-                  href="/store"
+                  href="/store/info"
                   className="text-[#bcafcf] hover:text-white transition-colors"
                 >
                   Zero Dollar Store
