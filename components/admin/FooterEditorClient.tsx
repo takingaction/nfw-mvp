@@ -262,7 +262,7 @@ export default function FooterEditorClient({
                 onClick={() => addColumnLink(colIndex)}
                 className="flex items-center gap-1 text-xs font-semibold text-[#2d1239] hover:opacity-70 transition-opacity"
               >
-                <Plus className="w-3 h-3" /> Add Link
+                <Plus className="w-3 h-3" />
               </button>
             </div>
           ))}
