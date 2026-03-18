@@ -35,13 +35,13 @@ export default function FooterEditorClient({
   const [logoUrl, setLogoUrl] = useState(initialData?.logo_url ?? "");
   const [tagline, setTagline] = useState(initialData?.tagline ?? "");
   const [columns, setColumns] = useState<FooterColumn[]>(
-    initialData?.columns ?? []
+    initialData?.columns ?? [],
   );
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>(
-    initialData?.social_links ?? []
+    initialData?.social_links ?? [],
   );
   const [legalLinks, setLegalLinks] = useState<FooterLink[]>(
-    initialData?.legal_links ?? []
+    initialData?.legal_links ?? [],
   );
   const [copyright, setCopyright] = useState(initialData?.copyright ?? "");
   const [saving, setSaving] = useState(false);
@@ -74,12 +74,11 @@ export default function FooterEditorClient({
     }
   };
 
-  const addColumn = () =>
-    setColumns([...columns, { heading: "", links: [] }]);
+  const addColumn = () => setColumns([...columns, { heading: "", links: [] }]);
 
   const updateColumnHeading = (i: number, val: string) =>
     setColumns(
-      columns.map((c, idx) => (idx === i ? { ...c, heading: val } : c))
+      columns.map((c, idx) => (idx === i ? { ...c, heading: val } : c)),
     );
 
   const removeColumn = (i: number) =>
@@ -90,15 +89,15 @@ export default function FooterEditorClient({
       columns.map((c, i) =>
         i === colIndex
           ? { ...c, links: [...c.links, { label: "", url: "" }] }
-          : c
-      )
+          : c,
+      ),
     );
 
   const updateColumnLink = (
     colIndex: number,
     linkIndex: number,
     key: keyof FooterLink,
-    val: string
+    val: string,
   ) =>
     setColumns(
       columns.map((c, i) =>
@@ -106,11 +105,11 @@ export default function FooterEditorClient({
           ? {
               ...c,
               links: c.links.map((l, j) =>
-                j === linkIndex ? { ...l, [key]: val } : l
+                j === linkIndex ? { ...l, [key]: val } : l,
               ),
             }
-          : c
-      )
+          : c,
+      ),
     );
 
   const removeColumnLink = (colIndex: number, linkIndex: number) =>
@@ -118,13 +117,12 @@ export default function FooterEditorClient({
       columns.map((c, i) =>
         i === colIndex
           ? { ...c, links: c.links.filter((_, j) => j !== linkIndex) }
-          : c
-      )
+          : c,
+      ),
     );
 
   return (
     <div className="space-y-6">
-
       {/* Logo + tagline */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
         <h2 className="font-black text-[#2d1239]">Logo & Tagline</h2>
@@ -229,7 +227,7 @@ export default function FooterEditorClient({
                           colIndex,
                           linkIndex,
                           "label",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       placeholder="Label"
@@ -243,7 +241,7 @@ export default function FooterEditorClient({
                           colIndex,
                           linkIndex,
                           "url",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       placeholder="URL"
@@ -262,7 +260,7 @@ export default function FooterEditorClient({
                 onClick={() => addColumnLink(colIndex)}
                 className="flex items-center gap-1 text-xs font-semibold text-[#2d1239] hover:opacity-70 transition-opacity"
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-3 h-3" /> Add Link
               </button>
             </div>
           ))}
@@ -271,4 +269,157 @@ export default function FooterEditorClient({
           onClick={addColumn}
           className="mt-4 flex items-center gap-2 text-sm font-semibold text-[#2d1239] hover:opacity-70 transition-opacity"
         >
-          <Plus classNa
+          <Plus className="w-4 h-4" /> Add Column
+        </button>
+      </div>
+
+      {/* Social links */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 className="font-black text-[#2d1239] mb-4">Social Links</h2>
+        <div className="space-y-2 mb-4">
+          {socialLinks.map((link, i) => (
+            <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2">
+              <input
+                type="text"
+                value={link.platform}
+                onChange={(e) =>
+                  setSocialLinks(
+                    socialLinks.map((l, j) =>
+                      j === i ? { ...l, platform: e.target.value } : l,
+                    ),
+                  )
+                }
+                placeholder="Platform"
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
+              />
+              <input
+                type="text"
+                value={link.url}
+                onChange={(e) =>
+                  setSocialLinks(
+                    socialLinks.map((l, j) =>
+                      j === i ? { ...l, url: e.target.value } : l,
+                    ),
+                  )
+                }
+                placeholder="URL"
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
+              />
+              <input
+                type="text"
+                value={link.icon_url}
+                onChange={(e) =>
+                  setSocialLinks(
+                    socialLinks.map((l, j) =>
+                      j === i ? { ...l, icon_url: e.target.value } : l,
+                    ),
+                  )
+                }
+                placeholder="Icon URL"
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
+              />
+              <button
+                onClick={() =>
+                  setSocialLinks(socialLinks.filter((_, j) => j !== i))
+                }
+                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() =>
+            setSocialLinks([
+              ...socialLinks,
+              { platform: "", url: "", icon_url: "" },
+            ])
+          }
+          className="flex items-center gap-2 text-sm font-semibold text-[#2d1239] hover:opacity-70 transition-opacity"
+        >
+          <Plus className="w-4 h-4" /> Add Social Link
+        </button>
+      </div>
+
+      {/* Legal links */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 className="font-black text-[#2d1239] mb-4">Legal Links</h2>
+        <div className="space-y-2 mb-4">
+          {legalLinks.map((link, i) => (
+            <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+              <input
+                type="text"
+                value={link.label}
+                onChange={(e) =>
+                  setLegalLinks(
+                    legalLinks.map((l, j) =>
+                      j === i ? { ...l, label: e.target.value } : l,
+                    ),
+                  )
+                }
+                placeholder="Label"
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
+              />
+              <input
+                type="text"
+                value={link.url}
+                onChange={(e) =>
+                  setLegalLinks(
+                    legalLinks.map((l, j) =>
+                      j === i ? { ...l, url: e.target.value } : l,
+                    ),
+                  )
+                }
+                placeholder="URL"
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
+              />
+              <button
+                onClick={() =>
+                  setLegalLinks(legalLinks.filter((_, j) => j !== i))
+                }
+                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => setLegalLinks([...legalLinks, { label: "", url: "" }])}
+          className="flex items-center gap-2 text-sm font-semibold text-[#2d1239] hover:opacity-70 transition-opacity"
+        >
+          <Plus className="w-4 h-4" /> Add Legal Link
+        </button>
+      </div>
+
+      {/* Copyright */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 className="font-black text-[#2d1239] mb-4">Copyright</h2>
+        <input
+          type="text"
+          value={copyright}
+          onChange={(e) => setCopyright(e.target.value)}
+          placeholder="© 2026 National Fund for Women. All rights reserved."
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
+        />
+      </div>
+
+      {/* Save */}
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-[#2d1239] text-white rounded-xl font-bold hover:bg-[#2d1239]/90 disabled:opacity-50 transition-colors"
+      >
+        <Save className="w-4 h-4" />
+        {saving ? "Saving..." : "Save Footer"}
+      </button>
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#2d1239] text-white px-6 py-3 rounded-xl text-sm font-semibold shadow-lg z-50 animate-fade-in">
+          {toast}
+        </div>
+      )}
+    </div>
+  );
+}
