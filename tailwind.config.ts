@@ -11,9 +11,14 @@ export default {
   theme: {
     extend: {
       fontFamily: {
+        // existing — do not remove, used by current shadcn components
         sans: ["Montserrat", "sans-serif"],
+        // NFW brand fonts — use font-serif and font-ui in new section components
+        serif: ["Playfair Display", "Georgia", "serif"],
+        ui: ["DM Sans", "Inter", "sans-serif"], // swap to Avenir if Adobe license confirmed
       },
       colors: {
+        // ── existing shadcn tokens — do not touch ──────────────────
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
@@ -53,6 +58,18 @@ export default {
           "3": "hsl(var(--chart-3))",
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
+        },
+        // ── NFW brand palette ──────────────────────────────────────
+        nfw: {
+          aubergine: "#3E145F",
+          blackberry: "#2E1F38",
+          dove: "#F6F5F0",
+          citrine: "#F8F19A",
+          wisteria: "#7786BE",
+          powder: "#9CA6D2",
+          "dusty-iris": "#C0C0DA",
+          lilac: "#B693C0",
+          stone: "#B7B6B9",
         },
       },
       borderRadius: {

@@ -137,6 +137,27 @@ export function AuthButton() {
                   </p>
                 </div>
                 <Link
+                  href="/admin/pages"
+                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Manage Pages
+                </Link>
+                <Link
+                  href="/admin/header"
+                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Edit Header
+                </Link>
+                <Link
+                  href="/admin/footer"
+                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Edit Footer
+                </Link>
+                <Link
                   href="/admin/grants"
                   className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
                   onClick={() => setIsOpen(false)}

@@ -1,12 +1,6 @@
-import Hero from "@/components/landing/Hero";
-import StatsSection from "@/components/landing/StatsSection";
-import LittleGoesLongWay from "@/components/landing/LittleGoesLongWay";
-import RealHelp from "@/components/landing/RealHelp";
-import EverydaySavings from "@/components/landing/EverydaySavings";
-import ZeroDollarStore from "@/components/landing/ZeroDollarStore";
-import SmallWins from "@/components/landing/SmallWins";
-import FAQ from "@/components/landing/FAQ";
-import FinalCTA from "@/components/landing/FinalCTA";
+import { createClient } from "@/lib/supabase/server";
+import SectionRenderer from "@/components/sections/SectionRenderer";
+import { notFound } from "next/navigation";
 
 export const metadata = {
   title: "National Fund for Women",
@@ -21,18 +15,24 @@ export const metadata = {
   },
 };
 
-export default function Home() {
-  return (
-    <>
-      <Hero />
-      <StatsSection />
-      <LittleGoesLongWay />
-      <RealHelp />
-      <EverydaySavings />
-      <ZeroDollarStore />
-      <SmallWins />
-      <FAQ />
-      <FinalCTA />
-    </>
-  );
+export default async function Home() {
+  const supabase = await createClient();
+
+  const { data: page } = await supabase
+    .from("pages")
+    .select("id, status")
+    .eq("slug", "home")
+    .single();
+
+  if (!page) notFound();
+
+  const { data: sections } = await supabase
+    .from("page_sections")
+    .select("*")
+    .eq("page_id", page.id)
+    .eq("version", "live")
+    .eq("visible", true)
+    .order("order_index");
+
+  return <SectionRenderer sections={sections ?? []} />;
 }
