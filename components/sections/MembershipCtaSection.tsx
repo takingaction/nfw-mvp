@@ -6,7 +6,7 @@ interface Props {
 }
 
 export default function MembershipCtaSection({ content }: Props) {
-  const c = content as MembershipCtaContent;
+  const c = content as unknown as MembershipCtaContent;
   const parts = c.headline.split(c.headline_italic_phrase);
 
   return (

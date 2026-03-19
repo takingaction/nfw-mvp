@@ -5,8 +5,7 @@ interface Props {
 }
 
 export default function MissionQuoteSection({ content }: Props) {
-  const c = content as MissionQuoteContent;
-
+  const c = content as unknown as MissionQuoteContent;
   return (
     <section className="bg-nfw-dove py-32 lg:py-40">
       <div className="w-full px-16 lg:px-24 text-center">

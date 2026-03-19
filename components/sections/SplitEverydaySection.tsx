@@ -6,7 +6,7 @@ interface Props {
 }
 
 export default function SplitEverydaySection({ content }: Props) {
-  const c = content as SplitEverydayContent;
+  const c = content as unknown as SplitEverydayContent;
   const parts = c.headline.split(c.headline_italic_phrase);
   const imageLeft = c.image_side === "left";
 

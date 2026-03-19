@@ -6,7 +6,7 @@ interface Props {
 }
 
 export default function PerksFeatureSection({ content }: Props) {
-  const c = content as PerksFeatureContent;
+  const c = content as unknown as PerksFeatureContent;
   const parts = c.headline.split(c.headline_italic_phrase);
   // Duplicate logos for seamless infinite scroll
   const logos = c.logos ?? [];

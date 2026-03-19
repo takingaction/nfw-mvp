@@ -8,7 +8,7 @@ interface Props {
 const COLUMN_COLORS = ["#3e155f", "#b693c0", "#7786be"];
 
 export default function ThreeColFeaturesSection({ content }: Props) {
-  const c = content as ThreeColFeaturesContent;
+  const c = content as unknown as ThreeColFeaturesContent;
 
   return (
     <section>

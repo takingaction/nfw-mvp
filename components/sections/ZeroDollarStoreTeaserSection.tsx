@@ -6,7 +6,7 @@ interface Props {
 }
 
 export default function ZeroDollarStoreTeaserSection({ content }: Props) {
-  const c = content as ZeroDollarStoreTeaserContent;
+  const c = content as unknown as ZeroDollarStoreTeaserContent;
   const parts = c.headline.split(c.headline_italic_phrase);
 
   return (

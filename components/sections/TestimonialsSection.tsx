@@ -44,7 +44,7 @@ const DOT_INACTIVE = {
 };
 
 export default function TestimonialsSection({ content }: Props) {
-  const c = content as TestimonialsContent;
+  const c = content as unknown as TestimonialsContent;
   const bg = (c.background ?? "dove") as keyof typeof BG_CLASSES;
   const testimonials = c.testimonials ?? [];
   const [current, setCurrent] = useState(0);

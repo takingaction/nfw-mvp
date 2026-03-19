@@ -42,7 +42,7 @@ function AnimatedStat({ value }: { value: string }) {
 }
 
 export default function StatsBarSection({ content }: Props) {
-  const c = content as StatsBarContent;
+  const c = content as unknown as StatsBarContent;
 
   return (
     <section className="bg-nfw-wisteria py-16 lg:py-20">

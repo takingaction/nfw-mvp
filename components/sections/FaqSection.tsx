@@ -62,7 +62,7 @@ function AccordionItem({
 }
 
 export default function FaqSection({ content }: Props) {
-  const c = content as FaqContent;
+  const c = content as unknown as FaqContent;
   const [open, setOpen] = useState<number | null>(null);
 
   return (

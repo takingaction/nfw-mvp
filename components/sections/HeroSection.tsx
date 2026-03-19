@@ -6,7 +6,7 @@ interface Props {
 }
 
 export default function HeroSection({ content }: Props) {
-  const c = content as HeroContent;
+  const c = content as unknown as HeroContent;
   const parts = c.headline.split(c.headline_italic_phrase);
 
   return (
