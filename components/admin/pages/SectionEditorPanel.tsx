@@ -84,7 +84,7 @@ function FieldEditor({
           {field.label}
         </label>
 
-        {value && (
+        {typeof value === "string" && value && (
           <div className="relative mb-2 group">
             <img
               src={value as string}
