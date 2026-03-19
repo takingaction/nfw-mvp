@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Trash2, Save, Upload } from "lucide-react";
+import Link from "next/link";
 import { uploadImage } from "@/lib/upload";
 
 interface FooterLink {
@@ -55,19 +56,24 @@ export default function FooterEditorClient({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase.from("site_footer").upsert({
-        id: initialData?.id,
-        singleton: true,
-        logo_url: logoUrl,
-        tagline,
-        columns,
-        social_links: socialLinks,
-        legal_links: legalLinks,
-        copyright,
+      const response = await fetch("/api/footer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: initialData?.id,
+          singleton: true,
+          logo_url: logoUrl,
+          tagline,
+          columns,
+          social_links: socialLinks,
+          legal_links: legalLinks,
+          copyright,
+        }),
       });
-      if (error) throw error;
+
+      if (!response.ok) throw new Error("Failed to save");
       showToast("Footer saved");
-    } catch {
+    } catch (err) {
       showToast("Failed to save");
     } finally {
       setSaving(false);
@@ -123,10 +129,34 @@ export default function FooterEditorClient({
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-8 right-8 bg-[#2d1239] text-white px-6 py-3 rounded-full shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-4">
+          {toast}
+        </div>
+      )}
+
+      {/* Header with Save Button */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-black text-[#2d1239]">Footer Editor</h1>
+          <p className="text-gray-500 text-sm">
+            Manage your site-wide footer content
+          </p>
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-6 py-3 bg-[#2d1239] text-white rounded-full font-black text-sm uppercase tracking-wider hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          <Save className="w-4 h-4" />
+          {saving ? "Saving..." : "Save Changes"}
+        </button>
+      </div>
+
       {/* Logo + tagline */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
         <h2 className="font-black text-[#2d1239]">Logo & Tagline</h2>
-
         <div>
           <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">
             Logo
@@ -157,6 +187,7 @@ export default function FooterEditorClient({
                 const file = e.target.files?.[0];
                 if (!file) return;
                 try {
+                  // ✅ Updated to call without supabase param
                   const url = await uploadImage(file, "logos");
                   setLogoUrl(url);
                 } catch (err) {
@@ -165,13 +196,6 @@ export default function FooterEditorClient({
               }}
             />
           </label>
-          <input
-            type="text"
-            value={logoUrl}
-            onChange={(e) => setLogoUrl(e.target.value)}
-            placeholder="Or paste a URL directly"
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239] text-gray-400"
-          />
         </div>
 
         <div>
@@ -189,14 +213,22 @@ export default function FooterEditorClient({
 
       {/* Link columns */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 className="font-black text-[#2d1239] mb-4">Link Columns</h2>
-        <div className="space-y-4">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-black text-[#2d1239]">Link Columns</h2>
+          <button
+            onClick={addColumn}
+            className="text-xs font-black uppercase tracking-wider text-[#2d1239] hover:opacity-70 transition-opacity flex items-center gap-1"
+          >
+            <Plus className="w-3 h-3" /> Add Column
+          </button>
+        </div>
+        <div className="space-y-6">
           {columns.map((col, colIndex) => (
             <div
               key={colIndex}
-              className="border border-gray-200 rounded-xl p-4"
+              className="border border-gray-100 rounded-xl p-4 bg-gray-50/50"
             >
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-4">
                 <input
                   type="text"
                   value={col.heading}
@@ -213,7 +245,7 @@ export default function FooterEditorClient({
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
-              <div className="space-y-2 mb-3">
+              <div className="space-y-2">
                 {col.links.map((link, linkIndex) => (
                   <div
                     key={linkIndex}
@@ -249,177 +281,36 @@ export default function FooterEditorClient({
                     />
                     <button
                       onClick={() => removeColumnLink(colIndex, linkIndex)}
-                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-1.5 text-gray-300 hover:text-red-500 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
+                <button
+                  onClick={() => addColumnLink(colIndex)}
+                  className="mt-2 text-xs font-semibold text-gray-400 hover:text-[#2d1239] transition-colors flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" /> Add Link
+                </button>
               </div>
-              <button
-                onClick={() => addColumnLink(colIndex)}
-                className="flex items-center gap-1 text-xs font-semibold text-[#2d1239] hover:opacity-70 transition-opacity"
-              >
-                <Plus className="w-3 h-3" /> Add Link
-              </button>
             </div>
           ))}
         </div>
-        <button
-          onClick={addColumn}
-          className="mt-4 flex items-center gap-2 text-sm font-semibold text-[#2d1239] hover:opacity-70 transition-opacity"
-        >
-          <Plus className="w-4 h-4" /> Add Column
-        </button>
-      </div>
-
-      {/* Social links */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 className="font-black text-[#2d1239] mb-4">Social Links</h2>
-        <div className="space-y-2 mb-4">
-          {socialLinks.map((link, i) => (
-            <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2">
-              <input
-                type="text"
-                value={link.platform}
-                onChange={(e) =>
-                  setSocialLinks(
-                    socialLinks.map((l, j) =>
-                      j === i ? { ...l, platform: e.target.value } : l,
-                    ),
-                  )
-                }
-                placeholder="Platform"
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
-              />
-              <input
-                type="text"
-                value={link.url}
-                onChange={(e) =>
-                  setSocialLinks(
-                    socialLinks.map((l, j) =>
-                      j === i ? { ...l, url: e.target.value } : l,
-                    ),
-                  )
-                }
-                placeholder="URL"
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
-              />
-              <input
-                type="text"
-                value={link.icon_url}
-                onChange={(e) =>
-                  setSocialLinks(
-                    socialLinks.map((l, j) =>
-                      j === i ? { ...l, icon_url: e.target.value } : l,
-                    ),
-                  )
-                }
-                placeholder="Icon URL"
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
-              />
-              <button
-                onClick={() =>
-                  setSocialLinks(socialLinks.filter((_, j) => j !== i))
-                }
-                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-        <button
-          onClick={() =>
-            setSocialLinks([
-              ...socialLinks,
-              { platform: "", url: "", icon_url: "" },
-            ])
-          }
-          className="flex items-center gap-2 text-sm font-semibold text-[#2d1239] hover:opacity-70 transition-opacity"
-        >
-          <Plus className="w-4 h-4" /> Add Social Link
-        </button>
-      </div>
-
-      {/* Legal links */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 className="font-black text-[#2d1239] mb-4">Legal Links</h2>
-        <div className="space-y-2 mb-4">
-          {legalLinks.map((link, i) => (
-            <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2">
-              <input
-                type="text"
-                value={link.label}
-                onChange={(e) =>
-                  setLegalLinks(
-                    legalLinks.map((l, j) =>
-                      j === i ? { ...l, label: e.target.value } : l,
-                    ),
-                  )
-                }
-                placeholder="Label"
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
-              />
-              <input
-                type="text"
-                value={link.url}
-                onChange={(e) =>
-                  setLegalLinks(
-                    legalLinks.map((l, j) =>
-                      j === i ? { ...l, url: e.target.value } : l,
-                    ),
-                  )
-                }
-                placeholder="URL"
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
-              />
-              <button
-                onClick={() =>
-                  setLegalLinks(legalLinks.filter((_, j) => j !== i))
-                }
-                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-        <button
-          onClick={() => setLegalLinks([...legalLinks, { label: "", url: "" }])}
-          className="flex items-center gap-2 text-sm font-semibold text-[#2d1239] hover:opacity-70 transition-opacity"
-        >
-          <Plus className="w-4 h-4" /> Add Legal Link
-        </button>
       </div>
 
       {/* Copyright */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 className="font-black text-[#2d1239] mb-4">Copyright</h2>
+        <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">
+          Copyright Text
+        </label>
         <input
           type="text"
           value={copyright}
           onChange={(e) => setCopyright(e.target.value)}
-          placeholder="© 2026 National Fund for Women. All rights reserved."
           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
         />
       </div>
-
-      {/* Save */}
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-[#2d1239] text-white rounded-xl font-bold hover:bg-[#2d1239]/90 disabled:opacity-50 transition-colors"
-      >
-        <Save className="w-4 h-4" />
-        {saving ? "Saving..." : "Save Footer"}
-      </button>
-
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#2d1239] text-white px-6 py-3 rounded-xl text-sm font-semibold shadow-lg z-50 animate-fade-in">
-          {toast}
-        </div>
-      )}
     </div>
   );
 }

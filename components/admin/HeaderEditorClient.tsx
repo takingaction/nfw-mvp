@@ -58,17 +58,24 @@ export default function HeaderEditorClient({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase.from("site_header").upsert({
-        id: initialData?.id,
-        singleton: true,
-        logo_url: logoUrl,
-        nav_links: navLinks,
-        cta_label: ctaLabel,
-        cta_url: ctaUrl,
+      // ✅ Using fetch API instead of direct Supabase client
+      const response = await fetch("/api/header", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: initialData?.id,
+          singleton: true,
+          logo_url: logoUrl,
+          nav_links: navLinks,
+          cta_label: ctaLabel,
+          cta_url: ctaUrl,
+        }),
       });
-      if (error) throw error;
+
+      if (!response.ok) throw new Error("Failed to save");
+
       showToast("Header saved");
-    } catch {
+    } catch (err) {
       showToast("Failed to save");
     } finally {
       setSaving(false);
@@ -112,6 +119,7 @@ export default function HeaderEditorClient({
               const file = e.target.files?.[0];
               if (!file) return;
               try {
+                // ✅ Calling without third supabase argument
                 const url = await uploadImage(file, "logos");
                 setLogoUrl(url);
               } catch (err) {
