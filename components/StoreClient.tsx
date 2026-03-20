@@ -136,7 +136,7 @@ export default function StoreClient({
             Zero Dollar Store
           </h1>
           <p className="font-ui text-sm font-medium tracking-[0.03em] text-nfw-blackberry/70">
-            Members can claim 1 free item per month
+            Browse our selection
           </p>
         </div>
 

@@ -106,9 +106,10 @@ export async function GET(request: Request) {
       },
       search_postal_code: searchPostalCode,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch locations";
     return NextResponse.json(
-      { error: "Failed to fetch locations", details: error.message },
+      { error: "Failed to fetch locations", details: message },
       { status: 500 },
     );
   }

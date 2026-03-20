@@ -1,5 +1,3 @@
-import { createStorefrontApiClient } from "@shopify/storefront-api-client";
-
 function getShopifyConfig() {
   return {
     storeDomain: process.env.SHOPIFY_SHOP_DOMAIN || "",

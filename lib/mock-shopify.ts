@@ -119,7 +119,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     shopifyVariantId: "gid://shopify/ProductVariant/6",
     title: "Stickers Pack",
     description: "Fun NFW sticker pack with various designs. Waterproof and durable. Perfect for laptops or water bottles.",
-    imageUrl: "https://images.unsplash.com/photo-1586075574471-ae186a3e57b5?w=400&h=533&fit=crop&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?w=400&h=533&fit=crop&q=80",
     availableForSale: true,
     variants: [
       {

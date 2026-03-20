@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCategories } from "@/lib/access-perks/offers";
 
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   try {
     const supabase = await createClient();
 
@@ -21,10 +21,11 @@ export async function GET(request: Request) {
     const result = await getCategories(memberKey);
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get categories error:", error);
+    const message = error instanceof Error ? error.message : "Failed to get categories";
     return NextResponse.json(
-      { error: error.message || "Failed to get categories" },
+      { error: message },
       { status: 500 },
     );
   }

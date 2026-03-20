@@ -35,7 +35,6 @@ async function AdminClaimsContent() {
   }
 
   // Get member emails from auth.users
-  const memberIds = claims?.map((c) => c.member_id) || [];
   const { data: users } = await supabase.auth.admin.listUsers();
 
   // Map user emails to claims

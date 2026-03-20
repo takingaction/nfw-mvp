@@ -14,6 +14,13 @@ interface AccessMemberImport {
   previous_member_customer_identifier?: string;
 }
 
+interface Profile {
+  id: string;
+  full_name: string;
+  subscription_status: string;
+  [key: string]: unknown;
+}
+
 /**
  * Sanitize member_customer_identifier to meet Access requirements:
  * - Alphanumeric only (no special characters)
@@ -128,7 +135,7 @@ export async function syncAccessMember(
  * Helper: Convert NFW profile to Access member format
  */
 export function profileToAccessMember(
-  profile: any,
+  profile: Profile,
   userId: string,
   userEmail: string,
 ) {

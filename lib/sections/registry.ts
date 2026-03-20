@@ -1,5 +1,4 @@
 import { SectionType } from "./types";
-import type { ComponentType } from "react";
 
 // ── Editor field definitions ──────────────────────────────────
 // Used by the admin panel to render the correct inputs per section type

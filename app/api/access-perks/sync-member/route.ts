@@ -74,10 +74,11 @@ export async function POST(request: Request) {
       .eq("id", userId);
 
     return NextResponse.json({ success: true, result });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Member sync error:", error);
+    const message = error instanceof Error ? error.message : "Failed to sync member";
     return NextResponse.json(
-      { error: error.message || "Failed to sync member" },
+      { error: message },
       { status: 500 },
     );
   }
