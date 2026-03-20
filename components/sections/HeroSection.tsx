@@ -45,26 +45,24 @@ export default function HeroSection({ content }: Props) {
             </div>
           </div>
 
-          <div className="relative w-full min-h-[400px] lg:min-h-[600px]">
+          <div className="relative w-full aspect-[3/4] lg:aspect-[4/3] lg:h-[500px]">
             {c.images ? (
-              <div className="relative w-full h-full">
-                <Image
-                  src={
-                    typeof c.images === "string"
-                      ? c.images
-                      : Array.isArray(c.images)
-                        ? typeof c.images[0] === "string"
-                          ? c.images[0]
-                          : (c.images[0] as { url: string })?.url
-                        : (c.images as { url: string }).url
-                  }
-                  alt=""
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 1024px) 100vw, 47vw"
-                  priority
-                />
-              </div>
+              <Image
+                src={
+                  typeof c.images === "string"
+                    ? c.images
+                    : Array.isArray(c.images)
+                      ? typeof c.images[0] === "string"
+                        ? c.images[0]
+                        : (c.images[0] as { url: string })?.url
+                      : (c.images as { url: string }).url
+                }
+                alt=""
+                fill
+                className="object-contain"
+                sizes="(max-width: 1024px) 100vw, 47vw"
+                priority
+              />
             ) : (
               <div className="w-full h-full bg-nfw-blackberry/30" />
             )}
