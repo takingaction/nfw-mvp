@@ -181,6 +181,13 @@ export function AuthButtonCombined() {
                   Manage Members
                 </Link>
                 <Link
+                  href="/admin/shopify"
+                  className="block px-4 py-2 text-sm text-[#3e155f] hover:bg-[#f8f7fa]"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Shopify Sync
+                </Link>
+                <Link
                   href="/admin/analytics"
                   className="block px-4 py-2 text-sm text-[#3e155f] hover:bg-[#f8f7fa]"
                   onClick={() => setIsOpen(false)}

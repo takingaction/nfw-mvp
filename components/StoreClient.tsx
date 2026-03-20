@@ -148,7 +148,7 @@ export default function StoreClient({
             </p>
           </div>
         ) : (
-          <div className="flex gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {products.map((product) => {
               const claimStatus = canClaim(product);
               const isExpanded = expandedId === product.shopifyProductId;
@@ -157,7 +157,7 @@ export default function StoreClient({
               return (
                 <div
                   key={product.shopifyProductId}
-                  className="flex-1"
+                  className=""
                 >
                   <div className="relative aspect-[3/4] overflow-hidden bg-nfw-stone/10">
                     {product.imageUrl ? (
@@ -166,7 +166,7 @@ export default function StoreClient({
                         alt={product.title}
                         fill
                         className={`object-cover ${!product.availableForSale ? "grayscale opacity-60" : ""}`}
-                        sizes="(max-width: 768px) 33vw, 400px"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                       />
                     ) : (
                       <div className="w-full h-full bg-nfw-powder/20" />
@@ -218,7 +218,7 @@ export default function StoreClient({
                     <button
                       onClick={() => handleClaim(product)}
                       disabled={!claimStatus.eligible}
-                      className={`mt-4 w-full py-3 font-ui text-xs font-black tracking-[0.06em] uppercase transition-colors ${
+                      className={`mt-4 w-full py-3 px-2 font-ui text-xs font-black tracking-[0.03em] uppercase transition-colors text-center ${
                         claimStatus.eligible
                           ? "bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/90"
                           : "bg-nfw-stone/30 text-nfw-blackberry/50 cursor-not-allowed"

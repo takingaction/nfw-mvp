@@ -24,7 +24,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     shopifyVariantId: "gid://shopify/ProductVariant/1",
     title: "Ceramic Mug",
     description: "Beautiful handcrafted ceramic mug perfect for your morning coffee or tea. Features a classic design with comfortable grip.",
-    imageUrl: "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=400&h=533&fit=crop",
+    imageUrl: "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=400&h=533&fit=crop&q=80",
     availableForSale: true,
     variants: [
       {
@@ -43,7 +43,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     shopifyVariantId: "gid://shopify/ProductVariant/2",
     title: "Tote Bag",
     description: "Eco-friendly canvas tote bag with NFW branding. Perfect for shopping or everyday use. Made from sustainable materials.",
-    imageUrl: "https://images.unsplash.com/photo-1544816155-12df9643f363?w=400&h=533&fit=crop",
+    imageUrl: "https://images.unsplash.com/photo-1544816155-12df9643f363?w=400&h=533&fit=crop&q=80",
     availableForSale: true,
     variants: [
       {
@@ -62,7 +62,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     shopifyVariantId: "gid://shopify/ProductVariant/3",
     title: "Notebook Set",
     description: "Premium lined notebook with NFW cover design. Includes matching pen. Great for journaling or note-taking.",
-    imageUrl: "https://images.unsplash.com/photo-1531346878377-a5be20888e57?w=400&h=533&fit=crop",
+    imageUrl: "https://images.unsplash.com/photo-1531346878377-a5be20888e57?w=400&h=533&fit=crop&q=80",
     availableForSale: true,
     variants: [
       {
@@ -81,7 +81,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     shopifyVariantId: "gid://shopify/ProductVariant/4",
     title: "Water Bottle",
     description: "Insulated stainless steel water bottle. Keeps drinks cold for 24 hours or hot for 12 hours. BPA-free.",
-    imageUrl: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&h=533&fit=crop",
+    imageUrl: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&h=533&fit=crop&q=80",
     availableForSale: false,
     variants: [
       {
@@ -100,7 +100,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     shopifyVariantId: "gid://shopify/ProductVariant/5",
     title: "Lip Balm Set",
     description: "Set of 3 organic lip balms in different flavors. Made with natural ingredients. Long-lasting moisture.",
-    imageUrl: "https://images.unsplash.com/photo-1599305090598-fe179d501227?w=400&h=533&fit=crop",
+    imageUrl: "https://images.unsplash.com/photo-1599305090598-fe179d501227?w=400&h=533&fit=crop&q=80",
     availableForSale: true,
     variants: [
       {
@@ -119,7 +119,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     shopifyVariantId: "gid://shopify/ProductVariant/6",
     title: "Stickers Pack",
     description: "Fun NFW sticker pack with various designs. Waterproof and durable. Perfect for laptops or water bottles.",
-    imageUrl: "https://images.unsplash.com/photo-1586075574471-ae186a3e57b5?w=400&h=533&fit=crop",
+    imageUrl: "https://images.unsplash.com/photo-1586075574471-ae186a3e57b5?w=400&h=533&fit=crop&q=80",
     availableForSale: true,
     variants: [
       {

@@ -44,9 +44,9 @@ export default async function ZeroDollarStoreTeaserSection({ content }: Props) {
 
           {products.length > 0 && (
             <>
-              <div className="flex gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {products.slice(0, 3).map((product: { shopifyProductId: string; title: string; imageUrl: string }) => (
-                  <div key={product.shopifyProductId} className="flex-1">
+                  <div key={product.shopifyProductId}>
                     <div className="relative aspect-[3/4] overflow-hidden bg-nfw-stone/10">
                       {product.imageUrl ? (
                         <Image
@@ -54,7 +54,7 @@ export default async function ZeroDollarStoreTeaserSection({ content }: Props) {
                           alt={product.title}
                           fill
                           className="object-cover"
-                          sizes="(max-width: 768px) 33vw, 400px"
+                          sizes="(max-width: 768px) 100vw, 33vw"
                         />
                       ) : (
                         <div className="w-full h-full bg-nfw-powder/20" />

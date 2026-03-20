@@ -371,6 +371,13 @@ export default function MobileMenu() {
                           Manage Members
                         </Link>
                         <Link
+                          href="/admin/shopify"
+                          onClick={closeMenu}
+                          className={linkClass}
+                        >
+                          Shopify Sync
+                        </Link>
+                        <Link
                           href="/admin/analytics"
                           onClick={closeMenu}
                           className={linkClass}
