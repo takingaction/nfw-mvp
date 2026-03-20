@@ -46,9 +46,7 @@ export async function sendGrantStatusEmail({
       subject,
       text,
     });
-    console.log(`Email sent to ${to} for status: ${status}`);
   } catch (err) {
     console.error("Failed to send email:", err);
-    // Don't throw — email failure shouldn't break the status update
   }
 }

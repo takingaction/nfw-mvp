@@ -11,11 +11,10 @@ export async function POST(request: Request, { params }: RouteParams) {
   try {
     const resolvedParams = await params;
     const { offerKey } = resolvedParams;
-    const { method, location_key } = await request.json(); // ✅ ADDED location_key
+    const { method, location_key } = await request.json();
 
     const supabase = await createClient();
 
-    // Get current user
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -23,29 +22,13 @@ export async function POST(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Sanitize member_key
     const memberKey = user.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 
-    console.log("🔄 Redeeming offer:", {
-      offerKey,
-      method,
-      memberKey,
-      location_key,
-    }); // ✅ Log location_key
-
-    // Build API URL with location_key if provided
     let apiUrl = `https://redeem.adcrws-stage.com/v1/redeem/${offerKey}/${method}?access_token=${process.env.ACCESS_OFFERS_TOKEN}&member_key=${memberKey}`;
 
-    // ✅ ADD location_key to URL if provided
     if (location_key) {
       apiUrl += `&location_key=${location_key}`;
-      console.log("📍 Using location_key:", location_key);
     }
-
-    console.log(
-      "📡 Calling redemption URL:",
-      apiUrl.replace(process.env.ACCESS_OFFERS_TOKEN!, "HIDDEN"),
-    );
 
     const response = await fetch(apiUrl, {
       method: "GET",
@@ -54,11 +37,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       },
     });
 
-    console.log("📡 Redemption API status:", response.status);
-
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("❌ Redemption API error:", errorText);
       return NextResponse.json(
         { error: `Redemption failed: ${errorText}` },
         { status: response.status },
@@ -66,12 +46,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     const redemptionData = await response.json();
-    console.log(
-      "✅ Redemption API response:",
-      JSON.stringify(redemptionData, null, 2),
-    );
 
-    // Get offer details for tracking - include location_key if provided
     let offerDetailsUrl = `${process.env.ACCESS_OFFERS_API_URL}/v1/offers/${offerKey}?access_token=${process.env.ACCESS_OFFERS_TOKEN}&member_key=${memberKey}`;
     if (location_key) {
       offerDetailsUrl += `&location_key=${location_key}`;
@@ -87,7 +62,6 @@ export async function POST(request: Request, { params }: RouteParams) {
       }
     }
 
-    // Extract usage_redeem_key from API response
     const usageRedeemKey =
       redemptionData.usage_redeem_key ||
       redemptionData.redeem_key ||
@@ -95,7 +69,6 @@ export async function POST(request: Request, { params }: RouteParams) {
       redemptionData.details?.redeem_key ||
       null;
 
-    // Extract redemption URL
     const finalRedemptionUrl =
       redemptionData.details?.link ||
       redemptionData.url ||
@@ -103,7 +76,6 @@ export async function POST(request: Request, { params }: RouteParams) {
       redemptionData.link ||
       null;
 
-    // Extract promotion code - check multiple locations
     const promotionCode =
       redemptionData.promotion_code ||
       redemptionData.coupon_code ||
@@ -111,7 +83,6 @@ export async function POST(request: Request, { params }: RouteParams) {
       redemptionData.details?.coupon_code ||
       null;
 
-    // Extract phone number from instructions if present
     let phoneNumber = redemptionData.phone_number || null;
     if (!phoneNumber) {
       const messageText =
@@ -127,7 +98,6 @@ export async function POST(request: Request, { params }: RouteParams) {
       }
     }
 
-    // Extract instructions and display message - check multiple locations
     const instructions =
       redemptionData.instructions ||
       redemptionData.details?.display ||
@@ -141,21 +111,12 @@ export async function POST(request: Request, { params }: RouteParams) {
       redemptionData.message ||
       null;
 
-    // Calculate expiration date (if offer has expires_on)
     let expiresAt = null;
     if (offerDetails.expires_on) {
       expiresAt = new Date(offerDetails.expires_on).toISOString();
     }
 
-    console.log("🔑 Usage redeem key:", usageRedeemKey);
-    console.log("🎟️ Promotion code:", promotionCode);
-    console.log("📞 Phone number:", phoneNumber);
-    console.log("📋 Instructions:", instructions);
-    console.log("💬 Display message:", displayMessage);
-    console.log("📅 Expires at:", expiresAt);
-
-    // Track redemption in database with all details
-    const { error: dbError } = await supabase.from("offer_redemptions").insert({
+    await supabase.from("offer_redemptions").insert({
       user_id: user.id,
       offer_key: offerKey,
       usage_redeem_key: usageRedeemKey,
@@ -176,13 +137,6 @@ export async function POST(request: Request, { params }: RouteParams) {
       status: "active",
     });
 
-    if (dbError) {
-      console.error("Failed to track redemption:", dbError);
-      // Don't fail the redemption if tracking fails
-    } else {
-      console.log("✅ Redemption tracked in database with full details");
-    }
-
     return NextResponse.json({
       success: true,
       redemption_url: finalRedemptionUrl,
@@ -196,7 +150,6 @@ export async function POST(request: Request, { params }: RouteParams) {
       raw_response: redemptionData,
     });
   } catch (error: any) {
-    console.error("❌ Redemption error:", error);
     return NextResponse.json(
       { error: error.message || "Failed to redeem offer" },
       { status: 500 },

@@ -11,8 +11,6 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-// Map Stripe price IDs to membership levels
-// Replace these with your actual Price IDs
 const PRICE_TO_MEMBERSHIP: Record<string, string> = {
   price_1SwcFWCeca9TSF9AWfCnn2yk: "contributing",
   price_1SwcJeCeca9TSF9AetEiWuUB: "founding",
@@ -31,11 +29,8 @@ export async function POST(request: Request) {
       process.env.STRIPE_WEBHOOK_SECRET!,
     );
   } catch (err: any) {
-    console.error("Webhook signature verification failed:", err.message);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
-
-  console.log("Webhook event received:", event.type);
 
   try {
     switch (event.type) {
@@ -43,13 +38,6 @@ export async function POST(request: Request) {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.metadata?.userId;
         const membershipLevel = session.metadata?.membershipLevel;
-
-        console.log(
-          "Processing checkout for user:",
-          userId,
-          "level:",
-          membershipLevel,
-        );
 
         if (userId && membershipLevel) {
           const { error } = await supabaseAdmin
@@ -64,10 +52,6 @@ export async function POST(request: Request) {
 
           if (error) {
             console.error("Failed to update membership:", error);
-          } else {
-            console.log(
-              `Updated user ${userId} to ${membershipLevel} membership`,
-            );
           }
         }
         break;
@@ -78,33 +62,18 @@ export async function POST(request: Request) {
         const customerId = subscription.customer as string;
         const priceId = subscription.items.data[0]?.price.id;
 
-        console.log(
-          "Subscription updated:",
-          subscription.id,
-          "price:",
-          priceId,
-        );
-
-        // Get customer email
         const customer = (await stripe.customers.retrieve(
           customerId,
         )) as Stripe.Customer;
 
         if (!customer.email) {
-          console.error("No email found for customer:", customerId);
           break;
         }
 
-        // Check if subscription is set to cancel at period end
         if (subscription.cancel_at_period_end) {
-          // Use type assertion to access current_period_end
-          const subscriptionData = subscription as any;
-          const endsAt = new Date(subscriptionData.current_period_end * 1000);
-          console.log(
-            `Subscription for ${customer.email} will cancel on ${endsAt.toISOString()}`,
-          );
+          const endsAt = new Date((subscription as unknown as { current_period_end: number }).current_period_end * 1000);
 
-          const { error } = await supabaseAdmin
+          await supabaseAdmin
             .from("profiles")
             .update({
               subscription_status: "canceling",
@@ -112,20 +81,11 @@ export async function POST(request: Request) {
               updated_at: new Date().toISOString(),
             })
             .eq("email", customer.email);
-
-          if (error) {
-            console.error("Failed to update cancellation status:", error);
-          } else {
-            console.log(
-              `Marked subscription as canceling for ${customer.email}, ends ${endsAt.toISOString()}`,
-            );
-          }
         } else {
-          // Subscription is active (not canceling) - might be a plan change
           const newMembershipLevel = PRICE_TO_MEMBERSHIP[priceId];
 
           if (newMembershipLevel) {
-            const { error } = await supabaseAdmin
+            await supabaseAdmin
               .from("profiles")
               .update({
                 membership_level: newMembershipLevel,
@@ -134,17 +94,6 @@ export async function POST(request: Request) {
                 updated_at: new Date().toISOString(),
               })
               .eq("email", customer.email);
-
-            if (error) {
-              console.error(
-                "Failed to update membership on subscription change:",
-                error,
-              );
-            } else {
-              console.log(
-                `Updated subscription to ${newMembershipLevel} for ${customer.email}`,
-              );
-            }
           }
         }
         break;
@@ -154,15 +103,12 @@ export async function POST(request: Request) {
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
 
-        console.log("Subscription cancelled:", subscription.id);
-
-        // Downgrade to free
         const customer = (await stripe.customers.retrieve(
           customerId,
         )) as Stripe.Customer;
 
         if (customer.email) {
-          const { error } = await supabaseAdmin
+          await supabaseAdmin
             .from("profiles")
             .update({
               membership_level: "free",
@@ -171,12 +117,6 @@ export async function POST(request: Request) {
               updated_at: new Date().toISOString(),
             })
             .eq("email", customer.email);
-
-          if (error) {
-            console.error("Failed to downgrade membership:", error);
-          } else {
-            console.log(`Downgraded ${customer.email} to free membership`);
-          }
         }
         break;
       }

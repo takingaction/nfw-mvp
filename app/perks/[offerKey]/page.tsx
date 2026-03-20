@@ -80,11 +80,6 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
       (method === "instore_print" || method === "instore");
 
     if (isMultiLocation && !selectedLocation) {
-      // Always show location selector for multi-location offers
-      console.log(
-        "Opening location selector with offer_group_key:",
-        offer.offer_group_key,
-      );
       setPendingRedemptionMethod(method);
       setShowLocationSelector(true);
       return;
@@ -119,8 +114,6 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
       }
 
       const data = await response.json();
-
-      console.log("🔍 FULL API RESPONSE:", data);
 
       if (method === "link") {
         let finalUrl =
@@ -251,8 +244,6 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
         location_key: location.key,
       };
 
-      console.log("🔍 Redeeming with location:", location);
-
       const response = await fetch(
         `/api/access-perks/offers/${offerKey}/redeem`,
         {
@@ -268,8 +259,6 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
       }
 
       const data = await response.json();
-
-      console.log("🔍 FULL API RESPONSE:", data);
 
       if (method === "link") {
         let finalUrl =

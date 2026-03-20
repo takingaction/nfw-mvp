@@ -12,9 +12,6 @@ export async function uploadImage(
   });
 
   const data = await response.json();
-  console.log("Upload API response:", data);
-  console.log("URL value:", data.url);
-  console.log("URL type:", typeof data.url);
 
   if (!response.ok) {
     throw new Error(data.error ?? "Upload failed");

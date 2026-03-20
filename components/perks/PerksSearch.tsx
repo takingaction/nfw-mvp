@@ -45,7 +45,6 @@ export default function PerksSearch({
       params.category_key = selectedCategory;
     }
 
-    console.log("Search params being sent:", params);
     onSearch(params);
   };
 

@@ -38,7 +38,6 @@ export interface OfferSearchParams {
  */
 export async function searchOffers(params: OfferSearchParams) {
   try {
-    // Check environment variables
     if (!process.env.ACCESS_OFFERS_TOKEN) {
       throw new Error("ACCESS_OFFERS_TOKEN environment variable is not set");
     }
@@ -49,10 +48,8 @@ export async function searchOffers(params: OfferSearchParams) {
 
     const queryParams = new URLSearchParams();
 
-    // Add access token
     queryParams.append("access_token", process.env.ACCESS_OFFERS_TOKEN);
 
-    // Add all other parameters
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         queryParams.append(key, value.toString());
@@ -61,16 +58,6 @@ export async function searchOffers(params: OfferSearchParams) {
 
     const fullUrl = `${process.env.ACCESS_OFFERS_API_URL}/v1/offers?${queryParams.toString()}`;
 
-    // Enhanced logging for debugging
-    console.log("🔍 ===== OFFERS SEARCH DEBUG =====");
-    console.log("📋 Search Params Object:", JSON.stringify(params, null, 2));
-    console.log(
-      "🌐 Full URL:",
-      fullUrl.replace(process.env.ACCESS_OFFERS_TOKEN, "HIDDEN_TOKEN"),
-    );
-    console.log("📊 Query Params:", Object.fromEntries(queryParams.entries()));
-    console.log("================================");
-
     const response = await fetch(fullUrl, {
       method: "GET",
       headers: {
@@ -78,39 +65,16 @@ export async function searchOffers(params: OfferSearchParams) {
       },
     });
 
-    console.log("Response status:", response.status);
-    console.log(
-      "Response headers:",
-      Object.fromEntries(response.headers.entries()),
-    );
-
-    // Get response text first to see what we're actually getting
-    const responseText = await response.text();
-    console.log(
-      "Response body (first 500 chars):",
-      responseText.substring(0, 500),
-    );
-
     if (!response.ok) {
-      console.error("❌ API Error Response:", responseText);
+      const responseText = await response.text();
       throw new Error(
         `Offers API Error: ${response.status} ${response.statusText} - ${responseText.substring(0, 200)}`,
       );
     }
 
-    // Try to parse as JSON
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error("Failed to parse response as JSON:", parseError);
-      console.error("Response was:", responseText.substring(0, 1000));
-      throw new Error("Offers API returned invalid JSON response");
-    }
-
+    const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Failed to search offers:", error);
     throw error;
   }
 }
@@ -130,11 +94,6 @@ export async function getOffer(offerKey: string, memberKey: string) {
 
     const url = `${process.env.ACCESS_OFFERS_API_URL}/v1/offers/${offerKey}?access_token=${process.env.ACCESS_OFFERS_TOKEN}&member_key=${memberKey}`;
 
-    console.log(
-      "Fetching offer from:",
-      url.replace(process.env.ACCESS_OFFERS_TOKEN, "HIDDEN_TOKEN"),
-    );
-
     const response = await fetch(url, {
       method: "GET",
       headers: {
@@ -142,32 +101,16 @@ export async function getOffer(offerKey: string, memberKey: string) {
       },
     });
 
-    console.log("Offer response status:", response.status);
-
-    const responseText = await response.text();
-    console.log(
-      "Offer response (first 500 chars):",
-      responseText.substring(0, 500),
-    );
-
     if (!response.ok) {
+      const responseText = await response.text();
       throw new Error(
         `Offers API Error: ${response.status} ${response.statusText} - ${responseText.substring(0, 200)}`,
       );
     }
 
-    // Try to parse as JSON
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error("Failed to parse offer response as JSON:", parseError);
-      throw new Error("Offers API returned invalid JSON response");
-    }
-
+    const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Failed to get offer:", error);
     throw error;
   }
 }
@@ -191,7 +134,6 @@ export async function getOfferUsesRemaining(
     );
 
     if (!response.ok) {
-      // 200 with "No redemptions found" means offer is redeemable
       if (response.status === 200) {
         const data = await response.json();
         if (data.message === "No redemptions found.") {
@@ -210,7 +152,6 @@ export async function getOfferUsesRemaining(
 
     return await response.json();
   } catch (error) {
-    console.error("Failed to get offer uses remaining:", error);
     throw error;
   }
 }
@@ -222,11 +163,6 @@ export async function getCategories(memberKey: string) {
   try {
     const url = `${process.env.ACCESS_OFFERS_API_URL}/v1/categories?access_token=${process.env.ACCESS_OFFERS_TOKEN}&member_key=${memberKey}`;
 
-    console.log(
-      "Fetching categories from:",
-      url.replace(process.env.ACCESS_OFFERS_TOKEN!, "HIDDEN_TOKEN"),
-    );
-
     const response = await fetch(url, {
       method: "GET",
       headers: {
@@ -234,23 +170,15 @@ export async function getCategories(memberKey: string) {
       },
     });
 
-    console.log("Categories response status:", response.status);
-
-    const responseText = await response.text();
-    console.log(
-      "Categories response (first 500 chars):",
-      responseText.substring(0, 500),
-    );
-
     if (!response.ok) {
+      const responseText = await response.text();
       throw new Error(
         `Categories API Error: ${response.status} ${response.statusText} - ${responseText.substring(0, 200)}`,
       );
     }
 
-    return JSON.parse(responseText);
+    return await response.json();
   } catch (error) {
-    console.error("Failed to get categories:", error);
     throw error;
   }
 }

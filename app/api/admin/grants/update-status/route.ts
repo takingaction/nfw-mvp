@@ -83,7 +83,6 @@ export async function POST(request: NextRequest) {
         });
       }
     }
-    console.log(`Grant ${grantId} status updated to ${status}`);
 
     return NextResponse.json({ success: true });
   } catch (err: any) {

@@ -77,14 +77,6 @@ export default function LocationSelector({
 
       const data = await response.json();
 
-      // ADD THIS DEBUG LOG
-      console.log("🔍 LOCATION SELECTOR - Full API Response:", data);
-      console.log("🔍 LOCATION SELECTOR - Locations array:", data.locations);
-      console.log(
-        "🔍 LOCATION SELECTOR - Locations count:",
-        data.locations?.length || 0,
-      );
-
       setLocations(data.locations || []);
       setHasMore(data.meta?.total_count > page * 20);
     } catch (err: any) {

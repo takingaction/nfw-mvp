@@ -97,8 +97,6 @@ export default function RedemptionHistoryPage() {
     try {
       setUpdatingId(id);
 
-      console.log("🔄 Updating status:", { id, newStatus });
-
       const response = await fetch(`/api/access-perks/redemptions/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -108,17 +106,13 @@ export default function RedemptionHistoryPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        console.error("❌ API Error:", data);
         throw new Error(data.error || "Failed to update status");
       }
-
-      console.log("✅ Update successful:", data);
 
       setRedemptions((prev) =>
         prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r)),
       );
     } catch (err: any) {
-      console.error("❌ Update status error:", err);
       alert(`Failed to update status: ${err.message}`);
     } finally {
       setUpdatingId(null);
