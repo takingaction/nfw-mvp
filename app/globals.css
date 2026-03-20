@@ -64,6 +64,15 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+  }
+  
+  .font-serif {
+    font-family: var(--font-playfair), Georgia, serif;
+  }
+  
+  .font-ui {
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
   }
 }
 
