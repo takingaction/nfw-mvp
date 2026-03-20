@@ -1,7 +1,18 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/middleware/adminCheck";
 import { Suspense } from "react";
-import AdminAnalyticsClient from "@/components/admin/AdminAnalyticsClient";
+import dynamic from "next/dynamic";
+
+const AdminAnalyticsClient = dynamic(
+  () => import("@/components/admin/AdminAnalyticsClient"),
+  {
+    loading: () => (
+      <div className="h-96 bg-gray-100 rounded animate-pulse flex items-center justify-center">
+        <p className="text-gray-500">Loading analytics...</p>
+      </div>
+    ),
+  }
+);
 
 async function AdminAnalyticsContent() {
   await requireAdmin();

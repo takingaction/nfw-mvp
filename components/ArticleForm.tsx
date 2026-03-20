@@ -2,8 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
-import RichTextEditor from "./RichTextEditor";
+
+const RichTextEditor = dynamic(() => import("./RichTextEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="border rounded-lg p-4 bg-gray-50 animate-pulse">
+      <p className="text-gray-500">Loading editor...</p>
+    </div>
+  ),
+});
+
 import ImageUpload from "./ImageUpload";
 
 type Category = {
