@@ -13,7 +13,9 @@ async function getFeaturedProducts() {
       next: { revalidate: 60 },
     });
     if (!res.ok) return [];
-    return res.json();
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+    return data;
   } catch {
     return [];
   }

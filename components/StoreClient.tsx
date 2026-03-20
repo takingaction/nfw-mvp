@@ -224,7 +224,7 @@ export default function StoreClient({
                           : "bg-nfw-stone/30 text-nfw-blackberry/50 cursor-not-allowed"
                       }`}
                     >
-                      {claimStatus.reason}
+                      {claimStatus.eligible ? "Claim Item" : claimStatus.reason}
                     </button>
                   </div>
                 </div>

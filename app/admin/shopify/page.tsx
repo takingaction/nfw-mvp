@@ -26,7 +26,12 @@ export default function AdminShopifySync() {
     try {
       const res = await fetch("/api/shopify/products");
       const data = await res.json();
-      setProducts(data);
+      if (Array.isArray(data)) {
+        setProducts(data);
+      } else {
+        console.warn("API returned non-array:", data);
+        setProducts([]);
+      }
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {
