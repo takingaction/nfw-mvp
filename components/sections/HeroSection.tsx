@@ -45,7 +45,7 @@ export default function HeroSection({ content }: Props) {
             </div>
           </div>
 
-          <div className="relative w-full aspect-[3/4] lg:aspect-[4/3] lg:h-[500px]">
+          <div className="relative w-full aspect-[3/4] lg:aspect-auto lg:h-[650px]">
             {c.images ? (
               <Image
                 src={
