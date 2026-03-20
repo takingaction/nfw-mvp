@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/rate-limit";
 
 interface RouteParams {
   params: Promise<{
@@ -8,6 +9,15 @@ interface RouteParams {
 }
 
 export async function POST(request: Request, { params }: RouteParams) {
+  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+  const { success } = rateLimit(`redeem:${ip}`, 10, 60_000);
+  if (!success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 },
+    );
+  }
+
   try {
     const resolvedParams = await params;
     const { offerKey } = resolvedParams;
@@ -38,9 +48,8 @@ export async function POST(request: Request, { params }: RouteParams) {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
       return NextResponse.json(
-        { error: `Redemption failed: ${errorText}` },
+        { error: "Redemption failed" },
         { status: response.status },
       );
     }
@@ -54,7 +63,13 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const offerResponse = await fetch(offerDetailsUrl);
 
-    let offerDetails: any = {};
+    let offerDetails: {
+      title?: string;
+      offer_value?: string | number;
+      offer_store?: { name?: string };
+      physical_location?: { location_name?: string; city_locality?: string };
+      expires_on?: string;
+    } = {};
     if (offerResponse.ok) {
       const offerData = await offerResponse.json();
       if (offerData.offers && offerData.offers.length > 0) {
@@ -149,9 +164,9 @@ export async function POST(request: Request, { params }: RouteParams) {
       terms: redemptionData.details?.terms_of_use,
       raw_response: redemptionData,
     });
-  } catch (error: any) {
+  } catch {
     return NextResponse.json(
-      { error: error.message || "Failed to redeem offer" },
+      { error: "Failed to redeem offer" },
       { status: 500 },
     );
   }

@@ -8,6 +8,25 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
+const ALLOWED_FIELDS = [
+  "full_name",
+  "avatar_url",
+  "bio",
+  "zip",
+  "city",
+  "state",
+  "phone",
+  "date_of_birth",
+  "occupation",
+  "industry",
+  "company_name",
+  "company_website",
+  "linkedin_url",
+  "twitter_handle",
+] as const;
+
+type AllowedField = (typeof ALLOWED_FIELDS)[number];
+
 export async function POST(request: NextRequest) {
   try {
     const ip = request.headers.get("x-forwarded-for") ?? "unknown";
@@ -30,18 +49,38 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    const updates: Partial<Record<AllowedField, string>> = {};
+    for (const key of Object.keys(body) as string[]) {
+      if (ALLOWED_FIELDS.includes(key as AllowedField)) {
+        updates[key as AllowedField] = String(body[key]);
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json(
+        { error: "No valid fields to update" },
+        { status: 400 },
+      );
+    }
+
     const { error } = await supabaseAdmin.from("profiles").upsert({
       id: user.id,
-      ...body,
+      ...updates,
       updated_at: new Date().toISOString(),
     });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to update profile" },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch {
+    return NextResponse.json(
+      { error: "An error occurred" },
+      { status: 500 },
+    );
   }
 }

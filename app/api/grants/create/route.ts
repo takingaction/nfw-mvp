@@ -7,6 +7,11 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createServerClient();
@@ -27,7 +32,54 @@ export async function POST(request: Request) {
       is_nominating,
     } = body;
 
-    // Check for duplicate application
+    if (!cycle_id || !isValidUUID(cycle_id)) {
+      return NextResponse.json(
+        { error: "Invalid cycle ID" },
+        { status: 400 },
+      );
+    }
+
+    if (!who_are_you || typeof who_are_you !== "string" || who_are_you.trim().length < 10) {
+      return NextResponse.json(
+        { error: "Please provide a description of at least 10 characters" },
+        { status: 400 },
+      );
+    }
+
+    if (!biggest_challenge || typeof biggest_challenge !== "string" || biggest_challenge.trim().length < 10) {
+      return NextResponse.json(
+        { error: "Please describe your challenge in at least 10 characters" },
+        { status: 400 },
+      );
+    }
+
+    if (!fund_usage || typeof fund_usage !== "string" || fund_usage.trim().length < 10) {
+      return NextResponse.json(
+        { error: "Please describe fund usage in at least 10 characters" },
+        { status: 400 },
+      );
+    }
+
+    const { data: cycleData } = await supabaseAdmin
+      .from("grant_cycles")
+      .select("id, status")
+      .eq("id", cycle_id)
+      .single();
+
+    if (!cycleData) {
+      return NextResponse.json(
+        { error: "Grant cycle not found" },
+        { status: 404 },
+      );
+    }
+
+    if (cycleData.status !== "open") {
+      return NextResponse.json(
+        { error: "This grant cycle is not accepting applications" },
+        { status: 400 },
+      );
+    }
+
     const { data: existing } = await supabaseAdmin
       .from("grants")
       .select("id")
@@ -47,10 +99,10 @@ export async function POST(request: Request) {
       .insert({
         user_id: user.id,
         cycle_id,
-        who_are_you,
-        biggest_challenge,
-        fund_usage,
-        is_nominating: is_nominating || false,
+        who_are_you: who_are_you.trim(),
+        biggest_challenge: biggest_challenge.trim(),
+        fund_usage: fund_usage.trim(),
+        is_nominating: Boolean(is_nominating),
         status: "submitted",
         submitted_at: new Date().toISOString(),
       })
@@ -58,12 +110,17 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      console.error("Error creating grant:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to submit grant application" },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ success: true, grantId: grant.id });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch {
+    return NextResponse.json(
+      { error: "An error occurred" },
+      { status: 500 },
+    );
   }
 }

@@ -62,7 +62,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ url: data.signedUrl });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch {
+    return NextResponse.json(
+      { error: "An error occurred" },
+      { status: 500 },
+    );
   }
 }

@@ -1,3 +1,4 @@
+import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -6,8 +7,28 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
+const ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+];
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createServerClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const formData = await request.formData();
     const file = formData.get("file") as File;
     const folder = (formData.get("folder") as string) ?? "sections";
@@ -16,10 +37,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    const ext = file.name.split(".").pop();
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return NextResponse.json(
+        { error: "File type not allowed" },
+        { status: 400 },
+      );
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: "File size exceeds 5MB limit" },
+        { status: 400 },
+      );
+    }
+
+    const ext = file.name.split(".").pop() || "bin";
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
     const fileName = `${folder}/${Date.now()}-${Math.random()
       .toString(36)
-      .slice(2)}.${ext}`;
+      .slice(2)}.${sanitizedName.endsWith(`.${ext}`) ? sanitizedName : `${sanitizedName}.${ext}`}`;
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
@@ -33,7 +69,10 @@ export async function POST(request: NextRequest) {
       });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to upload file" },
+        { status: 500 },
+      );
     }
 
     const { data: urlData } = supabaseAdmin.storage
@@ -41,9 +80,9 @@ export async function POST(request: NextRequest) {
       .getPublicUrl(fileName);
 
     return NextResponse.json({ url: urlData.publicUrl });
-  } catch (err) {
+  } catch {
     return NextResponse.json(
-      { error: (err as Error).message },
+      { error: "An error occurred during upload" },
       { status: 500 },
     );
   }

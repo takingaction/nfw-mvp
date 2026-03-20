@@ -1,8 +1,18 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { searchOffers } from "@/lib/access-perks/offers";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET(request: Request) {
+  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+  const { success } = rateLimit(`offers-search:${ip}`, 30, 60_000);
+  if (!success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 },
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const supabase = await createClient();
@@ -16,7 +26,7 @@ export async function GET(request: Request) {
 
     const memberKey = user.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 
-    const params: any = {
+    const params: Record<string, string> = {
       member_key: memberKey,
     };
 
@@ -26,12 +36,12 @@ export async function GET(request: Request) {
       }
     });
 
-    const result = await searchOffers(params);
+    const result = await searchOffers(params as unknown as Parameters<typeof searchOffers>[0]);
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch {
     return NextResponse.json(
-      { error: error.message || "Failed to search offers" },
+      { error: "Failed to search offers" },
       { status: 500 },
     );
   }
