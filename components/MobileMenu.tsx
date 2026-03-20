@@ -4,6 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
+
+interface Profile {
+  full_name: string | null;
+  is_admin: boolean | null;
+}
 
 export default function MobileMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,8 +18,8 @@ export default function MobileMenu() {
   const [programsOpen, setProgramsOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   const closeMenu = () => {
@@ -94,7 +100,7 @@ export default function MobileMenu() {
       {/* Hamburger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 text-[#2d1239] hover:bg-white/10 rounded-lg transition-colors"
+        className="p-2 text-white bg-white/10 transition-colors"
         aria-label="Toggle menu"
       >
         {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -322,6 +328,27 @@ export default function MobileMenu() {
                         <p className="px-4 py-1 text-xs font-semibold text-white/40 uppercase tracking-wider">
                           Admin
                         </p>
+                        <Link
+                          href="/admin/pages"
+                          onClick={closeMenu}
+                          className={linkClass}
+                        >
+                          Manage Pages
+                        </Link>
+                        <Link
+                          href="/admin/header"
+                          onClick={closeMenu}
+                          className={linkClass}
+                        >
+                          Edit Header
+                        </Link>
+                        <Link
+                          href="/admin/footer"
+                          onClick={closeMenu}
+                          className={linkClass}
+                        >
+                          Edit Footer
+                        </Link>
                         <Link
                           href="/admin/grants"
                           onClick={closeMenu}

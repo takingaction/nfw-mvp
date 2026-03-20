@@ -1,32 +1,75 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 
-interface NavigationClientProps {
-  side: "left" | "right" | "center";
+interface NavLink {
+  label: string;
+  url: string;
+  highlight?: boolean;
 }
 
-export default function NavigationClient({ side }: NavigationClientProps) {
-  const [aboutOpen, setAboutOpen] = useState(false);
-  const [membershipOpen, setMembershipOpen] = useState(false);
-  const [programsOpen, setProgramsOpen] = useState(false);
-  const [supportOpen, setSupportOpen] = useState(false);
+interface NavigationClientProps {
+  side: "left" | "right" | "center";
+  logoUrl?: string | null;
+  navLinks?: NavLink[];
+  ctaLabel?: string | null;
+  ctaUrl?: string | null;
+}
 
-  const dropdownClass =
-    "w-48 bg-white rounded-lg shadow-xl py-2 border border-[#BCAFCF]/20";
-  const linkClass =
-    "block px-4 py-2 text-[#2d1239] hover:bg-[#BCAFCF]/10 transition-colors";
-  const buttonClass =
-    "flex items-center gap-1 text-[#2d1239] font-semibold hover:text-[#2d1239]/80 transition-colors py-6";
+const dropdownClass =
+  "w-48 bg-[#3e155f] rounded-lg shadow-xl py-2 border border-white/10";
+const linkClass =
+  "block px-4 py-2 text-white hover:bg-white/10 transition-colors";
+const buttonClass =
+  "flex items-center gap-1 text-white font-semibold hover:text-white/80 transition-colors py-6 uppercase text-sm tracking-wider";
 
-  // Center Logo
+export default function NavigationClient({
+  side,
+  logoUrl,
+  navLinks = [],
+}: NavigationClientProps) {
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+
+  const renderDropdown = (label: string, items: NavLink[]) => (
+    <div className="relative">
+      <button
+        onMouseEnter={() => setOpenDropdown(label)}
+        onMouseLeave={() => setOpenDropdown(null)}
+        className={buttonClass}
+      >
+        {label}
+        <ChevronDown className="w-4 h-4" />
+      </button>
+      {openDropdown === label && (
+        <div
+          onMouseEnter={() => setOpenDropdown(label)}
+          onMouseLeave={() => setOpenDropdown(null)}
+          className="absolute top-full left-0 pt-0"
+        >
+          <div className={dropdownClass}>
+            {items.map((item, idx) => (
+              <Link
+                key={idx}
+                href={item.url}
+                prefetch={false}
+                className={linkClass}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   if (side === "center") {
     return (
       <Link href="/" className="inline-block flex-shrink-0">
         <img
-          src="/images/header-logo.png"
+          src={logoUrl || "/images/header-logo.png"}
           alt="NFW Logo"
           className="h-[72px] w-auto"
           onError={(e) => {
@@ -34,7 +77,7 @@ export default function NavigationClient({ side }: NavigationClientProps) {
             const parent = e.currentTarget.parentElement;
             if (parent) {
               parent.innerHTML =
-                '<span class="text-2xl font-black font-bold text-[#2d1239]">NFW</span>';
+                '<span class="text-2xl font-black font-bold text-white">NFW</span>';
             }
           }}
         />
@@ -42,133 +85,59 @@ export default function NavigationClient({ side }: NavigationClientProps) {
     );
   }
 
-  // Left Menu
   if (side === "left") {
     return (
-      <div className="flex items-center gap-6">
-        {/* About Dropdown */}
-        <div className="relative">
-          <button
-            onMouseEnter={() => setAboutOpen(true)}
-            onMouseLeave={() => setAboutOpen(false)}
-            className={buttonClass}
-          >
-            About
-            <ChevronDown className="w-4 h-4" />
-          </button>
-          {aboutOpen && (
-            <div
-              onMouseEnter={() => setAboutOpen(true)}
-              onMouseLeave={() => setAboutOpen(false)}
-              className="absolute top-full left-0 pt-0"
-            >
-              <div className={dropdownClass}>
-                <Link href="/about" prefetch={false} className={linkClass}>
-                  About Us
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Membership Dropdown */}
-        <div className="relative">
-          <button
-            onMouseEnter={() => setMembershipOpen(true)}
-            onMouseLeave={() => setMembershipOpen(false)}
-            className={buttonClass}
-          >
-            Membership
-            <ChevronDown className="w-4 h-4" />
-          </button>
-          {membershipOpen && (
-            <div
-              onMouseEnter={() => setMembershipOpen(true)}
-              onMouseLeave={() => setMembershipOpen(false)}
-              className="absolute top-full left-0 pt-0"
-            >
-              <div className={dropdownClass}>
-                <Link href="/pricing" className={linkClass}>
-                  Membership
-                </Link>
-                <Link href="/auth/sign-up" className={linkClass}>
-                  Become a Member
-                </Link>
-                <Link href="/dashboard" className={linkClass}>
-                  Member Portal
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <Link href="/" className="inline-block flex-shrink-0">
+        <img
+          src={logoUrl || "/images/header-logo.png"}
+          alt="NFW Logo"
+          className="h-[72px] w-auto"
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+            const parent = e.currentTarget.parentElement;
+            if (parent) {
+              parent.innerHTML =
+                '<span class="text-2xl font-black font-bold text-white">NFW</span>';
+            }
+          }}
+        />
+      </Link>
     );
   }
 
-  // Right Menu
-  return (
-    <div className="flex items-center gap-6">
-      {/* Our Programs Dropdown */}
-      <div className="relative">
-        <button
-          onMouseEnter={() => setProgramsOpen(true)}
-          onMouseLeave={() => setProgramsOpen(false)}
-          className={buttonClass}
-        >
-          Our Programs
-          <ChevronDown className="w-4 h-4" />
-        </button>
-        {programsOpen && (
-          <div
-            onMouseEnter={() => setProgramsOpen(true)}
-            onMouseLeave={() => setProgramsOpen(false)}
-            className="absolute top-full right-0 pt-0"
-          >
-            <div className={dropdownClass}>
-              <Link href="/grants" className={linkClass}>
-                Microgrants
-              </Link>
-              <Link href="/perks/info" className={linkClass}>
-                Perks
-              </Link>
-              <Link href="/store/info" className={linkClass}>
-                Zero Dollar Store
-              </Link>
-              <Link href="/articles" className={linkClass}>
-                Articles
-              </Link>
-            </div>
-          </div>
-        )}
-      </div>
+  if (side === "right") {
+    const items: React.ReactNode[] = [];
+    let i = 0;
 
-      {/* Support Dropdown */}
-      <div className="relative">
-        <button
-          onMouseEnter={() => setSupportOpen(true)}
-          onMouseLeave={() => setSupportOpen(false)}
-          className={buttonClass}
-        >
-          Support
-          <ChevronDown className="w-4 h-4" />
-        </button>
-        {supportOpen && (
-          <div
-            onMouseEnter={() => setSupportOpen(true)}
-            onMouseLeave={() => setSupportOpen(false)}
-            className="absolute top-full right-0 pt-0"
-          >
-            <div className={dropdownClass}>
-              <Link href="/contact" className={linkClass}>
-                Contact Support
-              </Link>
-              <Link href="/faq" className={linkClass}>
-                FAQs
-              </Link>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+    while (i < navLinks.length) {
+      const link = navLinks[i];
+
+      if (!link.highlight) {
+        const dropdownItems: NavLink[] = [];
+        let j = i + 1;
+        while (j < navLinks.length && navLinks[j].highlight) {
+          dropdownItems.push(navLinks[j]);
+          j++;
+        }
+
+        if (dropdownItems.length > 0) {
+          items.push(<React.Fragment key={link.label}>{renderDropdown(link.label, dropdownItems)}</React.Fragment>);
+          i = j;
+        } else {
+          items.push(
+            <Link key={i} href={link.url} className={buttonClass}>
+              {link.label}
+            </Link>
+          );
+          i++;
+        }
+      } else {
+        i++;
+      }
+    }
+
+    return <div className="flex items-center gap-6">{items}</div>;
+  }
+
+  return null;
 }

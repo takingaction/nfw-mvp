@@ -74,3 +74,25 @@ export async function toggleSectionVisibility(
     .eq("version", "draft");
   if (error) throw new Error(error.message);
 }
+
+export async function addSectionFromTemplate(
+  pageId: string,
+  sectionType: string,
+  defaultContent: Record<string, unknown>,
+  orderIndex: number,
+) {
+  const { data, error } = await supabaseAdmin
+    .from("page_sections")
+    .insert({
+      page_id: pageId,
+      section_type: sectionType,
+      version: "draft",
+      order_index: orderIndex,
+      content: defaultContent,
+      visible: true,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}

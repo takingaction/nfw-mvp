@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import Image from "next/image";
 import { X, Save, Upload } from "lucide-react";
 import { PageSection } from "@/lib/sections/types";
 import { SECTION_REGISTRY, EditorField } from "@/lib/sections/registry";
@@ -85,11 +86,12 @@ function FieldEditor({
         </label>
 
         {typeof value === "string" && value && (
-          <div className="relative mb-2 group">
-            <img
+          <div className="relative mb-2 group w-full h-40 rounded-lg overflow-hidden">
+            <Image
               src={value as string}
               alt=""
-              className="w-full h-40 object-cover rounded-lg"
+              fill
+              className="object-cover"
             />
             <button
               onClick={() => onChange("")}

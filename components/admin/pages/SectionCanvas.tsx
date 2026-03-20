@@ -20,10 +20,10 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { Eye, RotateCcw, Globe, ChevronLeft, Plus } from "lucide-react";
 import Link from "next/link";
 import { PageSection } from "@/lib/sections/types";
+import type { SectionTemplate } from "@/types/section-templates";
 import SectionCard from "./SectionCard";
 import SectionEditorPanel from "./SectionEditorPanel";
 import TemplatePicker from "./TemplatePicker";
-import { createClient } from "@/lib/supabase/client";
 import {
   saveDraftSections,
   deleteDraftSection,
@@ -31,6 +31,7 @@ import {
   revertPage,
   unpublishPage,
   toggleSectionVisibility,
+  addSectionFromTemplate,
 } from "@/app/admin/pages/[pageId]/actions";
 
 interface Page {
@@ -44,9 +45,10 @@ interface Page {
 interface Props {
   page: Page;
   initialSections: PageSection[];
+  templates: SectionTemplate[];
 }
 
-export default function SectionCanvas({ page, initialSections }: Props) {
+export default function SectionCanvas({ page, initialSections, templates }: Props) {
   const [sections, setSections] = useState<PageSection[]>(initialSections);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -172,31 +174,23 @@ export default function SectionCanvas({ page, initialSections }: Props) {
       section_type: string;
       default_content: Record<string, unknown>;
     }) => {
-      const supabase = createClient();
       const newOrderIndex = sections.length;
 
-      const { data, error } = await supabase
-        .from("page_sections")
-        .insert({
-          page_id: page.id,
-          section_type: template.section_type,
-          version: "draft",
-          order_index: newOrderIndex,
-          content: template.default_content,
-          visible: true,
-        })
-        .select()
-        .single();
+      try {
+        const data = await addSectionFromTemplate(
+          page.id,
+          template.section_type,
+          template.default_content,
+          newOrderIndex,
+        );
 
-      if (error) {
+        setSections((prev) => [...prev, data]);
+        setShowTemplatePicker(false);
+        setSelectedId(data.id);
+        showToast("Section added");
+      } catch {
         showToast("Failed to add section");
-        return;
       }
-
-      setSections((prev) => [...prev, data]);
-      setShowTemplatePicker(false);
-      setSelectedId(data.id);
-      showToast("Section added");
     },
     [sections.length, page.id],
   );
@@ -386,6 +380,7 @@ export default function SectionCanvas({ page, initialSections }: Props) {
       {/* Template picker modal */}
       {showTemplatePicker && (
         <TemplatePicker
+          templates={templates}
           onSelect={handleAddSection}
           onClose={() => setShowTemplatePicker(false)}
         />

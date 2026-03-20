@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/middleware/adminCheck";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { LayoutTemplate } from "lucide-react";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,6 +34,13 @@ export default async function AdminPagesPage() {
               Edit page content, reorder sections, and publish changes
             </p>
           </div>
+          <Link
+            href="/admin/pages/templates"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[#3e155f] rounded-lg hover:bg-[#3e155f]/90 transition-colors"
+          >
+            <LayoutTemplate className="w-4 h-4" />
+            Manage Templates
+          </Link>
         </div>
 
         <div className="space-y-4">

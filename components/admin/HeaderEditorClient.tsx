@@ -168,7 +168,7 @@ export default function HeaderEditorClient({
                   onChange={(e) => updateLink(i, "highlight", e.target.checked)}
                   className="rounded"
                 />
-                CTA
+                Sub-item
               </label>
               <button
                 onClick={() => removeLink(i)}

@@ -32,9 +32,19 @@ export default async function AdminPageEditor({
     .eq("version", "draft")
     .order("order_index");
 
+  const { data: templates } = await supabaseAdmin
+    .from("section_templates")
+    .select("*")
+    .order("is_system", { ascending: false })
+    .order("name");
+
   return (
     <main className="min-h-screen bg-gray-50">
-      <SectionCanvas page={page} initialSections={sections ?? []} />
+      <SectionCanvas
+        page={page}
+        initialSections={sections ?? []}
+        templates={templates ?? []}
+      />
     </main>
   );
 }
