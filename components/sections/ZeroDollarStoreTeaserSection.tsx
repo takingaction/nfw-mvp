@@ -41,7 +41,7 @@ export default async function ZeroDollarStoreTeaserSection({ content }: Props) {
               <em className="italic">{c.headline_italic_phrase}</em>
               {parts[1]}
             </h2>
-            <p className="font-serif text-2xl text-nfw-blackberry">{c.body}</p>
+            <p className="font-serif text-2xl text-nfw-blackberry max-w-2xl mx-auto">{c.body}</p>
           </div>
 
           {products.length > 0 && (
