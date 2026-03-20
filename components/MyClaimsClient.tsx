@@ -1,13 +1,17 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { ExternalLink, Package } from "lucide-react";
 
-type ClaimWithItem = {
+type Claim = {
   id: string;
-  item_id: string;
-  member_id: string;
-  claimed_at: string;
+  shopify_product_id: string;
+  shopify_variant_id: string;
+  shopify_checkout_id: string | null;
+  shopify_order_id: string | null;
+  status: "pending" | "created" | "fulfilled" | "delivered";
   shipping_address: {
     full_name: string;
     address_line1: string;
@@ -15,382 +19,222 @@ type ClaimWithItem = {
     city: string;
     state: string;
     zip: string;
-    phone: string;
-  };
-  selected_variant: {
-    size?: string;
-    color?: string;
-    [key: string]: string | undefined;
+    country: string;
+    phone?: string;
   } | null;
-  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
   tracking_number: string | null;
-  notes: string | null;
-  shipped_at: string | null;
-  delivered_at: string | null;
-  item: {
-    id: string;
-    name: string;
-    description: string | null;
-    image_url: string | null;
-    category: { name: string } | null;
+  tracking_url: string | null;
+  claimed_at: string;
+};
+
+type EnrichedClaim = Claim & {
+  product?: {
+    title: string;
+    imageUrl: string;
+    description: string;
   };
 };
 
-const STATUS_INFO = {
-  pending: {
-    label: "Pending",
-    color: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    icon: "⏳",
-    description: "Your claim is being processed",
-  },
-  processing: {
-    label: "Processing",
-    color: "bg-blue-100 text-blue-800 border-blue-200",
-    icon: "📦",
-    description: "Your item is being prepared for shipment",
-  },
-  shipped: {
-    label: "Shipped",
-    color: "bg-purple-100 text-purple-800 border-purple-200",
-    icon: "🚚",
-    description: "Your item is on its way",
-  },
-  delivered: {
-    label: "Delivered",
-    color: "bg-green-100 text-green-800 border-green-200",
-    icon: "✅",
-    description: "Your item has been delivered",
-  },
-  cancelled: {
-    label: "Cancelled",
-    color: "bg-red-100 text-red-800 border-red-200",
-    icon: "❌",
-    description: "This claim was cancelled",
-  },
+type OrderStatus = {
+  status: string;
+  trackingNumber: string | null;
+  trackingUrl: string | null;
+  orderId: string | null;
+};
+
+const STATUS_INFO: Record<string, { label: string; description: string }> = {
+  pending: { label: "Pending", description: "Your claim is being processed" },
+  created: { label: "Processing", description: "Your order is being prepared" },
+  fulfilled: { label: "Shipped", description: "Your item is on its way" },
+  delivered: { label: "Delivered", description: "Your item has been delivered" },
 };
 
 export default function MyClaimsClient({
   claims,
-  userName,
 }: {
-  claims: ClaimWithItem[];
-  userName: string;
+  claims: Claim[];
+  userName?: string;
 }) {
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-  const [selectedClaim, setSelectedClaim] = useState<ClaimWithItem | null>(
-    null,
-  );
+  const [enrichedClaims, setEnrichedClaims] = useState<EnrichedClaim[]>(claims);
+  const [loadingClaimId, setLoadingClaimId] = useState<string | null>(null);
 
-  // Filter claims by status
-  const filteredClaims = useMemo(() => {
-    if (!selectedStatus) return claims;
-    return claims.filter((claim) => claim.status === selectedStatus);
-  }, [claims, selectedStatus]);
+  const fetchOrderStatus = useCallback(async (claim: Claim): Promise<OrderStatus> => {
+    if (!claim.shopify_checkout_id) {
+      return { status: claim.status, trackingNumber: null, trackingUrl: null, orderId: null };
+    }
 
-  // Count claims by status
-  const statusCounts = useMemo(() => {
-    return Object.keys(STATUS_INFO).reduce(
-      (acc, status) => {
-        acc[status] = claims.filter((c) => c.status === status).length;
-        return acc;
-      },
-      {} as Record<string, number>,
+    try {
+      const res = await fetch(`/api/shopify/orders/${claim.shopify_checkout_id}`);
+      const data = await res.json();
+      return {
+        status: data.status || claim.status,
+        trackingNumber: data.trackingNumber || claim.tracking_number,
+        trackingUrl: data.trackingUrl || claim.tracking_url,
+        orderId: data.orderId || claim.shopify_order_id,
+      };
+    } catch {
+      return { status: claim.status, trackingNumber: claim.tracking_number, trackingUrl: claim.tracking_url, orderId: claim.shopify_order_id };
+    }
+  }, []);
+
+  const enrichClaims = useCallback(async () => {
+    if (claims.length === 0) return;
+
+    setLoadingClaimId(claims[0]?.id || null);
+
+    const enrichedPromises = claims.map(async (claim) => {
+      const orderStatus = await fetchOrderStatus(claim);
+      return {
+        ...claim,
+        status: orderStatus.status as Claim["status"],
+        tracking_number: orderStatus.trackingNumber,
+        tracking_url: orderStatus.trackingUrl,
+        shopify_order_id: orderStatus.orderId,
+      };
+    });
+
+    const enriched = await Promise.all(enrichedPromises);
+    setEnrichedClaims(enriched);
+    setLoadingClaimId(null);
+  }, [claims, fetchOrderStatus]);
+
+  useEffect(() => {
+    enrichClaims();
+  }, [enrichClaims]);
+
+  const refreshClaim = async (claimId: string) => {
+    const claim = enrichedClaims.find((c) => c.id === claimId);
+    if (!claim) return;
+
+    setLoadingClaimId(claimId);
+    const orderStatus = await fetchOrderStatus(claim);
+    setEnrichedClaims((prev) =>
+      prev.map((c) =>
+        c.id === claimId
+          ? {
+              ...c,
+              status: orderStatus.status as Claim["status"],
+              tracking_number: orderStatus.trackingNumber,
+              tracking_url: orderStatus.trackingUrl,
+              shopify_order_id: orderStatus.orderId,
+            }
+          : c,
+      ),
     );
-  }, [claims]);
+    setLoadingClaimId(null);
+  };
 
-  if (claims.length === 0) {
+  if (enrichedClaims.length === 0) {
     return (
-      <div className="text-center py-12 bg-white rounded-lg shadow">
-        <div className="text-6xl mb-4">📦</div>
-        <h2 className="text-2xl font-bold mb-2">No Claims Yet</h2>
-        <p className="text-gray-600 mb-6">
-          You haven't claimed any items from the Zero Dollar Store yet.
+      <div className="text-center py-20 bg-white">
+        <div className="text-6xl mb-6 opacity-30">📦</div>
+        <h2 className="font-serif text-3xl text-nfw-aubergine mb-4">
+          No Claims Yet
+        </h2>
+        <p className="font-sans text-nfw-blackberry/60 mb-8 max-w-md mx-auto">
+          You haven&apos;t claimed any items from the Zero Dollar Store yet.
+          Browse our selection of free products.
         </p>
-        <a
+        <Link
           href="/store"
-          className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
+          className="inline-block bg-nfw-citrine text-nfw-blackberry px-8 py-3 font-ui text-xs font-black tracking-[0.06em] uppercase hover:bg-nfw-citrine/90 transition-colors"
         >
           Browse Available Items
-        </a>
+        </Link>
       </div>
     );
   }
 
   return (
     <div>
-      {/* Status Filter Tabs */}
-      <div className="mb-6">
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          <button
-            onClick={() => setSelectedStatus(null)}
-            className={`px-4 py-2 rounded-lg whitespace-nowrap font-medium ${
-              selectedStatus === null
-                ? "bg-blue-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-50 border"
-            }`}
-          >
-            All Claims ({claims.length})
-          </button>
-          {Object.entries(STATUS_INFO).map(([status, info]) => (
-            <button
-              key={status}
-              onClick={() => setSelectedStatus(status)}
-              className={`px-4 py-2 rounded-lg whitespace-nowrap font-medium ${
-                selectedStatus === status
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-gray-700 hover:bg-gray-50 border"
-              }`}
-            >
-              {info.icon} {info.label} ({statusCounts[status] || 0})
-            </button>
-          ))}
-        </div>
-      </div>
+      <div className="space-y-4">
+        {enrichedClaims.map((claim) => {
+          const info = STATUS_INFO[claim.status] || STATUS_INFO.pending;
 
-      {/* Claims List */}
-      {filteredClaims.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg">
-          <p className="text-gray-600">No claims with this status.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredClaims.map((claim) => {
-            const statusInfo = STATUS_INFO[claim.status];
-            return (
-              <div
-                key={claim.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-              >
-                <div className="p-6">
-                  <div className="flex gap-6">
-                    {/* Item Image */}
-                    {claim.item.image_url && (
-                      <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
-                        <Image
-                          src={claim.item.image_url}
-                          alt={claim.item.name}
-                          fill
-                          className="object-cover"
-                        />
+          return (
+            <div
+              key={claim.id}
+              className="bg-white"
+            >
+              <div className="p-6">
+                <div className="flex gap-6">
+                  <div className="relative w-24 h-24 bg-nfw-stone/10 flex-shrink-0">
+                    {loadingClaimId === claim.id ? (
+                      <div className="w-full h-full animate-pulse bg-nfw-stone/20" />
+                    ) : claim.product?.imageUrl ? (
+                      <Image
+                        src={claim.product.imageUrl}
+                        alt={claim.product?.title || "Product"}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package className="w-8 h-8 text-nfw-stone/40" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h3 className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry">
+                          {claim.product?.title || "Product"}
+                        </h3>
+                        {claim.product?.description && (
+                          <p className="font-sans text-sm text-nfw-blackberry/60 mt-1 line-clamp-1">
+                            {claim.product.description}
+                          </p>
+                        )}
+                      </div>
+                      <span className="ml-4 flex-shrink-0 inline-flex items-center px-3 py-1 font-ui text-xs font-black tracking-[0.03em] uppercase bg-nfw-aubergine text-nfw-dove">
+                        {info.label}
+                      </span>
+                    </div>
+
+                    <p className="font-sans text-sm text-nfw-blackberry/70 mb-3">
+                      {info.description}
+                    </p>
+
+                    {claim.tracking_number && (
+                      <div className="mb-3">
+                        {claim.tracking_url ? (
+                          <a
+                            href={claim.tracking_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 font-ui text-xs font-medium text-nfw-aubergine hover:underline"
+                          >
+                            Tracking: {claim.tracking_number}
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <span className="font-ui text-xs text-nfw-blackberry/50">
+                            Tracking: {claim.tracking_number}
+                          </span>
+                        )}
                       </div>
                     )}
 
-                    {/* Claim Details */}
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h3 className="text-xl font-semibold mb-1">
-                            {claim.item.name}
-                          </h3>
-                          {claim.item.category && (
-                            <span className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
-                              {claim.item.category.name}
-                            </span>
-                          )}
-                        </div>
-                        <span
-                          className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium border ${statusInfo.color}`}
-                        >
-                          {statusInfo.icon} {statusInfo.label}
-                        </span>
-                      </div>
-
-                      {claim.item.description && (
-                        <p className="text-gray-600 text-sm mb-3">
-                          {claim.item.description}
-                        </p>
-                      )}
-
-                      {/* Variant Info */}
-                      {claim.selected_variant && (
-                        <div className="mb-3">
-                          <span className="text-sm text-gray-600">
-                            Selected:{" "}
-                            {Object.entries(claim.selected_variant)
-                              .map(([key, value]) => `${key}: ${value}`)
-                              .join(", ")}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Status Description */}
-                      <p className="text-sm text-gray-600 mb-3">
-                        {statusInfo.description}
-                      </p>
-
-                      {/* Tracking Number */}
-                      {claim.tracking_number && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-                          <div className="text-sm font-medium text-blue-900 mb-1">
-                            Tracking Number
-                          </div>
-                          <div className="font-mono text-blue-700">
-                            {claim.tracking_number}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Timeline */}
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <div>
-                          <span className="font-medium">Claimed:</span>{" "}
-                          {new Date(claim.claimed_at).toLocaleDateString()}
-                        </div>
-                        {claim.shipped_at && (
-                          <div>
-                            <span className="font-medium">Shipped:</span>{" "}
-                            {new Date(claim.shipped_at).toLocaleDateString()}
-                          </div>
-                        )}
-                        {claim.delivered_at && (
-                          <div>
-                            <span className="font-medium">Delivered:</span>{" "}
-                            {new Date(claim.delivered_at).toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* View Details Button */}
+                    <div className="flex items-center justify-between">
+                      <span className="font-sans text-xs text-nfw-blackberry/50">
+                        Claimed {new Date(claim.claimed_at).toLocaleDateString()}
+                      </span>
                       <button
-                        onClick={() => setSelectedClaim(claim)}
-                        className="mt-4 text-blue-600 hover:text-blue-800 font-medium text-sm"
+                        onClick={() => refreshClaim(claim.id)}
+                        disabled={loadingClaimId === claim.id}
+                        className="font-ui text-xs text-nfw-aubergine hover:underline disabled:opacity-50"
                       >
-                        View Shipping Details →
+                        {loadingClaimId === claim.id ? "Refreshing..." : "Refresh Status"}
                       </button>
                     </div>
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Claim Details Modal */}
-      {selectedClaim && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between mb-4">
-              <h2 className="text-2xl font-bold">Claim Details</h2>
-              <button
-                onClick={() => setSelectedClaim(null)}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
-                ×
-              </button>
             </div>
-
-            {/* Item Info */}
-            <div className="mb-6">
-              <div className="flex gap-4 items-start">
-                {selectedClaim.item.image_url && (
-                  <div className="relative w-32 h-32 rounded-lg overflow-hidden flex-shrink-0">
-                    <Image
-                      src={selectedClaim.item.image_url}
-                      alt={selectedClaim.item.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                )}
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">
-                    {selectedClaim.item.name}
-                  </h3>
-                  {selectedClaim.item.description && (
-                    <p className="text-gray-600 text-sm">
-                      {selectedClaim.item.description}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Status */}
-            <div className="mb-6">
-              <h4 className="font-semibold mb-2">Status</h4>
-              <span
-                className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border ${STATUS_INFO[selectedClaim.status].color}`}
-              >
-                {STATUS_INFO[selectedClaim.status].icon}{" "}
-                {STATUS_INFO[selectedClaim.status].label}
-              </span>
-              <p className="text-sm text-gray-600 mt-2">
-                {STATUS_INFO[selectedClaim.status].description}
-              </p>
-            </div>
-
-            {/* Tracking */}
-            {selectedClaim.tracking_number && (
-              <div className="mb-6">
-                <h4 className="font-semibold mb-2">Tracking Information</h4>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="font-mono text-blue-700 text-lg">
-                    {selectedClaim.tracking_number}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Shipping Address */}
-            <div className="mb-6">
-              <h4 className="font-semibold mb-2">Shipping Address</h4>
-              <div className="bg-gray-50 p-4 rounded-lg text-sm space-y-1">
-                <div>{selectedClaim.shipping_address.full_name}</div>
-                <div>{selectedClaim.shipping_address.address_line1}</div>
-                {selectedClaim.shipping_address.address_line2 && (
-                  <div>{selectedClaim.shipping_address.address_line2}</div>
-                )}
-                <div>
-                  {selectedClaim.shipping_address.city},{" "}
-                  {selectedClaim.shipping_address.state}{" "}
-                  {selectedClaim.shipping_address.zip}
-                </div>
-                <div>Phone: {selectedClaim.shipping_address.phone}</div>
-              </div>
-            </div>
-
-            {/* Timeline */}
-            <div className="mb-6">
-              <h4 className="font-semibold mb-2">Timeline</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                  <span className="font-medium">Claimed:</span>
-                  <span className="text-gray-600">
-                    {new Date(selectedClaim.claimed_at).toLocaleString()}
-                  </span>
-                </div>
-                {selectedClaim.shipped_at && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                    <span className="font-medium">Shipped:</span>
-                    <span className="text-gray-600">
-                      {new Date(selectedClaim.shipped_at).toLocaleString()}
-                    </span>
-                  </div>
-                )}
-                {selectedClaim.delivered_at && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                    <span className="font-medium">Delivered:</span>
-                    <span className="text-gray-600">
-                      {new Date(selectedClaim.delivered_at).toLocaleString()}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <button
-              onClick={() => setSelectedClaim(null)}
-              className="w-full bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 font-medium"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }

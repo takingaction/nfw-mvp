@@ -1,285 +1,226 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Search, X } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import ClaimItemModal from "./ClaimItemModal";
+import Link from "next/link";
 
-type ItemWithDetails = {
-  id: string;
-  name: string;
-  description: string | null;
-  image_url: string | null;
-  quantity_available: number;
-  max_claims_per_member: number;
-  variants: any;
-  category?: {
+type StoreProduct = {
+  shopifyProductId: string;
+  shopifyVariantId: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  availableForSale: boolean;
+  variants: Array<{
     id: string;
-    name: string;
-    slug: string;
-    icon: string | null;
-  } | null;
-  user_claim_count?: number;
-};
-
-type Category = {
-  id: string;
-  name: string;
-  slug: string;
-  icon: string | null;
-  display_order: number;
+    title: string;
+    availableForSale: boolean;
+    options: Array<{ name: string; value: string }>;
+  }>;
+  mvpVisibility: boolean;
+  eligibilityTiers: string[];
+  displayOrder: number;
 };
 
 export default function StoreClient({
-  items,
-  categories,
-  currentCategory,
-  currentSearch,
   userId,
+  userTier,
 }: {
-  items: ItemWithDetails[];
-  categories: Category[];
-  currentCategory?: string;
-  currentSearch?: string;
   userId?: string;
+  userTier?: string;
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState(currentSearch || "");
-  const [claimingItem, setClaimingItem] = useState<ItemWithDetails | null>(
-    null,
-  );
+  const [products, setProducts] = useState<StoreProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [claimingItem, setClaimingItem] = useState<{
+    id: string;
+    name: string;
+    variants: Array<{ name: string; options: string[] }>;
+  } | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [monthlyClaimed, setMonthlyClaimed] = useState(false);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const params = new URLSearchParams(searchParams.toString());
-    if (searchQuery) {
-      params.set("search", searchQuery);
-    } else {
-      params.delete("search");
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const res = await fetch("/api/shopify/products");
+        const data = await res.json();
+        setProducts(data);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        setLoading(false);
+      }
     }
-    router.push(`/store?${params.toString()}`);
-  };
+    fetchProducts();
+  }, []);
 
-  const handleCategoryFilter = (categorySlug: string | null) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (categorySlug) {
-      params.set("category", categorySlug);
-    } else {
-      params.delete("category");
+  useEffect(() => {
+    async function checkMonthlyClaim() {
+      if (!userId) return;
+      try {
+        const res = await fetch(`/api/store/claims/check?userId=${userId}`);
+        const data = await res.json();
+        setMonthlyClaimed(data.claimedThisMonth || false);
+      } catch (error) {
+        console.error("Error checking claims:", error);
+      }
     }
-    router.push(`/store?${params.toString()}`);
-  };
+    checkMonthlyClaim();
+  }, [userId]);
 
-  const handleClaim = (item: ItemWithDetails) => {
+  const handleClaim = (item: StoreProduct) => {
     if (!userId) {
       router.push("/auth/login");
       return;
     }
-
-    setClaimingItem(item);
+    setClaimingItem({
+      id: item.shopifyProductId,
+      name: item.title,
+      variants: item.variants.map((v) => ({
+        name: v.options.map((o) => o.name).join(" / ") || "Size",
+        options: v.options.map((o) => o.value),
+      })),
+    });
   };
 
-  return (
-    <main className="min-h-screen bg-white">
-      {/* Lean Header */}
-      <div className="bg-white pt-8 pb-6 border-b border-[#2d1239]/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2
-            className="text-3xl sm:text-4xl font-bold text-[#2d1239] mb-2"
-            style={{ fontFamily: "Montserrat, sans-serif" }}
-          >
-            Zero Dollar Store
-          </h2>
-          <p className="text-[#2d1239]/60">
-            Browse and claim free items. All items are completely free for NFW
-            members!
-          </p>
-        </div>
-      </div>
+  const toggleExpand = (productId: string) => {
+    setExpandedId(expandedId === productId ? null : productId);
+  };
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search Bar */}
-        <div className="bg-[#f8f7fa] rounded-xl p-4 mb-6">
-          <form onSubmit={handleSearch}>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#2d1239]/40" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search items..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#2d1239]/10 rounded-lg text-[#2d1239] placeholder-[#2d1239]/40 focus:outline-none focus:ring-2 focus:ring-[#BCAFCF] focus:border-transparent"
-                />
-              </div>
-              <button
-                type="submit"
-                className="px-5 py-2.5 bg-[#2d1239] text-white rounded-lg font-medium hover:bg-[#2d1239]/90 transition-colors"
-              >
-                Search
-              </button>
-              {(currentSearch || currentCategory) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchQuery("");
-                    router.push("/store");
-                  }}
-                  className="px-3 py-2.5 bg-white border border-[#2d1239]/10 text-[#2d1239]/60 rounded-lg hover:bg-[#2d1239]/5 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
+  const canClaim = (product: StoreProduct) => {
+    if (!userTier || !product.eligibilityTiers.includes(userTier)) {
+      return { eligible: false, reason: "Not Available for Your Tier" };
+    }
+    if (monthlyClaimed) {
+      return { eligible: false, reason: "Monthly Limit Reached" };
+    }
+    if (!product.availableForSale) {
+      return { eligible: false, reason: "Out of Stock" };
+    }
+    return { eligible: true, reason: "" };
+  };
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-nfw-dove">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 py-20">
+          <div className="animate-pulse space-y-8">
+            <div className="h-8 bg-nfw-stone/20 rounded w-1/3" />
+            <div className="grid grid-cols-3 gap-5">
+              {[1, 2, 3].map((i) => (
+                <div key={i}>
+                  <div className="aspect-[3/4] bg-nfw-stone/20 rounded-none" />
+                  <div className="h-4 bg-nfw-stone/20 rounded w-2/3 mt-4" />
+                </div>
+              ))}
             </div>
-          </form>
-        </div>
-
-        {/* Category Filters */}
-        <div className="mb-8">
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            <button
-              onClick={() => handleCategoryFilter(null)}
-              className={`px-4 py-2 rounded-full whitespace-nowrap font-medium transition-colors ${
-                !currentCategory
-                  ? "bg-[#2d1239] text-white"
-                  : "bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#2d1239]/5"
-              }`}
-            >
-              All Items ({items.length})
-            </button>
-            {categories.map((category) => {
-              const categoryItemCount = items.filter(
-                (item) => item.category?.id === category.id,
-              ).length;
-              return (
-                <button
-                  key={category.id}
-                  onClick={() => handleCategoryFilter(category.slug)}
-                  className={`px-4 py-2 rounded-full whitespace-nowrap font-medium transition-colors ${
-                    currentCategory === category.slug
-                      ? "bg-[#2d1239] text-white"
-                      : "bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#2d1239]/5"
-                  }`}
-                >
-                  {category.icon} {category.name} ({categoryItemCount})
-                </button>
-              );
-            })}
           </div>
         </div>
+      </main>
+    );
+  }
 
-        {/* Items Grid */}
-        {items.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="text-5xl mb-4 opacity-30">📦</div>
-            <p className="text-[#2d1239]/60 text-lg">
-              {currentSearch || currentCategory
-                ? "No items found matching your criteria."
-                : "No items available yet. Check back soon!"}
+  return (
+    <main className="min-h-screen bg-nfw-dove">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 py-16">
+        <div className="text-center mb-12">
+          <h1 className="font-serif text-4xl lg:text-6xl text-nfw-aubergine mb-4">
+            Zero Dollar Store
+          </h1>
+          <p className="font-ui text-sm font-medium tracking-[0.03em] text-nfw-blackberry/70">
+            Members can claim 1 free item per month
+          </p>
+        </div>
+
+        {products.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="text-6xl mb-6 opacity-30">📦</div>
+            <p className="font-serif text-2xl text-nfw-blackberry/60">
+              No items available yet. Check back soon!
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {items.map((item) => {
-              const canClaim =
-                item.quantity_available > 0 &&
-                (item.user_claim_count || 0) < item.max_claims_per_member;
-              const isOutOfStock = item.quantity_available === 0;
-              const hasReachedLimit =
-                (item.user_claim_count || 0) >= item.max_claims_per_member;
+          <div className="flex gap-5">
+            {products.map((product) => {
+              const claimStatus = canClaim(product);
+              const isExpanded = expandedId === product.shopifyProductId;
+              const needsExpand = product.description && product.description.length > 100;
 
               return (
                 <div
-                  key={item.id}
-                  className="group bg-white rounded-xl border border-[#2d1239]/10 overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+                  key={product.shopifyProductId}
+                  className="flex-1"
                 >
-                  {item.image_url ? (
-                    <div className="relative h-48 bg-[#f8f7fa] overflow-hidden">
+                  <div className="relative aspect-[3/4] overflow-hidden bg-nfw-stone/10">
+                    {product.imageUrl ? (
                       <Image
-                        src={item.image_url}
-                        alt={item.name}
+                        src={product.imageUrl}
+                        alt={product.title}
                         fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        className={`object-cover ${!product.availableForSale ? "grayscale opacity-60" : ""}`}
+                        sizes="(max-width: 768px) 33vw, 400px"
                       />
-                      {isOutOfStock && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                          <span className="bg-[#2d1239] text-white px-4 py-2 rounded-lg font-semibold">
-                            Out of Stock
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="relative h-48 bg-[#f8f7fa] flex items-center justify-center">
-                      <span className="text-5xl opacity-20">📦</span>
-                      {isOutOfStock && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                          <span className="bg-[#2d1239] text-white px-4 py-2 rounded-lg font-semibold">
-                            Out of Stock
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="p-5">
-                    {item.category && (
-                      <span className="inline-block text-xs px-2.5 py-1 rounded-full mb-3 bg-[#BCAFCF]/20 text-[#2d1239] font-medium">
-                        {item.category.icon} {item.category.name}
-                      </span>
+                    ) : (
+                      <div className="w-full h-full bg-nfw-powder/20" />
                     )}
+                    {!product.availableForSale && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <span className="bg-nfw-aubergine text-nfw-dove px-4 py-2 font-ui text-xs font-black tracking-[0.06em] uppercase">
+                          Out of Stock
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
-                    <h3 className="text-lg font-semibold text-[#2d1239] mb-2">
-                      {item.name}
+                  <div className="py-4">
+                    <h3 className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-blackberry mb-2">
+                      {product.title}
                     </h3>
 
-                    {item.description && (
-                      <p className="text-[#2d1239]/60 text-sm mb-4 line-clamp-2">
-                        {item.description}
-                      </p>
-                    )}
-
-                    {/* Variants */}
-                    {item.variants && item.variants.length > 0 && (
-                      <div className="mb-4 text-sm">
-                        {item.variants.map((variant: any, idx: number) => (
-                          <div key={idx} className="text-[#2d1239]/60">
-                            <strong className="text-[#2d1239]/80">
-                              {variant.name}:
-                            </strong>{" "}
-                            {variant.options.join(", ")}
-                          </div>
-                        ))}
+                    {product.description && (
+                      <div>
+                        <p className={`font-sans text-sm text-nfw-blackberry/70 ${isExpanded || !needsExpand ? "" : "line-clamp-2"}`}>
+                          {product.description}
+                        </p>
+                        {needsExpand && (
+                          <button
+                            onClick={() => toggleExpand(product.shopifyProductId)}
+                            className="flex items-center gap-1 mt-1 text-nfw-aubergine font-ui text-xs font-medium hover:underline"
+                          >
+                            {isExpanded ? (
+                              <>
+                                Show less <ChevronUp className="w-3 h-3" />
+                              </>
+                            ) : (
+                              <>
+                                Read more <ChevronDown className="w-3 h-3" />
+                              </>
+                            )}
+                          </button>
+                        )}
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between text-sm text-[#2d1239]/50 mb-4">
-                      <span>{item.quantity_available} available</span>
-                      {userId && item.user_claim_count! > 0 && (
-                        <span className="text-[#BCAFCF] font-medium">
-                          You claimed: {item.user_claim_count}
-                        </span>
-                      )}
-                    </div>
+                    {product.variants.length > 0 && product.variants[0].title !== "Default" && (
+                      <p className="font-sans text-xs text-nfw-blackberry/50 mt-2">
+                        Options: {product.variants.map((v) => v.title).join(", ")}
+                      </p>
+                    )}
 
                     <button
-                      onClick={() => handleClaim(item)}
-                      disabled={!canClaim}
-                      className={`w-full py-2.5 rounded-lg font-medium transition-colors ${
-                        canClaim
-                          ? "bg-[#2d1239] text-white hover:bg-[#2d1239]/90"
-                          : "bg-[#2d1239]/10 text-[#2d1239]/40 cursor-not-allowed"
+                      onClick={() => handleClaim(product)}
+                      disabled={!claimStatus.eligible}
+                      className={`mt-4 w-full py-3 font-ui text-xs font-black tracking-[0.06em] uppercase transition-colors ${
+                        claimStatus.eligible
+                          ? "bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/90"
+                          : "bg-nfw-stone/30 text-nfw-blackberry/50 cursor-not-allowed"
                       }`}
                     >
-                      {isOutOfStock
-                        ? "Out of Stock"
-                        : hasReachedLimit
-                          ? "Claim Limit Reached"
-                          : "Claim Item"}
+                      {claimStatus.reason}
                     </button>
                   </div>
                 </div>
@@ -288,15 +229,23 @@ export default function StoreClient({
           </div>
         )}
 
-        {/* Claim Modal */}
-        {claimingItem && userId && (
-          <ClaimItemModal
-            item={claimingItem}
-            userId={userId}
-            onClose={() => setClaimingItem(null)}
-          />
-        )}
+        <div className="flex justify-center mt-12">
+          <Link
+            href="/store/my-claims"
+            className="font-ui text-xs font-medium tracking-[0.06em] text-nfw-aubergine hover:underline"
+          >
+            View Your Claims →
+          </Link>
+        </div>
       </div>
+
+      {claimingItem && userId && (
+        <ClaimItemModal
+          item={claimingItem}
+          userId={userId}
+          onClose={() => setClaimingItem(null)}
+        />
+      )}
     </main>
   );
 }

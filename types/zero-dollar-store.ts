@@ -35,34 +35,70 @@ export type ZeroDollarItem = {
   updated_at: string;
 };
 
+export type ShopifyProductMapping = {
+  id: string;
+  shopify_product_id: string;
+  shopify_variant_id: string;
+  mvp_visibility: boolean;
+  eligibility_tiers: string[];
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ZeroDollarClaim = {
   id: string;
-  item_id: string;
-  member_id: string;
-  claimed_at: string;
-  shipping_address: {
-    full_name: string;
-    address_line1: string;
-    address_line2?: string;
-    city: string;
-    state: string;
-    zip: string;
-    phone: string;
-  };
-  selected_variant: {
-    size?: string;
-    color?: string;
-    [key: string]: string | undefined;
-  } | null;
-  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+  user_id: string;
+  shopify_product_id: string;
+  shopify_variant_id: string;
+  shopify_checkout_id: string | null;
+  shopify_order_id: string | null;
+  status: "pending" | "created" | "fulfilled" | "delivered";
+  shipping_address: ShippingAddress | null;
   tracking_number: string | null;
-  notes: string | null;
-  shipped_at: string | null;
-  delivered_at: string | null;
+  tracking_url: string | null;
+  claimed_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ShippingAddress = {
+  full_name: string;
+  address_line1: string;
+  address_line2?: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
+  phone?: string;
+};
+
+export type StoreProduct = {
+  shopifyProductId: string;
+  shopifyVariantId: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  availableForSale: boolean;
+  variants: ProductVariant[];
+  mvpVisibility: boolean;
+  eligibilityTiers: string[];
+  displayOrder: number;
+};
+
+export type ProductVariant = {
+  id: string;
+  title: string;
+  availableForSale: boolean;
+  options: Array<{ name: string; value: string }>;
 };
 
 export type ZeroDollarItemWithClaim = ZeroDollarItem & {
   category?: ZeroDollarCategory | null;
   user_claim?: ZeroDollarClaim | null;
   total_claims?: number;
+};
+
+export type ClaimWithProduct = ZeroDollarClaim & {
+  product?: StoreProduct;
 };

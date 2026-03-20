@@ -4,6 +4,11 @@ import MyClaimsClient from "@/components/MyClaimsClient";
 import { Suspense } from "react";
 import Link from "next/link";
 
+export const metadata = {
+  title: "My Claims | Zero Dollar Store",
+  description: "Track your claimed items from the Zero Dollar Store",
+};
+
 async function MyClaimsContent() {
   const supabase = await createClient();
   const {
@@ -14,7 +19,6 @@ async function MyClaimsContent() {
     redirect("/auth/login");
   }
 
-  // Get user's profile
   const { data: profile } = await supabase
     .from("profiles")
     .select("full_name, membership_level")
@@ -25,22 +29,10 @@ async function MyClaimsContent() {
     redirect("/profile");
   }
 
-  // Fetch user's claims with item details
   const { data: claims, error } = await supabase
     .from("zero_dollar_claims")
-    .select(
-      `
-      *,
-      item:zero_dollar_items(
-        id,
-        name,
-        description,
-        image_url,
-        category:zero_dollar_categories(name)
-      )
-    `,
-    )
-    .eq("member_id", user.id)
+    .select("*")
+    .eq("user_id", user.id)
     .order("claimed_at", { ascending: false });
 
   if (error) {
@@ -49,27 +41,26 @@ async function MyClaimsContent() {
   }
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">My Claims</h1>
-              <p className="text-gray-600 text-lg">
-                Track your claimed items and shipping status
-              </p>
-            </div>
-            <Link
-              href="/store"
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
-            >
-              Browse Store
-            </Link>
+    <main className="min-h-screen bg-nfw-dove">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 py-16">
+        <div className="flex items-center justify-between mb-12">
+          <div>
+            <h1 className="font-serif text-4xl lg:text-5xl text-nfw-aubergine mb-2">
+              My Claims
+            </h1>
+            <p className="font-sans text-sm text-nfw-blackberry/70">
+              Track your claimed items and shipping status
+            </p>
           </div>
+          <Link
+            href="/store"
+            className="bg-nfw-citrine text-nfw-blackberry px-6 py-3 font-ui text-xs font-black tracking-[0.06em] uppercase hover:bg-nfw-citrine/90 transition-colors"
+          >
+            Browse Store
+          </Link>
         </div>
 
-        <MyClaimsClient claims={claims || []} userName={profile.full_name} />
+        <MyClaimsClient claims={claims || []} userName={profile.full_name || ""} />
       </div>
     </main>
   );
@@ -79,16 +70,16 @@ export default function MyClaimsPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen p-8 bg-gray-50">
-          <div className="max-w-7xl mx-auto">
+        <main className="min-h-screen bg-nfw-dove">
+          <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 py-16">
             <div className="animate-pulse">
-              <div className="h-10 bg-gray-200 rounded w-1/3 mb-4"></div>
-              <div className="h-6 bg-gray-200 rounded w-2/3 mb-8"></div>
+              <div className="h-10 bg-nfw-stone/20 rounded w-1/3 mb-4"></div>
+              <div className="h-6 bg-nfw-stone/20 rounded w-2/3 mb-12"></div>
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-white rounded-lg shadow-md p-6">
-                    <div className="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div key={i} className="bg-white p-6">
+                    <div className="h-6 bg-nfw-stone/20 rounded w-1/2 mb-4"></div>
+                    <div className="h-4 bg-nfw-stone/20 rounded w-3/4"></div>
                   </div>
                 ))}
               </div>

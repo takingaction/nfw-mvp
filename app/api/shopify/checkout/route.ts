@@ -1,0 +1,135 @@
+import { NextRequest, NextResponse } from "next/server";
+import { shopifyFetch, CHECKOUT_CREATE_MUTATION, CHECKOUT_SHIPPING_ADDRESS_UPDATE_MUTATION } from "@/lib/shopify";
+import { createClient } from "@/lib/supabase/server";
+
+const USE_MOCK = !process.env.SHOPIFY_CLIENT_ID || process.env.SHOPIFY_CLIENT_ID === "your-shopify-client-id";
+
+export async function POST(request: NextRequest) {
+  try {
+    const { variantId, productId, userId, shippingAddress } = await request.json();
+
+    if (!variantId || !productId || !userId) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    if (USE_MOCK) {
+      console.log("Mock checkout - would create checkout for:", { variantId, productId, userId, shippingAddress });
+      const mockCheckoutId = `mock-checkout-${Date.now()}`;
+      const mockCheckoutUrl = `https://nfw-checkout.myshopify.com/checkouts/${mockCheckoutId}`;
+
+      const supabase = await createClient();
+      const { error: claimError } = await supabase
+        .from("zero_dollar_claims")
+        .insert({
+          user_id: userId,
+          shopify_product_id: productId,
+          shopify_variant_id: variantId,
+          shopify_checkout_id: mockCheckoutId,
+          status: "created",
+          shipping_address: shippingAddress || null,
+          claimed_at: new Date().toISOString(),
+        });
+
+      if (claimError) {
+        console.error("Error creating claim:", claimError);
+        return NextResponse.json(
+          { error: "Failed to create claim" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        checkoutUrl: mockCheckoutUrl,
+        checkoutId: mockCheckoutId,
+      });
+    }
+
+    const checkoutInput = {
+      lineItems: [
+        {
+          variantId,
+          quantity: 1,
+        },
+      ],
+    };
+
+    const checkoutData = await shopifyFetch<{
+      checkoutCreate: {
+        checkout: { id: string; webUrl: string };
+        checkoutUserErrors: Array<{ code: string; field: string[]; message: string }>;
+      };
+    }>({
+      query: CHECKOUT_CREATE_MUTATION,
+      variables: { input: checkoutInput },
+    });
+
+    if (checkoutData.checkoutCreate.checkoutUserErrors.length > 0) {
+      const error = checkoutData.checkoutCreate.checkoutUserErrors[0];
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      );
+    }
+
+    const { id: checkoutId, webUrl: checkoutUrl } = checkoutData.checkoutCreate.checkout;
+
+    if (shippingAddress) {
+      const addressInput = {
+        address1: shippingAddress.address_line1,
+        address2: shippingAddress.address_line2 || "",
+        city: shippingAddress.city,
+        country: shippingAddress.country || "US",
+        firstName: shippingAddress.full_name.split(" ")[0] || "",
+        lastName: shippingAddress.full_name.split(" ").slice(1).join(" ") || "",
+        phone: shippingAddress.phone || "",
+        province: shippingAddress.state,
+        zip: shippingAddress.zip,
+      };
+
+      await shopifyFetch<{
+        checkoutShippingAddressUpdateV2: {
+          checkout: { id: string; webUrl: string };
+          checkoutUserErrors: Array<{ code: string; field: string[]; message: string }>;
+        };
+      }>({
+        query: CHECKOUT_SHIPPING_ADDRESS_UPDATE_MUTATION,
+        variables: { checkoutId, shippingAddress: addressInput },
+      });
+    }
+
+    const supabase = await createClient();
+    const { error: claimError } = await supabase
+      .from("zero_dollar_claims")
+      .insert({
+        user_id: userId,
+        shopify_product_id: productId,
+        shopify_variant_id: variantId,
+        shopify_checkout_id: checkoutId,
+        status: "created",
+        shipping_address: shippingAddress || null,
+        claimed_at: new Date().toISOString(),
+      });
+
+    if (claimError) {
+      console.error("Error creating claim:", claimError);
+      return NextResponse.json(
+        { error: "Failed to create claim" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      checkoutUrl,
+      checkoutId,
+    });
+  } catch (error) {
+    console.error("Error creating checkout:", error);
+    return NextResponse.json(
+      { error: "Failed to create checkout" },
+      { status: 500 }
+    );
+  }
+}
