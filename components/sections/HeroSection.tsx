@@ -45,9 +45,9 @@ export default function HeroSection({ content }: Props) {
             </div>
           </div>
 
-          <div className="relative w-full h-full">
+          <div className="relative w-full aspect-[3/4] lg:aspect-auto lg:h-[500px]">
             {c.images ? (
-              <div className="relative">
+              <div className="relative w-full h-full">
                 <Image
                   src={
                     typeof c.images === "string"
@@ -61,12 +61,12 @@ export default function HeroSection({ content }: Props) {
                   alt=""
                   fill
                   className="object-contain"
-                  sizes="(max-width: 768px) 100vw, 47vw"
+                  sizes="(max-width: 1024px) 100vw, 47vw"
                   priority
                 />
               </div>
             ) : (
-              <div className="relative aspect-[3/4] bg-nfw-blackberry/30" />
+              <div className="w-full h-full bg-nfw-blackberry/30" />
             )}
           </div>
         </div>
