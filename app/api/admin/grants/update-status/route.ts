@@ -42,11 +42,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    const updates: any = { status };
+    const updates: Record<string, unknown> = { status };
     if (amount_approved !== undefined)
       updates.amount_approved = amount_approved;
     if (admin_notes !== undefined) updates.admin_notes = admin_notes;
-    if (status === "approved") updates.reviewed_at = new Date().toISOString();
+    if (status === "approved") {
+      updates.reviewed_at = new Date().toISOString();
+      updates.reviewed_by = user.id;
+    }
     if (status === "payment_sent") updates.funded_at = new Date().toISOString();
 
     const { error } = await supabaseAdmin
@@ -55,7 +58,10 @@ export async function POST(request: NextRequest) {
       .eq("id", grantId);
 
     if (error)
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to update grant status" },
+        { status: 500 },
+      );
 
     // Send email notification
     const { data: grantData } = await supabaseAdmin
@@ -85,7 +91,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch {
+    return NextResponse.json(
+      { error: "An error occurred" },
+      { status: 500 },
+    );
   }
 }
