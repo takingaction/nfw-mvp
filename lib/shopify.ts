@@ -1,16 +1,15 @@
 import { createStorefrontApiClient } from "@shopify/storefront-api-client";
 
-const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN;
-const clientId = process.env.SHOPIFY_CLIENT_ID;
-const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
+function getShopifyConfig() {
+  return {
+    storeDomain: process.env.SHOPIFY_SHOP_DOMAIN || "",
+    clientId: process.env.SHOPIFY_CLIENT_ID || "",
+    clientSecret: process.env.SHOPIFY_CLIENT_SECRET || "",
+  };
+}
 
-export const shopifyClient = createStorefrontApiClient({
-  storeDomain: shopDomain || "",
-  apiVersion: "2026-01",
-  publicAccessToken: `${clientId}:${clientSecret}`,
-});
-
-export function getShopifyHeaders() {
+function getShopifyHeaders() {
+  const { clientId, clientSecret } = getShopifyConfig();
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
   return {
     "Content-Type": "application/json",
@@ -25,7 +24,8 @@ export async function shopifyFetch<T>({
   query: string;
   variables?: Record<string, unknown>;
 }): Promise<T> {
-  const response = await fetch(`https://${shopDomain}/api/2026-01/graphql.json`, {
+  const { storeDomain } = getShopifyConfig();
+  const response = await fetch(`https://${storeDomain}/api/2026-01/graphql.json`, {
     method: "POST",
     headers: getShopifyHeaders(),
     body: JSON.stringify({ query, variables }),
