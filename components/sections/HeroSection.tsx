@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { HeroContent } from "@/lib/sections/types";
 
 interface Props {
@@ -47,7 +48,7 @@ export default function HeroSection({ content }: Props) {
           <div className="relative w-full h-full">
             {c.images ? (
               <div className="relative">
-                <img
+                <Image
                   src={
                     typeof c.images === "string"
                       ? c.images
@@ -58,7 +59,10 @@ export default function HeroSection({ content }: Props) {
                         : (c.images as { url: string }).url
                   }
                   alt=""
-                  className="w-full h-full object-contain"
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 768px) 100vw, 47vw"
+                  priority
                 />
               </div>
             ) : (

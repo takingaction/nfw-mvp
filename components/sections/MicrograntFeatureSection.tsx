@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { MicrograntFeatureContent } from "@/lib/sections/types";
 
 interface Props {
@@ -16,10 +17,13 @@ export default function MicrograntFeatureSection({ content }: Props) {
           {/* Left — photo */}
           <div className="relative aspect-[4/5] overflow-hidden bg-nfw-stone/20">
             {c.image_url ? (
-              <img
+              <Image
                 src={c.image_url}
                 alt=""
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                loading="lazy"
               />
             ) : (
               <div className="w-full h-full bg-nfw-powder/30" />

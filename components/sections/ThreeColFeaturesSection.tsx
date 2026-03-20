@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ThreeColFeaturesContent } from "@/lib/sections/types";
 
 interface Props {
@@ -24,10 +25,13 @@ export default function ThreeColFeaturesSection({ content }: Props) {
           >
             {col.background_image_url && (
               <>
-                <img
+                <Image
                   src={col.background_image_url}
                   alt=""
-                  className="absolute inset-0 w-full h-full object-cover"
+                  fill
+                  className="object-cover"
+                  sizes="100vw"
+                  loading="lazy"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-nfw-blackberry/90 via-nfw-blackberry/50 to-nfw-blackberry/20" />
               </>

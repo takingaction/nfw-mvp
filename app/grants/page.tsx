@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Check, FileText, Eye, Banknote } from "lucide-react";
 
 export default function MicrograntsPage() {
@@ -60,15 +61,13 @@ export default function MicrograntsPage() {
             </div>
             <div className="relative">
               <div className="relative rounded-3xl overflow-hidden aspect-[4/3] shadow-2xl">
-                <img
+                <Image
                   src="/images/microgrants-help.jpg"
                   alt="Women receiving microgrant support"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                    e.currentTarget.parentElement!.style.background =
-                      "linear-gradient(135deg, #d4f1ad 0%, #bcafcf 100%)";
-                  }}
+                  fill
+                  className="object-cover"
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 50vw"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#2d1239]/60 via-transparent to-transparent"></div>
                 <div className="absolute bottom-5 left-5 bg-white/95 backdrop-blur-sm rounded-2xl px-5 py-4 shadow-xl">
@@ -188,13 +187,13 @@ export default function MicrograntsPage() {
                 className="group bg-white rounded-2xl border border-[#2d1239]/10 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
               >
                 <div className="relative h-44 overflow-hidden bg-[#bcafcf]/20">
-                  <img
+                  <Image
                     src="/images/microgrants-help.jpg"
                     alt={grant.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    loading="lazy"
                   />
                   {grant.partner && (
                     <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm rounded-lg px-2 py-1 text-xs font-semibold text-[#2d1239]">
@@ -472,13 +471,13 @@ export default function MicrograntsPage() {
                   className="relative h-48 overflow-hidden"
                   style={{ backgroundColor: `${story.accent}30` }}
                 >
-                  <img
+                  <Image
                     src="/images/microgrants-help.jpg"
                     alt={story.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    loading="lazy"
                   />
                 </div>
                 <div className="p-5">

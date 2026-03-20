@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ZeroDollarStoreTeaserContent } from "@/lib/sections/types";
 
 interface Props {
@@ -32,12 +33,15 @@ export default function ZeroDollarStoreTeaserSection({ content }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-nfw-stone/20">
             {c.products.slice(0, 3).map((product, i) => (
               <div key={i} className="bg-nfw-dove group">
-                <div className="aspect-square overflow-hidden bg-nfw-stone/10">
+                <div className="aspect-square overflow-hidden bg-nfw-stone/10 relative">
                   {product.image_url ? (
-                    <img
+                    <Image
                       src={product.image_url}
                       alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      loading="lazy"
                     />
                   ) : (
                     <div className="w-full h-full bg-nfw-powder/20" />

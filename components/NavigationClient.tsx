@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 
 interface NavLink {
@@ -68,18 +69,13 @@ export default function NavigationClient({
   if (side === "center") {
     return (
       <Link href="/" className="inline-block flex-shrink-0">
-        <img
+        <Image
           src={logoUrl || "/images/header-logo.png"}
           alt="NFW Logo"
+          width={180}
+          height={72}
           className="h-[72px] w-auto"
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-            const parent = e.currentTarget.parentElement;
-            if (parent) {
-              parent.innerHTML =
-                '<span class="text-2xl font-black font-bold text-white">NFW</span>';
-            }
-          }}
+          priority
         />
       </Link>
     );
@@ -88,18 +84,13 @@ export default function NavigationClient({
   if (side === "left") {
     return (
       <Link href="/" className="inline-block flex-shrink-0">
-        <img
+        <Image
           src={logoUrl || "/images/header-logo.png"}
           alt="NFW Logo"
+          width={180}
+          height={72}
           className="h-[72px] w-auto"
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-            const parent = e.currentTarget.parentElement;
-            if (parent) {
-              parent.innerHTML =
-                '<span class="text-2xl font-black font-bold text-white">NFW</span>';
-            }
-          }}
+          priority
         />
       </Link>
     );

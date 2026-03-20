@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -11,21 +12,13 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 lg:gap-12 mb-12">
           {/* Brand Column */}
           <div className="md:col-span-1">
-            <img
+            <Image
               src="/images/footer-logo.png"
               alt="NFW Logo"
+              width={128}
+              height={64}
               className="h-32 w-auto mb-4"
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-                const fallback = document.createElement("h3");
-                fallback.className =
-                  "text-2xl font-black font-bold mb-4 text-white";
-                fallback.textContent = "NFW";
-                e.currentTarget.parentElement?.insertBefore(
-                  fallback,
-                  e.currentTarget,
-                );
-              }}
+              priority
             />
             <p className="text-[#bcafcf] text-sm leading-relaxed">
               A space to celebrate, listen, and uplift American women.
@@ -158,13 +151,13 @@ export default function Footer() {
               className="hover:opacity-80 transition-opacity"
               aria-label="Facebook"
             >
-              <img
+              <Image
                 src="/images/social/White-Lavender-Facebook.png"
                 alt="Facebook"
+                width={48}
+                height={48}
                 className="h-12 w-12"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
+                loading="lazy"
               />
             </a>
             <a
@@ -174,13 +167,13 @@ export default function Footer() {
               className="hover:opacity-80 transition-opacity"
               aria-label="Instagram"
             >
-              <img
+              <Image
                 src="/images/social/White-Lavender-Instagram.png"
                 alt="Instagram"
+                width={48}
+                height={48}
                 className="h-12 w-12"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
+                loading="lazy"
               />
             </a>
             <a
@@ -190,13 +183,13 @@ export default function Footer() {
               className="hover:opacity-80 transition-opacity"
               aria-label="TikTok"
             >
-              <img
+              <Image
                 src="/images/social/White-Lavender-TikTok.png"
                 alt="TikTok"
+                width={48}
+                height={48}
                 className="h-12 w-12"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
+                loading="lazy"
               />
             </a>
           </div>
