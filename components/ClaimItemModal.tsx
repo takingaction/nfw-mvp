@@ -15,7 +15,8 @@ export default function ClaimItemModal({
   onClose,
 }: {
   item: {
-    id: string;
+    productId: string;
+    variantId: string;
     name: string;
     variants?: Variant[];
   };
@@ -53,8 +54,8 @@ export default function ClaimItemModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          variantId: item.id,
-          productId: item.id,
+          variantId: item.variantId,
+          productId: item.productId,
           userId,
         }),
       });

@@ -36,7 +36,8 @@ export default function StoreClient({
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [claimingItem, setClaimingItem] = useState<{
-    id: string;
+    productId: string;
+    variantId: string;
     name: string;
     variants: Array<{ name: string; options: string[] }>;
   } | null>(null);
@@ -82,7 +83,8 @@ export default function StoreClient({
       return;
     }
     setClaimingItem({
-      id: item.shopifyVariantId,
+      productId: item.shopifyProductId,
+      variantId: item.shopifyVariantId,
       name: item.title,
       variants: item.variants
         .filter((v) => v.options && v.options.length > 0)
