@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { shopifyFetch, CHECKOUT_CREATE_MUTATION, CHECKOUT_SHIPPING_ADDRESS_UPDATE_MUTATION, getShopifyAccessToken } from "@/lib/shopify";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseAdmin = createClient(
@@ -9,7 +8,7 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const { variantId, productId, userId, shippingAddress } = await request.json();
+    const { variantId, productId, userId } = await request.json();
 
     if (!variantId || !productId || !userId) {
       return NextResponse.json(
@@ -18,67 +17,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if we have a Shopify token
-    const token = await getShopifyAccessToken();
-    if (!token) {
+    const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN || "nfw-checkout.myshopify.com";
+
+    const variantIdMatch = variantId.match(/gid:\/\/shopify\/ProductVariant\/(\d+)/);
+    if (!variantIdMatch) {
       return NextResponse.json(
-        { error: "Shopify not connected. Please connect to Shopify first." },
+        { error: "Invalid variant ID format" },
         { status: 400 }
       );
     }
+    const numericVariantId = variantIdMatch[1];
 
-    const checkoutInput = {
-      lineItems: [
-        {
-          variantId,
-          quantity: 1,
-        },
-      ],
-    };
-
-    const checkoutData = await shopifyFetch<{
-      checkoutCreate: {
-        checkout: { id: string; webUrl: string };
-        checkoutUserErrors: Array<{ code: string; field: string[]; message: string }>;
-      };
-    }>({
-      query: CHECKOUT_CREATE_MUTATION,
-      variables: { input: checkoutInput },
-    });
-
-    if (checkoutData.checkoutCreate.checkoutUserErrors.length > 0) {
-      const error = checkoutData.checkoutCreate.checkoutUserErrors[0];
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
-    }
-
-    const { id: checkoutId, webUrl: checkoutUrl } = checkoutData.checkoutCreate.checkout;
-
-    if (shippingAddress) {
-      const addressInput = {
-        address1: shippingAddress.address_line1,
-        address2: shippingAddress.address_line2 || "",
-        city: shippingAddress.city,
-        country: shippingAddress.country || "US",
-        firstName: shippingAddress.full_name.split(" ")[0] || "",
-        lastName: shippingAddress.full_name.split(" ").slice(1).join(" ") || "",
-        phone: shippingAddress.phone || "",
-        province: shippingAddress.state,
-        zip: shippingAddress.zip,
-      };
-
-      await shopifyFetch<{
-        checkoutShippingAddressUpdateV2: {
-          checkout: { id: string; webUrl: string };
-          checkoutUserErrors: Array<{ code: string; field: string[]; message: string }>;
-        };
-      }>({
-        query: CHECKOUT_SHIPPING_ADDRESS_UPDATE_MUTATION,
-        variables: { checkoutId, shippingAddress: addressInput },
-      });
-    }
+    const checkoutUrl = `https://${shopDomain}/cart/${numericVariantId}:1`;
 
     const { error: claimError } = await supabaseAdmin
       .from("zero_dollar_claims")
@@ -86,9 +36,9 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         shopify_product_id: productId,
         shopify_variant_id: variantId,
-        shopify_checkout_id: checkoutId,
+        shopify_checkout_id: `checkout_${Date.now()}`,
         status: "created",
-        shipping_address: shippingAddress || null,
+        shipping_address: { placeholder: true },
         claimed_at: new Date().toISOString(),
       });
 
@@ -102,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       checkoutUrl,
-      checkoutId,
+      checkoutId: `checkout_${Date.now()}`,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

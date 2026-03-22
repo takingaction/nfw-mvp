@@ -1,23 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Package, Loader2, MapPin } from "lucide-react";
+import { X, Package, Loader2 } from "lucide-react";
 
 type Variant = {
   name: string;
   options: string[];
-};
-
-type ShippingAddress = {
-  full_name: string;
-  address_line1: string;
-  address_line2?: string;
-  city: string;
-  state: string;
-  zip: string;
-  country: string;
-  phone?: string;
 };
 
 export default function ClaimItemModal({
@@ -36,27 +25,7 @@ export default function ClaimItemModal({
   const router = useRouter();
   const [claiming, setClaiming] = useState(false);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
-  const [shippingAddress, setShippingAddress] = useState<ShippingAddress | null>(null);
-  const [useProfileAddress, setUseProfileAddress] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [loadingAddress, setLoadingAddress] = useState(true);
-
-  useEffect(() => {
-    async function loadProfileAddress() {
-      try {
-        const res = await fetch(`/api/profile/address/${userId}`);
-        const data: { address: ShippingAddress | null } = await res.json();
-        if (data.address) {
-          setShippingAddress(data.address);
-        }
-      } catch (err) {
-        console.error("Error loading address:", err);
-      } finally {
-        setLoadingAddress(false);
-      }
-    }
-    loadProfileAddress();
-  }, [userId]);
 
   const handleVariantChange = (variantName: string, option: string) => {
     setSelectedVariants((prev) => ({
@@ -87,7 +56,6 @@ export default function ClaimItemModal({
           variantId: item.id,
           productId: item.id,
           userId,
-          shippingAddress: useProfileAddress ? shippingAddress : null,
         }),
       });
 
@@ -161,49 +129,6 @@ export default function ClaimItemModal({
             </div>
           )}
 
-          {!loadingAddress && (
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-3">
-                <MapPin className="w-4 h-4 text-nfw-aubergine" />
-                <p className="font-ui text-xs font-black tracking-[0.03em] uppercase text-nfw-blackberry">
-                  Shipping Address
-                </p>
-              </div>
-
-              {shippingAddress ? (
-                <div className="space-y-3">
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      id="useProfile"
-                      checked={useProfileAddress}
-                      onChange={(e) => setUseProfileAddress(e.target.checked)}
-                      className="mt-1"
-                    />
-                    <div className="font-sans text-sm text-nfw-blackberry/70">
-                      <span className="font-medium">{shippingAddress.full_name}</span>
-                      <br />
-                      {shippingAddress.address_line1}
-                      {shippingAddress.address_line2 && <>, {shippingAddress.address_line2}</>}
-                      <br />
-                      {shippingAddress.city}, {shippingAddress.state} {shippingAddress.zip}
-                      <p className="text-nfw-blackberry/50 mt-1">You can change this later on Shopify</p>
-                    </div>
-                  </label>
-                  {!useProfileAddress && (
-                    <p className="font-sans text-sm font-normal text-nfw-blackberry/50 pl-7">
-                      Enter a different address on the next step
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="font-sans text-sm font-normal text-nfw-blackberry/50">
-                  No shipping address on file. You&apos;ll enter one on Shopify.
-                </p>
-              )}
-            </div>
-          )}
-
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 mb-6 font-sans text-sm">
               {error}
@@ -213,7 +138,7 @@ export default function ClaimItemModal({
           <div className="flex items-center gap-3">
             <button
               onClick={handleClaim}
-              disabled={claiming || loadingAddress}
+              disabled={claiming}
               className="flex-1 bg-nfw-citrine text-nfw-blackberry px-6 py-3 font-ui text-xs font-black tracking-[0.06em] uppercase hover:bg-nfw-citrine/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {claiming ? (
@@ -222,7 +147,7 @@ export default function ClaimItemModal({
                   Redirecting...
                 </>
               ) : (
-                "Checkout"
+                "Claim Now"
               )}
             </button>
             <button

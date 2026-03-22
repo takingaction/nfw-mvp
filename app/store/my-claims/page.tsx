@@ -40,6 +40,33 @@ async function MyClaimsContent() {
     return <div className="text-red-600">Error loading your claims</div>;
   }
 
+  let enrichedClaims = claims || [];
+
+  if (claims && claims.length > 0) {
+    try {
+      const productsRes = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/shopify/products`,
+        { cache: 'no-store' }
+      );
+      if (productsRes.ok) {
+        const products = await productsRes.json();
+        const productMap = new Map(
+          products.map((p: { shopifyProductId: string; title: string; imageUrl: string; description: string }) => [
+            p.shopifyProductId,
+            { title: p.title, imageUrl: p.imageUrl, description: p.description }
+          ])
+        );
+
+        enrichedClaims = claims.map(claim => ({
+          ...claim,
+          product: productMap.get(claim.shopify_product_id) || null,
+        }));
+      }
+    } catch (err) {
+      console.error("Error fetching product details:", err);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-nfw-dove">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 py-16">
@@ -60,7 +87,7 @@ async function MyClaimsContent() {
           </Link>
         </div>
 
-        <MyClaimsClient claims={claims || []} userName={profile.full_name || ""} />
+        <MyClaimsClient claims={enrichedClaims} userName={profile.full_name || ""} />
       </div>
     </main>
   );

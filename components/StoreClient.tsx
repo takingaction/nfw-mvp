@@ -82,7 +82,7 @@ export default function StoreClient({
       return;
     }
     setClaimingItem({
-      id: item.shopifyProductId,
+      id: item.shopifyVariantId,
       name: item.title,
       variants: item.variants
         .filter((v) => v.options && v.options.length > 0)

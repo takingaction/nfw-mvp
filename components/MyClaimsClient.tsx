@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ExternalLink, Package } from "lucide-react";
+import { ExternalLink, Package, ArrowRight } from "lucide-react";
 
 type Claim = {
   id: string;
@@ -12,27 +12,15 @@ type Claim = {
   shopify_checkout_id: string | null;
   shopify_order_id: string | null;
   status: "pending" | "created" | "fulfilled" | "delivered";
-  shipping_address: {
-    full_name: string;
-    address_line1: string;
-    address_line2?: string;
-    city: string;
-    state: string;
-    zip: string;
-    country: string;
-    phone?: string;
-  } | null;
+  shipping_address: Record<string, unknown> | null;
   tracking_number: string | null;
   tracking_url: string | null;
   claimed_at: string;
-};
-
-type EnrichedClaim = Claim & {
   product?: {
     title: string;
     imageUrl: string;
     description: string;
-  };
+  } | null;
 };
 
 type OrderStatus = {
@@ -49,18 +37,25 @@ const STATUS_INFO: Record<string, { label: string; description: string }> = {
   delivered: { label: "Delivered", description: "Your item has been delivered" },
 };
 
+const SHOPIFY_STORE_DOMAIN = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN || "nfw-checkout.myshopify.com";
+
 export default function MyClaimsClient({
   claims,
 }: {
   claims: Claim[];
   userName?: string;
 }) {
-  const [enrichedClaims, setEnrichedClaims] = useState<EnrichedClaim[]>(claims);
+  const [enrichedClaims, setEnrichedClaims] = useState<Claim[]>(claims);
   const [loadingClaimId, setLoadingClaimId] = useState<string | null>(null);
 
   const fetchOrderStatus = useCallback(async (claim: Claim): Promise<OrderStatus> => {
-    if (!claim.shopify_checkout_id) {
-      return { status: claim.status, trackingNumber: null, trackingUrl: null, orderId: null };
+    if (!claim.shopify_checkout_id || claim.shopify_checkout_id.startsWith('checkout_')) {
+      return {
+        status: claim.status,
+        trackingNumber: claim.tracking_number,
+        trackingUrl: claim.tracking_url,
+        orderId: claim.shopify_order_id
+      };
     }
 
     try {
@@ -73,7 +68,12 @@ export default function MyClaimsClient({
         orderId: data.orderId || claim.shopify_order_id,
       };
     } catch {
-      return { status: claim.status, trackingNumber: claim.tracking_number, trackingUrl: claim.tracking_url, orderId: claim.shopify_order_id };
+      return {
+        status: claim.status,
+        trackingNumber: claim.tracking_number,
+        trackingUrl: claim.tracking_url,
+        orderId: claim.shopify_order_id
+      };
     }
   }, []);
 
@@ -124,6 +124,12 @@ export default function MyClaimsClient({
     setLoadingClaimId(null);
   };
 
+  const getShopifyOrderUrl = (orderId: string | null) => {
+    if (!orderId) return null;
+    const cleanId = orderId.replace('gid://shopify/Order/', '');
+    return `https://${SHOPIFY_STORE_DOMAIN}/account/orders/${cleanId}`;
+  };
+
   if (enrichedClaims.length === 0) {
     return (
       <div className="text-center py-20 bg-white">
@@ -150,6 +156,7 @@ export default function MyClaimsClient({
       <div className="space-y-4">
         {enrichedClaims.map((claim) => {
           const info = STATUS_INFO[claim.status] || STATUS_INFO.pending;
+          const shopifyOrderUrl = getShopifyOrderUrl(claim.shopify_order_id);
 
           return (
             <div
@@ -158,7 +165,7 @@ export default function MyClaimsClient({
             >
               <div className="p-6">
                 <div className="flex gap-6">
-                  <div className="relative w-24 h-24 bg-nfw-stone/10 flex-shrink-0">
+                  <div className="relative w-24 h-24 bg-nfw-stone/10 flex-shrink-0 overflow-hidden">
                     {loadingClaimId === claim.id ? (
                       <div className="w-full h-full animate-pulse bg-nfw-stone/20" />
                     ) : claim.product?.imageUrl ? (
@@ -167,6 +174,7 @@ export default function MyClaimsClient({
                         alt={claim.product?.title || "Product"}
                         fill
                         className="object-cover"
+                        sizes="96px"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
@@ -196,22 +204,41 @@ export default function MyClaimsClient({
                       {info.description}
                     </p>
 
-                    {claim.tracking_number && (
-                      <div className="mb-3">
-                        {claim.tracking_url ? (
+                    {(claim.tracking_number || shopifyOrderUrl) && (
+                      <div className="mb-3 space-y-2">
+                        {claim.tracking_number && (
+                          <div className="flex items-center gap-3">
+                            {claim.tracking_url ? (
+                              <a
+                                href={claim.tracking_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 font-ui text-xs font-medium text-nfw-aubergine hover:underline"
+                              >
+                                Track Package
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            ) : (
+                              <span className="font-ui text-xs text-nfw-blackberry/50">
+                                Tracking: {claim.tracking_number}
+                              </span>
+                            )}
+                            <span className="text-nfw-blackberry/30">|</span>
+                            <span className="font-ui text-xs text-nfw-blackberry/50">
+                              {claim.tracking_number}
+                            </span>
+                          </div>
+                        )}
+                        {shopifyOrderUrl && (
                           <a
-                            href={claim.tracking_url}
+                            href={shopifyOrderUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 font-ui text-xs font-medium text-nfw-aubergine hover:underline"
+                            className="inline-flex items-center gap-1 font-ui text-xs font-medium text-nfw-aubergine hover:underline"
                           >
-                            Tracking: {claim.tracking_number}
-                            <ExternalLink className="w-3 h-3" />
+                            View on Shopify
+                            <ArrowRight className="w-3 h-3" />
                           </a>
-                        ) : (
-                          <span className="font-ui text-xs text-nfw-blackberry/50">
-                            Tracking: {claim.tracking_number}
-                          </span>
                         )}
                       </div>
                     )}
@@ -220,13 +247,20 @@ export default function MyClaimsClient({
                       <span className="font-sans text-xs text-nfw-blackberry/50">
                         Claimed {new Date(claim.claimed_at).toLocaleDateString()}
                       </span>
-                      <button
-                        onClick={() => refreshClaim(claim.id)}
-                        disabled={loadingClaimId === claim.id}
-                        className="font-ui text-xs text-nfw-aubergine hover:underline disabled:opacity-50"
-                      >
-                        {loadingClaimId === claim.id ? "Refreshing..." : "Refresh Status"}
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => refreshClaim(claim.id)}
+                          disabled={loadingClaimId === claim.id}
+                          className="font-ui text-xs text-nfw-aubergine hover:underline disabled:opacity-50"
+                        >
+                          {loadingClaimId === claim.id ? "Refreshing..." : "Refresh Status"}
+                        </button>
+                        {claim.shopify_order_id && !shopifyOrderUrl && (
+                          <span className="font-ui text-xs text-nfw-blackberry/50">
+                            Order ID: {claim.shopify_order_id.split('/').pop()}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
