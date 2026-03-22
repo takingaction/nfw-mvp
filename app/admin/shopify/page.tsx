@@ -28,9 +28,8 @@ export default function AdminShopifySync() {
   const checkConnection = async () => {
     try {
       const res = await fetch("/api/shopify/products?check_connection=true");
-      if (res.ok) {
-        setIsConnected(true);
-      }
+      const data = await res.json();
+      setIsConnected(data.connected === true);
     } catch {
       setIsConnected(false);
     }
