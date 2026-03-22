@@ -44,7 +44,7 @@ export default function ClaimItemModal({
   useEffect(() => {
     async function loadProfileAddress() {
       try {
-        const res = await fetch(`/api/profile/address?userId=${userId}`);
+        const res = await fetch(`/api/profile/address/${userId}`);
         const data: { address: ShippingAddress | null } = await res.json();
         if (data.address) {
           setShippingAddress(data.address);
@@ -189,7 +189,7 @@ export default function ClaimItemModal({
                   </label>
                 </div>
               ) : (
-                <p className="font-sans text-sm font-normal text-nfw-blackberry/50 italic">
+                <p className="font-sans text-sm font-normal text-nfw-blackberry/50">
                   No shipping address on file. You&apos;ll enter one on Shopify.
                 </p>
               )}
