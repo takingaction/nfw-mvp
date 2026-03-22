@@ -1,31 +1,49 @@
+import { createClient } from "@/lib/supabase/server";
+
 function getShopifyConfig() {
   return {
     storeDomain: process.env.SHOPIFY_SHOP_DOMAIN || "",
-    clientId: process.env.SHOPIFY_CLIENT_ID || "",
-    clientSecret: process.env.SHOPIFY_CLIENT_SECRET || "",
   };
 }
 
-function getShopifyHeaders() {
-  const { clientId, clientSecret } = getShopifyConfig();
-  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-  return {
-    "Content-Type": "application/json",
-    "Authorization": `Basic ${credentials}`,
-  };
+export async function getShopifyAccessToken(): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", "shopify_access_token")
+    .single();
+  
+  if (error || !data) {
+    return null;
+  }
+  return data.value as string;
 }
 
 export async function shopifyFetch<T>({
   query,
   variables,
+  accessToken,
 }: {
   query: string;
   variables?: Record<string, unknown>;
+  accessToken?: string;
 }): Promise<T> {
   const { storeDomain } = getShopifyConfig();
-  const response = await fetch(`https://${storeDomain}/api/2026-01/graphql.json`, {
+  
+  // If no access token provided, fetch it from Supabase
+  const token = accessToken || await getShopifyAccessToken();
+  
+  if (!token) {
+    throw new Error("No Shopify access token available");
+  }
+  
+  const response = await fetch(`https://${storeDomain}/admin/api/2026-01/graphql.json`, {
     method: "POST",
-    headers: getShopifyHeaders(),
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": token,
+    },
     body: JSON.stringify({ query, variables }),
   });
 
