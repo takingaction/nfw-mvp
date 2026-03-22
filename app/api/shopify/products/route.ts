@@ -25,10 +25,18 @@ export async function GET(request: NextRequest) {
 
     if (useRealShopify) {
       try {
+        const token = await getShopifyAccessToken();
+        console.log("=== HOME PAGE DEBUG ===");
+        console.log("useRealShopify:", useRealShopify);
+        console.log("shopDomain:", shopDomain);
+        console.log("clientId:", clientId);
+        console.log("token exists:", !!token);
+        
         const data = await shopifyFetch<{ products: { edges: Array<{ node: ShopifyProduct }> } }>({
           query: PRODUCTS_QUERY,
           variables: { first: 50 },
         });
+        console.log("Shopify fetch succeeded, products count:", data.products.edges.length);
 
         const supabase = await createClient();
         const { data: mappings } = await supabase

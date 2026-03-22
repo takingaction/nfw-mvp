@@ -8,14 +8,21 @@ function getShopifyConfig() {
 
 export async function getShopifyAccessToken(): Promise<string | null> {
   const supabase = await createClient();
+  console.log("=== TOKEN DEBUG ===");
+  console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+  console.log("Shop domain:", process.env.SHOPIFY_SHOP_DOMAIN);
+  
   const { data, error } = await supabase
     .from("shopify_tokens")
     .select("access_token")
     .eq("shop", process.env.SHOPIFY_SHOP_DOMAIN)
     .single();
   
+  console.log("Token query result - data:", !!data, "error:", error);
+  
   if (error || !data) {
     // Fallback to environment variable if no token in DB
+    console.log("Falling back to env var or null");
     return process.env.SHOPIFY_ACCESS_TOKEN || null;
   }
   return data.access_token as string;
