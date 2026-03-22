@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 
 function getShopifyConfig() {
   return {
@@ -6,8 +6,16 @@ function getShopifyConfig() {
   };
 }
 
+// Service role client bypasses RLS for server-side operations
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
+
 export async function getShopifyAccessToken(): Promise<string | null> {
-  const supabase = await createClient();
+  const supabase = getSupabaseAdmin();
   console.log("=== TOKEN DEBUG ===");
   console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
   console.log("Shop domain:", process.env.SHOPIFY_SHOP_DOMAIN);
