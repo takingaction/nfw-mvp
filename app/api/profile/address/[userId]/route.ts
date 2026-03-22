@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(
   request: NextRequest,
@@ -7,15 +12,14 @@ export async function GET(
 ) {
   try {
     const { userId } = await params;
-    const supabase = await createClient();
 
-    const { data: profile } = await supabase
+    const { data: profile, error } = await supabaseAdmin
       .from("profiles")
       .select("full_name, address_line1, address_line2, city, state, zip")
       .eq("id", userId)
       .single();
 
-    if (!profile || !profile.address_line1) {
+    if (error || !profile || !profile.address_line1) {
       return NextResponse.json({ address: null });
     }
 
@@ -43,9 +47,8 @@ export async function POST(
   try {
     const { userId } = await params;
     const { address } = await request.json();
-    const supabase = await createClient();
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from("profiles")
       .update({ shipping_address: address })
       .eq("id", userId);
