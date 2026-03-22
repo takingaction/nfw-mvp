@@ -10,7 +10,7 @@ async function getFeaturedProducts() {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const res = await fetch(`${baseUrl}/api/shopify/products?featured=true`, {
-      cache: "no-store",
+      next: { revalidate: 60 },
     });
     if (!res.ok) return [];
     const data = await res.json();

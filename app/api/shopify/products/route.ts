@@ -25,18 +25,10 @@ export async function GET(request: NextRequest) {
 
     if (useRealShopify) {
       try {
-        const token = await getShopifyAccessToken();
-        console.log("=== HOME PAGE DEBUG ===");
-        console.log("useRealShopify:", useRealShopify);
-        console.log("shopDomain:", shopDomain);
-        console.log("clientId:", clientId);
-        console.log("token exists:", !!token);
-        
         const data = await shopifyFetch<{ products: { edges: Array<{ node: ShopifyProduct }> } }>({
           query: PRODUCTS_QUERY,
           variables: { first: 50 },
         });
-        console.log("Shopify fetch succeeded, products count:", data.products.edges.length);
 
         const supabase = await createClient();
         const { data: mappings } = await supabase
@@ -49,8 +41,7 @@ export async function GET(request: NextRequest) {
           const mapping = mappingMap.get(node.id);
           return transformShopifyProduct(node, mapping as MockProduct | undefined);
         }).filter(p => p.mvpVisibility);
-      } catch (shopifyError) {
-        console.error("Shopify fetch failed, using mock data:", shopifyError);
+      } catch {
         products = MOCK_PRODUCTS.filter(p => p.mvpVisibility);
       }
     }
