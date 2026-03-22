@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { shopifyFetch, CHECKOUT_CREATE_MUTATION, CHECKOUT_SHIPPING_ADDRESS_UPDATE_MUTATION, getShopifyAccessToken } from "@/lib/shopify";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(request: NextRequest) {
   try {
@@ -75,8 +80,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const supabase = await createClient();
-    const { error: claimError } = await supabase
+    const { error: claimError } = await supabaseAdmin
       .from("zero_dollar_claims")
       .insert({
         user_id: userId,
@@ -91,7 +95,7 @@ export async function POST(request: NextRequest) {
     if (claimError) {
       console.error("Error creating claim:", claimError);
       return NextResponse.json(
-        { error: "Failed to create claim" },
+        { error: `Failed to save claim: ${claimError.message}` },
         { status: 500 }
       );
     }
@@ -101,9 +105,10 @@ export async function POST(request: NextRequest) {
       checkoutId,
     });
   } catch (error) {
-    console.error("Error creating checkout:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Error creating checkout:", message);
     return NextResponse.json(
-      { error: "Failed to create checkout" },
+      { error: `Checkout failed: ${message}` },
       { status: 500 }
     );
   }
