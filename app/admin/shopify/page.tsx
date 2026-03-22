@@ -154,8 +154,8 @@ export default function AdminShopifySync() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-nfw-blackberry/5">
-            {products.map((product) => (
-              <tr key={product.shopify_product_id}>
+            {products.map((product, index) => (
+              <tr key={product.shopify_product_id ?? `product-${index}`}>
                 <td className="px-6 py-4">
                   <div className="flex items-center">
                     <div className="h-12 w-12 bg-nfw-stone/20 flex-shrink-0 overflow-hidden relative">
