@@ -45,7 +45,7 @@ async function MyClaimsContent() {
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 py-16">
         <div className="flex items-center justify-between mb-12">
           <div>
-            <h1 className="font-serif text-4xl lg:text-5xl text-nfw-aubergine mb-2">
+            <h1 className="font-serif text-4xl lg:text-6xl text-nfw-aubergine mb-2">
               My Claims
             </h1>
             <p className="font-sans text-sm text-nfw-blackberry/70">

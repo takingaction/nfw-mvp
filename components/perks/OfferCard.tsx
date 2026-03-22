@@ -67,10 +67,10 @@ export default function OfferCard({ offer }: OfferCardProps) {
 
   return (
     <Link href={`/perks/${offer_key}`} className="block h-full">
-      <div className="bg-white rounded-xl border border-[#2d1239]/10 hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 cursor-pointer overflow-hidden h-full flex flex-col">
+      <div className="bg-white border border-nfw-blackberry/10 hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden h-full flex flex-col">
         <div className="flex p-4 gap-4 flex-1">
           <div className="flex-shrink-0">
-            <div className="w-20 h-20 rounded-lg border border-[#2d1239]/10 bg-[#f8f7fa] overflow-hidden flex items-center justify-center">
+            <div className="w-20 h-20 border border-nfw-blackberry/10 bg-nfw-dove overflow-hidden flex items-center justify-center">
               {imageUrl ? (
                 <img
                   src={imageUrl}
@@ -87,7 +87,7 @@ export default function OfferCard({ offer }: OfferCardProps) {
             {offer_store?.name && (
               <div
                 ref={storeNameRef}
-                className="text-sm font-semibold text-[#2d1239] mb-1 break-words [&_sup]:text-[0.6em] [&_sup]:align-super"
+                className="text-sm font-semibold text-nfw-blackberry mb-1 break-words [&_sup]:text-[0.6em] [&_sup]:align-super"
               >
                 {offer_store.name}
               </div>
@@ -95,7 +95,7 @@ export default function OfferCard({ offer }: OfferCardProps) {
 
             <h3
               ref={titleRef}
-              className="text-[#2d1239]/70 text-sm mb-2 line-clamp-2 leading-tight flex-1 [&_sup]:text-[0.6em] [&_sup]:align-super"
+              className="text-nfw-blackberry/70 text-sm mb-2 line-clamp-2 leading-tight flex-1 [&_sup]:text-[0.6em] [&_sup]:align-super"
             >
               {title}
             </h3>
@@ -103,7 +103,7 @@ export default function OfferCard({ offer }: OfferCardProps) {
             {/* Savings & Category Tags Row */}
             <div className="flex flex-wrap items-center gap-1.5 mb-2">
               {savings_amount && (
-                <span className="text-xs bg-[#d4f1ad] text-[#2d1239] px-2 py-0.5 rounded-full font-medium">
+                <span className="text-xs bg-nfw-citrine text-nfw-blackberry px-2 py-0.5 font-medium">
                   {savings_amount}
                 </span>
               )}
@@ -112,7 +112,7 @@ export default function OfferCard({ offer }: OfferCardProps) {
                 categories.slice(0, 1).map((cat: any) => (
                   <span
                     key={cat.category_key}
-                    className="text-xs bg-[#f8f7fa] text-[#2d1239]/60 px-2 py-0.5 rounded-full"
+                    className="text-xs bg-nfw-dove text-nfw-blackberry/60 px-2 py-0.5"
                   >
                     {cat.category_name}
                   </span>
@@ -123,18 +123,18 @@ export default function OfferCard({ offer }: OfferCardProps) {
             {redemption_methods && redemption_methods.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 mb-2">
                 {redemption_methods.includes("link") && (
-                  <span className="text-xs bg-[#2d1239] text-white px-2.5 py-0.5 rounded font-medium">
+                  <span className="text-xs bg-nfw-blackberry text-white px-2.5 py-0.5 font-medium">
                     Online
                   </span>
                 )}
                 {(redemption_methods.includes("instore") ||
                   redemption_methods.includes("instore_print")) && (
-                  <span className="text-xs bg-[#2d1239] text-white px-2.5 py-0.5 rounded font-medium">
+                  <span className="text-xs bg-nfw-blackberry text-white px-2.5 py-0.5 font-medium">
                     In-Store
                   </span>
                 )}
                 {redemption_methods.includes("call") && (
-                  <span className="text-xs bg-[#2d1239] text-white px-2.5 py-0.5 rounded font-medium">
+                  <span className="text-xs bg-nfw-blackberry text-white px-2.5 py-0.5 font-medium">
                     Call
                   </span>
                 )}
@@ -142,7 +142,7 @@ export default function OfferCard({ offer }: OfferCardProps) {
             )}
 
             {/* Bottom Row - Location & Expiry */}
-            <div className="flex items-center gap-3 text-xs text-[#2d1239]/40 mt-auto">
+            <div className="flex items-center gap-3 text-xs text-nfw-blackberry/40 mt-auto">
               {physical_location && (
                 <span className="flex items-center gap-1">
                   <MapPin className="w-3 h-3" />

@@ -69,7 +69,7 @@ export default function FaqSection({ content }: Props) {
     <section className="bg-nfw-aubergine py-20 lg:py-28">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         {c.eyebrow && (
-          <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-citrine mb-6 text-center">
+          <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-dove mb-6 text-center">
             {c.eyebrow}
           </p>
         )}

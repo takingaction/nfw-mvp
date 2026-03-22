@@ -24,9 +24,9 @@ export default async function EditProfilePage() {
   }
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
+    <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8">Edit Profile</h1>
+        <h1 className="font-serif text-4xl lg:text-6xl text-nfw-blackberry mb-8 leading-tight">Edit Profile</h1>
         <ProfileClient profile={profile} userEmail={user.email || ""} />
       </div>
     </main>

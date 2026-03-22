@@ -55,17 +55,17 @@ export default function ArticleActions({
       <button
         onClick={handleLike}
         disabled={loading}
-        className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-all disabled:opacity-50 ${
+        className={`flex items-center gap-2 px-4 py-2 font-medium transition-all disabled:opacity-50 ${
           userHasLiked
-            ? "bg-[#d4f1ad] text-[#2d1239] hover:bg-[#d4f1ad]/70"
-            : "bg-[#BCAFCF]/20 text-[#2d1239]/60 hover:bg-[#BCAFCF]/40 hover:text-[#2d1239]"
+            ? "bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/70"
+            : "bg-nfw-lilac/20 text-nfw-blackberry/60 hover:bg-nfw-lilac/40 hover:text-nfw-blackberry"
         }`}
       >
         <Heart
           className={`w-4 h-4 transition-all ${
             userHasLiked
-              ? "fill-[#2d1239] stroke-[#2d1239]"
-              : "stroke-[#2d1239]/60"
+              ? "fill-nfw-blackberry stroke-nfw-blackberry"
+              : "stroke-nfw-blackberry/60"
           }`}
         />
         <span className="text-sm">{likeCount}</span>

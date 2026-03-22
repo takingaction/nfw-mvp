@@ -54,7 +54,7 @@ export default async function Navigation() {
   const headerData: HeaderData = header || defaultHeader;
 
   return (
-    <nav className="w-full bg-[#3e155f] sticky top-0 z-50 shadow-md">
+    <nav className="w-full bg-nfw-aubergine sticky top-0 z-50 shadow-md">
       <div className="max-w-[1400px] mx-auto px-4">
         <div className="flex items-center justify-between h-[90px] py-2">
           {/* Mobile: Logo left, Hamburger right */}

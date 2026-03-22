@@ -138,10 +138,10 @@ export default function AdminGrantReviewer({
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors ${
+              className={`px-3 py-1.5 text-xs font-semibold capitalize transition-colors ${
                 filter === f
-                  ? "bg-[#2d1239] text-white"
-                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                  ? "bg-nfw-blackberry text-white"
+                  : "bg-white text-nfw-blackberry border border-nfw-blackberry/10 hover:bg-nfw-blackberry/5"
               }`}
             >
               {f === "all"
@@ -154,23 +154,23 @@ export default function AdminGrantReviewer({
         {/* Applications */}
         <div className="space-y-3">
           {filtered.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-              <p className="text-gray-400">No applications in this category.</p>
+            <div className="bg-white border border-nfw-blackberry/10 p-12 text-center">
+              <p className="text-nfw-blackberry/40">No applications in this category.</p>
             </div>
           ) : (
             filtered.map((grant) => (
               <div
                 key={grant.id}
                 onClick={() => openGrant(grant)}
-                className={`bg-white rounded-2xl border-2 p-5 cursor-pointer transition-all hover:shadow-md ${
+                className={`bg-white border-2 p-5 cursor-pointer transition-all ${
                   selected?.id === grant.id
-                    ? "border-[#2d1239]"
-                    : "border-gray-100 hover:border-gray-200"
+                    ? "border-nfw-blackberry"
+                    : "border-nfw-blackberry/5 hover:border-nfw-blackberry/10"
                 }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#bcafcf]/30 flex items-center justify-center text-sm font-black text-[#2d1239] flex-shrink-0">
+                    <div className="w-10 h-10 bg-nfw-lilac/30 flex items-center justify-center text-sm font-black text-nfw-blackberry flex-shrink-0">
                       {(
                         grant.profiles?.full_name ||
                         grant.profiles?.email ||
@@ -180,14 +180,14 @@ export default function AdminGrantReviewer({
                         .toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-bold text-[#2d1239]">
+                      <p className="font-bold text-nfw-blackberry">
                         {grant.profiles?.full_name || "Unknown"}
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-nfw-blackberry/40">
                         {grant.profiles?.email}
                       </p>
                       {grant.profiles?.city && (
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-nfw-blackberry/40">
                           {grant.profiles.city}, {grant.profiles.state}
                         </p>
                       )}
@@ -195,27 +195,27 @@ export default function AdminGrantReviewer({
                   </div>
                   <div className="text-right flex flex-col items-end gap-2">
                     <span
-                      className={`text-xs px-2.5 py-1 rounded-full font-semibold ${getStatusStyle(grant.status)}`}
+                      className={`text-xs px-2.5 py-1 font-semibold ${getStatusStyle(grant.status)}`}
                     >
                       {getStatusLabel(grant.status)}
                     </span>
                     {grant.is_nominating && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-[#bcafcf]/20 text-[#2d1239] font-medium">
+                      <span className="text-xs px-2 py-0.5 bg-nfw-lilac/20 text-nfw-blackberry font-medium">
                         Nomination
                       </span>
                     )}
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-nfw-blackberry/40">
                       {grant.submitted_at
                         ? new Date(grant.submitted_at).toLocaleDateString()
                         : "No date"}
                     </p>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-3 line-clamp-2">
+                <p className="text-sm text-nfw-blackberry/60 mt-3 line-clamp-2">
                   {grant.who_are_you}
                 </p>
                 {grant.documents?.length > 0 && (
-                  <p className="text-xs text-[#2d1239]/50 mt-2 flex items-center gap-1">
+                  <p className="text-xs text-nfw-blackberry/50 mt-2 flex items-center gap-1">
                     <FileText className="w-3 h-3" /> {grant.documents.length}{" "}
                     document{grant.documents.length !== 1 ? "s" : ""}
                   </p>
@@ -229,71 +229,70 @@ export default function AdminGrantReviewer({
       {/* Right — Review Panel */}
       {selected && (
         <div className="w-[420px] flex-shrink-0">
-          <div className="bg-white rounded-2xl border border-gray-200 sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto">
+          <div className="bg-white border border-nfw-blackberry/10 sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto">
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+            <div className="flex items-center justify-between p-5 border-b border-nfw-blackberry/5">
               <h2
-                className="font-black text-[#2d1239]"
-                style={{ fontFamily: "Montserrat, sans-serif" }}
+                className="font-black text-nfw-blackberry font-ui"
               >
                 Review Application
               </h2>
               <button
                 onClick={() => setSelected(null)}
-                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-1.5 hover:bg-nfw-blackberry/5 transition-colors"
               >
-                <X className="w-4 h-4 text-gray-500" />
+                <X className="w-4 h-4 text-nfw-blackberry/50" />
               </button>
             </div>
 
             <div className="p-5 space-y-5">
               {/* Applicant Info */}
-              <div className="bg-gray-50 rounded-xl p-4">
+              <div className="bg-nfw-dove p-4">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full bg-[#bcafcf]/30 flex items-center justify-center text-lg font-black text-[#2d1239]">
+                  <div className="w-12 h-12 bg-nfw-lilac/30 flex items-center justify-center text-lg font-black text-nfw-blackberry">
                     {(selected.profiles?.full_name || "U")
                       .charAt(0)
                       .toUpperCase()}
                   </div>
                   <div>
-                    <p className="font-black text-[#2d1239]">
+                    <p className="font-black text-nfw-blackberry">
                       {selected.profiles?.full_name || "Unknown"}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-nfw-blackberry/50">
                       {selected.profiles?.email}
                     </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   {selected.profiles?.city && (
-                    <div className="bg-white rounded-lg p-2 border border-gray-100">
-                      <p className="text-gray-400">Location</p>
-                      <p className="font-semibold text-[#2d1239]">
+                    <div className="bg-white p-2 border border-nfw-blackberry/5">
+                      <p className="text-nfw-blackberry/40">Location</p>
+                      <p className="font-semibold text-nfw-blackberry">
                         {selected.profiles.city}, {selected.profiles.state}
                       </p>
                     </div>
                   )}
                   {selected.profiles?.age_range && (
-                    <div className="bg-white rounded-lg p-2 border border-gray-100">
-                      <p className="text-gray-400">Age Range</p>
-                      <p className="font-semibold text-[#2d1239]">
+                    <div className="bg-white p-2 border border-nfw-blackberry/5">
+                      <p className="text-nfw-blackberry/40">Age Range</p>
+                      <p className="font-semibold text-nfw-blackberry">
                         {selected.profiles.age_range}
                       </p>
                     </div>
                   )}
                   {selected.profiles?.household_income && (
-                    <div className="bg-white rounded-lg p-2 border border-gray-100 col-span-2">
-                      <p className="text-gray-400">Household Income</p>
-                      <p className="font-semibold text-[#2d1239]">
+                    <div className="bg-white p-2 border border-nfw-blackberry/5 col-span-2">
+                      <p className="text-nfw-blackberry/40">Household Income</p>
+                      <p className="font-semibold text-nfw-blackberry">
                         {selected.profiles.household_income}
                       </p>
                     </div>
                   )}
                 </div>
                 {selected.is_nominating && (
-                  <div className="mt-2 px-3 py-1.5 bg-[#bcafcf]/20 rounded-lg">
-                    <p className="text-xs font-semibold text-[#2d1239]">
-                      ⭐ This is a nomination
+                  <div className="mt-2 px-3 py-1.5 bg-nfw-lilac/20">
+                    <p className="text-xs font-semibold text-nfw-blackberry">
+                      This is a nomination
                     </p>
                   </div>
                 )}
@@ -302,28 +301,28 @@ export default function AdminGrantReviewer({
               {/* Application Answers */}
               <div className="space-y-4">
                 <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                  <p className="text-xs font-semibold text-nfw-blackberry/40 uppercase tracking-wider mb-1">
                     {selected.is_nominating
                       ? "About the nominee"
                       : "Who are you?"}
                   </p>
-                  <p className="text-sm text-[#2d1239] leading-relaxed">
+                  <p className="text-sm text-nfw-blackberry leading-relaxed">
                     {selected.who_are_you}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                  <p className="text-xs font-semibold text-nfw-blackberry/40 uppercase tracking-wider mb-1">
                     Biggest Challenge
                   </p>
-                  <p className="text-sm text-[#2d1239] leading-relaxed">
+                  <p className="text-sm text-nfw-blackberry leading-relaxed">
                     {selected.biggest_challenge}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                  <p className="text-xs font-semibold text-nfw-blackberry/40 uppercase tracking-wider mb-1">
                     Fund Usage
                   </p>
-                  <p className="text-sm text-[#2d1239] leading-relaxed">
+                  <p className="text-sm text-nfw-blackberry leading-relaxed">
                     {selected.fund_usage}
                   </p>
                 </div>
@@ -332,20 +331,20 @@ export default function AdminGrantReviewer({
               {/* Documents */}
               {selected.documents?.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  <p className="text-xs font-semibold text-nfw-blackberry/40 uppercase tracking-wider mb-2">
                     Documents
                   </p>
                   <div className="space-y-2">
                     {selected.documents.map((doc: any) => (
                       <div
                         key={doc.id}
-                        className="flex items-center justify-between bg-gray-50 rounded-lg p-3"
+                        className="flex items-center justify-between bg-nfw-dove p-3"
                       >
                         <div>
-                          <p className="text-sm font-medium text-[#2d1239]">
+                          <p className="text-sm font-medium text-nfw-blackberry">
                             {doc.file_name}
                           </p>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-nfw-blackberry/40">
                             {(doc.file_size / 1024).toFixed(1)} KB
                           </p>
                         </div>
@@ -365,9 +364,9 @@ export default function AdminGrantReviewer({
                             const data = await res.json();
                             if (data.url) window.open(data.url, "_blank");
                           }}
-                          className="text-xs font-semibold text-[#2d1239] hover:text-[#2d1239]/70 transition-colors"
+                          className="text-xs font-semibold text-nfw-blackberry hover:text-nfw-blackberry/70 transition-colors"
                         >
-                          View →
+                          View
                         </button>
                       </div>
                     ))}
@@ -377,17 +376,17 @@ export default function AdminGrantReviewer({
 
               {/* Status Update */}
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                <p className="text-xs font-semibold text-nfw-blackberry/40 uppercase tracking-wider mb-2">
                   Update Status
                 </p>
                 <div className="space-y-2">
                   {STATUS_OPTIONS.map((option) => (
                     <label
                       key={option.value}
-                      className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                      className={`flex items-center gap-3 p-3 border-2 cursor-pointer transition-all ${
                         pendingStatus === option.value
-                          ? "border-[#2d1239] bg-[#2d1239]/5"
-                          : "border-gray-100 hover:border-gray-200"
+                          ? "border-nfw-blackberry bg-nfw-blackberry/5"
+                          : "border-nfw-blackberry/5 hover:border-nfw-blackberry/10"
                       }`}
                     >
                       <input
@@ -396,10 +395,10 @@ export default function AdminGrantReviewer({
                         value={option.value}
                         checked={pendingStatus === option.value}
                         onChange={() => setPendingStatus(option.value)}
-                        className="accent-[#2d1239]"
+                        className="accent-nfw-blackberry"
                       />
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-semibold ${option.color}`}
+                        className={`text-xs px-2 py-0.5 font-semibold ${option.color}`}
                       >
                         {option.label}
                       </span>
@@ -413,18 +412,18 @@ export default function AdminGrantReviewer({
                 pendingStatus === "payment_pending" ||
                 pendingStatus === "payment_sent") && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-semibold text-nfw-blackberry/40 uppercase tracking-wider mb-2">
                     Amount Approved
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-3 text-[#2d1239]/50 text-sm">
+                    <span className="absolute left-3 top-3 text-nfw-blackberry/50 text-sm">
                       $
                     </span>
                     <input
                       type="number"
                       value={amountApproved}
                       onChange={(e) => setAmountApproved(e.target.value)}
-                      className="w-full pl-7 pr-4 py-2.5 border border-[#2d1239]/20 rounded-xl text-[#2d1239] bg-white focus:outline-none focus:ring-2 focus:ring-[#bcafcf] text-sm"
+                      className="w-full pl-7 pr-4 py-2.5 border border-nfw-blackberry/20 text-nfw-blackberry bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac text-sm"
                     />
                   </div>
                 </div>
@@ -432,7 +431,7 @@ export default function AdminGrantReviewer({
 
               {/* Admin Notes */}
               <div>
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-semibold text-nfw-blackberry/40 uppercase tracking-wider mb-2">
                   Internal Notes
                 </label>
                 <textarea
@@ -440,12 +439,12 @@ export default function AdminGrantReviewer({
                   onChange={(e) => setAdminNotes(e.target.value)}
                   rows={3}
                   placeholder="Add internal notes (not visible to applicant)..."
-                  className="w-full px-3 py-2.5 border border-[#2d1239]/20 rounded-xl text-[#2d1239] placeholder-[#2d1239]/30 bg-white focus:outline-none focus:ring-2 focus:ring-[#bcafcf] text-sm resize-none"
+                  className="w-full px-3 py-2.5 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac text-sm resize-none"
                 />
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                <div className="bg-red-50 border border-red-200 p-3">
                   <p className="text-red-600 text-sm">{error}</p>
                 </div>
               )}
@@ -454,7 +453,7 @@ export default function AdminGrantReviewer({
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="w-full py-3 bg-[#2d1239] text-white rounded-xl font-bold hover:bg-[#2d1239]/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+                className="w-full py-3 bg-nfw-blackberry text-white font-bold hover:bg-nfw-blackberry/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
               >
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {saving ? "Saving..." : "Save Changes"}
@@ -491,7 +490,7 @@ export default function AdminGrantReviewer({
                   }, 0);
                 }}
                 disabled={saving}
-                className="w-full py-3 bg-red-50 text-red-600 border border-red-200 rounded-xl font-bold hover:bg-red-100 disabled:opacity-50 transition-colors text-sm"
+                className="w-full py-3 bg-red-50 text-red-600 border border-red-200 font-bold hover:bg-red-100 disabled:opacity-50 transition-colors text-sm"
               >
                 Delete Application
               </button>

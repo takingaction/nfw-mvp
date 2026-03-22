@@ -108,7 +108,7 @@ export default function PerksGrid() {
         <p className="text-red-500 mb-4">{error}</p>
         <a
           href="/auth/login"
-          className="text-[#2d1239] underline hover:text-[#2d1239]/70 font-medium"
+          className="text-nfw-blackberry underline hover:text-nfw-blackberry/70 font-medium"
         >
           Sign in to continue
         </a>
@@ -125,12 +125,12 @@ export default function PerksGrid() {
           placeholder="Enter ZIP code"
           value={postalCode}
           onChange={(e) => setPostalCode(e.target.value)}
-          className="border border-[#2d1239]/20 rounded-lg px-4 py-2.5 w-40 text-[#2d1239] placeholder-[#2d1239]/40 focus:outline-none focus:ring-2 focus:ring-[#BCAFCF] focus:border-transparent"
+          className="border border-nfw-blackberry/20 px-4 py-2.5 w-40 text-nfw-blackberry placeholder-nfw-blackberry/40 focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent"
           pattern="^\d{5}$"
         />
         <button
           type="submit"
-          className="bg-[#2d1239] text-white px-5 py-2.5 rounded-lg hover:bg-[#2d1239]/90 font-medium transition-colors"
+          className="bg-nfw-blackberry text-white px-5 py-2.5 hover:bg-nfw-blackberry/90 font-medium transition-colors"
         >
           Search
         </button>
@@ -143,10 +143,10 @@ export default function PerksGrid() {
             setSelectedCategory(null);
             setPage(1);
           }}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
             !selectedCategory
-              ? "bg-[#2d1239] text-white"
-              : "bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#2d1239]/5"
+              ? "bg-nfw-blackberry text-white"
+              : "bg-white text-nfw-blackberry border border-nfw-blackberry/20 hover:bg-nfw-blackberry/5"
           }`}
         >
           All
@@ -158,10 +158,10 @@ export default function PerksGrid() {
               setSelectedCategory(cat.attributes.category_key);
               setPage(1);
             }}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            className={`px-4 py-2 text-sm font-medium transition-colors ${
               selectedCategory === cat.attributes.category_key
-                ? "bg-[#2d1239] text-white"
-                : "bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#2d1239]/5"
+                ? "bg-nfw-blackberry text-white"
+                : "bg-white text-nfw-blackberry border border-nfw-blackberry/20 hover:bg-nfw-blackberry/5"
             }`}
           >
             {cat.attributes.name}
@@ -172,8 +172,8 @@ export default function PerksGrid() {
       {/* Loading State */}
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-[#BCAFCF]" />
-          <span className="ml-3 text-[#2d1239]/60">Loading offers...</span>
+          <Loader2 className="w-6 h-6 animate-spin text-nfw-lilac" />
+          <span className="ml-3 text-nfw-blackberry/60">Loading offers...</span>
         </div>
       )}
 
@@ -185,23 +185,23 @@ export default function PerksGrid() {
               <Link
                 key={offer.id}
                 href={`/perks/${offer.attributes.offer_key}`}
-                className="border border-[#2d1239]/10 rounded-xl p-5 bg-white hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+                className="border border-nfw-blackberry/10 p-5 bg-white hover:shadow-md transition-all duration-300 hover:-translate-y-1"
               >
                 <div className="flex justify-between items-start mb-3">
-                  <span className="text-xs bg-[#d4f1ad]/40 text-[#2d1239] px-2.5 py-1 rounded-full font-medium">
+                  <span className="text-xs bg-nfw-citrine/40 text-nfw-blackberry px-2.5 py-1 font-medium">
                     {offer.attributes.offer_value}
                   </span>
-                  <span className="text-xs text-[#2d1239]/50">
+                  <span className="text-xs text-nfw-blackberry/50">
                     {offer.attributes.offer_type}
                   </span>
                 </div>
-                <h3 className="font-semibold text-lg text-[#2d1239] mb-2">
+                <h3 className="font-semibold text-lg text-nfw-blackberry mb-2">
                   {offer.attributes.title}
                 </h3>
-                <p className="text-sm text-[#2d1239]/60 mb-3 line-clamp-2">
+                <p className="text-sm text-nfw-blackberry/60 mb-3 line-clamp-2">
                   {offer.attributes.teaser}
                 </p>
-                <div className="text-xs text-[#2d1239]/40">
+                <div className="text-xs text-nfw-blackberry/40">
                   {offer.attributes.redemption_method}
                 </div>
               </Link>
@@ -213,15 +213,15 @@ export default function PerksGrid() {
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="px-4 py-2 border border-[#2d1239]/20 text-[#2d1239] rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#2d1239]/5 font-medium transition-colors"
+              className="px-4 py-2 border border-nfw-blackberry/20 text-nfw-blackberry disabled:opacity-40 disabled:cursor-not-allowed hover:bg-nfw-blackberry/5 font-medium transition-colors"
             >
               Previous
             </button>
-            <span className="px-4 py-2 text-[#2d1239]/60">Page {page}</span>
+            <span className="px-4 py-2 text-nfw-blackberry/60">Page {page}</span>
             <button
               onClick={() => setPage((p) => p + 1)}
               disabled={offers.length < 20}
-              className="px-4 py-2 border border-[#2d1239]/20 text-[#2d1239] rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#2d1239]/5 font-medium transition-colors"
+              className="px-4 py-2 border border-nfw-blackberry/20 text-nfw-blackberry disabled:opacity-40 disabled:cursor-not-allowed hover:bg-nfw-blackberry/5 font-medium transition-colors"
             >
               Next
             </button>
@@ -231,7 +231,7 @@ export default function PerksGrid() {
 
       {/* Empty State */}
       {!loading && offers.length === 0 && (
-        <div className="text-center py-12 text-[#2d1239]/50">
+        <div className="text-center py-12 text-nfw-blackberry/50">
           No offers found for this location. Try a different ZIP code.
         </div>
       )}

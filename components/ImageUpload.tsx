@@ -71,12 +71,12 @@ export default function ImageUpload({
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
+      <label className="block text-sm font-medium text-nfw-blackberry mb-2">
         {label}
       </label>
 
       {currentUrl && (
-        <div className="mb-4 relative w-full h-48 bg-gray-100 rounded-lg overflow-hidden">
+        <div className="mb-4 relative w-full h-48 bg-nfw-dove overflow-hidden">
           <Image
             src={currentUrl}
             alt="Preview"
@@ -88,7 +88,7 @@ export default function ImageUpload({
       )}
 
       <div className="flex items-center gap-4">
-        <label className="cursor-pointer bg-white border border-gray-300 rounded-lg px-4 py-2 hover:bg-gray-50 font-medium text-sm">
+        <label className="cursor-pointer bg-white border border-nfw-blackberry/20 px-4 py-2 hover:bg-nfw-blackberry/5 font-medium text-sm">
           {uploading ? "Uploading..." : "Choose Image"}
           <input
             type="file"
@@ -112,7 +112,7 @@ export default function ImageUpload({
 
       {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
 
-      <p className="text-sm text-gray-500 mt-2">
+      <p className="text-sm text-nfw-blackberry/50 mt-2">
         Recommended: JPG, PNG, or WebP. Max 5MB.
       </p>
     </div>

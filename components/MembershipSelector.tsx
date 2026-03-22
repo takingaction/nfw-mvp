@@ -91,14 +91,14 @@ export default function MembershipSelector() {
         {plans.map((plan) => (
           <div
             key={plan.id}
-            className={`border rounded-lg p-6 ${
+            className={`border p-6 ${
               plan.highlighted
                 ? "border-blue-500 ring-2 ring-blue-500 bg-blue-50"
                 : "border-gray-200 bg-white"
             }`}
           >
             {plan.highlighted && (
-              <span className="bg-blue-500 text-white text-xs px-3 py-1 rounded-full mb-4 inline-block">
+              <span className="bg-blue-500 text-white text-xs px-3 py-1 mb-4 inline-block">
                 Most Impact
               </span>
             )}
@@ -136,7 +136,7 @@ export default function MembershipSelector() {
             <button
               onClick={() => handleSelectPlan(plan)}
               disabled={loading === plan.id}
-              className={`w-full py-3 px-4 rounded-lg font-medium transition ${
+              className={`w-full py-3 px-4 font-medium transition ${
                 plan.highlighted
                   ? "bg-blue-600 text-white hover:bg-blue-700"
                   : "bg-gray-100 text-gray-800 hover:bg-gray-200"

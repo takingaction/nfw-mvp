@@ -115,41 +115,41 @@ export default function LocationSelector({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="p-6 border-b border-[#2d1239]/10">
+        <div className="p-6 border-b border-nfw-blackberry/10">
           <div className="flex items-start justify-between mb-2">
             <div className="flex-1">
-              <h2 className="text-xl font-bold text-[#2d1239] mb-1">
+              <h2 className="text-xl font-bold text-nfw-blackberry mb-1">
                 Select a Location
               </h2>
-              <p className="text-sm text-[#2d1239]/60">{offerTitle}</p>
+              <p className="text-sm text-nfw-blackberry/60">{offerTitle}</p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-[#2d1239]/5 rounded-lg transition-colors"
+              className="p-2 hover:bg-nfw-blackberry/5 transition-colors"
             >
-              <X className="w-5 h-5 text-[#2d1239]/60" />
+              <X className="w-5 h-5 text-nfw-blackberry/60" />
             </button>
           </div>
 
           {/* Search */}
           <form onSubmit={handleSearch} className="flex gap-2 mt-4">
             <div className="flex-1 relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2d1239]/40" />
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-nfw-blackberry/40" />
               <input
                 type="text"
                 value={searchZip}
                 onChange={(e) => setSearchZip(e.target.value)}
                 placeholder="Enter ZIP code"
-                className="w-full pl-10 pr-4 py-2 border border-[#2d1239]/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2d1239]/20"
+                className="w-full pl-10 pr-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:ring-2 focus:ring-nfw-lilac"
                 pattern="^\d{5}$"
                 maxLength={5}
               />
             </div>
             <button
               type="submit"
-              className="px-4 py-2 bg-[#2d1239] text-white rounded-lg hover:bg-[#2d1239]/90 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 transition-colors flex items-center gap-2"
             >
               <Search className="w-4 h-4" />
               Search
@@ -161,8 +161,8 @@ export default function LocationSelector({
         <div className="flex-1 overflow-y-auto p-6">
           {loading && (
             <div className="text-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-[#BCAFCF] mx-auto mb-2" />
-              <p className="text-[#2d1239]/60">Loading locations...</p>
+              <Loader2 className="w-8 h-8 animate-spin text-nfw-lilac mx-auto mb-2" />
+              <p className="text-nfw-blackberry/60">Loading locations...</p>
             </div>
           )}
 
@@ -171,7 +171,7 @@ export default function LocationSelector({
               <p className="text-red-600 mb-4">{error}</p>
               <button
                 onClick={fetchLocations}
-                className="text-[#2d1239] hover:underline"
+                className="text-nfw-blackberry hover:underline"
               >
                 Try again
               </button>
@@ -179,7 +179,7 @@ export default function LocationSelector({
           )}
 
           {!loading && !error && locations.length === 0 && (
-            <div className="text-center py-8 text-[#2d1239]/60">
+            <div className="text-center py-8 text-nfw-blackberry/60">
               No locations found. Try a different ZIP code.
             </div>
           )}
@@ -189,11 +189,11 @@ export default function LocationSelector({
               {locations.map((location) => (
                 <label
                   key={location.physical_location.location_key}
-                  className={`block p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                  className={`block p-4 border-2 cursor-pointer transition-all ${
                     selectedLocationKey ===
                     location.physical_location.location_key.toString()
-                      ? "border-[#2d1239] bg-[#2d1239]/5"
-                      : "border-[#2d1239]/10 hover:border-[#2d1239]/30"
+                      ? "border-nfw-blackberry bg-nfw-blackberry/5"
+                      : "border-nfw-blackberry/10 hover:border-nfw-blackberry/30"
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -210,28 +210,28 @@ export default function LocationSelector({
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <h3 className="font-semibold text-[#2d1239]">
+                        <h3 className="font-semibold text-nfw-blackberry">
                           {location.physical_location.location_name}
                         </h3>
                         {location.search_distance && (
-                          <span className="text-sm text-[#2d1239]/60 whitespace-nowrap">
+                          <span className="text-sm text-nfw-blackberry/60 whitespace-nowrap">
                             {formatDistance(location.search_distance)}
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-[#2d1239]/70">
+                      <p className="text-sm text-nfw-blackberry/70">
                         {location.physical_location.street_address}
                         {location.physical_location.extended_street_address &&
                           `, ${location.physical_location.extended_street_address}`}
                       </p>
-                      <p className="text-sm text-[#2d1239]/70">
+                      <p className="text-sm text-nfw-blackberry/70">
                         {location.physical_location.city_locality},{" "}
                         {location.physical_location.state_region}{" "}
                         {location.physical_location.postal_code}
                       </p>
                       {location.physical_location.phone_number && (
-                        <p className="text-sm text-[#2d1239]/60 mt-1">
-                          📞 {location.physical_location.phone_number}
+                        <p className="text-sm text-nfw-blackberry/60 mt-1">
+                          {location.physical_location.phone_number}
                         </p>
                       )}
                     </div>
@@ -242,7 +242,7 @@ export default function LocationSelector({
               {hasMore && (
                 <button
                   onClick={() => setPage((p) => p + 1)}
-                  className="w-full py-3 text-[#2d1239] hover:bg-[#2d1239]/5 rounded-lg transition-colors font-medium"
+                  className="w-full py-3 text-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors font-medium"
                 >
                   Load More Locations
                 </button>
@@ -252,11 +252,11 @@ export default function LocationSelector({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-[#2d1239]/10">
+        <div className="p-6 border-t border-nfw-blackberry/10">
           <button
             onClick={handleSelectLocation}
             disabled={!selectedLocationKey}
-            className="w-full py-3 bg-[#2d1239] text-white rounded-xl font-medium hover:bg-[#2d1239]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 bg-nfw-blackberry text-white font-medium hover:bg-nfw-blackberry/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Continue with Selected Location
           </button>

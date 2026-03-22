@@ -41,11 +41,11 @@ async function AdminAnalyticsContent() {
     .order("created_at", { ascending: true });
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
+    <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Analytics</h1>
-          <p className="text-gray-600 text-lg">
+          <h1 className="text-4xl font-bold mb-2 text-nfw-blackberry">Analytics</h1>
+          <p className="text-nfw-blackberry/60 text-lg">
             Member, grant, and perks performance data
           </p>
         </div>
@@ -63,11 +63,11 @@ export default function AdminAnalyticsPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen p-8 bg-gray-50">
+        <main className="min-h-screen p-8 bg-nfw-dove">
           <div className="max-w-7xl mx-auto animate-pulse">
-            <div className="h-10 bg-gray-200 rounded w-1/3 mb-4"></div>
-            <div className="h-6 bg-gray-200 rounded w-2/3 mb-8"></div>
-            <div className="h-96 bg-gray-200 rounded"></div>
+            <div className="h-10 bg-nfw-stone/20 w-1/3 mb-4"></div>
+            <div className="h-6 bg-nfw-stone/20 w-2/3 mb-8"></div>
+            <div className="h-96 bg-nfw-stone/20"></div>
           </div>
         </main>
       }

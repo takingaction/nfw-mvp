@@ -52,10 +52,10 @@ export default function SectionCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-white rounded-xl border-2 transition-all ${
+      className={`bg-white border-2 transition-all ${
         isSelected
-          ? "border-[#2d1239] shadow-md"
-          : "border-gray-200 hover:border-gray-300"
+          ? "border-nfw-blackberry"
+          : "border-nfw-blackberry/10 hover:border-nfw-blackberry/20"
       } ${!section.visible ? "opacity-50" : ""}`}
     >
       <div className="flex items-center gap-3 p-4">
@@ -63,7 +63,7 @@ export default function SectionCard({
         <button
           {...attributes}
           {...listeners}
-          className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing flex-shrink-0"
+          className="text-nfw-blackberry/20 hover:text-nfw-blackberry/40 cursor-grab active:cursor-grabbing flex-shrink-0"
         >
           <GripVertical className="w-5 h-5" />
         </button>
@@ -71,12 +71,12 @@ export default function SectionCard({
         {/* Content */}
         <button onClick={onSelect} className="flex-1 text-left min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-xs font-black uppercase tracking-wider text-[#2d1239]/50">
+            <span className="text-xs font-black uppercase tracking-wider text-nfw-blackberry/50">
               {label}
             </span>
           </div>
           {preview && (
-            <p className="text-sm text-gray-700 truncate">{preview}</p>
+            <p className="text-sm text-nfw-blackberry/70 truncate">{preview}</p>
           )}
         </button>
 
@@ -84,7 +84,7 @@ export default function SectionCard({
         <div className="flex items-center gap-1 flex-shrink-0">
           <button
             onClick={onToggleVisibility}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            className="p-1.5 text-nfw-blackberry/40 hover:text-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
             title={section.visible ? "Hide section" : "Show section"}
           >
             {section.visible ? (
@@ -95,13 +95,13 @@ export default function SectionCard({
           </button>
           <button
             onClick={onDelete}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+            className="p-1.5 text-nfw-blackberry/40 hover:text-red-500 hover:bg-red-50 transition-colors"
             title="Delete section"
           >
             <Trash2 className="w-4 h-4" />
           </button>
           <ChevronRight
-            className={`w-4 h-4 text-gray-400 transition-transform ${isSelected ? "rotate-90" : ""}`}
+            className={`w-4 h-4 text-nfw-blackberry/40 transition-transform ${isSelected ? "rotate-90" : ""}`}
           />
         </div>
       </div>

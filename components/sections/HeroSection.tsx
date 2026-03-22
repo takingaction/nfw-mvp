@@ -17,7 +17,7 @@ export default function HeroSection({ content }: Props) {
         <div className="grid lg:grid-cols-[53%_47%] gap-8 lg:gap-8 items-center py-4 lg:py-8">
           <div className="space-y-8">
             {c.eyebrow && (
-              <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-citrine">
+              <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-dove">
                 {c.eyebrow}
               </p>
             )}

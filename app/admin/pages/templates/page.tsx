@@ -17,7 +17,7 @@ export default async function TemplatesPage() {
     .order("name");
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
+    <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-6xl mx-auto">
         <TemplateManagerClient
           initialTemplates={templates ?? []}

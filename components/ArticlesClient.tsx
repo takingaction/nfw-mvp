@@ -78,40 +78,34 @@ export default function ArticlesClient({
 
   return (
     <main className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="bg-[#2d1239] pt-8 pb-6">
+      <div className="bg-nfw-blackberry pt-8 pb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2
-            className="text-3xl sm:text-4xl font-black text-[#fffef1] mb-2"
-            style={{ fontFamily: "Montserrat, sans-serif" }}
-          >
+          <h2 className="text-3xl sm:text-4xl font-black text-nfw-dove mb-2 font-serif">
             Articles & Resources
           </h2>
-          <p className="text-[#bcafcf]">
+          <p className="text-nfw-lilac">
             Stories, tips, and resources to help you thrive.
           </p>
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search Bar */}
-        <div className="bg-[#f8f7fa] rounded-xl p-4 mb-6 border border-[#2d1239]/10">
+        <div className="bg-nfw-dove p-4 mb-6 border border-nfw-blackberry/10">
           <form onSubmit={handleSearch}>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#2d1239]/40" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-nfw-blackberry/40" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search articles..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#2d1239]/10 rounded-lg text-[#2d1239] placeholder-[#2d1239]/40 focus:outline-none focus:ring-2 focus:ring-[#bcafcf] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-nfw-blackberry/10 text-nfw-blackberry placeholder-nfw-blackberry/40 focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent"
                 />
               </div>
               <button
                 type="submit"
-                className="px-5 py-2.5 bg-[#2d1239] text-[#fffef1] rounded-lg font-semibold hover:bg-[#2d1239]/90 transition-colors"
+                className="px-5 py-2.5 bg-nfw-blackberry text-nfw-dove font-semibold hover:bg-nfw-blackberry/90 transition-colors"
               >
                 Search
               </button>
@@ -122,7 +116,7 @@ export default function ArticlesClient({
                     setSearchQuery("");
                     router.push("/articles");
                   }}
-                  className="px-3 py-2.5 bg-white border border-[#2d1239]/10 text-[#2d1239]/60 rounded-lg hover:bg-[#2d1239]/5 transition-colors"
+                  className="px-3 py-2.5 bg-white border border-nfw-blackberry/10 text-nfw-blackberry/60 hover:bg-nfw-blackberry/5 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -131,15 +125,14 @@ export default function ArticlesClient({
           </form>
         </div>
 
-        {/* Category Filters */}
         <div className="mb-8">
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button
               onClick={() => handleCategoryFilter(null)}
-              className={`px-4 py-2 rounded-full whitespace-nowrap font-semibold transition-colors text-sm ${
+              className={`px-4 py-2 whitespace-nowrap font-semibold transition-colors text-sm ${
                 !currentCategory
-                  ? "bg-[#2d1239] text-[#fffef1]"
-                  : "bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#bcafcf]/20"
+                  ? "bg-nfw-blackberry text-nfw-dove"
+                  : "bg-white text-nfw-blackberry border border-nfw-blackberry/20 hover:bg-nfw-lilac/20"
               }`}
             >
               All Articles ({articles.length})
@@ -148,10 +141,10 @@ export default function ArticlesClient({
               <button
                 key={category.id}
                 onClick={() => handleCategoryFilter(category.slug)}
-                className={`px-4 py-2 rounded-full whitespace-nowrap font-semibold transition-colors text-sm ${
+                className={`px-4 py-2 whitespace-nowrap font-semibold transition-colors text-sm ${
                   currentCategory === category.slug
-                    ? "bg-[#2d1239] text-[#fffef1]"
-                    : "bg-white text-[#2d1239] border border-[#2d1239]/20 hover:bg-[#bcafcf]/20"
+                    ? "bg-nfw-blackberry text-nfw-dove"
+                    : "bg-white text-nfw-blackberry border border-nfw-blackberry/20 hover:bg-nfw-lilac/20"
                 }`}
               >
                 {category.icon} {category.name} ({category.article_count})
@@ -160,10 +153,9 @@ export default function ArticlesClient({
           </div>
         </div>
 
-        {/* Articles Grid */}
         {articles.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-[#2d1239]/60 text-lg">
+            <p className="text-nfw-blackberry/60 text-lg">
               {currentSearch || currentCategory
                 ? "No articles found matching your criteria."
                 : "No articles published yet."}
@@ -174,11 +166,11 @@ export default function ArticlesClient({
             {articles.map((article) => (
               <div
                 key={article.id}
-                className="group bg-white rounded-2xl border border-[#2d1239]/10 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                className="group bg-white border border-nfw-blackberry/10 overflow-hidden"
               >
                 <Link href={`/articles/${article.slug}`}>
                   {article.featured_image_url ? (
-                    <div className="relative h-48 bg-[#bcafcf]/20 overflow-hidden">
+                    <div className="relative h-48 bg-nfw-lilac/20 overflow-hidden">
                       <Image
                         src={article.featured_image_url}
                         alt={article.title}
@@ -188,8 +180,8 @@ export default function ArticlesClient({
                       />
                     </div>
                   ) : (
-                    <div className="relative h-48 bg-[#bcafcf]/20 flex items-center justify-center">
-                      <span className="text-5xl opacity-30">📄</span>
+                    <div className="relative h-48 bg-nfw-lilac/20 flex items-center justify-center">
+                      <span className="text-5xl opacity-30 font-serif">A</span>
                     </div>
                   )}
                 </Link>
@@ -197,7 +189,7 @@ export default function ArticlesClient({
                 <div className="p-5">
                   {article.category && (
                     <span
-                      className="inline-block text-xs px-2.5 py-1 rounded-full mb-3 font-semibold"
+                      className="inline-block text-xs px-2.5 py-1 mb-3 font-semibold"
                       style={{
                         backgroundColor: `${article.category.color}20`,
                         color: article.category.color ?? undefined,
@@ -208,22 +200,19 @@ export default function ArticlesClient({
                   )}
 
                   <Link href={`/articles/${article.slug}`}>
-                    <h3
-                      className="text-lg font-bold text-[#2d1239] mb-2 group-hover:text-[#2d1239]/75 transition-colors line-clamp-2"
-                      style={{ fontFamily: "Montserrat, sans-serif" }}
-                    >
+                    <h3 className="text-lg font-bold text-nfw-blackberry mb-2 group-hover:text-nfw-blackberry/75 transition-colors line-clamp-2 font-serif">
                       {article.title}
                     </h3>
                   </Link>
 
                   {article.excerpt && (
-                    <p className="text-[#2d1239]/60 text-sm mb-4 line-clamp-2">
+                    <p className="text-nfw-blackberry/60 text-sm mb-4 line-clamp-2">
                       {article.excerpt}
                     </p>
                   )}
 
-                  <div className="flex items-center justify-between text-sm pt-4 border-t border-[#2d1239]/10">
-                    <div className="flex items-center gap-2 text-[#2d1239]/50">
+                  <div className="flex items-center justify-between text-sm pt-4 border-t border-nfw-blackberry/10">
+                    <div className="flex items-center gap-2 text-nfw-blackberry/50">
                       <span>{article.author?.full_name || "NFW Team"}</span>
                       <span>•</span>
                       <span>
@@ -242,17 +231,17 @@ export default function ArticlesClient({
                         handleLike(article.id, article.user_has_liked || false);
                       }}
                       disabled={likingArticleId === article.id}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-all disabled:opacity-50 ${
+                      className={`flex items-center gap-2 px-4 py-2 font-medium transition-all disabled:opacity-50 ${
                         article.user_has_liked
-                          ? "bg-[#d4f1ad] text-[#2d1239] hover:bg-[#d4f1ad]/70"
-                          : "bg-[#bcafcf]/20 text-[#2d1239]/60 hover:bg-[#bcafcf]/40 hover:text-[#2d1239]"
+                          ? "bg-[#d4f1ad] text-nfw-blackberry hover:bg-[#d4f1ad]/70"
+                          : "bg-nfw-lilac/20 text-nfw-blackberry/60 hover:bg-nfw-lilac/40 hover:text-nfw-blackberry"
                       }`}
                     >
                       <Heart
                         className={`w-4 h-4 transition-all ${
                           article.user_has_liked
-                            ? "fill-[#2d1239] stroke-[#2d1239]"
-                            : "stroke-[#2d1239]/60"
+                            ? "fill-nfw-blackberry stroke-nfw-blackberry"
+                            : "stroke-nfw-blackberry/60"
                         }`}
                       />
                       <span className="text-sm">{article.like_count}</span>

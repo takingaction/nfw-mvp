@@ -36,8 +36,8 @@ export default function GrantApplicationForm({
   });
 
   const inputClass =
-    "w-full px-4 py-3 border border-[#2d1239]/20 rounded-xl text-[#2d1239] placeholder-[#2d1239]/30 bg-white focus:outline-none focus:ring-2 focus:ring-[#bcafcf] focus:border-transparent transition-all text-sm";
-  const labelClass = "block text-sm font-semibold text-[#2d1239] mb-1.5";
+    "w-full px-4 py-3 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent transition-all text-sm";
+  const labelClass = "block text-sm font-semibold text-nfw-blackberry mb-1.5";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,7 +119,7 @@ export default function GrantApplicationForm({
         <div>
           <p className={labelClass}>
             Which grant are you applying for?{" "}
-            <span className="text-[#bcafcf]">*</span>
+            <span className="text-nfw-lilac">*</span>
           </p>
           <div className="space-y-2">
             {cycles.map((cycle) => (
@@ -128,29 +128,29 @@ export default function GrantApplicationForm({
                 onClick={() =>
                   setFormData((prev) => ({ ...prev, cycle_id: cycle.id }))
                 }
-                className={`flex items-start justify-between gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                className={`flex items-start justify-between gap-4 p-4 border-2 cursor-pointer transition-all ${
                   formData.cycle_id === cycle.id
-                    ? "border-[#2d1239] bg-[#2d1239]/5"
-                    : "border-[#2d1239]/10 hover:border-[#2d1239]/30"
+                    ? "border-nfw-blackberry bg-nfw-blackberry/5"
+                    : "border-nfw-blackberry/10 hover:border-nfw-blackberry/30"
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <div
-                    className={`w-4 h-4 rounded-full border-2 mt-1 flex-shrink-0 flex items-center justify-center ${
+                    className={`w-4 h-4 border-2 mt-1 flex-shrink-0 flex items-center justify-center ${
                       formData.cycle_id === cycle.id
-                        ? "border-[#2d1239]"
-                        : "border-[#2d1239]/30"
+                        ? "border-nfw-blackberry"
+                        : "border-nfw-blackberry/30"
                     }`}
                   >
                     {formData.cycle_id === cycle.id && (
-                      <div className="w-2 h-2 rounded-full bg-[#2d1239]" />
+                      <div className="w-2 h-2 bg-nfw-blackberry" />
                     )}
                   </div>
                   <div>
-                    <p className="font-bold text-[#2d1239]">
+                    <p className="font-bold text-nfw-blackberry">
                       {cycle.cycle_name}
                     </p>
-                    <p className="text-xs text-[#2d1239]/50 mt-0.5">
+                    <p className="text-xs text-nfw-blackberry/50 mt-0.5">
                       Deadline:{" "}
                       {new Date(cycle.end_date).toLocaleDateString("en-US", {
                         month: "long",
@@ -159,20 +159,17 @@ export default function GrantApplicationForm({
                       })}
                     </p>
                     {cycle.description && (
-                      <p className="text-xs text-[#2d1239]/60 mt-1">
+                      <p className="text-xs text-nfw-blackberry/60 mt-1">
                         {cycle.description}
                       </p>
                     )}
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p
-                    className="text-lg font-black text-[#2d1239]"
-                    style={{ fontFamily: "Montserrat, sans-serif" }}
-                  >
+                  <p className="text-lg font-black text-nfw-blackberry font-sans">
                     ${cycle.amount_per_grant?.toLocaleString()}
                   </p>
-                  <p className="text-xs text-[#2d1239]/50">
+                  <p className="text-xs text-nfw-blackberry/50">
                     {cycle.grants_available} available
                   </p>
                 </div>
@@ -184,16 +181,15 @@ export default function GrantApplicationForm({
 
       {/* Single cycle info card */}
       {cycles.length === 1 && selectedCycle && (
-        <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] rounded-2xl p-5">
+        <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] p-5">
           <div className="flex items-start justify-between">
             <div>
               <h3
-                className="font-black text-[#2d1239] text-lg"
-                style={{ fontFamily: "Montserrat, sans-serif" }}
+                className="font-black text-nfw-blackberry text-lg font-ui"
               >
                 {selectedCycle.cycle_name}
               </h3>
-              <p className="text-sm text-[#2d1239]/60 mt-1">
+              <p className="text-sm text-nfw-blackberry/60 mt-1">
                 Deadline:{" "}
                 {new Date(selectedCycle.end_date).toLocaleDateString("en-US", {
                   month: "long",
@@ -204,12 +200,11 @@ export default function GrantApplicationForm({
             </div>
             <div className="text-right">
               <p
-                className="text-2xl font-black text-[#2d1239]"
-                style={{ fontFamily: "Montserrat, sans-serif" }}
+                className="text-2xl font-black text-nfw-blackberry font-ui"
               >
                 ${selectedCycle.amount_per_grant?.toLocaleString()}
               </p>
-              <p className="text-xs text-[#2d1239]/50">
+              <p className="text-xs text-nfw-blackberry/50">
                 {selectedCycle.grants_available} grants available
               </p>
             </div>
@@ -220,49 +215,49 @@ export default function GrantApplicationForm({
       {/* Nominating Toggle */}
       <div>
         <p className={labelClass}>
-          Who is this application for? <span className="text-[#bcafcf]">*</span>
+          Who is this application for? <span className="text-nfw-lilac">*</span>
         </p>
         <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
             onClick={() => setIsNominating(false)}
-            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+            className={`flex items-center gap-3 p-4 border-2 transition-all ${
               !isNominating
-                ? "border-[#2d1239] bg-[#2d1239]/5"
-                : "border-[#2d1239]/10 hover:border-[#2d1239]/30"
+                ? "border-nfw-blackberry bg-nfw-blackberry/5"
+                : "border-nfw-blackberry/10 hover:border-nfw-blackberry/30"
             }`}
           >
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${!isNominating ? "bg-[#2d1239]" : "bg-[#2d1239]/10"}`}
+              className={`w-8 h-8 flex items-center justify-center flex-shrink-0 ${!isNominating ? "bg-nfw-blackberry" : "bg-nfw-blackberry/10"}`}
             >
               <User
-                className={`w-4 h-4 ${!isNominating ? "text-white" : "text-[#2d1239]"}`}
+                className={`w-4 h-4 ${!isNominating ? "text-white" : "text-nfw-blackberry"}`}
               />
             </div>
             <div className="text-left">
-              <p className="font-bold text-[#2d1239] text-sm">Myself</p>
-              <p className="text-xs text-[#2d1239]/50">I'm applying for me</p>
+              <p className="font-bold text-nfw-blackberry text-sm">Myself</p>
+              <p className="text-xs text-nfw-blackberry/50">I'm applying for me</p>
             </div>
           </button>
           <button
             type="button"
             onClick={() => setIsNominating(true)}
-            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+            className={`flex items-center gap-3 p-4 border-2 transition-all ${
               isNominating
-                ? "border-[#2d1239] bg-[#2d1239]/5"
-                : "border-[#2d1239]/10 hover:border-[#2d1239]/30"
+                ? "border-nfw-blackberry bg-nfw-blackberry/5"
+                : "border-nfw-blackberry/10 hover:border-nfw-blackberry/30"
             }`}
           >
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isNominating ? "bg-[#2d1239]" : "bg-[#2d1239]/10"}`}
+              className={`w-8 h-8 flex items-center justify-center flex-shrink-0 ${isNominating ? "bg-nfw-blackberry" : "bg-nfw-blackberry/10"}`}
             >
               <Users
-                className={`w-4 h-4 ${isNominating ? "text-white" : "text-[#2d1239]"}`}
+                className={`w-4 h-4 ${isNominating ? "text-white" : "text-nfw-blackberry"}`}
               />
             </div>
             <div className="text-left">
-              <p className="font-bold text-[#2d1239] text-sm">Someone else</p>
-              <p className="text-xs text-[#2d1239]/50">
+              <p className="font-bold text-nfw-blackberry text-sm">Someone else</p>
+              <p className="text-xs text-nfw-blackberry/50">
                 I'm nominating someone
               </p>
             </div>
@@ -276,9 +271,9 @@ export default function GrantApplicationForm({
           {isNominating
             ? "Tell us about the person you're nominating."
             : "Who are you?"}{" "}
-          <span className="text-[#bcafcf]">*</span>
+          <span className="text-nfw-lilac">*</span>
         </label>
-        <p className="text-xs text-[#2d1239]/50 mb-2">
+        <p className="text-xs text-nfw-blackberry/50 mb-2">
           {isNominating
             ? "Share their name, background, and why you're nominating them."
             : "Tell us a little about yourself — your situation, your life, what matters to you."}
@@ -298,7 +293,7 @@ export default function GrantApplicationForm({
           className={inputClass + " resize-none"}
           required
         />
-        <p className="text-xs text-[#2d1239]/40 mt-1 text-right">
+        <p className="text-xs text-nfw-blackberry/40 mt-1 text-right">
           {formData.who_are_you.length}/500
         </p>
       </div>
@@ -309,9 +304,9 @@ export default function GrantApplicationForm({
           {isNominating
             ? "What is their biggest challenge right now?"
             : "What's the biggest challenge you're facing right now?"}{" "}
-          <span className="text-[#bcafcf]">*</span>
+          <span className="text-nfw-lilac">*</span>
         </label>
-        <p className="text-xs text-[#2d1239]/50 mb-2">
+        <p className="text-xs text-nfw-blackberry/50 mb-2">
           Be specific. The more we understand the situation, the better we can
           help.
         </p>
@@ -333,7 +328,7 @@ export default function GrantApplicationForm({
           className={inputClass + " resize-none"}
           required
         />
-        <p className="text-xs text-[#2d1239]/40 mt-1 text-right">
+        <p className="text-xs text-nfw-blackberry/40 mt-1 text-right">
           {formData.biggest_challenge.length}/1000
         </p>
       </div>
@@ -344,9 +339,9 @@ export default function GrantApplicationForm({
           {isNominating
             ? "How do you imagine they would use the microgrant funds?"
             : "What would you do with the microgrant funds?"}{" "}
-          <span className="text-[#bcafcf]">*</span>
+          <span className="text-nfw-lilac">*</span>
         </label>
-        <p className="text-xs text-[#2d1239]/50 mb-2">
+        <p className="text-xs text-nfw-blackberry/50 mb-2">
           {isNominating
             ? "Describe how you think the funds would make a difference for them."
             : "Tell us exactly how you'd use the money and what difference it would make."}
@@ -366,7 +361,7 @@ export default function GrantApplicationForm({
           className={inputClass + " resize-none"}
           required
         />
-        <p className="text-xs text-[#2d1239]/40 mt-1 text-right">
+        <p className="text-xs text-nfw-blackberry/40 mt-1 text-right">
           {formData.fund_usage.length}/500
         </p>
       </div>
@@ -375,9 +370,9 @@ export default function GrantApplicationForm({
       <div>
         <label className={labelClass}>
           Supporting Documents{" "}
-          <span className="text-[#2d1239]/40 font-normal">(Optional)</span>
+          <span className="text-nfw-blackberry/40 font-normal">(Optional)</span>
         </label>
-        <p className="text-xs text-[#2d1239]/50 mb-3">
+        <p className="text-xs text-nfw-blackberry/50 mb-3">
           Upload receipts, quotes, or other supporting documents. PDF, JPG, PNG,
           DOC accepted.
         </p>
@@ -387,16 +382,16 @@ export default function GrantApplicationForm({
           multiple
           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
           onChange={handleFileChange}
-          className="w-full text-sm text-[#2d1239]/60 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-[#2d1239] file:text-white hover:file:bg-[#2d1239]/90 file:cursor-pointer cursor-pointer border border-[#2d1239]/20 rounded-xl p-2"
+          className="w-full text-sm text-nfw-blackberry/60 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-nfw-blackberry file:text-white hover:file:bg-nfw-blackberry/90 file:cursor-pointer cursor-pointer border border-nfw-blackberry/20 p-2"
         />
         {documents.length > 0 && (
           <div className="mt-3 space-y-2">
             {documents.map((file, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between bg-[#f8f7fa] px-3 py-2 rounded-lg border border-[#2d1239]/10"
+                className="flex items-center justify-between bg-nfw-dove px-3 py-2 border border-nfw-blackberry/10"
               >
-                <span className="text-sm text-[#2d1239]/70 truncate flex-1">
+                <span className="text-sm text-nfw-blackberry/70 truncate flex-1">
                   {file.name} ({(file.size / 1024).toFixed(1)} KB)
                 </span>
                 <button
@@ -414,7 +409,7 @@ export default function GrantApplicationForm({
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+        <div className="bg-red-50/50 border border-red-200 p-4">
           <p className="text-red-800 text-sm">{error}</p>
         </div>
       )}
@@ -424,7 +419,7 @@ export default function GrantApplicationForm({
         <button
           type="submit"
           disabled={loading || uploadingDocs || !formData.cycle_id}
-          className="flex-1 bg-[#2d1239] text-white px-6 py-4 rounded-xl hover:bg-[#2d1239]/90 disabled:opacity-50 disabled:cursor-not-allowed font-bold transition-colors flex items-center justify-center gap-2"
+          className="flex-1 bg-nfw-blackberry text-white px-6 py-4 hover:bg-nfw-blackberry/90 disabled:opacity-50 disabled:cursor-not-allowed font-bold transition-colors flex items-center justify-center gap-2"
         >
           {(loading || uploadingDocs) && (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -438,13 +433,13 @@ export default function GrantApplicationForm({
         <button
           type="button"
           onClick={() => router.push("/grants/my-applications")}
-          className="px-6 py-4 border border-[#2d1239]/20 text-[#2d1239] rounded-xl hover:bg-[#2d1239]/5 font-medium transition-colors"
+          className="px-6 py-4 border border-nfw-blackberry/20 text-nfw-blackberry hover:bg-nfw-blackberry/5 font-medium transition-colors"
         >
           Cancel
         </button>
       </div>
 
-      <p className="text-xs text-[#2d1239]/40 text-center">
+      <p className="text-xs text-nfw-blackberry/40 text-center">
         Your application will be reviewed by our team. You cannot edit it after
         submission.
       </p>

@@ -48,11 +48,11 @@ async function AdminMembersContent() {
   const admins = membersWithEmails?.filter((m) => m.is_admin).length || 0;
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
+    <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Manage Members</h1>
-          <p className="text-gray-600 text-lg">
+          <h1 className="text-4xl font-bold mb-2 text-nfw-blackberry font-serif">Manage Members</h1>
+          <p className="text-nfw-blackberry/60 text-lg">
             View and manage all NFW members
           </p>
         </div>
@@ -62,29 +62,29 @@ async function AdminMembersContent() {
             {
               label: "Total Members",
               value: total,
-              color: "bg-[#2d1239]",
+              color: "bg-nfw-blackberry",
               text: "text-white",
             },
             {
               label: "Paid Members",
               value: paid,
               color: "bg-[#d4f1ad]",
-              text: "text-[#2d1239]",
+              text: "text-nfw-blackberry",
             },
             {
               label: "Free Members",
               value: free,
               color: "bg-[#b2d1ee]",
-              text: "text-[#2d1239]",
+              text: "text-nfw-blackberry",
             },
             {
               label: "Admins",
               value: admins,
-              color: "bg-[#fdf493]",
-              text: "text-[#2d1239]",
+              color: "bg-nfw-citrine",
+              text: "text-nfw-blackberry",
             },
           ].map((stat) => (
-            <div key={stat.label} className={`${stat.color} rounded-2xl p-6`}>
+            <div key={stat.label} className={`${stat.color} p-6`}>
               <div className={`text-3xl font-black mb-1 ${stat.text}`}>
                 {stat.value}
               </div>

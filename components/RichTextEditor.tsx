@@ -36,14 +36,14 @@ export default function RichTextEditor({
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden">
+    <div className="border border-nfw-blackberry/10 overflow-hidden">
       {/* Toolbar */}
-      <div className="bg-gray-50 border-b p-2 flex flex-wrap gap-1">
+      <div className="bg-nfw-dove border-b border-nfw-blackberry/10 p-2 flex flex-wrap gap-1">
         <button
           type="button"
           onClick={() => editor.chain().focus().toggleBold().run()}
-          className={`px-3 py-1 rounded ${
-            editor.isActive("bold") ? "bg-gray-200" : "hover:bg-gray-100"
+          className={`px-3 py-1 ${
+            editor.isActive("bold") ? "bg-nfw-blackberry text-white" : "hover:bg-nfw-blackberry/10"
           }`}
         >
           <strong>B</strong>
@@ -51,8 +51,8 @@ export default function RichTextEditor({
         <button
           type="button"
           onClick={() => editor.chain().focus().toggleItalic().run()}
-          className={`px-3 py-1 rounded ${
-            editor.isActive("italic") ? "bg-gray-200" : "hover:bg-gray-100"
+          className={`px-3 py-1 ${
+            editor.isActive("italic") ? "bg-nfw-blackberry text-white" : "hover:bg-nfw-blackberry/10"
           }`}
         >
           <em>I</em>
@@ -62,10 +62,10 @@ export default function RichTextEditor({
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 2 }).run()
           }
-          className={`px-3 py-1 rounded ${
+          className={`px-3 py-1 ${
             editor.isActive("heading", { level: 2 })
-              ? "bg-gray-200"
-              : "hover:bg-gray-100"
+              ? "bg-nfw-blackberry text-white"
+              : "hover:bg-nfw-blackberry/10"
           }`}
         >
           H2
@@ -75,10 +75,10 @@ export default function RichTextEditor({
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 3 }).run()
           }
-          className={`px-3 py-1 rounded ${
+          className={`px-3 py-1 ${
             editor.isActive("heading", { level: 3 })
-              ? "bg-gray-200"
-              : "hover:bg-gray-100"
+              ? "bg-nfw-blackberry text-white"
+              : "hover:bg-nfw-blackberry/10"
           }`}
         >
           H3
@@ -86,17 +86,17 @@ export default function RichTextEditor({
         <button
           type="button"
           onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className={`px-3 py-1 rounded ${
-            editor.isActive("bulletList") ? "bg-gray-200" : "hover:bg-gray-100"
+          className={`px-3 py-1 ${
+            editor.isActive("bulletList") ? "bg-nfw-blackberry text-white" : "hover:bg-nfw-blackberry/10"
           }`}
         >
-          • List
+          List
         </button>
         <button
           type="button"
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          className={`px-3 py-1 rounded ${
-            editor.isActive("orderedList") ? "bg-gray-200" : "hover:bg-gray-100"
+          className={`px-3 py-1 ${
+            editor.isActive("orderedList") ? "bg-nfw-blackberry text-white" : "hover:bg-nfw-blackberry/10"
           }`}
         >
           1. List
@@ -104,11 +104,11 @@ export default function RichTextEditor({
         <button
           type="button"
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          className={`px-3 py-1 rounded ${
-            editor.isActive("blockquote") ? "bg-gray-200" : "hover:bg-gray-100"
+          className={`px-3 py-1 ${
+            editor.isActive("blockquote") ? "bg-nfw-blackberry text-white" : "hover:bg-nfw-blackberry/10"
           }`}
         >
-          " Quote
+          Quote
         </button>
         <button
           type="button"
@@ -118,11 +118,11 @@ export default function RichTextEditor({
               editor.chain().focus().setLink({ href: url }).run();
             }
           }}
-          className={`px-3 py-1 rounded ${
-            editor.isActive("link") ? "bg-gray-200" : "hover:bg-gray-100"
+          className={`px-3 py-1 ${
+            editor.isActive("link") ? "bg-nfw-blackberry text-white" : "hover:bg-nfw-blackberry/10"
           }`}
         >
-          🔗 Link
+          Link
         </button>
       </div>
 

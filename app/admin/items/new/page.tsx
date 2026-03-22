@@ -30,10 +30,10 @@ export default async function NewItemPage() {
     .order("name", { ascending: true });
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
+    <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8">Add New Item</h1>
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <h1 className="text-4xl font-bold mb-8 text-nfw-blackberry font-serif">Add New Item</h1>
+        <div className="bg-white border border-nfw-blackberry/10 p-8">
           <ItemForm categories={categories || []} />
         </div>
       </div>

@@ -103,7 +103,7 @@ export default function AdminShopifySync() {
       <div className="p-8">
         <div className="animate-pulse space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-gray-200 rounded" />
+            <div key={i} className="h-20 bg-nfw-stone/20" />
           ))}
         </div>
       </div>
@@ -111,18 +111,18 @@ export default function AdminShopifySync() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-8 bg-nfw-dove min-h-screen">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Shopify Product Sync</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-nfw-blackberry mb-2 font-ui">Shopify Product Sync</h1>
+          <p className="text-nfw-blackberry/60">
             Manage which products appear in the Zero Dollar Store MVP
           </p>
         </div>
         <button
           onClick={handleSync}
           disabled={syncing}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+          className="bg-nfw-blackberry text-white px-6 py-3 font-medium hover:bg-nfw-blackberry/90 disabled:opacity-50"
         >
           {syncing ? "Syncing..." : "Sync from Shopify"}
         </button>
@@ -130,49 +130,49 @@ export default function AdminShopifySync() {
 
       {message && (
         <div
-          className={`mb-6 p-4 rounded-lg ${
-            message.type === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
+          className={`mb-6 p-4 ${
+            message.type === "success" ? "bg-[#d4f1ad] text-nfw-blackberry" : "bg-red-50 text-red-800"
           }`}
         >
           {message.text}
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
+        <table className="min-w-full divide-y divide-nfw-blackberry/5">
+          <thead className="bg-nfw-dove">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
                 Product
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
                 Visibility
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
                 Eligibility
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-nfw-blackberry/5">
             {products.map((product) => (
               <tr key={product.shopify_product_id}>
                 <td className="px-6 py-4">
                   <div className="flex items-center">
-                    <div className="h-12 w-12 bg-gray-200 rounded flex-shrink-0 overflow-hidden relative">
+                    <div className="h-12 w-12 bg-nfw-stone/20 flex-shrink-0 overflow-hidden relative">
                       {product.image_url ? (
                         <Image
                           src={product.image_url}
                           alt={product.title}
                           fill
-                          className="object-cover rounded"
+                          className="object-cover"
                         />
                       ) : (
                         <div className="h-12 w-12 bg-nfw-stone/20" />
                       )}
                     </div>
                     <div className="ml-4">
-                      <div className="font-medium text-gray-900">{product.title}</div>
-                      <div className="text-sm text-gray-500">{product.shopify_product_id}</div>
+                      <div className="font-medium text-nfw-blackberry">{product.title}</div>
+                      <div className="text-sm text-nfw-blackberry/50">{product.shopify_product_id}</div>
                     </div>
                   </div>
                 </td>
@@ -180,7 +180,7 @@ export default function AdminShopifySync() {
                   <button
                     onClick={() => toggleVisibility(product.shopify_product_id, product.mvp_visibility)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      product.mvp_visibility ? "bg-green-600" : "bg-gray-300"
+                      product.mvp_visibility ? "bg-[#d4f1ad]" : "bg-nfw-stone/30"
                     }`}
                   >
                     <span
@@ -189,7 +189,7 @@ export default function AdminShopifySync() {
                       }`}
                     />
                   </button>
-                  <span className="ml-3 text-sm text-gray-600">
+                  <span className="ml-3 text-sm text-nfw-blackberry/60">
                     {product.mvp_visibility ? "Visible" : "Hidden"}
                   </span>
                 </td>
@@ -199,10 +199,10 @@ export default function AdminShopifySync() {
                       <button
                         key={tier}
                         onClick={() => toggleTier(product.shopify_product_id, tier, product.eligibility_tiers)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                        className={`px-3 py-1 text-xs font-medium transition-colors ${
                           product.eligibility_tiers.includes(tier)
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                            ? "bg-nfw-blackberry text-white"
+                            : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
                         }`}
                       >
                         {tier}

@@ -35,7 +35,7 @@ export default function ManageSubscription({
     return (
       <a
         href="/membership"
-        className="inline-block bg-[#2d1239] text-white px-4 py-2 rounded-lg hover:bg-[#2d1239]/90 font-medium transition-colors"
+        className="inline-block bg-nfw-blackberry text-white px-4 py-2 hover:bg-nfw-blackberry/90 font-medium transition-colors"
       >
         Upgrade Membership
       </a>
@@ -47,7 +47,7 @@ export default function ManageSubscription({
       <button
         onClick={handleManageSubscription}
         disabled={loading}
-        className="bg-[#f8f7fa] text-[#2d1239] px-4 py-2 rounded-lg hover:bg-[#BCAFCF]/20 disabled:opacity-50 font-medium transition-colors border border-[#2d1239]/10 flex items-center gap-2"
+        className="bg-nfw-dove text-nfw-blackberry px-4 py-2 hover:bg-nfw-lilac/20 disabled:opacity-50 font-medium transition-colors border border-nfw-blackberry/10 flex items-center gap-2"
       >
         {loading && <Loader2 className="w-4 h-4 animate-spin" />}
         {loading ? "Loading..." : "Manage Subscription"}

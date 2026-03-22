@@ -121,14 +121,14 @@ export default function ArticleForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3">
           {error}
         </div>
       )}
 
       {/* Title */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-nfw-blackberry mb-2">
           Title *
         </label>
         <input
@@ -136,14 +136,14 @@ export default function ArticleForm({
           required
           value={formData.title}
           onChange={(e) => handleTitleChange(e.target.value)}
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
           placeholder="Enter article title"
         />
       </div>
 
       {/* Slug */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-nfw-blackberry mb-2">
           Slug *
         </label>
         <input
@@ -153,17 +153,17 @@ export default function ArticleForm({
           onChange={(e) =>
             setFormData((prev) => ({ ...prev, slug: e.target.value }))
           }
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
           placeholder="article-url-slug"
         />
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-nfw-blackberry/50 mt-1">
           URL: /articles/{formData.slug || "article-url-slug"}
         </p>
       </div>
 
       {/* Excerpt */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-nfw-blackberry mb-2">
           Excerpt
         </label>
         <textarea
@@ -172,14 +172,14 @@ export default function ArticleForm({
             setFormData((prev) => ({ ...prev, excerpt: e.target.value }))
           }
           rows={3}
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
           placeholder="Brief summary of the article"
         />
       </div>
 
       {/* Content */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-nfw-blackberry mb-2">
           Content *
         </label>
         <RichTextEditor
@@ -192,7 +192,7 @@ export default function ArticleForm({
 
       {/* Category */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-nfw-blackberry mb-2">
           Category
         </label>
         <select
@@ -200,7 +200,7 @@ export default function ArticleForm({
           onChange={(e) =>
             setFormData((prev) => ({ ...prev, category_id: e.target.value }))
           }
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
         >
           <option value="">No category</option>
           {categories.map((category) => (
@@ -213,7 +213,7 @@ export default function ArticleForm({
 
       {/* Tags */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-nfw-blackberry mb-2">
           Tags
         </label>
         <input
@@ -222,10 +222,10 @@ export default function ArticleForm({
           onChange={(e) =>
             setFormData((prev) => ({ ...prev, tags: e.target.value }))
           }
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
           placeholder="tag1, tag2, tag3"
         />
-        <p className="text-sm text-gray-500 mt-1">Separate tags with commas</p>
+        <p className="text-sm text-nfw-blackberry/50 mt-1">Separate tags with commas</p>
       </div>
 
       {/* Images */}
@@ -248,12 +248,12 @@ export default function ArticleForm({
       </div>
 
       {/* SEO */}
-      <div className="border-t pt-6">
-        <h3 className="text-lg font-semibold mb-4">SEO Settings</h3>
+      <div className="border-t border-nfw-blackberry/10 pt-6">
+        <h3 className="text-lg font-semibold text-nfw-blackberry mb-4">SEO Settings</h3>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-nfw-blackberry mb-2">
               Meta Title
             </label>
             <input
@@ -262,13 +262,13 @@ export default function ArticleForm({
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, meta_title: e.target.value }))
               }
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
               placeholder="Leave blank to use article title"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-nfw-blackberry mb-2">
               Meta Description
             </label>
             <textarea
@@ -280,7 +280,7 @@ export default function ArticleForm({
                 }))
               }
               rows={2}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
               placeholder="Leave blank to use excerpt"
             />
           </div>
@@ -296,22 +296,22 @@ export default function ArticleForm({
           onChange={(e) =>
             setFormData((prev) => ({ ...prev, is_published: e.target.checked }))
           }
-          className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+          className="w-4 h-4 accent-nfw-blackberry"
         />
         <label
           htmlFor="is_published"
-          className="text-sm font-medium text-gray-700"
+          className="text-sm font-medium text-nfw-blackberry"
         >
           Publish article (make it visible to users)
         </label>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-4 pt-6 border-t">
+      <div className="flex items-center gap-4 pt-6 border-t border-nfw-blackberry/10">
         <button
           type="submit"
           disabled={loading}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
+          className="bg-nfw-blackberry text-white px-6 py-3 hover:bg-nfw-blackberry/90 font-medium disabled:opacity-50"
         >
           {loading
             ? "Saving..."
@@ -322,7 +322,7 @@ export default function ArticleForm({
         <button
           type="button"
           onClick={() => router.push("/admin/articles")}
-          className="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 font-medium"
+          className="bg-nfw-dove text-nfw-blackberry px-6 py-3 hover:bg-nfw-blackberry/5 font-medium"
         >
           Cancel
         </button>

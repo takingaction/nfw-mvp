@@ -27,7 +27,6 @@ export default async function GrantDetailPage({
     redirect("/auth/login");
   }
 
-  // Fetch grant details
   const { data: grant } = await supabaseAdmin
     .from("grants")
     .select(
@@ -51,7 +50,6 @@ export default async function GrantDetailPage({
     redirect("/grants/my-applications");
   }
 
-  // Fetch documents
   const { data: documents } = await supabaseAdmin
     .from("grant_documents")
     .select("*")
@@ -68,48 +66,45 @@ export default async function GrantDetailPage({
   };
 
   const statusLabels: Record<string, string> = {
-    submitted: "Submitted — Awaiting Review",
+    submitted: "Submitted",
     in_review: "Being Reviewed",
     approved: "Approved",
     not_approved: "Not Approved",
-    payment_pending: "Payment Being Processed",
+    payment_pending: "Payment Processing",
     payment_sent: "Payment Sent",
   };
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
+    <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-4xl mx-auto">
         {/* Back Button */}
         <Link
           href="/grants/my-applications"
-          className="inline-flex items-center text-[#2d1239] hover:text-[#2d1239]/70 mb-6 font-medium transition-colors"
+          className="inline-flex items-center font-sans text-nfw-blackberry hover:text-nfw-aubergine mb-6 font-medium transition-colors"
         >
-          ← Back to My Applications
+          Back to My Applications
         </Link>
 
         {/* Header */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-8 mb-6">
+        <div className="bg-white border border-nfw-blackberry/10 p-8 mb-6">
           <div className="flex items-start justify-between mb-6">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <span
-                  className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[grant.status] || "bg-gray-100 text-gray-800"}`}
+                  className={`px-3 py-1 font-ui text-xs font-black tracking-[0.03em] uppercase ${statusColors[grant.status] || "bg-gray-100 text-gray-800"}`}
                 >
                   {statusLabels[grant.status] || grant.status}
                 </span>
                 {grant.is_nominating && (
-                  <span className="px-3 py-1 rounded-full text-sm font-semibold bg-[#bcafcf]/20 text-[#2d1239]">
+                  <span className="px-3 py-1 font-ui text-xs font-black tracking-[0.03em] uppercase bg-nfw-lilac/20 text-nfw-blackberry">
                     Nomination
                   </span>
                 )}
               </div>
-              <h1
-                className="text-2xl font-black text-[#2d1239]"
-                style={{ fontFamily: "Montserrat, sans-serif" }}
-              >
+              <h1 className="font-serif text-4xl lg:text-6xl text-nfw-blackberry leading-tight">
                 {grant.grant_cycles?.cycle_name || "Grant Application"}
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="font-sans text-sm text-nfw-blackberry/50 mt-1">
                 Submitted{" "}
                 {grant.submitted_at
                   ? new Date(grant.submitted_at).toLocaleDateString("en-US", {
@@ -122,26 +117,23 @@ export default async function GrantDetailPage({
             </div>
             {grant.amount_approved && (
               <div className="text-right">
-                <p
-                  className="text-3xl font-black text-[#2d1239]"
-                  style={{ fontFamily: "Montserrat, sans-serif" }}
-                >
+                <p className="font-ui text-3xl font-black tracking-[0.03em] uppercase text-nfw-blackberry">
                   ${grant.amount_approved.toLocaleString()}
                 </p>
-                <p className="text-sm text-gray-500">Approved Amount</p>
+                <p className="font-sans text-sm text-nfw-blackberry/50">Approved Amount</p>
               </div>
             )}
           </div>
 
           {/* Grant Cycle Info */}
           {grant.grant_cycles && (
-            <div className="bg-gray-50 rounded-xl p-4 mb-6">
-              <h3 className="font-semibold text-[#2d1239] mb-1">Grant Cycle</h3>
-              <p className="text-sm text-gray-600">
+            <div className="bg-nfw-dove p-4 mb-6">
+              <h3 className="font-sans text-sm font-semibold text-nfw-blackberry mb-1">Grant Cycle</h3>
+              <p className="font-sans text-sm text-nfw-blackberry/60">
                 {new Date(grant.grant_cycles.start_date).toLocaleDateString()} —{" "}
                 {new Date(grant.grant_cycles.end_date).toLocaleDateString()}
               </p>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="font-sans text-sm text-nfw-blackberry/50 mt-1">
                 ${grant.grant_cycles.amount_per_grant?.toLocaleString()} per
                 grant · {grant.grant_cycles.grants_available} available
               </p>
@@ -152,32 +144,32 @@ export default async function GrantDetailPage({
           <div className="space-y-6">
             {grant.who_are_you && (
               <div>
-                <h3 className="font-semibold text-[#2d1239] mb-2">
+                <h3 className="font-sans text-sm font-semibold text-nfw-blackberry mb-2">
                   {grant.is_nominating ? "About the Nominee" : "Who are you?"}
                 </h3>
-                <p className="text-gray-700 whitespace-pre-wrap">
+                <p className="font-sans text-nfw-blackberry/70 whitespace-pre-wrap">
                   {grant.who_are_you}
                 </p>
               </div>
             )}
             {grant.biggest_challenge && (
               <div>
-                <h3 className="font-semibold text-[#2d1239] mb-2">
+                <h3 className="font-sans text-sm font-semibold text-nfw-blackberry mb-2">
                   Biggest Challenge
                 </h3>
-                <p className="text-gray-700 whitespace-pre-wrap">
+                <p className="font-sans text-nfw-blackberry/70 whitespace-pre-wrap">
                   {grant.biggest_challenge}
                 </p>
               </div>
             )}
             {grant.fund_usage && (
               <div>
-                <h3 className="font-semibold text-[#2d1239] mb-2">
+                <h3 className="font-sans text-sm font-semibold text-nfw-blackberry mb-2">
                   {grant.is_nominating
                     ? "How They Would Use the Funds"
                     : "How You Would Use the Funds"}
                 </h3>
-                <p className="text-gray-700 whitespace-pre-wrap">
+                <p className="font-sans text-nfw-blackberry/70 whitespace-pre-wrap">
                   {grant.fund_usage}
                 </p>
               </div>
@@ -185,8 +177,8 @@ export default async function GrantDetailPage({
           </div>
 
           {/* Timeline */}
-          <div className="border-t border-gray-100 pt-6 mt-6">
-            <h3 className="font-semibold text-[#2d1239] mb-4">
+          <div className="border-t border-nfw-blackberry/10 pt-6 mt-6">
+            <h3 className="font-sans text-sm font-semibold text-nfw-blackberry mb-4">
               Application Timeline
             </h3>
             <div className="space-y-3">
@@ -194,10 +186,10 @@ export default async function GrantDetailPage({
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
                   <div>
-                    <p className="font-medium text-[#2d1239] text-sm">
+                    <p className="font-sans text-sm font-medium text-nfw-blackberry">
                       Submitted for Review
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="font-sans text-xs text-nfw-blackberry/50">
                       {new Date(grant.submitted_at).toLocaleString()}
                     </p>
                   </div>
@@ -207,10 +199,10 @@ export default async function GrantDetailPage({
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0" />
                   <div>
-                    <p className="font-medium text-[#2d1239] text-sm">
+                    <p className="font-sans text-sm font-medium text-nfw-blackberry">
                       Reviewed
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="font-sans text-xs text-nfw-blackberry/50">
                       {new Date(grant.reviewed_at).toLocaleString()}
                     </p>
                   </div>
@@ -220,10 +212,10 @@ export default async function GrantDetailPage({
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-purple-500 rounded-full flex-shrink-0" />
                   <div>
-                    <p className="font-medium text-[#2d1239] text-sm">
+                    <p className="font-sans text-sm font-medium text-nfw-blackberry">
                       Payment Sent
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="font-sans text-xs text-nfw-blackberry/50">
                       {new Date(grant.funded_at).toLocaleString()}
                     </p>
                   </div>
@@ -240,14 +232,11 @@ export default async function GrantDetailPage({
 
         {/* Status-specific Action Sections */}
         {grant.status === "approved" && !grant.stripe_connect_account_id && (
-          <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] rounded-2xl p-6 mt-6">
-            <h3
-              className="font-black text-[#2d1239] mb-2"
-              style={{ fontFamily: "Montserrat, sans-serif" }}
-            >
-              🎉 Your Grant Has Been Approved!
+          <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] p-6 mt-6">
+            <h3 className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-2">
+              Your Grant Has Been Approved!
             </h3>
-            <p className="text-[#2d1239]/70 mb-4">
+            <p className="font-sans text-nfw-blackberry/70 mb-4">
               To receive your funds, please connect your bank account. This is a
               secure process handled by Stripe — NFW never sees your banking
               details.
@@ -257,11 +246,11 @@ export default async function GrantDetailPage({
         )}
 
         {grant.status === "approved" && grant.stripe_connect_account_id && (
-          <div className="bg-[#b2d1ee]/20 border border-[#b2d1ee] rounded-2xl p-6 mt-6">
-            <h3 className="font-black text-[#2d1239] mb-2">
-              ✅ Bank Account Connected
+          <div className="bg-[#b2d1ee]/20 border border-[#b2d1ee] p-6 mt-6">
+            <h3 className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-2">
+              Bank Account Connected
             </h3>
-            <p className="text-[#2d1239]/70">
+            <p className="font-sans text-nfw-blackberry/70">
               Your bank account is connected. Our team will process your payment
               shortly.
             </p>
@@ -269,11 +258,11 @@ export default async function GrantDetailPage({
         )}
 
         {grant.status === "payment_pending" && (
-          <div className="bg-[#fdf493]/20 border border-[#fdf493] rounded-2xl p-6 mt-6">
-            <h3 className="font-black text-[#2d1239] mb-2">
-              💸 Payment Being Processed
+          <div className="bg-nfw-citrine/20 border border-nfw-citrine p-6 mt-6">
+            <h3 className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-2">
+              Payment Being Processed
             </h3>
-            <p className="text-[#2d1239]/70">
+            <p className="font-sans text-nfw-blackberry/70">
               Your grant payment is being processed and will arrive in your bank
               account within 1-3 business days.
             </p>
@@ -281,9 +270,11 @@ export default async function GrantDetailPage({
         )}
 
         {grant.status === "payment_sent" && (
-          <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] rounded-2xl p-6 mt-6">
-            <h3 className="font-black text-[#2d1239] mb-2">🎉 Payment Sent!</h3>
-            <p className="text-[#2d1239]/70">
+          <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] p-6 mt-6">
+            <h3 className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-2">
+              Payment Sent!
+            </h3>
+            <p className="font-sans text-nfw-blackberry/70">
               Your grant payment
               {grant.amount_approved
                 ? ` of $${grant.amount_approved.toLocaleString()}`
@@ -295,11 +286,11 @@ export default async function GrantDetailPage({
         )}
 
         {grant.status === "not_approved" && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mt-6">
-            <h3 className="font-black text-[#2d1239] mb-2">
+          <div className="bg-red-50 border border-red-200 p-6 mt-6">
+            <h3 className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-2">
               Application Not Approved
             </h3>
-            <p className="text-[#2d1239]/70">
+            <p className="font-sans text-nfw-blackberry/70">
               Unfortunately, your application was not approved at this time. You
               may apply again in a future grant cycle.
             </p>

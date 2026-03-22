@@ -131,7 +131,7 @@ export default function FooterEditorClient({
     <div className="space-y-6">
       {/* Toast Notification */}
       {toast && (
-        <div className="fixed bottom-8 right-8 bg-[#2d1239] text-white px-6 py-3 rounded-full shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-8 right-8 bg-nfw-blackberry text-white px-6 py-3 shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-4">
           {toast}
         </div>
       )}
@@ -139,15 +139,15 @@ export default function FooterEditorClient({
       {/* Header with Save Button */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-black text-[#2d1239]">Footer Editor</h1>
-          <p className="text-gray-500 text-sm">
+          <h1 className="text-2xl font-black text-nfw-blackberry font-serif">Footer Editor</h1>
+          <p className="text-nfw-blackberry/50 text-sm">
             Manage your site-wide footer content
           </p>
         </div>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 px-6 py-3 bg-[#2d1239] text-white rounded-full font-black text-sm uppercase tracking-wider hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="flex items-center gap-2 px-6 py-3 bg-nfw-blackberry text-white font-black text-sm uppercase tracking-wider hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           <Save className="w-4 h-4" />
           {saving ? "Saving..." : "Save Changes"}
@@ -155,10 +155,10 @@ export default function FooterEditorClient({
       </div>
 
       {/* Logo + tagline */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-        <h2 className="font-black text-[#2d1239]">Logo & Tagline</h2>
+      <div className="bg-white border border-nfw-blackberry/10 p-6 space-y-4">
+        <h2 className="font-black text-nfw-blackberry font-ui">Logo & Tagline</h2>
         <div>
-          <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">
+          <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
             Logo
           </label>
           {logoUrl && (
@@ -166,16 +166,16 @@ export default function FooterEditorClient({
               <img src={logoUrl} alt="" className="h-12 object-contain" />
               <button
                 onClick={() => setLogoUrl("")}
-                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 ×
               </button>
             </div>
           )}
           <label className="block cursor-pointer mb-2">
-            <div className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-200 rounded-lg hover:border-[#2d1239] hover:bg-[#2d1239]/5 transition-colors">
-              <Upload className="w-4 h-4 text-gray-400" />
-              <span className="text-sm text-gray-500">
+            <div className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-nfw-blackberry/20 hover:border-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors">
+              <Upload className="w-4 h-4 text-nfw-blackberry/40" />
+              <span className="text-sm text-nfw-blackberry/50">
                 {logoUrl ? "Replace logo" : "Upload logo"}
               </span>
             </div>
@@ -199,25 +199,25 @@ export default function FooterEditorClient({
         </div>
 
         <div>
-          <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">
+          <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
             Tagline
           </label>
           <input
             type="text"
             value={tagline}
             onChange={(e) => setTagline(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
+            className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
           />
         </div>
       </div>
 
       {/* Link columns */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+      <div className="bg-white border border-nfw-blackberry/10 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-black text-[#2d1239]">Link Columns</h2>
+          <h2 className="font-black text-nfw-blackberry font-ui">Link Columns</h2>
           <button
             onClick={addColumn}
-            className="text-xs font-black uppercase tracking-wider text-[#2d1239] hover:opacity-70 transition-opacity flex items-center gap-1"
+            className="text-xs font-black uppercase tracking-wider text-nfw-blackberry hover:opacity-70 transition-opacity flex items-center gap-1"
           >
             <Plus className="w-3 h-3" /> Add Column
           </button>
@@ -226,7 +226,7 @@ export default function FooterEditorClient({
           {columns.map((col, colIndex) => (
             <div
               key={colIndex}
-              className="border border-gray-100 rounded-xl p-4 bg-gray-50/50"
+              className="border border-nfw-blackberry/5 p-4 bg-nfw-dove/50"
             >
               <div className="flex items-center gap-2 mb-4">
                 <input
@@ -236,11 +236,11 @@ export default function FooterEditorClient({
                     updateColumnHeading(colIndex, e.target.value)
                   }
                   placeholder="Column heading"
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm font-semibold focus:outline-none focus:border-[#2d1239]"
+                  className="flex-1 px-3 py-2 border border-nfw-blackberry/20 text-sm font-semibold focus:outline-none focus:border-nfw-blackberry"
                 />
                 <button
                   onClick={() => removeColumn(colIndex)}
-                  className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  className="p-1.5 text-nfw-blackberry/40 hover:text-red-500 hover:bg-red-50 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -263,7 +263,7 @@ export default function FooterEditorClient({
                         )
                       }
                       placeholder="Label"
-                      className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
+                      className="px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
                     />
                     <input
                       type="text"
@@ -277,11 +277,11 @@ export default function FooterEditorClient({
                         )
                       }
                       placeholder="URL"
-                      className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
+                      className="px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
                     />
                     <button
                       onClick={() => removeColumnLink(colIndex, linkIndex)}
-                      className="p-1.5 text-gray-300 hover:text-red-500 transition-colors"
+                      className="p-1.5 text-nfw-blackberry/30 hover:text-red-500 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -289,7 +289,7 @@ export default function FooterEditorClient({
                 ))}
                 <button
                   onClick={() => addColumnLink(colIndex)}
-                  className="mt-2 text-xs font-semibold text-gray-400 hover:text-[#2d1239] transition-colors flex items-center gap-1"
+                  className="mt-2 text-xs font-semibold text-nfw-blackberry/40 hover:text-nfw-blackberry transition-colors flex items-center gap-1"
                 >
                   <Plus className="w-3 h-3" /> Add Link
                 </button>
@@ -300,15 +300,15 @@ export default function FooterEditorClient({
       </div>
 
       {/* Copyright */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6">
-        <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">
+      <div className="bg-white border border-nfw-blackberry/10 p-6">
+        <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
           Copyright Text
         </label>
         <input
           type="text"
           value={copyright}
           onChange={(e) => setCopyright(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
+          className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
         />
       </div>
     </div>

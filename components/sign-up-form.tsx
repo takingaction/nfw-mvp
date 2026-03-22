@@ -58,16 +58,16 @@ export function SignUpForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
+      <Card className="border-nfw-blackberry/10">
         <CardHeader>
-          <CardTitle className="text-2xl">Sign up</CardTitle>
-          <CardDescription>Create a new account</CardDescription>
+          <CardTitle className="text-2xl font-serif text-nfw-blackberry">Sign up</CardTitle>
+          <CardDescription className="text-nfw-blackberry/60">Create a new account</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignUp}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-nfw-blackberry">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -75,11 +75,12 @@ export function SignUpForm({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className="border-nfw-blackberry/20 focus:border-nfw-blackberry focus:ring-nfw-lilac"
                 />
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password" className="text-nfw-blackberry">Password</Label>
                 </div>
                 <Input
                   id="password"
@@ -87,11 +88,12 @@ export function SignUpForm({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="border-nfw-blackberry/20 focus:border-nfw-blackberry focus:ring-nfw-lilac"
                 />
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
-                  <Label htmlFor="repeat-password">Repeat Password</Label>
+                  <Label htmlFor="repeat-password" className="text-nfw-blackberry">Repeat Password</Label>
                 </div>
                 <Input
                   id="repeat-password"
@@ -99,16 +101,17 @@ export function SignUpForm({
                   required
                   value={repeatPassword}
                   onChange={(e) => setRepeatPassword(e.target.value)}
+                  className="border-nfw-blackberry/20 focus:border-nfw-blackberry focus:ring-nfw-lilac"
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full bg-nfw-blackberry hover:bg-nfw-blackberry/90" disabled={isLoading}>
                 {isLoading ? "Creating an account..." : "Sign up"}
               </Button>
             </div>
-            <div className="mt-4 text-center text-sm">
+            <div className="mt-4 text-center text-sm text-nfw-blackberry/60">
               Already have an account?{" "}
-              <Link href="/auth/login" className="underline underline-offset-4">
+              <Link href="/auth/login" className="underline underline-offset-4 text-nfw-blackberry">
                 Login
               </Link>
             </div>

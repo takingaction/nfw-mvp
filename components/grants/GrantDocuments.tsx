@@ -41,13 +41,13 @@ export default function GrantDocuments({
   if (!documents || documents.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-lg shadow p-8 mb-6">
+    <div className="bg-white border border-gray-200 p-8 mb-6">
       <h3 className="font-semibold mb-4">Supporting Documents</h3>
       <div className="space-y-3">
         {documents.map((doc) => (
           <div
             key={doc.id}
-            className="flex items-center justify-between bg-gray-50 p-4 rounded-lg"
+            className="flex items-center justify-between bg-nfw-dove p-4"
           >
             <div>
               <div className="font-medium">{doc.file_name}</div>
@@ -59,7 +59,7 @@ export default function GrantDocuments({
             <button
               onClick={() => handleView(doc)}
               disabled={loadingId === doc.id}
-              className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
+              className="text-nfw-aubergine hover:text-nfw-aubergine/80 font-medium disabled:opacity-50"
             >
               {loadingId === doc.id ? "Loading..." : "View →"}
             </button>

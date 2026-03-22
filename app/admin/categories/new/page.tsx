@@ -24,10 +24,10 @@ export default async function NewCategoryPage() {
   }
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
+    <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8">Add New Category</h1>
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <h1 className="text-4xl font-bold mb-8 text-nfw-blackberry font-serif">Add New Category</h1>
+        <div className="bg-white border border-nfw-blackberry/10 p-8">
           <CategoryForm />
         </div>
       </div>

@@ -30,9 +30,9 @@ export default async function NewArticlePage() {
     .order("display_order", { ascending: true });
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
+    <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8">Create New Article</h1>
+        <h1 className="text-4xl font-bold mb-8 text-nfw-blackberry font-serif">Create New Article</h1>
         <ArticleForm categories={categories || []} userId={user.id} />
       </div>
     </main>

@@ -195,11 +195,11 @@ export default function AdminClaimsClient({
             placeholder="Search by member name, email, item, or tracking number..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 px-4 py-2 border rounded-lg"
+            className="flex-1 px-4 py-2 border border-nfw-blackberry/20"
           />
           <button
             onClick={exportToCSV}
-            className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 font-medium"
+            className="bg-nfw-blackberry text-white px-6 py-2 font-medium hover:bg-nfw-blackberry/90"
           >
             Export CSV
           </button>
@@ -209,10 +209,10 @@ export default function AdminClaimsClient({
         <div className="flex gap-2 overflow-x-auto pb-2">
           <button
             onClick={() => setSelectedStatus(null)}
-            className={`px-4 py-2 rounded-lg whitespace-nowrap ${
+            className={`px-4 py-2 whitespace-nowrap ${
               selectedStatus === null
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? "bg-nfw-blackberry text-white"
+                : "bg-white text-nfw-blackberry border border-nfw-blackberry/10 hover:bg-nfw-blackberry/5"
             }`}
           >
             All Claims ({claims.length})
@@ -221,10 +221,10 @@ export default function AdminClaimsClient({
             <button
               key={status.value}
               onClick={() => setSelectedStatus(status.value)}
-              className={`px-4 py-2 rounded-lg whitespace-nowrap ${
+              className={`px-4 py-2 whitespace-nowrap ${
                 selectedStatus === status.value
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-nfw-blackberry text-white"
+                  : "bg-white text-nfw-blackberry border border-nfw-blackberry/10 hover:bg-nfw-blackberry/5"
               }`}
             >
               {status.label} ({statusCounts[status.value] || 0})
@@ -235,48 +235,48 @@ export default function AdminClaimsClient({
 
       {/* Claims Table */}
       {filteredClaims.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg">
-          <p className="text-gray-600">
+        <div className="text-center py-12 bg-white border border-nfw-blackberry/10">
+          <p className="text-nfw-blackberry/60">
             No claims found matching your criteria.
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b">
+              <thead className="bg-nfw-dove border-b">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase">
                     Item
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase">
                     Member
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase">
                     Date
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase">
                     Tracking
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-nfw-blackberry/5">
                 {filteredClaims.map((claim) => {
                   const statusInfo = STATUS_OPTIONS.find(
                     (s) => s.value === claim.status,
                   );
                   return (
-                    <tr key={claim.id} className="hover:bg-gray-50">
+                    <tr key={claim.id} className="hover:bg-nfw-dove/50">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           {claim.item.image_url && (
-                            <div className="relative w-12 h-12 rounded overflow-hidden">
+                            <div className="relative w-12 h-12 overflow-hidden">
                               <Image
                                 src={claim.item.image_url}
                                 alt={claim.item.name}
@@ -286,9 +286,9 @@ export default function AdminClaimsClient({
                             </div>
                           )}
                           <div>
-                            <div className="font-medium">{claim.item.name}</div>
+                            <div className="font-medium text-nfw-blackberry">{claim.item.name}</div>
                             {claim.item.category && (
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-nfw-blackberry/50">
                                 {claim.item.category.name}
                               </div>
                             )}
@@ -296,19 +296,19 @@ export default function AdminClaimsClient({
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-medium">
+                        <div className="font-medium text-nfw-blackberry">
                           {claim.member.full_name}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-nfw-blackberry/50">
                           {claim.member_email}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
+                      <td className="px-6 py-4 text-sm text-nfw-blackberry/50">
                         {new Date(claim.claimed_at).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-block px-2 py-1 text-xs font-medium rounded ${statusInfo?.color}`}
+                          className={`inline-block px-2 py-1 text-xs font-medium ${statusInfo?.color}`}
                         >
                           {statusInfo?.label}
                         </span>
@@ -319,7 +319,7 @@ export default function AdminClaimsClient({
                       <td className="px-6 py-4">
                         <button
                           onClick={() => handleEditClick(claim)}
-                          className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                          className="text-nfw-blackberry hover:text-nfw-blackberry/70 font-medium text-sm"
                         >
                           Manage
                         </button>
@@ -335,19 +335,19 @@ export default function AdminClaimsClient({
 
       {/* Edit Modal */}
       {editingClaim && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">Manage Claim</h2>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto border border-nfw-blackberry/10">
+            <h2 className="text-2xl font-bold mb-4 text-nfw-blackberry">Manage Claim</h2>
 
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm mb-4">
+              <div className="bg-red-50 text-red-600 p-3 text-sm mb-4">
                 {error}
               </div>
             )}
 
             <form onSubmit={handleUpdateClaim} className="space-y-4">
               {/* Claim Details */}
-              <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+              <div className="bg-nfw-dove p-4 space-y-2">
                 <div>
                   <strong>Item:</strong> {editingClaim.item.name}
                 </div>
@@ -368,8 +368,8 @@ export default function AdminClaimsClient({
               </div>
 
               {/* Shipping Address */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <strong className="block mb-2">Shipping Address:</strong>
+              <div className="bg-nfw-dove p-4">
+                <strong className="block mb-2 text-nfw-blackberry">Shipping Address:</strong>
                 <div className="text-sm space-y-1">
                   <div>{editingClaim.shipping_address.full_name}</div>
                   <div>{editingClaim.shipping_address.address_line1}</div>
@@ -387,14 +387,14 @@ export default function AdminClaimsClient({
 
               {/* Status */}
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className="block text-sm font-medium mb-1 text-nfw-blackberry">
                   Status *
                 </label>
                 <select
                   required
                   value={newStatus}
                   onChange={(e) => setNewStatus(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
+                  className="w-full px-3 py-2 border border-nfw-blackberry/20"
                 >
                   {STATUS_OPTIONS.map((status) => (
                     <option key={status.value} value={status.value}>
@@ -406,7 +406,7 @@ export default function AdminClaimsClient({
 
               {/* Tracking Number */}
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className="block text-sm font-medium mb-1 text-nfw-blackberry">
                   Tracking Number
                 </label>
                 <input
@@ -414,13 +414,13 @@ export default function AdminClaimsClient({
                   value={trackingNumber}
                   onChange={(e) => setTrackingNumber(e.target.value)}
                   placeholder="Enter tracking number"
-                  className="w-full px-3 py-2 border rounded-md"
+                  className="w-full px-3 py-2 border border-nfw-blackberry/20"
                 />
               </div>
 
               {/* Admin Notes */}
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className="block text-sm font-medium mb-1 text-nfw-blackberry">
                   Admin Notes
                 </label>
                 <textarea
@@ -428,7 +428,7 @@ export default function AdminClaimsClient({
                   onChange={(e) => setAdminNotes(e.target.value)}
                   placeholder="Internal notes (not visible to member)"
                   rows={3}
-                  className="w-full px-3 py-2 border rounded-md"
+                  className="w-full px-3 py-2 border border-nfw-blackberry/20"
                 />
               </div>
 
@@ -439,14 +439,14 @@ export default function AdminClaimsClient({
                     setEditingClaim(null);
                     setError(null);
                   }}
-                  className="flex-1 px-4 py-2 border rounded-md hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border border-nfw-blackberry/20 hover:bg-nfw-blackberry/5"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  className="flex-1 bg-nfw-blackberry text-white py-2 hover:bg-nfw-blackberry/90 disabled:opacity-50"
                 >
                   {loading ? "Updating..." : "Update Claim"}
                 </button>

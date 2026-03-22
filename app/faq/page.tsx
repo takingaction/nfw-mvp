@@ -31,7 +31,7 @@ const faqs = [
     ],
   },
   {
-    category: "Membership & Pricing",
+    category: "Membership and Pricing",
     questions: [
       {
         question: "How much does membership cost?",
@@ -86,7 +86,7 @@ const faqs = [
     ],
   },
   {
-    category: "Perks & Discounts",
+    category: "Perks and Discounts",
     questions: [
       {
         question: "What kinds of perks are available?",
@@ -121,7 +121,7 @@ const faqs = [
     ],
   },
   {
-    category: "Privacy & Trust",
+    category: "Privacy and Trust",
     questions: [
       {
         question: "Is my personal information safe?",
@@ -152,29 +152,17 @@ export default function FAQPage() {
   };
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-nfw-dove">
       {/* HERO */}
-      <div className="relative bg-[#2d1239] overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 w-32 h-32 bg-[#fdf493] rounded-full opacity-20 blur-3xl"></div>
-          <div className="absolute bottom-20 right-20 w-40 h-40 bg-[#bcafcf] rounded-full opacity-20 blur-3xl"></div>
-        </div>
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#bcafcf]/20 border border-[#bcafcf]/30 rounded-full text-sm mb-6">
-            <span className="w-2 h-2 bg-[#d4f1ad] rounded-full"></span>
-            <span className="text-[#fffef1] font-semibold">
-              We&apos;ve got answers
-            </span>
-          </div>
-          <h1
-            className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-6 leading-tight"
-            style={{ fontFamily: "Montserrat, sans-serif" }}
-          >
-            Questions?
-            <br />
-            <span className="text-[#fdf493]">We&apos;ve got answers.</span>
+      <div className="bg-nfw-aubergine">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 text-center">
+          <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-dove mb-6">
+            We&apos;ve got answers
+          </p>
+          <h1 className="font-serif text-4xl lg:text-6xl text-nfw-dove mb-6 leading-tight">
+            Questions? We&apos;ve got answers.
           </h1>
-          <p className="text-xl text-[#bcafcf] max-w-2xl mx-auto">
+          <p className="font-serif text-xl text-nfw-dove max-w-2xl mx-auto">
             Everything you need to know about NFW membership, microgrants,
             perks, and more.
           </p>
@@ -182,53 +170,44 @@ export default function FAQPage() {
       </div>
 
       {/* FAQ SECTIONS */}
-      <div className="relative bg-white py-16 lg:py-24 overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-br from-[#fdf493] to-[#d4f1ad] rounded-full opacity-15 blur-3xl"></div>
-          <div className="absolute bottom-20 right-20 w-40 h-40 bg-gradient-to-br from-[#b2d1ee] to-[#bcafcf] rounded-full opacity-15 blur-3xl"></div>
-        </div>
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="py-16 lg:py-24">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="space-y-12">
             {faqs.map((section, sectionIndex) => (
               <div key={section.category}>
-                <h2
-                  className="text-2xl font-black text-[#2d1239] mb-6 pb-3 border-b-2 border-[#bcafcf]/30"
-                  style={{ fontFamily: "Montserrat, sans-serif" }}
-                >
+                <h2 className="font-ui text-lg font-black tracking-[0.06em] uppercase text-nfw-aubergine mb-6">
                   {section.category}
                 </h2>
-                <div className="relative bg-white/60 backdrop-blur-sm rounded-3xl p-6 lg:p-8 border-2 border-[#2d1239]/10 shadow-sm">
-                  <div className="space-y-4">
-                    {section.questions.map((faq, questionIndex) => {
-                      const key = `${sectionIndex}-${questionIndex}`;
-                      const isOpen = openItems[key];
-                      return (
-                        <div
-                          key={key}
-                          className="border-b border-[#2d1239]/10 last:border-b-0"
+                <div className="space-y-0">
+                  {section.questions.map((faq, questionIndex) => {
+                    const key = `${sectionIndex}-${questionIndex}`;
+                    const isOpen = openItems[key];
+                    return (
+                      <div
+                        key={key}
+                        className="border-b border-nfw-blackberry/10 last:border-b-0"
+                      >
+                        <button
+                          onClick={() => toggle(key)}
+                          className="w-full flex items-center justify-between py-4 text-left group"
                         >
-                          <button
-                            onClick={() => toggle(key)}
-                            className="w-full flex items-center justify-between py-4 text-left group"
-                          >
-                            <span className="text-base font-semibold text-[#2d1239] group-hover:text-[#2d1239]/80 transition-colors pr-4">
-                              {faq.question}
-                            </span>
-                            <ChevronDown
-                              className={`w-5 h-5 text-[#2d1239] flex-shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
-                            />
-                          </button>
-                          <div
-                            className={`overflow-hidden transition-all duration-300 ${isOpen ? "max-h-96 pb-4" : "max-h-0"}`}
-                          >
-                            <p className="text-[#2d1239]/70 leading-relaxed">
-                              {faq.answer}
-                            </p>
-                          </div>
+                          <span className="font-sans text-base font-medium text-nfw-blackberry group-hover:text-nfw-aubergine transition-colors pr-4">
+                            {faq.question}
+                          </span>
+                          <ChevronDown
+                            className={`w-5 h-5 text-nfw-blackberry flex-shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
+                          />
+                        </button>
+                        <div
+                          className={`overflow-hidden transition-all duration-300 ${isOpen ? "max-h-96 pb-4" : "max-h-0"}`}
+                        >
+                          <p className="font-sans text-nfw-blackberry/70 leading-relaxed">
+                            {faq.answer}
+                          </p>
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -237,28 +216,25 @@ export default function FAQPage() {
       </div>
 
       {/* STILL HAVE QUESTIONS */}
-      <div className="bg-[#fffef1] py-16">
+      <div className="bg-nfw-dove py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2
-            className="text-3xl font-black text-[#2d1239] mb-4"
-            style={{ fontFamily: "Montserrat, sans-serif" }}
-          >
+          <h2 className="font-serif text-3xl text-nfw-aubergine mb-4">
             Still have questions?
           </h2>
-          <p className="text-[#2d1239]/60 mb-8 text-lg">
+          <p className="font-sans text-nfw-blackberry/60 mb-8 text-lg">
             We&apos;re here to help. Reach out and a real person will get back
             to you.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/contact"
-              className="inline-flex items-center justify-center px-8 py-4 bg-[#2d1239] text-[#fffef1] rounded-xl font-bold text-lg hover:bg-[#2d1239]/90 transition-all shadow-lg"
+              className="inline-flex items-center justify-center px-8 py-4 bg-nfw-aubergine text-nfw-dove font-ui font-black text-sm tracking-[0.06em] uppercase hover:bg-nfw-blackberry transition-colors"
             >
-              Contact Us →
+              Contact Us
             </Link>
             <Link
               href="/auth/sign-up"
-              className="inline-flex items-center justify-center px-8 py-4 bg-white text-[#2d1239] border-2 border-[#2d1239]/20 rounded-xl font-bold text-lg hover:border-[#2d1239] transition-all"
+              className="inline-flex items-center justify-center px-8 py-4 bg-nfw-dove text-nfw-blackberry border border-nfw-blackberry/20 font-ui font-black text-sm tracking-[0.06em] uppercase hover:border-nfw-blackberry transition-colors"
             >
               Join for Free
             </Link>

@@ -49,10 +49,10 @@ export function LoginForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
+      <Card className="border-nfw-blackberry/10">
         <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-2xl font-serif text-nfw-blackberry">Login</CardTitle>
+          <CardDescription className="text-nfw-blackberry/60">
             Enter your email below to login to your account
           </CardDescription>
         </CardHeader>
@@ -60,7 +60,7 @@ export function LoginForm({
           <form onSubmit={handleLogin}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-nfw-blackberry">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -68,14 +68,15 @@ export function LoginForm({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className="border-nfw-blackberry/20 focus:border-nfw-blackberry focus:ring-nfw-lilac"
                 />
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password" className="text-nfw-blackberry">Password</Label>
                   <Link
                     href="/auth/forgot-password"
-                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
+                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline text-nfw-blackberry/60"
                   >
                     Forgot your password?
                   </Link>
@@ -86,18 +87,19 @@ export function LoginForm({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="border-nfw-blackberry/20 focus:border-nfw-blackberry focus:ring-nfw-lilac"
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full bg-nfw-blackberry hover:bg-nfw-blackberry/90" disabled={isLoading}>
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
             </div>
-            <div className="mt-4 text-center text-sm">
+            <div className="mt-4 text-center text-sm text-nfw-blackberry/60">
               Don&apos;t have an account?{" "}
               <Link
                 href="/auth/sign-up"
-                className="underline underline-offset-4"
+                className="underline underline-offset-4 text-nfw-blackberry"
               >
                 Sign up
               </Link>

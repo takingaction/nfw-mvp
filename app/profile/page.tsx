@@ -50,14 +50,14 @@ export default async function ProfilePage() {
     : null;
 
   const membershipDisplay: Record<string, { label: string; color: string }> = {
-    free: { label: "Free Member", color: "bg-[#2d1239]/10 text-[#2d1239]" },
+    free: { label: "Free Member", color: "bg-nfw-blackberry/10 text-nfw-blackberry" },
     contributing: {
       label: "Contributing Member",
-      color: "bg-[#b2d1ee]/30 text-[#2d1239]",
+      color: "bg-[#b2d1ee]/30 text-nfw-blackberry",
     },
     founding: {
       label: "Founding Member",
-      color: "bg-[#BCAFCF]/30 text-[#2d1239]",
+      color: "bg-nfw-lilac/30 text-nfw-blackberry",
     },
   };
 
@@ -66,39 +66,33 @@ export default async function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-white">
-      {/* Lean Header */}
-      <div className="bg-white pt-8 pb-6 border-b border-[#2d1239]/10">
+      <div className="bg-white pt-8 pb-6 border-b border-nfw-blackberry/10">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2
-            className="text-3xl sm:text-4xl font-bold text-[#2d1239] mb-2"
-            style={{ fontFamily: "Montserrat, sans-serif" }}
-          >
+          <h2 className="font-serif text-4xl lg:text-6xl leading-[1.1] text-nfw-blackberry mb-2">
             Your Profile
           </h2>
-          <p className="text-[#2d1239]/60">
+          <p className="text-nfw-blackberry/60">
             Manage your NFW membership and profile information.
           </p>
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Membership Status Card */}
-        <div className="bg-white rounded-xl border border-[#2d1239]/10 p-6 mb-6">
+        <div className="bg-white border border-nfw-blackberry/10 p-6 mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-[#2d1239] mb-2">
+              <h3 className="text-lg font-semibold text-nfw-blackberry mb-2">
                 Membership Status
               </h3>
               <span
-                className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${currentMembership.color}`}
+                className={`inline-block px-3 py-1 text-sm font-medium ${currentMembership.color}`}
               >
                 {currentMembership.label}
               </span>
 
               {subscriptionStatus === "canceling" && subscriptionEndsAt && (
-                <p className="text-sm text-[#fdf493] mt-2 flex items-center gap-1">
-                  <span>⚠️</span> Your membership will end on{" "}
+                <p className="text-sm text-nfw-citrine mt-2 flex items-center gap-1">
+                  Your membership will end on{" "}
                   {subscriptionEndsAt.toLocaleDateString()}
                 </p>
               )}
@@ -107,42 +101,41 @@ export default async function ProfilePage() {
           </div>
 
           {membershipLevel === "free" && (
-            <p className="text-sm text-[#2d1239]/50 mt-4">
+            <p className="text-sm text-nfw-blackberry/50 mt-4">
               Upgrade your membership to unlock exclusive perks and support
               NFW&apos;s mission.
             </p>
           )}
         </div>
 
-        {/* Profile Information Card */}
-        <div className="bg-white rounded-xl border border-[#2d1239]/10 p-6 mb-6">
-          <h3 className="text-lg font-semibold text-[#2d1239] mb-4">
+        <div className="bg-white border border-nfw-blackberry/10 p-6 mb-6">
+          <h3 className="text-lg font-semibold text-nfw-blackberry mb-4">
             Profile Information
           </h3>
 
           {profile ? (
             <div className="space-y-4">
-              <div className="flex justify-between items-start py-2 border-b border-[#2d1239]/5">
-                <span className="text-sm text-[#2d1239]/50">Full Name</span>
-                <p className="font-medium text-[#2d1239]">
+              <div className="flex justify-between items-start py-2 border-b border-nfw-blackberry/5">
+                <span className="text-sm text-nfw-blackberry/50">Full Name</span>
+                <p className="font-medium text-nfw-blackberry">
                   {profile.full_name || "Not set"}
                 </p>
               </div>
-              <div className="flex justify-between items-start py-2 border-b border-[#2d1239]/5">
-                <span className="text-sm text-[#2d1239]/50">Email</span>
-                <p className="font-medium text-[#2d1239]">{user.email}</p>
+              <div className="flex justify-between items-start py-2 border-b border-nfw-blackberry/5">
+                <span className="text-sm text-nfw-blackberry/50">Email</span>
+                <p className="font-medium text-nfw-blackberry">{user.email}</p>
               </div>
-              <div className="flex justify-between items-start py-2 border-b border-[#2d1239]/5">
-                <span className="text-sm text-[#2d1239]/50">Location</span>
-                <p className="font-medium text-[#2d1239]">
+              <div className="flex justify-between items-start py-2 border-b border-nfw-blackberry/5">
+                <span className="text-sm text-nfw-blackberry/50">Location</span>
+                <p className="font-medium text-nfw-blackberry">
                   {profile.city && profile.state
                     ? `${profile.city}, ${profile.state} ${profile.zip || ""}`
                     : "Not set"}
                 </p>
               </div>
               <div className="flex justify-between items-start py-2">
-                <span className="text-sm text-[#2d1239]/50">Member Since</span>
-                <p className="font-medium text-[#2d1239]">
+                <span className="text-sm text-nfw-blackberry/50">Member Since</span>
+                <p className="font-medium text-nfw-blackberry">
                   {profile.joined_at
                     ? new Date(profile.joined_at).toLocaleDateString()
                     : new Date().toLocaleDateString()}
@@ -150,13 +143,12 @@ export default async function ProfilePage() {
               </div>
             </div>
           ) : (
-            <p className="text-[#2d1239]/50">Complete your profile below.</p>
+            <p className="text-nfw-blackberry/50">Complete your profile below.</p>
           )}
         </div>
 
-        {/* Update Profile Card */}
-        <div className="bg-white rounded-xl border border-[#2d1239]/10 p-6">
-          <h3 className="text-lg font-semibold text-[#2d1239] mb-4">
+        <div className="bg-white border border-nfw-blackberry/10 p-6">
+          <h3 className="text-lg font-semibold text-nfw-blackberry mb-4">
             {profile?.full_name
               ? "Update Your Profile"
               : "Complete Your Profile"}

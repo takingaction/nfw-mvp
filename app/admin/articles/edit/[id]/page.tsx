@@ -46,16 +46,16 @@ export default async function EditArticlePage({
     .order("display_order", { ascending: true });
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
+    <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold">Edit Article</h1>
+          <h1 className="text-4xl font-bold text-nfw-blackberry font-serif">Edit Article</h1>
           <a
             href={`/articles/${article.slug}`}
             target="_blank"
-            className="text-blue-600 hover:text-blue-800 font-medium"
+            className="text-nfw-blackberry hover:text-nfw-blackberry/70 font-medium"
           >
-            View Article →
+            View Article
           </a>
         </div>
         <ArticleForm

@@ -26,14 +26,14 @@ function FieldEditor({
   if (field.type === "text" || field.type === "url") {
     return (
       <div>
-        <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">
+        <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
           {field.label}
         </label>
         <input
           type="text"
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239] transition-colors"
+          className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry transition-colors"
         />
       </div>
     );
@@ -42,14 +42,14 @@ function FieldEditor({
   if (field.type === "textarea" || field.type === "richtext") {
     return (
       <div>
-        <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">
+        <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
           {field.label}
         </label>
         <textarea
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
           rows={4}
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239] transition-colors resize-none"
+          className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry transition-colors resize-none"
         />
       </div>
     );
@@ -58,13 +58,13 @@ function FieldEditor({
   if (field.type === "select") {
     return (
       <div>
-        <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">
+        <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
           {field.label}
         </label>
         <select
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239] transition-colors"
+          className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry transition-colors"
         >
           {field.options.map((opt) => (
             <option key={opt} value={opt}>
@@ -81,12 +81,12 @@ function FieldEditor({
 
     return (
       <div>
-        <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">
+        <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
           {field.label}
         </label>
 
         {typeof value === "string" && value && (
-          <div className="relative mb-2 group w-full h-40 rounded-lg overflow-hidden">
+          <div className="relative mb-2 group w-full h-40 overflow-hidden">
             <Image
               src={value as string}
               alt=""
@@ -95,7 +95,7 @@ function FieldEditor({
             />
             <button
               onClick={() => onChange("")}
-              className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
             >
               ×
             </button>
@@ -105,10 +105,10 @@ function FieldEditor({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-200 rounded-lg hover:border-[#2d1239] hover:bg-[#2d1239]/5 transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-nfw-blackberry/20 hover:border-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
         >
-          <Upload className="w-4 h-4 text-gray-400" />
-          <span className="text-sm text-gray-500">
+          <Upload className="w-4 h-4 text-nfw-blackberry/40" />
+          <span className="text-sm text-nfw-blackberry/50">
             {value ? "Replace image" : "Upload image"}
           </span>
         </button>
@@ -138,7 +138,7 @@ function FieldEditor({
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Or paste a URL directly"
-          className="mt-2 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239] transition-colors text-gray-400"
+          className="mt-2 w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry transition-colors text-nfw-blackberry/40"
         />
       </div>
     );
@@ -149,7 +149,7 @@ function FieldEditor({
 
     return (
       <div>
-        <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-2">
+        <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-2">
           {field.label}
         </label>
         <div className="space-y-2">
@@ -164,11 +164,11 @@ function FieldEditor({
                   );
                   onChange(updated);
                 }}
-                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239] transition-colors"
+                className="flex-1 px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry transition-colors"
               />
               <button
                 onClick={() => onChange(arr.filter((_, i) => i !== index))}
-                className="text-xs px-2 py-1.5 rounded text-red-400 hover:text-red-600 hover:bg-red-50 flex-shrink-0"
+                className="text-xs px-2 py-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 flex-shrink-0"
               >
                 ×
               </button>
@@ -176,7 +176,7 @@ function FieldEditor({
           ))}
           <button
             onClick={() => onChange([...arr, ""])}
-            className="w-full py-2 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-400 hover:border-[#2d1239] hover:text-[#2d1239] transition-colors"
+            className="w-full py-2 border-2 border-dashed border-nfw-blackberry/20 text-sm text-nfw-blackberry/40 hover:border-nfw-blackberry hover:text-nfw-blackberry transition-colors"
           >
             + Add {field.itemLabel}
           </button>
@@ -220,37 +220,37 @@ function FieldEditor({
 
     return (
       <div>
-        <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-2">
+        <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-2">
           {field.label}
         </label>
         <div className="space-y-3">
           {arr.map((item, index) => (
             <div
               key={index}
-              className="border border-gray-200 rounded-lg p-3 space-y-2"
+              className="border border-nfw-blackberry/10 p-3 space-y-2"
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-semibold text-gray-400">
+                <span className="text-xs font-semibold text-nfw-blackberry/40">
                   {field.itemLabel} {index + 1}
                 </span>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => moveItem(index, "up")}
                     disabled={index === 0}
-                    className="text-xs px-1.5 py-0.5 rounded text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                    className="text-xs px-1.5 py-0.5 text-nfw-blackberry/40 hover:text-nfw-blackberry disabled:opacity-30"
                   >
                     ↑
                   </button>
                   <button
                     onClick={() => moveItem(index, "down")}
                     disabled={index === arr.length - 1}
-                    className="text-xs px-1.5 py-0.5 rounded text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                    className="text-xs px-1.5 py-0.5 text-nfw-blackberry/40 hover:text-nfw-blackberry disabled:opacity-30"
                   >
                     ↓
                   </button>
                   <button
                     onClick={() => removeItem(index)}
-                    className="text-xs px-1.5 py-0.5 rounded text-red-400 hover:text-red-600 hover:bg-red-50"
+                    className="text-xs px-1.5 py-0.5 text-red-400 hover:text-red-600 hover:bg-red-50"
                   >
                     Remove
                   </button>
@@ -268,7 +268,7 @@ function FieldEditor({
           ))}
           <button
             onClick={addItem}
-            className="w-full py-2 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-400 hover:border-[#2d1239] hover:text-[#2d1239] transition-colors"
+            className="w-full py-2 border-2 border-dashed border-nfw-blackberry/20 text-sm text-nfw-blackberry/40 hover:border-nfw-blackberry hover:text-nfw-blackberry transition-colors"
           >
             + Add {field.itemLabel}
           </button>
@@ -312,11 +312,11 @@ export default function SectionEditorPanel({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
-        <h3 className="font-black text-[#2d1239]">{def.label}</h3>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-nfw-blackberry/5 flex-shrink-0">
+        <h3 className="font-black text-nfw-blackberry font-ui">{def.label}</h3>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+          className="p-1.5 text-nfw-blackberry/40 hover:text-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
@@ -333,11 +333,11 @@ export default function SectionEditorPanel({
         ))}
       </div>
 
-      <div className="px-6 py-4 border-t border-gray-200 flex-shrink-0">
+      <div className="px-6 py-4 border-t border-nfw-blackberry/5 flex-shrink-0">
         <button
           onClick={() => onSave(content)}
           disabled={saving}
-          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#2d1239] text-white rounded-xl font-bold hover:bg-[#2d1239]/90 disabled:opacity-50 transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-nfw-blackberry text-white font-bold hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors"
         >
           <Save className="w-4 h-4" />
           {saving ? "Saving..." : "Save Section"}

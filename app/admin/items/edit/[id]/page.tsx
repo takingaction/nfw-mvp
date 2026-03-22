@@ -46,19 +46,19 @@ export default async function EditItemPage({
     .order("name", { ascending: true });
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
+    <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold">Edit Item</h1>
+          <h1 className="text-4xl font-bold text-nfw-blackberry font-serif">Edit Item</h1>
           <a
             href={`/store?item=${item.id}`}
             target="_blank"
-            className="text-blue-600 hover:text-blue-800 font-medium"
+            className="text-nfw-blackberry hover:text-nfw-blackberry/70 font-medium"
           >
-            View in Store →
+            View in Store
           </a>
         </div>
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <div className="bg-white border border-nfw-blackberry/10 p-8">
           <ItemForm categories={categories || []} item={item} />
         </div>
       </div>

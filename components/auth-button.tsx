@@ -74,7 +74,7 @@ export function AuthButton() {
     return (
       <Link
         href="/auth/login"
-        className="inline-flex items-center justify-center px-4 h-10 bg-[#2d1239] text-white rounded-lg font-bold text-sm hover:bg-[#2d1239]/90 transition-all shadow-sm"
+        className="inline-flex items-center justify-center px-4 h-10 bg-nfw-blackberry text-white font-bold text-sm hover:bg-nfw-blackberry/90 transition-all shadow-sm"
       >
         Login
       </Link>
@@ -89,7 +89,7 @@ export function AuthButton() {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-10 h-10 rounded-full bg-[#2d1239] text-white font-bold text-lg flex items-center justify-center hover:opacity-80 transition-opacity"
+        className="w-10 h-10 bg-nfw-blackberry text-white font-bold text-lg flex items-center justify-center hover:opacity-80 transition-opacity"
       >
         {firstLetter}
       </button>
@@ -100,94 +100,94 @@ export function AuthButton() {
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-[#2d1239]/10 py-2 z-20">
-            <div className="px-4 py-2 border-b border-[#2d1239]/10">
-              <p className="text-sm font-semibold text-[#2d1239]">
+          <div className="absolute right-0 mt-2 w-56 bg-white shadow-xl border border-nfw-blackberry/10 py-2 z-20">
+            <div className="px-4 py-2 border-b border-nfw-blackberry/10">
+              <p className="text-sm font-semibold text-nfw-blackberry">
                 {profile?.full_name || "Member"}
               </p>
-              <p className="text-xs text-[#2d1239]/50">{user.email}</p>
+              <p className="text-xs text-nfw-blackberry/50">{user.email}</p>
             </div>
             <Link
               href="/dashboard"
-              className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+              className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
               onClick={() => setIsOpen(false)}
             >
               Dashboard
             </Link>
             <Link
               href="/profile"
-              className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+              className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
               onClick={() => setIsOpen(false)}
             >
               My Profile
             </Link>
             <Link
               href="/grants/my-applications"
-              className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+              className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
               onClick={() => setIsOpen(false)}
             >
               My Grants
             </Link>
             {isAdmin && (
               <>
-                <div className="border-t border-[#2d1239]/10 my-2" />
+                <div className="border-t border-nfw-blackberry/10 my-2" />
                 <div className="px-4 py-1">
-                  <p className="text-xs font-semibold text-[#2d1239]/40 uppercase tracking-wider">
+                  <p className="text-xs font-semibold text-nfw-blackberry/40 uppercase tracking-wider">
                     Admin
                   </p>
                 </div>
                 <Link
                   href="/admin/pages"
-                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+                  className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Manage Pages
                 </Link>
                 <Link
                   href="/admin/header"
-                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+                  className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Edit Header
                 </Link>
                 <Link
                   href="/admin/footer"
-                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+                  className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Edit Footer
                 </Link>
                 <Link
                   href="/admin/grants"
-                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+                  className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Manage Grants
                 </Link>
                 <Link
                   href="/admin/articles"
-                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+                  className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Manage Articles
                 </Link>
                 <Link
                   href="/admin/members"
-                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+                  className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Manage Members
                 </Link>
                 <Link
                   href="/admin/analytics"
-                  className="block px-4 py-2 text-sm text-[#2d1239] hover:bg-[#f8f7fa]"
+                  className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Analytics
                 </Link>
               </>
             )}
-            <div className="border-t border-[#2d1239]/10 my-2" />
+            <div className="border-t border-nfw-blackberry/10 my-2" />
             <div className="px-4 py-2">
               <LogoutButton />
             </div>

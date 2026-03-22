@@ -55,12 +55,12 @@ type Redemption = {
 };
 
 const COLORS = [
-  "#2d1239",
+  "#3E145F",
   "#d4f1ad",
   "#b2d1ee",
   "#fdf493",
-  "#bcafcf",
-  "#4a1f5c",
+  "#B693C0",
+  "#2E1F38",
 ];
 
 const GRANT_CATEGORY_LABELS: Record<string, string> = {
@@ -316,30 +316,30 @@ export default function AdminAnalyticsClient({
             label: "New Members",
             value: filteredProfiles.length,
             icon: Users,
-            color: "bg-[#2d1239]",
+            color: "bg-nfw-blackberry",
             text: "text-white",
           },
           {
             label: "Total Members",
             value: profiles.length,
             icon: Users,
-            color: "bg-[#bcafcf]/30",
-            text: "text-[#2d1239]",
+            color: "bg-nfw-lilac/30",
+            text: "text-nfw-blackberry",
           },
           {
             label: "Active Paid",
             value: profiles.filter((p) => p.subscription_status === "active")
               .length,
             icon: TrendingUp,
-            color: "bg-[#d4f1ad]",
-            text: "text-[#2d1239]",
+            color: "bg-nfw-citrine",
+            text: "text-nfw-blackberry",
           },
           {
             label: "Est. MRR",
             value: `$${estimatedMRR}`,
             icon: DollarSign,
-            color: "bg-[#fdf493]",
-            text: "text-[#2d1239]",
+            color: "bg-nfw-citrine/70",
+            text: "text-nfw-blackberry",
           },
         ]
       : tab === "grants"
@@ -348,29 +348,29 @@ export default function AdminAnalyticsClient({
               label: "Applications",
               value: filteredGrants.length,
               icon: FileText,
-              color: "bg-[#2d1239]",
+              color: "bg-nfw-blackberry",
               text: "text-white",
             },
             {
               label: "Approval Rate",
               value: `${approvalRate}%`,
               icon: TrendingUp,
-              color: "bg-[#d4f1ad]",
-              text: "text-[#2d1239]",
+              color: "bg-nfw-citrine",
+              text: "text-nfw-blackberry",
             },
             {
               label: "Total Funded",
               value: `$${totalFunded.toLocaleString()}`,
               icon: DollarSign,
-              color: "bg-[#fdf493]",
-              text: "text-[#2d1239]",
+              color: "bg-nfw-citrine/70",
+              text: "text-nfw-blackberry",
             },
             {
               label: "Funded Grants",
               value: grants.filter((g) => g.status === "funded").length,
               icon: Gift,
-              color: "bg-[#b2d1ee]",
-              text: "text-[#2d1239]",
+              color: "bg-blue-100",
+              text: "text-nfw-blackberry",
             },
           ]
         : [
@@ -378,30 +378,30 @@ export default function AdminAnalyticsClient({
               label: "Redemptions",
               value: filteredRedemptions.length,
               icon: Gift,
-              color: "bg-[#2d1239]",
+              color: "bg-nfw-blackberry",
               text: "text-white",
             },
             {
               label: "Total All Time",
               value: redemptions.length,
               icon: Gift,
-              color: "bg-[#bcafcf]/30",
-              text: "text-[#2d1239]",
+              color: "bg-nfw-lilac/30",
+              text: "text-nfw-blackberry",
             },
             {
               label: "Unique Offers",
               value: new Set(filteredRedemptions.map((r) => r.offer_key)).size,
               icon: TrendingUp,
-              color: "bg-[#d4f1ad]",
-              text: "text-[#2d1239]",
+              color: "bg-nfw-citrine",
+              text: "text-nfw-blackberry",
             },
             {
               label: "Redeem Types",
               value: new Set(filteredRedemptions.map((r) => r.redeem_type))
                 .size,
               icon: FileText,
-              color: "bg-[#fdf493]",
-              text: "text-[#2d1239]",
+              color: "bg-nfw-citrine/70",
+              text: "text-nfw-blackberry",
             },
           ];
 
@@ -415,10 +415,10 @@ export default function AdminAnalyticsClient({
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-colors ${
+              className={`px-4 py-2 text-sm font-semibold capitalize transition-colors ${
                 tab === t
-                  ? "bg-[#2d1239] text-white"
-                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                  ? "bg-nfw-blackberry text-white"
+                  : "bg-white text-nfw-blackberry border border-nfw-blackberry/10 hover:bg-nfw-blackberry/5"
               }`}
             >
               {t}
@@ -431,7 +431,7 @@ export default function AdminAnalyticsClient({
           <select
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#2d1239] bg-white"
+            className="text-sm border border-nfw-blackberry/20 px-3 py-2 focus:outline-none focus:border-nfw-blackberry bg-white"
           >
             <option value={7}>Last 7 days</option>
             <option value={30}>Last 30 days</option>
@@ -443,7 +443,7 @@ export default function AdminAnalyticsClient({
           {/* Export CSV */}
           <button
             onClick={exportCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-nfw-blackberry/10 text-sm font-semibold text-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
           >
             <Download className="w-4 h-4" />
             CSV
@@ -452,7 +452,7 @@ export default function AdminAnalyticsClient({
           {/* Export PDF */}
           <button
             onClick={exportPDF}
-            className="flex items-center gap-2 px-4 py-2 bg-[#2d1239] text-white rounded-lg text-sm font-semibold hover:bg-[#2d1239]/90 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-nfw-blackberry text-white text-sm font-semibold hover:bg-nfw-blackberry/90 transition-colors"
           >
             <FileText className="w-4 h-4" />
             PDF
@@ -465,7 +465,7 @@ export default function AdminAnalyticsClient({
         {/* Stat Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {statCards.map((card) => (
-            <div key={card.label} className={`${card.color} rounded-2xl p-5`}>
+            <div key={card.label} className={`${card.color} p-5`}>
               <div className={`text-2xl font-black mb-1 ${card.text}`}>
                 {card.value}
               </div>
@@ -479,12 +479,12 @@ export default function AdminAnalyticsClient({
         {/* MEMBERS TAB */}
         {tab === "members" && (
           <div className="space-y-6">
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h3 className="font-black text-[#2d1239] mb-4">
+            <div className="bg-white border border-nfw-blackberry/10 p-6">
+              <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
                 New Members Over Time
               </h3>
               {membersByDay.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-8">
+                <p className="text-nfw-blackberry/40 text-sm text-center py-8">
                   No new members in this period.
                 </p>
               ) : (
@@ -497,7 +497,7 @@ export default function AdminAnalyticsClient({
                     <Line
                       type="monotone"
                       dataKey="count"
-                      stroke="#2d1239"
+                      stroke="#3E145F"
                       strokeWidth={2}
                       dot={false}
                       name="New Members"
@@ -508,8 +508,8 @@ export default function AdminAnalyticsClient({
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h3 className="font-black text-[#2d1239] mb-4">
+              <div className="bg-white border border-nfw-blackberry/10 p-6">
+                <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
                   Membership Status Breakdown
                 </h3>
                 <ResponsiveContainer width="100%" height={220}>
@@ -534,8 +534,8 @@ export default function AdminAnalyticsClient({
                 </ResponsiveContainer>
               </div>
 
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h3 className="font-black text-[#2d1239] mb-4">
+              <div className="bg-white border border-nfw-blackberry/10 p-6">
+                <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
                   Top 10 States
                 </h3>
                 <ResponsiveContainer width="100%" height={220}>
@@ -551,8 +551,7 @@ export default function AdminAnalyticsClient({
                     <Tooltip />
                     <Bar
                       dataKey="count"
-                      fill="#2d1239"
-                      radius={[0, 4, 4, 0]}
+                      fill="#3E145F"
                       name="Members"
                     />
                   </BarChart>
@@ -565,12 +564,12 @@ export default function AdminAnalyticsClient({
         {/* GRANTS TAB */}
         {tab === "grants" && (
           <div className="space-y-6">
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h3 className="font-black text-[#2d1239] mb-4">
+            <div className="bg-white border border-nfw-blackberry/10 p-6">
+              <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
                 Grant Applications Over Time
               </h3>
               {grantsByDay.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-8">
+                <p className="text-nfw-blackberry/40 text-sm text-center py-8">
                   No applications in this period.
                 </p>
               ) : (
@@ -583,7 +582,7 @@ export default function AdminAnalyticsClient({
                     <Line
                       type="monotone"
                       dataKey="count"
-                      stroke="#2d1239"
+                      stroke="#3E145F"
                       strokeWidth={2}
                       dot={false}
                       name="Applications"
@@ -594,8 +593,8 @@ export default function AdminAnalyticsClient({
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h3 className="font-black text-[#2d1239] mb-4">
+              <div className="bg-white border border-nfw-blackberry/10 p-6">
+                <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
                   Applications by Status
                 </h3>
                 <ResponsiveContainer width="100%" height={220}>
@@ -620,8 +619,8 @@ export default function AdminAnalyticsClient({
                 </ResponsiveContainer>
               </div>
 
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h3 className="font-black text-[#2d1239] mb-4">
+              <div className="bg-white border border-nfw-blackberry/10 p-6">
+                <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
                   Applications by Category
                 </h3>
                 <ResponsiveContainer width="100%" height={220}>
@@ -638,7 +637,6 @@ export default function AdminAnalyticsClient({
                     <Bar
                       dataKey="count"
                       fill="#d4f1ad"
-                      radius={[0, 4, 4, 0]}
                       name="Applications"
                     />
                   </BarChart>
@@ -651,12 +649,12 @@ export default function AdminAnalyticsClient({
         {/* PERKS TAB */}
         {tab === "perks" && (
           <div className="space-y-6">
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h3 className="font-black text-[#2d1239] mb-4">
+            <div className="bg-white border border-nfw-blackberry/10 p-6">
+              <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
                 Redemptions Over Time
               </h3>
               {redemptionsByDay.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-8">
+                <p className="text-nfw-blackberry/40 text-sm text-center py-8">
                   No redemptions in this period.
                 </p>
               ) : (
@@ -669,7 +667,7 @@ export default function AdminAnalyticsClient({
                     <Line
                       type="monotone"
                       dataKey="count"
-                      stroke="#2d1239"
+                      stroke="#3E145F"
                       strokeWidth={2}
                       dot={false}
                       name="Redemptions"
@@ -680,8 +678,8 @@ export default function AdminAnalyticsClient({
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h3 className="font-black text-[#2d1239] mb-4">
+              <div className="bg-white border border-nfw-blackberry/10 p-6">
+                <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
                   Top Offers Redeemed
                 </h3>
                 <ResponsiveContainer width="100%" height={220}>
@@ -698,15 +696,14 @@ export default function AdminAnalyticsClient({
                     <Bar
                       dataKey="count"
                       fill="#b2d1ee"
-                      radius={[0, 4, 4, 0]}
                       name="Redemptions"
                     />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
 
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h3 className="font-black text-[#2d1239] mb-4">
+              <div className="bg-white border border-nfw-blackberry/10 p-6">
+                <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
                   Redemption Methods
                 </h3>
                 <ResponsiveContainer width="100%" height={220}>

@@ -144,12 +144,12 @@ const PLANS = [
 ];
 
 const BENEFITS = [
-  "💰 Microgrants from $100–$5,000",
-  "🛍️ 1,000+ member perks & discounts",
-  "🏪 Zero Dollar Store access",
-  "🤝 A community that gets it",
-  "⚡ Decisions within 48 hours",
-  "🔒 Your data is always private",
+  "Microgrants from $100–$5,000",
+  "1,000+ member perks & discounts",
+  "Zero Dollar Store access",
+  "A community that gets it",
+  "Decisions within 48 hours",
+  "Your data is always private",
 ];
 
 const STEPS = ["Account", "Personal Info", "Identity", "Membership"];
@@ -185,8 +185,8 @@ export default function SignUpFlow() {
   };
 
   const inputClass =
-    "w-full px-4 py-3 border border-[#2d1239]/20 rounded-xl text-[#2d1239] placeholder-[#2d1239]/30 bg-white focus:outline-none focus:ring-2 focus:ring-[#bcafcf] focus:border-transparent transition-all text-sm";
-  const labelClass = "block text-sm font-semibold text-[#2d1239] mb-1.5";
+    "w-full px-4 py-3 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent transition-all text-sm";
+  const labelClass = "block text-sm font-semibold text-nfw-blackberry mb-1.5";
 
   const saveProfile = async (data: Record<string, any>) => {
     const res = await fetch("/api/profile/update", {
@@ -307,7 +307,7 @@ export default function SignUpFlow() {
         setError(null);
         setStep(toStep);
       }}
-      className="flex items-center gap-1.5 text-sm text-[#2d1239]/50 hover:text-[#2d1239] transition-colors mb-6"
+      className="flex items-center gap-1.5 text-sm text-nfw-blackberry/50 hover:text-nfw-blackberry transition-colors mb-6"
     >
       <ArrowLeft className="w-4 h-4" />
       Back
@@ -315,11 +315,9 @@ export default function SignUpFlow() {
   );
 
   return (
-    <div className="min-h-screen bg-white flex">
-      {/* Left — Form */}
+    <div className="min-h-screen bg-nfw-dove flex">
       <div className="flex-1 flex flex-col justify-center px-6 py-12 lg:px-12 xl:px-16">
         <div className="max-w-md w-full mx-auto">
-          {/* Logo */}
           <Link href="/" className="inline-block mb-8">
             <img
               src="/images/header-logo.png"
@@ -331,65 +329,59 @@ export default function SignUpFlow() {
             />
           </Link>
 
-          {/* Progress bar — steps 1-3 only */}
           {step > 0 && (
             <div className="mb-8">
               <div className="flex items-center justify-between mb-3">
                 {STEPS.slice(1).map((s, i) => (
                   <div key={s} className="flex items-center gap-2">
                     <div
-                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black transition-all ${
+                      className={`w-7 h-7 flex items-center justify-center text-xs font-black transition-all ${
                         step > i + 1
-                          ? "bg-[#d4f1ad] text-[#2d1239]"
+                          ? "bg-[#d4f1ad] text-nfw-blackberry"
                           : step === i + 1
-                            ? "bg-[#2d1239] text-white"
-                            : "bg-[#2d1239]/10 text-[#2d1239]/40"
+                            ? "bg-nfw-blackberry text-white"
+                            : "bg-nfw-blackberry/10 text-nfw-blackberry/40"
                       }`}
                     >
                       {step > i + 1 ? <Check className="w-3.5 h-3.5" /> : i + 1}
                     </div>
                     <span
-                      className={`text-xs font-semibold hidden sm:block ${step === i + 1 ? "text-[#2d1239]" : "text-[#2d1239]/40"}`}
+                      className={`text-xs font-semibold hidden sm:block ${step === i + 1 ? "text-nfw-blackberry" : "text-nfw-blackberry/40"}`}
                     >
                       {s}
                     </span>
                     {i < STEPS.length - 2 && (
-                      <ChevronRight className="w-3 h-3 text-[#2d1239]/20 ml-1" />
+                      <ChevronRight className="w-3 h-3 text-nfw-blackberry/20 ml-1" />
                     )}
                   </div>
                 ))}
               </div>
-              <div className="h-1.5 bg-[#2d1239]/10 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-nfw-blackberry/10 overflow-hidden">
                 <div
-                  className="h-full bg-[#2d1239] rounded-full transition-all duration-500"
+                  className="h-full bg-nfw-blackberry transition-all duration-500"
                   style={{ width: `${(step / 3) * 100}%` }}
                 />
               </div>
             </div>
           )}
 
-          {/* Error */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200">
               <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
 
-          {/* ── STEP 0: Account ── */}
           {step === 0 && (
             <form onSubmit={handleCreateAccount} className="space-y-5">
               <div>
-                <h1
-                  className="text-3xl font-black text-[#2d1239] mb-1"
-                  style={{ fontFamily: "Montserrat, sans-serif" }}
-                >
+                <h1 className="text-3xl font-black text-nfw-blackberry mb-1 font-serif">
                   Create your account
                 </h1>
-                <p className="text-[#2d1239]/60 text-sm">
+                <p className="text-nfw-blackberry/60 text-sm">
                   Already a member?{" "}
                   <Link
                     href="/auth/login"
-                    className="text-[#2d1239] font-semibold underline"
+                    className="text-nfw-blackberry font-semibold underline"
                   >
                     Sign in
                   </Link>
@@ -431,12 +423,12 @@ export default function SignUpFlow() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 bg-[#2d1239] text-white rounded-xl font-bold text-base hover:bg-[#2d1239]/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-nfw-blackberry text-white font-bold text-base hover:bg-nfw-blackberry/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {loading ? "Creating account..." : "Continue →"}
+                {loading ? "Creating account..." : "Continue"}
               </button>
-              <p className="text-xs text-[#2d1239]/40 text-center">
+              <p className="text-xs text-nfw-blackberry/40 text-center">
                 By signing up you agree to our{" "}
                 <Link href="/terms" className="underline">
                   Terms
@@ -449,23 +441,19 @@ export default function SignUpFlow() {
             </form>
           )}
 
-          {/* ── STEP 1: Personal Info ── */}
           {step === 1 && (
             <form onSubmit={handlePersonalInfo} className="space-y-5">
               <div>
-                <h2
-                  className="text-2xl font-black text-[#2d1239] mb-1"
-                  style={{ fontFamily: "Montserrat, sans-serif" }}
-                >
+                <h2 className="text-2xl font-black text-nfw-blackberry mb-1 font-serif">
                   Personal information
                 </h2>
-                <p className="text-[#2d1239]/60 text-sm">
+                <p className="text-nfw-blackberry/60 text-sm">
                   Help us get to know you a little better.
                 </p>
               </div>
               <div>
                 <label className={labelClass}>
-                  Full name <span className="text-[#bcafcf]">*</span>
+                  Full name <span className="text-nfw-lilac">*</span>
                 </label>
                 <input
                   type="text"
@@ -478,7 +466,7 @@ export default function SignUpFlow() {
               </div>
               <div>
                 <label className={labelClass}>
-                  Age range <span className="text-[#bcafcf]">*</span>
+                  Age range <span className="text-nfw-lilac">*</span>
                 </label>
                 <select
                   required
@@ -496,7 +484,7 @@ export default function SignUpFlow() {
               </div>
               <div>
                 <label className={labelClass}>
-                  Phone number <span className="text-[#bcafcf]">*</span>
+                  Phone number <span className="text-nfw-lilac">*</span>
                 </label>
                 <input
                   type="tel"
@@ -509,7 +497,7 @@ export default function SignUpFlow() {
               </div>
               <div>
                 <label className={labelClass}>
-                  Address line 1 <span className="text-[#bcafcf]">*</span>
+                  Address line 1 <span className="text-nfw-lilac">*</span>
                 </label>
                 <input
                   type="text"
@@ -523,7 +511,7 @@ export default function SignUpFlow() {
               <div>
                 <label className={labelClass}>
                   Address line 2{" "}
-                  <span className="text-[#2d1239]/40 font-normal">
+                  <span className="text-nfw-blackberry/40 font-normal">
                     (Optional)
                   </span>
                 </label>
@@ -538,7 +526,7 @@ export default function SignUpFlow() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelClass}>
-                    City <span className="text-[#bcafcf]">*</span>
+                    City <span className="text-nfw-lilac">*</span>
                   </label>
                   <input
                     type="text"
@@ -550,7 +538,7 @@ export default function SignUpFlow() {
                 </div>
                 <div>
                   <label className={labelClass}>
-                    State <span className="text-[#bcafcf]">*</span>
+                    State <span className="text-nfw-lilac">*</span>
                   </label>
                   <select
                     required
@@ -569,7 +557,7 @@ export default function SignUpFlow() {
               </div>
               <div>
                 <label className={labelClass}>
-                  ZIP code <span className="text-[#bcafcf]">*</span>
+                  ZIP code <span className="text-nfw-lilac">*</span>
                 </label>
                 <input
                   type="text"
@@ -585,39 +573,35 @@ export default function SignUpFlow() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 bg-[#2d1239] text-white rounded-xl font-bold text-base hover:bg-[#2d1239]/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-nfw-blackberry text-white font-bold text-base hover:bg-nfw-blackberry/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {loading ? "Saving..." : "Continue →"}
+                {loading ? "Saving..." : "Continue"}
               </button>
             </form>
           )}
 
-          {/* ── STEP 2: Identity & Income ── */}
           {step === 2 && (
             <form onSubmit={handleIdentity} className="space-y-6">
               <BackButton toStep={1} />
               <div>
-                <h2
-                  className="text-2xl font-black text-[#2d1239] mb-1"
-                  style={{ fontFamily: "Montserrat, sans-serif" }}
-                >
+                <h2 className="text-2xl font-black text-nfw-blackberry mb-1 font-serif">
                   Context & identity
                 </h2>
-                <p className="text-[#2d1239]/60 text-sm">
+                <p className="text-nfw-blackberry/60 text-sm">
                   This helps us serve you better. All information is private.
                 </p>
               </div>
               <div>
                 <label className={labelClass}>
                   Which best describes your current annual income?{" "}
-                  <span className="text-[#bcafcf]">*</span>
+                  <span className="text-nfw-lilac">*</span>
                 </label>
                 <div className="space-y-2 mt-2">
                   {INCOME_RANGES.map((range) => (
                     <label
                       key={range}
-                      className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${income === range ? "border-[#2d1239] bg-[#2d1239]/5" : "border-[#2d1239]/10 hover:border-[#2d1239]/30"}`}
+                      className={`flex items-center gap-3 p-3 border cursor-pointer transition-all ${income === range ? "border-nfw-blackberry bg-nfw-blackberry/5" : "border-nfw-blackberry/10 hover:border-nfw-blackberry/30"}`}
                     >
                       <input
                         type="radio"
@@ -625,10 +609,10 @@ export default function SignUpFlow() {
                         value={range}
                         checked={income === range}
                         onChange={() => setIncome(range)}
-                        className="accent-[#2d1239]"
+                        className="accent-nfw-blackberry"
                         required
                       />
-                      <span className="text-sm text-[#2d1239] font-medium">
+                      <span className="text-sm text-nfw-blackberry font-medium">
                         {range}
                       </span>
                     </label>
@@ -638,7 +622,7 @@ export default function SignUpFlow() {
               <div>
                 <label className={labelClass}>
                   Which identities do you identify with?{" "}
-                  <span className="text-[#2d1239]/40 font-normal">
+                  <span className="text-nfw-blackberry/40 font-normal">
                     Select all that apply.
                   </span>
                 </label>
@@ -646,15 +630,15 @@ export default function SignUpFlow() {
                   {IDENTITY_OPTIONS.map((id) => (
                     <label
                       key={id}
-                      className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all text-sm ${identities.includes(id) ? "border-[#bcafcf] bg-[#bcafcf]/10" : "border-[#2d1239]/10 hover:border-[#2d1239]/20"}`}
+                      className={`flex items-center gap-2 p-2.5 border cursor-pointer transition-all text-sm ${identities.includes(id) ? "border-nfw-lilac bg-nfw-lilac/10" : "border-nfw-blackberry/10 hover:border-nfw-blackberry/20"}`}
                     >
                       <input
                         type="checkbox"
                         checked={identities.includes(id)}
                         onChange={() => toggleIdentity(id)}
-                        className="accent-[#2d1239] w-3.5 h-3.5"
+                        className="accent-nfw-blackberry w-3.5 h-3.5"
                       />
-                      <span className="text-[#2d1239]">{id}</span>
+                      <span className="text-nfw-blackberry">{id}</span>
                     </label>
                   ))}
                 </div>
@@ -662,26 +646,22 @@ export default function SignUpFlow() {
               <button
                 type="submit"
                 disabled={loading || !income}
-                className="w-full py-3.5 bg-[#2d1239] text-white rounded-xl font-bold text-base hover:bg-[#2d1239]/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-nfw-blackberry text-white font-bold text-base hover:bg-nfw-blackberry/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {loading ? "Saving..." : "Continue →"}
+                {loading ? "Saving..." : "Continue"}
               </button>
             </form>
           )}
 
-          {/* ── STEP 3: Membership ── */}
           {step === 3 && (
             <div className="space-y-5">
               <BackButton toStep={2} />
               <div>
-                <h2
-                  className="text-2xl font-black text-[#2d1239] mb-1"
-                  style={{ fontFamily: "Montserrat, sans-serif" }}
-                >
+                <h2 className="text-2xl font-black text-nfw-blackberry mb-1 font-serif">
                   Choose your membership
                 </h2>
-                <p className="text-[#2d1239]/60 text-sm">
+                <p className="text-nfw-blackberry/60 text-sm">
                   Every tier supports the mission. Upgrade anytime.
                 </p>
               </div>
@@ -689,38 +669,36 @@ export default function SignUpFlow() {
                 {PLANS.map((plan) => (
                   <div
                     key={plan.id}
-                    className={`rounded-2xl border-2 p-5 transition-all ${plan.highlighted ? "border-[#2d1239] bg-[#2d1239]" : "border-[#2d1239]/10 bg-white hover:border-[#2d1239]/30"}`}
+                    className={`border-2 p-5 transition-all ${plan.highlighted ? "border-nfw-blackberry bg-nfw-blackberry" : "border-nfw-blackberry/10 bg-white hover:border-nfw-blackberry/30"}`}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         {plan.badge && (
                           <span
-                            className={`inline-block text-xs px-2.5 py-1 rounded-full mb-2 font-semibold ${plan.highlighted ? "bg-[#fdf493] text-[#2d1239]" : "bg-[#bcafcf]/30 text-[#2d1239]"}`}
+                            className={`inline-block text-xs px-2.5 py-1 mb-2 font-semibold ${plan.highlighted ? "bg-nfw-citrine text-nfw-blackberry" : "bg-nfw-lilac/30 text-nfw-blackberry"}`}
                           >
                             {plan.badge}
                           </span>
                         )}
                         <h3
-                          className={`font-black text-base ${plan.highlighted ? "text-white" : "text-[#2d1239]"}`}
-                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                          className={`font-black text-base font-serif ${plan.highlighted ? "text-white" : "text-nfw-blackberry"}`}
                         >
                           {plan.name}
                         </h3>
                         <p
-                          className={`text-xs mt-0.5 ${plan.highlighted ? "text-[#bcafcf]" : "text-[#2d1239]/50"}`}
+                          className={`text-xs mt-0.5 ${plan.highlighted ? "text-nfw-lilac" : "text-nfw-blackberry/50"}`}
                         >
                           {plan.description}
                         </p>
                       </div>
                       <div className="text-right">
                         <span
-                          className={`text-2xl font-black ${plan.highlighted ? "text-[#fdf493]" : "text-[#2d1239]"}`}
-                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                          className={`text-2xl font-black font-serif ${plan.highlighted ? "text-nfw-citrine" : "text-nfw-blackberry"}`}
                         >
                           {plan.price}
                         </span>
                         <span
-                          className={`text-xs ml-1 ${plan.highlighted ? "text-[#bcafcf]" : "text-[#2d1239]/40"}`}
+                          className={`text-xs ml-1 ${plan.highlighted ? "text-nfw-lilac" : "text-nfw-blackberry/40"}`}
                         >
                           {plan.period}
                         </span>
@@ -729,11 +707,11 @@ export default function SignUpFlow() {
                     <ul className="space-y-1.5 mb-4">
                       {plan.features.map((f) => (
                         <li key={f} className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded-full bg-[#d4f1ad] flex items-center justify-center flex-shrink-0">
-                            <Check className="w-2.5 h-2.5 text-[#2d1239]" />
+                          <div className="w-4 h-4 bg-[#d4f1ad] flex items-center justify-center flex-shrink-0">
+                            <Check className="w-2.5 h-2.5 text-nfw-blackberry" />
                           </div>
                           <span
-                            className={`text-xs ${plan.highlighted ? "text-[#fffef1]" : "text-[#2d1239]/70"}`}
+                            className={`text-xs ${plan.highlighted ? "text-nfw-dove" : "text-nfw-blackberry/70"}`}
                           >
                             {f}
                           </span>
@@ -743,12 +721,12 @@ export default function SignUpFlow() {
                     <button
                       onClick={() => handleSelectPlan(plan)}
                       disabled={loading}
-                      className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
+                      className={`w-full py-2.5 font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
                         plan.highlighted
-                          ? "bg-[#fdf493] text-[#2d1239] hover:bg-[#fdf493]/90"
+                          ? "bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/90"
                           : plan.id === "free"
-                            ? "bg-[#2d1239]/5 text-[#2d1239] hover:bg-[#2d1239]/10 border border-[#2d1239]/10"
-                            : "bg-[#2d1239] text-white hover:bg-[#2d1239]/90"
+                            ? "bg-nfw-blackberry/5 text-nfw-blackberry hover:bg-nfw-blackberry/10 border border-nfw-blackberry/10"
+                            : "bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90"
                       }`}
                     >
                       {loading && (
@@ -756,7 +734,7 @@ export default function SignUpFlow() {
                       )}
                       {plan.id === "free"
                         ? "Continue for free"
-                        : `Join as ${plan.name} →`}
+                        : `Join as ${plan.name}`}
                     </button>
                   </div>
                 ))}
@@ -766,52 +744,39 @@ export default function SignUpFlow() {
         </div>
       </div>
 
-      {/* Right — Benefits panel (desktop only) */}
-      <div className="hidden lg:flex w-[420px] xl:w-[480px] bg-[#2d1239] flex-col justify-center px-12 py-16 relative overflow-hidden flex-shrink-0">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 right-10 w-48 h-48 bg-[#fdf493] rounded-full opacity-10 blur-3xl"></div>
-          <div className="absolute bottom-20 left-10 w-48 h-48 bg-[#d4f1ad] rounded-full opacity-10 blur-3xl"></div>
-        </div>
+      <div className="hidden lg:flex w-[420px] xl:w-[480px] bg-nfw-aubergine flex-col justify-center px-12 py-16 relative overflow-hidden flex-shrink-0">
         <div className="relative">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#bcafcf]/20 border border-[#bcafcf]/30 rounded-full text-xs mb-8">
-            <span className="w-1.5 h-1.5 bg-[#d4f1ad] rounded-full"></span>
-            <span className="text-[#fffef1] font-semibold">
-              Join 50,000+ women
-            </span>
-          </div>
-          <h2
-            className="text-3xl xl:text-4xl font-black text-white mb-4 leading-tight"
-            style={{ fontFamily: "Montserrat, sans-serif" }}
-          >
-            Support that fits
-            <br />
-            <span className="text-[#fdf493]">your life.</span>
+          <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-dove mb-6">
+            Join 50,000+ women
+          </p>
+          <h2 className="font-serif text-4xl lg:text-6xl text-white mb-4 leading-tight">
+            Support that fits your life.
           </h2>
-          <p className="text-[#bcafcf] text-sm mb-10 leading-relaxed">
+          <p className="text-white text-sm mb-10 leading-relaxed">
             NFW membership gives you access to real financial support, everyday
             savings, and a community of women who get it.
           </p>
           <div className="space-y-4 mb-10">
             {BENEFITS.map((b) => (
               <div key={b} className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#d4f1ad]/20 flex items-center justify-center flex-shrink-0">
-                  <Check className="w-3 h-3 text-[#d4f1ad]" />
+                <div className="w-5 h-5 bg-nfw-wisteria/30 flex items-center justify-center flex-shrink-0">
+                  <Check className="w-3 h-3 text-white" />
                 </div>
-                <span className="text-[#fffef1] text-sm font-medium">{b}</span>
+                <span className="text-nfw-dove text-sm font-medium">{b}</span>
               </div>
             ))}
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <div className="bg-white/5 border border-white/10 p-5">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#bcafcf]/30 flex items-center justify-center text-lg flex-shrink-0">
+              <div className="w-10 h-10 bg-nfw-lilac/30 flex items-center justify-center text-lg flex-shrink-0">
                 T
               </div>
               <div>
-                <p className="text-[#fffef1] text-sm leading-relaxed italic">
+                <p className="text-nfw-dove text-sm leading-relaxed italic">
                   &ldquo;The perks alone saved me more than my membership cost
                   in the first month. I wish I had found NFW sooner.&rdquo;
                 </p>
-                <p className="text-[#bcafcf] text-xs mt-2 font-semibold">
+                <p className="text-nfw-lilac text-xs mt-2 font-semibold">
                   Tiana, 29 — Retail Manager
                 </p>
               </div>

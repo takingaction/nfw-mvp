@@ -7,7 +7,7 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-[#2d1239] text-white">
+    <footer className="bg-nfw-blackberry text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 lg:gap-12 mb-12">
           {/* Brand Column */}
@@ -20,7 +20,7 @@ export default function Footer() {
               className="h-32 w-auto mb-4"
               priority
             />
-            <p className="text-[#bcafcf] text-sm leading-relaxed">
+            <p className="text-nfw-lilac text-sm leading-relaxed">
               A space to celebrate, listen, and uplift American women.
             </p>
           </div>
@@ -33,7 +33,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/about"
-                  className="text-[#bcafcf] hover:text-white transition-colors"
+                  className="text-nfw-lilac hover:text-white transition-colors"
                 >
                   About Us
                 </Link>
@@ -42,7 +42,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/grants"
-                  className="text-[#bcafcf] hover:text-white transition-colors"
+                  className="text-nfw-lilac hover:text-white transition-colors"
                 >
                   Microgrants
                 </Link>
@@ -51,7 +51,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/perks/info"
-                  className="text-[#bcafcf] hover:text-white transition-colors"
+                  className="text-nfw-lilac hover:text-white transition-colors"
                 >
                   Perks & Discounts
                 </Link>
@@ -60,7 +60,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/store/info"
-                  className="text-[#bcafcf] hover:text-white transition-colors"
+                  className="text-nfw-lilac hover:text-white transition-colors"
                 >
                   Zero Dollar Store
                 </Link>
@@ -76,7 +76,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/contact"
-                  className="text-[#bcafcf] hover:text-white transition-colors"
+                  className="text-nfw-lilac hover:text-white transition-colors"
                 >
                   Contact Us
                 </Link>
@@ -85,7 +85,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/faq"
-                  className="text-[#bcafcf] hover:text-white transition-colors"
+                  className="text-nfw-lilac hover:text-white transition-colors"
                 >
                   FAQ
                 </Link>
@@ -94,7 +94,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/pricing"
-                  className="text-[#bcafcf] hover:text-white transition-colors"
+                  className="text-nfw-lilac hover:text-white transition-colors"
                 >
                   Membership Info
                 </Link>
@@ -110,7 +110,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/privacy"
-                  className="text-[#bcafcf] hover:text-white transition-colors"
+                  className="text-nfw-lilac hover:text-white transition-colors"
                 >
                   Privacy Policy
                 </Link>
@@ -119,7 +119,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/terms"
-                  className="text-[#bcafcf] hover:text-white transition-colors"
+                  className="text-nfw-lilac hover:text-white transition-colors"
                 >
                   Terms of Service
                 </Link>
@@ -128,7 +128,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/accessibility"
-                  className="text-[#bcafcf] hover:text-white transition-colors"
+                  className="text-nfw-lilac hover:text-white transition-colors"
                 >
                   Accessibility
                 </Link>
@@ -139,7 +139,7 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-[#bcafcf] text-sm">
+          <p className="text-nfw-lilac text-sm">
             © {currentYear} National Fund for Women. All rights reserved.
           </p>
 

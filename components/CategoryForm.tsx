@@ -74,14 +74,14 @@ export default function CategoryForm({ category }: { category?: any }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3">
           {error}
         </div>
       )}
 
       {/* Category Name */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-nfw-blackberry mb-2">
           Category Name *
         </label>
         <input
@@ -89,14 +89,14 @@ export default function CategoryForm({ category }: { category?: any }) {
           required
           value={formData.name}
           onChange={(e) => handleNameChange(e.target.value)}
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
           placeholder="e.g., Clothing, Electronics"
         />
       </div>
 
       {/* Slug */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-nfw-blackberry mb-2">
           Slug *
         </label>
         <input
@@ -106,17 +106,17 @@ export default function CategoryForm({ category }: { category?: any }) {
           onChange={(e) =>
             setFormData((prev) => ({ ...prev, slug: e.target.value }))
           }
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
           placeholder="category-url-slug"
         />
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-nfw-blackberry/50 mt-1">
           URL: /store?category={formData.slug || "category-slug"}
         </p>
       </div>
 
       {/* Icon */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-nfw-blackberry mb-2">
           Icon (Emoji)
         </label>
         <input
@@ -125,18 +125,18 @@ export default function CategoryForm({ category }: { category?: any }) {
           onChange={(e) =>
             setFormData((prev) => ({ ...prev, icon: e.target.value }))
           }
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
           placeholder="👕 💻 🏠"
           maxLength={2}
         />
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-nfw-blackberry/50 mt-1">
           Use an emoji to represent this category
         </p>
       </div>
 
       {/* Display Order */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-nfw-blackberry mb-2">
           Display Order *
         </label>
         <input
@@ -150,17 +150,17 @@ export default function CategoryForm({ category }: { category?: any }) {
               display_order: parseInt(e.target.value) || 0,
             }))
           }
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
         />
-        <p className="text-sm text-gray-500 mt-1">Lower numbers appear first</p>
+        <p className="text-sm text-nfw-blackberry/50 mt-1">Lower numbers appear first</p>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-4 pt-6 border-t">
+      <div className="flex items-center gap-4 pt-6 border-t border-nfw-blackberry/10">
         <button
           type="submit"
           disabled={loading}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
+          className="bg-nfw-blackberry text-white px-6 py-3 hover:bg-nfw-blackberry/90 font-medium disabled:opacity-50"
         >
           {loading
             ? "Saving..."
@@ -171,7 +171,7 @@ export default function CategoryForm({ category }: { category?: any }) {
         <button
           type="button"
           onClick={() => router.push("/admin/categories")}
-          className="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 font-medium"
+          className="bg-nfw-dove text-nfw-blackberry px-6 py-3 hover:bg-nfw-blackberry/5 font-medium"
         >
           Cancel
         </button>

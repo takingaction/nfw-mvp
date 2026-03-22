@@ -45,11 +45,11 @@ async function AdminClaimsContent() {
   }));
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
+    <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Manage Claims</h1>
-          <p className="text-gray-600 text-lg">
+          <h1 className="text-4xl font-bold mb-2 text-nfw-blackberry font-serif">Manage Claims</h1>
+          <p className="text-nfw-blackberry/60 text-lg">
             View and manage all Zero Dollar Store claims
           </p>
         </div>

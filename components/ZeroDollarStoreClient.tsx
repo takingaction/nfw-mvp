@@ -157,7 +157,7 @@ export default function ZeroDollarStoreClient({
 
   return (
     <div>
-      {/* Search and Filter Bar */}
+        {/* Search and Filter Bar */}
       <div className="mb-6 space-y-4">
         {/* Search */}
         <input
@@ -165,16 +165,16 @@ export default function ZeroDollarStoreClient({
           placeholder="Search items..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-4 py-2 border rounded-lg"
+          className="w-full px-4 py-2 border border-nfw-blackberry/20"
         />
 
         {/* Category Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-2">
           <button
             onClick={() => setSelectedCategory(null)}
-            className={`px-4 py-2 rounded-lg whitespace-nowrap ${
+            className={`px-4 py-2 whitespace-nowrap ${
               selectedCategory === null
-                ? "bg-blue-600 text-white"
+                ? "bg-nfw-blackberry text-white"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
@@ -188,9 +188,9 @@ export default function ZeroDollarStoreClient({
               <button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
-                className={`px-4 py-2 rounded-lg whitespace-nowrap ${
+                className={`px-4 py-2 whitespace-nowrap ${
                   selectedCategory === category.id
-                    ? "bg-blue-600 text-white"
+                    ? "bg-nfw-blackberry text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
@@ -218,12 +218,12 @@ export default function ZeroDollarStoreClient({
             return (
               <div
                 key={item.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                className="bg-white border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
               >
                 {/* Featured Badge */}
                 {item.is_featured && (
-                  <div className="bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 text-center">
-                    ⭐ FEATURED
+                  <div className="bg-nfw-citrine text-nfw-blackberry text-xs font-bold px-3 py-1 text-center">
+                    FEATURED
                   </div>
                 )}
 
@@ -242,7 +242,7 @@ export default function ZeroDollarStoreClient({
                 <div className="p-4">
                   {/* Category Badge */}
                   {item.category && (
-                    <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mb-2">
+                    <span className="inline-block bg-nfw-lilac/20 text-nfw-blackberry text-xs px-2 py-1 mb-2">
                       {item.category.name}
                     </span>
                   )}
@@ -261,7 +261,7 @@ export default function ZeroDollarStoreClient({
                       {item.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded"
+                          className="text-xs bg-gray-100 text-gray-600 px-2 py-1"
                         >
                           #{tag}
                         </span>
@@ -281,13 +281,13 @@ export default function ZeroDollarStoreClient({
                   </div>
 
                   {isClaimed && (
-                    <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-md text-sm text-center">
-                      ✓ Already Claimed
+                    <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-2 text-sm text-center">
+                      Already Claimed
                     </div>
                   )}
 
                   {!isClaimed && isOutOfStock && (
-                    <div className="bg-gray-100 border border-gray-300 text-gray-600 px-4 py-2 rounded-md text-sm text-center">
+                    <div className="bg-gray-100 border border-gray-300 text-gray-600 px-4 py-2 text-sm text-center">
                       Out of Stock
                     </div>
                   )}
@@ -296,7 +296,7 @@ export default function ZeroDollarStoreClient({
                     <button
                       onClick={() => handleClaimClick(item)}
                       disabled={claimingItemId === item.id}
-                      className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                      className="w-full bg-nfw-blackberry text-white py-2 hover:bg-nfw-blackberry/90 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                     >
                       {claimingItemId === item.id
                         ? "Claiming..."
@@ -312,14 +312,14 @@ export default function ZeroDollarStoreClient({
 
       {/* Claim Modal */}
       {showClaimModal && selectedItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">
               Claim: {selectedItem.name}
             </h2>
 
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm mb-4">
+              <div className="bg-red-50 text-red-600 p-3 text-sm mb-4">
                 {error}
               </div>
             )}
@@ -342,7 +342,7 @@ export default function ZeroDollarStoreClient({
                             [key]: e.target.value,
                           })
                         }
-                        className="w-full px-3 py-2 border rounded-md"
+                        className="w-full px-3 py-2 border"
                       >
                         <option value="">Select {key}</option>
                         {values?.map((value) => (
@@ -370,7 +370,7 @@ export default function ZeroDollarStoreClient({
                       full_name: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-2 border rounded-md"
+                  className="w-full px-3 py-2 border"
                 />
               </div>
 
@@ -388,7 +388,7 @@ export default function ZeroDollarStoreClient({
                       address_line1: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-2 border rounded-md"
+                  className="w-full px-3 py-2 border"
                 />
               </div>
 
@@ -405,7 +405,7 @@ export default function ZeroDollarStoreClient({
                       address_line2: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-2 border rounded-md"
+                  className="w-full px-3 py-2 border"
                 />
               </div>
 
@@ -421,7 +421,7 @@ export default function ZeroDollarStoreClient({
                     onChange={(e) =>
                       setShippingInfo({ ...shippingInfo, city: e.target.value })
                     }
-                    className="w-full px-3 py-2 border rounded-md"
+                    className="w-full px-3 py-2 border"
                   />
                 </div>
 
@@ -439,7 +439,7 @@ export default function ZeroDollarStoreClient({
                         state: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border rounded-md"
+                    className="w-full px-3 py-2 border"
                   />
                 </div>
               </div>
@@ -456,7 +456,7 @@ export default function ZeroDollarStoreClient({
                     onChange={(e) =>
                       setShippingInfo({ ...shippingInfo, zip: e.target.value })
                     }
-                    className="w-full px-3 py-2 border rounded-md"
+                    className="w-full px-3 py-2 border"
                   />
                 </div>
 
@@ -474,7 +474,7 @@ export default function ZeroDollarStoreClient({
                         phone: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border rounded-md"
+                    className="w-full px-3 py-2 border"
                   />
                 </div>
               </div>
@@ -488,14 +488,14 @@ export default function ZeroDollarStoreClient({
                     setError(null);
                     setSelectedVariant({});
                   }}
-                  className="flex-1 px-4 py-2 border rounded-md hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!!claimingItemId}
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  className="flex-1 bg-nfw-blackberry text-white py-2 hover:bg-nfw-blackberry/90 disabled:opacity-50"
                 >
                   {claimingItemId ? "Claiming..." : "Confirm Claim"}
                 </button>

@@ -178,20 +178,20 @@ export default function ProfileCompletionForm({
   };
 
   const inputClass =
-    "w-full px-4 py-2.5 border border-[#2d1239]/20 rounded-lg text-[#2d1239] placeholder-[#2d1239]/40 bg-white focus:outline-none focus:ring-2 focus:ring-[#BCAFCF] focus:border-transparent transition-all";
-  const labelClass = "block text-sm font-medium text-[#2d1239] mb-2";
+    "w-full px-4 py-2.5 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/40 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent transition-all";
+  const labelClass = "block text-sm font-medium text-nfw-blackberry mb-2";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+        <div className="p-4 bg-red-50 border border-red-200">
           <p className="text-red-700">{error}</p>
         </div>
       )}
 
       {success && (
-        <div className="p-4 bg-[#d4f1ad]/40 border border-[#d4f1ad] rounded-xl">
-          <p className="text-[#2d1239] font-semibold">
+        <div className="p-4 bg-nfw-citrine/40 border border-nfw-citrine">
+          <p className="text-nfw-blackberry font-semibold">
             Profile saved! Redirecting...
           </p>
         </div>
@@ -200,7 +200,7 @@ export default function ProfileCompletionForm({
       {/* Full Name */}
       <div>
         <label className={labelClass}>
-          Full Name <span className="text-[#BCAFCF]">*</span>
+          Full Name <span className="text-nfw-lilac">*</span>
         </label>
         <input
           type="text"
@@ -216,7 +216,7 @@ export default function ProfileCompletionForm({
       {/* Age Range */}
       <div>
         <label className={labelClass}>
-          Age Range <span className="text-[#BCAFCF]">*</span>
+          Age Range <span className="text-nfw-lilac">*</span>
         </label>
         <select
           required
@@ -238,7 +238,7 @@ export default function ProfileCompletionForm({
       {/* Phone Number */}
       <div>
         <label className={labelClass}>
-          Phone Number <span className="text-[#BCAFCF]">*</span>
+          Phone Number <span className="text-nfw-lilac">*</span>
         </label>
         <input
           type="tel"
@@ -256,7 +256,7 @@ export default function ProfileCompletionForm({
       <div className="space-y-4">
         <div>
           <label className={labelClass}>
-            Address Line 1 <span className="text-[#BCAFCF]">*</span>
+            Address Line 1 <span className="text-nfw-lilac">*</span>
           </label>
           <input
             type="text"
@@ -271,7 +271,7 @@ export default function ProfileCompletionForm({
         </div>
         <div>
           <label className={labelClass}>
-            Address Line 2 <span className="text-[#2d1239]/50">(Optional)</span>
+            Address Line 2 <span className="text-nfw-blackberry/50">(Optional)</span>
           </label>
           <input
             type="text"
@@ -286,7 +286,7 @@ export default function ProfileCompletionForm({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className={labelClass}>
-              City <span className="text-[#BCAFCF]">*</span>
+              City <span className="text-nfw-lilac">*</span>
             </label>
             <input
               type="text"
@@ -300,7 +300,7 @@ export default function ProfileCompletionForm({
           </div>
           <div>
             <label className={labelClass}>
-              State <span className="text-[#BCAFCF]">*</span>
+              State <span className="text-nfw-lilac">*</span>
             </label>
             <select
               required
@@ -320,7 +320,7 @@ export default function ProfileCompletionForm({
           </div>
           <div>
             <label className={labelClass}>
-              ZIP Code <span className="text-[#BCAFCF]">*</span>
+              ZIP Code <span className="text-nfw-lilac">*</span>
             </label>
             <input
               type="text"
@@ -341,7 +341,7 @@ export default function ProfileCompletionForm({
       <div>
         <label className={labelClass}>
           Which of the following best describes your current annual income?{" "}
-          <span className="text-[#BCAFCF]">*</span>
+          <span className="text-nfw-lilac">*</span>
         </label>
         <select
           required
@@ -364,7 +364,7 @@ export default function ProfileCompletionForm({
       <div>
         <label className={labelClass}>
           Which of the following identities do you identify with?{" "}
-          <span className="text-[#2d1239]/50">
+          <span className="text-nfw-blackberry/50">
             Please check all that apply.
           </span>
         </label>
@@ -372,19 +372,19 @@ export default function ProfileCompletionForm({
           {IDENTITY_OPTIONS.map((identity) => (
             <label
               key={identity}
-              className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-all ${
+              className={`flex items-center gap-3 p-3 border cursor-pointer transition-all ${
                 formData.identities.includes(identity)
-                  ? "border-[#BCAFCF] bg-[#BCAFCF]/10"
-                  : "border-[#2d1239]/20 hover:bg-[#f8f7fa]"
+                  ? "border-nfw-lilac bg-nfw-lilac/10"
+                  : "border-nfw-blackberry/20 hover:bg-nfw-dove"
               }`}
             >
               <input
                 type="checkbox"
                 checked={formData.identities.includes(identity)}
                 onChange={() => handleIdentityToggle(identity)}
-                className="w-4 h-4 text-[#2d1239] border-[#2d1239]/30 rounded focus:ring-[#BCAFCF] accent-[#2d1239]"
+                className="w-4 h-4 text-nfw-blackberry border-nfw-blackberry/30 focus:ring-nfw-lilac accent-nfw-blackberry"
               />
-              <span className="text-[#2d1239]">{identity}</span>
+              <span className="text-nfw-blackberry">{identity}</span>
             </label>
           ))}
         </div>
@@ -394,7 +394,7 @@ export default function ProfileCompletionForm({
       <div>
         <label className={labelClass}>
           Social Media Handles{" "}
-          <span className="text-[#2d1239]/50">(Optional)</span>
+          <span className="text-nfw-blackberry/50">(Optional)</span>
         </label>
         <div className="space-y-3">
           <input
@@ -440,7 +440,7 @@ export default function ProfileCompletionForm({
       <button
         type="submit"
         disabled={loading}
-        className="w-full px-6 py-3 bg-[#2d1239] text-white rounded-xl hover:bg-[#2d1239]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold flex items-center justify-center gap-2"
+        className="w-full px-6 py-3 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold flex items-center justify-center gap-2"
       >
         {loading && <Loader2 className="w-4 h-4 animate-spin" />}
         {loading

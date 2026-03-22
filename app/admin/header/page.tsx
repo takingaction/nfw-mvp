@@ -16,13 +16,13 @@ export default async function AdminHeaderPage() {
     .single();
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
+    <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-3xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-[#2d1239] mb-2">
+          <h1 className="text-4xl font-bold text-nfw-blackberry mb-2 font-serif">
             Edit Header
           </h1>
-          <p className="text-gray-600">
+          <p className="text-nfw-blackberry/60">
             Manage navigation links and header CTA
           </p>
         </div>

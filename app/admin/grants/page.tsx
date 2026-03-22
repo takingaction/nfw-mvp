@@ -38,62 +38,61 @@ export default async function AdminGrantsPage() {
   };
 
   const statusColor: Record<string, string> = {
-    open: "bg-[#d4f1ad] text-[#2d1239]",
+    open: "bg-[#d4f1ad] text-nfw-blackberry",
     closed: "bg-gray-100 text-gray-600",
-    draft: "bg-[#fdf493] text-[#2d1239]",
+    draft: "bg-nfw-citrine text-nfw-blackberry",
   };
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
+    <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-[#2d1239] mb-2">
+            <h1 className="text-4xl font-bold text-nfw-blackberry mb-2 font-serif">
               Manage Grants
             </h1>
-            <p className="text-gray-600">
+            <p className="text-nfw-blackberry/60">
               Create and manage grant cycles and review applications
             </p>
           </div>
           <Link
             href="/admin/grants/new"
-            className="flex items-center gap-2 px-5 py-3 bg-[#2d1239] text-white rounded-xl font-bold hover:bg-[#2d1239]/90 transition-colors"
+            className="flex items-center gap-2 px-5 py-3 bg-nfw-blackberry text-white font-bold hover:bg-nfw-blackberry/90 transition-colors"
           >
             <Plus className="w-4 h-4" />
             New Grant Cycle
           </Link>
         </div>
 
-        {/* Summary Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
             {
               label: "Total Cycles",
               value: cycles?.length || 0,
-              color: "bg-[#2d1239]",
+              color: "bg-nfw-blackberry",
               text: "text-white",
             },
             {
               label: "Total Applications",
               value: grants?.length || 0,
               color: "bg-[#d4f1ad]",
-              text: "text-[#2d1239]",
+              text: "text-nfw-blackberry",
             },
             {
               label: "Approved",
               value: grants?.filter((g) => g.status === "approved").length || 0,
               color: "bg-[#b2d1ee]",
-              text: "text-[#2d1239]",
+              text: "text-nfw-blackberry",
             },
             {
               label: "Payment Sent",
               value:
                 grants?.filter((g) => g.status === "payment_sent").length || 0,
-              color: "bg-[#fdf493]",
-              text: "text-[#2d1239]",
+              color: "bg-nfw-citrine",
+              text: "text-nfw-blackberry",
             },
           ].map((stat) => (
-            <div key={stat.label} className={`${stat.color} rounded-2xl p-6`}>
+            <div key={stat.label} className={`${stat.color} p-6`}>
               <div className={`text-3xl font-black mb-1 ${stat.text}`}>
                 {stat.value}
               </div>
@@ -104,14 +103,13 @@ export default async function AdminGrantsPage() {
           ))}
         </div>
 
-        {/* Grant Cycles */}
         <div className="space-y-4">
           {!cycles || cycles.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-              <p className="text-gray-400 mb-4">No grant cycles yet.</p>
+            <div className="bg-white border border-gray-200 p-12 text-center">
+              <p className="text-nfw-blackberry/40 mb-4">No grant cycles yet.</p>
               <Link
                 href="/admin/grants/new"
-                className="inline-flex items-center gap-2 px-5 py-3 bg-[#2d1239] text-white rounded-xl font-bold hover:bg-[#2d1239]/90 transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-3 bg-nfw-blackberry text-white font-bold hover:bg-nfw-blackberry/90 transition-colors"
               >
                 <Plus className="w-4 h-4" /> Create First Grant Cycle
               </Link>
@@ -122,42 +120,35 @@ export default async function AdminGrantsPage() {
               return (
                 <div
                   key={cycle.id}
-                  className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md transition-all"
+                  className="bg-white border border-gray-200 p-6"
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <div className="flex items-center gap-3 mb-1">
-                        <h2
-                          className="text-xl font-black text-[#2d1239]"
-                          style={{ fontFamily: "Montserrat, sans-serif" }}
-                        >
+                        <h2 className="text-xl font-black text-nfw-blackberry font-serif">
                           {cycle.cycle_name}
                         </h2>
                         <span
-                          className={`text-xs px-2.5 py-1 rounded-full font-semibold ${statusColor[cycle.status] || "bg-gray-100 text-gray-600"}`}
+                          className={`text-xs px-2.5 py-1 font-semibold ${statusColor[cycle.status] || "bg-gray-100 text-gray-600"}`}
                         >
                           {cycle.status}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-nfw-blackberry/50">
                         {new Date(cycle.start_date).toLocaleDateString()} —{" "}
                         {new Date(cycle.end_date).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p
-                        className="text-2xl font-black text-[#2d1239]"
-                        style={{ fontFamily: "Montserrat, sans-serif" }}
-                      >
+                      <p className="text-2xl font-black text-nfw-blackberry font-serif">
                         ${cycle.amount_per_grant?.toLocaleString()}
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-nfw-blackberry/40">
                         {cycle.grants_available} grants available
                       </p>
                     </div>
                   </div>
 
-                  {/* Application Stats */}
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4">
                     {[
                       {
@@ -193,7 +184,7 @@ export default async function AdminGrantsPage() {
                     ].map((s) => (
                       <div
                         key={s.label}
-                        className={`${s.color} rounded-lg p-2 text-center`}
+                        className={`${s.color} p-2 text-center`}
                       >
                         <p className="text-lg font-black">{s.value}</p>
                         <p className="text-xs font-medium">{s.label}</p>
@@ -201,17 +192,16 @@ export default async function AdminGrantsPage() {
                     ))}
                   </div>
 
-                  {/* Actions */}
                   <div className="flex items-center gap-3">
                     <Link
                       href={`/admin/grants/${cycle.id}`}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-[#2d1239]/5 text-[#2d1239] rounded-lg font-semibold text-sm hover:bg-[#2d1239]/10 transition-colors"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-nfw-blackberry/5 text-nfw-blackberry font-semibold text-sm hover:bg-nfw-blackberry/10 transition-colors"
                     >
-                      Review Applications →
+                      Review Applications
                     </Link>
                     <Link
                       href={`/admin/grants/${cycle.id}/edit`}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-[#bcafcf]/10 text-[#2d1239] rounded-lg font-semibold text-sm hover:bg-[#bcafcf]/20 transition-colors"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-nfw-lilac/10 text-nfw-blackberry font-semibold text-sm hover:bg-nfw-lilac/20 transition-colors"
                     >
                       Edit
                     </Link>

@@ -239,8 +239,8 @@ export default function SectionCanvas({ page, initialSections, templates }: Prop
   };
 
   const statusColor: Record<string, string> = {
-    published: "bg-[#d4f1ad] text-[#2d1239]",
-    draft: "bg-[#fdf493] text-[#2d1239]",
+    published: "bg-nfw-citrine text-nfw-blackberry",
+    draft: "bg-nfw-citrine/50 text-nfw-blackberry",
     unpublished: "bg-gray-100 text-gray-600",
   };
 
@@ -253,13 +253,13 @@ export default function SectionCanvas({ page, initialSections, templates }: Prop
           <div className="flex items-center gap-4">
             <Link
               href="/admin/pages"
-              className="flex items-center gap-1 text-sm text-gray-500 hover:text-[#2d1239] transition-colors"
+              className="flex items-center gap-1 text-sm text-gray-500 hover:text-nfw-blackberry transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
               Pages
             </Link>
             <div className="w-px h-4 bg-gray-200" />
-            <h1 className="font-black text-[#2d1239]">{page.title}</h1>
+            <h1 className="font-black text-nfw-blackberry">{page.title}</h1>
             <span
               className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
                 statusColor[page.status] ?? "bg-gray-100 text-gray-600"
@@ -273,7 +273,7 @@ export default function SectionCanvas({ page, initialSections, templates }: Prop
             <Link
               href={`/preview/${page.preview_token}/${page.slug}`}
               target="_blank"
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-[#2d1239] bg-[#2d1239]/5 rounded-lg hover:bg-[#2d1239]/10 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-nfw-blackberry bg-nfw-blackberry/5 hover:bg-nfw-blackberry/10 transition-colors"
             >
               <Eye className="w-4 h-4" />
               Preview
@@ -301,7 +301,7 @@ export default function SectionCanvas({ page, initialSections, templates }: Prop
             <button
               onClick={handlePublish}
               disabled={publishing}
-              className="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-[#2d1239] rounded-lg hover:bg-[#2d1239]/90 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-nfw-blackberry hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors"
             >
               <Globe className="w-4 h-4" />
               {publishing ? "Publishing..." : "Publish"}
@@ -352,7 +352,7 @@ export default function SectionCanvas({ page, initialSections, templates }: Prop
                   {/* Add section button */}
                   <button
                     onClick={() => setShowTemplatePicker(true)}
-                    className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-300 rounded-xl text-sm font-semibold text-gray-400 hover:border-[#2d1239] hover:text-[#2d1239] transition-colors mt-2"
+                    className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-300 text-sm font-semibold text-gray-400 hover:border-nfw-blackberry hover:text-nfw-blackberry transition-colors mt-2"
                   >
                     <Plus className="w-4 h-4" />
                     Add Section
@@ -388,7 +388,7 @@ export default function SectionCanvas({ page, initialSections, templates }: Prop
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#2d1239] text-white px-6 py-3 rounded-xl text-sm font-semibold shadow-lg z-50 animate-fade-in">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-nfw-blackberry text-white px-6 py-3 text-sm font-semibold shadow-lg z-50 animate-fade-in">
           {toast}
         </div>
       )}

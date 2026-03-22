@@ -39,7 +39,7 @@ export default async function AdminPageEditor({
     .order("name");
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-nfw-dove">
       <SectionCanvas
         page={page}
         initialSections={sections ?? []}

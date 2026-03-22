@@ -177,13 +177,13 @@ export default function RedemptionHistoryPage() {
   const getRedemptionTypeColor = (type: string) => {
     switch (type) {
       case "link":
-        return "bg-[#2d1239] text-white";
+        return "bg-nfw-blackberry text-white";
       case "instore":
-        return "bg-[#BCAFCF] text-[#2d1239]";
+        return "bg-nfw-lilac text-nfw-blackberry";
       case "instore_print":
-        return "bg-[#b2d1ee] text-[#2d1239]";
+        return "bg-[#b2d1ee] text-nfw-blackberry";
       case "call":
-        return "bg-[#d4f1ad] text-[#2d1239]";
+        return "bg-[#d4f1ad] text-nfw-blackberry";
       default:
         return "bg-gray-100 text-gray-700";
     }
@@ -193,25 +193,25 @@ export default function RedemptionHistoryPage() {
     switch (status) {
       case "active":
         return (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-[#d4f1ad]/30 text-[#2d1239] font-medium border border-[#d4f1ad]">
+          <span className="text-xs px-2 py-0.5 bg-[#d4f1ad]/30 text-nfw-blackberry font-medium border border-[#d4f1ad]">
             Active
           </span>
         );
       case "used":
         return (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-[#BCAFCF]/20 text-[#2d1239] font-medium border border-[#BCAFCF]">
+          <span className="text-xs px-2 py-0.5 bg-nfw-lilac/20 text-nfw-blackberry font-medium border border-nfw-lilac">
             Used
           </span>
         );
       case "expired":
         return (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-[#f8f7fa] text-[#2d1239]/60 font-medium border border-[#2d1239]/10">
+          <span className="text-xs px-2 py-0.5 bg-nfw-dove text-nfw-blackberry/60 font-medium border border-nfw-blackberry/10">
             Expired
           </span>
         );
       case "archived":
         return (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium border border-gray-300">
+          <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 font-medium border border-gray-300">
             Archived
           </span>
         );
@@ -232,12 +232,11 @@ export default function RedemptionHistoryPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="bg-white border-b border-[#2d1239]/10">
+      <div className="bg-white border-b border-nfw-blackberry/10">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 text-[#2d1239]/60 hover:text-[#2d1239] transition-colors mb-4"
+            className="inline-flex items-center gap-2 text-nfw-blackberry/60 hover:text-nfw-blackberry transition-colors mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
             Back to Dashboard
@@ -245,10 +244,10 @@ export default function RedemptionHistoryPage() {
 
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-[#2d1239]">
+              <h1 className="font-serif text-4xl lg:text-6xl text-nfw-blackberry leading-tight">
                 Redemption History
               </h1>
-              <p className="text-[#2d1239]/60 mt-1">
+              <p className="text-nfw-blackberry/60 mt-1">
                 View and manage your redeemed offers
               </p>
             </div>
@@ -256,34 +255,31 @@ export default function RedemptionHistoryPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-[#f8f7fa] border-b border-[#2d1239]/10">
+      <div className="bg-nfw-dove border-b border-nfw-blackberry/10">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-[#2d1239]/60" />
-            <span className="text-sm font-medium text-[#2d1239]/60">
+            <Filter className="w-4 h-4 text-nfw-blackberry/60" />
+            <span className="text-sm font-medium text-nfw-blackberry/60">
               Filter:
             </span>
             <div className="flex gap-2 flex-wrap">
-              {/* Primary Status Filters */}
               {["all", "active", "used", "expired"].map((status) => (
                 <button
                   key={status}
                   onClick={() => handleFilterChange(status)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
                     statusFilter === status
-                      ? "bg-[#2d1239] text-white"
-                      : "bg-white text-[#2d1239] hover:bg-[#2d1239]/5 border border-[#2d1239]/10"
+                      ? "bg-nfw-blackberry text-white"
+                      : "bg-white text-nfw-blackberry hover:bg-nfw-blackberry/5 border border-nfw-blackberry/10"
                   }`}
                 >
                   {status.charAt(0).toUpperCase() + status.slice(1)}
                 </button>
               ))}
 
-              {/* Archived Filter - Different Style */}
               <button
                 onClick={() => handleFilterChange("archived")}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${
                   statusFilter === "archived"
                     ? "bg-gray-600 text-white"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300"
@@ -297,14 +293,13 @@ export default function RedemptionHistoryPage() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-[#BCAFCF]" />
+            <Loader2 className="w-8 h-8 animate-spin text-nfw-lilac" />
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+          <div className="bg-red-50 border border-red-200 p-6">
             <div className="flex items-center gap-2 text-red-600 mb-2">
               <AlertCircle className="w-5 h-5" />
               <h3 className="font-semibold">Error Loading Redemptions</h3>
@@ -313,68 +308,63 @@ export default function RedemptionHistoryPage() {
           </div>
         ) : redemptions.length === 0 ? (
           <div className="text-center py-12">
-            <Gift className="w-16 h-16 text-[#2d1239]/20 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-[#2d1239] mb-2">
+            <Gift className="w-16 h-16 text-nfw-blackberry/20 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-nfw-blackberry mb-2">
               No Redemptions Found
             </h3>
-            <p className="text-[#2d1239]/60 mb-6">
+            <p className="text-nfw-blackberry/60 mb-6">
               {statusFilter === "all"
                 ? "You haven't redeemed any offers yet"
                 : `No ${statusFilter} redemptions found`}
             </p>
             <Link
               href="/perks"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#2d1239] text-white rounded-xl hover:bg-[#2d1239]/90 transition-colors font-medium"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 transition-colors font-medium"
             >
               Browse Perks
             </Link>
           </div>
         ) : (
           <>
-            {/* Results Count */}
             <div className="mb-4">
-              <p className="text-sm text-[#2d1239]/60">
+              <p className="text-sm text-nfw-blackberry/60">
                 Showing {startItem}-{endItem} of {totalCount} redemption
                 {totalCount !== 1 ? "s" : ""}
               </p>
             </div>
 
-            {/* Redemptions List */}
             <div className="space-y-4 mb-6">
               {redemptions.map((redemption) => (
                 <div
                   key={redemption.id}
-                  className="bg-white rounded-xl border border-[#2d1239]/10 p-5 hover:shadow-md transition-shadow"
+                  className="bg-white border border-nfw-blackberry/10 p-5"
                 >
                   <div className="flex items-start gap-4">
-                    {/* Icon */}
                     <div className="flex-shrink-0">
-                      <div className="w-12 h-12 rounded-lg bg-[#f8f7fa] border border-[#2d1239]/10 flex items-center justify-center">
-                        <Gift className="w-6 h-6 text-[#2d1239]" />
+                      <div className="w-12 h-12 bg-nfw-dove border border-nfw-blackberry/10 flex items-center justify-center">
+                        <Gift className="w-6 h-6 text-nfw-blackberry" />
                       </div>
                     </div>
 
-                    {/* Content */}
                     <div className="flex-1 min-w-0">
-                      {/* Header */}
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           {redemption.store_name && (
                             <p
-                              className="text-sm font-semibold text-[#2d1239] mb-0.5 [&_sup]:text-[0.6em] [&_sup]:align-super"
+                              className="text-sm font-semibold text-nfw-blackberry mb-0.5 [&_sup]:text-[0.6em] [&_sup]:align-super"
                               dangerouslySetInnerHTML={{
                                 __html: decodeHtml(redemption.store_name),
                               }}
                             />
                           )}
                           <h3
-                            className="text-base font-medium text-[#2d1239]/80 [&_sup]:text-[0.6em] [&_sup]:align-super"
+                            className="text-base font-medium text-nfw-blackberry/80 [&_sup]:text-[0.6em] [&_sup]:align-super"
                             dangerouslySetInnerHTML={{
                               __html: decodeHtml(redemption.offer_title),
                             }}
                           />
                           {redemption.location_name && (
-                            <p className="text-xs text-[#2d1239]/40 mt-0.5">
+                            <p className="text-xs text-nfw-blackberry/40 mt-0.5">
                               {redemption.location_name}
                             </p>
                           )}
@@ -382,35 +372,31 @@ export default function RedemptionHistoryPage() {
                         {getStatusBadge(redemption.status)}
                       </div>
 
-                      {/* Type & Date */}
                       <div className="flex items-center gap-2 mb-3">
                         <span
-                          className={`text-xs px-2 py-0.5 rounded font-medium ${getRedemptionTypeColor(redemption.redeem_type)}`}
+                          className={`text-xs px-2 py-0.5 font-medium ${getRedemptionTypeColor(redemption.redeem_type)}`}
                         >
                           {getRedemptionTypeLabel(redemption.redeem_type)}
                         </span>
-                        <span className="text-xs text-[#2d1239]/40">
+                        <span className="text-xs text-nfw-blackberry/40">
                           Redeemed {formatDate(redemption.redeemed_at)}
                         </span>
                         {redemption.expires_at && (
-                          <span className="text-xs text-[#2d1239]/40">
+                          <span className="text-xs text-nfw-blackberry/40">
                             • Expires {formatDate(redemption.expires_at)}
                           </span>
                         )}
                       </div>
 
-                      {/* Instructions */}
                       {redemption.display_message && (
-                        <div className="mb-3 p-3 bg-[#f8f7fa] rounded-lg">
-                          <p className="text-xs text-[#2d1239]/70">
+                        <div className="mb-3 p-3 bg-nfw-dove">
+                          <p className="text-xs text-nfw-blackberry/70">
                             {redemption.display_message}
                           </p>
                         </div>
                       )}
 
-                      {/* Action Buttons */}
                       <div className="flex flex-wrap gap-2">
-                        {/* Toggle Used/Active - Only for active or used */}
                         {(redemption.status === "active" ||
                           redemption.status === "used") && (
                           <button
@@ -418,10 +404,10 @@ export default function RedemptionHistoryPage() {
                               toggleUsedStatus(redemption.id, redemption.status)
                             }
                             disabled={updatingId === redemption.id}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors text-xs font-medium disabled:opacity-50 ${
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 transition-colors text-xs font-medium disabled:opacity-50 ${
                               redemption.status === "active"
-                                ? "bg-[#d4f1ad] text-[#2d1239] hover:bg-[#d4f1ad]/80"
-                                : "bg-[#BCAFCF]/20 text-[#2d1239] hover:bg-[#BCAFCF]/30 border border-[#BCAFCF]"
+                                ? "bg-[#d4f1ad] text-nfw-blackberry hover:bg-[#d4f1ad]/80"
+                                : "bg-nfw-lilac/20 text-nfw-blackberry hover:bg-nfw-lilac/30 border border-nfw-lilac"
                             }`}
                           >
                             {updatingId === redemption.id ? (
@@ -443,12 +429,11 @@ export default function RedemptionHistoryPage() {
                           </button>
                         )}
 
-                        {/* Archive/Unarchive Button */}
                         {redemption.status === "archived" ? (
                           <button
                             onClick={() => unarchiveRedemption(redemption.id)}
                             disabled={updatingId === redemption.id}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#fdf493]/30 text-[#2d1239] rounded-lg hover:bg-[#fdf493]/50 transition-colors text-xs font-medium disabled:opacity-50 border border-[#fdf493]"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-citrine/30 text-nfw-blackberry hover:bg-nfw-citrine/50 transition-colors text-xs font-medium disabled:opacity-50 border border-nfw-citrine"
                           >
                             {updatingId === redemption.id ? (
                               <>
@@ -466,7 +451,7 @@ export default function RedemptionHistoryPage() {
                           <button
                             onClick={() => archiveRedemption(redemption.id)}
                             disabled={updatingId === redemption.id}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors text-xs font-medium disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors text-xs font-medium disabled:opacity-50"
                           >
                             {updatingId === redemption.id ? (
                               <>
@@ -487,7 +472,7 @@ export default function RedemptionHistoryPage() {
                             onClick={() =>
                               copyCode(redemption.coupon_code!, redemption.id)
                             }
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#2d1239] text-white rounded-lg hover:bg-[#2d1239]/90 transition-colors text-xs font-medium"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 transition-colors text-xs font-medium"
                           >
                             {copiedId === redemption.id ? (
                               <>
@@ -506,7 +491,7 @@ export default function RedemptionHistoryPage() {
                         {redemption.phone_number && (
                           <a
                             href={`tel:${redemption.phone_number}`}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#d4f1ad] text-[#2d1239] rounded-lg hover:bg-[#d4f1ad]/80 transition-colors text-xs font-medium"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#d4f1ad] text-nfw-blackberry hover:bg-[#d4f1ad]/80 transition-colors text-xs font-medium"
                           >
                             <Phone className="w-3 h-3" />
                             {redemption.phone_number}
@@ -518,7 +503,7 @@ export default function RedemptionHistoryPage() {
                             href={redemption.redemption_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#BCAFCF]/20 text-[#2d1239] rounded-lg hover:bg-[#BCAFCF]/30 transition-colors text-xs font-medium"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-lilac/20 text-nfw-blackberry hover:bg-nfw-lilac/30 transition-colors text-xs font-medium"
                           >
                             <ExternalLink className="w-3 h-3" />
                             Open Offer
@@ -527,7 +512,7 @@ export default function RedemptionHistoryPage() {
 
                         <Link
                           href={`/perks/${redemption.offer_key}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#f8f7fa] text-[#2d1239] rounded-lg hover:bg-[#2d1239]/5 transition-colors text-xs font-medium border border-[#2d1239]/10"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-dove text-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors text-xs font-medium border border-nfw-blackberry/10"
                         >
                           View Offer Details
                         </Link>
@@ -538,22 +523,21 @@ export default function RedemptionHistoryPage() {
               ))}
             </div>
 
-            {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-[#2d1239]/10 pt-6">
+              <div className="flex items-center justify-between border-t border-nfw-blackberry/10 pt-6">
                 <button
                   onClick={() =>
                     setCurrentPage((prev) => Math.max(1, prev - 1))
                   }
                   disabled={currentPage === 1}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#2d1239] rounded-lg hover:bg-[#f8f7fa] disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-[#2d1239]/10 font-medium text-sm"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white text-nfw-blackberry hover:bg-nfw-dove disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-nfw-blackberry/10 font-medium text-sm"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   Previous
                 </button>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-[#2d1239]/60">
+                  <span className="text-sm text-nfw-blackberry/60">
                     Page {currentPage} of {totalPages}
                   </span>
                 </div>
@@ -563,7 +547,7 @@ export default function RedemptionHistoryPage() {
                     setCurrentPage((prev) => Math.min(totalPages, prev + 1))
                   }
                   disabled={currentPage === totalPages}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#2d1239] rounded-lg hover:bg-[#f8f7fa] disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-[#2d1239]/10 font-medium text-sm"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white text-nfw-blackberry hover:bg-nfw-dove disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-nfw-blackberry/10 font-medium text-sm"
                 >
                   Next
                   <ChevronRight className="w-4 h-4" />

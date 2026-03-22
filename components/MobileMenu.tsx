@@ -93,7 +93,7 @@ export default function MobileMenu() {
     : user?.email?.charAt(0).toUpperCase() || "U";
 
   const linkClass =
-    "block px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors";
+    "block px-4 py-2 text-white/80 hover:bg-white/10 transition-colors";
 
   return (
     <>
@@ -113,7 +113,7 @@ export default function MobileMenu() {
 
       {/* Slide-out Menu */}
       <div
-        className={`fixed top-0 right-0 h-full w-80 bg-[#2d1239] shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed top-0 right-0 h-full w-80 bg-nfw-blackberry shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "translate-x-full"}`}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
@@ -134,7 +134,7 @@ export default function MobileMenu() {
               <div>
                 <button
                   onClick={() => setAboutOpen(!aboutOpen)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-white font-semibold hover:bg-white/10 rounded-lg transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 text-white font-semibold hover:bg-white/10 transition-colors"
                 >
                   About
                   <ChevronDown
@@ -158,7 +158,7 @@ export default function MobileMenu() {
               <div>
                 <button
                   onClick={() => setMembershipOpen(!membershipOpen)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-white font-semibold hover:bg-white/10 rounded-lg transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 text-white font-semibold hover:bg-white/10 transition-colors"
                 >
                   Membership
                   <ChevronDown
@@ -196,7 +196,7 @@ export default function MobileMenu() {
               <div>
                 <button
                   onClick={() => setProgramsOpen(!programsOpen)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-white font-semibold hover:bg-white/10 rounded-lg transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 text-white font-semibold hover:bg-white/10 transition-colors"
                 >
                   Our Programs
                   <ChevronDown
@@ -241,7 +241,7 @@ export default function MobileMenu() {
               <div>
                 <button
                   onClick={() => setSupportOpen(!supportOpen)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-white font-semibold hover:bg-white/10 rounded-lg transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 text-white font-semibold hover:bg-white/10 transition-colors"
                 >
                   Support
                   <ChevronDown
@@ -270,7 +270,7 @@ export default function MobileMenu() {
                   href="https://www.zeffy.com/en-US/donation-form/national-fund-for-women-foundation"
                   target="_blank"
                   onClick={closeMenu}
-                  className="block w-full text-center px-4 py-3 bg-[#fdf493] text-[#2d1239] rounded-xl font-bold hover:bg-[#fdf493]/90 transition-colors"
+                  className="block w-full text-center px-4 py-3 bg-nfw-citrine text-nfw-blackberry font-bold hover:bg-nfw-citrine/90 transition-colors"
                 >
                   Donate
                 </Link>
@@ -286,7 +286,7 @@ export default function MobileMenu() {
                   onClick={() => setAuthOpen(!authOpen)}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg transition-colors"
                 >
-                  <div className="w-10 h-10 rounded-full bg-[#BCAFCF] text-[#2d1239] font-bold text-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 bg-nfw-lilac text-nfw-blackberry font-bold text-lg flex items-center justify-center flex-shrink-0">
                     {firstLetter}
                   </div>
                   <div className="flex-1 text-left">
@@ -387,10 +387,10 @@ export default function MobileMenu() {
                       </>
                     )}
                     <div className="border-t border-white/10 my-2" />
-                    <button
-                      onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 text-white/80 hover:bg-white/10 rounded-lg transition-colors"
-                    >
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-white/80 hover:bg-white/10 transition-colors"
+                >
                       Sign out
                     </button>
                   </div>
@@ -401,14 +401,14 @@ export default function MobileMenu() {
                 <Link
                   href="/auth/login"
                   onClick={closeMenu}
-                  className="block w-full text-center px-4 py-2 bg-white/10 text-white rounded-lg font-semibold hover:bg-white/20 transition-colors"
+                  className="block w-full text-center px-4 py-2 bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors"
                 >
                   Sign in
                 </Link>
                 <Link
                   href="/auth/sign-up"
                   onClick={closeMenu}
-                  className="block w-full text-center px-4 py-2 bg-[#fdf493] text-[#2d1239] rounded-lg font-semibold hover:bg-[#fdf493]/90 transition-colors"
+                  className="block w-full text-center px-4 py-2 bg-nfw-citrine text-nfw-blackberry font-semibold hover:bg-nfw-citrine/90 transition-colors"
                 >
                   Sign up
                 </Link>

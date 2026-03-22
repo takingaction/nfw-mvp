@@ -37,61 +37,60 @@ export default async function AdminArticlesPage() {
     .order("created_at", { ascending: false });
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
+    <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold">Manage Articles</h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className="text-4xl font-bold text-nfw-blackberry font-serif">Manage Articles</h1>
+            <p className="text-nfw-blackberry/60 mt-2">
               Create, edit, and manage all articles
             </p>
           </div>
           <Link
             href="/admin/articles/new"
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
+            className="bg-nfw-blackberry text-white px-6 py-3 font-medium hover:bg-nfw-blackberry/90"
           >
             + New Article
           </Link>
         </div>
 
-        {/* Articles Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white border border-gray-200 overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-nfw-dove border-b">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
                   Title
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
                   Category
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
                   Views
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
                   Likes
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
                   Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {articles?.map((article) => (
-                <tr key={article.id} className="hover:bg-gray-50">
+                <tr key={article.id} className="hover:bg-nfw-dove/50">
                   <td className="px-6 py-4">
                     <div className="flex items-center">
                       <div>
-                        <div className="font-medium text-gray-900">
+                        <div className="font-medium text-nfw-blackberry">
                           {article.title}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-nfw-blackberry/50">
                           By {article.author?.full_name || "Unknown"}
                         </div>
                       </div>
@@ -99,39 +98,39 @@ export default async function AdminArticlesPage() {
                   </td>
                   <td className="px-6 py-4">
                     <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      className={`inline-flex px-2 py-1 text-xs font-semibold ${
                         article.is_published
-                          ? "bg-green-100 text-green-800"
+                          ? "bg-[#d4f1ad] text-nfw-blackberry"
                           : "bg-gray-100 text-gray-800"
                       }`}
                     >
                       {article.is_published ? "Published" : "Draft"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  <td className="px-6 py-4 text-sm text-nfw-blackberry/50">
                     {article.category?.name || "-"}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  <td className="px-6 py-4 text-sm text-nfw-blackberry/50">
                     {article.view_count}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  <td className="px-6 py-4 text-sm text-nfw-blackberry/50">
                     {article.like_count}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  <td className="px-6 py-4 text-sm text-nfw-blackberry/50">
                     {new Date(article.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-sm">
                     <div className="flex items-center gap-3">
                       <Link
                         href={`/admin/articles/edit/${article.id}`}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
+                        className="text-nfw-blackberry hover:text-nfw-blackberry/70 font-medium"
                       >
                         Edit
                       </Link>
                       <Link
                         href={`/articles/${article.slug}`}
                         target="_blank"
-                        className="text-gray-600 hover:text-gray-800 font-medium"
+                        className="text-nfw-blackberry/50 hover:text-nfw-blackberry font-medium"
                       >
                         View
                       </Link>
@@ -148,7 +147,7 @@ export default async function AdminArticlesPage() {
 
           {articles?.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-gray-500">
+              <p className="text-nfw-blackberry/50">
                 No articles yet. Create your first article!
               </p>
             </div>

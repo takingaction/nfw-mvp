@@ -19,7 +19,7 @@ export default function PerksFeatureSection({ content }: Props) {
           {/* Left — copy */}
           <div className="space-y-7 flex flex-col items-center">
             {c.eyebrow && (
-              <p className="font-ui text-xs font-black tracking-[0.06em] text-center uppercase text-nfw-citrine">
+              <p className="font-ui text-xs font-black tracking-[0.06em] text-center uppercase text-nfw-dove">
                 {c.eyebrow}
               </p>
             )}

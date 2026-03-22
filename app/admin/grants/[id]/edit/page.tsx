@@ -25,8 +25,8 @@ export default function EditGrantCyclePage() {
   });
 
   const inputClass =
-    "w-full px-4 py-3 border border-[#2d1239]/20 rounded-xl text-[#2d1239] placeholder-[#2d1239]/30 bg-white focus:outline-none focus:ring-2 focus:ring-[#bcafcf] focus:border-transparent transition-all";
-  const labelClass = "block text-sm font-semibold text-[#2d1239] mb-1.5";
+    "w-full px-4 py-3 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent transition-all";
+  const labelClass = "block text-sm font-semibold text-nfw-blackberry mb-1.5";
 
   useEffect(() => {
     const fetchCycle = async () => {
@@ -81,38 +81,38 @@ export default function EditGrantCyclePage() {
 
   if (fetching) {
     return (
-      <main className="min-h-screen p-8 bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#2d1239]" />
+      <main className="min-h-screen p-8 bg-nfw-dove flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-nfw-blackberry" />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
+    <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-2xl mx-auto">
         <Link
           href="/admin/grants"
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#2d1239] mb-6 transition-colors"
+          className="flex items-center gap-2 text-sm text-nfw-blackberry/50 hover:text-nfw-blackberry mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Grants
         </Link>
 
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-[#2d1239] mb-2">
+          <h1 className="text-4xl font-bold text-nfw-blackberry mb-2 font-serif">
             Edit Grant Cycle
           </h1>
-          <p className="text-gray-600">
+          <p className="text-nfw-blackberry/60">
             Update the details of this grant cycle.
           </p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="bg-white rounded-2xl border border-gray-200 p-8 space-y-6"
+          className="bg-white border border-nfw-blackberry/10 p-8 space-y-6"
         >
           <div>
             <label className={labelClass}>
-              Grant Cycle Name <span className="text-[#bcafcf]">*</span>
+              Grant Cycle Name <span className="text-nfw-lilac">*</span>
             </label>
             <input
               type="text"
@@ -129,7 +129,7 @@ export default function EditGrantCyclePage() {
           <div>
             <label className={labelClass}>
               Description{" "}
-              <span className="text-[#2d1239]/40 font-normal">(Optional)</span>
+              <span className="text-nfw-blackberry/40 font-normal">(Optional)</span>
             </label>
             <textarea
               value={formData.description}
@@ -145,7 +145,7 @@ export default function EditGrantCyclePage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>
-                Start Date <span className="text-[#bcafcf]">*</span>
+                Start Date <span className="text-nfw-lilac">*</span>
               </label>
               <input
                 type="date"
@@ -159,7 +159,7 @@ export default function EditGrantCyclePage() {
             </div>
             <div>
               <label className={labelClass}>
-                End Date <span className="text-[#bcafcf]">*</span>
+                End Date <span className="text-nfw-lilac">*</span>
               </label>
               <input
                 type="date"
@@ -176,10 +176,10 @@ export default function EditGrantCyclePage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>
-                Amount Per Grant <span className="text-[#bcafcf]">*</span>
+                Amount Per Grant <span className="text-nfw-lilac">*</span>
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-3.5 text-[#2d1239]/50 text-sm">
+                <span className="absolute left-4 top-3.5 text-nfw-blackberry/50 text-sm">
                   $
                 </span>
                 <input
@@ -201,7 +201,7 @@ export default function EditGrantCyclePage() {
             </div>
             <div>
               <label className={labelClass}>
-                Number of Grants <span className="text-[#bcafcf]">*</span>
+                Number of Grants <span className="text-nfw-lilac">*</span>
               </label>
               <input
                 type="number"
@@ -235,15 +235,14 @@ export default function EditGrantCyclePage() {
           </div>
 
           {totalFunds > 0 && (
-            <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] rounded-xl p-4">
-              <p className="text-sm text-[#2d1239]/60">Total funds committed</p>
+            <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] p-4">
+              <p className="text-sm text-nfw-blackberry/60">Total funds committed</p>
               <p
-                className="text-2xl font-black text-[#2d1239]"
-                style={{ fontFamily: "Montserrat, sans-serif" }}
+                className="text-2xl font-black text-nfw-blackberry font-ui"
               >
                 ${totalFunds.toLocaleString()}
               </p>
-              <p className="text-xs text-[#2d1239]/50 mt-1">
+              <p className="text-xs text-nfw-blackberry/50 mt-1">
                 {formData.grants_available} grants × $
                 {parseFloat(formData.amount_per_grant || "0").toLocaleString()}{" "}
                 each
@@ -252,7 +251,7 @@ export default function EditGrantCyclePage() {
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <div className="bg-red-50 border border-red-200 p-4">
               <p className="text-red-700 text-sm">{error}</p>
             </div>
           )}
@@ -261,14 +260,14 @@ export default function EditGrantCyclePage() {
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-3 bg-[#2d1239] text-white rounded-xl font-bold hover:bg-[#2d1239]/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+              className="flex-1 py-3 bg-nfw-blackberry text-white font-bold hover:bg-nfw-blackberry/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               {loading ? "Saving..." : "Save Changes"}
             </button>
             <Link
               href="/admin/grants"
-              className="px-6 py-3 border border-gray-200 text-gray-600 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+              className="px-6 py-3 border border-nfw-blackberry/20 text-nfw-blackberry font-medium hover:bg-nfw-blackberry/5 transition-colors"
             >
               Cancel
             </Link>

@@ -31,7 +31,7 @@ export default function ConnectBankButton({ grantId }: { grantId: string }) {
       <button
         onClick={handleConnect}
         disabled={loading}
-        className="inline-flex items-center gap-2 px-6 py-3 bg-[#2d1239] text-white rounded-xl font-bold hover:bg-[#2d1239]/90 disabled:opacity-50 transition-all"
+        className="inline-flex items-center gap-2 px-6 py-3 bg-nfw-blackberry text-white font-bold hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-all"
       >
         {loading && <Loader2 className="w-4 h-4 animate-spin" />}
         {loading ? "Connecting..." : "Connect Bank Account →"}

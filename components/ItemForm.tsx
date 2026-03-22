@@ -124,14 +124,14 @@ export default function ItemForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3">
           {error}
         </div>
       )}
 
       {/* Item Name */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-nfw-blackberry mb-2">
           Item Name *
         </label>
         <input
@@ -141,14 +141,14 @@ export default function ItemForm({
           onChange={(e) =>
             setFormData((prev) => ({ ...prev, name: e.target.value }))
           }
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
           placeholder="e.g., Winter Coat, Laptop, Gift Card"
         />
       </div>
 
       {/* Description */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-nfw-blackberry mb-2">
           Description
         </label>
         <textarea
@@ -157,7 +157,7 @@ export default function ItemForm({
             setFormData((prev) => ({ ...prev, description: e.target.value }))
           }
           rows={4}
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
           placeholder="Describe the item, its features, and any important details"
         />
       </div>
@@ -172,7 +172,7 @@ export default function ItemForm({
 
       {/* Category */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-nfw-blackberry mb-2">
           Category *
         </label>
         <select
@@ -181,7 +181,7 @@ export default function ItemForm({
           onChange={(e) =>
             setFormData((prev) => ({ ...prev, category_id: e.target.value }))
           }
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
         >
           <option value="">Select a category</option>
           {categories.map((category) => (
@@ -195,7 +195,7 @@ export default function ItemForm({
       {/* Inventory Settings */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-nfw-blackberry mb-2">
             Quantity Available *
           </label>
           <input
@@ -209,13 +209,13 @@ export default function ItemForm({
                 quantity_available: parseInt(e.target.value) || 0,
               }))
             }
-            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
           />
-          <p className="text-sm text-gray-500 mt-1">Total items in stock</p>
+          <p className="text-sm text-nfw-blackberry/50 mt-1">Total items in stock</p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-nfw-blackberry mb-2">
             Max Claims Per Member *
           </label>
           <input
@@ -229,50 +229,50 @@ export default function ItemForm({
                 max_claims_per_member: parseInt(e.target.value) || 1,
               }))
             }
-            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
           />
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-nfw-blackberry/50 mt-1">
             How many each member can claim
           </p>
         </div>
       </div>
 
       {/* Variants */}
-      <div className="border-t pt-6">
+      <div className="border-t border-nfw-blackberry/10 pt-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold">Variants (Optional)</h3>
-            <p className="text-sm text-gray-500">
+            <h3 className="text-lg font-semibold text-nfw-blackberry">Variants (Optional)</h3>
+            <p className="text-sm text-nfw-blackberry/50">
               Add size, color, or other options
             </p>
           </div>
           <button
             type="button"
             onClick={addVariant}
-            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 font-medium text-sm"
+            className="bg-nfw-dove text-nfw-blackberry px-4 py-2 hover:bg-nfw-blackberry/5 font-medium text-sm"
           >
             + Add Variant
           </button>
         </div>
 
         {variants.map((variant, index) => (
-          <div key={index} className="bg-gray-50 p-4 rounded-lg mb-4">
+          <div key={index} className="bg-nfw-dove p-4 mb-4">
             <div className="flex items-start gap-4">
               <div className="flex-1 space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-nfw-blackberry mb-1">
                     Variant Name
                   </label>
                   <input
                     type="text"
                     value={variant.name}
                     onChange={(e) => updateVariantName(index, e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
                     placeholder="e.g., Size, Color, Style"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-nfw-blackberry mb-1">
                     Options (comma-separated)
                   </label>
                   <input
@@ -281,10 +281,10 @@ export default function ItemForm({
                     onChange={(e) =>
                       updateVariantOptions(index, e.target.value)
                     }
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
                     placeholder="Small, Medium, Large, X-Large"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-nfw-blackberry/50 mt-1">
                     Separate each option with a comma (e.g., Small, Medium,
                     Large)
                   </p>
@@ -302,7 +302,7 @@ export default function ItemForm({
         ))}
 
         {variants.length === 0 && (
-          <p className="text-gray-500 text-sm italic">
+          <p className="text-nfw-blackberry/50 text-sm italic">
             No variants added. Click "Add Variant" to add size, color, or other
             options.
           </p>
@@ -318,29 +318,29 @@ export default function ItemForm({
           onChange={(e) =>
             setFormData((prev) => ({ ...prev, is_active: e.target.checked }))
           }
-          className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+          className="w-4 h-4 accent-nfw-blackberry"
         />
         <label
           htmlFor="is_active"
-          className="text-sm font-medium text-gray-700"
+          className="text-sm font-medium text-nfw-blackberry"
         >
           Active (visible to members in the store)
         </label>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-4 pt-6 border-t">
+      <div className="flex items-center gap-4 pt-6 border-t border-nfw-blackberry/10">
         <button
           type="submit"
           disabled={loading}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
+          className="bg-nfw-blackberry text-white px-6 py-3 hover:bg-nfw-blackberry/90 font-medium disabled:opacity-50"
         >
           {loading ? "Saving..." : item ? "Update Item" : "Create Item"}
         </button>
         <button
           type="button"
           onClick={() => router.push("/admin/items")}
-          className="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 font-medium"
+          className="bg-nfw-dove text-nfw-blackberry px-6 py-3 hover:bg-nfw-blackberry/5 font-medium"
         >
           Cancel
         </button>

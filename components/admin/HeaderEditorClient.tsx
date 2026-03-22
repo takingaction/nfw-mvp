@@ -85,8 +85,8 @@ export default function HeaderEditorClient({
   return (
     <div className="space-y-6">
       {/* Logo */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 className="font-black text-[#2d1239] mb-4">Logo</h2>
+      <div className="bg-white border border-nfw-blackberry/10 p-6">
+        <h2 className="font-black text-nfw-blackberry mb-4 font-ui">Logo</h2>
 
         {logoUrl && (
           <div className="relative mb-3 group inline-block">
@@ -97,7 +97,7 @@ export default function HeaderEditorClient({
             />
             <button
               onClick={() => setLogoUrl("")}
-              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
             >
               ×
             </button>
@@ -105,9 +105,9 @@ export default function HeaderEditorClient({
         )}
 
         <label className="block cursor-pointer mb-2">
-          <div className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-200 rounded-lg hover:border-[#2d1239] hover:bg-[#2d1239]/5 transition-colors">
-            <Upload className="w-4 h-4 text-gray-400" />
-            <span className="text-sm text-gray-500">
+          <div className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-nfw-blackberry/20 hover:border-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors">
+            <Upload className="w-4 h-4 text-nfw-blackberry/40" />
+            <span className="text-sm text-nfw-blackberry/50">
               {logoUrl ? "Replace logo" : "Upload logo"}
             </span>
           </div>
@@ -134,13 +134,13 @@ export default function HeaderEditorClient({
           value={logoUrl}
           onChange={(e) => setLogoUrl(e.target.value)}
           placeholder="Or paste a URL directly"
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239] text-gray-400"
+          className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry text-nfw-blackberry/40"
         />
       </div>
 
       {/* Nav links */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 className="font-black text-[#2d1239] mb-4">Navigation Links</h2>
+      <div className="bg-white border border-nfw-blackberry/10 p-6">
+        <h2 className="font-black text-nfw-blackberry mb-4 font-ui">Navigation Links</h2>
         <div className="space-y-3 mb-4">
           {navLinks.map((link, i) => (
             <div
@@ -152,27 +152,27 @@ export default function HeaderEditorClient({
                 value={link.label}
                 onChange={(e) => updateLink(i, "label", e.target.value)}
                 placeholder="Label"
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
+                className="px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
               />
               <input
                 type="text"
                 value={link.url}
                 onChange={(e) => updateLink(i, "url", e.target.value)}
                 placeholder="URL"
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
+                className="px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
               />
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 cursor-pointer">
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-nfw-blackberry/50 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={link.highlight}
                   onChange={(e) => updateLink(i, "highlight", e.target.checked)}
-                  className="rounded"
+                  className="accent-nfw-blackberry"
                 />
                 Sub-item
               </label>
               <button
                 onClick={() => removeLink(i)}
-                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                className="p-1.5 text-nfw-blackberry/40 hover:text-red-500 hover:bg-red-50 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -181,7 +181,7 @@ export default function HeaderEditorClient({
         </div>
         <button
           onClick={addLink}
-          className="flex items-center gap-2 text-sm font-semibold text-[#2d1239] hover:opacity-70 transition-opacity"
+          className="flex items-center gap-2 text-sm font-semibold text-nfw-blackberry hover:opacity-70 transition-opacity"
         >
           <Plus className="w-4 h-4" />
           Add Link
@@ -189,11 +189,11 @@ export default function HeaderEditorClient({
       </div>
 
       {/* CTA button */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 className="font-black text-[#2d1239] mb-4">CTA Button</h2>
+      <div className="bg-white border border-nfw-blackberry/10 p-6">
+        <h2 className="font-black text-nfw-blackberry mb-4 font-ui">CTA Button</h2>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">
+            <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
               Label
             </label>
             <input
@@ -201,11 +201,11 @@ export default function HeaderEditorClient({
               value={ctaLabel}
               onChange={(e) => setCtaLabel(e.target.value)}
               placeholder="e.g. Join Today"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
+              className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
             />
           </div>
           <div>
-            <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">
+            <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
               URL
             </label>
             <input
@@ -213,7 +213,7 @@ export default function HeaderEditorClient({
               value={ctaUrl}
               onChange={(e) => setCtaUrl(e.target.value)}
               placeholder="/auth/sign-up"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2d1239]"
+              className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
             />
           </div>
         </div>
@@ -223,14 +223,14 @@ export default function HeaderEditorClient({
       <button
         onClick={handleSave}
         disabled={saving}
-        className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-[#2d1239] text-white rounded-xl font-bold hover:bg-[#2d1239]/90 disabled:opacity-50 transition-colors"
+        className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-nfw-blackberry text-white font-bold hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors"
       >
         <Save className="w-4 h-4" />
         {saving ? "Saving..." : "Save Header"}
       </button>
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#2d1239] text-white px-6 py-3 rounded-xl text-sm font-semibold shadow-lg z-50 animate-fade-in">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-nfw-blackberry text-white px-6 py-3 text-sm font-semibold shadow-lg z-50 animate-fade-in">
           {toast}
         </div>
       )}

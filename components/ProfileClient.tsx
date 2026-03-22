@@ -69,21 +69,21 @@ export default function ProfileClient({
     <div className="space-y-6">
       {/* Success Message */}
       {success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3">
           {success}
         </div>
       )}
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3">
           {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Account Information */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white border border-gray-200 p-6">
           <h2 className="text-2xl font-bold mb-6">Account Information</h2>
 
           {/* Email (Read-only) */}
@@ -95,7 +95,7 @@ export default function ProfileClient({
               type="email"
               value={userEmail}
               disabled
-              className="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-500"
+              className="w-full px-4 py-2 border bg-gray-50 text-gray-500"
             />
             <p className="text-sm text-gray-500 mt-1">
               Email cannot be changed
@@ -114,7 +114,7 @@ export default function ProfileClient({
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, full_name: e.target.value }))
               }
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border focus:ring-2 focus:ring-nfw-lilac"
               placeholder="Jane Doe"
             />
           </div>
@@ -130,14 +130,14 @@ export default function ProfileClient({
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, phone: e.target.value }))
               }
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border focus:ring-2 focus:ring-nfw-lilac"
               placeholder="(555) 123-4567"
             />
           </div>
         </div>
 
         {/* Shipping Address */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white border border-gray-200 p-6">
           <h2 className="text-2xl font-bold mb-6">Shipping Address</h2>
           <p className="text-sm text-gray-600 mb-4">
             This address will be used for Zero Dollar Store item shipments.
@@ -158,7 +158,7 @@ export default function ProfileClient({
                   street: e.target.value,
                 }))
               }
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border focus:ring-2 focus:ring-nfw-lilac"
               placeholder="123 Main Street, Apt 4B"
             />
           </div>
@@ -179,7 +179,7 @@ export default function ProfileClient({
                     city: e.target.value,
                   }))
                 }
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border focus:ring-2 focus:ring-nfw-lilac"
                 placeholder="New York"
               />
             </div>
@@ -198,7 +198,7 @@ export default function ProfileClient({
                     state: e.target.value,
                   }))
                 }
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border focus:ring-2 focus:ring-nfw-lilac"
                 placeholder="NY"
                 maxLength={2}
               />
@@ -218,7 +218,7 @@ export default function ProfileClient({
                     zip: e.target.value,
                   }))
                 }
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border focus:ring-2 focus:ring-nfw-lilac"
                 placeholder="10001"
               />
             </div>
@@ -238,7 +238,7 @@ export default function ProfileClient({
                   country: e.target.value,
                 }))
               }
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border focus:ring-2 focus:ring-nfw-lilac"
             >
               <option value="USA">United States</option>
               <option value="Canada">Canada</option>
@@ -252,7 +252,7 @@ export default function ProfileClient({
           <button
             type="submit"
             disabled={loading}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
+            className="bg-nfw-blackberry text-white px-6 py-3 hover:bg-nfw-blackberry/90 font-medium disabled:opacity-50"
           >
             {loading ? "Saving..." : "Save Changes"}
           </button>
@@ -260,26 +260,26 @@ export default function ProfileClient({
       </form>
 
       {/* Quick Links */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-white border border-gray-200 p-6">
         <h2 className="text-2xl font-bold mb-4">Quick Links</h2>
         <div className="space-y-2">
           <a
             href="/store/my-claims"
-            className="block text-blue-600 hover:text-blue-800 font-medium"
+            className="block text-nfw-aubergine hover:text-nfw-aubergine/80 font-medium"
           >
-            → View My Claims
+            View My Claims
           </a>
           <a
             href="/store"
-            className="block text-blue-600 hover:text-blue-800 font-medium"
+            className="block text-nfw-aubergine hover:text-nfw-aubergine/80 font-medium"
           >
-            → Browse Zero Dollar Store
+            Browse Zero Dollar Store
           </a>
           <a
             href="/articles"
-            className="block text-blue-600 hover:text-blue-800 font-medium"
+            className="block text-nfw-aubergine hover:text-nfw-aubergine/80 font-medium"
           >
-            → Read Articles
+            Read Articles
           </a>
         </div>
       </div>
