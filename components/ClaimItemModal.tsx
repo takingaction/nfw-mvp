@@ -171,22 +171,30 @@ export default function ClaimItemModal({
               </div>
 
               {shippingAddress ? (
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    id="useProfile"
-                    checked={useProfileAddress}
-                    onChange={(e) => setUseProfileAddress(e.target.checked)}
-                    className="mt-1"
-                  />
-                  <label htmlFor="useProfile" className="font-sans text-sm text-nfw-blackberry/70">
-                    <span className="font-medium">{shippingAddress.full_name}</span>
-                    <br />
-                    {shippingAddress.address_line1}
-                    {shippingAddress.address_line2 && <>, {shippingAddress.address_line2}</>}
-                    <br />
-                    {shippingAddress.city}, {shippingAddress.state} {shippingAddress.zip}
+                <div className="space-y-3">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="useProfile"
+                      checked={useProfileAddress}
+                      onChange={(e) => setUseProfileAddress(e.target.checked)}
+                      className="mt-1"
+                    />
+                    <div className="font-sans text-sm text-nfw-blackberry/70">
+                      <span className="font-medium">{shippingAddress.full_name}</span>
+                      <br />
+                      {shippingAddress.address_line1}
+                      {shippingAddress.address_line2 && <>, {shippingAddress.address_line2}</>}
+                      <br />
+                      {shippingAddress.city}, {shippingAddress.state} {shippingAddress.zip}
+                      <p className="text-nfw-blackberry/50 mt-1">You can change this later on Shopify</p>
+                    </div>
                   </label>
+                  {!useProfileAddress && (
+                    <p className="font-sans text-sm text-nfw-blackberry/50 italic pl-7">
+                      Enter a different address on the next step
+                    </p>
+                  )}
                 </div>
               ) : (
                 <p className="font-sans text-sm font-normal text-nfw-blackberry/50">
