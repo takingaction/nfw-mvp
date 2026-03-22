@@ -191,7 +191,7 @@ export default function ClaimItemModal({
                     </div>
                   </label>
                   {!useProfileAddress && (
-                    <p className="font-sans text-sm text-nfw-blackberry/50 italic pl-7">
+                    <p className="font-sans text-sm font-normal text-nfw-blackberry/50 pl-7">
                       Enter a different address on the next step
                     </p>
                   )}
