@@ -42,6 +42,9 @@ async function MyClaimsContent() {
 
   let enrichedClaims = claims || [];
 
+  console.log("DEBUG: NEXT_PUBLIC_BASE_URL:", process.env.NEXT_PUBLIC_BASE_URL);
+  console.log("DEBUG: SHOPIFY_CLIENT_ID:", process.env.SHOPIFY_CLIENT_ID ? "set" : "NOT SET");
+
   if (claims && claims.length > 0) {
     try {
       const productsRes = await fetch(
@@ -50,6 +53,10 @@ async function MyClaimsContent() {
       );
       if (productsRes.ok) {
         const products = await productsRes.json();
+        console.log("DEBUG: Products count:", products.length);
+        console.log("DEBUG: First product ID:", products[0]?.shopifyProductId);
+        console.log("DEBUG: Claim product IDs:", claims.map(c => c.shopify_product_id));
+        
         const productMap = new Map(
           products.map((p: { shopifyProductId: string; title: string; imageUrl: string; description: string }) => [
             p.shopifyProductId,
@@ -61,6 +68,7 @@ async function MyClaimsContent() {
           ...claim,
           product: productMap.get(claim.shopify_product_id) || null,
         }));
+        console.log("DEBUG: Matched products:", enrichedClaims.map(c => c.product?.title || 'NULL'));
       }
     } catch (err) {
       console.error("Error fetching product details:", err);
