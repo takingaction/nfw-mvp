@@ -44,6 +44,7 @@ export async function POST() {
     return NextResponse.json({ count: syncedCount });
   } catch (error) {
     console.error("Error syncing from Shopify:", error);
-    return NextResponse.json({ error: "Sync failed" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Sync failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
