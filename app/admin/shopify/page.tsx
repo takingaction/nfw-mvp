@@ -79,9 +79,9 @@ export default function AdminShopifySync() {
   };
 
   const toggleTier = async (productId: string, tier: string, currentTiers: string[]) => {
-    const newTiers = currentTiers.includes(tier)
-      ? currentTiers.filter((t) => t !== tier)
-      : [...currentTiers, tier];
+    const newTiers = (currentTiers ?? []).includes(tier)
+      ? (currentTiers ?? []).filter((t) => t !== tier)
+      : [...(currentTiers ?? []), tier];
 
     const supabase = createClient();
     const { error } = await supabase
@@ -198,9 +198,9 @@ export default function AdminShopifySync() {
                     {TIERS.map((tier) => (
                       <button
                         key={tier}
-                        onClick={() => toggleTier(product.shopify_product_id, tier, product.eligibility_tiers)}
+                        onClick={() => toggleTier(product.shopify_product_id, tier, product.eligibility_tiers ?? [])}
                         className={`px-3 py-1 text-xs font-medium transition-colors ${
-                          product.eligibility_tiers.includes(tier)
+                          product.eligibility_tiers?.includes(tier) ?? false
                             ? "bg-nfw-blackberry text-white"
                             : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
                         }`}
