@@ -84,10 +84,12 @@ export default function StoreClient({
     setClaimingItem({
       id: item.shopifyProductId,
       name: item.title,
-      variants: item.variants.map((v) => ({
-        name: v.options.map((o) => o.name).join(" / ") || "Size",
-        options: v.options.map((o) => o.value),
-      })),
+      variants: item.variants
+        .filter((v) => v.options && v.options.length > 0)
+        .map((v) => ({
+          name: v.options.map((o) => o.name).join(" / ") || "Size",
+          options: v.options.map((o) => o.value),
+        })),
     });
   };
 

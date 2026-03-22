@@ -189,7 +189,7 @@ export default function ClaimItemModal({
                   </label>
                 </div>
               ) : (
-                <p className="font-sans text-sm text-nfw-blackberry/50 italic">
+                <p className="font-sans text-sm font-normal text-nfw-blackberry/50 italic">
                   No shipping address on file. You&apos;ll enter one on Shopify.
                 </p>
               )}
