@@ -2,15 +2,9 @@ import { NextResponse } from "next/server";
 import { shopifyFetch, PRODUCTS_QUERY, ShopifyProduct } from "@/lib/shopify";
 import { createClient } from "@/lib/supabase/server";
 
-const USE_MOCK = !process.env.SHOPIFY_CLIENT_ID || process.env.SHOPIFY_CLIENT_ID === "your-shopify-client-id";
-
 export async function POST() {
   try {
     const supabase = await createClient();
-
-    if (USE_MOCK) {
-      return NextResponse.json({ count: 0, message: "Mock mode - no sync needed" });
-    }
 
     const data = await shopifyFetch<{ products: { edges: Array<{ node: ShopifyProduct }> } }>({
       query: PRODUCTS_QUERY,

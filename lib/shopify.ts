@@ -9,15 +9,16 @@ function getShopifyConfig() {
 export async function getShopifyAccessToken(): Promise<string | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("settings")
-    .select("value")
-    .eq("key", "shopify_access_token")
+    .from("shopify_tokens")
+    .select("access_token")
+    .eq("shop", process.env.SHOPIFY_SHOP_DOMAIN)
     .single();
   
   if (error || !data) {
-    return null;
+    // Fallback to environment variable if no token in DB
+    return process.env.SHOPIFY_ACCESS_TOKEN || null;
   }
-  return data.value as string;
+  return data.access_token as string;
 }
 
 export async function shopifyFetch<T>({

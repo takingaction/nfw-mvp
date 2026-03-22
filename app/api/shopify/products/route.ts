@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { shopifyFetch, PRODUCTS_QUERY, ShopifyProduct } from "@/lib/shopify";
+import { shopifyFetch, PRODUCTS_QUERY, ShopifyProduct, getShopifyAccessToken } from "@/lib/shopify";
 import { createClient } from "@/lib/supabase/server";
 import { MOCK_PRODUCTS, transformShopifyProduct, MockProduct } from "@/lib/mock-shopify";
 
@@ -7,6 +7,13 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const featured = searchParams.get("featured") === "true";
+    const checkConnection = searchParams.get("check_connection") === "true";
+
+    // Connection check endpoint
+    if (checkConnection) {
+      const token = await getShopifyAccessToken();
+      return NextResponse.json({ connected: !!token }, { status: 200 });
+    }
 
     let products: MockProduct[] = MOCK_PRODUCTS.filter(p => p.mvpVisibility);
 

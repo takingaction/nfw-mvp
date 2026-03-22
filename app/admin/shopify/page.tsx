@@ -21,6 +21,35 @@ export default function AdminShopifySync() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+
+  const SHOPIFY_AUTH_URL = `https://nfw-checkout.myshopify.com/admin/oauth/authorize?client_id=${process.env.NEXT_PUBLIC_SHOPIFY_CLIENT_ID}&scope=read_products,write_checkouts,read_checkouts&redirect_uri=${typeof window !== 'undefined' ? window.location.origin : ''}/api/shopify-callback`;
+
+  const checkConnection = async () => {
+    try {
+      const res = await fetch("/api/shopify/products?check_connection=true");
+      if (res.ok) {
+        setIsConnected(true);
+      }
+    } catch {
+      setIsConnected(false);
+    }
+  };
+
+  useEffect(() => {
+    // Check for connected param from OAuth callback
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("connected") === "true") {
+      setMessage({ type: "success", text: "Successfully connected to Shopify!" });
+      setIsConnected(true);
+      // Clean URL
+      window.history.replaceState({}, "", "/admin/shopify");
+    } else if (params.get("error")) {
+      setMessage({ type: "error", text: `Connection failed: ${params.get("error")}` });
+      window.history.replaceState({}, "", "/admin/shopify");
+    }
+    checkConnection();
+  }, []);
 
   const fetchProducts = async () => {
     try {
@@ -119,13 +148,22 @@ export default function AdminShopifySync() {
             Manage which products appear in the Zero Dollar Store MVP
           </p>
         </div>
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          className="bg-nfw-blackberry text-white px-6 py-3 font-medium hover:bg-nfw-blackberry/90 disabled:opacity-50"
-        >
-          {syncing ? "Syncing..." : "Sync from Shopify"}
-        </button>
+        {!isConnected ? (
+          <a
+            href={SHOPIFY_AUTH_URL}
+            className="bg-nfw-aubergine text-white px-6 py-3 font-medium hover:bg-nfw-aubergine/90 inline-block"
+          >
+            Connect to Shopify
+          </a>
+        ) : (
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="bg-nfw-blackberry text-white px-6 py-3 font-medium hover:bg-nfw-blackberry/90 disabled:opacity-50"
+          >
+            {syncing ? "Syncing..." : "Sync from Shopify"}
+          </button>
+        )}
       </div>
 
       {message && (

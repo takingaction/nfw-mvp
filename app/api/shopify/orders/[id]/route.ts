@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { shopifyFetch, CHECKOUT_QUERY } from "@/lib/shopify";
+import { shopifyFetch, CHECKOUT_QUERY, getShopifyAccessToken } from "@/lib/shopify";
 import { createClient } from "@/lib/supabase/server";
-
-const USE_MOCK = !process.env.SHOPIFY_CLIENT_ID || process.env.SHOPIFY_CLIENT_ID === "your-shopify-client-id";
 
 export async function GET(
   request: NextRequest,
@@ -25,17 +23,6 @@ export async function GET(
       );
     }
 
-    if (USE_MOCK) {
-      return NextResponse.json({
-        checkoutId: id,
-        status: claim.status,
-        trackingNumber: claim.tracking_number,
-        trackingUrl: claim.tracking_url,
-        orderId: claim.shopify_order_id,
-        completedAt: claim.status === "fulfilled" ? new Date().toISOString() : null,
-      });
-    }
-
     if (!claim.shopify_checkout_id) {
       return NextResponse.json({
         checkoutId: id,
@@ -44,6 +31,20 @@ export async function GET(
         trackingUrl: claim.tracking_url,
         orderId: claim.shopify_order_id,
         completedAt: null,
+      });
+    }
+
+    // Check if we have a Shopify token
+    const token = await getShopifyAccessToken();
+    if (!token) {
+      // Return cached data if no token available
+      return NextResponse.json({
+        checkoutId: id,
+        status: claim.status,
+        trackingNumber: claim.tracking_number,
+        trackingUrl: claim.tracking_url,
+        orderId: claim.shopify_order_id,
+        completedAt: claim.status === "fulfilled" ? new Date().toISOString() : null,
       });
     }
 

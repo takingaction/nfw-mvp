@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { shopifyFetch, CHECKOUT_CREATE_MUTATION, CHECKOUT_SHIPPING_ADDRESS_UPDATE_MUTATION } from "@/lib/shopify";
+import { shopifyFetch, CHECKOUT_CREATE_MUTATION, CHECKOUT_SHIPPING_ADDRESS_UPDATE_MUTATION, getShopifyAccessToken } from "@/lib/shopify";
 import { createClient } from "@/lib/supabase/server";
-
-const USE_MOCK = !process.env.SHOPIFY_CLIENT_ID || process.env.SHOPIFY_CLIENT_ID === "your-shopify-client-id";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,36 +13,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (USE_MOCK) {
-      console.log("Mock checkout - would create checkout for:", { variantId, productId, userId, shippingAddress });
-      const mockCheckoutId = `mock-checkout-${Date.now()}`;
-      const mockCheckoutUrl = `https://nfw-checkout.myshopify.com/checkouts/${mockCheckoutId}`;
-
-      const supabase = await createClient();
-      const { error: claimError } = await supabase
-        .from("zero_dollar_claims")
-        .insert({
-          user_id: userId,
-          shopify_product_id: productId,
-          shopify_variant_id: variantId,
-          shopify_checkout_id: mockCheckoutId,
-          status: "created",
-          shipping_address: shippingAddress || null,
-          claimed_at: new Date().toISOString(),
-        });
-
-      if (claimError) {
-        console.error("Error creating claim:", claimError);
-        return NextResponse.json(
-          { error: "Failed to create claim" },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json({
-        checkoutUrl: mockCheckoutUrl,
-        checkoutId: mockCheckoutId,
-      });
+    // Check if we have a Shopify token
+    const token = await getShopifyAccessToken();
+    if (!token) {
+      return NextResponse.json(
+        { error: "Shopify not connected. Please connect to Shopify first." },
+        { status: 400 }
+      );
     }
 
     const checkoutInput = {
