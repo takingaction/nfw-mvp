@@ -58,16 +58,7 @@ export async function GET(request: NextRequest) {
     const sortedProducts = products.sort((a, b) => a.displayOrder - b.displayOrder);
 
     if (featured) {
-      return NextResponse.json({
-        products: sortedProducts.slice(0, 3),
-        debug: {
-          useRealShopify,
-          shopDomain,
-          clientId,
-          productCount: sortedProducts.length,
-          source: sortedProducts.length > 0 && sortedProducts[0].title === MOCK_PRODUCTS[0].title ? 'mock' : 'shopify'
-        }
-      });
+      return NextResponse.json(sortedProducts.slice(0, 3));
     }
 
     return NextResponse.json(sortedProducts);
