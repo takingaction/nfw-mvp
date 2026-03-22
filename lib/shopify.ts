@@ -140,10 +140,6 @@ export const PRODUCTS_QUERY = `
                   name
                   value
                 }
-                price {
-                  amount
-                  currencyCode
-                }
               }
             }
           }
@@ -179,10 +175,6 @@ export const PRODUCT_BY_HANDLE_QUERY = `
             selectedOptions {
               name
               value
-            }
-            price {
-              amount
-              currencyCode
             }
           }
         }
