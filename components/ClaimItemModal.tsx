@@ -214,7 +214,7 @@ export default function ClaimItemModal({
                   Redirecting...
                 </>
               ) : (
-                "Continue to Checkout"
+                "Checkout"
               )}
             </button>
             <button

@@ -11,13 +11,25 @@ export async function GET(
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("shipping_address")
+      .select("full_name, address_line1, address_line2, city, state, zip")
       .eq("id", userId)
       .single();
 
-    return NextResponse.json({
-      address: profile?.shipping_address || null,
-    });
+    if (!profile || !profile.address_line1) {
+      return NextResponse.json({ address: null });
+    }
+
+    const address = {
+      full_name: profile.full_name || "",
+      address_line1: profile.address_line1 || "",
+      address_line2: profile.address_line2 || "",
+      city: profile.city || "",
+      state: profile.state || "",
+      zip: profile.zip || "",
+      country: "USA",
+    };
+
+    return NextResponse.json({ address });
   } catch (error) {
     console.error("Error fetching profile address:", error);
     return NextResponse.json({ address: null }, { status: 500 });

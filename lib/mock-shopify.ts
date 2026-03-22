@@ -138,6 +138,9 @@ export const MOCK_PRODUCTS: MockProduct[] = [
 export function transformShopifyProduct(shopifyProduct: ShopifyProduct, mockMapping?: MockProduct): MockProduct {
   const firstVariant = shopifyProduct.variants.edges[0]?.node;
 
+  const hasVariants = shopifyProduct.variants.edges.length > 1 || 
+    (shopifyProduct.variants.edges[0]?.node.selectedOptions?.length ?? 0) > 0;
+
   return {
     shopifyProductId: shopifyProduct.id,
     shopifyVariantId: firstVariant?.id || "",
@@ -145,12 +148,12 @@ export function transformShopifyProduct(shopifyProduct: ShopifyProduct, mockMapp
     description: shopifyProduct.description || "",
     imageUrl: shopifyProduct.featuredImage?.url || "",
     availableForSale: firstVariant?.availableForSale || false,
-    variants: shopifyProduct.variants.edges.map(({ node }) => ({
+    variants: hasVariants ? shopifyProduct.variants.edges.map(({ node }) => ({
       id: node.id,
       title: node.title,
       availableForSale: node.availableForSale,
       options: node.selectedOptions,
-    })),
+    })) : [],
     mvpVisibility: mockMapping?.mvpVisibility ?? true,
     eligibilityTiers: mockMapping?.eligibilityTiers ?? ["free", "contributing", "founding"],
     displayOrder: mockMapping?.displayOrder ?? 999,
