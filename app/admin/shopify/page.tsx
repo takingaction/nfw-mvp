@@ -136,26 +136,54 @@ export default function AdminShopifySync() {
     if (!product) return;
 
     const currentlyFeatured = product.displayOrder < 999;
-    const featuredCount = products.filter((p) => p.displayOrder < 999).length;
 
     if (currentlyFeatured) {
-      const res = await fetch("/api/admin/shopify/update-product", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          shopify_product_id: productId,
-          updates: { display_order: 999 },
-        }),
+      const remainingFeatured = products
+        .filter((p) => p.displayOrder < 999 && p.shopifyProductId !== productId)
+        .sort((a, b) => a.displayOrder - b.displayOrder);
+
+      const updates: Array<{ shopify_product_id: string; updates: { display_order: number } }> = [];
+
+      remainingFeatured.forEach((p, index) => {
+        if (p.displayOrder !== index) {
+          updates.push({
+            shopify_product_id: p.shopifyProductId,
+            updates: { display_order: index },
+          });
+        }
       });
 
-      if (res.ok) {
-        setProducts((prev) =>
-          prev.map((p) =>
-            p.shopifyProductId === productId ? { ...p, displayOrder: 999 } : p,
-          ),
-        );
-      }
+      updates.push({
+        shopify_product_id: productId,
+        updates: { display_order: 999 },
+      });
+
+      await Promise.all(
+        updates.map((u) =>
+          fetch("/api/admin/shopify/update-product", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(u),
+          }),
+        ),
+      );
+
+      setProducts((prev) => {
+        let updated = prev.map((p) => {
+          if (p.shopifyProductId === productId) {
+            return { ...p, displayOrder: 999 };
+          }
+          const idx = remainingFeatured.findIndex((rp) => rp.shopifyProductId === p.shopifyProductId);
+          if (idx >= 0 && p.displayOrder !== idx) {
+            return { ...p, displayOrder: idx };
+          }
+          return p;
+        });
+        return updated;
+      });
     } else {
+      const featuredCount = products.filter((p) => p.displayOrder < 999).length;
+
       if (featuredCount >= MAX_FEATURED) {
         setMessage({ type: "error", text: `Maximum ${MAX_FEATURED} featured products allowed` });
         setTimeout(() => setMessage(null), 3000);
@@ -183,9 +211,11 @@ export default function AdminShopifySync() {
   };
 
   const getFeaturedRank = (productId: string): number | null => {
-    const product = products.find((p) => p.shopifyProductId === productId);
-    if (!product || product.displayOrder >= 999) return null;
-    return product.displayOrder + 1;
+    const featuredProducts = products
+      .filter((p) => p.displayOrder < 999)
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+    const rankIndex = featuredProducts.findIndex((p) => p.shopifyProductId === productId);
+    return rankIndex >= 0 ? rankIndex + 1 : null;
   };
 
   if (loading) {
