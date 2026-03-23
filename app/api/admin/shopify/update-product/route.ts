@@ -9,6 +9,7 @@ const supabaseAdmin = createClient(
 export async function POST(request: NextRequest) {
   try {
     const { shopify_product_id, updates } = await request.json();
+    console.log("DEBUG update-product:", shopify_product_id, updates);
 
     if (!shopify_product_id) {
       return NextResponse.json({ error: "Missing product ID" }, { status: 400 });
@@ -26,6 +27,7 @@ export async function POST(request: NextRequest) {
         (sanitizedUpdates as Record<string, unknown>)[key] = updates[key];
       }
     }
+    console.log("DEBUG sanitizedUpdates:", sanitizedUpdates);
 
     if (Object.keys(sanitizedUpdates).length === 0) {
       return NextResponse.json({ error: "No valid updates provided" }, { status: 400 });
