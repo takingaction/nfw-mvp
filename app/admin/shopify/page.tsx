@@ -315,7 +315,7 @@ export default function AdminShopifySync() {
                         onClick={() => toggleFeatured(product.shopifyProductId)}
                         className={`p-2 rounded-full transition-colors ${
                           isFeatured
-                            ? "text-nfw-citrine hover:bg-nfw-citrine/10"
+                            ? "text-nfw-aubergine hover:bg-nfw-aubergine/10"
                             : "text-nfw-blackberry/30 hover:text-nfw-blackberry/60 hover:bg-nfw-blackberry/5"
                         }`}
                         title={isFeatured ? "Remove from featured" : "Add to featured"}
@@ -323,7 +323,7 @@ export default function AdminShopifySync() {
                         <Star className={`w-5 h-5 ${isFeatured ? "fill-current" : ""}`} />
                       </button>
                       {isFeatured && (
-                        <span className="text-xs text-nfw-citrine font-medium">
+                        <span className="text-xs text-nfw-aubergine font-black uppercase">
                           #{featuredRank}
                         </span>
                       )}
