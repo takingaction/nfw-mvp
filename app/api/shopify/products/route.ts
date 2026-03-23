@@ -40,9 +40,12 @@ export async function GET(request: NextRequest) {
         console.log("DEBUG mappings sample:", mappings?.slice(0, 2).map(m => ({ id: m.shopify_product_id, display_order: m.display_order, mvp_visibility: m.mvp_visibility })));
 
         const mappingMap = new Map((mappings || []).map(m => [m.shopify_product_id, m]));
+        console.log("DEBUG mappingMap keys:", Array.from(mappingMap.keys()));
+        console.log("DEBUG node.id sample:", data.products.edges[0]?.node.id);
 
         products = data.products.edges.map(({ node }) => {
           const mapping = mappingMap.get(node.id);
+          console.log("DEBUG lookup:", node.id, mapping ? "FOUND" : "NOT FOUND", mapping?.display_order);
           return transformShopifyProduct(node, mapping as MockProduct | undefined);
         });
         console.log("DEBUG products with mapping:", products.slice(0, 2).map(p => ({ title: p.title, displayOrder: p.displayOrder, mvpVisibility: p.mvpVisibility })));
