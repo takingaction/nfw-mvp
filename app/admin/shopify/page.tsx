@@ -2,7 +2,24 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Star } from "lucide-react";
+import { GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type ProductWithMapping = {
   shopifyProductId: string;
@@ -17,12 +34,148 @@ type ProductWithMapping = {
 const TIERS = ["free", "contributing", "founding"];
 const MAX_FEATURED = 3;
 
+function SortableProductRow({
+  product,
+  isFeatured,
+  featuredRank,
+  onToggleVisibility,
+  onToggleTier,
+  onToggleFeatured,
+}: {
+  product: ProductWithMapping;
+  isFeatured: boolean;
+  featuredRank: number | null;
+  onToggleVisibility: () => void;
+  onToggleTier: (tier: string) => void;
+  onToggleFeatured: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: product.shopifyProductId });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : 1,
+  };
+
+  return (
+    <tr ref={setNodeRef} style={style} className={isFeatured ? "bg-nfw-aubergine/5" : ""}>
+      <td className="px-6 py-4">
+        <div className="flex items-center">
+          <button
+            {...attributes}
+            {...listeners}
+            className="p-1 mr-2 text-nfw-blackberry/30 hover:text-nfw-blackberry/60 cursor-grab active:cursor-grabbing"
+          >
+            <GripVertical className="w-5 h-5" />
+          </button>
+          <div className="h-12 w-12 bg-nfw-stone/10 flex-shrink-0 overflow-hidden relative rounded">
+            {product.imageUrl ? (
+              <Image
+                src={product.imageUrl}
+                alt={product.title}
+                fill
+                className="object-cover"
+                sizes="48px"
+              />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center text-nfw-stone/30 text-xs">
+                No Img
+              </div>
+            )}
+          </div>
+          <div className="ml-4">
+            <div className="font-medium text-nfw-blackberry">{product.title}</div>
+            <div className="text-sm text-nfw-blackberry/50 truncate max-w-xs">{product.shopifyProductId}</div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center">
+            <button
+              onClick={onToggleVisibility}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                product.mvpVisibility ? "bg-[#d4f1ad]" : "bg-nfw-stone/30"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  product.mvpVisibility ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+            <span className="ml-3 text-sm text-nfw-blackberry/60">
+              {product.mvpVisibility ? "Visible" : "Hidden"}
+            </span>
+          </div>
+          <button
+            onClick={onToggleFeatured}
+            className={`p-2 rounded transition-colors ${
+              isFeatured
+                ? "text-nfw-aubergine hover:bg-nfw-aubergine/10"
+                : "text-nfw-blackberry/30 hover:text-nfw-blackberry/60 hover:bg-nfw-blackberry/5"
+            }`}
+            title={isFeatured ? "Remove from featured" : "Add to featured"}
+          >
+            <svg
+              className={`w-5 h-5 ${isFeatured ? "fill-current" : ""}`}
+              viewBox="0 0 24 24"
+              fill={isFeatured ? "currentColor" : "none"}
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+          </button>
+          {isFeatured && (
+            <span className="text-xs text-nfw-aubergine font-black uppercase">
+              #{featuredRank}
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex gap-2">
+          {TIERS.map((tier) => (
+            <button
+              key={tier}
+              onClick={() => onToggleTier(tier)}
+              className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                product.eligibilityTiers?.includes(tier)
+                  ? "bg-nfw-blackberry text-white"
+                  : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
+              }`}
+            >
+              {tier}
+            </button>
+          ))}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 export default function AdminShopifySync() {
   const [products, setProducts] = useState<ProductWithMapping[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const SHOPIFY_AUTH_URL = `https://nfw-checkout.myshopify.com/admin/oauth/authorize?client_id=${process.env.NEXT_PUBLIC_SHOPIFY_CLIENT_ID}&scope=read_products,write_checkouts,read_checkouts&redirect_uri=${typeof window !== 'undefined' ? window.location.origin : ''}/api/shopify-callback`;
 
@@ -136,54 +289,26 @@ export default function AdminShopifySync() {
     if (!product) return;
 
     const currentlyFeatured = product.displayOrder < 999;
+    const featuredCount = products.filter((p) => p.displayOrder < 999).length;
 
     if (currentlyFeatured) {
-      const remainingFeatured = products
-        .filter((p) => p.displayOrder < 999 && p.shopifyProductId !== productId)
-        .sort((a, b) => a.displayOrder - b.displayOrder);
-
-      const updates: Array<{ shopify_product_id: string; updates: { display_order: number } }> = [];
-
-      remainingFeatured.forEach((p, index) => {
-        if (p.displayOrder !== index) {
-          updates.push({
-            shopify_product_id: p.shopifyProductId,
-            updates: { display_order: index },
-          });
-        }
+      const res = await fetch("/api/admin/shopify/update-product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shopify_product_id: productId,
+          updates: { display_order: 999 },
+        }),
       });
 
-      updates.push({
-        shopify_product_id: productId,
-        updates: { display_order: 999 },
-      });
-
-      await Promise.all(
-        updates.map((u) =>
-          fetch("/api/admin/shopify/update-product", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(u),
-          }),
-        ),
-      );
-
-      setProducts((prev) => {
-        let updated = prev.map((p) => {
-          if (p.shopifyProductId === productId) {
-            return { ...p, displayOrder: 999 };
-          }
-          const idx = remainingFeatured.findIndex((rp) => rp.shopifyProductId === p.shopifyProductId);
-          if (idx >= 0 && p.displayOrder !== idx) {
-            return { ...p, displayOrder: idx };
-          }
-          return p;
-        });
-        return updated;
-      });
+      if (res.ok) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.shopifyProductId === productId ? { ...p, displayOrder: 999 } : p,
+          ),
+        );
+      }
     } else {
-      const featuredCount = products.filter((p) => p.displayOrder < 999).length;
-
       if (featuredCount >= MAX_FEATURED) {
         setMessage({ type: "error", text: `Maximum ${MAX_FEATURED} featured products allowed` });
         setTimeout(() => setMessage(null), 3000);
@@ -208,6 +333,33 @@ export default function AdminShopifySync() {
         );
       }
     }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = products.findIndex((p) => p.shopifyProductId === active.id);
+    const newIndex = products.findIndex((p) => p.shopifyProductId === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(products, oldIndex, newIndex);
+
+    setProducts(reordered);
+
+    await Promise.all(
+      reordered.map((p, i) =>
+        fetch("/api/admin/shopify/update-product", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            shopify_product_id: p.shopifyProductId,
+            updates: { display_order: i },
+          }),
+        })
+      )
+    );
   };
 
   const getFeaturedRank = (productId: string): number | null => {
@@ -238,7 +390,7 @@ export default function AdminShopifySync() {
         <div>
           <h1 className="text-3xl font-bold text-nfw-blackberry mb-2 font-ui">Manage Zero Dollar Store</h1>
           <p className="text-nfw-blackberry/60">
-            Control which products appear in the Zero Dollar Store and who can access them
+            Drag to reorder. Star to feature on homepage (max {MAX_FEATURED}).
           </p>
         </div>
         <div className="flex gap-3">
@@ -274,113 +426,53 @@ export default function AdminShopifySync() {
       <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
         <div className="px-6 py-3 bg-nfw-dove border-b border-nfw-blackberry/10">
           <p className="text-nfw-blackberry/60 text-sm">
-            <span className="font-medium">Featured on Homepage:</span> {featuredCount} of {MAX_FEATURED} selected. 
-            Click the <Star className="inline w-4 h-4 text-nfw-aubergine" /> icon to toggle.
+            <span className="font-medium">Featured:</span> {featuredCount} of {MAX_FEATURED} | Drag rows to reorder
           </p>
         </div>
-        <table className="min-w-full divide-y divide-nfw-blackberry/5">
-          <thead className="bg-nfw-dove">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
-                Product
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
-                Visibility / Featured
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
-                Eligibility
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-nfw-blackberry/5">
-            {products.map((product, index) => {
-              const isFeatured = product.displayOrder < 999;
-              const featuredRank = getFeaturedRank(product.shopifyProductId);
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <table className="min-w-full divide-y divide-nfw-blackberry/5">
+            <thead className="bg-nfw-dove">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
+                  Product
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
+                  Visibility / Featured
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
+                  Eligibility
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-nfw-blackberry/5">
+              <SortableContext
+                items={products.map((p) => p.shopifyProductId)}
+                strategy={verticalListSortingStrategy}
+              >
+                {products.map((product) => {
+                  const isFeatured = product.displayOrder < 999;
+                  const featuredRank = getFeaturedRank(product.shopifyProductId);
 
-              return (
-                <tr key={product.shopifyProductId ?? `product-${index}`} className={isFeatured ? "bg-nfw-citrine/5" : ""}>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      <div className="h-12 w-12 bg-nfw-stone/10 flex-shrink-0 overflow-hidden relative rounded">
-                        {product.imageUrl ? (
-                          <Image
-                            src={product.imageUrl}
-                            alt={product.title}
-                            fill
-                            className="object-cover"
-                            sizes="48px"
-                          />
-                        ) : (
-                          <div className="h-full w-full flex items-center justify-center text-nfw-stone/30 text-xs">
-                            No Img
-                          </div>
-                        )}
-                      </div>
-                      <div className="ml-4">
-                        <div className="font-medium text-nfw-blackberry">{product.title}</div>
-                        <div className="text-sm text-nfw-blackberry/50 truncate max-w-xs">{product.shopifyProductId}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center">
-                        <button
-                          onClick={() => toggleVisibility(product.shopifyProductId, product.mvpVisibility)}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                            product.mvpVisibility ? "bg-[#d4f1ad]" : "bg-nfw-stone/30"
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                              product.mvpVisibility ? "translate-x-6" : "translate-x-1"
-                            }`}
-                          />
-                        </button>
-                        <span className="ml-3 text-sm text-nfw-blackberry/60">
-                          {product.mvpVisibility ? "Visible" : "Hidden"}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => toggleFeatured(product.shopifyProductId)}
-                        className={`p-2 rounded-full transition-colors ${
-                          isFeatured
-                            ? "text-nfw-aubergine hover:bg-nfw-aubergine/10"
-                            : "text-nfw-blackberry/30 hover:text-nfw-blackberry/60 hover:bg-nfw-blackberry/5"
-                        }`}
-                        title={isFeatured ? "Remove from featured" : "Add to featured"}
-                      >
-                        <Star className={`w-5 h-5 ${isFeatured ? "fill-current" : ""}`} />
-                      </button>
-                      {isFeatured && (
-                        <span className="text-xs text-nfw-aubergine font-black uppercase">
-                          #{featuredRank}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      {TIERS.map((tier) => (
-                        <button
-                          key={tier}
-                          onClick={() => toggleTier(product.shopifyProductId, tier, product.eligibilityTiers ?? [])}
-                          className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                            product.eligibilityTiers?.includes(tier)
-                              ? "bg-nfw-blackberry text-white"
-                              : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
-                          }`}
-                        >
-                          {tier}
-                        </button>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                  return (
+                    <SortableProductRow
+                      key={product.shopifyProductId}
+                      product={product}
+                      isFeatured={isFeatured}
+                      featuredRank={featuredRank}
+                      onToggleVisibility={() => toggleVisibility(product.shopifyProductId, product.mvpVisibility)}
+                      onToggleTier={(tier) => toggleTier(product.shopifyProductId, tier, product.eligibilityTiers ?? [])}
+                      onToggleFeatured={() => toggleFeatured(product.shopifyProductId)}
+                    />
+                  );
+                })}
+              </SortableContext>
+            </tbody>
+          </table>
+        </DndContext>
       </div>
     </div>
   );
