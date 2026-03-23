@@ -67,9 +67,21 @@ function verifyShopifyWebhook(body: Buffer, signature: string | null): boolean {
 
 export async function POST(request: Request) {
   try {
-    // Use arrayBuffer to get raw bytes, not processed body
-    const arrayBuffer = await request.arrayBuffer();
-    const body = Buffer.from(arrayBuffer);
+    // Clone request to read body multiple times if needed
+    const clonedRequest = request.clone();
+    
+    // Get raw body bytes 
+    let body: Buffer;
+    try {
+      // First try getting arrayBuffer and converting to Buffer
+      const arrayBuffer = await clonedRequest.arrayBuffer();
+      body = Buffer.from(arrayBuffer);
+    } catch {
+      // Fallback to text then back to bytes
+      const text = await clonedRequest.text();
+      body = Buffer.from(text);
+    }
+    
     const signature = request.headers.get("X-Shopify-Hmac-Sha256");
     const topic = request.headers.get("X-Shopify-Topic");
     const shopDomain = request.headers.get("X-Shopify-Shop-Domain");
@@ -79,6 +91,7 @@ export async function POST(request: Request) {
       topic, 
       bodyLength: body.length,
       bodyIsBuffer: Buffer.isBuffer(body),
+      bodyFirstBytes: body.slice(0, 20).toString('hex'),
       shopDomain,
       webhookId
     });
