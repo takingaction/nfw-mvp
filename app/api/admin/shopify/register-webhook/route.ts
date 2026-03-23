@@ -122,6 +122,13 @@ export async function GET() {
   try {
     const supabase = await createClient();
     
+    // Debug: show all tokens (masked)
+    const { data: allTokens, error: allError } = await supabase
+      .from("shopify_tokens")
+      .select("shop, access_token");
+
+    console.log("All tokens in DB:", allTokens);
+    
     // Get the Shopify access token from the database or environment
     const { data: tokenData } = await supabase
       .from("shopify_tokens")
@@ -133,7 +140,7 @@ export async function GET() {
 
     if (!accessToken) {
       return NextResponse.json(
-        { error: "No Shopify access token found" },
+        { error: "No Shopify access token found", debug: { allTokens } },
         { status: 401 }
       );
     }
