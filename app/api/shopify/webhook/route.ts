@@ -72,11 +72,15 @@ export async function POST(request: Request) {
     const body = Buffer.from(arrayBuffer);
     const signature = request.headers.get("X-Shopify-Hmac-Sha256");
     const topic = request.headers.get("X-Shopify-Topic");
+    const shopDomain = request.headers.get("X-Shopify-Shop-Domain");
+    const webhookId = request.headers.get("X-Shopify-Webhook-Id");
 
     console.log("Webhook received:", { 
       topic, 
       bodyLength: body.length,
-      bodyIsBuffer: Buffer.isBuffer(body)
+      bodyIsBuffer: Buffer.isBuffer(body),
+      shopDomain,
+      webhookId
     });
 
     if (!verifyShopifyWebhook(body, signature)) {
