@@ -241,77 +241,13 @@ export default function AdminShopifySync() {
         </div>
       )}
 
-      <div className="bg-white border border-nfw-blackberry/10 overflow-hidden mb-8">
-        <div className="px-6 py-4 bg-nfw-aubergine/5 border-b border-nfw-blackberry/10">
-          <h2 className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-aubergine">
-            Featured on Homepage
-          </h2>
-          <p className="text-nfw-blackberry/60 text-sm mt-1">
-            Select up to {MAX_FEATURED} products to display on the homepage. Click the star icon to toggle.
-          </p>
-          <p className="text-nfw-blackberry/60 text-sm">
-            Currently featured: {featuredCount} of {MAX_FEATURED}
-          </p>
-        </div>
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {products.map((product) => {
-            const isFeatured = product.displayOrder < 999;
-            const featuredRank = getFeaturedRank(product.shopifyProductId);
-            
-            return (
-              <div
-                key={product.shopifyProductId}
-                className={`relative p-4 border-2 rounded-lg transition-colors ${
-                  isFeatured
-                    ? "border-nfw-citrine bg-nfw-citrine/5"
-                    : "border-nfw-blackberry/10 hover:border-nfw-blackberry/30"
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="relative w-16 h-16 bg-nfw-stone/10 flex-shrink-0 overflow-hidden rounded">
-                    {product.imageUrl ? (
-                      <Image
-                        src={product.imageUrl}
-                        alt={product.title}
-                        fill
-                        className="object-cover"
-                        sizes="64px"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-nfw-stone/30">
-                        No Image
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry truncate">
-                      {product.title}
-                    </p>
-                    {isFeatured && (
-                      <p className="text-nfw-citrine text-xs font-medium mt-1">
-                        Featured #{featuredRank}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => toggleFeatured(product.shopifyProductId)}
-                    className={`p-2 rounded-full transition-colors ${
-                      isFeatured
-                        ? "text-nfw-citrine hover:bg-nfw-citrine/10"
-                        : "text-nfw-blackberry/30 hover:text-nfw-blackberry/60 hover:bg-nfw-blackberry/5"
-                    }`}
-                    title={isFeatured ? "Remove from featured" : "Add to featured"}
-                  >
-                    <Star className={`w-5 h-5 ${isFeatured ? "fill-current" : ""}`} />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
+        <div className="px-6 py-3 bg-nfw-dove border-b border-nfw-blackberry/10">
+          <p className="text-nfw-blackberry/60 text-sm">
+            <span className="font-medium">Featured on Homepage:</span> {featuredCount} of {MAX_FEATURED} selected. 
+            Click the <Star className="inline w-4 h-4 text-nfw-citrine" /> icon to toggle.
+          </p>
+        </div>
         <table className="min-w-full divide-y divide-nfw-blackberry/5">
           <thead className="bg-nfw-dove">
             <tr>
@@ -319,7 +255,7 @@ export default function AdminShopifySync() {
                 Product
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
-                Visibility
+                Visibility / Featured
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
                 Eligibility
@@ -327,67 +263,92 @@ export default function AdminShopifySync() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-nfw-blackberry/5">
-            {products.map((product, index) => (
-              <tr key={product.shopifyProductId ?? `product-${index}`}>
-                <td className="px-6 py-4">
-                  <div className="flex items-center">
-                    <div className="h-12 w-12 bg-nfw-stone/10 flex-shrink-0 overflow-hidden relative rounded">
-                      {product.imageUrl ? (
-                        <Image
-                          src={product.imageUrl}
-                          alt={product.title}
-                          fill
-                          className="object-cover"
-                          sizes="48px"
-                        />
-                      ) : (
-                        <div className="h-full w-full flex items-center justify-center text-nfw-stone/30 text-xs">
-                          No Img
-                        </div>
+            {products.map((product, index) => {
+              const isFeatured = product.displayOrder < 999;
+              const featuredRank = getFeaturedRank(product.shopifyProductId);
+
+              return (
+                <tr key={product.shopifyProductId ?? `product-${index}`} className={isFeatured ? "bg-nfw-citrine/5" : ""}>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center">
+                      <div className="h-12 w-12 bg-nfw-stone/10 flex-shrink-0 overflow-hidden relative rounded">
+                        {product.imageUrl ? (
+                          <Image
+                            src={product.imageUrl}
+                            alt={product.title}
+                            fill
+                            className="object-cover"
+                            sizes="48px"
+                          />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center text-nfw-stone/30 text-xs">
+                            No Img
+                          </div>
+                        )}
+                      </div>
+                      <div className="ml-4">
+                        <div className="font-medium text-nfw-blackberry">{product.title}</div>
+                        <div className="text-sm text-nfw-blackberry/50 truncate max-w-xs">{product.shopifyProductId}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center">
+                        <button
+                          onClick={() => toggleVisibility(product.shopifyProductId, product.mvpVisibility)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            product.mvpVisibility ? "bg-[#d4f1ad]" : "bg-nfw-stone/30"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              product.mvpVisibility ? "translate-x-6" : "translate-x-1"
+                            }`}
+                          />
+                        </button>
+                        <span className="ml-3 text-sm text-nfw-blackberry/60">
+                          {product.mvpVisibility ? "Visible" : "Hidden"}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => toggleFeatured(product.shopifyProductId)}
+                        className={`p-2 rounded-full transition-colors ${
+                          isFeatured
+                            ? "text-nfw-citrine hover:bg-nfw-citrine/10"
+                            : "text-nfw-blackberry/30 hover:text-nfw-blackberry/60 hover:bg-nfw-blackberry/5"
+                        }`}
+                        title={isFeatured ? "Remove from featured" : "Add to featured"}
+                      >
+                        <Star className={`w-5 h-5 ${isFeatured ? "fill-current" : ""}`} />
+                      </button>
+                      {isFeatured && (
+                        <span className="text-xs text-nfw-citrine font-medium">
+                          #{featuredRank}
+                        </span>
                       )}
                     </div>
-                    <div className="ml-4">
-                      <div className="font-medium text-nfw-blackberry">{product.title}</div>
-                      <div className="text-sm text-nfw-blackberry/50 truncate max-w-xs">{product.shopifyProductId}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-2">
+                      {TIERS.map((tier) => (
+                        <button
+                          key={tier}
+                          onClick={() => toggleTier(product.shopifyProductId, tier, product.eligibilityTiers ?? [])}
+                          className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                            product.eligibilityTiers?.includes(tier)
+                              ? "bg-nfw-blackberry text-white"
+                              : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
+                          }`}
+                        >
+                          {tier}
+                        </button>
+                      ))}
                     </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <button
-                    onClick={() => toggleVisibility(product.shopifyProductId, product.mvpVisibility)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      product.mvpVisibility ? "bg-[#d4f1ad]" : "bg-nfw-stone/30"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        product.mvpVisibility ? "translate-x-6" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
-                  <span className="ml-3 text-sm text-nfw-blackberry/60">
-                    {product.mvpVisibility ? "Visible" : "Hidden"}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex gap-2">
-                    {TIERS.map((tier) => (
-                      <button
-                        key={tier}
-                        onClick={() => toggleTier(product.shopifyProductId, tier, product.eligibilityTiers ?? [])}
-                        className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                          product.eligibilityTiers?.includes(tier)
-                            ? "bg-nfw-blackberry text-white"
-                            : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
-                        }`}
-                      >
-                        {tier}
-                      </button>
-                    ))}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
