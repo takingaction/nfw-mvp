@@ -11,7 +11,7 @@ const supabaseAdmin = createClient(
 interface NavLink {
   label: string;
   url: string;
-  highlight?: boolean;
+  indent?: number;
 }
 
 interface HeaderData {
@@ -33,19 +33,19 @@ export default async function Navigation() {
     id: "",
     logo_url: "/images/header-logo.png",
     nav_links: [
-      { label: "About", url: "/about", highlight: false },
-      { label: "About Us", url: "/about", highlight: true },
-      { label: "Membership", url: "/pricing", highlight: false },
-      { label: "Membership", url: "/pricing", highlight: true },
-      { label: "Become a Member", url: "/auth/sign-up", highlight: true },
-      { label: "Member Portal", url: "/dashboard", highlight: true },
-      { label: "Our Programs", url: "/grants", highlight: false },
-      { label: "Microgrants", url: "/grants", highlight: true },
-      { label: "Perks", url: "/perks/info", highlight: true },
-      { label: "Zero Dollar Store", url: "/store/info", highlight: true },
-      { label: "Support", url: "/faq", highlight: false },
-      { label: "Contact Support", url: "/contact", highlight: true },
-      { label: "FAQs", url: "/faq", highlight: true },
+      { label: "About", url: "/about", indent: 0 },
+      { label: "About Us", url: "/about", indent: 1 },
+      { label: "Membership", url: "/pricing", indent: 0 },
+      { label: "Membership", url: "/pricing", indent: 1 },
+      { label: "Become a Member", url: "/auth/sign-up", indent: 1 },
+      { label: "Member Portal", url: "/dashboard", indent: 1 },
+      { label: "Our Programs", url: "/grants", indent: 0 },
+      { label: "Microgrants", url: "/grants", indent: 1 },
+      { label: "Perks", url: "/perks/info", indent: 1 },
+      { label: "Zero Dollar Store", url: "/store/info", indent: 1 },
+      { label: "Support", url: "/faq", indent: 0 },
+      { label: "Contact Support", url: "/contact", indent: 1 },
+      { label: "FAQs", url: "/faq", indent: 1 },
     ],
     cta_label: "Join Now",
     cta_url: "/auth/sign-up",

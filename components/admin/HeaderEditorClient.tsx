@@ -1,13 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Save, Upload } from "lucide-react";
+import { Plus, Trash2, Save, Upload, GripVertical,Indent,Outdent } from "lucide-react";
 import { uploadImage } from "@/lib/upload";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface NavLink {
   label: string;
   url: string;
-  highlight: boolean;
+  indent: number;
 }
 
 interface HeaderData {
@@ -18,6 +35,101 @@ interface HeaderData {
   cta_url: string | null;
 }
 
+function SortableLink({
+  link,
+  index,
+  onUpdate,
+  onDelete,
+  onIndent,
+  onOutdent,
+  canIndent,
+  canOutdent,
+}: {
+  link: NavLink;
+  index: number;
+  onUpdate: (key: keyof NavLink, value: string | number) => void;
+  onDelete: () => void;
+  onIndent: () => void;
+  onOutdent: () => void;
+  canIndent: boolean;
+  canOutdent: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `nav-${index}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2"
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="p-1 text-nfw-blackberry/30 hover:text-nfw-blackberry/60 cursor-grab active:cursor-grabbing"
+      >
+        <GripVertical className="w-5 h-5" />
+      </button>
+      <div
+        className="flex-1 flex items-center gap-2"
+        style={{ paddingLeft: `${link.indent * 24}px` }}
+      >
+        {link.indent > 0 && (
+          <span className="text-nfw-blackberry/30 text-xs font-mono">└</span>
+        )}
+        <input
+          type="text"
+          value={link.label}
+          onChange={(e) => onUpdate("label", e.target.value)}
+          placeholder="Label"
+          className="px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry flex-1"
+        />
+        <input
+          type="text"
+          value={link.url}
+          onChange={(e) => onUpdate("url", e.target.value)}
+          placeholder="URL"
+          className="px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry flex-1"
+        />
+        <button
+          onClick={onOutdent}
+          disabled={!canOutdent}
+          className="p-1.5 text-nfw-blackberry/40 hover:text-nfw-blackberry disabled:opacity-30 transition-colors"
+          title="Outdent"
+        >
+          <Outdent className="w-4 h-4" />
+        </button>
+        <button
+          onClick={onIndent}
+          disabled={!canIndent}
+          className="p-1.5 text-nfw-blackberry/40 hover:text-nfw-blackberry disabled:opacity-30 transition-colors"
+          title="Indent"
+        >
+          <Indent className="w-4 h-4" />
+        </button>
+        <button
+          onClick={onDelete}
+          className="p-1.5 text-nfw-blackberry/40 hover:text-red-500 hover:bg-red-50 transition-colors"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function HeaderEditorClient({
   initialData,
 }: {
@@ -25,12 +137,23 @@ export default function HeaderEditorClient({
 }) {
   const [logoUrl, setLogoUrl] = useState(initialData?.logo_url ?? "");
   const [navLinks, setNavLinks] = useState<NavLink[]>(
-    initialData?.nav_links ?? [],
+    (initialData?.nav_links ?? []).map((l) => ({
+      label: l.label || (l as any).label || "",
+      url: l.url || (l as any).url || "",
+      indent: l.indent ?? (l as any).highlight ? 1 : 0,
+    })),
   );
   const [ctaLabel, setCtaLabel] = useState(initialData?.cta_label ?? "");
   const [ctaUrl, setCtaUrl] = useState(initialData?.cta_url ?? "");
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -38,14 +161,10 @@ export default function HeaderEditorClient({
   };
 
   const addLink = () => {
-    setNavLinks([...navLinks, { label: "", url: "", highlight: false }]);
+    setNavLinks([...navLinks, { label: "", url: "", indent: 0 }]);
   };
 
-  const updateLink = (
-    index: number,
-    key: keyof NavLink,
-    value: string | boolean,
-  ) => {
+  const updateLink = (index: number, key: keyof NavLink, value: string | number) => {
     setNavLinks(
       navLinks.map((l, i) => (i === index ? { ...l, [key]: value } : l)),
     );
@@ -55,10 +174,37 @@ export default function HeaderEditorClient({
     setNavLinks(navLinks.filter((_, i) => i !== index));
   };
 
+  const indentLink = (index: number) => {
+    if (index === 0) return;
+    const prevIndent = navLinks[index - 1].indent;
+    setNavLinks(
+      navLinks.map((l, i) =>
+        i === index ? { ...l, indent: Math.min(l.indent + 1, 1) } : l,
+      ),
+    );
+  };
+
+  const outdentLink = (index: number) => {
+    setNavLinks(
+      navLinks.map((l, i) =>
+        i === index ? { ...l, indent: Math.max(l.indent - 1, 0) } : l,
+      ),
+    );
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = parseInt((active.id as string).replace("nav-", ""));
+    const newIndex = parseInt((over.id as string).replace("nav-", ""));
+
+    setNavLinks(arrayMove(navLinks, oldIndex, newIndex));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      // ✅ Using fetch API instead of direct Supabase client
       const response = await fetch("/api/header", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -119,7 +265,6 @@ export default function HeaderEditorClient({
               const file = e.target.files?.[0];
               if (!file) return;
               try {
-                // ✅ Calling without third supabase argument
                 const url = await uploadImage(file, "logos");
                 setLogoUrl(url);
               } catch (err) {
@@ -141,43 +286,34 @@ export default function HeaderEditorClient({
       {/* Nav links */}
       <div className="bg-white border border-nfw-blackberry/10 p-6">
         <h2 className="font-black text-nfw-blackberry mb-4 font-ui">Navigation Links</h2>
-        <div className="space-y-3 mb-4">
-          {navLinks.map((link, i) => (
-            <div
-              key={i}
-              className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-center"
+        <p className="text-sm text-nfw-blackberry/60 mb-4">
+          Drag to reorder. Use indent/outdent to create sub-items.
+        </p>
+        <div className="space-y-2 mb-4">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={navLinks.map((_, i) => `nav-${i}`)}
+              strategy={verticalListSortingStrategy}
             >
-              <input
-                type="text"
-                value={link.label}
-                onChange={(e) => updateLink(i, "label", e.target.value)}
-                placeholder="Label"
-                className="px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
-              />
-              <input
-                type="text"
-                value={link.url}
-                onChange={(e) => updateLink(i, "url", e.target.value)}
-                placeholder="URL"
-                className="px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
-              />
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-nfw-blackberry/50 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={link.highlight}
-                  onChange={(e) => updateLink(i, "highlight", e.target.checked)}
-                  className="accent-nfw-blackberry"
+              {navLinks.map((link, i) => (
+                <SortableLink
+                  key={`nav-${i}`}
+                  link={link}
+                  index={i}
+                  onUpdate={(key, value) => updateLink(i, key as keyof NavLink, value as string | number)}
+                  onDelete={() => removeLink(i)}
+                  onIndent={() => indentLink(i)}
+                  onOutdent={() => outdentLink(i)}
+                  canIndent={i > 0 && link.indent < 1}
+                  canOutdent={link.indent > 0}
                 />
-                Sub-item
-              </label>
-              <button
-                onClick={() => removeLink(i)}
-                className="p-1.5 text-nfw-blackberry/40 hover:text-red-500 hover:bg-red-50 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
         <button
           onClick={addLink}

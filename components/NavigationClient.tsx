@@ -8,7 +8,7 @@ import { ChevronDown } from "lucide-react";
 interface NavLink {
   label: string;
   url: string;
-  highlight?: boolean;
+  indent?: number;
 }
 
 interface NavigationClientProps {
@@ -101,10 +101,10 @@ export default function NavigationClient({
     while (i < navLinks.length) {
       const link = navLinks[i];
 
-      if (!link.highlight) {
+      if (!link.indent || link.indent === 0) {
         const dropdownItems: NavLink[] = [];
         let j = i + 1;
-        while (j < navLinks.length && navLinks[j].highlight) {
+        while (j < navLinks.length && (navLinks[j].indent ?? 0) > 0) {
           dropdownItems.push(navLinks[j]);
           j++;
         }
@@ -113,7 +113,6 @@ export default function NavigationClient({
           items.push(<React.Fragment key={link.label}>{renderDropdown(link.label, link.url, dropdownItems)}</React.Fragment>);
           i = j;
         } else {
-          // No dropdown items - render as direct link or plain text if URL is empty
           if (link.url) {
             items.push(
               <Link key={i} href={link.url} className={buttonClass}>
