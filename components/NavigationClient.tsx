@@ -110,19 +110,23 @@ export default function NavigationClient({
         }
 
         if (dropdownItems.length > 0) {
-          // Add the parent item first, then children
-          const allItems = [
-            { label: link.label, url: link.url, highlight: false },
-            ...dropdownItems
-          ];
-          items.push(<React.Fragment key={link.label}>{renderDropdown(link.label, link.url, allItems)}</React.Fragment>);
+          items.push(<React.Fragment key={link.label}>{renderDropdown(link.label, link.url, dropdownItems)}</React.Fragment>);
           i = j;
         } else {
-          items.push(
-            <Link key={i} href={link.url} className={buttonClass}>
-              {link.label}
-            </Link>
-          );
+          // No dropdown items - render as direct link or plain text if URL is empty
+          if (link.url) {
+            items.push(
+              <Link key={i} href={link.url} className={buttonClass}>
+                {link.label}
+              </Link>
+            );
+          } else {
+            items.push(
+              <span key={i} className={buttonClass}>
+                {link.label}
+              </span>
+            );
+          }
           i++;
         }
       } else {
