@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
     useRealShopify = !!(shopDomain && clientId && 
                            clientId !== "your-shopify-client-id" &&
                            !shopDomain.includes("placeholder"));
+    console.log("DEBUG useRealShopify:", useRealShopify, "shopDomain:", shopDomain, "clientId:", clientId ? "set" : "NOT SET");
 
     if (useRealShopify) {
       try {
@@ -35,6 +36,8 @@ export async function GET(request: NextRequest) {
         const { data: mappings } = await supabase
           .from("shopify_product_mappings")
           .select("*");
+        console.log("DEBUG mappings count:", mappings?.length);
+        console.log("DEBUG mappings sample:", mappings?.slice(0, 2).map(m => ({ id: m.shopify_product_id, display_order: m.display_order, mvp_visibility: m.mvp_visibility })));
 
         const mappingMap = new Map((mappings || []).map(m => [m.shopify_product_id, m]));
 
@@ -42,6 +45,7 @@ export async function GET(request: NextRequest) {
           const mapping = mappingMap.get(node.id);
           return transformShopifyProduct(node, mapping as MockProduct | undefined);
         });
+        console.log("DEBUG products with mapping:", products.slice(0, 2).map(p => ({ title: p.title, displayOrder: p.displayOrder, mvpVisibility: p.mvpVisibility })));
       } catch {
         products = MOCK_PRODUCTS;
       }
