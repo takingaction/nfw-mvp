@@ -40,8 +40,8 @@ export async function POST(request: Request) {
 
     if (topic === "orders/create") {
       const order = event;
-      const orderId = order.id;
-      const checkoutId = order.checkout_id;
+      const orderId = `gid://shopify/Order/${order.id}`;
+      const checkoutId = order.checkout_id ? `gid://shopify/Checkout/${order.checkout_id}` : null;
       const lineItems = order.line_items || [];
       
       if (lineItems.length === 0) {
