@@ -27,7 +27,24 @@ function verifyShopifyWebhook(body: string, signature: string | null): boolean {
 
 export async function POST(request: Request) {
   try {
-    console.log("Webhook POST called");
+    // Log to database at the very start to verify if requests are reaching us
+    const timestamp = new Date().toISOString();
+    try {
+      await supabaseAdmin
+        .from("zero_dollar_claims")
+        .insert({
+          user_id: "00000000-0000-0000-0000-000000000000",
+          shopify_product_id: `webhook_log_${timestamp.replace(/[:.]/g, '-')}`,
+          shopify_variant_id: "webhook_variant",
+          status: "pending",
+          shipping_address: { webhook_test: true, timestamp },
+        });
+      console.log("Database log inserted for webhook at", timestamp);
+    } catch (dbError) {
+      console.error("Failed to insert database log:", dbError);
+    }
+
+    console.log("Webhook POST called at", timestamp);
     const body = await request.text();
     console.log("Webhook body:", body.substring(0, 200));
     const signature = request.headers.get("X-Shopify-Hmac-Sha256");
