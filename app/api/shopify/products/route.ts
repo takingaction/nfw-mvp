@@ -54,7 +54,9 @@ export async function GET(request: NextRequest) {
     const sortedProducts = products.sort((a, b) => a.displayOrder - b.displayOrder);
 
     if (featured) {
-      return NextResponse.json(sortedProducts.filter(p => p.mvpVisibility && p.displayOrder < 999).slice(0, 3));
+      const featuredProducts = sortedProducts.filter(p => p.mvpVisibility && p.displayOrder < 999).slice(0, 3);
+      console.log("DEBUG featured:", featuredProducts.map(p => ({ title: p.title, displayOrder: p.displayOrder, mvpVisibility: p.mvpVisibility })));
+      return NextResponse.json(featuredProducts);
     }
 
     return NextResponse.json(sortedProducts);
