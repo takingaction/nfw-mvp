@@ -13,9 +13,10 @@ function verifyShopifyWebhook(body: string, signature: string | null): boolean {
     return false;
   }
   
-  const secret = process.env.SHOPIFY_WEBHOOK_SECRET;
+  // Use SHOPIFY_CLIENT_SECRET as it's the app's API secret for webhook signing
+  const secret = process.env.SHOPIFY_CLIENT_SECRET || process.env.SHOPIFY_WEBHOOK_SECRET;
   if (!secret) {
-    console.error("Missing SHOPIFY_WEBHOOK_SECRET");
+    console.error("Missing Shopify secret - neither SHOPIFY_CLIENT_SECRET nor SHOPIFY_WEBHOOK_SECRET found");
     return false;
   }
 
