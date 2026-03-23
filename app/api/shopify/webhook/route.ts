@@ -31,15 +31,19 @@ export async function POST(request: Request) {
     const signature = request.headers.get("X-Shopify-Hmac-Sha256");
     const topic = request.headers.get("X-Shopify-Topic");
 
+    console.log("Webhook received:", { topic, bodyLength: body.length });
+
     if (!verifyShopifyWebhook(body, signature)) {
       console.error("Invalid Shopify webhook signature");
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
     const event = JSON.parse(body);
+    console.log("Webhook event:", JSON.stringify(event).substring(0, 500));
 
     if (topic === "orders/create") {
       const order = event;
+      console.log("Order ID:", order.id, "Variant ID:", order.line_items?.[0]?.variant_id);
       const orderId = `gid://shopify/Order/${order.id}`;
       const checkoutId = order.checkout_id ? `gid://shopify/Checkout/${order.checkout_id}` : null;
       const lineItems = order.line_items || [];
@@ -57,6 +61,7 @@ export async function POST(request: Request) {
       const trackingUrl = fulfillment?.tracking_url || null;
 
       if (variantId) {
+        console.log("Looking for claim with variantId:", variantId);
         const { data: existingClaims } = await supabaseAdmin
           .from("zero_dollar_claims")
           .select("*")
@@ -65,8 +70,10 @@ export async function POST(request: Request) {
           .order("claimed_at", { ascending: true })
           .limit(1);
 
+        console.log("Found claims:", existingClaims?.length);
         if (existingClaims && existingClaims.length > 0) {
           const claim = existingClaims[0];
+          console.log("Updating claim:", claim.id);
           
           const { error: updateError } = await supabaseAdmin
             .from("zero_dollar_claims")
