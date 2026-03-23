@@ -38,11 +38,37 @@ export async function deleteDraftSection(sectionId: string) {
 }
 
 export async function publishPage(pageId: string, slug: string) {
+  console.log("publishPage called with:", pageId, slug);
+  
+  // First, let's check what sections exist
+  const { data: draftSections } = await supabaseAdmin
+    .from("page_sections")
+    .select("*")
+    .eq("page_id", pageId)
+    .eq("version", "draft");
+  console.log("Draft sections before publish:", draftSections);
+  
+  const { data: liveSections } = await supabaseAdmin
+    .from("page_sections")
+    .select("*")
+    .eq("page_id", pageId)
+    .eq("version", "live");
+  console.log("Live sections before publish:", liveSections);
+  
   const { error } = await supabaseAdmin.rpc("publish_page", {
     p_page_id: pageId,
   });
-  console.error("publishPage error:", error);
+  console.log("publishPage RPC error:", error);
   if (error) throw new Error(error.message);
+  
+  // Check after
+  const { data: liveAfter } = await supabaseAdmin
+    .from("page_sections")
+    .select("*")
+    .eq("page_id", pageId)
+    .eq("version", "live");
+  console.log("Live sections after publish:", liveAfter);
+  
   revalidatePath(`/${slug}`);
   revalidatePath(`/admin/pages`);
   revalidatePath(`/admin/pages/${pageId}`);
