@@ -8,20 +8,20 @@ export async function POST() {
   try {
     const supabase = await createClient();
     
-    // Get the Shopify access token from the database
+    // Get the Shopify access token from the database or environment
     const { data: tokenData } = await supabase
       .from("shopify_tokens")
       .select("access_token")
       .single();
 
-    if (!tokenData?.access_token) {
+    const accessToken = tokenData?.access_token || process.env.SHOPIFY_ACCESS_TOKEN;
+
+    if (!accessToken) {
       return NextResponse.json(
-        { error: "No Shopify access token found. Please complete OAuth flow first." },
+        { error: "No Shopify access token found. Please complete OAuth flow first, or set SHOPIFY_ACCESS_TOKEN env var." },
         { status: 401 }
       );
     }
-
-    const accessToken = tokenData.access_token;
 
     // First, let's delete any existing webhooks for orders/create
     console.log("Fetching existing webhooks...");
@@ -116,20 +116,20 @@ export async function GET() {
   try {
     const supabase = await createClient();
     
-    // Get the Shopify access token from the database
+    // Get the Shopify access token from the database or environment
     const { data: tokenData } = await supabase
       .from("shopify_tokens")
       .select("access_token")
       .single();
 
-    if (!tokenData?.access_token) {
+    const accessToken = tokenData?.access_token || process.env.SHOPIFY_ACCESS_TOKEN;
+
+    if (!accessToken) {
       return NextResponse.json(
         { error: "No Shopify access token found" },
         { status: 401 }
       );
     }
-
-    const accessToken = tokenData.access_token;
 
     // List all webhooks
     const response = await fetch(
