@@ -13,10 +13,9 @@ function verifyShopifyWebhook(body: Buffer, signature: string | null): boolean {
     return false;
   }
   
-  // Use SHOPIFY_CLIENT_SECRET as it's the app's API secret for webhook signing
-  const secret = process.env.SHOPIFY_CLIENT_SECRET || process.env.SHOPIFY_WEBHOOK_SECRET;
+  const secret = process.env.SHOPIFY_CLIENT_SECRET;
   if (!secret) {
-    console.error("Missing Shopify secret - neither SHOPIFY_CLIENT_SECRET nor SHOPIFY_WEBHOOK_SECRET found");
+    console.error("Missing SHOPIFY_CLIENT_SECRET");
     return false;
   }
 
@@ -26,75 +25,15 @@ function verifyShopifyWebhook(body: Buffer, signature: string | null): boolean {
   const signatureBuffer = Buffer.from(signature, 'base64');
   const digestBuffer = Buffer.from(digest, 'base64');
   
-  console.log("HMAC debug:", {
-    bodyLength: body.length,
-    bodyIsBuffer: Buffer.isBuffer(body),
-    secretLength: secret.length,
-    secretFirstChars: secret.substring(0, 10),
-    signatureLength: signature.length,
-    digestLength: digest.length,
-    signatureBufferLength: signatureBuffer.length,
-    digestBufferLength: digestBuffer.length
-  });
-  
-  // Detailed byte comparison for debugging
-  if (signatureBuffer.length !== digestBuffer.length) {
-    console.error("Length mismatch - signature:", signatureBuffer.length, "digest:", digestBuffer.length);
-  } else {
-    // Compare byte by byte and find first difference
-    let firstDiff = -1;
-    for (let i = 0; i < signatureBuffer.length; i++) {
-      if (signatureBuffer[i] !== digestBuffer[i]) {
-        firstDiff = i;
-        break;
-      }
-    }
-    if (firstDiff === -1) {
-      console.log("Buffers are identical!");
-    } else {
-      console.log("First byte difference at index:", firstDiff);
-      console.log("Signature byte:", signatureBuffer[firstDiff], "Digest byte:", digestBuffer[firstDiff]);
-    }
-  }
-  
-  const match = crypto.timingSafeEqual(signatureBuffer, digestBuffer);
-  console.log("Signature match result:", match);
-  console.log("Full signature buffer hex:", signatureBuffer.toString('hex'));
-  console.log("Full digest buffer hex:", digestBuffer.toString('hex'));
-  
-  return match;
+  return crypto.timingSafeEqual(signatureBuffer, digestBuffer);
 }
 
 export async function POST(request: Request) {
   try {
-    // Clone request to read body multiple times if needed
-    const clonedRequest = request.clone();
-    
-    // Get raw body bytes 
-    let body: Buffer;
-    try {
-      // First try getting arrayBuffer and converting to Buffer
-      const arrayBuffer = await clonedRequest.arrayBuffer();
-      body = Buffer.from(arrayBuffer);
-    } catch {
-      // Fallback to text then back to bytes
-      const text = await clonedRequest.text();
-      body = Buffer.from(text);
-    }
-    
+    const arrayBuffer = await request.arrayBuffer();
+    const body = Buffer.from(arrayBuffer);
     const signature = request.headers.get("X-Shopify-Hmac-Sha256");
     const topic = request.headers.get("X-Shopify-Topic");
-    const shopDomain = request.headers.get("X-Shopify-Shop-Domain");
-    const webhookId = request.headers.get("X-Shopify-Webhook-Id");
-
-    console.log("Webhook received:", { 
-      topic, 
-      bodyLength: body.length,
-      bodyIsBuffer: Buffer.isBuffer(body),
-      bodyFirstBytes: body.slice(0, 20).toString('hex'),
-      shopDomain,
-      webhookId
-    });
 
     if (!verifyShopifyWebhook(body, signature)) {
       console.error("Invalid Shopify webhook signature");
