@@ -383,7 +383,7 @@ export default function AdminShopifySync() {
     );
   }
 
-  const featuredCount = products.filter((p) => p.displayOrder < 999).length;
+  const featuredCount = products.filter((p) => p.featuredOrder < 999).length;
 
   return (
     <div className="p-8 bg-nfw-dove min-h-screen">

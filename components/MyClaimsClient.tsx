@@ -204,6 +204,12 @@ export default function MyClaimsClient({
                       {info.description}
                     </p>
 
+                    {claim.shopify_order_id && (
+                      <p className="font-ui text-xs text-nfw-blackberry/50 mb-3">
+                        Order #{claim.shopify_order_id.split('/').pop()}
+                      </p>
+                    )}
+
                     {(claim.tracking_number || shopifyOrderUrl) && (
                       <div className="mb-3 space-y-2">
                         {claim.tracking_number && (
