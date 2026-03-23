@@ -24,6 +24,7 @@ import type { SectionTemplate } from "@/types/section-templates";
 import SectionCard from "./SectionCard";
 import SectionEditorPanel from "./SectionEditorPanel";
 import TemplatePicker from "./TemplatePicker";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 import {
   saveDraftSections,
   deleteDraftSection,
@@ -56,6 +57,14 @@ export default function SectionCanvas({ page, initialSections, templates }: Prop
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    variant?: "danger" | "default";
+    onConfirm: () => void;
+  }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
 
   useEffect(() => setMounted(true), []);
 
@@ -137,15 +146,23 @@ export default function SectionCanvas({ page, initialSections, templates }: Prop
 
   const handleDelete = useCallback(
     async (sectionId: string) => {
-      if (!confirm("Delete this section?")) return;
-      try {
-        await deleteDraftSection(sectionId);
-        setSections((prev) => prev.filter((s) => s.id !== sectionId));
-        if (selectedId === sectionId) setSelectedId(null);
-        showToast("Section deleted");
-      } catch {
-        showToast("Failed to delete");
-      }
+      setConfirmModal({
+        isOpen: true,
+        title: "Delete Section",
+        message: "Are you sure you want to delete this section?",
+        confirmLabel: "Delete",
+        variant: "danger",
+        onConfirm: async () => {
+          try {
+            await deleteDraftSection(sectionId);
+            setSections((prev) => prev.filter((s) => s.id !== sectionId));
+            if (selectedId === sectionId) setSelectedId(null);
+            showToast("Section deleted");
+          } catch {
+            showToast("Failed to delete");
+          }
+        },
+      });
     },
     [selectedId],
   );
@@ -195,47 +212,61 @@ export default function SectionCanvas({ page, initialSections, templates }: Prop
     [sections.length, page.id],
   );
 
-  const handlePublish = async () => {
-    if (!confirm("Publish this page? This will make all draft changes live."))
-      return;
-    setPublishing(true);
-    try {
-      await publishPage(page.id, page.slug);
-      showToast("Page published successfully");
-    } catch {
-      showToast("Failed to publish");
-    } finally {
-      setPublishing(false);
-    }
+  const handlePublish = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Publish Page",
+      message: "Publish this page? This will make all draft changes live.",
+      confirmLabel: "Publish",
+      onConfirm: async () => {
+        setPublishing(true);
+        try {
+          await publishPage(page.id, page.slug);
+          showToast("Page published successfully");
+        } catch {
+          showToast("Failed to publish");
+        } finally {
+          setPublishing(false);
+        }
+      },
+    });
   };
 
-  const handleRevert = async () => {
-    if (
-      !confirm(
-        "Revert to last published version? All draft changes will be lost.",
-      )
-    )
-      return;
-    try {
-      await revertPage(page.id);
-      showToast("Reverted to published version");
-      window.location.reload();
-    } catch {
-      showToast("Failed to revert");
-    }
+  const handleRevert = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Revert Page",
+      message: "Revert to last published version? All draft changes will be lost.",
+      confirmLabel: "Revert",
+      variant: "danger",
+      onConfirm: async () => {
+        try {
+          await revertPage(page.id);
+          showToast("Reverted to published version");
+          window.location.reload();
+        } catch {
+          showToast("Failed to revert");
+        }
+      },
+    });
   };
 
-  const handleUnpublish = async () => {
-    if (
-      !confirm("Unpublish this page? It will no longer be visible to visitors.")
-    )
-      return;
-    try {
-      await unpublishPage(page.id, page.slug);
-      showToast("Page unpublished");
-    } catch {
-      showToast("Failed to unpublish");
-    }
+  const handleUnpublish = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Unpublish Page",
+      message: "Unpublish this page? It will no longer be visible to visitors.",
+      confirmLabel: "Unpublish",
+      variant: "danger",
+      onConfirm: async () => {
+        try {
+          await unpublishPage(page.id, page.slug);
+          showToast("Page unpublished");
+        } catch {
+          showToast("Failed to unpublish");
+        }
+      },
+    });
   };
 
   const statusColor: Record<string, string> = {
@@ -385,6 +416,20 @@ export default function SectionCanvas({ page, initialSections, templates }: Prop
           onClose={() => setShowTemplatePicker(false)}
         />
       )}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmLabel={confirmModal.confirmLabel}
+        variant={confirmModal.variant}
+        onConfirm={() => {
+          confirmModal.onConfirm();
+          setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        }}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+      />
 
       {/* Toast */}
       {toast && (
