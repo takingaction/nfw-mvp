@@ -11,15 +11,17 @@ export async function POST() {
     // Get all tokens and use the first one
     const { data: tokens, error: tokenError } = await supabase
       .from("shopify_tokens")
-      .select("access_token, shop")
-      .limit(1);
+      .select("access_token, shop");
 
-    console.log("Token query result:", { tokens, error: tokenError });
+    console.log("POST: Token query result:", JSON.stringify({ tokens, error: tokenError }));
 
-    const tokenData = tokens?.[0];
+    const tokenData = tokens && tokens.length > 0 ? tokens[0] : null;
     const accessToken = tokenData?.access_token || process.env.SHOPIFY_ACCESS_TOKEN;
 
+    console.log("POST: accessToken found:", accessToken ? "yes" : "no");
+
     if (!accessToken) {
+      console.log("POST: Returning 401 error");
       return NextResponse.json(
         { error: "No Shopify access token found. Please complete OAuth flow first, or set SHOPIFY_ACCESS_TOKEN env var." },
         { status: 401 }
