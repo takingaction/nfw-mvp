@@ -8,12 +8,17 @@ export async function POST() {
   try {
     const supabase = await createClient();
     
+    // Debug: log what we're looking for
+    console.log("Looking for token with shop:", SHOPIFY_SHOP_DOMAIN);
+    
     // Get the Shopify access token from the database or environment
-    const { data: tokenData } = await supabase
+    const { data: tokenData, error: tokenError } = await supabase
       .from("shopify_tokens")
-      .select("access_token")
+      .select("access_token, shop")
       .eq("shop", SHOPIFY_SHOP_DOMAIN)
       .single();
+
+    console.log("Token query result:", { data: tokenData, error: tokenError });
 
     const accessToken = tokenData?.access_token || process.env.SHOPIFY_ACCESS_TOKEN;
 
