@@ -72,10 +72,14 @@ export async function POST(request: Request) {
         if (existingClaims && existingClaims.length > 0) {
           const claim = existingClaims[0];
           
+          // Only set status to fulfilled if there's tracking info (meaning actually shipped)
+          // Otherwise keep as "created" until fulfillment
+          const newStatus = trackingNumber ? "fulfilled" : "created";
+          
           const { error: updateError } = await supabaseAdmin
             .from("zero_dollar_claims")
             .update({
-              status: "fulfilled",
+              status: newStatus,
               shopify_order_id: orderId,
               shopify_checkout_id: checkoutId || orderId,
               tracking_number: trackingNumber,
@@ -86,7 +90,7 @@ export async function POST(request: Request) {
           if (updateError) {
             console.error("Failed to update claim:", updateError);
           } else {
-            console.log("Updated claim", claim.id, "with order", orderId);
+            console.log("Updated claim", claim.id, "with order", orderId, "status:", newStatus);
           }
         } else {
           console.log("No matching claim found for variant", variantId);
