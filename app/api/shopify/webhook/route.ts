@@ -27,47 +27,21 @@ function verifyShopifyWebhook(body: string, signature: string | null): boolean {
 
 export async function POST(request: Request) {
   try {
-    // Log to database at the very start to verify if requests are reaching us
-    const timestamp = new Date().toISOString();
-    try {
-      await supabaseAdmin
-        .from("zero_dollar_claims")
-        .insert({
-          user_id: "00000000-0000-0000-0000-000000000000",
-          shopify_product_id: `webhook_log_${timestamp.replace(/[:.]/g, '-')}`,
-          shopify_variant_id: "webhook_variant",
-          status: "pending",
-          shipping_address: { webhook_test: true, timestamp },
-        });
-      console.log("Database log inserted for webhook at", timestamp);
-    } catch (dbError) {
-      console.error("Failed to insert database log:", dbError);
-    }
-
-    console.log("Webhook POST called at", timestamp);
     const body = await request.text();
-    console.log("Webhook body:", body.substring(0, 200));
     const signature = request.headers.get("X-Shopify-Hmac-Sha256");
     const topic = request.headers.get("X-Shopify-Topic");
 
-    console.log("Webhook received:", { topic, bodyLength: body.length, hasSignature: !!signature });
+    console.log("Webhook received:", { topic, bodyLength: body.length });
 
-    // BYPASS SIGNATURE VERIFICATION FOR TESTING
-    // TODO: Re-enable before production
-    console.log("WARNING: Signature verification bypassed for testing");
-
-    // Temporarily skip signature verification
-    // if (!verifyShopifyWebhook(body, signature)) {
-    //   console.error("Invalid Shopify webhook signature");
-    //   return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-    // }
+    if (!verifyShopifyWebhook(body, signature)) {
+      console.error("Invalid Shopify webhook signature");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
 
     const event = JSON.parse(body);
-    console.log("Webhook event:", JSON.stringify(event).substring(0, 500));
 
     if (topic === "orders/create") {
       const order = event;
-      console.log("Order ID:", order.id, "Variant ID:", order.line_items?.[0]?.variant_id);
       const orderId = `gid://shopify/Order/${order.id}`;
       const checkoutId = order.checkout_id ? `gid://shopify/Checkout/${order.checkout_id}` : null;
       const lineItems = order.line_items || [];
@@ -85,7 +59,6 @@ export async function POST(request: Request) {
       const trackingUrl = fulfillment?.tracking_url || null;
 
       if (variantId) {
-        console.log("Looking for claim with variantId:", variantId);
         const { data: existingClaims } = await supabaseAdmin
           .from("zero_dollar_claims")
           .select("*")
@@ -94,10 +67,8 @@ export async function POST(request: Request) {
           .order("claimed_at", { ascending: true })
           .limit(1);
 
-        console.log("Found claims:", existingClaims?.length);
         if (existingClaims && existingClaims.length > 0) {
           const claim = existingClaims[0];
-          console.log("Updating claim:", claim.id);
           
           const { error: updateError } = await supabaseAdmin
             .from("zero_dollar_claims")
