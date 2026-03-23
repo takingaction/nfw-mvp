@@ -15,6 +15,7 @@ type Claim = {
   shipping_address: Record<string, unknown> | null;
   tracking_number: string | null;
   tracking_url: string | null;
+  order_status_url: string | null;
   claimed_at: string;
   product?: {
     title: string;
@@ -124,9 +125,14 @@ export default function MyClaimsClient({
     setLoadingClaimId(null);
   };
 
-  const getShopifyOrderUrl = (orderId: string | null) => {
-    if (!orderId) return null;
-    const cleanId = orderId.replace('gid://shopify/Order/', '');
+  const getShopifyOrderUrl = (claim: Claim) => {
+    // Use Shopify's order_status_url if available (doesn't require login)
+    if (claim.order_status_url) {
+      return claim.order_status_url;
+    }
+    // Fallback to constructing URL from order ID
+    if (!claim.shopify_order_id) return null;
+    const cleanId = claim.shopify_order_id.replace('gid://shopify/Order/', '');
     return `https://${SHOPIFY_STORE_DOMAIN}/account/orders/${cleanId}`;
   };
 
@@ -156,7 +162,7 @@ export default function MyClaimsClient({
       <div className="space-y-4">
         {enrichedClaims.map((claim) => {
           const info = STATUS_INFO[claim.status] || STATUS_INFO.pending;
-          const shopifyOrderUrl = getShopifyOrderUrl(claim.shopify_order_id);
+          const shopifyOrderUrl = getShopifyOrderUrl(claim);
 
           return (
             <div

@@ -84,6 +84,7 @@ export async function POST(request: Request) {
               shopify_checkout_id: checkoutId || orderId,
               tracking_number: trackingNumber,
               tracking_url: trackingUrl,
+              order_status_url: order.order_status_url || null,
             })
             .eq("id", claim.id);
 
