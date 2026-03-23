@@ -7,7 +7,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-function verifyShopifyWebhook(body: string, signature: string | null): boolean {
+function verifyShopifyWebhook(body: Buffer, signature: string | null): boolean {
   if (!signature) {
     console.error("No signature provided");
     return false;
@@ -28,6 +28,7 @@ function verifyShopifyWebhook(body: string, signature: string | null): boolean {
   
   console.log("HMAC debug:", {
     bodyLength: body.length,
+    bodyIsBuffer: Buffer.isBuffer(body),
     secretLength: secret.length,
     secretFirstChars: secret.substring(0, 10),
     signatureLength: signature.length,
@@ -49,18 +50,24 @@ function verifyShopifyWebhook(body: string, signature: string | null): boolean {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.text();
+    // Use arrayBuffer to get raw bytes, not processed body
+    const arrayBuffer = await request.arrayBuffer();
+    const body = Buffer.from(arrayBuffer);
     const signature = request.headers.get("X-Shopify-Hmac-Sha256");
     const topic = request.headers.get("X-Shopify-Topic");
 
-    console.log("Webhook received:", { topic, bodyLength: body.length });
+    console.log("Webhook received:", { 
+      topic, 
+      bodyLength: body.length,
+      bodyIsBuffer: Buffer.isBuffer(body)
+    });
 
     if (!verifyShopifyWebhook(body, signature)) {
       console.error("Invalid Shopify webhook signature");
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
-    const event = JSON.parse(body);
+    const event = JSON.parse(body.toString());
 
     if (topic === "orders/create") {
       const order = event;
