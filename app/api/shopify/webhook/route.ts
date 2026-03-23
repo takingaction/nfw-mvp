@@ -8,7 +8,10 @@ const supabaseAdmin = createClient(
 );
 
 function verifyShopifyWebhook(body: string, signature: string | null): boolean {
-  if (!signature) return false;
+  if (!signature) {
+    console.error("No signature provided");
+    return false;
+  }
   
   const secret = process.env.SHOPIFY_WEBHOOK_SECRET;
   if (!secret) {
@@ -19,17 +22,28 @@ function verifyShopifyWebhook(body: string, signature: string | null): boolean {
   const hmac = crypto.createHmac("sha256", secret);
   const digest = hmac.update(body).digest("base64");
   
+  const signatureBuffer = Buffer.from(signature, 'base64');
+  const digestBuffer = Buffer.from(digest, 'base64');
+  
   console.log("HMAC debug:", {
-    headerLength: signature.length,
-    computedLength: digest.length,
-    headerFirstChars: signature.substring(0, 20),
-    computedFirstChars: digest.substring(0, 20)
+    bodyLength: body.length,
+    secretLength: secret.length,
+    secretFirstChars: secret.substring(0, 10),
+    signatureLength: signature.length,
+    digestLength: digest.length,
+    signatureBufferLength: signatureBuffer.length,
+    digestBufferLength: digestBuffer.length
   });
   
-  return crypto.timingSafeEqual(
-    Buffer.from(digest, 'base64'),
-    Buffer.from(signature, 'base64')
-  );
+  // Direct byte comparison for debugging
+  if (signatureBuffer.length !== digestBuffer.length) {
+    console.error("Length mismatch - signature:", signatureBuffer.length, "digest:", digestBuffer.length);
+  }
+  
+  const match = crypto.timingSafeEqual(signatureBuffer, digestBuffer);
+  console.log("Signature match result:", match);
+  
+  return match;
 }
 
 export async function POST(request: Request) {
