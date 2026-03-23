@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import GrantsStatusWidget from "@/components/GrantsStatusWidget";
 import RecentRedemptions from "@/components/dashboard/RecentRedemptions";
+import RecentClaims from "@/components/dashboard/RecentClaims";
 import Link from "next/link";
 import {
   FileText,
@@ -174,6 +175,10 @@ export default async function DashboardPage() {
 
         <div className="mb-6">
           <RecentRedemptions />
+        </div>
+
+        <div className="mb-6">
+          <RecentClaims />
         </div>
 
         <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">

@@ -403,13 +403,22 @@ export default function AdminShopifySync() {
               Connect to Shopify
             </a>
           ) : (
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="bg-nfw-blackberry text-white px-6 py-3 font-medium hover:bg-nfw-blackberry/90 disabled:opacity-50"
-            >
-              {syncing ? "Syncing..." : "Sync from Shopify"}
-            </button>
+            <>
+              <a
+                href="/store"
+                target="_blank"
+                className="bg-nfw-dove text-nfw-blackberry px-6 py-3 font-medium hover:bg-nfw-dove/80 inline-block"
+              >
+                View Store
+              </a>
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                className="bg-nfw-blackberry text-white px-6 py-3 font-medium hover:bg-nfw-blackberry/90 disabled:opacity-50"
+              >
+                {syncing ? "Syncing..." : "Sync from Shopify"}
+              </button>
+            </>
           )}
         </div>
       </div>

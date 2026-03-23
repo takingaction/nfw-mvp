@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
         .eq("id", id);
 
       if (error) {
+        console.error("Header update error:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
 
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (error) {
+        console.error("Header insert error:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
 

@@ -41,6 +41,7 @@ export async function publishPage(pageId: string, slug: string) {
   const { error } = await supabaseAdmin.rpc("publish_page", {
     p_page_id: pageId,
   });
+  console.error("publishPage error:", error);
   if (error) throw new Error(error.message);
   revalidatePath(`/${slug}`);
   revalidatePath(`/admin/pages`);
