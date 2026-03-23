@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("Error updating product mapping:", error);
+      console.error("Full error:", JSON.stringify(error));
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
