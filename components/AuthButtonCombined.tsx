@@ -185,7 +185,7 @@ export function AuthButtonCombined() {
                   className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
-                  Shopify Sync
+                  Manage Zero Dollar Store
                 </Link>
                 <Link
                   href="/admin/analytics"

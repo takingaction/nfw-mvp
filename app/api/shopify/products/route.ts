@@ -7,21 +7,22 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const featured = searchParams.get("featured") === "true";
+    const adminView = searchParams.get("admin_view") === "true";
     const checkConnection = searchParams.get("check_connection") === "true";
 
-    // Connection check endpoint
     if (checkConnection) {
       const token = await getShopifyAccessToken();
       return NextResponse.json({ connected: !!token }, { status: 200 });
     }
 
-    let products: MockProduct[] = MOCK_PRODUCTS.filter(p => p.mvpVisibility);
+    let products: MockProduct[] = MOCK_PRODUCTS;
+    let useRealShopify = false;
 
     const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN;
     const clientId = process.env.SHOPIFY_CLIENT_ID;
-    const useRealShopify = shopDomain && clientId && 
+    useRealShopify = !!(shopDomain && clientId && 
                            clientId !== "your-shopify-client-id" &&
-                           !shopDomain.includes("placeholder");
+                           !shopDomain.includes("placeholder"));
 
     if (useRealShopify) {
       try {
@@ -40,16 +41,20 @@ export async function GET(request: NextRequest) {
         products = data.products.edges.map(({ node }) => {
           const mapping = mappingMap.get(node.id);
           return transformShopifyProduct(node, mapping as MockProduct | undefined);
-        }).filter(p => p.mvpVisibility);
+        });
       } catch {
-        products = MOCK_PRODUCTS.filter(p => p.mvpVisibility);
+        products = MOCK_PRODUCTS;
       }
+    }
+
+    if (!adminView) {
+      products = products.filter(p => p.mvpVisibility);
     }
 
     const sortedProducts = products.sort((a, b) => a.displayOrder - b.displayOrder);
 
     if (featured) {
-      return NextResponse.json(sortedProducts.slice(0, 3));
+      return NextResponse.json(sortedProducts.filter(p => p.mvpVisibility).slice(0, 3));
     }
 
     return NextResponse.json(sortedProducts);

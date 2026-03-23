@@ -3,18 +3,20 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { Star } from "lucide-react";
 
 type ProductWithMapping = {
-  shopify_product_id: string;
-  shopify_variant_id: string;
+  shopifyProductId: string;
+  shopifyVariantId: string;
   title: string;
-  image_url?: string;
-  mvp_visibility: boolean;
-  eligibility_tiers: string[];
-  display_order: number;
+  imageUrl: string;
+  mvpVisibility: boolean;
+  eligibilityTiers: string[];
+  displayOrder: number;
 };
 
 const TIERS = ["free", "contributing", "founding"];
+const MAX_FEATURED = 3;
 
 export default function AdminShopifySync() {
   const [products, setProducts] = useState<ProductWithMapping[]>([]);
@@ -36,12 +38,10 @@ export default function AdminShopifySync() {
   };
 
   useEffect(() => {
-    // Check for connected param from OAuth callback
     const params = new URLSearchParams(window.location.search);
     if (params.get("connected") === "true") {
       setMessage({ type: "success", text: "Successfully connected to Shopify!" });
       setIsConnected(true);
-      // Clean URL
       window.history.replaceState({}, "", "/admin/shopify");
     } else if (params.get("error")) {
       setMessage({ type: "error", text: `Connection failed: ${params.get("error")}` });
@@ -52,7 +52,7 @@ export default function AdminShopifySync() {
 
   const fetchProducts = async () => {
     try {
-      const res = await fetch("/api/shopify/products");
+      const res = await fetch("/api/shopify/products?admin_view=true");
       const data = await res.json();
       if (Array.isArray(data)) {
         setProducts(data);
@@ -100,16 +100,16 @@ export default function AdminShopifySync() {
     if (!error) {
       setProducts((prev) =>
         prev.map((p) =>
-          p.shopify_product_id === productId ? { ...p, mvp_visibility: !currentVisibility } : p,
+          p.shopifyProductId === productId ? { ...p, mvpVisibility: !currentVisibility } : p,
         ),
       );
     }
   };
 
   const toggleTier = async (productId: string, tier: string, currentTiers: string[]) => {
-    const newTiers = (currentTiers ?? []).includes(tier)
-      ? (currentTiers ?? []).filter((t) => t !== tier)
-      : [...(currentTiers ?? []), tier];
+    const newTiers = currentTiers.includes(tier)
+      ? currentTiers.filter((t) => t !== tier)
+      : [...currentTiers, tier];
 
     const supabase = createClient();
     const { error } = await supabase
@@ -120,10 +120,57 @@ export default function AdminShopifySync() {
     if (!error) {
       setProducts((prev) =>
         prev.map((p) =>
-          p.shopify_product_id === productId ? { ...p, eligibility_tiers: newTiers } : p,
+          p.shopifyProductId === productId ? { ...p, eligibilityTiers: newTiers } : p,
         ),
       );
     }
+  };
+
+  const toggleFeatured = async (productId: string) => {
+    const product = products.find((p) => p.shopifyProductId === productId);
+    if (!product) return;
+
+    const currentlyFeatured = product.displayOrder >= 0 && product.displayOrder < 999;
+    const featuredCount = products.filter((p) => p.displayOrder >= 0 && p.displayOrder < 999).length;
+
+    const supabase = createClient();
+
+    if (currentlyFeatured) {
+      await supabase
+        .from("shopify_product_mappings")
+        .update({ display_order: 999 })
+        .eq("shopify_product_id", productId);
+      
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.shopifyProductId === productId ? { ...p, displayOrder: 999 } : p,
+        ),
+      );
+    } else {
+      if (featuredCount >= MAX_FEATURED) {
+        setMessage({ type: "error", text: `Maximum ${MAX_FEATURED} featured products allowed` });
+        setTimeout(() => setMessage(null), 3000);
+        return;
+      }
+      
+      const newOrder = featuredCount;
+      await supabase
+        .from("shopify_product_mappings")
+        .update({ display_order: newOrder })
+        .eq("shopify_product_id", productId);
+      
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.shopifyProductId === productId ? { ...p, displayOrder: newOrder } : p,
+        ),
+      );
+    }
+  };
+
+  const getFeaturedRank = (productId: string): number | null => {
+    const product = products.find((p) => p.shopifyProductId === productId);
+    if (!product || product.displayOrder >= 999) return null;
+    return product.displayOrder + 1;
   };
 
   if (loading) {
@@ -138,31 +185,35 @@ export default function AdminShopifySync() {
     );
   }
 
+  const featuredCount = products.filter((p) => p.displayOrder < 999).length;
+
   return (
     <div className="p-8 bg-nfw-dove min-h-screen">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-nfw-blackberry mb-2 font-ui">Shopify Product Sync</h1>
+          <h1 className="text-3xl font-bold text-nfw-blackberry mb-2 font-ui">Manage Zero Dollar Store</h1>
           <p className="text-nfw-blackberry/60">
-            Manage which products appear in the Zero Dollar Store MVP
+            Control which products appear in the Zero Dollar Store and who can access them
           </p>
         </div>
-        {!isConnected ? (
-          <a
-            href={SHOPIFY_AUTH_URL}
-            className="bg-nfw-aubergine text-white px-6 py-3 font-medium hover:bg-nfw-aubergine/90 inline-block"
-          >
-            Connect to Shopify
-          </a>
-        ) : (
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="bg-nfw-blackberry text-white px-6 py-3 font-medium hover:bg-nfw-blackberry/90 disabled:opacity-50"
-          >
-            {syncing ? "Syncing..." : "Sync from Shopify"}
-          </button>
-        )}
+        <div className="flex gap-3">
+          {!isConnected ? (
+            <a
+              href={SHOPIFY_AUTH_URL}
+              className="bg-nfw-aubergine text-white px-6 py-3 font-medium hover:bg-nfw-aubergine/90 inline-block"
+            >
+              Connect to Shopify
+            </a>
+          ) : (
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="bg-nfw-blackberry text-white px-6 py-3 font-medium hover:bg-nfw-blackberry/90 disabled:opacity-50"
+            >
+              {syncing ? "Syncing..." : "Sync from Shopify"}
+            </button>
+          )}
+        </div>
       </div>
 
       {message && (
@@ -174,6 +225,76 @@ export default function AdminShopifySync() {
           {message.text}
         </div>
       )}
+
+      <div className="bg-white border border-nfw-blackberry/10 overflow-hidden mb-8">
+        <div className="px-6 py-4 bg-nfw-aubergine/5 border-b border-nfw-blackberry/10">
+          <h2 className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-aubergine">
+            Featured on Homepage
+          </h2>
+          <p className="text-nfw-blackberry/60 text-sm mt-1">
+            Select up to {MAX_FEATURED} products to display on the homepage. Click the star icon to toggle.
+          </p>
+          <p className="text-nfw-blackberry/60 text-sm">
+            Currently featured: {featuredCount} of {MAX_FEATURED}
+          </p>
+        </div>
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {products.map((product) => {
+            const isFeatured = product.displayOrder < 999;
+            const featuredRank = getFeaturedRank(product.shopifyProductId);
+            
+            return (
+              <div
+                key={product.shopifyProductId}
+                className={`relative p-4 border-2 rounded-lg transition-colors ${
+                  isFeatured
+                    ? "border-nfw-citrine bg-nfw-citrine/5"
+                    : "border-nfw-blackberry/10 hover:border-nfw-blackberry/30"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="relative w-16 h-16 bg-nfw-stone/10 flex-shrink-0 overflow-hidden rounded">
+                    {product.imageUrl ? (
+                      <Image
+                        src={product.imageUrl}
+                        alt={product.title}
+                        fill
+                        className="object-cover"
+                        sizes="64px"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-nfw-stone/30">
+                        No Image
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry truncate">
+                      {product.title}
+                    </p>
+                    {isFeatured && (
+                      <p className="text-nfw-citrine text-xs font-medium mt-1">
+                        Featured #{featuredRank}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => toggleFeatured(product.shopifyProductId)}
+                    className={`p-2 rounded-full transition-colors ${
+                      isFeatured
+                        ? "text-nfw-citrine hover:bg-nfw-citrine/10"
+                        : "text-nfw-blackberry/30 hover:text-nfw-blackberry/60 hover:bg-nfw-blackberry/5"
+                    }`}
+                    title={isFeatured ? "Remove from featured" : "Add to featured"}
+                  >
+                    <Star className={`w-5 h-5 ${isFeatured ? "fill-current" : ""}`} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
         <table className="min-w-full divide-y divide-nfw-blackberry/5">
@@ -192,42 +313,45 @@ export default function AdminShopifySync() {
           </thead>
           <tbody className="bg-white divide-y divide-nfw-blackberry/5">
             {products.map((product, index) => (
-              <tr key={product.shopify_product_id ?? `product-${index}`}>
+              <tr key={product.shopifyProductId ?? `product-${index}`}>
                 <td className="px-6 py-4">
                   <div className="flex items-center">
-                    <div className="h-12 w-12 bg-nfw-stone/20 flex-shrink-0 overflow-hidden relative">
-                      {product.image_url ? (
+                    <div className="h-12 w-12 bg-nfw-stone/10 flex-shrink-0 overflow-hidden relative rounded">
+                      {product.imageUrl ? (
                         <Image
-                          src={product.image_url}
+                          src={product.imageUrl}
                           alt={product.title}
                           fill
                           className="object-cover"
+                          sizes="48px"
                         />
                       ) : (
-                        <div className="h-12 w-12 bg-nfw-stone/20" />
+                        <div className="h-full w-full flex items-center justify-center text-nfw-stone/30 text-xs">
+                          No Img
+                        </div>
                       )}
                     </div>
                     <div className="ml-4">
                       <div className="font-medium text-nfw-blackberry">{product.title}</div>
-                      <div className="text-sm text-nfw-blackberry/50">{product.shopify_product_id}</div>
+                      <div className="text-sm text-nfw-blackberry/50 truncate max-w-xs">{product.shopifyProductId}</div>
                     </div>
                   </div>
                 </td>
                 <td className="px-6 py-4">
                   <button
-                    onClick={() => toggleVisibility(product.shopify_product_id, product.mvp_visibility)}
+                    onClick={() => toggleVisibility(product.shopifyProductId, product.mvpVisibility)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      product.mvp_visibility ? "bg-[#d4f1ad]" : "bg-nfw-stone/30"
+                      product.mvpVisibility ? "bg-[#d4f1ad]" : "bg-nfw-stone/30"
                     }`}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        product.mvp_visibility ? "translate-x-6" : "translate-x-1"
+                        product.mvpVisibility ? "translate-x-6" : "translate-x-1"
                       }`}
                     />
                   </button>
                   <span className="ml-3 text-sm text-nfw-blackberry/60">
-                    {product.mvp_visibility ? "Visible" : "Hidden"}
+                    {product.mvpVisibility ? "Visible" : "Hidden"}
                   </span>
                 </td>
                 <td className="px-6 py-4">
@@ -235,9 +359,9 @@ export default function AdminShopifySync() {
                     {TIERS.map((tier) => (
                       <button
                         key={tier}
-                        onClick={() => toggleTier(product.shopify_product_id, tier, product.eligibility_tiers ?? [])}
-                        className={`px-3 py-1 text-xs font-medium transition-colors ${
-                          product.eligibility_tiers?.includes(tier) ?? false
+                        onClick={() => toggleTier(product.shopifyProductId, tier, product.eligibilityTiers ?? [])}
+                        className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                          product.eligibilityTiers?.includes(tier)
                             ? "bg-nfw-blackberry text-white"
                             : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
                         }`}

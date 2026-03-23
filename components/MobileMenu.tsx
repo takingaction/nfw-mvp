@@ -375,7 +375,7 @@ export default function MobileMenu() {
                           onClick={closeMenu}
                           className={linkClass}
                         >
-                          Shopify Sync
+                          Manage Zero Dollar Store
                         </Link>
                         <Link
                           href="/admin/analytics"
