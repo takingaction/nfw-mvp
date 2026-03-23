@@ -28,6 +28,10 @@ type ClaimWithDetails = {
     full_name: string;
   };
   member_email: string;
+  shopify_product_id?: string | null;
+  shopify_variant_id?: string | null;
+  shopify_checkout_id?: string | null;
+  shopify_order_id?: string | null;
 };
 
 const STATUS_OPTIONS = [
@@ -317,12 +321,24 @@ export default function AdminClaimsClient({
                         {claim.tracking_number || "-"}
                       </td>
                       <td className="px-6 py-4">
-                        <button
-                          onClick={() => handleEditClick(claim)}
-                          className="text-nfw-blackberry hover:text-nfw-blackberry/70 font-medium text-sm"
-                        >
-                          Manage
-                        </button>
+                        <div className="flex gap-3">
+                          {claim.shopify_order_id && (
+                            <a
+                              href={`https://nfw-checkout.myshopify.com/admin/orders/${claim.shopify_order_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-nfw-passion hover underline text-sm"
+                            >
+                              View Order
+                            </a>
+                          )}
+                          <button
+                            onClick={() => handleEditClick(claim)}
+                            className="text-nfw-blackberry hover:text-nfw-blackberry/70 font-medium text-sm"
+                          >
+                            Manage
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -431,6 +447,38 @@ export default function AdminClaimsClient({
                   className="w-full px-3 py-2 border border-nfw-blackberry/20"
                 />
               </div>
+
+              {/* Shopify Info (read-only display) */}
+              {(editingClaim.shopify_order_id || editingClaim.shopify_product_id || editingClaim.shopify_variant_id) && (
+                <div className="bg-nfw-dove p-4">
+                  <strong className="block mb-2 text-nfw-blackberry">Shopify Information:</strong>
+                  <div className="text-sm space-y-1">
+                    {editingClaim.shopify_order_id && (
+                      <div>
+                        <span className="text-nfw-blackberry/50">Order ID:</span>{" "}
+                        <a
+                          href={`https://nfw-checkout.myshopify.com/admin/orders/${editingClaim.shopify_order_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-nfw-passion hover underline"
+                        >
+                          {editingClaim.shopify_order_id}
+                        </a>
+                      </div>
+                    )}
+                    {editingClaim.shopify_product_id && (
+                      <div>
+                        <span className="text-nfw-blackberry/50">Product ID:</span> {editingClaim.shopify_product_id}
+                      </div>
+                    )}
+                    {editingClaim.shopify_variant_id && (
+                      <div>
+                        <span className="text-nfw-blackberry/50">Variant ID:</span> {editingClaim.shopify_variant_id}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-3 pt-4">
                 <button

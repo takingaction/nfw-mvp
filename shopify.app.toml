@@ -1,0 +1,25 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "f49eb5cfc37a77f54ab057d157ade89a"
+name = "NFW Storefront"
+application_url = "https://nfw-mvp-4n2i.vercel.app/"
+embedded = false
+
+[webhooks]
+api_version = "2026-01"
+
+[[webhooks.subscriptions]]
+topics = ["orders/create"]
+uri = "/api/shopify/webhook"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_checkouts,read_checkouts,read_products,read_orders"
+optional_scopes = [ ]
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [
+  "https://nfw-mvp-4n2i.vercel.app/api/shopify-callback",
+  "http://localhost:3000/api/shopify-callback"
+]

@@ -19,9 +19,16 @@ function verifyShopifyWebhook(body: string, signature: string | null): boolean {
   const hmac = crypto.createHmac("sha256", secret);
   const digest = hmac.update(body).digest("base64");
   
+  console.log("HMAC debug:", {
+    headerLength: signature.length,
+    computedLength: digest.length,
+    headerFirstChars: signature.substring(0, 20),
+    computedFirstChars: digest.substring(0, 20)
+  });
+  
   return crypto.timingSafeEqual(
-    Buffer.from(digest),
-    Buffer.from(signature)
+    Buffer.from(digest, 'base64'),
+    Buffer.from(signature, 'base64')
   );
 }
 
