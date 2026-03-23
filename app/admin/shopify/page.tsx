@@ -208,6 +208,7 @@ export default function AdminShopifySync() {
       const res = await fetch("/api/shopify/products?admin_view=true");
       const data = await res.json();
       if (Array.isArray(data)) {
+        console.log("fetchProducts featuredOrder values:", data.map(p => ({ title: p.title, featuredOrder: p.featuredOrder })));
         setProducts(data);
       } else {
         console.warn("API returned non-array:", data);
@@ -286,11 +287,14 @@ export default function AdminShopifySync() {
   };
 
   const toggleFeatured = async (productId: string) => {
+    console.log("toggleFeatured called:", productId);
     const product = products.find((p) => p.shopifyProductId === productId);
+    console.log("product:", product?.title, "featuredOrder:", product?.featuredOrder);
     if (!product) return;
 
     const currentlyFeatured = product.featuredOrder < 999;
     const featuredCount = products.filter((p) => p.featuredOrder < 999).length;
+    console.log("currentlyFeatured:", currentlyFeatured, "featuredCount:", featuredCount);
 
     if (currentlyFeatured) {
       const res = await fetch("/api/admin/shopify/update-product", {
@@ -301,6 +305,7 @@ export default function AdminShopifySync() {
           updates: { featured_order: 999 },
         }),
       });
+      console.log("remove res.ok:", res.ok);
 
       if (res.ok) {
         setProducts((prev) =>
@@ -317,6 +322,7 @@ export default function AdminShopifySync() {
       }
 
       const newOrder = featuredCount;
+      console.log("adding to featured, newOrder:", newOrder);
       const res = await fetch("/api/admin/shopify/update-product", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -325,6 +331,7 @@ export default function AdminShopifySync() {
           updates: { featured_order: newOrder },
         }),
       });
+      console.log("add res.ok:", res.ok);
 
       if (res.ok) {
         setProducts((prev) =>
