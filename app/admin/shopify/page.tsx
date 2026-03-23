@@ -245,7 +245,7 @@ export default function AdminShopifySync() {
         <div className="px-6 py-3 bg-nfw-dove border-b border-nfw-blackberry/10">
           <p className="text-nfw-blackberry/60 text-sm">
             <span className="font-medium">Featured on Homepage:</span> {featuredCount} of {MAX_FEATURED} selected. 
-            Click the <Star className="inline w-4 h-4 text-nfw-citrine" /> icon to toggle.
+            Click the <Star className="inline w-4 h-4 text-nfw-aubergine" /> icon to toggle.
           </p>
         </div>
         <table className="min-w-full divide-y divide-nfw-blackberry/5">
