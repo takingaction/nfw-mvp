@@ -12,6 +12,7 @@ export async function POST() {
     const { data: tokenData } = await supabase
       .from("shopify_tokens")
       .select("access_token")
+      .eq("shop", SHOPIFY_SHOP_DOMAIN)
       .single();
 
     const accessToken = tokenData?.access_token || process.env.SHOPIFY_ACCESS_TOKEN;
@@ -120,6 +121,7 @@ export async function GET() {
     const { data: tokenData } = await supabase
       .from("shopify_tokens")
       .select("access_token")
+      .eq("shop", SHOPIFY_SHOP_DOMAIN)
       .single();
 
     const accessToken = tokenData?.access_token || process.env.SHOPIFY_ACCESS_TOKEN;
