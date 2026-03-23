@@ -29,6 +29,7 @@ type ProductWithMapping = {
   mvpVisibility: boolean;
   eligibilityTiers: string[];
   displayOrder: number;
+  featuredOrder: number;
 };
 
 const TIERS = ["free", "contributing", "founding"];
@@ -288,8 +289,8 @@ export default function AdminShopifySync() {
     const product = products.find((p) => p.shopifyProductId === productId);
     if (!product) return;
 
-    const currentlyFeatured = product.displayOrder < 999;
-    const featuredCount = products.filter((p) => p.displayOrder < 999).length;
+    const currentlyFeatured = product.featuredOrder < 999;
+    const featuredCount = products.filter((p) => p.featuredOrder < 999).length;
 
     if (currentlyFeatured) {
       const res = await fetch("/api/admin/shopify/update-product", {
@@ -297,14 +298,14 @@ export default function AdminShopifySync() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           shopify_product_id: productId,
-          updates: { display_order: 999 },
+          updates: { featured_order: 999 },
         }),
       });
 
       if (res.ok) {
         setProducts((prev) =>
           prev.map((p) =>
-            p.shopifyProductId === productId ? { ...p, displayOrder: 999 } : p,
+            p.shopifyProductId === productId ? { ...p, featuredOrder: 999 } : p,
           ),
         );
       }
@@ -321,14 +322,14 @@ export default function AdminShopifySync() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           shopify_product_id: productId,
-          updates: { display_order: newOrder },
+          updates: { featured_order: newOrder },
         }),
       });
 
       if (res.ok) {
         setProducts((prev) =>
           prev.map((p) =>
-            p.shopifyProductId === productId ? { ...p, displayOrder: newOrder } : p,
+            p.shopifyProductId === productId ? { ...p, featuredOrder: newOrder } : p,
           ),
         );
       }
@@ -364,8 +365,8 @@ export default function AdminShopifySync() {
 
   const getFeaturedRank = (productId: string): number | null => {
     const featuredProducts = products
-      .filter((p) => p.displayOrder < 999)
-      .sort((a, b) => a.displayOrder - b.displayOrder);
+      .filter((p) => p.featuredOrder < 999)
+      .sort((a, b) => a.featuredOrder - b.featuredOrder);
     const rankIndex = featuredProducts.findIndex((p) => p.shopifyProductId === productId);
     return rankIndex >= 0 ? rankIndex + 1 : null;
   };
@@ -454,7 +455,7 @@ export default function AdminShopifySync() {
                 strategy={verticalListSortingStrategy}
               >
                 {products.map((product) => {
-                  const isFeatured = product.displayOrder < 999;
+                  const isFeatured = product.featuredOrder < 999;
                   const featuredRank = getFeaturedRank(product.shopifyProductId);
 
                   return (

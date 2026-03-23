@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
             mvpVisibility: rawMapping.mvp_visibility,
             eligibilityTiers: rawMapping.eligibility_tiers,
             displayOrder: rawMapping.display_order,
+            featuredOrder: rawMapping.featured_order,
           } : undefined;
           return transformShopifyProduct(node, mapping);
         });
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
     const sortedProducts = products.sort((a, b) => a.displayOrder - b.displayOrder);
 
     if (featured) {
-      const featuredProducts = sortedProducts.filter(p => p.mvpVisibility && p.displayOrder < 999).slice(0, 3);
+      const featuredProducts = sortedProducts.filter(p => p.mvpVisibility && p.featuredOrder < 999).slice(0, 3);
       return NextResponse.json(featuredProducts);
     }
 
