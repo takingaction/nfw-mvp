@@ -53,6 +53,13 @@ export default async function Navigation() {
 
   const headerData: HeaderData = header || defaultHeader;
 
+  // Convert highlight to indent for backwards compatibility with old data format
+  const navLinks = (headerData.nav_links || defaultHeader.nav_links).map((l) => ({
+    label: l.label,
+    url: l.url,
+    indent: l.indent ?? (l as any).highlight ? 1 : 0,
+  }));
+
   return (
     <nav className="w-full bg-nfw-aubergine sticky top-0 z-50 shadow-md">
       <div className="max-w-[1400px] mx-auto px-4">
@@ -62,7 +69,7 @@ export default async function Navigation() {
             <NavigationClient
               side="left"
               logoUrl={headerData.logo_url}
-              navLinks={headerData.nav_links}
+              navLinks={navLinks}
             />
             <div className="ml-auto">
               <MobileMenu />
@@ -75,7 +82,7 @@ export default async function Navigation() {
             <NavigationClient
               side="left"
               logoUrl={headerData.logo_url}
-              navLinks={headerData.nav_links}
+              navLinks={navLinks}
             />
 
             {/* Right: Nav items + auth button */}
@@ -83,7 +90,7 @@ export default async function Navigation() {
               <NavigationClient
                 side="right"
                 logoUrl={headerData.logo_url}
-                navLinks={headerData.nav_links}
+                navLinks={navLinks}
               />
               <AuthButtonCombined />
             </div>
