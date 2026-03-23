@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { createClient } from "@/lib/supabase/client";
 import { Star } from "lucide-react";
 
 type ProductWithMapping = {
@@ -91,13 +90,16 @@ export default function AdminShopifySync() {
   };
 
   const toggleVisibility = async (productId: string, currentVisibility: boolean) => {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("shopify_product_mappings")
-      .update({ mvp_visibility: !currentVisibility })
-      .eq("shopify_product_id", productId);
+    const res = await fetch("/api/admin/shopify/update-product", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        shopify_product_id: productId,
+        updates: { mvp_visibility: !currentVisibility },
+      }),
+    });
 
-    if (!error) {
+    if (res.ok) {
       setProducts((prev) =>
         prev.map((p) =>
           p.shopifyProductId === productId ? { ...p, mvpVisibility: !currentVisibility } : p,
@@ -111,13 +113,16 @@ export default function AdminShopifySync() {
       ? currentTiers.filter((t) => t !== tier)
       : [...currentTiers, tier];
 
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("shopify_product_mappings")
-      .update({ eligibility_tiers: newTiers })
-      .eq("shopify_product_id", productId);
+    const res = await fetch("/api/admin/shopify/update-product", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        shopify_product_id: productId,
+        updates: { eligibility_tiers: newTiers },
+      }),
+    });
 
-    if (!error) {
+    if (res.ok) {
       setProducts((prev) =>
         prev.map((p) =>
           p.shopifyProductId === productId ? { ...p, eligibilityTiers: newTiers } : p,
@@ -130,40 +135,50 @@ export default function AdminShopifySync() {
     const product = products.find((p) => p.shopifyProductId === productId);
     if (!product) return;
 
-    const currentlyFeatured = product.displayOrder >= 0 && product.displayOrder < 999;
-    const featuredCount = products.filter((p) => p.displayOrder >= 0 && p.displayOrder < 999).length;
-
-    const supabase = createClient();
+    const currentlyFeatured = product.displayOrder < 999;
+    const featuredCount = products.filter((p) => p.displayOrder < 999).length;
 
     if (currentlyFeatured) {
-      await supabase
-        .from("shopify_product_mappings")
-        .update({ display_order: 999 })
-        .eq("shopify_product_id", productId);
-      
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.shopifyProductId === productId ? { ...p, displayOrder: 999 } : p,
-        ),
-      );
+      const res = await fetch("/api/admin/shopify/update-product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shopify_product_id: productId,
+          updates: { display_order: 999 },
+        }),
+      });
+
+      if (res.ok) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.shopifyProductId === productId ? { ...p, displayOrder: 999 } : p,
+          ),
+        );
+      }
     } else {
       if (featuredCount >= MAX_FEATURED) {
         setMessage({ type: "error", text: `Maximum ${MAX_FEATURED} featured products allowed` });
         setTimeout(() => setMessage(null), 3000);
         return;
       }
-      
+
       const newOrder = featuredCount;
-      await supabase
-        .from("shopify_product_mappings")
-        .update({ display_order: newOrder })
-        .eq("shopify_product_id", productId);
-      
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.shopifyProductId === productId ? { ...p, displayOrder: newOrder } : p,
-        ),
-      );
+      const res = await fetch("/api/admin/shopify/update-product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shopify_product_id: productId,
+          updates: { display_order: newOrder },
+        }),
+      });
+
+      if (res.ok) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.shopifyProductId === productId ? { ...p, displayOrder: newOrder } : p,
+          ),
+        );
+      }
     }
   };
 
