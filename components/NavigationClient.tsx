@@ -33,22 +33,20 @@ export default function NavigationClient({
 }: NavigationClientProps) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
-  const renderDropdown = (label: string, items: NavLink[]) => (
-    <div className="relative">
-      <button
-        onMouseEnter={() => setOpenDropdown(label)}
-        onMouseLeave={() => setOpenDropdown(null)}
-        className={buttonClass}
-      >
-        {label}
-        <ChevronDown className="w-4 h-4" />
-      </button>
+  const renderDropdown = (label: string, url: string, items: NavLink[]) => (
+    <div
+      className="relative"
+      onMouseEnter={() => setOpenDropdown(label)}
+      onMouseLeave={() => setOpenDropdown(null)}
+    >
+      <div className="flex items-center gap-1 cursor-pointer">
+        <Link href={url} className={buttonClass}>
+          {label}
+        </Link>
+        <ChevronDown className="w-4 h-4 text-white" />
+      </div>
       {openDropdown === label && (
-        <div
-          onMouseEnter={() => setOpenDropdown(label)}
-          onMouseLeave={() => setOpenDropdown(null)}
-          className="absolute top-full left-0 pt-0"
-        >
+        <div className="absolute top-full left-0 pt-0">
           <div className={dropdownClass}>
             {items.map((item, idx) => (
               <Link
@@ -117,7 +115,7 @@ export default function NavigationClient({
             { label: link.label, url: link.url, highlight: false },
             ...dropdownItems
           ];
-          items.push(<React.Fragment key={link.label}>{renderDropdown(link.label, allItems)}</React.Fragment>);
+          items.push(<React.Fragment key={link.label}>{renderDropdown(link.label, link.url, allItems)}</React.Fragment>);
           i = j;
         } else {
           items.push(
