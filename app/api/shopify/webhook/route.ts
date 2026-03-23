@@ -27,11 +27,16 @@ function verifyShopifyWebhook(body: string, signature: string | null): boolean {
 
 export async function POST(request: Request) {
   try {
+    console.log("Webhook POST called");
     const body = await request.text();
+    console.log("Webhook body:", body.substring(0, 200));
     const signature = request.headers.get("X-Shopify-Hmac-Sha256");
     const topic = request.headers.get("X-Shopify-Topic");
 
-    console.log("Webhook received:", { topic, bodyLength: body.length });
+    console.log("Webhook received:", { topic, bodyLength: body.length, hasSignature: !!signature });
+
+    const secret = process.env.SHOPIFY_WEBHOOK_SECRET;
+    console.log("Webhook secret set:", !!secret);
 
     if (!verifyShopifyWebhook(body, signature)) {
       console.error("Invalid Shopify webhook signature");
