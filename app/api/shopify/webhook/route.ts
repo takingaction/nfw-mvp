@@ -37,13 +37,30 @@ function verifyShopifyWebhook(body: Buffer, signature: string | null): boolean {
     digestBufferLength: digestBuffer.length
   });
   
-  // Direct byte comparison for debugging
+  // Detailed byte comparison for debugging
   if (signatureBuffer.length !== digestBuffer.length) {
     console.error("Length mismatch - signature:", signatureBuffer.length, "digest:", digestBuffer.length);
+  } else {
+    // Compare byte by byte and find first difference
+    let firstDiff = -1;
+    for (let i = 0; i < signatureBuffer.length; i++) {
+      if (signatureBuffer[i] !== digestBuffer[i]) {
+        firstDiff = i;
+        break;
+      }
+    }
+    if (firstDiff === -1) {
+      console.log("Buffers are identical!");
+    } else {
+      console.log("First byte difference at index:", firstDiff);
+      console.log("Signature byte:", signatureBuffer[firstDiff], "Digest byte:", digestBuffer[firstDiff]);
+    }
   }
   
   const match = crypto.timingSafeEqual(signatureBuffer, digestBuffer);
   console.log("Signature match result:", match);
+  console.log("Full signature buffer hex:", signatureBuffer.toString('hex'));
+  console.log("Full digest buffer hex:", digestBuffer.toString('hex'));
   
   return match;
 }
