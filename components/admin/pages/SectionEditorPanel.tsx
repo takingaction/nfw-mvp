@@ -7,6 +7,15 @@ import { PageSection } from "@/lib/sections/types";
 import { SECTION_REGISTRY, EditorField } from "@/lib/sections/registry";
 import { uploadImage } from "@/lib/upload";
 
+function isValidUrl(str: string): boolean {
+  try {
+    new URL(str);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 interface Props {
   section: PageSection;
   onSave: (content: Record<string, unknown>) => void;
@@ -85,7 +94,7 @@ function FieldEditor({
           {field.label}
         </label>
 
-        {typeof value === "string" && value && (
+        {typeof value === "string" && value && isValidUrl(value) && (
           <div className="relative mb-2 group w-full h-40 overflow-hidden">
             <Image
               src={value as string}
