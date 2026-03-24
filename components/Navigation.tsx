@@ -20,6 +20,8 @@ interface HeaderData {
   nav_links: NavLink[];
   cta_label: string | null;
   cta_url: string | null;
+  donate_label: string | null;
+  donate_url: string | null;
 }
 
 export default async function Navigation() {
@@ -49,6 +51,8 @@ export default async function Navigation() {
     ],
     cta_label: "Join Now",
     cta_url: "/auth/sign-up",
+    donate_label: "Donate",
+    donate_url: "https://www.zeffy.com/en-US/donation-form/national-fund-for-women-foundation",
   };
 
   const headerData: HeaderData = header || defaultHeader;
@@ -85,13 +89,23 @@ export default async function Navigation() {
               navLinks={navLinks}
             />
 
-            {/* Right: Nav items + auth button */}
+            {/* Right: Nav items + donate + auth button */}
             <div className="flex items-center gap-6 ml-auto">
               <NavigationClient
                 side="right"
                 logoUrl={headerData.logo_url}
                 navLinks={navLinks}
               />
+              {headerData.donate_label && headerData.donate_url && (
+                <a
+                  href={headerData.donate_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center px-4 h-10 bg-nfw-citrine text-nfw-blackberry font-ui font-bold text-sm tracking-[0.06em] uppercase hover:bg-nfw-citrine/90 transition-colors"
+                >
+                  {headerData.donate_label}
+                </a>
+              )}
               <AuthButtonCombined />
             </div>
           </div>

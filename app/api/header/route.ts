@@ -30,13 +30,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, logo_url, nav_links, cta_label, cta_url } = body;
+    const { id, logo_url, nav_links, cta_label, cta_url, donate_label, donate_url } = body;
 
     const headerData = {
       logo_url: logo_url || null,
       nav_links: nav_links || [],
       cta_label: cta_label || null,
       cta_url: cta_url || null,
+      donate_label: donate_label || null,
+      donate_url: donate_url || null,
       updated_at: new Date().toISOString(),
     };
 

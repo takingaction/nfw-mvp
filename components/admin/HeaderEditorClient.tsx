@@ -33,6 +33,8 @@ interface HeaderData {
   nav_links: NavLink[];
   cta_label: string | null;
   cta_url: string | null;
+  donate_label: string | null;
+  donate_url: string | null;
 }
 
 function SortableLink({
@@ -145,6 +147,8 @@ export default function HeaderEditorClient({
   );
   const [ctaLabel, setCtaLabel] = useState(initialData?.cta_label ?? "");
   const [ctaUrl, setCtaUrl] = useState(initialData?.cta_url ?? "");
+  const [donateLabel, setDonateLabel] = useState(initialData?.donate_label ?? "");
+  const [donateUrl, setDonateUrl] = useState(initialData?.donate_url ?? "");
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -215,6 +219,8 @@ export default function HeaderEditorClient({
           nav_links: navLinks,
           cta_label: ctaLabel,
           cta_url: ctaUrl,
+          donate_label: donateLabel,
+          donate_url: donateUrl,
         }),
       });
 
@@ -349,6 +355,37 @@ export default function HeaderEditorClient({
               value={ctaUrl}
               onChange={(e) => setCtaUrl(e.target.value)}
               placeholder="/auth/sign-up"
+              className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Donate button */}
+      <div className="bg-white border border-nfw-blackberry/10 p-6">
+        <h2 className="font-black text-nfw-blackberry mb-4 font-ui">Donate Button</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
+              Label
+            </label>
+            <input
+              type="text"
+              value={donateLabel}
+              onChange={(e) => setDonateLabel(e.target.value)}
+              placeholder="e.g. Donate"
+              className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
+              URL
+            </label>
+            <input
+              type="text"
+              value={donateUrl}
+              onChange={(e) => setDonateUrl(e.target.value)}
+              placeholder="https://..."
               className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
             />
           </div>
