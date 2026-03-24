@@ -108,7 +108,7 @@ export default function RecentClaims() {
         {claims.map((claim) => {
           const info = STATUS_INFO[claim.status] || STATUS_INFO.pending;
           return (
-            <div key={claim.id} className="p-4 hover:bg-nfw-dove/50 transition-colors">
+            <div key={claim.id} className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-nfw-blackberry truncate">

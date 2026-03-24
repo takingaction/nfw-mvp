@@ -71,11 +71,33 @@ export default function RecentRedemptions() {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
+    const toLocalDate = (d: Date) => {
+      const local = new Date(d);
+      local.setMinutes(local.getMinutes() + local.getTimezoneOffset());
+      return local;
+    };
+
+    const isSameDay = (d1: Date, d2: Date) => {
+      const ld1 = toLocalDate(d1);
+      const ld2 = toLocalDate(d2);
+      return (
+        ld1.getFullYear() === ld2.getFullYear() &&
+        ld1.getMonth() === ld2.getMonth() &&
+        ld1.getDate() === ld2.getDate()
+      );
+    };
+
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (isSameDay(date, now)) return "Today";
+    if (isSameDay(date, yesterday)) return "Yesterday";
+
+    const diffDays = Math.round(
+      Math.abs((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)),
+    );
+
     if (diffDays < 7) return `${diffDays} days ago`;
     if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -179,7 +201,7 @@ export default function RecentRedemptions() {
           redemptions.map((redemption) => (
             <div
               key={redemption.id}
-              className="p-4 hover:bg-nfw-dove transition-colors"
+              className="p-4"
             >
               <div className="flex items-start gap-3">
                 {/* Icon */}

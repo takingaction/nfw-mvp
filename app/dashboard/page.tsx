@@ -190,7 +190,7 @@ export default async function DashboardPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-nfw-blackberry/10">
             <Link
               href="/grants/apply"
-              className="p-6 hover:bg-nfw-dove transition-colors group"
+              className="p-6 group"
             >
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-nfw-lilac flex items-center justify-center group-hover:bg-nfw-lilac/80 transition-colors">
@@ -209,7 +209,7 @@ export default async function DashboardPage() {
 
             <Link
               href="/perks"
-              className="p-6 hover:bg-nfw-dove transition-colors group"
+              className="p-6 group"
             >
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-nfw-lilac flex items-center justify-center group-hover:bg-nfw-lilac/80 transition-colors">
@@ -228,7 +228,7 @@ export default async function DashboardPage() {
 
             <Link
               href="/store"
-              className="p-6 hover:bg-nfw-dove transition-colors group"
+              className="p-6 group"
             >
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-nfw-lilac flex items-center justify-center group-hover:bg-nfw-lilac/80 transition-colors">
@@ -247,7 +247,7 @@ export default async function DashboardPage() {
 
             <Link
               href="/profile"
-              className="p-6 hover:bg-nfw-dove transition-colors group"
+              className="p-6 group"
             >
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-nfw-lilac flex items-center justify-center group-hover:bg-nfw-lilac/80 transition-colors">
