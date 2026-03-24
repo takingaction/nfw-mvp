@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LayoutTemplate, Plus, Trash2 } from "lucide-react";
+import { LayoutTemplate, Plus, Trash2, Pencil } from "lucide-react";
 import NewPageModal from "@/components/admin/pages/NewPageModal";
+import EditPageModal from "@/components/admin/pages/EditPageModal";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 
 interface Page {
@@ -16,6 +17,10 @@ interface Page {
 
 export default function AdminPagesClient({ pages }: { pages: Page[] }) {
   const [showNewModal, setShowNewModal] = useState(false);
+  const [editModal, setEditModal] = useState<{
+    isOpen: boolean;
+    page: Page | null;
+  }>({ isOpen: false, page: null });
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
     pageId: string | null;
@@ -124,6 +129,13 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>
+                    <button
+                      onClick={() => setEditModal({ isOpen: true, page })}
+                      className="p-2 text-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
+                      title="Edit page"
+                    >
+                      <Pencil className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -139,6 +151,15 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
           window.location.href = `/admin/pages/${pageId}`;
         }}
       />
+
+      {editModal.page && (
+        <EditPageModal
+          isOpen={editModal.isOpen}
+          onClose={() => setEditModal({ isOpen: false, page: null })}
+          page={editModal.page}
+          onSaved={() => window.location.reload()}
+        />
+      )}
 
       <ConfirmModal
         isOpen={deleteModal.isOpen}
