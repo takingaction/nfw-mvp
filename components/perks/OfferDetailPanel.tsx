@@ -12,8 +12,8 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
-  AlertCircle,
   ArrowLeft,
+  Globe,
 } from "lucide-react";
 import LocationSelector from "@/components/LocationSelector";
 
@@ -742,7 +742,10 @@ export default function OfferDetailPanel({
                               Redeeming...
                             </>
                           ) : (
-                            <>Redeem Online</>
+                            <>
+                              <Globe className="w-4 h-4" />
+                              Redeem Online
+                            </>
                           )}
                         </button>
                       )}
@@ -806,15 +809,6 @@ export default function OfferDetailPanel({
                           )}
                         </button>
                       )}
-                    </div>
-
-                    <div className="mt-4 p-2.5 bg-[#fdf493]/20 rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="w-3.5 h-3.5 text-nfw-blackberry flex-shrink-0 mt-0.5" />
-                        <p className="text-xs text-nfw-blackberry/60">
-                          Online redemptions open in a new tab.
-                        </p>
-                      </div>
                     </div>
                   </div>
                 )}
