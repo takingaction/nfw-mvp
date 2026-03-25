@@ -39,6 +39,18 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "static-stage.accessdevelopment.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "static.accessdevelopment.com",
+        port: "",
+        pathname: "/**",
+      },
     ],
   },
 };

@@ -1,23 +1,111 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, SlidersHorizontal, X } from "lucide-react";
 import PerksSearch from "@/components/perks/PerksSearch";
 import OfferCard from "@/components/perks/OfferCard";
+import FilterSidebar from "@/components/perks/FilterSidebar";
+import ViewToggle from "@/components/perks/ViewToggle";
+import StoreCard from "@/components/perks/StoreCard";
+import LocationCard from "@/components/perks/LocationCard";
+import OfferDetailPanel from "@/components/perks/OfferDetailPanel";
+
+type ViewType = "stores" | "offers" | "locations";
+
+interface Facet {
+  key: string;
+  label: string;
+  values: { key: string; label: string }[];
+}
+
+interface RollupGroup {
+  key: string | number;
+  name?: string;
+  count: number;
+  offers?: string[];
+  logo_url?: string;
+  description?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  distance?: number;
+  location?: any;
+  store?: any;
+}
 
 export default function PerksPage() {
   const [offers, setOffers] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [facets, setFacets] = useState<Facet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchInfo, setSearchInfo] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [currentSearchParams, setCurrentSearchParams] = useState<any>({});
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const [selectedFacets, setSelectedFacets] = useState<string[]>([]);
+  const [selectedStore, setSelectedStore] = useState<number | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
+  const [selectedOfferTypes, setSelectedOfferTypes] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchPostalCode, setSearchPostalCode] = useState<string>("");
+  const [searchDistance, setSearchDistance] = useState<string>("25mi");
+  const [categoryCounts, setCategoryCounts] = useState<Record<number, number>>({});
+  const [selectedOfferKey, setSelectedOfferKey] = useState<string | null>(null);
+  const [isOfferPanelOpen, setIsOfferPanelOpen] = useState(false);
+
+  const clearAllFilters = () => {
+    setSelectedCategories([]);
+    setSelectedFacets([]);
+    setSelectedOfferTypes([]);
+    setSelectedStore(null);
+    setSelectedLocation(null);
+    setSearchQuery("");
+    setSearchPostalCode("");
+    setSearchDistance("25mi");
+    setCurrentPage(1);
+  };
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<ViewType>("stores");
+  const [rollupGroups, setRollupGroups] = useState<RollupGroup[]>([]);
+  const [viewCounts, setViewCounts] = useState({ stores: 0, offers: 0, locations: 0 });
 
   useEffect(() => {
     fetchCategories();
-    fetchOffers({});
+    fetchCategoryCounts();
+    fetchFacets();
+    fetchAllCounts();
+    fetchRollup();
   }, []);
+
+  useEffect(() => {
+    fetchRollup();
+  }, [selectedCategories, selectedFacets, selectedStore, selectedLocation, selectedOfferTypes, searchQuery, searchPostalCode, searchDistance, currentView, currentPage]);
+
+  const fetchAllCounts = async () => {
+    try {
+      const [storesRes, offersRes, locationsRes] = await Promise.all([
+        fetch("/api/access-perks/rollup?rollup=stores"),
+        fetch("/api/access-perks/offers/search?per_page=1"),
+        fetch("/api/access-perks/rollup?rollup=locations"),
+      ]);
+
+      const [storesData, offersData, locationsData] = await Promise.all([
+        storesRes.json().catch(() => ({ info: { total_results: 0 } })),
+        offersRes.json().catch(() => ({ info: { total_results: 0 } })),
+        locationsRes.json().catch(() => ({ info: { total_results: 0 } })),
+      ]);
+
+      setViewCounts({
+        stores: storesData.info?.total_stores || 0,
+        offers: offersData.info?.total_results || 0,
+        locations: locationsData.info?.total_locations || 0,
+      });
+    } catch (err) {
+      console.error("Failed to fetch view counts:", err);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -31,25 +119,162 @@ export default function PerksPage() {
     }
   };
 
-  const deduplicateOffers = (offers: any[]) => {
-    const seen = new Set<number>();
-    const uniqueOffers: any[] = [];
-
-    for (const offer of offers) {
-      const groupKey = offer.offer_group_key;
-
-      if (!groupKey) {
-        uniqueOffers.push(offer);
-        continue;
+  const fetchCategoryCounts = async () => {
+    try {
+      const response = await fetch("/api/access-perks/categories/counts");
+      if (response.ok) {
+        const data = await response.json();
+        setCategoryCounts(data.counts || {});
       }
-
-      if (!seen.has(groupKey)) {
-        seen.add(groupKey);
-        uniqueOffers.push(offer);
-      }
+    } catch (err) {
+      console.error("Failed to fetch category counts:", err);
     }
+  };
 
-    return uniqueOffers;
+  const fetchFacets = async () => {
+    try {
+      const response = await fetch("/api/access-perks/facets");
+      if (response.ok) {
+        const data = await response.json();
+        setFacets(data.facets || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch facets:", err);
+    }
+  };
+
+  const fetchRollup = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const perPage = 100;
+      const page = currentPage;
+
+      if (currentView === "offers") {
+        const params: any = {
+          per_page: perPage.toString(),
+          page: page.toString(),
+        };
+
+        if (searchQuery) {
+          params.query = searchQuery;
+        }
+
+        if (searchPostalCode) {
+          params.postal_code = searchPostalCode;
+          params.distance = searchDistance;
+        }
+
+        if (selectedCategories.length > 0) {
+          params.category_key = selectedCategories.join(",");
+        }
+
+        if (selectedFacets.length > 0) {
+          params.facet = selectedFacets.join(",");
+        }
+
+        if (selectedStore) {
+          params.store_key = selectedStore.toString();
+        }
+
+        if (selectedLocation) {
+          params.location_key = selectedLocation.toString();
+        }
+
+        if (selectedOfferTypes.length > 0) {
+          params.offer_type = selectedOfferTypes.join(",");
+        }
+
+        const queryParams = new URLSearchParams(params);
+        const response = await fetch(
+          `/api/access-perks/offers/search?${queryParams.toString()}`,
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to fetch results");
+        }
+
+        const data = await response.json();
+
+        setRollupGroups((data.offers || []).map((offer: any) => ({ ...offer, key: offer.offer_key })));
+        setSearchInfo({
+          total_results: data.info?.total_results || 0,
+          total_pages: data.info?.total_pages || Math.ceil((data.offers?.length || 0) / perPage),
+          current_page: data.info?.current_page || page,
+        });
+
+        if (viewCounts.offers === 0) {
+          setViewCounts(prev => ({ ...prev, offers: data.info?.total_results || 0 }));
+        }
+      } else {
+        const params: any = {
+          rollup: currentView,
+          per_page: perPage.toString(),
+          page: page.toString(),
+        };
+
+        if (searchQuery) {
+          params.query = searchQuery;
+        }
+
+        if (searchPostalCode) {
+          params.postal_code = searchPostalCode;
+          params.distance = searchDistance;
+        }
+
+        if (selectedCategories.length > 0) {
+          params.category_key = selectedCategories.join(",");
+        }
+
+        if (selectedFacets.length > 0) {
+          params.facet = selectedFacets.join(",");
+        }
+
+        const queryParams = new URLSearchParams(params);
+        const response = await fetch(
+          `/api/access-perks/rollup?${queryParams.toString()}`,
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to fetch results");
+        }
+
+        const data = await response.json();
+
+        const totalStores = data.info?.total_stores || searchInfo?.total_stores || 0;
+        const totalLocations = data.info?.total_locations || searchInfo?.total_locations || 0;
+        const totalItems = currentView === "stores" 
+          ? totalStores
+          : currentView === "locations"
+          ? totalLocations
+          : (data.info?.total_results || searchInfo?.total_results || 0);
+
+        setRollupGroups(data.groups || []);
+        setSearchInfo((prev: any) => ({
+          total_results: data.info?.total_results || prev?.total_results || 0,
+          total_stores: totalStores || prev?.total_stores || 0,
+          total_locations: totalLocations || prev?.total_locations || 0,
+          total_pages: Math.ceil(totalItems / perPage) || 1,
+          current_page: data.info?.current_page || page,
+        }));
+
+        if (data.info?.total_stores && currentView === "stores") {
+          setViewCounts(prev => ({ ...prev, stores: data.info.total_stores }));
+        }
+        if (data.info?.total_locations && currentView === "locations") {
+          setViewCounts(prev => ({ ...prev, locations: data.info.total_locations }));
+        }
+      }
+    } catch (err: any) {
+      console.error("Fetch rollup error:", err);
+      setError(err.message || "Failed to load results");
+      setRollupGroups([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchOffers = async (params: any) => {
@@ -88,12 +313,12 @@ export default function PerksPage() {
         const allOffers = data.offers || [];
 
         if (isSearching) {
-          const uniqueOffers = deduplicateOffers(allOffers);
-          const displayOffers = uniqueOffers.slice(0, 12);
+          const totalResults = data.info?.total_results || allOffers.length;
+          const displayOffers = allOffers.slice(0, 12);
 
           setOffers(displayOffers);
 
-          const totalUnique = uniqueOffers.length;
+          const totalUnique = totalResults;
           const totalPages = Math.ceil(totalUnique / 12);
 
           setSearchInfo({
@@ -116,16 +341,38 @@ export default function PerksPage() {
     }
   };
 
+  const handleCategoryFilterChange = (categoryKeys: number[]) => {
+    setSelectedCategories(categoryKeys);
+  };
+
+  const handleFacetsChange = (facetKeys: string[]) => {
+    setSelectedFacets(facetKeys);
+  };
+
+  const handleViewChange = (view: ViewType) => {
+    setCurrentView(view);
+  };
+
   const handleSearch = (params: any) => {
-    setCurrentSearchParams(params);
+    if (params.query !== undefined) setSearchQuery(params.query);
+    if (params.postal_code !== undefined) setSearchPostalCode(params.postal_code);
+    if (params.distance !== undefined) setSearchDistance(params.distance);
     setCurrentPage(1);
-    fetchOffers({ ...params, page: 1 });
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    fetchOffers({ ...currentSearchParams, page });
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleStoreClick = (storeKey: number) => {
+    setSelectedStore(storeKey);
+    setCurrentView("offers");
+  };
+
+  const handleLocationClick = (locationKey: number) => {
+    setSelectedLocation(locationKey);
+    setCurrentView("offers");
   };
 
   return (
@@ -143,151 +390,231 @@ export default function PerksPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white p-4 mb-6 border border-nfw-blackberry/10">
-          <PerksSearch onSearch={handleSearch} categories={categories} />
+          <PerksSearch
+            query={searchQuery}
+            postalCode={searchPostalCode}
+            distance={searchDistance}
+            onQueryChange={setSearchQuery}
+            onPostalCodeChange={setSearchPostalCode}
+            onDistanceChange={setSearchDistance}
+            onSearch={() => setCurrentPage(1)}
+            onClear={clearAllFilters}
+          />
         </div>
 
-        {searchInfo && !loading && !error && (
-          <div className="mb-4 font-sans text-sm text-nfw-blackberry/50">
-            {searchInfo.total_results > 0 ? (
-              <span>
-                Showing {offers.length} of {searchInfo.total_results} offers
-                {searchInfo.total_pages > 1 &&
-                  ` - Page ${currentPage} of ${searchInfo.total_pages}`}
-              </span>
-            ) : (
-              <span>No offers found. Try adjusting your search filters.</span>
+        <div className="flex gap-8">
+          <FilterSidebar
+            categories={categories}
+            selectedCategories={selectedCategories}
+            onCategoriesChange={handleCategoryFilterChange}
+            categoryCounts={categoryCounts}
+            facets={facets}
+            selectedFacets={selectedFacets}
+            onFacetsChange={handleFacetsChange}
+            selectedOfferTypes={selectedOfferTypes}
+            onOfferTypeChange={setSelectedOfferTypes}
+            isMobileOpen={isFilterDrawerOpen}
+            onMobileClose={() => setIsFilterDrawerOpen(false)}
+          />
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-4 lg:hidden">
+              <button
+                onClick={() => setIsFilterDrawerOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 border border-nfw-blackberry/20 text-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                Filters
+                {(selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0 || selectedStore || selectedLocation) && (
+                  <span className="px-1.5 py-0.5 bg-nfw-aubergine text-white text-xs rounded">
+                    {selectedCategories.length + selectedFacets.length + selectedOfferTypes.length + (selectedStore ? 1 : 0) + (selectedLocation ? 1 : 0)}
+                  </span>
+                )}
+              </button>
+
+              {(selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0 || selectedStore || selectedLocation || searchQuery || searchPostalCode) && (
+                <button
+                  onClick={clearAllFilters}
+                  className="text-sm text-nfw-blackberry/60 hover:text-nfw-blackberry flex items-center gap-1 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                  Clear filters
+                </button>
+              )}
+            </div>
+
+            <ViewToggle
+              currentView={currentView}
+              onViewChange={handleViewChange}
+              counts={viewCounts}
+            />
+
+            {searchInfo && !loading && !error && (
+              <div className="mb-4 font-sans text-sm text-nfw-blackberry/50 flex items-center justify-between">
+                <span>
+                  Showing {rollupGroups.length} of {(currentView === "stores" ? viewCounts.stores : currentView === "locations" ? viewCounts.locations : searchInfo.total_results)?.toLocaleString() || 0} {currentView}
+                  {searchInfo.total_pages > 1 &&
+                    ` - Page ${currentPage} of ${searchInfo.total_pages}`}
+                </span>
+                {searchInfo.total_pages > 1 && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 border border-nfw-blackberry/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-nfw-blackberry/5"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage >= searchInfo.total_pages}
+                      className="px-3 py-1 border border-nfw-blackberry/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-nfw-blackberry/5"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
-          </div>
-        )}
 
-        {loading && (
-          <div className="flex items-center justify-center py-16">
-            <div className="w-6 h-6 border-2 border-nfw-lilac border-t-transparent rounded-full animate-spin" />
-            <span className="font-sans text-nfw-blackberry/60 ml-3">Loading offers...</span>
-          </div>
-        )}
+            {loading && (
+              <div className="flex items-center justify-center py-16">
+                <div className="w-6 h-6 border-2 border-nfw-lilac border-t-transparent rounded-full animate-spin" />
+                <span className="font-sans text-nfw-blackberry/60 ml-3">Loading...</span>
+              </div>
+            )}
 
-        {error === "SERVICE_UNAVAILABLE" && !loading && (
-          <div className="bg-nfw-citrine/20 border border-nfw-citrine p-6 mt-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-nfw-blackberry flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="font-sans font-semibold text-nfw-blackberry mb-1">
-                  Service Temporarily Unavailable
+            {error === "SERVICE_UNAVAILABLE" && !loading && (
+              <div className="bg-nfw-citrine/20 border border-nfw-citrine p-6 mt-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-nfw-blackberry flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="font-sans font-semibold text-nfw-blackberry mb-1">
+                      Service Temporarily Unavailable
+                    </h3>
+                    <p className="font-sans text-sm text-nfw-blackberry/70 mb-4">
+                      The Access Perks service is currently experiencing issues.
+                      Please try again shortly.
+                    </p>
+                    <button
+                      onClick={fetchRollup}
+                      className="px-4 py-2 bg-nfw-aubergine text-white font-sans text-sm font-medium hover:bg-nfw-blackberry transition-colors"
+                    >
+                      Try Again
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {error && error !== "SERVICE_UNAVAILABLE" && !loading && (
+              <div className="bg-red-50 border border-red-200 p-6 mt-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="font-sans font-semibold text-red-900 mb-1">
+                      Unable to Load Results
+                    </h3>
+                    <p className="font-sans text-sm text-red-700 mb-4">{error}</p>
+                    <button
+                      onClick={fetchRollup}
+                      className="px-4 py-2 bg-red-600 text-white font-sans text-sm font-medium hover:bg-red-700 transition-colors"
+                    >
+                      Try Again
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!loading && !error && rollupGroups.length > 0 && (
+              <>
+                {currentView === "stores" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {rollupGroups.map((group) => (
+                      <StoreCard
+                        key={group.key}
+                        store={{
+                          key: typeof group.key === 'number' ? group.key : parseInt(String(group.key)) || 0,
+                          name: group.name || "Unknown Store",
+                          logo_url: group.logo_url,
+                          description: group.description,
+                          count: group.count,
+                          offers: group.offers || [],
+                          location: group.location,
+                          distance: group.distance,
+                        }}
+                        onClick={() => handleStoreClick(typeof group.key === 'number' ? group.key : parseInt(String(group.key)) || 0)}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {currentView === "locations" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {rollupGroups.map((group) => (
+                      <LocationCard
+                        key={group.key}
+                        location={{
+                          key: typeof group.key === 'number' ? group.key : parseInt(String(group.key)) || 0,
+                          name: group.name || "Unknown Location",
+                          address: group.address,
+                          city: group.city,
+                          state: group.state,
+                          postal_code: group.postal_code,
+                          distance: group.distance,
+                          count: group.count,
+                          offers: group.offers || [],
+                          store: group.store,
+                        }}
+                        onClick={() => handleLocationClick(typeof group.key === 'number' ? group.key : parseInt(String(group.key)) || 0)}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {currentView === "offers" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                    {rollupGroups.map((item: any, index: number) => (
+                      <OfferCard
+                        key={item.offer_key || item.key || index}
+                        offer={item}
+                        onClick={() => {
+                          setSelectedOfferKey(item.offer_key || item.key);
+                          setIsOfferPanelOpen(true);
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {!loading && !error && rollupGroups.length === 0 && searchInfo?.total_results === 0 && (
+              <div className="text-center py-16">
+                <h3 className="font-sans text-lg font-semibold text-nfw-blackberry mb-2">
+                  No results found
                 </h3>
-                <p className="font-sans text-sm text-nfw-blackberry/70 mb-4">
-                  The Access Perks service is currently experiencing issues.
-                  Please try again shortly.
+                <p className="font-sans text-nfw-blackberry/60 mb-6">
+                  Try adjusting your filters or browse all offers.
                 </p>
                 <button
-                  onClick={() => fetchOffers(currentSearchParams)}
-                  className="px-4 py-2 bg-nfw-aubergine text-white font-sans text-sm font-medium hover:bg-nfw-blackberry transition-colors"
+                  onClick={clearAllFilters}
+                  className="px-6 py-2.5 bg-nfw-aubergine text-white font-sans text-sm font-medium hover:bg-nfw-blackberry transition-colors"
                 >
-                  Try Again
+                  Browse All
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {error && error !== "SERVICE_UNAVAILABLE" && !loading && (
-          <div className="bg-red-50 border border-red-200 p-6 mt-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="font-sans font-semibold text-red-900 mb-1">
-                  Unable to Load Offers
-                </h3>
-                <p className="font-sans text-sm text-red-700 mb-4">{error}</p>
-                <button
-                  onClick={() => fetchOffers(currentSearchParams)}
-                  className="px-4 py-2 bg-red-600 text-white font-sans text-sm font-medium hover:bg-red-700 transition-colors"
-                >
-                  Try Again
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!loading && !error && offers.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {offers.map((offer) => (
-              <OfferCard key={offer.offer_key} offer={offer} />
-            ))}
-          </div>
-        )}
-
-        {!loading && !error && searchInfo && searchInfo.total_pages > 1 && (
-          <div className="flex justify-center gap-2 mt-10">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-4 py-2 border border-nfw-blackberry/20 font-sans text-sm font-medium text-nfw-blackberry disabled:opacity-40 disabled:cursor-not-allowed hover:bg-nfw-blackberry/5 transition-colors"
-            >
-              Previous
-            </button>
-
-            {Array.from(
-              { length: Math.min(5, searchInfo.total_pages) },
-              (_: unknown, i: number) => {
-                let pageNum;
-                if (searchInfo.total_pages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= searchInfo.total_pages - 2) {
-                  pageNum = searchInfo.total_pages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
-
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => handlePageChange(pageNum)}
-                    className={`px-4 py-2 font-sans text-sm font-medium transition-colors ${
-                      currentPage === pageNum
-                        ? "bg-nfw-aubergine text-white"
-                        : "border border-nfw-blackberry/20 text-nfw-blackberry hover:bg-nfw-blackberry/5"
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              },
             )}
-
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === searchInfo.total_pages}
-              className="px-4 py-2 border border-nfw-blackberry/20 font-sans text-sm font-medium text-nfw-blackberry disabled:opacity-40 disabled:cursor-not-allowed hover:bg-nfw-blackberry/5 transition-colors"
-            >
-              Next
-            </button>
           </div>
-        )}
-
-        {!loading &&
-          !error &&
-          offers.length === 0 &&
-          searchInfo?.total_results === 0 && (
-            <div className="text-center py-16">
-              <h3 className="font-sans text-lg font-semibold text-nfw-blackberry mb-2">
-                No offers found
-              </h3>
-              <p className="font-sans text-nfw-blackberry/60 mb-6">
-                Try adjusting your search filters or browse all offers.
-              </p>
-              <button
-                onClick={() => handleSearch({})}
-                className="px-6 py-2.5 bg-nfw-aubergine text-white font-sans text-sm font-medium hover:bg-nfw-blackberry transition-colors"
-              >
-                Browse All Offers
-              </button>
-            </div>
-          )}
+        </div>
       </div>
+
+      <OfferDetailPanel
+        offerKey={selectedOfferKey}
+        isOpen={isOfferPanelOpen}
+        onClose={() => setIsOfferPanelOpen(false)}
+      />
     </main>
   );
 }

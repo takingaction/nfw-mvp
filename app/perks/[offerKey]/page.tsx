@@ -574,7 +574,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
 
             <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
               <h1
-                className="font-serif text-4xl lg:text-6xl text-nfw-blackberry mb-3 leading-tight [&_sup]:text-[0.6em] [&_sup]:align-super"
+                className="font-serif text-xl lg:text-2xl text-nfw-blackberry mb-3 leading-tight [&_sup]:text-[0.6em] [&_sup]:align-super"
                 dangerouslySetInnerHTML={{ __html: decodeHtml(title) }}
               />
 

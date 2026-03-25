@@ -1,0 +1,828 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import {
+  X,
+  MapPin,
+  Clock,
+  ExternalLink,
+  Phone,
+  Store,
+  Printer,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  ArrowLeft,
+} from "lucide-react";
+import LocationSelector from "@/components/LocationSelector";
+
+interface OfferDetailPanelProps {
+  offerKey: string | null;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+interface Offer {
+  title: string;
+  description?: string;
+  teaser?: string;
+  long_description?: string;
+  savings_amount?: string;
+  logo_url?: string;
+  offer_photo_url?: string;
+  expires_on?: string;
+  offer_store?: any;
+  physical_location?: any;
+  redemption_methods?: string[];
+  categories?: any[];
+  terms_and_conditions?: string;
+  discount_percent?: number;
+  offer_group_key?: string;
+}
+
+export default function OfferDetailPanel({
+  offerKey,
+  isOpen,
+  onClose,
+}: OfferDetailPanelProps) {
+  const [offer, setOffer] = useState<Offer | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [redeemingLink, setRedeemingLink] = useState(false);
+  const [redeemingInstore, setRedeemingInstore] = useState(false);
+  const [redeemingCall, setRedeemingCall] = useState(false);
+  const [redeemingPrint, setRedeemingPrint] = useState(false);
+  const [redemptionResult, setRedemptionResult] = useState<any>(null);
+  const [customRedemption, setCustomRedemption] = useState<{
+    display?: string;
+    termsOfUse?: string;
+    promoCode?: string;
+    redemptionUrl?: string;
+    method: 'link' | 'instore' | 'instore_print';
+  } | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  const [showLocationSelector, setShowLocationSelector] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{
+    key: string;
+    name: string;
+  } | null>(null);
+  const [pendingRedemptionMethod, setPendingRedemptionMethod] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsVisible(true);
+      setIsAnimating(true);
+      if (offerKey) {
+        fetchOffer(offerKey);
+      }
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsAnimating(false);
+        });
+      });
+    } else {
+      setIsAnimating(true);
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+        setOffer(null);
+        setError(null);
+        setRedemptionResult(null);
+        setSelectedLocation(null);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, offerKey]);
+
+  const fetchOffer = async (key: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/access-perks/offers/${key}`);
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch offer");
+      }
+
+      const data = await response.json();
+
+      if (data.offers && data.offers.length > 0) {
+        setOffer(data.offers[0]);
+      } else {
+        throw new Error("Offer not found");
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to load offer");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRedeem = async (method: string) => {
+    if (!offer) return;
+
+    const isMultiLocation =
+      offer?.offer_group_key &&
+      (method === "instore_print" || method === "instore");
+
+    if (isMultiLocation && !selectedLocation) {
+      setPendingRedemptionMethod(method);
+      setShowLocationSelector(true);
+      return;
+    }
+
+    try {
+      setRedemptionResult(null);
+
+      if (method === "link") setRedeemingLink(true);
+      else if (method === "instore") setRedeemingInstore(true);
+      else if (method === "call") setRedeemingCall(true);
+      else if (method === "instore_print") setRedeemingPrint(true);
+
+      const body: any = { method };
+      if (selectedLocation) {
+        body.location_key = selectedLocation.key;
+      }
+
+      const response = await fetch(
+        `/api/access-perks/offers/${offerKey}/redeem`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed (${response.status})`);
+      }
+
+      const data = await response.json();
+
+      if (method === "link") {
+        const details = data.details || {};
+
+        if (details.display) {
+          setCustomRedemption({
+            display: details.display,
+            termsOfUse: details.terms_of_use,
+            promoCode: details.promotion_code,
+            redemptionUrl: details.link || data.redemption_url,
+            method: 'link'
+          });
+          return;
+        }
+
+        let finalUrl =
+          data.redemption_url || data.url || data.link || data.redemption_link;
+
+        if (!finalUrl) {
+          throw new Error("No redemption URL received");
+        }
+
+        if (finalUrl.includes("<a href=")) {
+          const match = finalUrl.match(/href="([^"]+)"/);
+          if (match && match[1]) {
+            finalUrl = match[1];
+          }
+        }
+
+        const promoCode = data.promotion_code || data.coupon_code;
+        const displayMessage = data.display_message || data.instructions;
+
+        setRedemptionResult({
+          success: true,
+          message: displayMessage || "Click 'Open Website' to visit the offer page.",
+          redemptionUrl: finalUrl,
+          couponCode: promoCode,
+        });
+      } else if (method === "instore_print") {
+        const details = data.details || {};
+
+        if (details.display) {
+          setCustomRedemption({
+            display: details.display,
+            termsOfUse: details.terms_of_use,
+            promoCode: details.promotion_code,
+            redemptionUrl: details.link,
+            method: 'instore_print'
+          });
+          return;
+        }
+
+        const printUrl =
+          data.print_url ||
+          data.coupon_url ||
+          data.pdf_url ||
+          details.link ||
+          data.redemption_url;
+        const couponCode =
+          data.coupon_code || data.promotion_code || data.barcode;
+
+        if (printUrl) {
+          window.open(printUrl, "_blank", "noopener,noreferrer");
+          setRedemptionResult({
+            success: true,
+            message: selectedLocation
+              ? `Print coupon opened for ${selectedLocation.name}.`
+              : "Print coupon opened in a new tab.",
+            redemptionUrl: printUrl,
+            couponCode: couponCode,
+          });
+        } else {
+          throw new Error("No print URL received from API");
+        }
+      } else if (method === "instore") {
+        const details = data.details || {};
+
+        if (details.display) {
+          setCustomRedemption({
+            display: details.display,
+            termsOfUse: details.terms_of_use,
+            promoCode: details.promotion_code,
+            redemptionUrl: details.link || data.redemption_url,
+            method: 'instore'
+          });
+          return;
+        }
+
+        const couponUrl =
+          data.redemption_url || data.raw_response?.details?.link;
+
+        if (couponUrl) {
+          window.open(couponUrl, "_blank", "noopener,noreferrer");
+
+          setRedemptionResult({
+            success: true,
+            message: selectedLocation
+              ? `Your in-store coupon for ${selectedLocation.name} has been opened in a new tab.`
+              : "Your in-store coupon has been opened in a new tab.",
+            redemptionUrl: couponUrl,
+            instructions:
+              "Show the coupon from the new tab at checkout to redeem your offer.",
+          });
+        } else {
+          throw new Error("No coupon URL received from API");
+        }
+      } else if (method === "call") {
+        let phoneNumber =
+          data.phone_number ||
+          data.phoneNumber ||
+          data.phone ||
+          data.contact_number ||
+          offer?.physical_location?.phone_number ||
+          offer?.offer_store?.phone_number;
+
+        if (!phoneNumber) {
+          const messageText = data.display_message || data.instructions || "";
+          const phoneMatch = messageText.match(
+            /\b1?[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b|\b1-[0-9]{3}-[A-Z]{3}-[A-Z]{4}\b/i,
+          );
+          if (phoneMatch) {
+            phoneNumber = phoneMatch[0].trim();
+          }
+        }
+
+        setRedemptionResult({
+          success: true,
+          message:
+            data.display_message || data.message || "Call to redeem this offer",
+          phoneNumber: phoneNumber,
+          couponCode: data.promotion_code || data.coupon_code,
+          instructions:
+            data.instructions ||
+            data.display_message ||
+            "Call the number above and mention the promo code",
+        });
+      }
+    } catch (err: any) {
+      setRedemptionResult({
+        success: false,
+        message: err.message || "Failed to redeem. Please try again.",
+      });
+    } finally {
+      if (method === "link") setRedeemingLink(false);
+      else if (method === "instore") setRedeemingInstore(false);
+      else if (method === "call") setRedeemingCall(false);
+      else if (method === "instore_print") setRedeemingPrint(false);
+    }
+  };
+
+  const handleLocationSelected = (
+    locationKey: string,
+    locationName: string,
+  ) => {
+    const newLocation = { key: locationKey, name: locationName };
+    setSelectedLocation(newLocation);
+    setShowLocationSelector(false);
+
+    if (pendingRedemptionMethod) {
+      setTimeout(() => {
+        handleRedeem(pendingRedemptionMethod);
+        setPendingRedemptionMethod(null);
+      }, 100);
+    }
+  };
+
+  const formatExpiry = (date: string) => {
+    if (!date) return null;
+    const expiryDate = new Date(date);
+    const now = new Date();
+    const daysUntilExpiry = Math.ceil(
+      (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    if (daysUntilExpiry < 0) return "Expired";
+    if (daysUntilExpiry === 0) return "Expires today";
+    if (daysUntilExpiry === 1) return "Expires tomorrow";
+    if (daysUntilExpiry <= 7) return `Expires in ${daysUntilExpiry} days`;
+    return `Expires ${expiryDate.toLocaleDateString()}`;
+  };
+
+  const decodeHtml = (html: string) => {
+    if (typeof window === "undefined") return html;
+    const textarea = document.createElement("textarea");
+    textarea.innerHTML = html || "";
+    return textarea.value;
+  };
+
+  if (!isVisible) return null;
+
+  return (
+    <>
+      <div
+        className={`fixed inset-0 z-40 bg-nfw-blackberry/50 transition-opacity duration-300 ease-out ${
+          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={onClose}
+      />
+
+      <div
+        style={{
+          transform: isOpen 
+            ? (isAnimating ? "translateX(-100%)" : "translateX(0)") 
+            : "translateX(-100%)",
+          transition: "transform 300ms ease-out",
+        }}
+        className="fixed inset-y-0 left-0 z-50 w-full max-w-2xl bg-white shadow-2xl overflow-hidden"
+      >
+        <div className="h-full flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-nfw-blackberry/10 bg-white">
+            <button
+              onClick={onClose}
+              className="inline-flex items-center gap-2 text-nfw-blackberry/60 hover:text-nfw-blackberry transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="text-sm font-medium">Back to Results</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-nfw-blackberry/5 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5 text-nfw-blackberry/60" />
+            </button>
+          </div>
+
+          {loading && (
+            <div className="flex-1 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-nfw-lilac" />
+            </div>
+          )}
+
+          {error && !loading && (
+            <div className="flex-1 flex items-center justify-center p-6">
+              <div className="text-center">
+                <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                <h2 className="text-2xl font-bold text-nfw-blackberry mb-2">
+                  Offer Not Found
+                </h2>
+                <p className="text-nfw-blackberry/60 mb-6">{error}</p>
+                <button
+                  onClick={onClose}
+                  className="px-6 py-3 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 font-medium transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+
+          {offer && !loading && (
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-4 space-y-4">
+                {showLocationSelector && offer.offer_group_key && (
+                  <LocationSelector
+                    offerGroupKey={offer.offer_group_key}
+                    offerTitle={offer.title}
+                    onSelectLocation={handleLocationSelected}
+                    onClose={() => {
+                      setShowLocationSelector(false);
+                      setPendingRedemptionMethod(null);
+                    }}
+                    userZip={offer.physical_location?.postal_code}
+                  />
+                )}
+
+                <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
+                  <div className="flex gap-4">
+                    <div className="flex-shrink-0">
+                      <div className="w-20 h-20 rounded-lg border border-nfw-blackberry/10 bg-nfw-dove overflow-hidden flex items-center justify-center">
+                        {offer.offer_photo_url || offer.logo_url ? (
+                          <img
+                            src={offer.offer_photo_url || offer.logo_url}
+                            alt=""
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <span className="text-3xl opacity-30">🎁</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      {offer.offer_store && (
+                        <div className="mb-1">
+                          <h2
+                            className="text-base font-semibold text-nfw-blackberry break-words [&_sup]:text-[0.6em] [&_sup]:align-super"
+                            dangerouslySetInnerHTML={{
+                              __html: decodeHtml(offer.offer_store.name),
+                            }}
+                          />
+                          {offer.offer_store.website && (
+                            <a
+                              href={offer.offer_store.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-nfw-blackberry/60 hover:text-nfw-blackberry text-xs flex items-center gap-1 transition-colors"
+                            >
+                              Visit Website
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {offer.savings_amount && (
+                          <span className="text-xs bg-nfw-citrine text-nfw-blackberry px-2.5 py-1 rounded-full font-medium">
+                            {offer.savings_amount}
+                          </span>
+                        )}
+
+                        {offer.discount_percent && offer.discount_percent > 0 && (
+                          <span className="text-xs bg-nfw-lilac/20 text-nfw-blackberry px-2.5 py-1 rounded-full font-medium">
+                            {offer.discount_percent}% Off
+                          </span>
+                        )}
+
+                        {offer.offer_group_key && (
+                          <span className="text-xs bg-[#fdf493]/30 text-nfw-blackberry px-2.5 py-1 rounded-full font-medium flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            Multiple Locations
+                          </span>
+                        )}
+
+                        {offer.categories &&
+                          offer.categories.slice(0, 2).map((cat: any) => (
+                            <span
+                              key={cat.category_key}
+                              className="text-xs bg-nfw-dove text-nfw-blackberry/60 px-2.5 py-1 rounded-full"
+                            >
+                              {cat.category_name}
+                            </span>
+                          ))}
+                      </div>
+
+                      {offer.expires_on && (
+                        <div className="flex items-center gap-1.5 mt-2 text-xs text-nfw-blackberry/50">
+                          <Clock className="w-3 h-3" />
+                          {formatExpiry(offer.expires_on)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
+                  <h1
+                    className="font-serif text-xl lg:text-2xl text-nfw-blackberry mb-3 leading-tight [&_sup]:text-[0.6em] [&_sup]:align-super"
+                    dangerouslySetInnerHTML={{ __html: decodeHtml(offer.title) }}
+                  />
+
+                  {offer.long_description || offer.description || offer.teaser ? (
+                    <div
+                      className="text-nfw-blackberry/70 text-sm whitespace-pre-wrap [&_sup]:text-[0.6em] [&_sup]:align-super"
+                      dangerouslySetInnerHTML={{
+                        __html: decodeHtml(
+                          offer.long_description ||
+                            offer.description ||
+                            offer.teaser ||
+                            "",
+                        ),
+                      }}
+                    />
+                  ) : null}
+                </div>
+
+                {selectedLocation && (
+                  <div className="bg-nfw-citrine/20 border border-nfw-citrine rounded-xl p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-2 flex-1">
+                        <MapPin className="w-4 h-4 text-nfw-blackberry flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-nfw-blackberry">
+                            Selected Location:
+                          </p>
+                          <p className="text-sm text-nfw-blackberry/70">
+                            {selectedLocation.name}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSelectedLocation(null)}
+                        className="text-xs text-nfw-blackberry/60 hover:text-nfw-blackberry underline"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {offer.physical_location && !offer.offer_group_key && (
+                  <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
+                    <h3 className="text-base font-semibold text-nfw-blackberry mb-3 flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-nfw-lilac" />
+                      Location
+                    </h3>
+                    <div className="space-y-1 text-sm text-nfw-blackberry/70">
+                      {offer.physical_location.location_name && (
+                        <p className="font-medium text-nfw-blackberry">
+                          {offer.physical_location.location_name}
+                        </p>
+                      )}
+                      {offer.physical_location.address_line_1 && (
+                        <p>{offer.physical_location.address_line_1}</p>
+                      )}
+                      {offer.physical_location.address_line_2 && (
+                        <p>{offer.physical_location.address_line_2}</p>
+                      )}
+                      <p>
+                        {offer.physical_location.city_locality},{" "}
+                        {offer.physical_location.state_region}{" "}
+                        {offer.physical_location.postal_code}
+                      </p>
+                      {offer.physical_location.phone_number && (
+                        <p className="flex items-center gap-2 pt-1">
+                          <Phone className="w-3 h-3 text-nfw-lilac" />
+                          {offer.physical_location.phone_number}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {offer.terms_and_conditions && (
+                  <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
+                    <h3 className="text-base font-semibold text-nfw-blackberry mb-3">
+                      Terms & Conditions
+                    </h3>
+                    <div className="text-xs text-nfw-blackberry/50 whitespace-pre-wrap">
+                      {offer.terms_and_conditions}
+                    </div>
+                  </div>
+                )}
+
+                {redemptionResult && (
+                  <div
+                    className={`rounded-xl p-4 ${
+                      redemptionResult.success
+                        ? "bg-nfw-citrine/20 border border-nfw-citrine"
+                        : "bg-red-50 border border-red-200"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {redemptionResult.success ? (
+                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                      ) : (
+                        <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                      )}
+                      <div className="flex-1">
+                        <p
+                          className={`text-sm font-medium mb-1 ${
+                            redemptionResult.success
+                              ? "text-nfw-blackberry"
+                              : "text-red-900"
+                          }`}
+                        >
+                          {redemptionResult.success ? "Success!" : "Error"}
+                        </p>
+                        <p
+                          className={`text-sm mb-3 ${
+                            redemptionResult.success
+                              ? "text-nfw-blackberry/70"
+                              : "text-red-800"
+                          } [&_a]:text-nfw-lilac [&_a]:underline`}
+                          dangerouslySetInnerHTML={{ __html: redemptionResult.message }}
+                        />
+
+                        {redemptionResult.redemptionUrl && (
+                          <a
+                            href={redemptionResult.redemptionUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-nfw-blackberry text-white rounded-lg hover:bg-nfw-blackberry/90 transition-colors text-sm font-medium"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            Open Website
+                          </a>
+                        )}
+
+                        {redemptionResult.couponCode && (
+                          <div className="mt-3 p-3 bg-white rounded-lg border border-nfw-blackberry/10">
+                            <p className="text-xs text-nfw-blackberry/50 mb-1">
+                              Promo Code:
+                            </p>
+                            <p className="text-base font-mono font-bold text-nfw-blackberry">
+                              {redemptionResult.couponCode}
+                            </p>
+                          </div>
+                        )}
+
+                        {redemptionResult.phoneNumber && (
+                          <div className="mt-3 p-3 bg-white rounded-lg border border-nfw-blackberry/10">
+                            <p className="text-xs text-nfw-blackberry/50 mb-1">
+                              Call:
+                            </p>
+                            <p className="text-base font-semibold text-nfw-blackberry">
+                              {redemptionResult.phoneNumber}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {customRedemption && (
+                  <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
+                    <h3 className="text-base font-semibold text-nfw-blackberry mb-4">
+                      Redemption Instructions
+                    </h3>
+
+                    {customRedemption.display && (
+                      <div
+                        className="text-sm text-nfw-blackberry/70 mb-4 [&_a]:text-nfw-lilac [&_a]:underline"
+                        dangerouslySetInnerHTML={{ __html: customRedemption.display }}
+                      />
+                    )}
+
+                    {customRedemption.termsOfUse && (
+                      <div className="text-xs text-nfw-blackberry/50 mb-4 border-t border-nfw-blackberry/10 pt-3">
+                        <strong>Terms:</strong> {customRedemption.termsOfUse}
+                      </div>
+                    )}
+
+                    {customRedemption.promoCode && (
+                      <div className="flex items-center gap-2 mb-4">
+                        <span className="text-sm text-nfw-blackberry/70">Promo Code:</span>
+                        <span className="px-3 py-1 bg-nfw-lilac/20 text-nfw-aubergine font-mono font-bold">
+                          {customRedemption.promoCode}
+                        </span>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(customRedemption.promoCode!)}
+                          className="text-xs text-nfw-blackberry/50 hover:text-nfw-blackberry underline"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => {
+                          if (customRedemption.redemptionUrl) {
+                            window.open(customRedemption.redemptionUrl, "_blank", "noopener,noreferrer");
+                          }
+                          setCustomRedemption(null);
+                        }}
+                        className="w-full px-4 py-2.5 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 transition-colors font-medium"
+                      >
+                        Continue
+                      </button>
+                      <button
+                        onClick={() => setCustomRedemption(null)}
+                        className="w-full px-4 py-2 border border-nfw-blackberry/20 text-nfw-blackberry/70 rounded-xl hover:bg-nfw-blackberry/5 transition-colors text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {offer.redemption_methods && offer.redemption_methods.length > 0 && (
+                  <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
+                    <h3 className="text-base font-semibold text-nfw-blackberry mb-4">
+                      Redeem This Offer
+                    </h3>
+                    <div className="space-y-3">
+                      {offer.redemption_methods.includes("link") && (
+                        <button
+                          onClick={() => handleRedeem("link")}
+                          disabled={redeemingLink}
+                          className="w-full px-4 py-2.5 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                        >
+                          {redeemingLink ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Redeeming...
+                            </>
+                          ) : (
+                            <>Redeem Online</>
+                          )}
+                        </button>
+                      )}
+
+                      {offer.redemption_methods.includes("instore") && (
+                        <button
+                          onClick={() => handleRedeem("instore")}
+                          disabled={redeemingInstore}
+                          className="w-full px-4 py-2.5 bg-nfw-lilac text-nfw-blackberry rounded-xl hover:bg-nfw-lilac/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                        >
+                          {redeemingInstore ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Redeeming...
+                            </>
+                          ) : (
+                            <>
+                              <Store className="w-4 h-4" />
+                              Redeem In-Store
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      {offer.redemption_methods.includes("instore_print") && (
+                        <button
+                          onClick={() => handleRedeem("instore_print")}
+                          disabled={redeemingPrint}
+                          className="w-full px-4 py-2.5 bg-[#b2d1ee] text-nfw-blackberry rounded-xl hover:bg-[#b2d1ee]/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                        >
+                          {redeemingPrint ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Redeeming...
+                            </>
+                          ) : (
+                            <>
+                              <Printer className="w-4 h-4" />
+                              Print Coupon
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      {offer.redemption_methods.includes("call") && (
+                        <button
+                          onClick={() => handleRedeem("call")}
+                          disabled={redeemingCall}
+                          className="w-full px-4 py-2.5 bg-nfw-citrine text-nfw-blackberry rounded-xl hover:bg-nfw-citrine/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                        >
+                          {redeemingCall ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Redeeming...
+                            </>
+                          ) : (
+                            <>
+                              <Phone className="w-4 h-4" />
+                              Redeem by Phone
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="mt-4 p-2.5 bg-[#fdf493]/20 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-3.5 h-3.5 text-nfw-blackberry flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-nfw-blackberry/60">
+                          Online redemptions open in a new tab.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
