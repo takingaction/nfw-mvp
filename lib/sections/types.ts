@@ -16,7 +16,10 @@ export type SectionType =
   | "split_everyday"
   | "testimonials"
   | "faq"
-  | "membership_cta";
+  | "membership_cta"
+  | "right_side_3_features"
+  | "4_cards"
+  | "3_cards";
 
 // ── Shared primitives ─────────────────────────────────────────
 
@@ -212,6 +215,55 @@ export interface MembershipCtaContent {
   cta_url: string;
 }
 
+// ── right_side_3_features ──────────────────────────────────────
+
+export interface RightSide3FeaturesItem {
+  bg: string;
+  title: string;
+  description: string;
+}
+
+export interface RightSide3FeaturesContent {
+  eyebrow: string;
+  headline: string;
+  body: string;
+  cta_label: string;
+  cta_url: string;
+  items: RightSide3FeaturesItem[];
+}
+
+// ── 4_cards ─────────────────────────────────────────────────
+
+export interface Card4Item {
+  color: string;
+  age: string;
+  title: string;
+  description: string;
+}
+
+export interface FourCardsContent {
+  eyebrow: string;
+  headline: string;
+  subheadline: string;
+  cards: Card4Item[];
+}
+
+// ── 3_cards ─────────────────────────────────────────────────
+
+export interface Card3Item {
+  color: string;
+  title: string;
+  description: string;
+  link: string;
+  cta: string;
+}
+
+export interface ThreeCardsContent {
+  eyebrow: string;
+  headline: string;
+  cards: Card3Item[];
+}
+
 // ── Union type for all content ────────────────────────────────
 
 export type SectionContent =
@@ -227,7 +279,10 @@ export type SectionContent =
   | SplitEverydayContent
   | TestimonialsContent
   | FaqContent
-  | MembershipCtaContent;
+  | MembershipCtaContent
+  | RightSide3FeaturesContent
+  | FourCardsContent
+  | ThreeCardsContent;
 
 // ── DB row shape ──────────────────────────────────────────────
 
