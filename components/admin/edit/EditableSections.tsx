@@ -10,6 +10,7 @@ import ConfirmModal from "@/components/admin/ConfirmModal";
 import StickyEditBar from "./StickyEditBar";
 import SectionWrapper from "./SectionWrapper";
 import {
+  saveDraftSection,
   saveDraftSections,
   deleteDraftSection,
   publishPage,
@@ -58,30 +59,54 @@ export default function EditableSections({ page, initialSections, templates }: P
 
   const handleSaveSection = useCallback(
     async (content: Record<string, unknown>) => {
-      if (!selectedId) return;
+      if (!selectedId) {
+        console.log("[handleSaveSection] Skipped - no selectedId");
+        return;
+      }
+      if (!content || typeof content !== 'object') {
+        console.log("[handleSaveSection] Skipped - invalid content", { content });
+        return;
+      }
+      console.log("[handleSaveSection] Called", {
+        selectedId,
+        contentKeys: Object.keys(content),
+        contentNull: content === null,
+        contentUndefined: content === undefined,
+      });
       setSaving(true);
       try {
+        const sectionToUpdate = sections.find((s) => s.id === selectedId);
+        if (!sectionToUpdate) {
+          console.log("[handleSaveSection] Section not found", { selectedId });
+          return;
+        }
+        const updatedContent = { ...content };
         const updated = sections.map((s) =>
-          s.id === selectedId ? { ...s, content } : s,
+          s.id === selectedId ? { ...s, content: updatedContent } : s,
         );
+        console.log("[handleSaveSection] Updated sections", {
+          updatedSectionContentKeys: Object.keys(updatedContent),
+        });
         setSections(updated);
-        await saveDraftSections(
-          page.id,
-          updated.map((s) => ({
-            id: s.id,
-            section_type: s.section_type,
-            order_index: s.order_index,
-            content: s.content as Record<string, unknown>,
-            visible: s.visible,
-          })),
+        console.log("[handleSaveSection] Saving section", {
+          sectionId: selectedId,
+          contentKeys: Object.keys(updatedContent),
+          visible: sectionToUpdate.visible,
+        });
+        await saveDraftSection(
+          selectedId,
+          updatedContent,
+          sectionToUpdate.visible,
         );
-      } catch {
+        console.log("[handleSaveSection] Save successful");
+      } catch (e) {
+        console.log("[handleSaveSection] Save failed", { error: e });
         showToast("Failed to save");
       } finally {
         setSaving(false);
       }
     },
-    [selectedId, sections, page.id],
+    [selectedId, sections],
   );
 
   const handleReorder = useCallback(

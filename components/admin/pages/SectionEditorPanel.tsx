@@ -385,10 +385,11 @@ export default function SectionEditorPanel({
   const def =
     SECTION_REGISTRY[section.section_type as keyof typeof SECTION_REGISTRY];
   const [content, setContent] = useState<Record<string, unknown>>(
-    section.content as Record<string, unknown>,
+    (section.content || {}) as Record<string, unknown>,
   );
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const savePromiseRef = useRef<Promise<void> | null>(null);
   const contentRef = useRef<Record<string, unknown>>(content);
 
   useEffect(() => {
@@ -396,32 +397,50 @@ export default function SectionEditorPanel({
   }, [content]);
 
   useEffect(() => {
-    setContent(section.content as Record<string, unknown>);
+    setContent((section.content || {}) as Record<string, unknown>);
     setSaveStatus("idle");
   }, [section.id]);
 
   const triggerAutoSave = useCallback((contentToSave: Record<string, unknown>) => {
+    console.log("[triggerAutoSave] Content to save", {
+      contentKeys: contentToSave ? Object.keys(contentToSave) : null,
+      contentNull: contentToSave === null,
+      contentUndefined: contentToSave === undefined,
+    });
+    if (!contentToSave || typeof contentToSave !== 'object') {
+      console.log("[triggerAutoSave] Skipping save - invalid content");
+      return;
+    }
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
     }
     setSaveStatus("saving");
-    saveTimerRef.current = setTimeout(() => {
-      onSave(contentToSave);
-      setSaveStatus("saved");
+    const contentToSaveFinal = { ...contentToSave };
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        await onSave(contentToSaveFinal);
+        setSaveStatus("saved");
+      } catch {
+        setSaveStatus("idle");
+        return;
+      }
       setTimeout(() => setSaveStatus("idle"), 2000);
     }, 500);
   }, [onSave]);
 
   const updateField = (key: string, value: unknown) => {
-    let updatedContent: Record<string, unknown>;
+    console.log("[updateField] Field update", { key, value });
     setContent((prev) => {
-      updatedContent = { ...prev, [key]: value };
+      const updatedContent = { ...prev, [key]: value };
       if (key === "autoplay" && value === true && prev.muted !== true) {
-        updatedContent!.muted = true;
+        updatedContent.muted = true;
       }
-      return updatedContent!;
+      console.log("[updateField] New content", {
+        contentKeys: Object.keys(updatedContent),
+      });
+      triggerAutoSave(updatedContent);
+      return updatedContent;
     });
-    triggerAutoSave(updatedContent!);
   };
 
   if (!def) {

@@ -39,6 +39,45 @@ export default function SectionWrapper({
   onDelete,
 }: Props) {
   const [isHovered, setIsHovered] = useState(false);
+  const [renderError, setRenderError] = useState<string | null>(null);
+
+  console.log("[SectionWrapper] Rendering section", {
+    id: section.id,
+    sectionType: section.section_type,
+    contentKeys: section.content ? Object.keys(section.content) : null,
+    contentNull: section.content === null,
+    contentUndefined: section.content === undefined,
+  });
+
+  if (!section.content || typeof section.content !== 'object') {
+    return (
+      <div className="relative group">
+        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-8 flex flex-col items-center justify-center min-h-[200px] text-center">
+          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
+            <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <p className="text-sm font-semibold text-red-600 mb-1">Content Error</p>
+          <p className="text-xs text-red-400 mb-2">Section ID: {section.id}</p>
+          <p className="text-xs text-red-400">Type: {section.section_type}</p>
+          <p className="text-xs text-red-400 mt-2">Content is: {String(section.content)}</p>
+        </div>
+        {(section.visible === undefined || section.visible) && (
+          <FloatingControls
+            isVisible={isHovered}
+            isFirst={isFirst}
+            isLast={isLast}
+            onEdit={onEdit}
+            onMoveUp={() => onReorder(section.id, "up")}
+            onMoveDown={() => onReorder(section.id, "down")}
+            onToggleVisibility={onToggleVisibility}
+            onDelete={onDelete}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div
