@@ -9,12 +9,12 @@ interface Props {
 
 export default function HeroVideoSection({ content }: Props) {
   const c = content as unknown as HeroVideoContent;
-  const headline = c.headline || "";
-  const italicPhrase = c.headline_italic_phrase || "";
+  const headline = (c?.headline as string) || "";
+  const italicPhrase = (c?.headline_italic_phrase as string) || "";
   const parts = headline.split(italicPhrase);
-  const bgClass = getBackgroundClass(c.background);
-  const textColor = getTextColorForBackground(c.background);
-  const eyebrowColor = getEyebrowColorForBackground(c.background);
+  const bgClass = getBackgroundClass(c?.background);
+  const textColor = getTextColorForBackground(c?.background);
+  const eyebrowColor = getEyebrowColorForBackground(c?.background);
 
   return (
     <section className={`relative ${bgClass} overflow-hidden`}>

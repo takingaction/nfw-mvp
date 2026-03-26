@@ -9,10 +9,12 @@ interface Props {
 
 export default function HeroSection({ content }: Props) {
   const c = content as unknown as HeroContent;
-  const parts = c.headline.split(c.headline_italic_phrase);
-  const bgClass = getBackgroundClass(c.background);
-  const textColor = getTextColorForBackground(c.background);
-  const eyebrowColor = getEyebrowColorForBackground(c.background);
+  const headline = (c?.headline as string) || "";
+  const italicPhrase = (c?.headline_italic_phrase as string) || "";
+  const parts = headline.split(italicPhrase);
+  const bgClass = getBackgroundClass(c?.background);
+  const textColor = getTextColorForBackground(c?.background);
+  const eyebrowColor = getEyebrowColorForBackground(c?.background);
 
   return (
     <section className={`relative ${bgClass} overflow-hidden`}>
@@ -27,11 +29,11 @@ export default function HeroSection({ content }: Props) {
             )}
             <h1 className={`font-serif text-5xl lg:text-6xl xl:text-[63px] leading-[1.05] ${textColor}`}>
               {parts[0]}
-              <em className="italic">{c.headline_italic_phrase}</em>
+              <em className="italic">{italicPhrase}</em>
               {parts[1]}
             </h1>
             <p className={`font-serif italic text-xl lg:text-3xl ${textColor} leading-relaxed`}>
-              {c.subheadline}
+              {c?.subheadline || ""}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
               <Link
