@@ -20,7 +20,7 @@ export default function PerksFeatureSection({ content }: Props) {
   const ctaClass = getPrimaryButtonClass(c.background);
   const logoFilterClass = getLogoFilterClass(c.background);
 
-  const parts = c.headline.split(c.headline_italic_phrase);
+  const parts = (c.headline || "").split(c.headline_italic_phrase || "");
   const logos = c.logos ?? [];
   const scrollLogos = [...logos, ...logos];
 

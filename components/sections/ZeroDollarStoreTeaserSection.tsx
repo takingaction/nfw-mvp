@@ -24,7 +24,7 @@ async function getFeaturedProducts() {
 
 export default async function ZeroDollarStoreTeaserSection({ content }: Props) {
   const c = content as unknown as ZeroDollarStoreTeaserContent;
-  const parts = c.headline.split(c.headline_italic_phrase);
+  const parts = (c.headline || "").split(c.headline_italic_phrase || "");
   const products = await getFeaturedProducts();
   const bgClass = getBackgroundClass(c.background);
   const textColor = getTextColorForBackground(c.background);

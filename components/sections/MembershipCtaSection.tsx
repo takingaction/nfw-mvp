@@ -8,7 +8,7 @@ interface Props {
 
 export default function MembershipCtaSection({ content }: Props) {
   const c = content as unknown as MembershipCtaContent;
-  const parts = c.headline.split(c.headline_italic_phrase);
+  const parts = (c.headline || "").split(c.headline_italic_phrase || "");
   const bgClass = getBackgroundClass(c.background);
   const textColor = getTextColorForBackground(c.background);
   const eyebrowColor = getEyebrowColorForBackground(c.background);
