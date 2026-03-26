@@ -23,6 +23,15 @@ const VIDEO_MAX_SIZE = 50 * 1024 * 1024; // 50MB for videos
 
 export async function POST(request: NextRequest) {
   try {
+    // Check content-length header before processing
+    const contentLength = request.headers.get("content-length");
+    if (contentLength && parseInt(contentLength) > 50 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: "File too large. Maximum size is 50MB." },
+        { status: 413 }
+      );
+    }
+
     const supabase = await createServerClient();
     const {
       data: { user },
@@ -112,8 +121,25 @@ export async function POST(request: NextRequest) {
       .getPublicUrl(fileName);
 
     return NextResponse.json({ url: urlData.publicUrl });
-  } catch (err) {
+  } catch (err: any) {
     console.error("Upload error:", err);
+    
+    // Check if error is a response from Supabase (might be HTML)
+    if (err?.message?.includes("fetch failed") || err?.cause?.message?.includes("fetch failed")) {
+      return NextResponse.json(
+        { error: "Supabase connection failed. Please try again." },
+        { status: 502 },
+      );
+    }
+    
+    // Check for timeout
+    if (err?.message?.includes("timed out")) {
+      return NextResponse.json(
+        { error: "Upload timed out. Please try a smaller file or check your connection." },
+        { status: 504 },
+      );
+    }
+    
     const message = err instanceof Error ? err.message : "An error occurred during upload";
     return NextResponse.json(
       { error: message },
