@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SplitWhyNfwContent } from "@/lib/sections/types";
+import { getBackgroundClass, getTextColorForBackground, getEyebrowColorForBackground } from "@/lib/colors";
 
 interface Props {
   content: Record<string, unknown>;
@@ -8,9 +9,12 @@ interface Props {
 export default function SplitWhyNfwSection({ content }: Props) {
   const c = content as unknown as SplitWhyNfwContent;
   const parts = c.headline.split(c.headline_italic_phrase);
+  const bgClass = getBackgroundClass(c.background);
+  const textColor = getTextColorForBackground(c.background);
+  const eyebrowColor = getEyebrowColorForBackground(c.background);
 
   return (
-    <section className="bg-nfw-dove py-20 lg:py-28">
+    <section className={`${bgClass} py-20 lg:py-28`}>
       {/* 1. Added lg:px-12 here for desktop padding */}
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-12">
         {/* 2. Changed to 60/40 split and kept your gap */}
@@ -18,16 +22,16 @@ export default function SplitWhyNfwSection({ content }: Props) {
           {/* Left — 60% (No span class needed with custom grid-cols) */}
           <div className="space-y-7">
             {c.eyebrow && (
-              <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-aubergine">
+              <p className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${eyebrowColor}`}>
                 {c.eyebrow}
               </p>
             )}
-            <h2 className="font-serif text-4xl lg:text-6xl text-nfw-aubergine leading-[1.1]">
+            <h2 className={`font-serif text-4xl lg:text-6xl ${textColor} leading-[1.1]`}>
               {parts[0]}
               <em className="italic">{c.headline_italic_phrase}</em>
               {parts[1]}
             </h2>
-            <p className="font-serif text-2xl text-nfw-aubergine max-w-full">
+            <p className={`font-serif text-2xl ${textColor} max-w-full`}>
               {c.body}
             </p>
             {c.cta_label && (

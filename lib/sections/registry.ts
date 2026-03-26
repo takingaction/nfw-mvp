@@ -44,9 +44,11 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       cta_secondary_label: "Learn More",
       cta_secondary_url: "/about",
       images: [],
+      background: "aubergine",
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow text", type: "text" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       {
         key: "headline_italic_phrase",
@@ -86,9 +88,11 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       plays_inline: true,
       show_controls: false,
       object_fit: "cover",
+      background: "aubergine",
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow text", type: "text" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       {
         key: "headline_italic_phrase",
@@ -126,9 +130,11 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
         { value: "0", label: "States Represented" },
         { value: "0", label: "Perks & Discounts" },
       ],
+      background: "wisteria",
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       {
         key: "stats",
         label: "Stats",
@@ -149,9 +155,11 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       eyebrow: "WHO WE ARE",
       quote_text:
         "The National Fund for Women seeks to enhance the quality of life for all American women by championing positive social change and delivering value through resources, information, and advocacy.",
+      background: "dove",
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       { key: "quote_text", label: "Quote text", type: "textarea" },
     ],
   },
@@ -242,9 +250,11 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       cta_url: "/auth/sign-up",
       pullquote:
         "Women drive the economy, control most household spending, and shoulder the majority of caregiving — yet no permanent institution exists to represent their shared economic interests.",
+      background: "dove",
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "headline_italic_phrase", label: "Italic phrase", type: "text" },
       { key: "body", label: "Body", type: "textarea" },
@@ -265,9 +275,11 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       cta_label: "Learn About Microgrants",
       cta_url: "/grants",
       image_url: "",
+      background: "dove",
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "headline_italic_phrase", label: "Italic phrase", type: "text" },
       { key: "body", label: "Body", type: "textarea" },
@@ -293,13 +305,13 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "headline_italic_phrase", label: "Italic phrase", type: "text" },
       { key: "body", label: "Body", type: "textarea" },
       { key: "cta_label", label: "CTA label", type: "text" },
       { key: "cta_url", label: "CTA URL", type: "url" },
       { key: "logo_strip_eyebrow", label: "Logo strip eyebrow", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       {
         key: "logos",
         label: "Brand logos",
@@ -324,9 +336,11 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       cta_label: "Shop",
       cta_url: "/store",
       products: [],
+      background: "dove",
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "headline_italic_phrase", label: "Italic phrase", type: "text" },
       { key: "body", label: "Body", type: "textarea" },
@@ -362,9 +376,11 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       cta_url: "/auth/sign-up",
       image_url: "",
       image_side: "left",
+      background: "wisteria",
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "headline_italic_phrase", label: "Italic phrase", type: "text" },
       { key: "body", label: "Body", type: "textarea" },
@@ -429,9 +445,11 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
           answer: "Members can apply for microgrants up to $1,000.",
         },
       ],
+      background: "aubergine",
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       { key: "heading", label: "Heading", type: "text" },
       {
         key: "items",
@@ -465,9 +483,11 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       ],
       cta_label: "Start Your Membership",
       cta_url: "/auth/sign-up",
+      background: "blackberry",
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "headline_italic_phrase", label: "Italic phrase", type: "text" },
       { key: "body", label: "Body", type: "textarea" },
@@ -515,11 +535,11 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "body", label: "Body (2 paragraphs)", type: "textarea" },
       { key: "cta_label", label: "CTA label", type: "text" },
       { key: "cta_url", label: "CTA URL", type: "url" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       {
         key: "items",
         label: "Feature items",
@@ -567,9 +587,11 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
           description: "Living on fixed incomes while supporting the next generation and leaving a legacy.",
         },
       ],
+      background: "dove",
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "subheadline", label: "Subheadline", type: "textarea" },
       {
@@ -620,8 +642,8 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
-      { key: "headline", label: "Headline", type: "text" },
       { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "headline", label: "Headline", type: "text" },
       {
         key: "cards",
         label: "Cards",

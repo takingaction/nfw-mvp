@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { FaqContent } from "@/lib/sections/types";
+import { getBackgroundClass, getTextColorForBackground, getEyebrowColorForBackground } from "@/lib/colors";
 import { ChevronDown } from "lucide-react";
 
 interface Props {
@@ -13,11 +14,15 @@ function AccordionItem({
   answer,
   isOpen,
   onToggle,
+  textColor,
+  hoverColor,
 }: {
   question: string;
   answer: string;
   isOpen: boolean;
   onToggle: () => void;
+  textColor: string;
+  hoverColor: string;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(0);
@@ -35,11 +40,11 @@ function AccordionItem({
         className="w-full flex items-center justify-between py-6 text-left group"
         aria-expanded={isOpen}
       >
-        <span className="font-serif text-lg text-nfw-dove pr-8 group-hover:text-nfw-citrine transition-colors duration-300">
+        <span className={`font-serif text-lg ${textColor} pr-8 group-hover:${hoverColor} transition-colors duration-300`}>
           {question}
         </span>
         <ChevronDown
-          className={`flex-shrink-0 w-5 h-5 text-nfw-citrine transition-transform duration-500 ease-in-out ${
+          className={`flex-shrink-0 w-5 h-5 ${hoverColor} transition-transform duration-500 ease-in-out ${
             isOpen ? "rotate-180" : ""
           }`}
         />
@@ -52,7 +57,7 @@ function AccordionItem({
         }}
       >
         <div ref={contentRef} className="pb-6">
-          <p className="font-serif text-lg text-white leading-relaxed">
+          <p className={`font-serif text-lg ${textColor} leading-relaxed`}>
             {answer}
           </p>
         </div>
@@ -64,17 +69,21 @@ function AccordionItem({
 export default function FaqSection({ content }: Props) {
   const c = content as unknown as FaqContent;
   const [open, setOpen] = useState<number | null>(null);
+  const bgClass = getBackgroundClass(c.background);
+  const textColor = getTextColorForBackground(c.background);
+  const eyebrowColor = getEyebrowColorForBackground(c.background);
+  const hoverColor = c.background === "dove" ? "text-nfw-aubergine" : "text-nfw-citrine";
 
   return (
-    <section className="bg-nfw-aubergine py-20 lg:py-28">
+    <section className={`${bgClass} py-20 lg:py-28`}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         {c.eyebrow && (
-          <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-dove mb-6 text-center">
+          <p className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${eyebrowColor} mb-6 text-center`}>
             {c.eyebrow}
           </p>
         )}
         {c.heading && (
-          <h2 className="font-serif text-4xl lg:text-5xl text-nfw-dove mb-16 text-center leading-[1.1]">
+          <h2 className={`font-serif text-4xl lg:text-5xl ${textColor} mb-16 text-center leading-[1.1]`}>
             {c.heading}
           </h2>
         )}
@@ -86,6 +95,8 @@ export default function FaqSection({ content }: Props) {
               answer={item.answer}
               isOpen={open === i}
               onToggle={() => setOpen(open === i ? null : i)}
+              textColor={textColor}
+              hoverColor={hoverColor}
             />
           ))}
         </div>

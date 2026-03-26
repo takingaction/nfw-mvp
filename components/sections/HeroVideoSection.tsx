@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { HeroVideoContent } from "@/lib/sections/types";
+import { getBackgroundClass, getTextColorForBackground, getEyebrowColorForBackground } from "@/lib/colors";
 
 interface Props {
   content: Record<string, unknown>;
@@ -11,23 +12,26 @@ export default function HeroVideoSection({ content }: Props) {
   const headline = c.headline || "";
   const italicPhrase = c.headline_italic_phrase || "";
   const parts = headline.split(italicPhrase);
+  const bgClass = getBackgroundClass(c.background);
+  const textColor = getTextColorForBackground(c.background);
+  const eyebrowColor = getEyebrowColorForBackground(c.background);
 
   return (
-    <section className="relative bg-nfw-aubergine overflow-hidden">
+    <section className={`relative ${bgClass} overflow-hidden`}>
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 lg:pl-12">
         <div className="grid lg:grid-cols-[53%_47%] gap-8 lg:gap-8 items-center py-4 lg:py-8">
           <div className="space-y-8">
             {c.eyebrow && (
-              <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-dove">
+              <p className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${eyebrowColor}`}>
                 {c.eyebrow}
               </p>
             )}
-            <h1 className="font-serif text-5xl lg:text-6xl xl:text-[63px] leading-[1.05] text-nfw-dove">
+            <h1 className={`font-serif text-5xl lg:text-6xl xl:text-[63px] leading-[1.05] ${textColor}`}>
               {parts[0]}
               <em className="italic">{c.headline_italic_phrase}</em>
               {parts[1]}
             </h1>
-            <p className="font-serif italic text-xl lg:text-3xl text-white leading-relaxed">
+            <p className={`font-serif italic text-xl lg:text-3xl ${textColor} leading-relaxed`}>
               {c.subheadline || ""}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
@@ -47,7 +51,7 @@ export default function HeroVideoSection({ content }: Props) {
           </div>
 
           <div className="relative w-full aspect-[3/4] lg:aspect-auto lg:h-[750px]">
-            {c.video_url ? (
+            {c.video_url && c.video_url.length > 0 ? (
               <video
                 src={c.video_url}
                 autoPlay={c.autoplay !== false}
@@ -55,10 +59,10 @@ export default function HeroVideoSection({ content }: Props) {
                 loop={c.loop !== false}
                 playsInline={c.plays_inline !== false}
                 controls={c.show_controls}
-                poster={c.poster_image_url}
+                poster={c.poster_image_url && c.poster_image_url.length > 0 ? c.poster_image_url : undefined}
                 className={c.object_fit === "contain" ? "w-full h-full object-contain" : "w-full h-full object-cover"}
               />
-            ) : c.poster_image_url ? (
+            ) : c.poster_image_url && c.poster_image_url.length > 0 ? (
               <Image
                 src={c.poster_image_url}
                 alt=""

@@ -71,19 +71,21 @@ export default function PerksFeatureSection({ content }: Props) {
                 willChange: "transform",
               }}
             >
-              {[...logos, ...logos, ...logos].map((logo, i) => (
-                <div key={i} className="flex-shrink-0 h-8 flex items-center">
-                  <img
-                    src={
-                      typeof logo.image_url === "string"
-                        ? logo.image_url
-                        : ((logo.image_url as any)?.url ?? "")
-                    }
-                    alt={logo.name}
-                    className={`h-full w-auto object-contain ${logoFilterClass}`}
-                  />
-                </div>
-              ))}
+              {[...logos, ...logos, ...logos].map((logo, i) => {
+                const logoSrc = typeof logo.image_url === "string"
+                  ? logo.image_url
+                  : ((logo.image_url as { url?: string })?.url ?? "");
+                if (!logoSrc) return null;
+                return (
+                  <div key={i} className="flex-shrink-0 h-8 flex items-center">
+                    <img
+                      src={logoSrc}
+                      alt={logo.name}
+                      className={`h-full w-auto object-contain ${logoFilterClass}`}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

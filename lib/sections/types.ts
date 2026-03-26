@@ -41,6 +41,7 @@ export interface HeroContent {
   cta_secondary_label: string;
   cta_secondary_url: string;
   images: string | { url: string } | Array<string | { url: string }>;
+  background?: BackgroundColor;
 }
 
 // ── hero_video ─────────────────────────────────────────────────
@@ -62,6 +63,7 @@ export interface HeroVideoContent {
   plays_inline?: boolean;
   show_controls?: boolean;
   object_fit?: "cover" | "contain";
+  background?: BackgroundColor;
 }
 
 // ── stats_bar ─────────────────────────────────────────────────
@@ -74,6 +76,7 @@ export interface StatItem {
 export interface StatsBarContent {
   eyebrow: string;
   stats: StatItem[];
+  background?: BackgroundColor;
 }
 
 // ── mission_quote ─────────────────────────────────────────────
@@ -81,6 +84,7 @@ export interface StatsBarContent {
 export interface MissionQuoteContent {
   eyebrow: string;
   quote_text: string;
+  background?: BackgroundColor;
 }
 
 // ── three_col_features ────────────────────────────────────────
@@ -109,6 +113,7 @@ export interface SplitWhyNfwContent {
   cta_label: string;
   cta_url: string;
   pullquote: string;
+  background?: BackgroundColor;
 }
 
 // ── microgrant_feature ────────────────────────────────────────
@@ -121,6 +126,7 @@ export interface MicrograntFeatureContent {
   cta_label: string;
   cta_url: string;
   image_url: string;
+  background?: BackgroundColor;
 }
 
 // ── perks_feature ─────────────────────────────────────────────
@@ -157,6 +163,7 @@ export interface ZeroDollarStoreTeaserContent {
   cta_label: string;
   cta_url: string;
   products: StoreProduct[];
+  background?: BackgroundColor;
 }
 
 // ── split_everyday ────────────────────────────────────────────
@@ -170,6 +177,7 @@ export interface SplitEverydayContent {
   cta_url: string;
   image_url: string;
   image_side: "left" | "right";
+  background?: BackgroundColor;
 }
 
 // ── testimonials ──────────────────────────────────────────────
@@ -192,6 +200,7 @@ export interface FaqContent {
   eyebrow: string;
   heading: string;
   items: FaqItem[];
+  background?: BackgroundColor;
 }
 
 // ── membership_cta ────────────────────────────────────────────
@@ -206,6 +215,7 @@ export interface MembershipCtaContent {
   benefits: string[];
   cta_label: string;
   cta_url: string;
+  background?: BackgroundColor;
 }
 
 // ── Shared color types ────────────────────────────────────────
@@ -239,6 +249,14 @@ export interface Card4Item {
   age: string;
   title: string;
   description: string;
+}
+
+export interface FourCardsContent {
+  eyebrow: string;
+  headline: string;
+  subheadline: string;
+  cards: Card4Item[];
+  background?: BackgroundColor;
 }
 
 export interface FourCardsContent {

@@ -90,20 +90,20 @@ export function getCardSwatchColor(color: CardSwatchColor): string {
 
 export function getCardSwatchBgClass(color: CardSwatchColor): string {
   switch (color) {
+    case "yellow":
+      return "bg-yellow-100";
+    case "green":
+      return "bg-green-100";
+    case "blue":
+      return "bg-blue-100";
+    case "lavender":
+      return "bg-purple-100";
     case "citrine":
       return "bg-nfw-citrine/20";
     case "lilac":
       return "bg-nfw-lilac/20";
     case "powder":
       return "bg-nfw-powder/20";
-    case "yellow":
-      return "bg-yellow-100/50";
-    case "green":
-      return "bg-green-100/50";
-    case "blue":
-      return "bg-blue-100/50";
-    case "lavender":
-      return "bg-purple-100/50";
     default:
       return "bg-nfw-blackberry/5";
   }
@@ -114,4 +114,18 @@ export function getLogoFilterClass(background?: BackgroundColor): string {
     return "";
   }
   return "brightness-0 invert";
+}
+
+export function getCardTextColorForBackground(background?: BackgroundColor): string {
+  if (!background || background === "dove") {
+    return "text-nfw-blackberry";
+  }
+  return "text-white";
+}
+
+export function getCardBorderColorForBackground(background?: BackgroundColor): string {
+  if (!background || background === "dove") {
+    return "border-nfw-blackberry/10";
+  }
+  return "border-white/20";
 }

@@ -5,6 +5,8 @@ import {
   getTextColorForBackground,
   getEyebrowColorForBackground,
   getCardSwatchColor,
+  getCardTextColorForBackground,
+  getCardBorderColorForBackground,
 } from "@/lib/colors";
 
 interface Props {
@@ -16,6 +18,9 @@ export default function ThreeCardsSection({ content }: Props) {
   const bgClass = getBackgroundClass(c.background);
   const textColor = getTextColorForBackground(c.background);
   const eyebrowColor = getEyebrowColorForBackground(c.background);
+  const cardTextColor = getCardTextColorForBackground(c.background);
+  const cardBorderColor = getCardBorderColorForBackground(c.background);
+  const cardLinkColor = c.background === "dove" ? "text-nfw-aubergine" : "text-nfw-dove";
 
   return (
     <div className={`py-20 lg:py-28 ${bgClass}`}>
@@ -34,21 +39,21 @@ export default function ThreeCardsSection({ content }: Props) {
           {c.cards?.map((card, i) => (
             <div
               key={i}
-              className="border border-nfw-blackberry/10 p-8 bg-white"
+              className={`border ${cardBorderColor} p-8`}
             >
               <div
                 className="w-14 h-14 mb-6"
                 style={{ backgroundColor: `${getCardSwatchColor(card.color)}50` }}
               />
-              <h3 className="font-ui text-sm font-black tracking-[0.06em] uppercase text-nfw-blackberry mb-3">
+              <h3 className={`font-ui text-sm font-black tracking-[0.06em] uppercase ${cardTextColor} mb-3`}>
                 {card.title}
               </h3>
-              <p className="font-sans text-nfw-blackberry/60 mb-6 leading-relaxed">
+              <p className={`font-sans ${cardTextColor} opacity-60 mb-6 leading-relaxed`}>
                 {card.description}
               </p>
               <Link
                 href={card.link}
-                className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-aubergine hover:underline"
+                className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${cardLinkColor} hover:underline`}
               >
                 {card.cta}
               </Link>

@@ -13,7 +13,7 @@ export default function ThreeColFeaturesSection({ content }: Props) {
 
   return (
     <section>
-      <div className="grid lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-white/10">
+      <div className="grid lg:grid-cols-3">
         {c.columns?.map((col, i) => (
           <div
             key={i}
@@ -23,7 +23,7 @@ export default function ThreeColFeaturesSection({ content }: Props) {
               minHeight: "min(60vw, 520px)",
             }}
           >
-            {col.background_image_url && (
+            {col.background_image_url && col.background_image_url.length > 0 && (
               <>
                 <Image
                   src={col.background_image_url}

@@ -1,5 +1,5 @@
 import { FourCardsContent } from "@/lib/sections/types";
-import { getBackgroundClass, getTextColorForBackground, getEyebrowColorForBackground, getCardSwatchColor } from "@/lib/colors";
+import { getBackgroundClass, getTextColorForBackground, getEyebrowColorForBackground, getCardSwatchColor, getCardTextColorForBackground, getCardBorderColorForBackground } from "@/lib/colors";
 
 interface Props {
   content: Record<string, unknown>;
@@ -10,6 +10,8 @@ export default function FourCardsSection({ content }: Props) {
   const bgClass = getBackgroundClass(c.background);
   const textColor = getTextColorForBackground(c.background);
   const eyebrowColor = getEyebrowColorForBackground(c.background);
+  const cardTextColor = getCardTextColorForBackground(c.background);
+  const cardBorderColor = getCardBorderColorForBackground(c.background);
 
   return (
     <div className={`py-20 lg:py-28 ${bgClass}`}>
@@ -33,19 +35,19 @@ export default function FourCardsSection({ content }: Props) {
           {c.cards?.map((card, i) => (
             <div
               key={i}
-              className="bg-white border border-nfw-blackberry/10 p-6"
+              className={`border ${cardBorderColor} p-6`}
             >
               <div
                 className="w-12 h-12 mb-4"
                 style={{ backgroundColor: `${getCardSwatchColor(card.color)}50` }}
               />
-              <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-blackberry/40 mb-1">
+              <p className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${cardTextColor} opacity-40 mb-1`}>
                 {card.age}
               </p>
-              <h3 className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-2">
+              <h3 className={`font-ui text-sm font-black tracking-[0.03em] uppercase ${cardTextColor} mb-2`}>
                 {card.title}
               </h3>
-              <p className="font-sans text-sm text-nfw-blackberry/60">{card.description}</p>
+              <p className={`font-sans text-sm ${cardTextColor} opacity-60`}>{card.description}</p>
             </div>
           ))}
         </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { StatsBarContent } from "@/lib/sections/types";
+import { getBackgroundClass, getTextColorForBackground, getEyebrowColorForBackground } from "@/lib/colors";
 
 interface Props {
   content: Record<string, unknown>;
@@ -43,22 +44,25 @@ function AnimatedStat({ value }: { value: string }) {
 
 export default function StatsBarSection({ content }: Props) {
   const c = content as unknown as StatsBarContent;
+  const bgClass = getBackgroundClass(c.background);
+  const textColor = getTextColorForBackground(c.background);
+  const eyebrowColor = getEyebrowColorForBackground(c.background);
 
   return (
-    <section className="bg-nfw-wisteria py-16 lg:py-20">
+    <section className={`${bgClass} py-16 lg:py-20`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {c.eyebrow && (
-          <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-dove/60 text-center mb-12">
+          <p className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${eyebrowColor} text-center mb-12`}>
             {c.eyebrow}
           </p>
         )}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
           {c.stats?.map((stat, i) => (
             <div key={i} className="text-center">
-              <div className="font-serif text-5xl lg:text-6xl font-bold text-nfw-dove mb-2">
+              <div className={`font-serif text-5xl lg:text-6xl font-bold ${textColor} mb-2`}>
                 <AnimatedStat value={stat.value} />
               </div>
-              <p className="font-ui text-sm font-medium text-nfw-dove/60 tracking-wide uppercase">
+              <p className={`font-ui text-sm font-medium ${textColor} tracking-wide uppercase`}>
                 {stat.label}
               </p>
             </div>
