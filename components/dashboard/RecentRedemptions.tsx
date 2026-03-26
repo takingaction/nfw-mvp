@@ -49,7 +49,6 @@ export default function RecentRedemptions() {
       }
 
       const data = await response.json();
-      console.log("Redemptions data:", data.redemptions?.[0]?.offer_title);
       setRedemptions(data.redemptions || []);
     } catch (err: any) {
       console.error("Fetch redemptions error:", err);
