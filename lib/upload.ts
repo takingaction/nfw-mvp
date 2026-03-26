@@ -28,6 +28,8 @@ export async function uploadImage(
         contentType: file.type,
       });
 
+    console.log("Upload result:", data, error);
+
     if (error) {
       console.error("Supabase upload error:", error);
       throw new Error(`Upload failed: ${error.message}`);
