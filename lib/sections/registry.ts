@@ -659,4 +659,54 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       },
     ],
   },
+
+  three_column_stories: {
+    type: "three_column_stories",
+    label: "3 Column Stories",
+    defaultContent: {
+      eyebrow: "Picks of the month",
+      background: "dove",
+      columns: [
+        {
+          title: "A World With",
+          content: "In this episode of A World With, Trinbagonian writer, YouTuber and artist Andrew Sage explores the possibilities of a world with libraries of things.",
+          image_url: "",
+          link_text: "Listen now",
+          link_url: "#",
+        },
+        {
+          title: "Books",
+          content: "Healing Justice Ldn on disability justice. A curated reading list of texts and resources about collective care, interdependence, disability justice and building for our changing contexts.",
+          image_url: "",
+          link_text: "Read more",
+          link_url: "#",
+        },
+        {
+          title: "How Do We Grow?",
+          content: "Larissa Kennedy speaks with three organisations reshaping climate education and our relationship to environmental justice.",
+          image_url: "",
+          link_text: "Learn more",
+          link_url: "#",
+        },
+      ],
+    },
+    editorFields: [
+      { key: "eyebrow", label: "Section eyebrow", type: "text" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      {
+        key: "columns",
+        label: "Columns",
+        type: "array",
+        itemLabel: "Column",
+        fields: [
+          { key: "eyebrow", label: "Eyebrow (optional)", type: "text" },
+          { key: "title", label: "Title", type: "text" },
+          { key: "content", label: "Content", type: "textarea" },
+          { key: "image_url", label: "Image URL", type: "image" },
+          { key: "link_text", label: "Link text (optional)", type: "text" },
+          { key: "link_url", label: "Link URL (optional)", type: "url" },
+        ],
+      },
+    ],
+  },
 };

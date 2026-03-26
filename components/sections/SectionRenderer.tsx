@@ -15,6 +15,7 @@ import MembershipCtaSection from "./MembershipCtaSection";
 import RightSide3FeaturesSection from "./RightSide3FeaturesSection";
 import FourCardsSection from "./4CardsSection";
 import ThreeCardsSection from "./3CardsSection";
+import ThreeColumnStoriesSection from "./ThreeColumnStoriesSection";
 
 interface Props {
   sections: PageSection[];
@@ -68,6 +69,8 @@ export default function SectionRenderer({ sections }: Props) {
             return <FourCardsSection key={section.id} content={content} />;
           case "3_cards":
             return <ThreeCardsSection key={section.id} content={content} />;
+          case "three_column_stories":
+            return <ThreeColumnStoriesSection key={section.id} content={content} />;
           default:
             return null;
         }

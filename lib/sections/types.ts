@@ -19,7 +19,8 @@ export type SectionType =
   | "membership_cta"
   | "right_side_3_features"
   | "4_cards"
-  | "3_cards";
+  | "3_cards"
+  | "three_column_stories";
 
 // ── Shared primitives ─────────────────────────────────────────
 
@@ -284,6 +285,23 @@ export interface ThreeCardsContent {
   background?: BackgroundColor;
 }
 
+// ── three_column_stories ──────────────────────────────────────
+
+export interface StoryColumn {
+  eyebrow?: string;
+  title: string;
+  content: string;
+  image_url?: string;
+  link_text?: string;
+  link_url?: string;
+}
+
+export interface ThreeColumnStoriesContent {
+  eyebrow?: string;
+  columns: StoryColumn[];
+  background?: BackgroundColor;
+}
+
 // ── testimonials ──────────────────────────────────────────────
 
 export interface TestimonialsContent {
@@ -325,7 +343,8 @@ export type SectionContent =
   | MembershipCtaContent
   | RightSide3FeaturesContent
   | FourCardsContent
-  | ThreeCardsContent;
+  | ThreeCardsContent
+  | ThreeColumnStoriesContent;
 
 // ── DB row shape ──────────────────────────────────────────────
 
