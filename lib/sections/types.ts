@@ -5,6 +5,7 @@
 
 export type SectionType =
   | "hero"
+  | "hero_video"
   | "stats_bar"
   | "mission_quote"
   | "three_col_features"
@@ -37,6 +38,27 @@ export interface HeroContent {
   cta_secondary_label: string;
   cta_secondary_url: string;
   images: string | { url: string } | Array<string | { url: string }>;
+}
+
+// ── hero_video ─────────────────────────────────────────────────
+
+export interface HeroVideoContent {
+  eyebrow: string;
+  headline: string;
+  headline_italic_phrase: string;
+  subheadline: string;
+  cta_primary_label: string;
+  cta_primary_url: string;
+  cta_secondary_label: string;
+  cta_secondary_url: string;
+  video_url: string;
+  poster_image_url?: string;
+  autoplay?: boolean;
+  muted?: boolean;
+  loop?: boolean;
+  plays_inline?: boolean;
+  show_controls?: boolean;
+  object_fit?: "cover" | "contain";
 }
 
 // ── stats_bar ─────────────────────────────────────────────────
@@ -194,6 +216,7 @@ export interface MembershipCtaContent {
 
 export type SectionContent =
   | HeroContent
+  | HeroVideoContent
   | StatsBarContent
   | MissionQuoteContent
   | ThreeColFeaturesContent

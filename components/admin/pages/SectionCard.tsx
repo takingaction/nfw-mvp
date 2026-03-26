@@ -41,7 +41,7 @@ export default function SectionCard({
   const label = def?.label ?? section.section_type;
 
   // Get a content preview from the first text field
-  const content = section.content as Record<string, unknown>;
+  const content = (section.content ?? {}) as Record<string, unknown>;
   const preview =
     (content.headline as string) ||
     (content.quote_text as string) ||

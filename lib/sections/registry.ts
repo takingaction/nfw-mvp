@@ -9,6 +9,8 @@ export type EditorField =
   | { key: string; label: string; type: "richtext" }
   | { key: string; label: string; type: "url" }
   | { key: string; label: string; type: "image" }
+  | { key: string; label: string; type: "video" }
+  | { key: string; label: string; type: "boolean" }
   | { key: string; label: string; type: "select"; options: string[] }
   | { key: string; label: string; type: "string-array"; itemLabel: string }
   | {
@@ -61,6 +63,55 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       },
       { key: "cta_secondary_url", label: "Secondary CTA URL", type: "url" },
       { key: "images", label: "Hero image", type: "image" },
+    ],
+  },
+
+  hero_video: {
+    type: "hero_video",
+    label: "Hero (Video)",
+    defaultContent: {
+      eyebrow: "Join thousands of members nationwide",
+      headline: "A National membership built for American women.",
+      headline_italic_phrase: "membership",
+      subheadline: "Real support. Real savings. Real advocacy. $15 a year.",
+      cta_primary_label: "Become a Member",
+      cta_primary_url: "/auth/sign-up",
+      cta_secondary_label: "Learn More",
+      cta_secondary_url: "/about",
+      video_url: "",
+      poster_image_url: "",
+      autoplay: true,
+      muted: true,
+      loop: true,
+      plays_inline: true,
+      show_controls: false,
+      object_fit: "cover",
+    },
+    editorFields: [
+      { key: "eyebrow", label: "Eyebrow text", type: "text" },
+      { key: "headline", label: "Headline", type: "text" },
+      {
+        key: "headline_italic_phrase",
+        label: "Italic phrase in headline",
+        type: "text",
+      },
+      { key: "subheadline", label: "Subheadline", type: "text" },
+      { key: "cta_primary_label", label: "Primary CTA label", type: "text" },
+      { key: "cta_primary_url", label: "Primary CTA URL", type: "url" },
+      {
+        key: "cta_secondary_label",
+        label: "Secondary CTA label",
+        type: "text",
+      },
+      { key: "cta_secondary_url", label: "Secondary CTA URL", type: "url" },
+      { key: "video_url", label: "Video (MP4)", type: "video" },
+      { key: "poster_image_url", label: "Poster image (optional)", type: "image" },
+      { key: "autoplay", label: "Autoplay video", type: "boolean" },
+      { key: "muted", label: "Mute video", type: "boolean" },
+      { key: "loop", label: "Loop video", type: "boolean" },
+      { key: "plays_inline", label: "Plays inline (mobile)", type: "boolean" },
+      { key: "show_controls", label: "Show playback controls", type: "boolean" },
+      { key: "object_fit", label: "Video fit", type: "select", options: ["cover", "contain"] },
     ],
   },
 

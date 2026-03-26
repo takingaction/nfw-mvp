@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
-import { X, Save, Upload } from "lucide-react";
+import { X, Upload, Check } from "lucide-react";
 import { PageSection } from "@/lib/sections/types";
 import { SECTION_REGISTRY, EditorField } from "@/lib/sections/registry";
 import { uploadImage } from "@/lib/upload";
@@ -153,6 +153,74 @@ function FieldEditor({
     );
   }
 
+  if (field.type === "video") {
+    const fileInputRef = { current: null as HTMLInputElement | null };
+
+    return (
+      <div>
+        <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
+          {field.label}
+        </label>
+
+        {typeof value === "string" && value && isValidUrl(value) && (
+          <div className="relative mb-2 group w-full h-40 bg-nfw-blackberry/10 rounded overflow-hidden">
+            <video
+              src={value as string}
+              className="w-full h-full object-cover"
+              muted
+              playsInline
+            />
+            <button
+              onClick={() => onChange("")}
+              className="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-nfw-blackberry/20 hover:border-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
+        >
+          <Upload className="w-4 h-4 text-nfw-blackberry/40" />
+          <span className="text-sm text-nfw-blackberry/50">
+            {value ? "Replace video" : "Upload video"}
+          </span>
+        </button>
+
+        <input
+          ref={(el) => {
+            fileInputRef.current = el;
+          }}
+          type="file"
+          accept="video/mp4,video/webm,video/ogg"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            try {
+              const url = await uploadImage(file, "sections");
+              onChange(url);
+            } catch (err) {
+              console.error("Upload error:", err);
+              alert("Upload failed: " + (err as Error).message);
+            }
+          }}
+        />
+
+        <input
+          type="text"
+          value={(value as string) ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Or paste a video URL directly"
+          className="mt-2 w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry transition-colors text-nfw-blackberry/40"
+        />
+      </div>
+    );
+  }
+
   if (field.type === "string-array") {
     const arr = (value as string[]) ?? [];
 
@@ -190,6 +258,25 @@ function FieldEditor({
             + Add {field.itemLabel}
           </button>
         </div>
+      </div>
+    );
+  }
+
+  if (field.type === "boolean") {
+    const isChecked = value === true || value === "true";
+
+    return (
+      <div className="flex items-center gap-3">
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isChecked}
+            onChange={(e) => onChange(e.target.checked)}
+            className="sr-only peer"
+          />
+          <div className="w-11 h-6 bg-nfw-blackberry/20 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-nfw-blackberry/30 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-nfw-blackberry/30 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-nfw-citrine"></div>
+        </label>
+        <span className="text-sm text-nfw-blackberry/70">{field.label}</span>
       </div>
     );
   }
@@ -300,13 +387,41 @@ export default function SectionEditorPanel({
   const [content, setContent] = useState<Record<string, unknown>>(
     section.content as Record<string, unknown>,
   );
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const contentRef = useRef<Record<string, unknown>>(content);
+
+  useEffect(() => {
+    contentRef.current = content;
+  }, [content]);
 
   useEffect(() => {
     setContent(section.content as Record<string, unknown>);
+    setSaveStatus("idle");
   }, [section.id]);
 
+  const triggerAutoSave = useCallback((contentToSave: Record<string, unknown>) => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+    setSaveStatus("saving");
+    saveTimerRef.current = setTimeout(() => {
+      onSave(contentToSave);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    }, 500);
+  }, [onSave]);
+
   const updateField = (key: string, value: unknown) => {
-    setContent((prev) => ({ ...prev, [key]: value }));
+    let updatedContent: Record<string, unknown>;
+    setContent((prev) => {
+      updatedContent = { ...prev, [key]: value };
+      if (key === "autoplay" && value === true && prev.muted !== true) {
+        updatedContent!.muted = true;
+      }
+      return updatedContent!;
+    });
+    triggerAutoSave(updatedContent!);
   };
 
   if (!def) {
@@ -322,7 +437,17 @@ export default function SectionEditorPanel({
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-6 py-4 border-b border-nfw-blackberry/5 flex-shrink-0">
-        <h3 className="font-black text-nfw-blackberry font-ui">{def.label}</h3>
+        <div className="flex items-center gap-3">
+          <h3 className="font-black text-nfw-blackberry font-ui">{def.label}</h3>
+          {saveStatus === "saving" && (
+            <span className="text-xs text-nfw-blackberry/50 animate-pulse">Saving...</span>
+          )}
+          {saveStatus === "saved" && (
+            <span className="flex items-center gap-1 text-xs text-green-600">
+              <Check className="w-3 h-3" /> Saved
+            </span>
+          )}
+        </div>
         <button
           onClick={onClose}
           className="p-1.5 text-nfw-blackberry/40 hover:text-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
@@ -340,17 +465,6 @@ export default function SectionEditorPanel({
             onChange={(val) => updateField(field.key, val)}
           />
         ))}
-      </div>
-
-      <div className="px-6 py-4 border-t border-nfw-blackberry/5 flex-shrink-0">
-        <button
-          onClick={() => onSave(content)}
-          disabled={saving}
-          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-nfw-blackberry text-white font-bold hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors"
-        >
-          <Save className="w-4 h-4" />
-          {saving ? "Saving..." : "Save Section"}
-        </button>
       </div>
     </div>
   );
