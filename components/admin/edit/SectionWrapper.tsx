@@ -33,7 +33,7 @@ export default function SectionWrapper({
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Hidden overlay */}
-      {!section.visible && (
+      {!section.visible && section.visible !== undefined && (
         <div className="absolute inset-0 bg-black/50 z-10 flex items-center justify-center">
           <button
             onClick={onToggleVisibility}
@@ -49,12 +49,12 @@ export default function SectionWrapper({
       )}
 
       {/* Section content */}
-      <div className={`relative ${!section.visible ? "opacity-30 pointer-events-none" : ""}`}>
+      <div className={`relative ${!section.visible && section.visible !== undefined ? "opacity-30 pointer-events-none" : ""}`}>
         <SectionRenderer sections={[section]} />
       </div>
 
-      {/* Floating controls */}
-      {section.visible && (
+      {/* Floating controls - show if visible is true or undefined (treat undefined as visible) */}
+      {(section.visible === undefined || section.visible) && (
         <FloatingControls
           isVisible={isHovered}
           isFirst={isFirst}
