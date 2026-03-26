@@ -28,7 +28,7 @@ export default async function DynamicPage({
     redirect("/");
   }
 
-  const { data: sections, error } = await supabase
+  const { data: sections } = await supabase
     .from("page_sections")
     .select("*")
     .eq("page_id", page.id)
@@ -36,13 +36,10 @@ export default async function DynamicPage({
     .eq("visible", true)
     .order("order_index");
 
-  // DEBUG: Return error info so we can see it in page source
-  if (error) {
-    return <div>Error: {error.message}</div>;
+  try {
+    return <SectionRenderer sections={sections ?? []} />;
+  } catch (e) {
+    console.error("SectionRenderer error:", e);
+    return <div>Error rendering sections</div>;
   }
-  if (!sections || sections.length === 0) {
-    return <div>No sections found for page_id: {page.id} (slug: {slug})</div>;
-  }
-
-  return <SectionRenderer sections={sections ?? []} />;
 }
