@@ -2,6 +2,48 @@ export async function uploadImage(
   file: File,
   folder: string = "sections",
 ): Promise<string> {
+  const isVideo = file.type.startsWith("video/");
+
+  // For large videos, use signed URL approach to bypass Vercel's 4.5MB limit
+  if (isVideo && file.size > 4 * 1024 * 1024) {
+    // First, get a signed URL from our API
+    const ext = file.name.split(".").pop() || "bin";
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const fileName = `${folder}/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${sanitizedName.endsWith(`.${ext}`) ? sanitizedName : `${sanitizedName}.${ext}`}`;
+
+    const signResponse = await fetch("/api/upload/sign-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileName: fileName,
+        fileType: file.type,
+        fileSize: file.size,
+      }),
+    });
+
+    const signData = await signResponse.json();
+
+    if (!signResponse.ok) {
+      throw new Error(signData.error ?? "Failed to get signed URL");
+    }
+
+    // Upload directly to Supabase Storage using the signed URL
+    const uploadResponse = await fetch(signData.signedUrl, {
+      method: "PUT",
+      body: file,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error("Failed to upload file to storage");
+    }
+
+    // Return the public URL (remove the query string from signed URL)
+    return signData.signedUrl.split("?")[0];
+  }
+
+  // For images and smaller files, upload normally through API
   const formData = new FormData();
   formData.append("file", file);
   formData.append("folder", folder);
@@ -15,22 +57,6 @@ export async function uploadImage(
 
   if (!response.ok) {
     throw new Error(data.error ?? "Upload failed");
-  }
-
-  // If API returned a signed URL, upload directly to Supabase Storage
-  // This bypasses Vercel's 4.5MB payload limit for large files
-  if (data.signedUrl) {
-    const uploadResponse = await fetch(data.signedUrl, {
-      method: "PUT",
-      body: file,
-    });
-
-    if (!uploadResponse.ok) {
-      throw new Error("Failed to upload file to storage");
-    }
-
-    // Return the public URL (remove the query string from signed URL)
-    return data.signedUrl.split("?")[0];
   }
 
   return data.url;
