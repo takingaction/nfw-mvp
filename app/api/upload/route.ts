@@ -69,18 +69,40 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const { error } = await supabaseAdmin.storage
-      .from("page-builder")
-      .upload(fileName, buffer, {
-        contentType: file.type,
-        cacheControl: "3600",
-        upsert: false,
-      });
+    let uploadError = null;
+    let uploadResult = null;
+    
+    try {
+      const uploadResponse = await Promise.race([
+        supabaseAdmin.storage
+          .from("page-builder")
+          .upload(fileName, buffer, {
+            contentType: file.type,
+            cacheControl: "3600",
+            upsert: false,
+          }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Upload timed out after 30 seconds")), 30000)
+        )
+      ]);
+      uploadResult = uploadResponse;
+    } catch (err: any) {
+      uploadError = err;
+    }
 
-    if (error) {
-      console.error("Storage upload error:", error);
+    if (uploadError) {
+      console.error("Storage upload error:", uploadError);
       return NextResponse.json(
-        { error: `Failed to upload file: ${error.message}` },
+        { error: `Upload failed: ${uploadError.message}` },
+        { status: 500 },
+      );
+    }
+
+    const { error: urlError } = uploadResult as { error: any };
+    if (urlError) {
+      console.error("Storage upload error:", urlError);
+      return NextResponse.json(
+        { error: `Failed to upload file: ${urlError.message}` },
         { status: 500 },
       );
     }
