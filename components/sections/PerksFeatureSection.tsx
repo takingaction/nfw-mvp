@@ -5,7 +5,6 @@ import {
   getTextColorForBackground,
   getEyebrowColorForBackground,
   getPrimaryButtonClass,
-  getLogoFilterClass,
 } from "@/lib/colors";
 
 interface Props {
@@ -18,9 +17,8 @@ export default function PerksFeatureSection({ content }: Props) {
   const textColor = getTextColorForBackground(c.background);
   const eyebrowColor = getEyebrowColorForBackground(c.background);
   const ctaClass = getPrimaryButtonClass(c.background);
-  const logoFilterClass = getLogoFilterClass(c.background);
-
   const parts = (c.headline || "").split(c.headline_italic_phrase || "");
+  const shouldWhiteLogos = c.background && c.background !== "dove";
   const logos = c.logos ?? [];
   const scrollLogos = [...logos, ...logos];
 
@@ -81,7 +79,8 @@ export default function PerksFeatureSection({ content }: Props) {
                     <img
                       src={logoSrc}
                       alt={logo.name}
-                      className={`h-full w-auto object-contain ${logoFilterClass}`}
+                      className="h-full w-auto object-contain"
+                      style={shouldWhiteLogos ? { filter: 'brightness(0) invert(1)' } : undefined}
                     />
                   </div>
                 );
