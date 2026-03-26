@@ -1,5 +1,6 @@
 import { PageSection } from "@/lib/sections/types";
 import HeroSection from "./HeroSection";
+import HeroVideoSection from "./HeroVideoSection";
 import StatsBarSection from "./StatsBarSection";
 import MissionQuoteSection from "./MissionQuoteSection";
 import ThreeColFeaturesSection from "./ThreeColFeaturesSection";
@@ -17,14 +18,19 @@ interface Props {
 }
 
 export default function SectionRenderer({ sections }: Props) {
+  console.log("SectionRenderer received:", sections.map(s => ({ type: s.section_type, id: s.id })));
+  
   return (
     <>
       {sections.map((section) => {
         const content = section.content as Record<string, unknown>;
+        console.log("Rendering section:", section.section_type, "content keys:", Object.keys(content));
 
         switch (section.section_type) {
           case "hero":
             return <HeroSection key={section.id} content={content} />;
+          case "hero_video":
+            return <HeroVideoSection key={section.id} content={content} />;
           case "stats_bar":
             return <StatsBarSection key={section.id} content={content} />;
           case "mission_quote":
