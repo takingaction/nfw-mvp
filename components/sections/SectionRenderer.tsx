@@ -25,7 +25,7 @@ export default function SectionRenderer({ sections }: Props) {
   return (
     <>
       {sections.map((section) => {
-        const content = section.content as Record<string, unknown>;
+        const content = (section.content || {}) as Record<string, unknown>;
 
         switch (section.section_type) {
           case "hero":
