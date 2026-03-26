@@ -1,0 +1,6 @@
+{
+  "allowedOrigins": ["https://nfw-mvp-4n2i.vercel.app", "http://localhost:3000"],
+  "allowedMethods": ["GET", "PUT", "POST", "DELETE", "OPTIONS"],
+  "allowedHeaders": ["*"],
+  "maxAgeSeconds": 3600
+}

@@ -1,58 +1,44 @@
+import { createClient } from "@supabase/supabase-js";
+
 export async function uploadImage(
   file: File,
   folder: string = "sections",
 ): Promise<string> {
   const isVideo = file.type.startsWith("video/");
 
-  // For large videos, use signed URL approach to bypass Vercel's 4.5MB limit
+  // For large videos, use Supabase client directly from browser
+  // This bypasses Vercel's 4.5MB limit and SDK handles CORS automatically
   if (isVideo && file.size > 4 * 1024 * 1024) {
-    // First, get a signed URL from our API
     const ext = file.name.split(".").pop() || "bin";
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
     const fileName = `${folder}/${Date.now()}-${Math.random()
       .toString(36)
       .slice(2)}.${sanitizedName.endsWith(`.${ext}`) ? sanitizedName : `${sanitizedName}.${ext}`}`;
 
-    const signResponse = await fetch("/api/upload/sign-url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fileName: fileName,
-        fileType: file.type,
-        fileSize: file.size,
-      }),
-    });
+    // Use Supabase browser client directly - it handles CORS automatically
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
 
-    const signData = await signResponse.json();
+    const { data, error } = await supabase.storage
+      .from("page-builder")
+      .upload(fileName, file, {
+        upsert: true,
+        contentType: file.type,
+      });
 
-    if (!signResponse.ok) {
-      throw new Error(signData.error ?? "Failed to get signed URL");
+    if (error) {
+      console.error("Supabase upload error:", error);
+      throw new Error(`Upload failed: ${error.message}`);
     }
 
-    console.log("Got signed URL:", signData.signedUrl);
+    // Return the public URL
+    const { data: urlData } = supabase.storage
+      .from("page-builder")
+      .getPublicUrl(fileName);
 
-    // The signed URL format is:
-    // https://xxx.supabase.co/storage/v1/object/upload/sign/bucket/path?token=xxx
-    // We need to upload via PUT to this URL with proper headers
-    const uploadResponse = await fetch(signData.signedUrl, {
-      method: "PUT",
-      headers: {
-        "Content-Type": file.type,
-        "apikey": process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      },
-      body: file,
-    });
-
-    console.log("Upload response status:", uploadResponse.status);
-
-    if (!uploadResponse.ok) {
-      const text = await uploadResponse.text();
-      console.error("Upload failed:", uploadResponse.status, text);
-      throw new Error(`Upload failed: ${uploadResponse.status}`);
-    }
-
-    // Return the public URL using Supabase storage URL format
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${fileName}`;
+    return urlData.publicUrl;
   }
 
   // For images and smaller files, upload normally through API
