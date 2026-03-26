@@ -23,15 +23,6 @@ const VIDEO_MAX_SIZE = 50 * 1024 * 1024; // 50MB for videos
 
 export async function POST(request: NextRequest) {
   try {
-    // Check content-length header before processing
-    const contentLength = request.headers.get("content-length");
-    if (contentLength && parseInt(contentLength) > 50 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: "File too large. Maximum size is 50MB." },
-        { status: 413 }
-      );
-    }
-
     const supabase = await createServerClient();
     const {
       data: { user },
@@ -75,43 +66,45 @@ export async function POST(request: NextRequest) {
       .toString(36)
       .slice(2)}.${sanitizedName.endsWith(`.${ext}`) ? sanitizedName : `${sanitizedName}.${ext}`}`;
 
+    // For large files (videos), use direct upload via signed URL
+    // This bypasses Vercel's 4.5MB payload limit
+    if (isVideo && file.size > 4 * 1024 * 1024) {
+      // Create a signed upload URL
+      const { data: signData, error: signError } = await supabaseAdmin.storage
+        .from("page-builder")
+        .createSignedUploadUrl(fileName);
+
+      if (signError || !signData) {
+        console.error("Failed to create signed URL:", signError);
+        return NextResponse.json(
+          { error: "Failed to initiate upload. Please try again." },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        signedUrl: signData.signedUrl,
+        token: signData.token,
+        fileName: fileName,
+      });
+    }
+
+    // For smaller files (images), upload directly through API
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    let uploadError = null;
-    let uploadResult = null;
-    
-    try {
-      const uploadResponse = await Promise.race([
-        supabaseAdmin.storage
-          .from("page-builder")
-          .upload(fileName, buffer, {
-            contentType: file.type,
-            cacheControl: "3600",
-            upsert: false,
-          }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Upload timed out after 30 seconds")), 30000)
-        )
-      ]);
-      uploadResult = uploadResponse;
-    } catch (err: any) {
-      uploadError = err;
-    }
+    const { error } = await supabaseAdmin.storage
+      .from("page-builder")
+      .upload(fileName, buffer, {
+        contentType: file.type,
+        cacheControl: "3600",
+        upsert: false,
+      });
 
-    if (uploadError) {
-      console.error("Storage upload error:", uploadError);
+    if (error) {
+      console.error("Storage upload error:", error);
       return NextResponse.json(
-        { error: `Upload failed: ${uploadError.message}` },
-        { status: 500 },
-      );
-    }
-
-    const { error: urlError } = uploadResult as { error: any };
-    if (urlError) {
-      console.error("Storage upload error:", urlError);
-      return NextResponse.json(
-        { error: `Failed to upload file: ${urlError.message}` },
+        { error: `Failed to upload file: ${error.message}` },
         { status: 500 },
       );
     }
@@ -123,23 +116,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: urlData.publicUrl });
   } catch (err: any) {
     console.error("Upload error:", err);
-    
-    // Check if error is a response from Supabase (might be HTML)
-    if (err?.message?.includes("fetch failed") || err?.cause?.message?.includes("fetch failed")) {
-      return NextResponse.json(
-        { error: "Supabase connection failed. Please try again." },
-        { status: 502 },
-      );
-    }
-    
-    // Check for timeout
-    if (err?.message?.includes("timed out")) {
-      return NextResponse.json(
-        { error: "Upload timed out. Please try a smaller file or check your connection." },
-        { status: 504 },
-      );
-    }
-    
     const message = err instanceof Error ? err.message : "An error occurred during upload";
     return NextResponse.json(
       { error: message },
