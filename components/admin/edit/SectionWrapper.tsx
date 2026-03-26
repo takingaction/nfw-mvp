@@ -5,6 +5,20 @@ import { PageSection } from "@/lib/sections/types";
 import SectionRenderer from "@/components/sections/SectionRenderer";
 import FloatingControls from "./FloatingControls";
 
+const SECTIONS_WITH_EXTERNAL_DEPS = ["zero_dollar_store_teaser", "hero_video"];
+
+function hasExternalDependencies(sectionType: string): boolean {
+  return SECTIONS_WITH_EXTERNAL_DEPS.includes(sectionType);
+}
+
+function getSectionTypeLabel(sectionType: string): string {
+  const labels: Record<string, string> = {
+    zero_dollar_store_teaser: "Zero Dollar Store Teaser",
+    hero_video: "Hero Video",
+  };
+  return labels[sectionType] || sectionType;
+}
+
 interface Props {
   section: PageSection;
   isFirst: boolean;
@@ -50,7 +64,19 @@ export default function SectionWrapper({
 
       {/* Section content */}
       <div className={`relative ${!section.visible && section.visible !== undefined ? "opacity-30 pointer-events-none" : ""}`}>
-        <SectionRenderer sections={[section]} />
+        {hasExternalDependencies(section.section_type) ? (
+          <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center min-h-[200px] text-center">
+            <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mb-4">
+              <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <p className="text-sm font-semibold text-gray-600 mb-1">{getSectionTypeLabel(section.section_type)}</p>
+            <p className="text-xs text-gray-400">Dynamic content - visible on live page</p>
+          </div>
+        ) : (
+          <SectionRenderer sections={[section]} />
+        )}
       </div>
 
       {/* Floating controls - show if visible is true or undefined (treat undefined as visible) */}
