@@ -17,14 +17,14 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const supabase = await createClient();
 
+    let memberKey = "guest";
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (user) {
+      memberKey = user.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
     }
-
-    const memberKey = user.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 
     const params: Record<string, string> = {
       member_key: memberKey,

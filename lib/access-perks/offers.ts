@@ -159,9 +159,10 @@ export async function getOfferUsesRemaining(
 /**
  * Get all categories
  */
-export async function getCategories(memberKey: string) {
+export async function getCategories(memberKey: string | null) {
   try {
-    const url = `${process.env.ACCESS_OFFERS_API_URL}/v1/categories?access_token=${process.env.ACCESS_OFFERS_TOKEN}&member_key=${memberKey}`;
+    const baseUrl = `${process.env.ACCESS_OFFERS_API_URL}/v1/categories?access_token=${process.env.ACCESS_OFFERS_TOKEN}`;
+    const url = memberKey ? `${baseUrl}&member_key=${memberKey}` : baseUrl;
 
     const response = await fetch(url, {
       method: "GET",

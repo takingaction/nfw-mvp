@@ -14,16 +14,18 @@ export async function GET(request: Request) {
     const offerTypes = searchParams.get("offer_types");
     const query = searchParams.get("query");
 
+    let isAuthenticated = false;
+
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    let memberKey = "guest";
+    if (user) {
+      isAuthenticated = true;
+      memberKey = user.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
     }
-
-    const memberKey = user.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 
     const params: any = {
       member_key: memberKey,
@@ -135,6 +137,7 @@ export async function GET(request: Request) {
         total_locations: result.info?.total_locations || 0,
       },
       groups,
+      isAuthenticated,
     });
   } catch (error: unknown) {
     console.error("Rollup error:", error);

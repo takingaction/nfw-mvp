@@ -49,6 +49,7 @@ export default function RecentRedemptions() {
       }
 
       const data = await response.json();
+      console.log("Redemptions data:", data.redemptions?.[0]?.offer_title);
       setRedemptions(data.redemptions || []);
     } catch (err: any) {
       console.error("Fetch redemptions error:", err);
@@ -131,6 +132,13 @@ export default function RecentRedemptions() {
       default:
         return "bg-gray-100 text-gray-700";
     }
+  };
+
+  const decodeHtml = (html: string) => {
+    if (!html) return "";
+    const textarea = document.createElement("textarea");
+    textarea.innerHTML = html;
+    return textarea.value;
   };
 
   if (loading) {
@@ -216,13 +224,15 @@ export default function RecentRedemptions() {
                   {/* Store & Title */}
                   <div className="mb-2">
                     {redemption.store_name && (
-                      <p className="text-xs font-semibold text-nfw-blackberry mb-0.5">
-                        {redemption.store_name}
-                      </p>
+                      <p
+                        className="text-xs font-semibold text-nfw-blackberry mb-0.5"
+                        dangerouslySetInnerHTML={{ __html: decodeHtml(redemption.store_name) }}
+                      />
                     )}
-                    <h3 className="text-sm font-medium text-nfw-blackberry/80 line-clamp-1">
-                      {redemption.offer_title}
-                    </h3>
+                    <h3
+                      className="text-sm font-medium text-nfw-blackberry/80 line-clamp-1"
+                      dangerouslySetInnerHTML={{ __html: decodeHtml(redemption.offer_title) }}
+                    />
                   </div>
 
                   {/* Type & Date */}

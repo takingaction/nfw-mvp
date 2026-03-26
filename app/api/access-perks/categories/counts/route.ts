@@ -18,11 +18,10 @@ export async function GET() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    let memberKey = "guest";
+    if (user) {
+      memberKey = user.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
     }
-
-    const memberKey = user.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 
     const result = await searchOffers({
       member_key: memberKey,

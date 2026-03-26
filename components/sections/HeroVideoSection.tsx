@@ -8,7 +8,9 @@ interface Props {
 
 export default function HeroVideoSection({ content }: Props) {
   const c = content as unknown as HeroVideoContent;
-  const parts = c.headline.split(c.headline_italic_phrase);
+  const headline = c.headline || "";
+  const italicPhrase = c.headline_italic_phrase || "";
+  const parts = headline.split(italicPhrase);
 
   return (
     <section className="relative bg-nfw-aubergine overflow-hidden">
@@ -26,7 +28,7 @@ export default function HeroVideoSection({ content }: Props) {
               {parts[1]}
             </h1>
             <p className="font-serif italic text-xl lg:text-3xl text-white leading-relaxed">
-              {c.subheadline}
+              {c.subheadline || ""}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
               <Link

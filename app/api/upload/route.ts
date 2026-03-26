@@ -13,9 +13,13 @@ const ALLOWED_TYPES = [
   "image/gif",
   "image/webp",
   "image/svg+xml",
+  "video/mp4",
+  "video/webm",
+  "video/ogg",
 ];
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const IMAGE_MAX_SIZE = 3 * 1024 * 1024;  // 3MB for images
+const VIDEO_MAX_SIZE = 50 * 1024 * 1024; // 50MB for videos
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,9 +48,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (file.size > MAX_FILE_SIZE) {
+    const isVideo = file.type.startsWith("video/");
+    const maxSize = isVideo ? VIDEO_MAX_SIZE : IMAGE_MAX_SIZE;
+    const fileType = isVideo ? "videos" : "images";
+
+    if (file.size > maxSize) {
+      const limitMB = maxSize / (1024 * 1024);
       return NextResponse.json(
-        { error: "File size exceeds 5MB limit" },
+        { error: `File size exceeds ${limitMB}MB limit for ${fileType}` },
         { status: 400 },
       );
     }
@@ -69,8 +78,9 @@ export async function POST(request: NextRequest) {
       });
 
     if (error) {
+      console.error("Storage upload error:", error);
       return NextResponse.json(
-        { error: "Failed to upload file" },
+        { error: `Failed to upload file: ${error.message}` },
         { status: 500 },
       );
     }
@@ -80,9 +90,11 @@ export async function POST(request: NextRequest) {
       .getPublicUrl(fileName);
 
     return NextResponse.json({ url: urlData.publicUrl });
-  } catch {
+  } catch (err) {
+    console.error("Upload error:", err);
+    const message = err instanceof Error ? err.message : "An error occurred during upload";
     return NextResponse.json(
-      { error: "An error occurred during upload" },
+      { error: message },
       { status: 500 },
     );
   }

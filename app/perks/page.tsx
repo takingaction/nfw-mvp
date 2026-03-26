@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { AlertTriangle, SlidersHorizontal, X } from "lucide-react";
 import PerksSearch from "@/components/perks/PerksSearch";
 import OfferCard from "@/components/perks/OfferCard";
@@ -54,6 +55,16 @@ export default function PerksPage() {
   const [categoryCounts, setCategoryCounts] = useState<Record<number, number>>({});
   const [selectedOfferKey, setSelectedOfferKey] = useState<string | null>(null);
   const [isOfferPanelOpen, setIsOfferPanelOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    fetchUser();
+  }, []);
 
   const clearAllFilters = () => {
     setSelectedCategories([]);
@@ -193,6 +204,11 @@ export default function PerksPage() {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
+          if (response.status === 401) {
+            setError("Please sign in to view offers.");
+            setLoading(false);
+            return;
+          }
           throw new Error(errorData.error || "Failed to fetch results");
         }
 
@@ -239,6 +255,11 @@ export default function PerksPage() {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
+          if (response.status === 401) {
+            setError("Please sign in to view offers.");
+            setLoading(false);
+            return;
+          }
           throw new Error(errorData.error || "Failed to fetch results");
         }
 
@@ -299,6 +320,12 @@ export default function PerksPage() {
 
         if (response.status === 503 || errorData.error?.includes("503")) {
           throw new Error("SERVICE_UNAVAILABLE");
+        }
+
+        if (response.status === 401) {
+          setError("Please sign in to view offers.");
+          setLoading(false);
+          return;
         }
 
         throw new Error(errorData.error || "Failed to fetch offers");
@@ -614,6 +641,7 @@ export default function PerksPage() {
         offerKey={selectedOfferKey}
         isOpen={isOfferPanelOpen}
         onClose={() => setIsOfferPanelOpen(false)}
+        isAuthenticated={!!user}
       />
     </main>
   );

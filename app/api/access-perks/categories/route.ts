@@ -10,12 +10,11 @@ export async function GET(_request: Request) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
-    // Sanitize member_key
-    const memberKey = user.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    let memberKey = "guest";
+    if (user) {
+      memberKey = user.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    }
 
     // Get categories
     const result = await getCategories(memberKey);

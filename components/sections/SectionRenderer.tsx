@@ -18,13 +18,10 @@ interface Props {
 }
 
 export default function SectionRenderer({ sections }: Props) {
-  console.log("SectionRenderer received:", sections.map(s => ({ type: s.section_type, id: s.id })));
-  
   return (
     <>
       {sections.map((section) => {
         const content = section.content as Record<string, unknown>;
-        console.log("Rendering section:", section.section_type, "content keys:", Object.keys(content));
 
         switch (section.section_type) {
           case "hero":

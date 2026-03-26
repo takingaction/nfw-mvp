@@ -36,10 +36,5 @@ export default async function DynamicPage({
     .eq("visible", true)
     .order("order_index");
 
-  try {
-    return <SectionRenderer sections={sections ?? []} />;
-  } catch (e) {
-    console.error("SectionRenderer error:", e);
-    return <div>Error rendering sections</div>;
-  }
+  return <SectionRenderer sections={sections ?? []} />;
 }

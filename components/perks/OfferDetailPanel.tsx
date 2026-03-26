@@ -14,13 +14,16 @@ import {
   XCircle,
   ArrowLeft,
   Globe,
+  User,
 } from "lucide-react";
+import Link from "next/link";
 import LocationSelector from "@/components/LocationSelector";
 
 interface OfferDetailPanelProps {
   offerKey: string | null;
   isOpen: boolean;
   onClose: () => void;
+  isAuthenticated?: boolean;
 }
 
 interface Offer {
@@ -45,6 +48,7 @@ export default function OfferDetailPanel({
   offerKey,
   isOpen,
   onClose,
+  isAuthenticated = true,
 }: OfferDetailPanelProps) {
   const [offer, setOffer] = useState<Offer | null>(null);
   const [loading, setLoading] = useState(false);
@@ -78,7 +82,12 @@ export default function OfferDetailPanel({
       setIsVisible(true);
       setIsAnimating(true);
       if (offerKey) {
-        fetchOffer(offerKey);
+        if (isAuthenticated) {
+          fetchOffer(offerKey);
+        } else {
+          setError("Sign in to see offer details");
+          setLoading(false);
+        }
       }
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -96,7 +105,7 @@ export default function OfferDetailPanel({
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, offerKey]);
+  }, [isOpen, offerKey, isAuthenticated]);
 
   const fetchOffer = async (key: string) => {
     setLoading(true);
@@ -105,6 +114,9 @@ export default function OfferDetailPanel({
       const response = await fetch(`/api/access-perks/offers/${key}`);
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Sign in to see offer details");
+        }
         throw new Error("Failed to fetch offer");
       }
 
@@ -397,17 +409,44 @@ export default function OfferDetailPanel({
           {error && !loading && (
             <div className="flex-1 flex items-center justify-center p-6">
               <div className="text-center">
-                <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-nfw-blackberry mb-2">
-                  Offer Not Found
-                </h2>
-                <p className="text-nfw-blackberry/60 mb-6">{error}</p>
-                <button
-                  onClick={onClose}
-                  className="px-6 py-3 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 font-medium transition-colors"
-                >
-                  Close
-                </button>
+                {error === "Sign in to see offer details" ? (
+                  <>
+                    <User className="w-16 h-16 text-nfw-blackberry/30 mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold text-nfw-blackberry mb-2">
+                      Sign In Required
+                    </h2>
+                    <p className="text-nfw-blackberry/60 mb-6">
+                      Please sign in to see offer details and redeem offers.
+                    </p>
+                    <Link
+                      href="/auth/sign-up"
+                      className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 font-medium transition-colors"
+                    >
+                      <User className="w-4 h-4" />
+                      Sign In
+                    </Link>
+                    <button
+                      onClick={onClose}
+                      className="block w-full mt-3 text-nfw-blackberry/50 hover:text-nfw-blackberry text-sm"
+                    >
+                      Close
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold text-nfw-blackberry mb-2">
+                      Offer Not Found
+                    </h2>
+                    <p className="text-nfw-blackberry/60 mb-6">{error}</p>
+                    <button
+                      onClick={onClose}
+                      className="px-6 py-3 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 font-medium transition-colors"
+                    >
+                      Close
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -726,90 +765,107 @@ export default function OfferDetailPanel({
 
                 {offer.redemption_methods && offer.redemption_methods.length > 0 && (
                   <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
-                    <h3 className="text-base font-semibold text-nfw-blackberry mb-4">
-                      Redeem This Offer
-                    </h3>
-                    <div className="space-y-3">
-                      {offer.redemption_methods.includes("link") && (
-                        <button
-                          onClick={() => handleRedeem("link")}
-                          disabled={redeemingLink}
-                          className="w-full px-4 py-2.5 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
-                        >
-                          {redeemingLink ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Redeeming...
-                            </>
-                          ) : (
-                            <>
-                              <Globe className="w-4 h-4" />
-                              Redeem Online
-                            </>
+                    {isAuthenticated ? (
+                      <>
+                        <h3 className="text-base font-semibold text-nfw-blackberry mb-4">
+                          Redeem This Offer
+                        </h3>
+                        <div className="space-y-3">
+                          {offer.redemption_methods.includes("link") && (
+                            <button
+                              onClick={() => handleRedeem("link")}
+                              disabled={redeemingLink}
+                              className="w-full px-4 py-2.5 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                            >
+                              {redeemingLink ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Redeeming...
+                                </>
+                              ) : (
+                                <>
+                                  <Globe className="w-4 h-4" />
+                                  Redeem Online
+                                </>
+                              )}
+                            </button>
                           )}
-                        </button>
-                      )}
 
-                      {offer.redemption_methods.includes("instore") && (
-                        <button
-                          onClick={() => handleRedeem("instore")}
-                          disabled={redeemingInstore}
-                          className="w-full px-4 py-2.5 bg-nfw-lilac text-nfw-blackberry rounded-xl hover:bg-nfw-lilac/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
-                        >
-                          {redeemingInstore ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Redeeming...
-                            </>
-                          ) : (
-                            <>
-                              <Store className="w-4 h-4" />
-                              Redeem In-Store
-                            </>
+                          {offer.redemption_methods.includes("instore") && (
+                            <button
+                              onClick={() => handleRedeem("instore")}
+                              disabled={redeemingInstore}
+                              className="w-full px-4 py-2.5 bg-nfw-lilac text-nfw-blackberry rounded-xl hover:bg-nfw-lilac/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                            >
+                              {redeemingInstore ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Redeeming...
+                                </>
+                              ) : (
+                                <>
+                                  <Store className="w-4 h-4" />
+                                  Redeem In-Store
+                                </>
+                              )}
+                            </button>
                           )}
-                        </button>
-                      )}
 
-                      {offer.redemption_methods.includes("instore_print") && (
-                        <button
-                          onClick={() => handleRedeem("instore_print")}
-                          disabled={redeemingPrint}
-                          className="w-full px-4 py-2.5 bg-[#b2d1ee] text-nfw-blackberry rounded-xl hover:bg-[#b2d1ee]/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
-                        >
-                          {redeemingPrint ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Redeeming...
-                            </>
-                          ) : (
-                            <>
-                              <Printer className="w-4 h-4" />
-                              Print Coupon
-                            </>
+                          {offer.redemption_methods.includes("instore_print") && (
+                            <button
+                              onClick={() => handleRedeem("instore_print")}
+                              disabled={redeemingPrint}
+                              className="w-full px-4 py-2.5 bg-[#b2d1ee] text-nfw-blackberry rounded-xl hover:bg-[#b2d1ee]/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                            >
+                              {redeemingPrint ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Redeeming...
+                                </>
+                              ) : (
+                                <>
+                                  <Printer className="w-4 h-4" />
+                                  Print Coupon
+                                </>
+                              )}
+                            </button>
                           )}
-                        </button>
-                      )}
 
-                      {offer.redemption_methods.includes("call") && (
-                        <button
-                          onClick={() => handleRedeem("call")}
-                          disabled={redeemingCall}
-                          className="w-full px-4 py-2.5 bg-nfw-citrine text-nfw-blackberry rounded-xl hover:bg-nfw-citrine/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
-                        >
-                          {redeemingCall ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Redeeming...
-                            </>
-                          ) : (
-                            <>
-                              <Phone className="w-4 h-4" />
-                              Redeem by Phone
-                            </>
+                          {offer.redemption_methods.includes("call") && (
+                            <button
+                              onClick={() => handleRedeem("call")}
+                              disabled={redeemingCall}
+                              className="w-full px-4 py-2.5 bg-nfw-citrine text-nfw-blackberry rounded-xl hover:bg-nfw-citrine/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                            >
+                              {redeemingCall ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Redeeming...
+                                </>
+                              ) : (
+                                <>
+                                  <Phone className="w-4 h-4" />
+                                  Redeem by Phone
+                                </>
+                              )}
+                            </button>
                           )}
-                        </button>
-                      )}
-                    </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-sm text-nfw-blackberry/70 mb-4">
+                          Sign in to access exclusive offers and redeem coupons.
+                        </p>
+                        <Link
+                          href="/auth/sign-up"
+                          className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 transition-colors font-medium text-sm"
+                        >
+                          <User className="w-4 h-4" />
+                          Sign In
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
