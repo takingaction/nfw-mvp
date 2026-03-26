@@ -30,17 +30,24 @@ export async function uploadImage(
     }
 
     // Upload directly to Supabase Storage using the signed URL
+    console.log("Uploading to signed URL:", signData.signedUrl);
+    
     const uploadResponse = await fetch(signData.signedUrl, {
       method: "PUT",
       body: file,
     });
 
+    console.log("Upload response status:", uploadResponse.status);
+
     if (!uploadResponse.ok) {
-      throw new Error("Failed to upload file to storage");
+      const text = await uploadResponse.text();
+      console.error("Supabase upload failed:", uploadResponse.status, text);
+      throw new Error(`Failed to upload: ${uploadResponse.status} - ${text}`);
     }
 
     // Return the public URL (remove the query string from signed URL)
-    return signData.signedUrl.split("?")[0];
+    const publicUrl = signData.signedUrl.split("?")[0];
+    return publicUrl;
   }
 
   // For images and smaller files, upload normally through API
