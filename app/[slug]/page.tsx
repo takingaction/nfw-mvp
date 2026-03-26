@@ -36,7 +36,13 @@ export default async function DynamicPage({
     .eq("visible", true)
     .order("order_index");
 
-  console.log("DEBUG page sections:", JSON.stringify({ pageId: page.id, count: sections?.length, error, sections: sections?.map(s => ({ id: s.id, type: s.section_type, order: s.order_index })) }));
+  // DEBUG: Return error info so we can see it in page source
+  if (error) {
+    return <div>Error: {error.message}</div>;
+  }
+  if (!sections || sections.length === 0) {
+    return <div>No sections found for page_id: {page.id} (slug: {slug})</div>;
+  }
 
   return <SectionRenderer sections={sections ?? []} />;
 }
