@@ -28,13 +28,15 @@ export default async function DynamicPage({
     redirect("/");
   }
 
-  const { data: sections } = await supabase
+  const { data: sections, error } = await supabase
     .from("page_sections")
     .select("*")
     .eq("page_id", page.id)
     .eq("version", "live")
     .eq("visible", true)
     .order("order_index");
+
+  console.log("DEBUG page sections:", JSON.stringify({ pageId: page.id, count: sections?.length, error, sections: sections?.map(s => ({ id: s.id, type: s.section_type, order: s.order_index })) }));
 
   return <SectionRenderer sections={sections ?? []} />;
 }
