@@ -31,42 +31,28 @@ export async function uploadImage(
 
     console.log("Got signed URL:", signData.signedUrl);
 
-    // Use Supabase client to upload to signed URL
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    // Upload using fetch with PUT to the signed URL
+    // Supabase signed uploads require these headers
+    const uploadResponse = await fetch(signData.signedUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type,
+        "x-upsert": "true",
+      },
+      body: file,
+    });
 
-    // Extract token from signed URL
-    const url = new URL(signData.signedUrl);
-    const token = url.searchParams.get("token");
-    
-    if (!token) {
-      throw new Error("No token in signed URL");
+    console.log("Upload response status:", uploadResponse.status);
+
+    if (!uploadResponse.ok) {
+      const text = await uploadResponse.text();
+      console.error("Upload failed:", uploadResponse.status, text);
+      throw new Error(`Upload failed: ${uploadResponse.status}`);
     }
-
-    console.log("Uploading with token:", token.substring(0, 10) + "...");
-
-    const { data, error } = await supabase.storage
-      .from("page-builder")
-      .uploadToSignedUrl(fileName, token, file, {
-        contentType: file.type,
-      });
-
-    if (error) {
-      console.error("Supabase upload error:", error);
-      throw new Error(`Failed to upload: ${error.message}`);
-    }
-
-    console.log("Upload successful, path:", data.path);
 
     // Return the public URL
-    const { data: urlData } = supabase.storage
-      .from("page-builder")
-      .getPublicUrl(fileName);
-
-    return urlData.publicUrl;
+    const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${fileName}`;
+    return publicUrl;
   }
 
   // For images and smaller files, upload normally through API
