@@ -117,7 +117,8 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
                       Preview
                     </Link>
                     <Link
-                      href={`/admin/pages/${page.id}`}
+                      href={`/admin/edit/${page.slug}`}
+                      target="_blank"
                       className="px-4 py-2 text-sm font-semibold text-white bg-nfw-blackberry hover:bg-nfw-blackberry/90 transition-colors"
                     >
                       Edit Page
