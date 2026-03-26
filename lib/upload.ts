@@ -31,13 +31,14 @@ export async function uploadImage(
 
     console.log("Got signed URL:", signData.signedUrl);
 
-    // Upload using fetch with PUT to the signed URL
-    // Supabase signed uploads require these headers
+    // The signed URL format is:
+    // https://xxx.supabase.co/storage/v1/object/upload/sign/bucket/path?token=xxx
+    // We need to upload via PUT to this URL with proper headers
     const uploadResponse = await fetch(signData.signedUrl, {
       method: "PUT",
       headers: {
         "Content-Type": file.type,
-        "x-upsert": "true",
+        "apikey": process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       },
       body: file,
     });
@@ -50,9 +51,8 @@ export async function uploadImage(
       throw new Error(`Upload failed: ${uploadResponse.status}`);
     }
 
-    // Return the public URL
-    const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${fileName}`;
-    return publicUrl;
+    // Return the public URL using Supabase storage URL format
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${fileName}`;
   }
 
   // For images and smaller files, upload normally through API
