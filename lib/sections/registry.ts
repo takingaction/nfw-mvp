@@ -289,6 +289,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       cta_url: "/perks",
       logo_strip_eyebrow: "BRANDS SHOWING UP FOR WOMEN",
       logos: [],
+      background: "wisteria",
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
@@ -298,6 +299,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "cta_label", label: "CTA label", type: "text" },
       { key: "cta_url", label: "CTA URL", type: "url" },
       { key: "logo_strip_eyebrow", label: "Logo strip eyebrow", type: "text" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       {
         key: "logos",
         label: "Brand logos",
@@ -394,7 +396,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
         key: "background",
         label: "Background",
         type: "select",
-        options: ["dove", "aubergine", "wisteria"],
+        options: ["dove", "aubergine", "wisteria", "blackberry"],
       },
       {
         key: "testimonials",
@@ -492,19 +494,20 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       body: "Women across America are navigating rising costs, caregiving pressures, wage gaps, and unexpected emergencies — often without a safety net. NFW was created to change that.\n\nWe believe that small, consistent support creates lasting change. Through microgrants, exclusive perks, and a community that truly gets it, we help women find relief — not someday, but today.",
       cta_label: "Join the Community",
       cta_url: "/auth/sign-up",
+      background: "dove",
       items: [
         {
-          bg: "bg-nfw-citrine/20",
+          bg: "citrine",
           title: "Celebrate every woman",
           description: "We uplift and affirm all women — through daily life moments, feel-good content, and a community that champions your wins big and small.",
         },
         {
-          bg: "bg-nfw-lilac/20",
+          bg: "lilac",
           title: "Provide relief you can feel",
           description: "From microgrants to perks to the Zero Dollar Store, every benefit is designed to ease real pressure in your everyday life.",
         },
         {
-          bg: "bg-nfw-powder/20",
+          bg: "powder",
           title: "Champion shared interests",
           description: "NFW advocates for women at the individual level and the collective level — because what's good for one woman is good for all of us.",
         },
@@ -516,13 +519,14 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "body", label: "Body (2 paragraphs)", type: "textarea" },
       { key: "cta_label", label: "CTA label", type: "text" },
       { key: "cta_url", label: "CTA URL", type: "url" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       {
         key: "items",
         label: "Feature items",
         type: "array",
         itemLabel: "Item",
         fields: [
-          { key: "bg", label: "Background class (e.g. bg-nfw-citrine/20)", type: "text" },
+          { key: "bg", label: "Background color", type: "select", options: ["yellow", "green", "blue", "lavender", "citrine", "lilac", "powder"] },
           { key: "title", label: "Title", type: "text" },
           { key: "description", label: "Description", type: "textarea" },
         ],
@@ -539,25 +543,25 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       subheadline: "NFW membership is open to all women 18 and older residing in the United States. We welcome women from all backgrounds and circumstances.",
       cards: [
         {
-          color: "#fdf493",
+          color: "yellow",
           age: "18-34",
           title: "Young Women",
           description: "Navigating cost of living, student debt, and building a future in a complicated world.",
         },
         {
-          color: "#d4f1ad",
+          color: "green",
           age: "All ages",
           title: "Moms of Young Kids",
           description: "Balancing childcare costs, limited time, and the daily demands of raising a family.",
         },
         {
-          color: "#b2d1ee",
+          color: "blue",
           age: "Gen X",
           title: "Moms of Older Kids",
           description: "Managing college prep, work-life balance, and caring for loved ones all at once.",
         },
         {
-          color: "#bcafcf",
+          color: "lavender",
           age: "55+",
           title: "Grandmas and Elders",
           description: "Living on fixed incomes while supporting the next generation and leaving a legacy.",
@@ -574,7 +578,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
         type: "array",
         itemLabel: "Card",
         fields: [
-          { key: "color", label: "Color (hex e.g. #fdf493)", type: "text" },
+          { key: "color", label: "Color", type: "select", options: ["yellow", "green", "blue", "lavender", "citrine", "lilac", "powder"] },
           { key: "age", label: "Age label", type: "text" },
           { key: "title", label: "Title", type: "text" },
           { key: "description", label: "Description", type: "textarea" },
@@ -589,23 +593,24 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     defaultContent: {
       eyebrow: "What membership includes",
       headline: "Everything you need. Nothing you don't.",
+      background: "dove",
       cards: [
         {
-          color: "#d4f1ad",
+          color: "green",
           title: "Microgrants",
           description: "Apply for grants from $100 to $5,000 to cover emergency bills, childcare, medical costs, car repairs, and more. Real people review every application within 48 hours.",
           link: "/grants",
           cta: "Learn about grants",
         },
         {
-          color: "#b2d1ee",
+          color: "blue",
           title: "Perks and Discounts",
           description: "Access 1,000+ member-only deals on groceries, wellness, travel, childcare, and everyday essentials. Members save an average of $500+ per year.",
           link: "/perks/info",
           cta: "Explore perks",
         },
         {
-          color: "#fdf493",
+          color: "yellow",
           title: "Zero Dollar Store",
           description: "Claim free essential items whenever you need them — hygiene products, household items, and more. No questions asked, no judgment.",
           link: "/store",
@@ -616,13 +621,14 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
       { key: "headline", label: "Headline", type: "text" },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
       {
         key: "cards",
         label: "Cards",
         type: "array",
         itemLabel: "Card",
         fields: [
-          { key: "color", label: "Color (hex e.g. #d4f1ad)", type: "text" },
+          { key: "color", label: "Color", type: "select", options: ["yellow", "green", "blue", "lavender", "citrine", "lilac", "powder"] },
           { key: "title", label: "Title", type: "text" },
           { key: "description", label: "Description", type: "textarea" },
           { key: "link", label: "Link URL", type: "url" },

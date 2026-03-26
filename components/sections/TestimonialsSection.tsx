@@ -1,55 +1,79 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { TestimonialsContent } from "@/lib/sections/types";
+import { TestimonialsContent, BackgroundColor } from "@/lib/sections/types";
 
 interface Props {
   content: Record<string, unknown>;
 }
 
-const BG_CLASSES = {
-  dove: "bg-nfw-dove",
-  aubergine: "bg-nfw-aubergine",
-  wisteria: "bg-nfw-wisteria",
-};
-
-const TEXT_CLASSES = {
-  dove: "text-nfw-blackberry",
-  aubergine: "text-nfw-dove",
-  wisteria: "text-nfw-dove",
-};
-
-const MUTED_CLASSES = {
-  dove: "text-nfw-blackberry/50",
-  aubergine: "text-nfw-dove/50",
-  wisteria: "text-nfw-dove/50",
-};
-
-const RULE_CLASSES = {
+const RULE_CLASSES: Record<BackgroundColor, string> = {
   dove: "bg-nfw-aubergine",
   aubergine: "bg-nfw-citrine",
   wisteria: "bg-nfw-citrine",
+  blackberry: "bg-nfw-citrine",
 };
 
-const DOT_ACTIVE = {
+const DOT_ACTIVE: Record<BackgroundColor, string> = {
   dove: "bg-nfw-aubergine",
   aubergine: "bg-nfw-citrine",
   wisteria: "bg-nfw-citrine",
+  blackberry: "bg-nfw-citrine",
 };
 
-const DOT_INACTIVE = {
+const DOT_INACTIVE: Record<BackgroundColor, string> = {
   dove: "bg-nfw-blackberry/20",
   aubergine: "bg-nfw-dove/20",
   wisteria: "bg-nfw-dove/20",
+  blackberry: "bg-nfw-dove/20",
 };
 
 export default function TestimonialsSection({ content }: Props) {
   const c = content as unknown as TestimonialsContent;
-  const bg = (c.background ?? "dove") as keyof typeof BG_CLASSES;
+  const bg = (c.background ?? "dove") as BackgroundColor;
   const testimonials = c.testimonials ?? [];
   const [current, setCurrent] = useState(0);
   const [visible, setVisible] = useState(true);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const getTextColor = (): string => {
+    switch (bg) {
+      case "dove":
+        return "text-nfw-blackberry";
+      case "aubergine":
+      case "wisteria":
+      case "blackberry":
+        return "text-white";
+      default:
+        return "text-nfw-blackberry";
+    }
+  };
+
+  const getMutedColor = (): string => {
+    switch (bg) {
+      case "dove":
+        return "text-nfw-blackberry/50";
+      case "aubergine":
+      case "wisteria":
+      case "blackberry":
+        return "text-white/50";
+      default:
+        return "text-nfw-blackberry/50";
+    }
+  };
+
+  const getEyebrowColor = (): string => {
+    switch (bg) {
+      case "dove":
+        return "text-nfw-blackberry/60";
+      case "aubergine":
+      case "wisteria":
+      case "blackberry":
+        return "text-nfw-dove";
+      default:
+        return "text-nfw-blackberry/60";
+    }
+  };
 
   const goTo = useCallback((index: number) => {
     setVisible(false);
@@ -79,20 +103,23 @@ export default function TestimonialsSection({ content }: Props) {
   if (testimonials.length === 0) return null;
 
   const t = testimonials[current];
+  const textColor = getTextColor();
+  const mutedColor = getMutedColor();
+  const eyebrowColor = getEyebrowColor();
 
   return (
-    <section className={`${BG_CLASSES[bg]} py-24 lg:py-32`}>
+    <section className={`bg-nfw-${bg} py-24 lg:py-32`}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         {c.eyebrow && (
           <p
-            className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${MUTED_CLASSES[bg]} mb-4`}
+            className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${eyebrowColor} mb-4`}
           >
             {c.eyebrow}
           </p>
         )}
         {c.heading && (
           <h2
-            className={`font-serif text-3xl lg:text-6xl ${TEXT_CLASSES[bg]} mb-16`}
+            className={`font-serif text-3xl lg:text-6xl ${textColor} mb-16`}
           >
             {c.heading}
           </h2>
@@ -109,7 +136,7 @@ export default function TestimonialsSection({ content }: Props) {
             className="flex flex-col items-center"
           >
             <blockquote
-              className={`font-serif italic text-2xl lg:text-3xl ${TEXT_CLASSES[bg]} leading-relaxed mb-8`}
+              className={`font-serif italic text-2xl lg:text-3xl ${textColor} leading-relaxed mb-8`}
             >
               &ldquo;{t.quote}&rdquo;
             </blockquote>
@@ -117,7 +144,7 @@ export default function TestimonialsSection({ content }: Props) {
             <div className={`w-12 h-px ${RULE_CLASSES[bg]} mb-6`} />
 
             <p
-              className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${MUTED_CLASSES[bg]}`}
+              className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${mutedColor}`}
             >
               — {t.first_name}, {t.age}, {t.state}
             </p>

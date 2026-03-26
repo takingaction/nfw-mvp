@@ -1,5 +1,12 @@
 import Link from "next/link";
 import { PerksFeatureContent } from "@/lib/sections/types";
+import {
+  getBackgroundClass,
+  getTextColorForBackground,
+  getEyebrowColorForBackground,
+  getPrimaryButtonClass,
+  getLogoFilterClass,
+} from "@/lib/colors";
 
 interface Props {
   content: Record<string, unknown>;
@@ -7,34 +14,38 @@ interface Props {
 
 export default function PerksFeatureSection({ content }: Props) {
   const c = content as unknown as PerksFeatureContent;
+  const bgClass = getBackgroundClass(c.background);
+  const textColor = getTextColorForBackground(c.background);
+  const eyebrowColor = getEyebrowColorForBackground(c.background);
+  const ctaClass = getPrimaryButtonClass(c.background);
+  const logoFilterClass = getLogoFilterClass(c.background);
+
   const parts = c.headline.split(c.headline_italic_phrase);
-  // Duplicate logos for seamless infinite scroll
   const logos = c.logos ?? [];
   const scrollLogos = [...logos, ...logos];
 
   return (
-    <section className="bg-nfw-wisteria py-20 lg:py-28">
+    <section className={`py-20 lg:py-28 ${bgClass}`}>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
         <div className="items-center">
-          {/* Left — copy */}
           <div className="space-y-7 flex flex-col items-center">
             {c.eyebrow && (
-              <p className="font-ui text-xs font-black tracking-[0.06em] text-center uppercase text-nfw-dove">
+              <p className={`font-ui text-xs font-black tracking-[0.06em] text-center uppercase ${eyebrowColor}`}>
                 {c.eyebrow}
               </p>
             )}
-            <h2 className="font-serif text-4xl lg:text-6xl text-white text-center !leading-[1.1]">
+            <h2 className={`font-serif text-4xl lg:text-6xl text-center ${textColor} !leading-[1.1]`}>
               {parts[0]}
               <em className="italic">{c.headline_italic_phrase}</em>
               {parts[1]}
             </h2>
-            <p className="font-serif text-2xl text-center text-white">
+            <p className={`font-serif text-2xl text-center ${textColor} opacity-80`}>
               {c.body}
             </p>
             {c.cta_label && (
               <Link
                 href={c.cta_url}
-                className="inline-flex items-center justify-center px-8 py-4 bg-nfw-citrine text-nfw-blackberry font-ui font-black text-sm tracking-[0.06em] uppercase hover:bg-nfw-citrine/90 transition-colors"
+                className={`inline-flex items-center justify-center px-8 py-4 ${ctaClass} font-ui font-black text-sm tracking-[0.06em] uppercase hover:opacity-90 transition-opacity`}
               >
                 {c.cta_label}
               </Link>
@@ -45,9 +56,9 @@ export default function PerksFeatureSection({ content }: Props) {
       </div>
 
       {logos.length > 0 && (
-        <div className="border-t border-nfw-dove/20 pt-12">
+        <div className="border-t border-white/20 pt-12">
           {c.logo_strip_eyebrow && (
-            <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-white text-center mb-8">
+            <p className={`font-ui text-xs font-black tracking-[0.06em] uppercase text-center ${eyebrowColor} mb-8`}>
               {c.logo_strip_eyebrow}
             </p>
           )}
@@ -60,7 +71,6 @@ export default function PerksFeatureSection({ content }: Props) {
                 willChange: "transform",
               }}
             >
-              {/* Triple the logos for smoother loop */}
               {[...logos, ...logos, ...logos].map((logo, i) => (
                 <div key={i} className="flex-shrink-0 h-8 flex items-center">
                   <img
@@ -70,7 +80,7 @@ export default function PerksFeatureSection({ content }: Props) {
                         : ((logo.image_url as any)?.url ?? "")
                     }
                     alt={logo.name}
-                    className="h-full w-auto object-contain brightness-0 invert opacity-100"
+                    className={`h-full w-auto object-contain ${logoFilterClass}`}
                   />
                 </div>
               ))}

@@ -181,13 +181,6 @@ export interface Testimonial {
   state: string;
 }
 
-export interface TestimonialsContent {
-  eyebrow: string;
-  heading: string;
-  testimonials: Testimonial[];
-  background: "dove" | "aubergine" | "wisteria";
-}
-
 // ── faq ───────────────────────────────────────────────────────
 
 export interface FaqItem {
@@ -215,10 +208,16 @@ export interface MembershipCtaContent {
   cta_url: string;
 }
 
+// ── Shared color types ────────────────────────────────────────
+
+export type BackgroundColor = "dove" | "aubergine" | "wisteria" | "blackberry";
+
+export type CardSwatchColor = "yellow" | "green" | "blue" | "lavender" | "citrine" | "lilac" | "powder";
+
 // ── right_side_3_features ──────────────────────────────────────
 
 export interface RightSide3FeaturesItem {
-  bg: string;
+  bg: CardSwatchColor;
   title: string;
   description: string;
 }
@@ -230,12 +229,13 @@ export interface RightSide3FeaturesContent {
   cta_label: string;
   cta_url: string;
   items: RightSide3FeaturesItem[];
+  background?: BackgroundColor;
 }
 
 // ── 4_cards ─────────────────────────────────────────────────
 
 export interface Card4Item {
-  color: string;
+  color: CardSwatchColor;
   age: string;
   title: string;
   description: string;
@@ -246,12 +246,13 @@ export interface FourCardsContent {
   headline: string;
   subheadline: string;
   cards: Card4Item[];
+  background?: BackgroundColor;
 }
 
 // ── 3_cards ─────────────────────────────────────────────────
 
 export interface Card3Item {
-  color: string;
+  color: CardSwatchColor;
   title: string;
   description: string;
   link: string;
@@ -262,6 +263,30 @@ export interface ThreeCardsContent {
   eyebrow: string;
   headline: string;
   cards: Card3Item[];
+  background?: BackgroundColor;
+}
+
+// ── testimonials ──────────────────────────────────────────────
+
+export interface TestimonialsContent {
+  eyebrow: string;
+  heading: string;
+  testimonials: Testimonial[];
+  background: BackgroundColor;
+}
+
+// ── perks_feature ──────────────────────────────────────────────
+
+export interface PerksFeatureContent {
+  eyebrow: string;
+  headline: string;
+  headline_italic_phrase: string;
+  body: string;
+  cta_label: string;
+  cta_url: string;
+  logo_strip_eyebrow: string;
+  logos: BrandLogo[];
+  background?: BackgroundColor;
 }
 
 // ── Union type for all content ────────────────────────────────
