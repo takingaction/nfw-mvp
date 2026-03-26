@@ -90,7 +90,6 @@ export default function StickyEditBar({ page, onPublish, onRevert, onUnpublish, 
 
             <Link
               href={`/${page.slug}`}
-              target="_blank"
               className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-nfw-blackberry border border-nfw-blackberry/20 hover:bg-nfw-blackberry/5 transition-colors"
             >
               Done Editing
