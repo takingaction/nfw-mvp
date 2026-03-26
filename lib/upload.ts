@@ -19,12 +19,9 @@ export async function uploadImage(
 
   // If API returned a signed URL, upload directly to Supabase Storage
   // This bypasses Vercel's 4.5MB payload limit for large files
-  if (data.signedUrl && data.token) {
+  if (data.signedUrl) {
     const uploadResponse = await fetch(data.signedUrl, {
       method: "PUT",
-      headers: {
-        "Content-Type": file.type,
-      },
       body: file,
     });
 
@@ -32,9 +29,8 @@ export async function uploadImage(
       throw new Error("Failed to upload file to storage");
     }
 
-    // Return the public URL
-    const publicUrl = data.signedUrl.split("?")[0];
-    return publicUrl;
+    // Return the public URL (remove the query string from signed URL)
+    return data.signedUrl.split("?")[0];
   }
 
   return data.url;
