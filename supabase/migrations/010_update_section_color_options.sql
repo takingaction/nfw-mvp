@@ -14,7 +14,7 @@ SET default_content = '{
   "items": [
     {"bg": "citrine", "title": "Celebrate every woman", "description": "We uplift and affirm all women — through daily life moments, feel-good content, and a community that champions your wins big and small."},
     {"bg": "lilac", "title": "Provide relief you can feel", "description": "From microgrants to perks to the Zero Dollar Store, every benefit is designed to ease real pressure in your everyday life."},
-    {"bg": "powder", "title": "Champion shared interests", "description": "NFW advocates for women at the individual level and the collective level — because what'\''s good for one woman is good for all of us."}
+    {"bg": "powder", "title": "Champion shared interests", "description": "NFW advocates for women at the individual level and the collective level — because what is good for one woman is good for all of us."}
   ]
 }'::jsonb
 WHERE section_type = 'right_side_3_features';
@@ -23,7 +23,7 @@ WHERE section_type = 'right_side_3_features';
 UPDATE section_templates
 SET default_content = '{
   "eyebrow": "What membership includes",
-  "headline": "Everything you need. Nothing you don'\''t.",
+  "headline": "Everything you need. Nothing you dont.",
   "background": "dove",
   "cards": [
     {"color": "green", "title": "Microgrants", "description": "Apply for grants from $100 to $5,000 to cover emergency bills, childcare, medical costs, car repairs, and more. Real people review every application within 48 hours.", "link": "/grants", "cta": "Learn about grants"},
@@ -48,13 +48,8 @@ SET default_content = '{
 }'::jsonb
 WHERE section_type = '4_cards';
 
--- Update testimonials template to include blackberry background option
--- (content stays the same, just the editor will now show the 4th option)
-
 -- Update perks_feature template to add background field
 UPDATE section_templates
-SET default_content = default_content || '{
-  "background": "wisteria"
-}'::jsonb
+SET default_content = default_content || '{"background": "wisteria"}'::jsonb
 WHERE section_type = 'perks_feature'
 AND NOT (default_content ? 'background');
