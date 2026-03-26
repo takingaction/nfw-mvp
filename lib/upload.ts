@@ -29,25 +29,44 @@ export async function uploadImage(
       throw new Error(signData.error ?? "Failed to get signed URL");
     }
 
-    // Upload directly to Supabase Storage using the signed URL
-    console.log("Uploading to signed URL:", signData.signedUrl);
+    console.log("Got signed URL:", signData.signedUrl);
+
+    // Use Supabase client to upload to signed URL
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    // Extract token from signed URL
+    const url = new URL(signData.signedUrl);
+    const token = url.searchParams.get("token");
     
-    const uploadResponse = await fetch(signData.signedUrl, {
-      method: "PUT",
-      body: file,
-    });
-
-    console.log("Upload response status:", uploadResponse.status);
-
-    if (!uploadResponse.ok) {
-      const text = await uploadResponse.text();
-      console.error("Supabase upload failed:", uploadResponse.status, text);
-      throw new Error(`Failed to upload: ${uploadResponse.status} - ${text}`);
+    if (!token) {
+      throw new Error("No token in signed URL");
     }
 
-    // Return the public URL (remove the query string from signed URL)
-    const publicUrl = signData.signedUrl.split("?")[0];
-    return publicUrl;
+    console.log("Uploading with token:", token.substring(0, 10) + "...");
+
+    const { data, error } = await supabase.storage
+      .from("page-builder")
+      .uploadToSignedUrl(fileName, token, file, {
+        contentType: file.type,
+      });
+
+    if (error) {
+      console.error("Supabase upload error:", error);
+      throw new Error(`Failed to upload: ${error.message}`);
+    }
+
+    console.log("Upload successful, path:", data.path);
+
+    // Return the public URL
+    const { data: urlData } = supabase.storage
+      .from("page-builder")
+      .getPublicUrl(fileName);
+
+    return urlData.publicUrl;
   }
 
   // For images and smaller files, upload normally through API
