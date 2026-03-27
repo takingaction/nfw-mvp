@@ -315,6 +315,7 @@ Static 6-card testimonials grid with colored avatar circles. Source: perks/info 
 | cards[].quote | textarea | |
 | cards[].name | text | |
 | cards[].role | text | |
+| cards[].avatar_color | select | yellow, green, blue, lavender, citrine, lilac, powder |
 
 #### 15. member_celebration_grid
 Split layout with headline/body/CTA on left and staggered 2x2 member photo grid on right. Source: perks/info page lines 443-514.

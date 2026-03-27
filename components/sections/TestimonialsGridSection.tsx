@@ -1,6 +1,6 @@
 "use client";
 
-import { TestimonialsGridContent, BackgroundColor } from "@/lib/sections/types";
+import { TestimonialsGridContent, BackgroundColor, CardSwatchColor } from "@/lib/sections/types";
 import {
   getBackgroundClass,
   getTextColorForBackground,
@@ -14,14 +14,15 @@ interface Props {
   content: Record<string, unknown>;
 }
 
-const AVATAR_COLORS = [
-  "bg-nfw-lilac/40",
-  "bg-nfw-citrine/40",
-  "bg-nfw-powder/40",
-  "bg-nfw-green/20",
-  "bg-nfw-blue/20",
-  "bg-nfw-yellow/20",
-];
+const AVATAR_COLOR_MAP: Record<CardSwatchColor, string> = {
+  yellow: "bg-yellow-100",
+  green: "bg-green-100",
+  blue: "bg-blue-100",
+  lavender: "bg-purple-100",
+  citrine: "bg-nfw-citrine/40",
+  lilac: "bg-nfw-lilac/40",
+  powder: "bg-nfw-powder/40",
+};
 
 export default function TestimonialsGridSection({ content }: Props) {
   const c = content as unknown as TestimonialsGridContent;
@@ -66,7 +67,7 @@ export default function TestimonialsGridSection({ content }: Props) {
                 &ldquo;{card.quote}&rdquo;
               </p>
               <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 ${AVATAR_COLORS[index % AVATAR_COLORS.length]} flex items-center justify-center text-sm font-black text-nfw-blackberry`}>
+                <div className={`w-9 h-9 ${AVATAR_COLOR_MAP[card.avatar_color] || AVATAR_COLOR_MAP.lilac} flex items-center justify-center text-sm font-black text-nfw-blackberry`}>
                   {card.name.charAt(0)}
                 </div>
                 <div>

@@ -622,6 +622,7 @@ export interface TestimonialGridCard {
   quote: string;
   name: string;
   role: string;
+  avatar_color: CardSwatchColor;
 }
 
 export interface TestimonialsGridContent {
