@@ -106,6 +106,7 @@ Added ability to duplicate pages in `/admin/pages`.
 - Also created `DELETE /api/admin/pages/delete` route for page deletion (was previously failing due to SUPABASE_SERVICE_ROLE_KEY being server-only)
 
 ### Previous Sessions
+- Fixed intermittent "Failed to Add Section" error by computing order_index in database instead of client-side (race condition fix)
 - Fixed inline editor stale closure bug in triggerAutoSave
 - Fixed auto-save "Saved" badge timing bug
 - Added defensive null checks in SectionEditorPanel and EditableSections
