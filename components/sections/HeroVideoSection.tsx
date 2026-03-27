@@ -16,10 +16,12 @@ export default function HeroVideoSection({ content }: Props) {
   const textColor = getTextColorForBackground(c?.background);
   const eyebrowColor = getEyebrowColorForBackground(c?.background);
 
+  const isContain = c.object_fit === "contain";
+
   return (
     <section className={`relative ${bgClass} overflow-hidden`}>
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 lg:pl-12">
-        <div className="grid lg:grid-cols-[53%_47%] gap-8 lg:gap-8 items-center py-4 lg:py-8">
+        <div className={`grid lg:grid-cols-[53%_47%] gap-8 lg:gap-8 items-center ${isContain ? "py-12 lg:py-24" : "py-4 lg:py-8"}`}>
           <div className="space-y-8">
             {c.eyebrow && (
               <p className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${eyebrowColor}`}>
@@ -50,7 +52,7 @@ export default function HeroVideoSection({ content }: Props) {
             </div>
           </div>
 
-          <div className="relative w-full aspect-[3/4] lg:aspect-auto lg:h-[750px]">
+          <div className={isContain ? "relative w-full aspect-[16/9] lg:max-h-[750px]" : "relative w-full lg:h-[750px] lg:max-h-[750px]"}>
             {c.video_url && c.video_url.length > 0 ? (
               <video
                 src={c.video_url}
@@ -60,7 +62,7 @@ export default function HeroVideoSection({ content }: Props) {
                 playsInline={c.plays_inline !== false}
                 controls={c.show_controls}
                 poster={c.poster_image_url && c.poster_image_url.length > 0 ? c.poster_image_url : undefined}
-                className={c.object_fit === "contain" ? "w-full h-full object-contain" : "w-full h-full object-cover"}
+                className={isContain ? "w-full h-full object-contain" : "w-full h-full object-cover"}
               />
             ) : c.poster_image_url && c.poster_image_url.length > 0 ? (
               <Image
