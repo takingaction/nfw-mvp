@@ -109,15 +109,25 @@ export async function addSectionFromTemplate(
   pageId: string,
   sectionType: string,
   defaultContent: Record<string, unknown>,
-  orderIndex: number,
 ) {
+  // Get the current max order_index for this page to avoid race conditions
+  const { data: maxData } = await supabaseAdmin
+    .from("page_sections")
+    .select("order_index")
+    .eq("page_id", pageId)
+    .eq("version", "draft")
+    .order("order_index", { ascending: false })
+    .limit(1);
+
+  const nextOrderIndex = maxData && maxData.length > 0 ? maxData[0].order_index + 1 : 0;
+
   const { data, error } = await supabaseAdmin
     .from("page_sections")
     .insert({
       page_id: pageId,
       section_type: sectionType,
       version: "draft",
-      order_index: orderIndex,
+      order_index: nextOrderIndex,
       content: defaultContent,
       visible: true,
     })

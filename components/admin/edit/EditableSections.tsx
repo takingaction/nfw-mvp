@@ -185,13 +185,11 @@ export default function EditableSections({ page, initialSections, templates }: P
 
   const handleAddSection = useCallback(
     async (template: { section_type: string; default_content: Record<string, unknown> }) => {
-      const newOrderIndex = sections.length;
       try {
         const data = await addSectionFromTemplate(
           page.id,
           template.section_type,
           template.default_content,
-          newOrderIndex,
         );
         setSections((prev) => [...prev, data]);
         setShowTemplatePicker(false);
@@ -201,7 +199,7 @@ export default function EditableSections({ page, initialSections, templates }: P
         showToast("Failed to add section");
       }
     },
-    [sections.length, page.id],
+    [page.id],
   );
 
   const handlePublish = () => {
