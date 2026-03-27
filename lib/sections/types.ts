@@ -20,7 +20,20 @@ export type SectionType =
   | "right_side_3_features"
   | "4_cards"
   | "3_cards"
-  | "three_column_stories";
+  | "three_column_stories"
+  | "pricing_hero"
+  | "pricing_cards"
+  | "pricing_cta_box"
+  | "pricing_comparison"
+  | "pricing_benefits"
+  | "pricing_final_cta"
+  | "how_it_works"
+  | "benefits_checkmarks"
+  | "grants_hero"
+  | "grants_grid"
+  | "grant_amount_cards"
+  | "success_stories"
+  | "perks_store_grid";
 
 // ── Shared primitives ─────────────────────────────────────────
 
@@ -325,6 +338,276 @@ export interface PerksFeatureContent {
   background?: BackgroundColor;
 }
 
+// ── Shared color types for new templates ────────────────────
+
+export type IconColor = "green" | "yellow" | "blue";
+export type CheckboxColor = "green" | "aubergine" | "wisteria" | "citrine";
+export type UncheckedColor = "blackberry10" | "blackberry20" | "wisteria20";
+
+export type IconName =
+  | "FileText"
+  | "Eye"
+  | "Clock"
+  | "Banknote"
+  | "DollarSign"
+  | "Coins"
+  | "CheckCircle"
+  | "CircleCheck"
+  | "Gift"
+  | "Package"
+  | "ShieldCheck"
+  | "ClipboardList"
+  | "Send"
+  | "Search"
+  | "CreditCard"
+  | "UserCheck"
+  | "Rocket"
+  | "Calendar"
+  | "MapPin"
+  | "HandHeart"
+  | "Sparkles"
+  | "Star"
+  | "Zap"
+  | "Tag"
+  | "Bookmark"
+  | "CalendarCheck"
+  | "Lock"
+  | "Shield";
+
+// ── pricing_hero ──────────────────────────────────────────────
+
+export interface PricingHeroContent {
+  eyebrow: string;
+  headline: string;
+  subheadline: string;
+  trust_badges: string[];
+  background?: BackgroundColor;
+}
+
+// ── pricing_cards ────────────────────────────────────────────
+
+export interface PricingPlan {
+  id: string;
+  name: string;
+  price: string;
+  period: string;
+  description: string;
+  features: string[];
+  highlighted: boolean;
+  badge: string | null;
+}
+
+export interface PricingCardsContent {
+  eyebrow: string;
+  headline: string;
+  subheadline: string;
+  cards: PricingPlan[];
+  checkbox_checked: CheckboxColor;
+  background?: BackgroundColor;
+}
+
+// ── pricing_cta_box ──────────────────────────────────────────
+
+export interface PricingCtaBoxContent {
+  headline: string;
+  body: string;
+  cta_label: string;
+  cta_url: string;
+  secondary_text: string;
+  secondary_url: string;
+  background?: BackgroundColor;
+}
+
+// ── pricing_comparison ───────────────────────────────────────
+
+export interface ComparisonBenefit {
+  label: string;
+  free: boolean;
+  contributing: boolean;
+  founding: boolean;
+}
+
+export interface PricingComparisonContent {
+  eyebrow: string;
+  headline: string;
+  subheadline: string;
+  column1_label: string;
+  column2_label: string;
+  column3_label: string;
+  checkbox_checked: CheckboxColor;
+  checkbox_unchecked: UncheckedColor;
+  benefits: ComparisonBenefit[];
+  background?: BackgroundColor;
+}
+
+// ── pricing_benefits ─────────────────────────────────────────
+
+export interface PricingBenefitItem {
+  title: string;
+  description: string;
+  icon_color: IconColor;
+}
+
+export interface PricingBenefitsContent {
+  eyebrow: string;
+  headline: string;
+  body: string;
+  items: PricingBenefitItem[];
+  cta_label: string;
+  cta_url: string;
+  background?: BackgroundColor;
+}
+
+// ── pricing_final_cta ─────────────────────────────────────────
+
+export interface FinalCtaItem {
+  title: string;
+  sub: string;
+  icon_color: IconColor;
+}
+
+export interface PricingFinalCtaContent {
+  headline: string;
+  subheadline: string;
+  items: FinalCtaItem[];
+  cta_label: string;
+  cta_url: string;
+  footnote: string;
+  background?: BackgroundColor;
+}
+
+// ── how_it_works ─────────────────────────────────────────────
+
+export interface HowItWorksStep {
+  icon: IconName;
+  icon_color: IconColor;
+  title: string;
+  description: string;
+}
+
+export interface HowItWorksContent {
+  eyebrow: string;
+  headline: string;
+  subheadline: string;
+  steps: [HowItWorksStep, HowItWorksStep, HowItWorksStep];
+  background?: BackgroundColor;
+}
+
+// ── benefits_checkmarks ───────────────────────────────────────
+
+export interface BenefitCheckItem {
+  check_color: IconColor;
+  title: string;
+  description: string;
+}
+
+export interface BenefitsCheckmarksContent {
+  eyebrow: string;
+  headline: string;
+  body: string;
+  benefits: BenefitCheckItem[];
+  cta_label: string;
+  cta_url: string;
+  background?: BackgroundColor;
+}
+
+// ── grants_hero ───────────────────────────────────────────────
+
+export interface GrantsHeroContent {
+  eyebrow: string;
+  headline: string;
+  subheadline: string;
+  cta_label: string;
+  cta_url: string;
+  secondary_cta_label: string;
+  secondary_cta_url: string;
+  trust_badges: string[];
+  image_url: string;
+  stat_value: string;
+  stat_label: string;
+  secondary_stat_value: string;
+  secondary_stat_label: string;
+  background?: BackgroundColor;
+}
+
+// ── grants_grid ───────────────────────────────────────────────
+
+export interface GrantCard {
+  title: string;
+  description: string;
+  closing: string;
+  image_url: string;
+}
+
+export interface GrantsGridContent {
+  eyebrow: string;
+  headline: string;
+  subheadline: string;
+  cta_label: string;
+  cta_url: string;
+  cards: GrantCard[];
+  background?: BackgroundColor;
+}
+
+// ── grant_amount_cards ────────────────────────────────────────
+
+export type BgTint = "powder" | "citrine" | "lilac";
+
+export interface GrantAmountCard {
+  range: string;
+  label: string;
+  description: string;
+  bg_tint: BgTint;
+}
+
+export interface GrantAmountCardsContent {
+  eyebrow: string;
+  headline: string;
+  subheadline: string;
+  cta_label: string;
+  cta_url: string;
+  items: GrantAmountCard[];
+  background?: BackgroundColor;
+}
+
+// ── success_stories ───────────────────────────────────────────
+
+export interface SuccessStoryCard {
+  category: string;
+  bg_tint: BgTint;
+  title: string;
+  image_url: string;
+}
+
+export interface SuccessStoriesContent {
+  eyebrow: string;
+  headline: string;
+  subheadline: string;
+  cta_label: string;
+  cta_url: string;
+  cards: SuccessStoryCard[];
+  background?: BackgroundColor;
+}
+
+// ── perks_store_grid ─────────────────────────────────────────
+
+export interface PerkStoreCard {
+  category: string;
+  name: string;
+  description: string;
+  color: CardSwatchColor;
+}
+
+export interface PerksStoreGridContent {
+  eyebrow: string;
+  headline: string;
+  subheadline: string;
+  cta_label: string;
+  cta_url: string;
+  cards: PerkStoreCard[];
+  background?: BackgroundColor;
+}
+
 // ── Union type for all content ────────────────────────────────
 
 export type SectionContent =
@@ -344,7 +627,20 @@ export type SectionContent =
   | RightSide3FeaturesContent
   | FourCardsContent
   | ThreeCardsContent
-  | ThreeColumnStoriesContent;
+  | ThreeColumnStoriesContent
+  | PricingHeroContent
+  | PricingCardsContent
+  | PricingCtaBoxContent
+  | PricingComparisonContent
+  | PricingBenefitsContent
+  | PricingFinalCtaContent
+  | HowItWorksContent
+  | BenefitsCheckmarksContent
+  | GrantsHeroContent
+  | GrantsGridContent
+  | GrantAmountCardsContent
+  | SuccessStoriesContent
+  | PerksStoreGridContent;
 
 // ── DB row shape ──────────────────────────────────────────────
 
