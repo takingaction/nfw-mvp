@@ -81,6 +81,29 @@ This file contains context and instructions for AI agents working on this projec
 - `supabase/migrations/015_add_grants_and_perks_templates.sql`
 - `supabase/migrations/016_add_testimonials_and_member_celebration_templates.sql`
 
+### Session 2026-03-27: Page Duplication Feature
+
+Added ability to duplicate pages in `/admin/pages`.
+
+**Files created:**
+- `app/api/admin/pages/duplicate/route.ts` - API endpoint that duplicates page with all sections
+- `components/admin/pages/DuplicatePageModal.tsx` - Modal component for duplicating pages
+
+**Files modified:**
+- `components/admin/pages/AdminPagesClient.tsx` - Added duplicate button (Copy icon) and modal
+
+**How it works:**
+- Each page card in `/admin/pages` has a Copy icon between Edit and Delete buttons
+- Clicking Copy opens a modal pre-filled with "Copy of {title}" and "{slug}-copy"
+- Slug uniqueness is validated before duplication
+- New page is created in draft status with all sections copied from original
+- On success, redirects to the new page editor
+
+**Key implementation details:**
+- API endpoint: `POST /api/admin/pages/duplicate` with `{ originalPageId, title, slug }`
+- Copies all `page_sections` where `version = 'draft'` from original to new page
+- Uses Supabase admin client with service role key
+
 ### Previous Sessions
 - Fixed inline editor stale closure bug in triggerAutoSave
 - Fixed auto-save "Saved" badge timing bug
