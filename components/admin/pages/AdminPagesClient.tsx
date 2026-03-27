@@ -41,16 +41,17 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
   const handleDelete = async () => {
     if (!deleteModal.pageId) return;
 
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const res = await fetch("/api/admin/pages/delete", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pageId: deleteModal.pageId }),
+    });
 
-    await supabaseAdmin
-      .from("pages")
-      .delete()
-      .eq("id", deleteModal.pageId);
+    if (!res.ok) {
+      const data = await res.json();
+      console.error("Failed to delete page:", data.error);
+      return;
+    }
 
     setDeleteModal({ isOpen: false, pageId: null, pageTitle: "" });
     window.location.reload();
