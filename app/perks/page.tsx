@@ -58,12 +58,22 @@ export default function PerksPage() {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
+    const supabase = createClient();
+    
     const fetchUser = async () => {
-      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
     };
+    
     fetchUser();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const clearAllFilters = () => {

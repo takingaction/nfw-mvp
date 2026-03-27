@@ -405,7 +405,7 @@ export default function MicrograntsPage() {
           <h2 className="font-serif text-4xl lg:text-6xl text-nfw-dove mb-6">
             Ready to get the support you deserve?
           </h2>
-          <p className="font-serif text-2xl text-nfw-blackberry/80 mb-8 max-w-2xl mx-auto">
+          <p className="font-serif text-2xl text-nfw-dove mb-8 max-w-2xl mx-auto">
             Join thousands of women who have already found relief through NFW
             microgrants. Your application takes just a few minutes.
           </p>
