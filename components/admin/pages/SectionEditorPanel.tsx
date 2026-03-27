@@ -293,7 +293,10 @@ function FieldEditor({
 
     const addItem = () => {
       const empty = field.fields.reduce(
-        (acc, f) => ({ ...acc, [f.key]: "" }),
+        (acc, f) => ({
+          ...acc,
+          [f.key]: f.type === "select" && f.options?.length ? f.options[0] : "",
+        }),
         {},
       );
       onChange([...arr, empty]);
