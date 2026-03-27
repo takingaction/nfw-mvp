@@ -403,6 +403,12 @@ export interface PricingCardsContent {
   subheadline: string;
   cards: PricingPlan[];
   checkbox_checked: CheckboxColor;
+  cta_headline: string;
+  cta_body: string;
+  cta_label: string;
+  cta_url: string;
+  cta_secondary_text: string;
+  cta_secondary_url: string;
   background?: BackgroundColor;
 }
 

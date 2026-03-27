@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Check } from "lucide-react";
 import { PricingCardsContent, CheckboxColor } from "@/lib/sections/types";
 import {
@@ -6,6 +7,8 @@ import {
   getEyebrowColorForBackground,
   getCardTextColorForBackground,
   getCardBorderColorForBackground,
+  getPrimaryButtonClass,
+  getMutedTextColorForBackground,
 } from "@/lib/colors";
 
 interface Props {
@@ -26,6 +29,7 @@ export default function PricingCardsSection({ content }: Props) {
   const bgClass = getBackgroundClass(c.background);
   const textColor = getTextColorForBackground(c.background);
   const eyebrowColor = getEyebrowColorForBackground(c.background);
+  const mutedTextColor = getMutedTextColorForBackground(c.background);
   const cardTextColor = getCardTextColorForBackground(c.background);
   const cardBorderColor = getCardBorderColorForBackground(c.background);
   const cardBgClass = c.background === "dove" ? "bg-white" : "bg-white/10";
@@ -34,6 +38,8 @@ export default function PricingCardsSection({ content }: Props) {
   const checkIconColor = isDarkChecked ? "#ffffff" : "#1a1a1a";
   const cardSubtextColor = c.background === "dove" ? "text-nfw-blackberry/60" : "text-white/60";
   const cardHighlightedBg = c.background === "dove" ? "bg-nfw-aubergine" : "bg-nfw-aubergine/80";
+  const ctaClass = getPrimaryButtonClass(c.background);
+  const innerCardBorder = c.background === "dove" ? "border-nfw-blackberry/10" : "border-white/20";
 
   return (
     <section className={`py-16 lg:py-24 ${bgClass}`}>
@@ -123,6 +129,30 @@ export default function PricingCardsSection({ content }: Props) {
               </ul>
             </div>
           ))}
+        </div>
+
+        <div className={`text-center p-10 border ${innerCardBorder} ${c.background === "dove" ? "bg-white" : "bg-white/10"}`}>
+          <h3 className={`font-serif text-2xl ${textColor} mb-3`}>
+            {c.cta_headline || "Ready to join?"}
+          </h3>
+          <p className={`font-sans ${mutedTextColor} mb-6 max-w-md mx-auto`}>
+            {c.cta_body || "Create your free account to get started."}
+          </p>
+          <Link
+            href={c.cta_url || "/auth/sign-up"}
+            className={`inline-flex items-center justify-center px-10 py-4 ${ctaClass} font-ui font-black text-sm tracking-[0.06em] uppercase hover:opacity-90 transition-opacity`}
+          >
+            {c.cta_label || "Join Now"}
+          </Link>
+          <p className={`font-sans text-sm ${mutedTextColor} mt-4`}>
+            {c.cta_secondary_text || "Already a member?"}{" "}
+            <Link
+              href={c.cta_secondary_url || "/auth/login"}
+              className={`underline hover:${textColor} transition-colors`}
+            >
+              Sign in
+            </Link>
+          </p>
         </div>
       </div>
     </section>
