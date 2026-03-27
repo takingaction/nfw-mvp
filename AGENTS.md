@@ -30,3 +30,59 @@ This file contains context and instructions for AI agents working on this projec
 - `npm run build` - Build for production
 - `npm run lint` - Run ESLint
 - `npm run typecheck` - Run TypeScript type checking
+
+## Accomplishments
+
+### Session 2026-03-27: Template Building
+
+#### Templates Created (13 total)
+
+**Pricing Page Templates (6):**
+- `pricing_hero` - Hero with eyebrow, headline, subheadline, trust badges
+- `pricing_cards` - 3-tier pricing cards with checkbox color dropdown
+- `pricing_cta_box` - Single CTA box with adaptive background
+- `pricing_comparison` - Full benefits table with checked/unchecked color dropdowns
+- `pricing_benefits` - "Why membership matters" with icon color dropdowns
+- `pricing_final_cta` - Dark CTA with icon color dropdowns
+
+**Shared/Duplicated Section Templates (2):**
+- `how_it_works` - 3-step process with icon + icon_color dropdowns
+- `benefits_checkmarks` - Benefits rows with check color dropdowns
+
+**Grants Page Templates (4):**
+- `grants_hero` - Split hero with stats
+- `grants_grid` - Cards grid (category buttons removed)
+- `grant_amount_cards` - 3-tier amount display with bg_tint dropdowns
+- `success_stories` - Stories grid with bg_tint dropdowns (separate from testimonials)
+
+**Merged Perks/Store Template (1):**
+- `perks_store_grid` - Merged grid with CardSwatchColor dropdown (no category buttons)
+
+#### Key Implementation Details
+- All templates adapt to 4 background colors: dove, aubergine, wisteria, blackberry
+- Color helpers used: getTextColorForBackground, getEyebrowColorForBackground,
+  getMutedTextColorForBackground, getCardTextColorForBackground, getCardBorderColorForBackground,
+  getPrimaryButtonClass, getCardSwatchColor
+- Checkbox colors: green, aubergine, wisteria, citrine (dark backgrounds use white checkmark)
+- Icon colors: green (#d4f1ad), yellow (#fdf493), blue (#b2d1ee)
+- Bg_tint colors: powder, citrine, lilac
+- CardSwatchColor: yellow, green, blue, lavender, citrine, lilac, powder
+
+#### Files Modified/Created
+- `lib/sections/types.ts` - Added 13 interfaces + type aliases
+- `lib/sections/registry.ts` - Added 13 section definitions with editorFields
+- `components/sections/SectionRenderer.tsx` - Added 13 imports
+- 13 new section components in `components/sections/`
+- `supabase/migrations/014_add_pricing_and_shared_section_templates.sql`
+- `supabase/migrations/015_add_grants_and_perks_templates.sql`
+
+### Previous Sessions
+- Fixed inline editor stale closure bug in triggerAutoSave
+- Fixed auto-save "Saved" badge timing bug
+- Added defensive null checks in SectionEditorPanel and EditableSections
+- Added error placeholder in SectionWrapper for invalid content
+- Created saveDraftSection for single-row updates
+- Fixed hero_video container aspect ratio for contain mode (CSS approach with 16:9)
+- Removed hover grow effect from back to top button
+- Changed grants page CTA text color from blackberry to dove for readability
+- Fixed perks page auth state sync with onAuthStateChange listener
