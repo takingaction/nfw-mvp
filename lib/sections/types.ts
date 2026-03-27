@@ -33,7 +33,9 @@ export type SectionType =
   | "grants_grid"
   | "grant_amount_cards"
   | "success_stories"
-  | "perks_store_grid";
+  | "perks_store_grid"
+  | "testimonials_grid"
+  | "member_celebration_grid";
 
 // ── Shared primitives ─────────────────────────────────────────
 
@@ -614,6 +616,37 @@ export interface PerksStoreGridContent {
   background?: BackgroundColor;
 }
 
+// ── testimonials_grid ─────────────────────────────────────────
+
+export interface TestimonialGridCard {
+  quote: string;
+  name: string;
+  role: string;
+}
+
+export interface TestimonialsGridContent {
+  eyebrow: string;
+  headline: string;
+  subheadline: string;
+  cards: TestimonialGridCard[];
+  background?: BackgroundColor;
+}
+
+// ── member_celebration_grid ───────────────────────────────────
+
+export interface MemberCelebrationGridContent {
+  eyebrow: string;
+  headline: string;
+  body: string;
+  cta_label: string;
+  cta_url: string;
+  image1_url: string;
+  image2_url: string;
+  image3_url: string;
+  image4_url: string;
+  background?: BackgroundColor;
+}
+
 // ── Union type for all content ────────────────────────────────
 
 export type SectionContent =
@@ -646,7 +679,9 @@ export type SectionContent =
   | GrantsGridContent
   | GrantAmountCardsContent
   | SuccessStoriesContent
-  | PerksStoreGridContent;
+  | PerksStoreGridContent
+  | TestimonialsGridContent
+  | MemberCelebrationGridContent;
 
 // ── DB row shape ──────────────────────────────────────────────
 

@@ -29,6 +29,8 @@ import GrantsGridSection from "./GrantsGridSection";
 import GrantAmountCardsSection from "./GrantAmountCardsSection";
 import SuccessStoriesSection from "./SuccessStoriesSection";
 import PerksStoreGridSection from "./PerksStoreGridSection";
+import TestimonialsGridSection from "./TestimonialsGridSection";
+import MemberCelebrationGridSection from "./MemberCelebrationGridSection";
 
 interface Props {
   sections: PageSection[];
@@ -110,6 +112,10 @@ export default function SectionRenderer({ sections }: Props) {
             return <SuccessStoriesSection key={section.id} content={content} />;
           case "perks_store_grid":
             return <PerksStoreGridSection key={section.id} content={content} />;
+          case "testimonials_grid":
+            return <TestimonialsGridSection key={section.id} content={content} />;
+          case "member_celebration_grid":
+            return <MemberCelebrationGridSection key={section.id} content={content} />;
           default:
             return null;
         }
