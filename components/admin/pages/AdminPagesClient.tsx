@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LayoutTemplate, Plus, Trash2, Pencil } from "lucide-react";
+import { LayoutTemplate, Plus, Trash2, Pencil, Copy } from "lucide-react";
 import NewPageModal from "@/components/admin/pages/NewPageModal";
 import EditPageModal from "@/components/admin/pages/EditPageModal";
+import DuplicatePageModal from "@/components/admin/pages/DuplicatePageModal";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 
 interface Page {
@@ -26,6 +27,10 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
     pageId: string | null;
     pageTitle: string;
   }>({ isOpen: false, pageId: null, pageTitle: "" });
+  const [duplicateModal, setDuplicateModal] = useState<{
+    isOpen: boolean;
+    page: Page | null;
+  }>({ isOpen: false, page: null });
 
   const statusColor: Record<string, string> = {
     published: "bg-[#d4f1ad] text-[#2d1239]",
@@ -137,6 +142,20 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
                     >
                       <Pencil className="w-5 h-5" />
                     </button>
+                    <button
+                      onClick={() => setDuplicateModal({ isOpen: true, page })}
+                      className="p-2 text-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
+                      title="Duplicate page"
+                    >
+                      <Copy className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteModal({ isOpen: true, pageId: page.id, pageTitle: page.title })}
+                      className="p-2 text-red-500 hover:bg-red-50 transition-colors"
+                      title="Delete page"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -171,6 +190,17 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
         onConfirm={handleDelete}
         onCancel={() => setDeleteModal({ isOpen: false, pageId: null, pageTitle: "" })}
       />
+
+      {duplicateModal.page && (
+        <DuplicatePageModal
+          isOpen={duplicateModal.isOpen}
+          onClose={() => setDuplicateModal({ isOpen: false, page: null })}
+          page={duplicateModal.page}
+          onDuplicated={(pageId) => {
+            window.location.href = `/admin/pages/${pageId}`;
+          }}
+        />
+      )}
     </main>
   );
 }
