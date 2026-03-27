@@ -35,7 +35,7 @@ This file contains context and instructions for AI agents working on this projec
 
 ### Session 2026-03-27: Template Building
 
-#### Templates Created (13 total)
+#### Templates Created (15 total)
 
 **Pricing Page Templates (6):**
 - `pricing_hero` - Hero with eyebrow, headline, subheadline, trust badges
@@ -58,6 +58,10 @@ This file contains context and instructions for AI agents working on this projec
 **Merged Perks/Store Template (1):**
 - `perks_store_grid` - Merged grid with CardSwatchColor dropdown (no category buttons)
 
+**Testimonials/Member Celebration Templates (2):**
+- `testimonials_grid` - Static 6-card testimonials grid with avatar circles (from perks/info page lines 405-441)
+- `member_celebration_grid` - Split layout with staggered 2x2 member photo grid (from perks/info page lines 443-514)
+
 #### Key Implementation Details
 - All templates adapt to 4 background colors: dove, aubergine, wisteria, blackberry
 - Color helpers used: getTextColorForBackground, getEyebrowColorForBackground,
@@ -69,12 +73,13 @@ This file contains context and instructions for AI agents working on this projec
 - CardSwatchColor: yellow, green, blue, lavender, citrine, lilac, powder
 
 #### Files Modified/Created
-- `lib/sections/types.ts` - Added 13 interfaces + type aliases
-- `lib/sections/registry.ts` - Added 13 section definitions with editorFields
-- `components/sections/SectionRenderer.tsx` - Added 13 imports
-- 13 new section components in `components/sections/`
+- `lib/sections/types.ts` - Added interfaces for all templates
+- `lib/sections/registry.ts` - Added section definitions with editorFields
+- `components/sections/SectionRenderer.tsx` - Added imports and switch cases
+- Section components in `components/sections/`
 - `supabase/migrations/014_add_pricing_and_shared_section_templates.sql`
 - `supabase/migrations/015_add_grants_and_perks_templates.sql`
+- `supabase/migrations/016_add_testimonials_and_member_celebration_templates.sql`
 
 ### Previous Sessions
 - Fixed inline editor stale closure bug in triggerAutoSave

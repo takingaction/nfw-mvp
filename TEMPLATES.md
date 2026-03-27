@@ -299,6 +299,42 @@ Merged perks/store grid (no category buttons).
 
 ---
 
+### Testimonials/Member Celebration Templates
+
+#### 14. testimonials_grid
+Static 6-card testimonials grid with colored avatar circles. Source: perks/info page lines 405-441.
+
+**Fields:**
+| Field | Type | Options |
+|-------|------|---------|
+| eyebrow | text | |
+| headline | text | |
+| subheadline | textarea | |
+| background | select | dove, aubergine, wisteria, blackberry |
+| cards | array | |
+| cards[].quote | textarea | |
+| cards[].name | text | |
+| cards[].role | text | |
+
+#### 15. member_celebration_grid
+Split layout with headline/body/CTA on left and staggered 2x2 member photo grid on right. Source: perks/info page lines 443-514.
+
+**Fields:**
+| Field | Type | Options |
+|-------|------|---------|
+| eyebrow | text | |
+| headline | text | |
+| body | textarea | |
+| cta_label | text | |
+| cta_url | url | |
+| image1_url | image | |
+| image2_url | image | |
+| image3_url | image | |
+| image4_url | image | |
+| background | select | dove, aubergine, wisteria, blackberry |
+
+---
+
 ## SQL Migrations
 
 Templates are seeded via Supabase migrations:
@@ -307,6 +343,7 @@ Templates are seeded via Supabase migrations:
 |-----------|-----------|
 | `014_add_pricing_and_shared_section_templates.sql` | pricing_hero, pricing_cards, pricing_cta_box, pricing_comparison, pricing_benefits, pricing_final_cta, how_it_works, benefits_checkmarks |
 | `015_add_grants_and_perks_templates.sql` | grants_hero, grants_grid, grant_amount_cards, success_stories, perks_store_grid |
+| `016_add_testimonials_and_member_celebration_templates.sql` | testimonials_grid, member_celebration_grid |
 
 Apply with: `npx supabase db push`
 
