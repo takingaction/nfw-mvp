@@ -103,6 +103,7 @@ Added ability to duplicate pages in `/admin/pages`.
 - API endpoint: `POST /api/admin/pages/duplicate` with `{ originalPageId, title, slug }`
 - Copies all `page_sections` where `version = 'draft'` from original to new page
 - Uses Supabase admin client with service role key
+- Also created `DELETE /api/admin/pages/delete` route for page deletion (was previously failing due to SUPABASE_SERVICE_ROLE_KEY being server-only)
 
 ### Previous Sessions
 - Fixed inline editor stale closure bug in triggerAutoSave
