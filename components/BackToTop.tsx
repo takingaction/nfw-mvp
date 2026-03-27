@@ -35,7 +35,7 @@ export default function BackToTop() {
           className="fixed bottom-8 right-8 z-50 group"
           aria-label="Back to top"
         >
-          <div className="relative w-14 h-14 bg-nfw-blackberry flex items-center justify-center border-2 border-nfw-citrine shadow-xl group-hover:scale-110 transition-all duration-300">
+          <div className="relative w-14 h-14 bg-nfw-blackberry flex items-center justify-center border-2 border-nfw-citrine shadow-xl transition-all duration-300">
             <ArrowUp className="w-6 h-6 text-nfw-citrine group-hover:text-white transition-colors" />
           </div>
         </button>
