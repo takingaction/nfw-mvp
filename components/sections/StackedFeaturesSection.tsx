@@ -8,19 +8,6 @@ interface Props {
   content: Record<string, unknown>;
 }
 
-const BG_COLOR_MAP: Record<CardSwatchColor, string> = {
-  yellow: "bg-[#fdf493]",
-  green: "bg-[#d4f1ad]",
-  blue: "bg-[#b2d1ee]",
-  lavender: "bg-[#bcafcf]",
-  citrine: "bg-[#e8d5a3]",
-  lilac: "bg-[#c9b8d9]",
-  powder: "bg-[#b8c5d6]",
-  dark_purple: "bg-[#3e155f]",
-  medium_lavender: "bg-[#b693c0]",
-  soft_blue: "bg-[#7786be]",
-};
-
 const TEXT_COLOR_MAP: Record<CardSwatchColor, string> = {
   yellow: "text-nfw-blackberry",
   green: "text-nfw-blackberry",
@@ -42,39 +29,39 @@ export default function StackedFeaturesSection({ content }: Props) {
 
   return (
     <section className="bg-nfw-dove overflow-hidden">
-      <div className="grid grid-cols-1 md:grid-cols-3 h-full">
+      <div className="grid grid-cols-1 md:grid-cols-3">
         {columns.map((col, index) => {
-          const bgClass = BG_COLOR_MAP[col.bg_color] || "bg-nfw-stone/20";
           const textColor = TEXT_COLOR_MAP[col.bg_color] || "text-nfw-blackberry";
           const swatchColor = getCardSwatchColor(col.bg_color);
 
           return (
             <div
               key={index}
-              className="flex flex-col h-full"
+              className="relative overflow-hidden flex flex-col"
+              style={{
+                backgroundColor: swatchColor,
+                minHeight: "min(60vw, 520px)",
+              }}
             >
-              <div className="relative aspect-[4/3] bg-nfw-stone/20 overflow-hidden flex-shrink-0">
-                {col.image_url ? (
-                  <>
-                    <img
-                      src={col.image_url}
-                      alt=""
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                    {col.image_overlay && (
-                      <div className="absolute inset-0 bg-nfw-blackberry/50" />
-                    )}
-                  </>
-                ) : (
-                  <div className="absolute inset-0 bg-nfw-stone/30" />
-                )}
-              </div>
+              {col.image_url ? (
+                <>
+                  <img
+                    src={col.image_url}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                  {col.image_overlay && (
+                    <div className="absolute inset-0 bg-nfw-blackberry/50" />
+                  )}
+                </>
+              ) : null}
+
               <div
-                className={`flex-1 px-10 py-12 ${bgClass}`}
-                style={{ backgroundColor: col.image_url ? undefined : swatchColor }}
+                className="relative flex flex-col h-full px-10 py-12"
+                style={{ minHeight: "inherit" }}
               >
                 {col.eyebrow && (
                   <p className={`font-ui text-xs font-black tracking-[0.08em] uppercase mb-auto ${textColor}`}>
