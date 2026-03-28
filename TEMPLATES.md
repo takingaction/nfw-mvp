@@ -336,6 +336,27 @@ Split layout with headline/body/CTA on left and staggered 2x2 member photo grid 
 
 ---
 
+### Stacked Features Templates
+
+#### 16. stacked_features
+Image top with colored text area below. Full width, 3 columns on desktop/tablet, 1 column on mobile.
+
+**Fields:**
+| Field | Type | Options |
+|-------|------|---------|
+| columns | array (3) | |
+| columns[].image_url | image | |
+| columns[].image_overlay | boolean | |
+| columns[].bg_color | select | yellow, green, blue, lavender, citrine, lilac, powder |
+| columns[].eyebrow | text | |
+| columns[].heading | text | |
+| columns[].body | textarea | |
+| columns[].bullets | string-array | |
+| columns[].cta_label | text | |
+| columns[].cta_url | url | |
+
+---
+
 ## SQL Migrations
 
 Templates are seeded via Supabase migrations:
@@ -345,6 +366,7 @@ Templates are seeded via Supabase migrations:
 | `014_add_pricing_and_shared_section_templates.sql` | pricing_hero, pricing_cards, pricing_cta_box, pricing_comparison, pricing_benefits, pricing_final_cta, how_it_works, benefits_checkmarks |
 | `015_add_grants_and_perks_templates.sql` | grants_hero, grants_grid, grant_amount_cards, success_stories, perks_store_grid |
 | `016_add_testimonials_and_member_celebration_templates.sql` | testimonials_grid, member_celebration_grid |
+| `018_add_stacked_features_template.sql` | stacked_features |
 
 Apply with: `npx supabase db push`
 

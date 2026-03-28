@@ -62,6 +62,9 @@ This file contains context and instructions for AI agents working on this projec
 - `testimonials_grid` - Static 6-card testimonials grid with avatar circles (from perks/info page lines 405-441)
 - `member_celebration_grid` - Split layout with staggered 2x2 member photo grid (from perks/info page lines 443-514)
 
+**New Stacked Features Template (1):**
+- `stacked_features` - Image on top, colored text area below. 3 columns desktop, 1 column mobile. No section-level background.
+
 #### Key Implementation Details
 - All templates adapt to 4 background colors: dove, aubergine, wisteria, blackberry
 - Color helpers used: getTextColorForBackground, getEyebrowColorForBackground,
@@ -80,6 +83,7 @@ This file contains context and instructions for AI agents working on this projec
 - `supabase/migrations/014_add_pricing_and_shared_section_templates.sql`
 - `supabase/migrations/015_add_grants_and_perks_templates.sql`
 - `supabase/migrations/016_add_testimonials_and_member_celebration_templates.sql`
+- `supabase/migrations/018_add_stacked_features_template.sql`
 
 ### Session 2026-03-27: Page Duplication Feature
 

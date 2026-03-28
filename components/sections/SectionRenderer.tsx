@@ -31,6 +31,7 @@ import SuccessStoriesSection from "./SuccessStoriesSection";
 import PerksStoreGridSection from "./PerksStoreGridSection";
 import TestimonialsGridSection from "./TestimonialsGridSection";
 import MemberCelebrationGridSection from "./MemberCelebrationGridSection";
+import StackedFeaturesSection from "./StackedFeaturesSection";
 
 interface Props {
   sections: PageSection[];
@@ -116,6 +117,8 @@ export default function SectionRenderer({ sections }: Props) {
             return <TestimonialsGridSection key={section.id} content={content} />;
           case "member_celebration_grid":
             return <MemberCelebrationGridSection key={section.id} content={content} />;
+          case "stacked_features":
+            return <StackedFeaturesSection key={section.id} content={content} />;
           default:
             return null;
         }
