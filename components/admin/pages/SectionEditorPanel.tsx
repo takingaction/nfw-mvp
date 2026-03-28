@@ -114,7 +114,7 @@ function FieldEditor({
 
         <button
           type="button"
-          onClick={() => onOpenMediaLibrary?.("page-builder")}
+          onClick={() => { console.log("[DEBUG] Add Image clicked"); onOpenMediaLibrary?.("page-builder"); }}
           className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-nfw-blackberry/20 hover:border-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
         >
           <Upload className="w-4 h-4 text-nfw-blackberry/40" />
@@ -471,16 +471,17 @@ export default function SectionEditorPanel({
             field={field}
             value={content[field.key]}
             onChange={(val) => updateField(field.key, val)}
-            onOpenMediaLibrary={(bucket) => setMediaLibrary({ isOpen: true, fieldKey: field.key, bucket })}
+            onOpenMediaLibrary={(bucket) => { console.log("[DEBUG] onOpenMediaLibrary called with bucket:", bucket, "field:", field.key); setMediaLibrary({ isOpen: true, fieldKey: field.key, bucket }); }}
           />
         ))}
       </div>
 
       <MediaLibraryModal
         isOpen={mediaLibrary.isOpen}
-        onClose={() => setMediaLibrary({ isOpen: false, fieldKey: null, bucket: "page-builder" })}
+        onClose={() => { console.log("[DEBUG] Modal closing"); setMediaLibrary({ isOpen: false, fieldKey: null, bucket: "page-builder" }); }}
         bucket={mediaLibrary.bucket}
         onSelect={(url) => {
+          console.log("[DEBUG] Image selected:", url);
           if (mediaLibrary.fieldKey) {
             updateField(mediaLibrary.fieldKey, url);
           }
