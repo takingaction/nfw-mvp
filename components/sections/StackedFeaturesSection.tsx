@@ -16,6 +16,9 @@ const BG_COLOR_MAP: Record<CardSwatchColor, string> = {
   citrine: "bg-[#e8d5a3]",
   lilac: "bg-[#c9b8d9]",
   powder: "bg-[#b8c5d6]",
+  dark_purple: "bg-[#3e155f]",
+  medium_lavender: "bg-[#b693c0]",
+  soft_blue: "bg-[#7786be]",
 };
 
 const TEXT_COLOR_MAP: Record<CardSwatchColor, string> = {
@@ -26,6 +29,9 @@ const TEXT_COLOR_MAP: Record<CardSwatchColor, string> = {
   citrine: "text-nfw-blackberry",
   lilac: "text-nfw-blackberry",
   powder: "text-nfw-blackberry",
+  dark_purple: "text-white",
+  medium_lavender: "text-white",
+  soft_blue: "text-white",
 };
 
 export default function StackedFeaturesSection({ content }: Props) {

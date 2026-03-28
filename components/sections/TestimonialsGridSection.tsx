@@ -22,6 +22,9 @@ const AVATAR_COLOR_MAP: Record<CardSwatchColor, string> = {
   citrine: "bg-nfw-citrine/40",
   lilac: "bg-nfw-lilac/40",
   powder: "bg-nfw-powder/40",
+  dark_purple: "bg-purple-900",
+  medium_lavender: "bg-purple-300",
+  soft_blue: "bg-blue-300",
 };
 
 export default function TestimonialsGridSection({ content }: Props) {

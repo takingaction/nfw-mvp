@@ -1299,7 +1299,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
         {
           image_url: "",
           image_overlay: true,
-          bg_color: "powder",
+          bg_color: "dark_purple",
           eyebrow: "Community",
           heading: "Built on Connection",
           body: "NFW brings people together through shared experiences, mutual support, and a commitment to helping each other thrive.",
@@ -1310,7 +1310,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
         {
           image_url: "",
           image_overlay: true,
-          bg_color: "citrine",
+          bg_color: "medium_lavender",
           eyebrow: "Impact",
           heading: "Real Support",
           body: "From microgrants to everyday perks, we provide tangible resources that make a difference in people's daily lives.",
@@ -1321,7 +1321,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
         {
           image_url: "",
           image_overlay: true,
-          bg_color: "lilac",
+          bg_color: "soft_blue",
           eyebrow: "Growth",
           heading: "Growing Together",
           body: "Our community is built on the belief that when we uplift each other, everyone benefits and grows.",
@@ -1340,7 +1340,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
         fields: [
           { key: "image_url", label: "Image URL", type: "image" },
           { key: "image_overlay", label: "Dark overlay on image", type: "boolean" },
-          { key: "bg_color", label: "Background color", type: "select", options: ["yellow", "green", "blue", "lavender", "citrine", "lilac", "powder"] },
+          { key: "bg_color", label: "Background color", type: "select", options: ["yellow", "green", "blue", "lavender", "citrine", "lilac", "powder", "dark_purple", "medium_lavender", "soft_blue"] },
           { key: "eyebrow", label: "Eyebrow", type: "text" },
           { key: "heading", label: "Heading", type: "text" },
           { key: "body", label: "Body", type: "textarea" },

@@ -239,7 +239,7 @@ export interface MembershipCtaContent {
 
 export type BackgroundColor = "dove" | "aubergine" | "wisteria" | "blackberry";
 
-export type CardSwatchColor = "yellow" | "green" | "blue" | "lavender" | "citrine" | "lilac" | "powder";
+export type CardSwatchColor = "yellow" | "green" | "blue" | "lavender" | "citrine" | "lilac" | "powder" | "dark_purple" | "medium_lavender" | "soft_blue";
 
 // ── right_side_3_features ──────────────────────────────────────
 

@@ -82,6 +82,9 @@ const CARD_COLOR_MAP: Record<CardSwatchColor, string> = {
   citrine: "#e8d5a3",
   lilac: "#c9b8d9",
   powder: "#b8c5d6",
+  dark_purple: "#3e155f",
+  medium_lavender: "#b693c0",
+  soft_blue: "#7786be",
 };
 
 export function getCardSwatchColor(color: CardSwatchColor): string {
@@ -104,6 +107,12 @@ export function getCardSwatchBgClass(color: CardSwatchColor): string {
       return "bg-nfw-lilac/20";
     case "powder":
       return "bg-nfw-powder/20";
+    case "dark_purple":
+      return "bg-[#3e155f]";
+    case "medium_lavender":
+      return "bg-[#b693c0]";
+    case "soft_blue":
+      return "bg-[#7786be]";
     default:
       return "bg-nfw-blackberry/5";
   }
