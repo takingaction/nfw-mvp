@@ -37,11 +37,10 @@ export default function StackedFeaturesSection({ content }: Props) {
           return (
             <div
               key={index}
-              className="relative overflow-hidden flex flex-col"
-              style={{ minHeight: "min(60vw, 520px)" }}
+              className="relative flex flex-col"
             >
               <div
-                className="relative w-full h-full"
+                className="relative w-full flex-shrink-0"
                 style={{ minHeight: "min(60vw, 520px)" }}
               >
                 {col.image_url ? (
@@ -63,8 +62,8 @@ export default function StackedFeaturesSection({ content }: Props) {
                 )}
               </div>
               <div
-                className="relative flex flex-col px-10 py-12"
-                style={{ backgroundColor: swatchColor, minHeight: "min(60vw, 520px)" }}
+                className="relative flex flex-col flex-1 px-10 py-12"
+                style={{ backgroundColor: swatchColor }}
               >
                 {col.eyebrow && (
                   <p className={`font-ui text-xs font-black tracking-[0.08em] uppercase mb-auto ${textColor}`}>
