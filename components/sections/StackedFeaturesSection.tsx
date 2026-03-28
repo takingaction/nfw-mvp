@@ -67,41 +67,44 @@ export default function StackedFeaturesSection({ content }: Props) {
                 )}
               </div>
               <div
-                className={`flex-1 p-6 ${bgClass}`}
+                className={`flex-1 px-10 py-12 ${bgClass}`}
                 style={{ backgroundColor: col.image_url ? undefined : swatchColor }}
               >
                 {col.eyebrow && (
-                  <p className={`text-xs font-semibold uppercase tracking-widest mb-2 ${textColor}`}>
+                  <p className={`font-ui text-xs font-black tracking-[0.08em] uppercase mb-auto ${textColor}`}>
                     {col.eyebrow}
                   </p>
                 )}
-                {col.heading && (
-                  <h3 className={`font-serif text-2xl mb-3 italic ${textColor}`}>
-                    {col.heading}
-                  </h3>
-                )}
-                {col.body && (
-                  <p className={`text-sm mb-4 leading-relaxed ${textColor}`}>
-                    {col.body}
-                  </p>
-                )}
-                {col.bullets && col.bullets.length > 0 && (
-                  <ul className="space-y-2 mb-4">
-                    {col.bullets.map((bullet, i) => (
-                      <li key={i} className={`text-sm flex items-start gap-2 ${textColor}`}>
-                        <span className="text-nfw-citrine mt-1">•</span>
-                        <span>{bullet}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <div className="flex-1 flex flex-col justify-center py-8">
+                  {col.heading && (
+                    <h3 className={`font-serif italic text-2xl lg:text-3xl mb-4 leading-snug ${textColor}`}>
+                      {col.heading}
+                    </h3>
+                  )}
+                  {col.body && (
+                    <p className={`font-serif text-base leading-snug ${textColor}`}>
+                      {col.body}
+                    </p>
+                  )}
+                  {col.bullets && col.bullets.length > 0 && (
+                    <ul className="space-y-2 mt-4 list-disc list-outside ml-6">
+                      {col.bullets.map((bullet, i) => (
+                        <li key={i} className={`font-serif text-base leading-snug pl-1 ${textColor}`}>
+                          {bullet}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
                 {col.cta_label && col.cta_url && (
-                  <Link
-                    href={col.cta_url}
-                    className={`inline-flex items-center justify-center px-6 py-3 bg-nfw-citrine text-nfw-blackberry font-bold text-sm transition-all hover:opacity-90`}
-                  >
-                    {col.cta_label}
-                  </Link>
+                  <div className="mt-auto">
+                    <Link
+                      href={col.cta_url}
+                      className="font-ui text-base font-black tracking-[0.08em] uppercase text-nfw-citrine hover:opacity-70 transition-opacity"
+                    >
+                      {col.cta_label}
+                    </Link>
+                  </div>
                 )}
               </div>
             </div>
