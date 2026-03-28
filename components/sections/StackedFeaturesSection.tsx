@@ -64,7 +64,7 @@ export default function StackedFeaturesSection({ content }: Props) {
               </div>
               <div
                 className="relative flex flex-col px-10 py-12"
-                style={{ backgroundColor: swatchColor }}
+                style={{ backgroundColor: swatchColor, minHeight: "min(60vw, 520px)" }}
               >
                 {col.eyebrow && (
                   <p className={`font-ui text-xs font-black tracking-[0.08em] uppercase mb-auto ${textColor}`}>
