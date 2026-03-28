@@ -29,7 +29,7 @@ export default function StackedFeaturesSection({ content }: Props) {
 
   return (
     <section className="bg-nfw-dove overflow-hidden">
-      <div className="grid grid-cols-1 md:grid-cols-3 h-full">
+      <div className="grid grid-cols-1 md:grid-cols-3">
         {columns.map((col, index) => {
           const textColor = TEXT_COLOR_MAP[col.bg_color] || "text-nfw-blackberry";
           const swatchColor = getCardSwatchColor(col.bg_color);
@@ -37,10 +37,11 @@ export default function StackedFeaturesSection({ content }: Props) {
           return (
             <div
               key={index}
-              className="flex flex-col h-full"
+              className="relative overflow-hidden flex flex-col"
+              style={{ minHeight: "min(60vw, 520px)" }}
             >
               <div
-                className="relative overflow-hidden flex-shrink-0"
+                className="relative w-full h-full"
                 style={{ minHeight: "min(60vw, 520px)" }}
               >
                 {col.image_url ? (
@@ -48,8 +49,7 @@ export default function StackedFeaturesSection({ content }: Props) {
                     <img
                       src={col.image_url}
                       alt=""
-                      className="w-full h-full object-cover"
-                      style={{ minHeight: "min(60vw, 520px)" }}
+                      className="absolute inset-0 w-full h-full object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
                       }}
@@ -59,12 +59,12 @@ export default function StackedFeaturesSection({ content }: Props) {
                     )}
                   </>
                 ) : (
-                  <div className="w-full bg-nfw-stone/30" style={{ minHeight: "min(60vw, 520px)" }} />
+                  <div className="absolute inset-0 w-full h-full bg-nfw-stone/30" />
                 )}
               </div>
               <div
-                className="flex-1 px-10 py-12"
-                style={{ backgroundColor: swatchColor }}
+                className="relative flex flex-col h-full px-10 py-12"
+                style={{ minHeight: "inherit", backgroundColor: swatchColor }}
               >
                 {col.eyebrow && (
                   <p className={`font-ui text-xs font-black tracking-[0.08em] uppercase mb-auto ${textColor}`}>
