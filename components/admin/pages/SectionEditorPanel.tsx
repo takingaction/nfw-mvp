@@ -28,12 +28,10 @@ function FieldEditor({
   field,
   value,
   onChange,
-  openMediaLibrary,
 }: {
   field: EditorField;
   value: unknown;
   onChange: (val: unknown) => void;
-  openMediaLibrary?: (bucket: string, fieldKey: string) => void;
 }) {
   if (field.type === "text" || field.type === "url") {
     return (
@@ -88,56 +86,9 @@ function FieldEditor({
     );
   }
 
+  // Image fields are handled inline in the parent component, not here
   if (field.type === "image") {
-    console.log("[DEBUG] FieldEditor image field, openMediaLibrary is:", typeof openMediaLibrary, "field:", field.key);
-    return (
-      <div>
-        <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
-          {field.label}
-        </label>
-
-        {typeof value === "string" && value && isValidUrl(value) && (
-          <div className="relative mb-2 group w-full h-40 overflow-hidden">
-            <Image
-              src={value as string}
-              alt=""
-              fill
-              className="object-cover"
-            />
-            <button
-              onClick={() => onChange("")}
-              className="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              ×
-            </button>
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={() => { 
-            console.log("[DEBUG] Add Image clicked, openMediaLibrary:", openMediaLibrary, "field:", field.key); 
-            if (openMediaLibrary) {
-              openMediaLibrary("page-builder", field.key);
-            }
-          }}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-nfw-blackberry/20 hover:border-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
-        >
-          <Upload className="w-4 h-4 text-nfw-blackberry/40" />
-          <span className="text-sm text-nfw-blackberry/50">
-            {value ? "Replace image" : "Add image"}
-          </span>
-        </button>
-
-        <input
-          type="text"
-          value={(value as string) ?? ""}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Or paste a URL directly"
-          className="mt-2 w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry transition-colors text-nfw-blackberry/40"
-        />
-      </div>
-    );
+    return null;
   }
 
   if (field.type === "video") {
@@ -472,6 +423,7 @@ export default function SectionEditorPanel({
 
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
         {def.editorFields.map((field) => {
+          console.log("[DEBUG] Field check:", field.key, "type:", field.type);
           if (field.type === "image") {
             return (
               <div key={field.key}>
