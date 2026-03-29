@@ -476,14 +476,57 @@ export default function SectionEditorPanel({
 
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
         {def.editorFields.map((field) => {
-          console.log("[DEBUG] Rendering field:", field.key, "type:", field.type, "has openMediaLibrary:", typeof openMediaLibrary);
+          if (field.type === "image") {
+            return (
+              <div key={field.key}>
+                <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
+                  {field.label}
+                </label>
+
+                {typeof content[field.key] === "string" && (content[field.key] as string) && isValidUrl(content[field.key] as string) && (
+                  <div className="relative mb-2 group w-full h-40 overflow-hidden">
+                    <Image
+                      src={content[field.key] as string}
+                      alt=""
+                      fill
+                      className="object-cover"
+                    />
+                    <button
+                      onClick={() => updateField(field.key, "")}
+                      className="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => { console.log("[DEBUG] Image button clicked, field:", field.key); openMediaLibrary("page-builder", field.key); }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-nfw-blackberry/20 hover:border-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
+                >
+                  <Upload className="w-4 h-4 text-nfw-blackberry/40" />
+                  <span className="text-sm text-nfw-blackberry/50">
+                    {content[field.key] ? "Replace image" : "Add image"}
+                  </span>
+                </button>
+
+                <input
+                  type="text"
+                  value={(content[field.key] as string) ?? ""}
+                  onChange={(e) => updateField(field.key, e.target.value)}
+                  placeholder="Or paste a URL directly"
+                  className="mt-2 w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry transition-colors text-nfw-blackberry/40"
+                />
+              </div>
+            );
+          }
           return (
             <FieldEditor
               key={field.key}
               field={field}
               value={content[field.key]}
               onChange={(val) => updateField(field.key, val)}
-              openMediaLibrary={openMediaLibrary}
             />
           );
         })}
