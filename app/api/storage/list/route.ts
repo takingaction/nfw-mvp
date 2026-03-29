@@ -22,23 +22,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Bucket is required" }, { status: 400 });
     }
 
-    // List files from storage
-    const { data: files, error: listError } = await supabaseAdmin.storage
-      .from(bucket)
-      .list("", {
-        limit: 100, // Get more to filter and paginate
-        sortBy: { column: "created_at", order: "desc" },
-      });
-
-    if (listError) {
-      console.error("Error listing storage files:", listError);
-      return NextResponse.json({ error: "Failed to list files" }, { status: 500 });
+    // List files from storage - check both root and common subfolders
+    const foldersToCheck = ["", "sections", "images"];
+    let allFiles: any[] = [];
+    
+    for (const folder of foldersToCheck) {
+      const folderPath = folder || undefined;
+      const { data: files, error: listError } = await supabaseAdmin.storage
+        .from(bucket)
+        .list(folderPath, {
+          limit: 100,
+          sortBy: { column: "created_at", order: "desc" },
+        });
+      
+      if (!listError && files) {
+        // Add folder prefix to file names if in subfolder
+        const filesWithPrefix = files.map((file: any) => ({
+          ...file,
+          name: folder ? `${folder}/${file.name}` : file.name,
+        }));
+        allFiles = [...allFiles, ...filesWithPrefix];
+      }
     }
 
     // Filter out folders and non-image files
-    let imageFiles = (files || []).filter((file) => {
-      // Skip folders
-      if (file.id === null && file.name) return false;
+    let imageFiles = allFiles.filter((file: any) => {
+      // Skip folders (files with no metadata)
+      if (!file.metadata) return false;
       // Only include images
       const ext = file.name.toLowerCase().split(".").pop();
       return ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext || "");
@@ -47,7 +57,7 @@ export async function POST(request: NextRequest) {
     // Apply search filter
     if (search && search.trim()) {
       const searchLower = search.toLowerCase();
-      imageFiles = imageFiles.filter((file) =>
+      imageFiles = imageFiles.filter((file: any) =>
         file.name.toLowerCase().includes(searchLower)
       );
     }
@@ -60,29 +70,19 @@ export async function POST(request: NextRequest) {
 
     // Generate signed URLs and thumbnail URLs for each file
     const filesWithUrls = await Promise.all(
-      imageFiles.map(async (file) => {
+      imageFiles.map(async (file: any) => {
         // Get public URL for the file
         const { data: urlData } = supabaseAdmin.storage
           .from(bucket)
           .getPublicUrl(file.name);
 
-        // Generate signed URL (valid for 1 hour)
-        const { data: signedData, error: signError } = await supabaseAdmin.storage
-          .from(bucket)
-          .createSignedUrl(file.name, 3600);
-
-        if (signError) {
-          console.error("Error creating signed URL:", signError);
-        }
-
         // Create thumbnail URL by appending resize params (Supabase imgproxy)
         // Format: ?width=200&height=200&resize=cover
         const thumbnailUrl = urlData.publicUrl + "?w=200&h=200&resize=cover";
-        const originalUrl = signedData?.signedUrl || urlData.publicUrl;
 
         return {
           name: file.name,
-          url: originalUrl,
+          url: urlData.publicUrl,
           thumbnailUrl: thumbnailUrl,
           created_at: file.created_at,
           size: file.metadata?.size || 0,
