@@ -89,6 +89,7 @@ function FieldEditor({
   }
 
   if (field.type === "image") {
+    console.log("[DEBUG] FieldEditor image field, onOpenMediaLibrary is:", typeof onOpenMediaLibrary, onOpenMediaLibrary);
     return (
       <div>
         <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
@@ -114,7 +115,12 @@ function FieldEditor({
 
         <button
           type="button"
-          onClick={() => { console.log("[DEBUG] Add Image clicked"); onOpenMediaLibrary?.("page-builder"); }}
+          onClick={() => { 
+            console.log("[DEBUG] Add Image clicked, onOpenMediaLibrary:", onOpenMediaLibrary); 
+            if (onOpenMediaLibrary) {
+              onOpenMediaLibrary("page-builder");
+            }
+          }}
           className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-nfw-blackberry/20 hover:border-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
         >
           <Upload className="w-4 h-4 text-nfw-blackberry/40" />
@@ -465,15 +471,18 @@ export default function SectionEditorPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
-        {def.editorFields.map((field) => (
-          <FieldEditor
-            key={field.key}
-            field={field}
-            value={content[field.key]}
-            onChange={(val) => updateField(field.key, val)}
-            onOpenMediaLibrary={(bucket) => { console.log("[DEBUG] onOpenMediaLibrary called with bucket:", bucket, "field:", field.key); setMediaLibrary({ isOpen: true, fieldKey: field.key, bucket }); }}
-          />
-        ))}
+        {def.editorFields.map((field) => {
+          console.log("[DEBUG] Rendering field:", field.key, "type:", field.type);
+          return (
+            <FieldEditor
+              key={field.key}
+              field={field}
+              value={content[field.key]}
+              onChange={(val) => updateField(field.key, val)}
+              onOpenMediaLibrary={(bucket) => { console.log("[DEBUG] onOpenMediaLibrary called with bucket:", bucket, "field:", field.key); setMediaLibrary({ isOpen: true, fieldKey: field.key, bucket }); }}
+            />
+          );
+        })}
       </div>
 
       <MediaLibraryModal
