@@ -230,7 +230,7 @@ export default function MediaLibraryModal({
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 overflow-y-auto max-h-[50vh]">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 overflow-y-auto" style={{ maxHeight: "50vh", minHeight: "200px" }}>
                     {files.map((file) => (
                       <div
                         key={file.name}
