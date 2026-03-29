@@ -535,9 +535,26 @@ export default function SectionEditorPanel({
         onClose={() => { console.log("[DEBUG] Modal closing"); setMediaLibrary({ isOpen: false, fieldKey: null, bucket: "page-builder" }); }}
         bucket={mediaLibrary.bucket}
         onSelect={(url) => {
-          console.log("[DEBUG] Image selected:", url);
+          console.log("[DEBUG] Image selected, fieldKey:", mediaLibrary.fieldKey, "url:", url);
           if (mediaLibrary.fieldKey) {
-            updateField(mediaLibrary.fieldKey, url);
+            // Handle nested array field keys like "columns.0.image_url"
+            const parts = mediaLibrary.fieldKey.split(".");
+            if (parts.length === 3) {
+              // Array item field: columns.0.image_url
+              const arrayFieldKey = parts[0];
+              const index = parseInt(parts[1], 10);
+              const subFieldKey = parts[2];
+              const arrayValue = content[arrayFieldKey] as Record<string, unknown>[];
+              if (Array.isArray(arrayValue)) {
+                const updatedArray = arrayValue.map((item, i) => 
+                  i === index ? { ...item, [subFieldKey]: url } : item
+                );
+                updateField(arrayFieldKey, updatedArray);
+              }
+            } else {
+              // Direct field
+              updateField(mediaLibrary.fieldKey, url);
+            }
           }
           setMediaLibrary({ isOpen: false, fieldKey: null, bucket: "page-builder" });
         }}
