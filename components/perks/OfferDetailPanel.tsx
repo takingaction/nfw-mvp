@@ -17,13 +17,11 @@ import {
   User,
 } from "lucide-react";
 import Link from "next/link";
-import LocationSelector from "@/components/LocationSelector";
 
 interface OfferDetailPanelProps {
   offerKey: string | null;
   isOpen: boolean;
   onClose: () => void;
-  isAuthenticated?: boolean;
 }
 
 interface Offer {
@@ -44,11 +42,73 @@ interface Offer {
   offer_group_key?: string;
 }
 
+interface Location {
+  location_key?: string | number;
+  location_name?: string;
+  name?: string;
+  street_address?: string;
+  extended_street_address?: string;
+  address_line_1?: string;
+  address_line_2?: string;
+  city_locality?: string;
+  state_region?: string;
+  postal_code?: string;
+  phone_number?: string;
+  distance?: string;
+  distance_miles?: string;
+  search_distance?: number | string;
+  physical_location?: {
+    location_key?: string | number;
+    location_name?: string;
+    street_address?: string;
+    extended_street_address?: string;
+    address_line_1?: string;
+    address_line_2?: string;
+    city_locality?: string;
+    state_region?: string;
+    postal_code?: string;
+    phone_number?: string;
+  };
+}
+
+const getLocationName = (loc: Location): string => {
+  return loc.location_name || loc.name || loc.physical_location?.location_name || "Unknown Location";
+};
+
+const getLocationKey = (loc: Location): string | number => {
+  return loc.location_key || loc.physical_location?.location_key || "";
+};
+
+const getStreetAddress = (loc: Location): string => {
+  return loc.street_address || loc.physical_location?.street_address ||
+    loc.physical_location?.address_line_1 || loc.address_line_1 || "";
+};
+
+const getExtendedAddress = (loc: Location): string => {
+  return loc.extended_street_address || loc.physical_location?.extended_street_address ||
+    loc.physical_location?.address_line_2 || loc.address_line_2 || "";
+};
+
+const getCityStateZip = (loc: Location): string => {
+  const city = loc.city_locality || loc.physical_location?.city_locality || "";
+  const state = loc.state_region || loc.physical_location?.state_region || "";
+  const zip = loc.postal_code || loc.physical_location?.postal_code || "";
+  return `${city}${city && state ? ", " : ""}${state} ${zip}`.trim();
+};
+
+const getDistance = (loc: Location): string => {
+  if (loc.search_distance !== undefined) {
+    return typeof loc.search_distance === 'number' 
+      ? `${loc.search_distance.toFixed(1)}mi` 
+      : loc.search_distance.toString();
+  }
+  return loc.distance || loc.distance_miles || "";
+};
+
 export default function OfferDetailPanel({
   offerKey,
   isOpen,
   onClose,
-  isAuthenticated = true,
 }: OfferDetailPanelProps) {
   const [offer, setOffer] = useState<Offer | null>(null);
   const [loading, setLoading] = useState(false);
@@ -68,26 +128,22 @@ export default function OfferDetailPanel({
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  const [showLocationSelector, setShowLocationSelector] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{
     key: string;
     name: string;
   } | null>(null);
-  const [pendingRedemptionMethod, setPendingRedemptionMethod] = useState<
-    string | null
-  >(null);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+  const [searchDistance, setSearchDistance] = useState("100mi");
+  const [searchZip, setSearchZip] = useState("");
+  const [profileZip, setProfileZip] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setIsVisible(true);
       setIsAnimating(true);
       if (offerKey) {
-        if (isAuthenticated) {
-          fetchOffer(offerKey);
-        } else {
-          setError("Sign in to see offer details");
-          setLoading(false);
-        }
+        fetchOffer(offerKey);
       }
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -105,7 +161,7 @@ export default function OfferDetailPanel({
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, offerKey, isAuthenticated]);
+  }, [isOpen, offerKey]);
 
   const fetchOffer = async (key: string) => {
     setLoading(true);
@@ -134,18 +190,53 @@ export default function OfferDetailPanel({
     }
   };
 
-  const handleRedeem = async (method: string) => {
+  const fetchLocations = async (offerGroupKey: string, zipCode?: string, distance?: string) => {
+    setLoadingLocations(true);
+    try {
+      const params = new URLSearchParams({ offer_group: offerGroupKey });
+      if (zipCode) {
+        params.set("postal_code", zipCode);
+      }
+      params.set("distance", distance || "100mi");
+      params.set("per_page", "10");
+
+      const response = await fetch(`/api/access-perks/locations?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setLocations(data.locations || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch locations:", err);
+    } finally {
+      setLoadingLocations(false);
+    }
+  };
+
+  useEffect(() => {
+    if (offer?.offer_group_key) {
+      fetchLocations(offer.offer_group_key, undefined, searchDistance);
+    } else {
+      setLocations([]);
+    }
+  }, [offer?.offer_group_key, searchDistance]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetch('/api/profile')
+        .then(res => res.json())
+        .then(data => {
+          if (data.zip) {
+            setProfileZip(data.zip);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen]);
+
+  const handleRedeem = async (method: string, forcedLocationKey?: string) => {
     if (!offer) return;
 
-    const isMultiLocation =
-      offer?.offer_group_key &&
-      (method === "instore_print" || method === "instore");
-
-    if (isMultiLocation && !selectedLocation) {
-      setPendingRedemptionMethod(method);
-      setShowLocationSelector(true);
-      return;
-    }
+    const effectiveLocationKey = forcedLocationKey || selectedLocation?.key;
 
     try {
       setRedemptionResult(null);
@@ -156,8 +247,8 @@ export default function OfferDetailPanel({
       else if (method === "instore_print") setRedeemingPrint(true);
 
       const body: any = { method };
-      if (selectedLocation) {
-        body.location_key = selectedLocation.key;
+      if (effectiveLocationKey) {
+        body.location_key = effectiveLocationKey;
       }
 
       const response = await fetch(
@@ -325,22 +416,6 @@ export default function OfferDetailPanel({
     }
   };
 
-  const handleLocationSelected = (
-    locationKey: string,
-    locationName: string,
-  ) => {
-    const newLocation = { key: locationKey, name: locationName };
-    setSelectedLocation(newLocation);
-    setShowLocationSelector(false);
-
-    if (pendingRedemptionMethod) {
-      setTimeout(() => {
-        handleRedeem(pendingRedemptionMethod);
-        setPendingRedemptionMethod(null);
-      }, 100);
-    }
-  };
-
   const formatExpiry = (date: string) => {
     if (!date) return null;
     const expiryDate = new Date(date);
@@ -454,19 +529,6 @@ export default function OfferDetailPanel({
           {offer && !loading && (
             <div className="flex-1 overflow-y-auto">
               <div className="p-4 space-y-4">
-                {showLocationSelector && offer.offer_group_key && (
-                  <LocationSelector
-                    offerGroupKey={offer.offer_group_key}
-                    offerTitle={offer.title}
-                    onSelectLocation={handleLocationSelected}
-                    onClose={() => {
-                      setShowLocationSelector(false);
-                      setPendingRedemptionMethod(null);
-                    }}
-                    userZip={offer.physical_location?.postal_code}
-                  />
-                )}
-
                 <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
                   <div className="flex gap-4">
                     <div className="flex-shrink-0">
@@ -567,6 +629,103 @@ export default function OfferDetailPanel({
                     />
                   ) : null}
                 </div>
+
+                {(offer.offer_group_key || locations.length > 0) && (
+                  <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
+                    <h3 className="text-base font-semibold text-nfw-blackberry mb-3 flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-nfw-lilac" />
+                      {loadingLocations ? "Finding nearby locations..." : "Nearby Locations"}
+                    </h3>
+                    
+                    {offer.offer_group_key && !loadingLocations && (
+                      <div className="mb-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <input
+                            type="text"
+                            value={searchZip}
+                            onChange={(e) => setSearchZip(e.target.value)}
+                            placeholder="ZIP code"
+                            maxLength={5}
+                            className="w-24 text-sm border border-nfw-blackberry/20 rounded-lg px-3 py-1.5 bg-white text-nfw-blackberry placeholder:text-nfw-blackberry/40"
+                          />
+                          <select
+                          value={searchDistance}
+                          onChange={(e) => setSearchDistance(e.target.value)}
+                          className="text-sm border border-nfw-blackberry/20 rounded-lg px-3 py-1.5 bg-white text-nfw-blackberry"
+                        >
+                          <option value="5mi">5 mi</option>
+                          <option value="10mi">10 mi</option>
+                          <option value="25mi">25 mi</option>
+                          <option value="50mi">50 mi</option>
+                          <option value="100mi">100 mi</option>
+                        </select>
+                        <button
+                          onClick={() => fetchLocations(offer.offer_group_key!, searchZip || undefined, searchDistance)}
+                          className="text-sm bg-nfw-lilac text-nfw-blackberry px-4 py-1.5 rounded-lg hover:bg-nfw-lilac/80 font-medium"
+                        >
+                          Search
+                        </button>
+                        </div>
+                        <p className="text-xs text-nfw-blackberry/50">
+                          Leave blank to use your profile ZIP{profileZip && ` (${profileZip})`}
+                        </p>
+                      </div>
+                    )}
+
+                    {loadingLocations ? (
+                      <div className="flex items-center gap-2 text-sm text-nfw-blackberry/50 py-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Locating stores near you...
+                      </div>
+                    ) : locations.length > 0 ? (
+                      <ul className="space-y-2">
+                        {locations.map((location, index) => {
+                          const name = getLocationName(location);
+                          const key = getLocationKey(location) || `location-${index}`;
+                          const street = getStreetAddress(location);
+                          const extended = getExtendedAddress(location);
+                          const cityStateZip = getCityStateZip(location);
+                          const distance = getDistance(location);
+                          
+                          return (
+                            <li
+                              key={key}
+                              className="flex items-start gap-2 text-sm"
+                            >
+                              <MapPin className="w-3 h-3 text-nfw-blackberry/40 flex-shrink-0 mt-1" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-nfw-blackberry">
+                                  {name}
+                                </p>
+                                {street && (
+                                  <p className="text-nfw-blackberry/60 text-xs">
+                                    {street}
+                                    {extended && `, ${extended}`}
+                                  </p>
+                                )}
+                                {cityStateZip && (
+                                  <p className="text-nfw-blackberry/60 text-xs">
+                                    {cityStateZip}
+                                    {distance && (
+                                      <span className="ml-2 text-nfw-lilac">
+                                        ({distance})
+                                      </span>
+                                    )}
+                                  </p>
+                                )}
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : offer.offer_group_key ? (
+                      <p className="text-sm text-nfw-blackberry/70">
+                        No locations found within {searchDistance.replace('mi', ' miles')}.
+                        Try a larger distance.
+                      </p>
+                    ) : null}
+                  </div>
+                )}
 
                 {selectedLocation && (
                   <div className="bg-nfw-citrine/20 border border-nfw-citrine rounded-xl p-4">
@@ -765,107 +924,90 @@ export default function OfferDetailPanel({
 
                 {offer.redemption_methods && offer.redemption_methods.length > 0 && (
                   <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
-                    {isAuthenticated ? (
-                      <>
-                        <h3 className="text-base font-semibold text-nfw-blackberry mb-4">
-                          Redeem This Offer
-                        </h3>
-                        <div className="space-y-3">
-                          {offer.redemption_methods.includes("link") && (
-                            <button
-                              onClick={() => handleRedeem("link")}
-                              disabled={redeemingLink}
-                              className="w-full px-4 py-2.5 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
-                            >
-                              {redeemingLink ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                  Redeeming...
-                                </>
-                              ) : (
-                                <>
-                                  <Globe className="w-4 h-4" />
-                                  Redeem Online
-                                </>
-                              )}
-                            </button>
-                          )}
-
-                          {offer.redemption_methods.includes("instore") && (
-                            <button
-                              onClick={() => handleRedeem("instore")}
-                              disabled={redeemingInstore}
-                              className="w-full px-4 py-2.5 bg-nfw-lilac text-nfw-blackberry rounded-xl hover:bg-nfw-lilac/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
-                            >
-                              {redeemingInstore ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                  Redeeming...
-                                </>
-                              ) : (
-                                <>
-                                  <Store className="w-4 h-4" />
-                                  Redeem In-Store
-                                </>
-                              )}
-                            </button>
-                          )}
-
-                          {offer.redemption_methods.includes("instore_print") && (
-                            <button
-                              onClick={() => handleRedeem("instore_print")}
-                              disabled={redeemingPrint}
-                              className="w-full px-4 py-2.5 bg-[#b2d1ee] text-nfw-blackberry rounded-xl hover:bg-[#b2d1ee]/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
-                            >
-                              {redeemingPrint ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                  Redeeming...
-                                </>
-                              ) : (
-                                <>
-                                  <Printer className="w-4 h-4" />
-                                  Print Coupon
-                                </>
-                              )}
-                            </button>
-                          )}
-
-                          {offer.redemption_methods.includes("call") && (
-                            <button
-                              onClick={() => handleRedeem("call")}
-                              disabled={redeemingCall}
-                              className="w-full px-4 py-2.5 bg-nfw-citrine text-nfw-blackberry rounded-xl hover:bg-nfw-citrine/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
-                            >
-                              {redeemingCall ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                  Redeeming...
-                                </>
-                              ) : (
-                                <>
-                                  <Phone className="w-4 h-4" />
-                                  Redeem by Phone
-                                </>
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="text-center py-4">
-                        <p className="text-sm text-nfw-blackberry/70 mb-4">
-                          Sign in to access exclusive offers and redeem coupons.
-                        </p>
-                        <Link
-                          href="/auth/sign-up"
-                          className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 transition-colors font-medium text-sm"
+                    <h3 className="text-base font-semibold text-nfw-blackberry mb-4">
+                      Redeem This Offer
+                    </h3>
+                    <div className="space-y-3">
+                      {offer.redemption_methods.includes("link") && (
+                        <button
+                          onClick={() => handleRedeem("link")}
+                          disabled={redeemingLink}
+                          className="w-full px-4 py-2.5 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
                         >
-                          <User className="w-4 h-4" />
-                          Sign In
-                        </Link>
-                      </div>
-                    )}
+                          {redeemingLink ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Redeeming...
+                            </>
+                          ) : (
+                            <>
+                              <Globe className="w-4 h-4" />
+                              Redeem Online
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      {offer.redemption_methods.includes("instore") && (
+                        <button
+                          onClick={() => handleRedeem("instore")}
+                          disabled={redeemingInstore}
+                          className="w-full px-4 py-2.5 bg-nfw-lilac text-nfw-blackberry rounded-xl hover:bg-nfw-lilac/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                        >
+                          {redeemingInstore ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Redeeming...
+                            </>
+                          ) : (
+                            <>
+                              <Store className="w-4 h-4" />
+                              Redeem In-Store
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      {offer.redemption_methods.includes("instore_print") && (
+                        <button
+                          onClick={() => handleRedeem("instore_print")}
+                          disabled={redeemingPrint}
+                          className="w-full px-4 py-2.5 bg-[#b2d1ee] text-nfw-blackberry rounded-xl hover:bg-[#b2d1ee]/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                        >
+                          {redeemingPrint ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Redeeming...
+                            </>
+                          ) : (
+                            <>
+                              <Printer className="w-4 h-4" />
+                              Print Coupon
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      {offer.redemption_methods.includes("call") && (
+                        <button
+                          onClick={() => handleRedeem("call")}
+                          disabled={redeemingCall}
+                          className="w-full px-4 py-2.5 bg-nfw-citrine text-nfw-blackberry rounded-xl hover:bg-nfw-citrine/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                        >
+                          {redeemingCall ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Redeeming...
+                            </>
+                          ) : (
+                            <>
+                              <Phone className="w-4 h-4" />
+                              Redeem by Phone
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

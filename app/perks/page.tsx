@@ -86,6 +86,8 @@ export default function PerksPage() {
     setSearchPostalCode("");
     setSearchDistance("25mi");
     setCurrentPage(1);
+    setCurrentView("stores");
+    fetchAllCounts();
   };
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [currentView, setCurrentView] = useState<ViewType>("stores");
@@ -231,7 +233,7 @@ export default function PerksPage() {
           current_page: data.info?.current_page || page,
         });
 
-        if (viewCounts.offers === 0) {
+        if (selectedStore) {
           setViewCounts(prev => ({ ...prev, offers: data.info?.total_results || 0 }));
         }
       } else {
@@ -404,12 +406,26 @@ export default function PerksPage() {
 
   const handleStoreClick = (storeKey: number) => {
     setSelectedStore(storeKey);
+    setSelectedCategories([]);
+    setSelectedFacets([]);
+    setSelectedOfferTypes([]);
+    setSelectedLocation(null);
+    setSearchQuery("");
+    setSearchPostalCode("");
     setCurrentView("offers");
+    setCurrentPage(1);
   };
 
   const handleLocationClick = (locationKey: number) => {
     setSelectedLocation(locationKey);
+    setSelectedCategories([]);
+    setSelectedFacets([]);
+    setSelectedOfferTypes([]);
+    setSelectedStore(null);
+    setSearchQuery("");
+    setSearchPostalCode("");
     setCurrentView("offers");
+    setCurrentPage(1);
   };
 
   return (
@@ -431,6 +447,7 @@ export default function PerksPage() {
             query={searchQuery}
             postalCode={searchPostalCode}
             distance={searchDistance}
+            hasActiveFilters={selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0 || selectedStore !== null || selectedLocation !== null}
             onQueryChange={setSearchQuery}
             onPostalCodeChange={setSearchPostalCode}
             onDistanceChange={setSearchDistance}
@@ -475,7 +492,7 @@ export default function PerksPage() {
                   className="text-sm text-nfw-blackberry/60 hover:text-nfw-blackberry flex items-center gap-1 transition-colors"
                 >
                   <X className="w-4 h-4" />
-                  Clear filters
+                  Clear All
                 </button>
               )}
             </div>
@@ -611,7 +628,7 @@ export default function PerksPage() {
                 )}
 
                 {currentView === "offers" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5">
                     {rollupGroups.map((item: any, index: number) => (
                       <OfferCard
                         key={item.offer_key || item.key || index}
@@ -651,7 +668,6 @@ export default function PerksPage() {
         offerKey={selectedOfferKey}
         isOpen={isOfferPanelOpen}
         onClose={() => setIsOfferPanelOpen(false)}
-        isAuthenticated={!!user}
       />
     </main>
   );

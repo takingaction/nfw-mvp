@@ -109,6 +109,62 @@ Added ability to duplicate pages in `/admin/pages`.
 - Uses Supabase admin client with service role key
 - Also created `DELETE /api/admin/pages/delete` route for page deletion (was previously failing due to SUPABASE_SERVICE_ROLE_KEY being server-only)
 
+### Session 2026-03-28: Media Library Feature
+
+Added a full-featured Media Library for the page builder allowing users to browse, search, upload, and delete images from the Supabase `page-builder` storage bucket.
+
+**Files created:**
+- `app/api/storage/list/route.ts` - Lists files from storage (checks root, sections/, images/ subfolders)
+- `app/api/storage/delete/route.ts` - Deletes files from storage
+- `components/admin/MediaLibraryModal.tsx` - Modal with Browse/Upload tabs, search, pagination, delete confirmation
+
+**Files modified:**
+- `components/admin/pages/SectionEditorPanel.tsx` - Integrated media library for image fields, including array item fields (e.g., `columns.0.image_url`)
+
+**Key features:**
+- Browse existing images with 200x200 thumbnails in a grid
+- Upload new images (3MB limit, image/* types only)
+- Delete with confirmation warning
+- Search by filename (debounced via API)
+- Pagination (20 items per page)
+- Tab switching (Browse/Upload) preserves loaded state
+
+**Key implementation details:**
+- Modal does not render until images are loaded (`if (activeTab === "browse" && !imagesReady) return null`)
+- Uses `useRef` to hold latest `fetchFiles` callback, preventing effect re-runs on tab switch
+- Array field key parsing: `"columns.0.image_url"` splits into array name, index, and subfield key
+- Fixed modal height (`h-[32rem]`) with flexbox layout and `min-h-0` for proper scrolling
+- Grid uses `aspect-square` for consistent image tiles
+
+### Session 2026-03-29: Inline Location List for OfferDetailPanel
+
+Added inline location list display on **OfferDetailPanel** to show nearby store locations BEFORE users click to redeem.
+
+**Goal:** Display nearby locations so users know which stores they can bring coupons to, without requiring location selection to redeem (Access Perks generates coupons based on Member ID + Offer ID, not pre-selected location).
+
+**Files created:**
+- `app/api/profile/route.ts` - GET endpoint to fetch user's profile ZIP code
+
+**Files modified:**
+- `components/perks/OfferDetailPanel.tsx` - Added location fetching, display UI, and distance selector
+  - Added `Location` interface supporting both root-level and nested `physical_location` API response structures
+  - Added helper functions: `getLocationName`, `getLocationKey`, `getStreetAddress`, `getExtendedAddress`, `getCityStateZip`, `getDistance`
+  - Added state: `locations`, `loadingLocations`, `searchDistance`, `searchZip`, `profileZip`
+  - `fetchLocations()` - Fetches up to 10 locations from `/api/access-perks/locations`
+  - `fetchProfileZip()` - Fetches user's profile ZIP from `/api/profile`
+  - Added distance dropdown (5mi, 10mi, 25mi, 50mi, 100mi) matching PerksSearch
+  - Added ZIP code input with "Leave blank to use your profile ZIP (XXXXX)" helper text
+  - Simplified redemption flow - removed location selector prerequisite
+  - Removed `isAuthenticated` prop - now relies on API 401 response for auth errors
+
+**Key implementation details:**
+- Distance default changed from 25mi to 100mi
+- API uses user's profile ZIP code (from database) if no ZIP override entered
+- ZIP input does NOT save to profile (session-only override)
+- Location list shows: name, street address, city/state/zip, distance
+- Empty state message: "No locations found within X miles. Try a larger distance."
+- Auth check now handled by API (not client-side) to avoid race condition
+
 ### Previous Sessions
 - Fixed intermittent "Failed to Add Section" error by computing order_index in database instead of client-side (race condition fix)
 - Fixed inline editor stale closure bug in triggerAutoSave
