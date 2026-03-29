@@ -201,9 +201,9 @@ export default function MediaLibraryModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
+        <div className="h-96 overflow-hidden">
           {activeTab === "browse" ? (
-            <div className="h-full flex flex-col p-6">
+            <div className="h-full flex flex-col p-6 overflow-hidden">
               {/* Search */}
               <div className="relative mb-4 flex-shrink-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-nfw-blackberry/40" />
@@ -230,7 +230,7 @@ export default function MediaLibraryModal({
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 overflow-y-auto" style={{ maxHeight: "50vh", minHeight: "200px" }}>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 overflow-y-auto h-full">
                     {files.map((file) => (
                       <div
                         key={file.name}
