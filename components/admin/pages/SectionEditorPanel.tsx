@@ -28,10 +28,12 @@ function FieldEditor({
   field,
   value,
   onChange,
+  setMediaLibraryForItem,
 }: {
   field: EditorField;
   value: unknown;
   onChange: (val: unknown) => void;
+  setMediaLibraryForItem?: (bucket: string, fieldKey: string) => void;
 }) {
   if (field.type === "text" || field.type === "url") {
     return (
@@ -293,14 +295,61 @@ function FieldEditor({
                   </button>
                 </div>
               </div>
-              {field.fields.map((subField) => (
-                <FieldEditor
-                  key={subField.key}
-                  field={subField}
-                  value={item[subField.key]}
-                  onChange={(val) => updateItem(index, subField.key, val)}
-                />
-              ))}
+              {field.fields.map((subField) => {
+                if (subField.type === "image") {
+                  return (
+                    <div key={subField.key}>
+                      <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
+                        {subField.label}
+                      </label>
+
+                      {typeof item[subField.key] === "string" && (item[subField.key] as string) && isValidUrl(item[subField.key] as string) && (
+                        <div className="relative mb-2 group w-full h-40 overflow-hidden">
+                          <Image
+                            src={item[subField.key] as string}
+                            alt=""
+                            fill
+                            className="object-cover"
+                          />
+                          <button
+                            onClick={() => updateItem(index, subField.key, "")}
+                            className="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setMediaLibraryForItem?.("page-builder", `${field.key}.${index}.${subField.key}`)}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-nfw-blackberry/20 hover:border-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
+                      >
+                        <Upload className="w-4 h-4 text-nfw-blackberry/40" />
+                        <span className="text-sm text-nfw-blackberry/50">
+                          {item[subField.key] ? "Replace image" : "Add image"}
+                        </span>
+                      </button>
+
+                      <input
+                        type="text"
+                        value={(item[subField.key] as string) ?? ""}
+                        onChange={(e) => updateItem(index, subField.key, e.target.value)}
+                        placeholder="Or paste a URL directly"
+                        className="mt-2 w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry transition-colors text-nfw-blackberry/40"
+                      />
+                    </div>
+                  );
+                }
+                return (
+                  <FieldEditor
+                    key={subField.key}
+                    field={subField}
+                    value={item[subField.key]}
+                    onChange={(val) => updateItem(index, subField.key, val)}
+                  />
+                );
+              })}
             </div>
           ))}
           <button
@@ -475,6 +524,7 @@ export default function SectionEditorPanel({
               field={field}
               value={content[field.key]}
               onChange={(val) => updateField(field.key, val)}
+              setMediaLibraryForItem={(bucket, fieldKey) => setMediaLibrary({ isOpen: true, fieldKey, bucket })}
             />
           );
         })}
