@@ -6,6 +6,7 @@ interface PerksSearchProps {
   query: string;
   postalCode: string;
   distance: string;
+  hasActiveFilters: boolean;
   onQueryChange: (query: string) => void;
   onPostalCodeChange: (postalCode: string) => void;
   onDistanceChange: (distance: string) => void;
@@ -17,6 +18,7 @@ export default function PerksSearch({
   query,
   postalCode,
   distance,
+  hasActiveFilters,
   onQueryChange,
   onPostalCodeChange,
   onDistanceChange,
@@ -29,7 +31,7 @@ export default function PerksSearch({
     }
   };
 
-  const hasFilters = query.trim() || postalCode.trim();
+  const hasFilters = hasActiveFilters || query.trim() || postalCode.trim();
 
   return (
     <div className="flex gap-3">
@@ -76,7 +78,7 @@ export default function PerksSearch({
           onClick={onClear}
           className="px-4 py-2.5 border border-nfw-blackberry/20 text-nfw-blackberry/70 hover:bg-nfw-blackberry/5 transition-colors font-medium text-sm"
         >
-          CLEAR SEARCH
+          CLEAR ALL
         </button>
       )}
     </div>
