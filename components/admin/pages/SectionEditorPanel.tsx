@@ -386,10 +386,6 @@ export default function SectionEditorPanel({
   const [currentFieldKey, setCurrentFieldKey] = useState<string | null>(null);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const contentRef = useRef<Record<string, unknown>>(content);
-  
-  const openMediaLibrary = useCallback((bucket: string, fieldKey: string) => {
-    setMediaLibrary({ isOpen: true, fieldKey, bucket });
-  }, []);
 
   useEffect(() => {
     contentRef.current = content;
@@ -502,7 +498,7 @@ export default function SectionEditorPanel({
 
                 <button
                   type="button"
-                  onClick={() => { console.log("[DEBUG] Image button clicked, field:", field.key); openMediaLibrary("page-builder", field.key); }}
+                  onClick={() => { console.log("[DEBUG] Image button clicked, field:", field.key, "setMediaLibrary:", typeof setMediaLibrary); setMediaLibrary({ isOpen: true, fieldKey: field.key, bucket: "page-builder" }); }}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-nfw-blackberry/20 hover:border-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
                 >
                   <Upload className="w-4 h-4 text-nfw-blackberry/40" />
