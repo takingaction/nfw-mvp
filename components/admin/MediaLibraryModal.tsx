@@ -157,8 +157,6 @@ export default function MediaLibraryModal({
 
   if (!isOpen) return null;
 
-  console.log("[DEBUG] MediaLibraryModal rendering, bucket:", bucket);
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col overflow-hidden">

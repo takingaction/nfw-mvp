@@ -28,12 +28,12 @@ function FieldEditor({
   field,
   value,
   onChange,
-  onOpenMediaLibrary,
+  openMediaLibrary,
 }: {
   field: EditorField;
   value: unknown;
   onChange: (val: unknown) => void;
-  onOpenMediaLibrary?: (bucket: string) => void;
+  openMediaLibrary?: (bucket: string, fieldKey: string) => void;
 }) {
   if (field.type === "text" || field.type === "url") {
     return (
@@ -89,7 +89,7 @@ function FieldEditor({
   }
 
   if (field.type === "image") {
-    console.log("[DEBUG] FieldEditor image field, onOpenMediaLibrary is:", typeof onOpenMediaLibrary, onOpenMediaLibrary);
+    console.log("[DEBUG] FieldEditor image field, openMediaLibrary is:", typeof openMediaLibrary, "field:", field.key);
     return (
       <div>
         <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
@@ -116,9 +116,9 @@ function FieldEditor({
         <button
           type="button"
           onClick={() => { 
-            console.log("[DEBUG] Add Image clicked, onOpenMediaLibrary:", onOpenMediaLibrary); 
-            if (onOpenMediaLibrary) {
-              onOpenMediaLibrary("page-builder");
+            console.log("[DEBUG] Add Image clicked, openMediaLibrary:", openMediaLibrary, "field:", field.key); 
+            if (openMediaLibrary) {
+              openMediaLibrary("page-builder", field.key);
             }
           }}
           className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-nfw-blackberry/20 hover:border-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
@@ -370,7 +370,7 @@ export default function SectionEditorPanel({
   section,
   onSave,
   onClose,
-  saving,
+  saving: _saving,
 }: Props) {
   const def =
     SECTION_REGISTRY[section.section_type as keyof typeof SECTION_REGISTRY];
@@ -383,9 +383,13 @@ export default function SectionEditorPanel({
     fieldKey: string | null;
     bucket: string;
   }>({ isOpen: false, fieldKey: null, bucket: "page-builder" });
+  const [currentFieldKey, setCurrentFieldKey] = useState<string | null>(null);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const savePromiseRef = useRef<Promise<void> | null>(null);
   const contentRef = useRef<Record<string, unknown>>(content);
+  
+  const openMediaLibrary = useCallback((bucket: string, fieldKey: string) => {
+    setMediaLibrary({ isOpen: true, fieldKey, bucket });
+  }, []);
 
   useEffect(() => {
     contentRef.current = content;
@@ -472,14 +476,14 @@ export default function SectionEditorPanel({
 
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
         {def.editorFields.map((field) => {
-          console.log("[DEBUG] Rendering field:", field.key, "type:", field.type);
+          console.log("[DEBUG] Rendering field:", field.key, "type:", field.type, "has openMediaLibrary:", typeof openMediaLibrary);
           return (
             <FieldEditor
               key={field.key}
               field={field}
               value={content[field.key]}
               onChange={(val) => updateField(field.key, val)}
-              onOpenMediaLibrary={(bucket) => { console.log("[DEBUG] onOpenMediaLibrary called with bucket:", bucket, "field:", field.key); setMediaLibrary({ isOpen: true, fieldKey: field.key, bucket }); }}
+              openMediaLibrary={openMediaLibrary}
             />
           );
         })}
