@@ -31,6 +31,7 @@ export default function MediaLibraryModal({
   const [activeTab, setActiveTab] = useState<"browse" | "upload">("browse");
   const [files, setFiles] = useState<MediaLibraryFile[]>([]);
   const [loading, setLoading] = useState(false);
+  const [imagesReady, setImagesReady] = useState(false);
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
   const [total, setTotal] = useState(0);
@@ -64,11 +65,13 @@ export default function MediaLibraryModal({
       console.error("[MediaLibrary] Fetch error:", error);
     } finally {
       setLoading(false);
+      setImagesReady(true);
     }
   }, [bucket, search, offset]);
 
   useEffect(() => {
     if (isOpen && activeTab === "browse") {
+      setImagesReady(false);
       fetchFiles();
     }
   }, [isOpen, activeTab, fetchFiles]);
@@ -171,7 +174,7 @@ export default function MediaLibraryModal({
             <h3 className="text-lg font-bold text-nfw-blackberry">Media Library</h3>
             <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
               <button
-                onClick={() => setActiveTab("browse")}
+                onClick={() => { setActiveTab("browse"); setImagesReady(false); }}
                 className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
                   activeTab === "browse"
                     ? "bg-white text-nfw-blackberry shadow-sm"
@@ -210,7 +213,7 @@ export default function MediaLibraryModal({
                 <input
                   type="text"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => { setSearch(e.target.value); setImagesReady(false); }}
                   placeholder="Search by filename..."
                   className="w-full pl-10 pr-4 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
                 />
@@ -218,12 +221,12 @@ export default function MediaLibraryModal({
 
               {/* Grid */}
               <div className="flex-1 overflow-y-auto">
-                {loading ? (
-                  <div className="flex items-center justify-center h-64">
-                    <p className="text-nfw-blackberry/50">Loading...</p>
+                {!imagesReady ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-nfw-blackberry/20 border-t-nfw-blackberry" />
                   </div>
                 ) : files.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-64 text-center">
+                  <div className="flex flex-col items-center justify-center h-full text-center">
                     <ImageIcon className="w-12 h-12 text-nfw-blackberry/20 mb-3" />
                     <p className="text-nfw-blackberry/50">
                       {search ? "No images match your search" : "No images in library"}
