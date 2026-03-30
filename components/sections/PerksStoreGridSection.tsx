@@ -53,7 +53,7 @@ export default function PerksStoreGridSection({ content }: Props) {
                   <span
                     className="inline-block text-xs px-2.5 py-1 mb-2 font-semibold"
                     style={{
-                      backgroundColor: `${getCardSwatchColor(item.color as CardSwatchColor)}40`,
+                      backgroundColor: getCardSwatchColor(item.color as CardSwatchColor),
                       color: "#2d1239",
                     }}
                   >
@@ -65,7 +65,7 @@ export default function PerksStoreGridSection({ content }: Props) {
                 </div>
                 <div
                   className="w-10 h-10 flex-shrink-0 ml-3 flex items-center justify-center"
-                  style={{ backgroundColor: `${getCardSwatchColor(item.color as CardSwatchColor)}50` }}
+                  style={{ backgroundColor: getCardSwatchColor(item.color as CardSwatchColor) }}
                 >
                   <span className="text-lg font-bold text-nfw-blackberry">
                     {item.name.charAt(0)}

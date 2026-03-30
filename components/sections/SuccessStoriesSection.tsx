@@ -15,9 +15,9 @@ interface Props {
 }
 
 const BG_TINT_CLASSES: Record<BgTint, string> = {
-  citrine: "bg-nfw-citrine/20",
-  powder: "bg-nfw-powder/20",
-  lilac: "bg-nfw-lilac/20",
+  citrine: "bg-[#F8F2E2]",
+  powder: "bg-[#E9EDF2]",
+  lilac: "bg-[#EEE9F3]",
 };
 
 export default function SuccessStoriesSection({ content }: Props) {
@@ -71,7 +71,7 @@ export default function SuccessStoriesSection({ content }: Props) {
               </div>
               <div className="p-5">
                 <span
-                  className={`inline-block font-ui text-xs font-black tracking-[0.06em] uppercase px-2.5 py-1 mb-3 ${BG_TINT_CLASSES[story.bg_tint]}`}
+                  className={`inline-block font-ui text-xs font-black tracking-[0.06em] uppercase px-2.5 py-1 mb-3 text-nfw-blackberry ${BG_TINT_CLASSES[story.bg_tint]}`}
                 >
                   {story.category}
                 </span>

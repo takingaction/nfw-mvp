@@ -83,7 +83,7 @@ export default function GrantsHeroSection({ content }: Props) {
                   {c.stat_label}
                 </p>
               </div>
-              <div className="absolute top-5 right-5 bg-nfw-citrine px-4 py-3">
+              <div className="absolute top-5 right-5 bg-[#F8F2E2] px-4 py-3">
                 <p className="font-ui text-xs font-black text-nfw-blackberry tracking-[0.03em] uppercase">
                   {c.secondary_stat_value}
                 </p>

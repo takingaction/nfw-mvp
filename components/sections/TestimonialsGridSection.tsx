@@ -1,6 +1,6 @@
 "use client";
 
-import { TestimonialsGridContent, BackgroundColor, CardSwatchColor } from "@/lib/sections/types";
+import { TestimonialsGridContent, BackgroundColor } from "@/lib/sections/types";
 import {
   getBackgroundClass,
   getTextColorForBackground,
@@ -8,24 +8,12 @@ import {
   getMutedTextColorForBackground,
   getCardTextColorForBackground,
   getCardBorderColorForBackground,
+  getCardSwatchColor,
 } from "@/lib/colors";
 
 interface Props {
   content: Record<string, unknown>;
 }
-
-const AVATAR_COLOR_MAP: Record<CardSwatchColor, string> = {
-  yellow: "bg-yellow-100",
-  green: "bg-green-100",
-  blue: "bg-blue-100",
-  lavender: "bg-purple-100",
-  citrine: "bg-nfw-citrine/40",
-  lilac: "bg-nfw-lilac/40",
-  powder: "bg-nfw-powder/40",
-  dark_purple: "bg-purple-900",
-  medium_lavender: "bg-purple-300",
-  soft_blue: "bg-blue-300",
-};
 
 export default function TestimonialsGridSection({ content }: Props) {
   const c = content as unknown as TestimonialsGridContent;
@@ -37,6 +25,7 @@ export default function TestimonialsGridSection({ content }: Props) {
   const mutedColor = getMutedTextColorForBackground(bg);
   const cardTextColor = getCardTextColorForBackground(bg);
   const cardBorderColor = getCardBorderColorForBackground(bg);
+  const cardBg = bg === "dove" ? "bg-white" : "bg-white/10";
 
   if (cards.length === 0) return null;
 
@@ -64,13 +53,16 @@ export default function TestimonialsGridSection({ content }: Props) {
           {cards.map((card, index) => (
             <div
               key={card.name || index}
-              className={`bg-white border ${cardBorderColor} p-6`}
+              className={`${cardBg} border ${cardBorderColor} p-6`}
             >
               <p className={`${cardTextColor}/70 text-sm leading-relaxed mb-6`}>
                 &ldquo;{card.quote}&rdquo;
               </p>
               <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 ${AVATAR_COLOR_MAP[card.avatar_color] || AVATAR_COLOR_MAP.lilac} flex items-center justify-center text-sm font-black text-nfw-blackberry`}>
+                <div 
+                  className="w-9 h-9 flex items-center justify-center text-sm font-black text-nfw-blackberry"
+                  style={{ backgroundColor: getCardSwatchColor(card.avatar_color) }}
+                >
                   {card.name.charAt(0)}
                 </div>
                 <div>

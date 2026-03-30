@@ -5,7 +5,6 @@ import {
   getTextColorForBackground,
   getEyebrowColorForBackground,
   getMutedTextColorForBackground,
-  getCardTextColorForBackground,
   getPrimaryButtonClass,
 } from "@/lib/colors";
 
@@ -14,9 +13,9 @@ interface Props {
 }
 
 const BG_TINT_CLASSES: Record<BgTint, string> = {
-  powder: "bg-nfw-powder/20",
-  citrine: "bg-nfw-citrine/20",
-  lilac: "bg-nfw-lilac/20",
+  powder: "bg-[#E9EDF2]",
+  citrine: "bg-[#F8F2E2]",
+  lilac: "bg-[#EEE9F3]",
 };
 
 export default function GrantAmountCardsSection({ content }: Props) {
@@ -25,7 +24,6 @@ export default function GrantAmountCardsSection({ content }: Props) {
   const textColor = getTextColorForBackground(c.background);
   const eyebrowColor = getEyebrowColorForBackground(c.background);
   const mutedTextColor = getMutedTextColorForBackground(c.background);
-  const cardTextColor = getCardTextColorForBackground(c.background);
   const ctaClass = getPrimaryButtonClass(c.background);
 
   return (
@@ -56,13 +54,13 @@ export default function GrantAmountCardsSection({ content }: Props) {
                 className={`flex items-start gap-4 p-6 border border-nfw-blackberry/10 ${BG_TINT_CLASSES[item.bg_tint]}`}
               >
                 <div>
-                  <p className={`font-ui text-lg font-black tracking-[0.03em] uppercase ${cardTextColor}`}>
+                  <p className="font-ui text-lg font-black tracking-[0.03em] uppercase text-nfw-blackberry">
                     {item.range}{" "}
-                    <span className="font-sans font-medium text-base">
+                    <span className="font-sans font-medium text-base text-nfw-blackberry">
                       {item.label}
                     </span>
                   </p>
-                  <p className={`font-sans text-sm ${mutedTextColor} mt-1`}>
+                  <p className="font-sans text-sm text-nfw-blackberry/70 mt-1">
                     {item.description}
                   </p>
                 </div>

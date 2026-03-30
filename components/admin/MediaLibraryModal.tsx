@@ -69,12 +69,16 @@ export default function MediaLibraryModal({
     }
   }, [bucket, search, offset]);
 
+  const fetchFilesRef = useRef(fetchFiles);
   useEffect(() => {
-    if (isOpen && activeTab === "browse") {
-      setImagesReady(false);
-      fetchFiles();
-    }
-  }, [isOpen, activeTab, fetchFiles]);
+    fetchFilesRef.current = fetchFiles;
+  }, [fetchFiles]);
+
+  useEffect(() => {
+    if (!isOpen || activeTab !== "browse") return;
+    if (imagesReady && files.length > 0) return;
+    fetchFilesRef.current();
+  }, [isOpen, activeTab]);
 
   useEffect(() => {
     if (isOpen && activeTab === "browse") {
@@ -123,9 +127,12 @@ export default function MediaLibraryModal({
 
     setUploading(true);
     try {
-      const url = await uploadImage(file, bucket);
-      // Refresh the list
-      fetchFiles();
+      const url = await uploadImage(file, "sections");
+      // Reset and refresh the list to show uploaded image
+      setImagesReady(false);
+      setFiles([]);
+      setOffset(0);
+      await fetchFiles();
       // Auto-select the uploaded image
       onSelect(url);
       onClose();
@@ -165,6 +172,8 @@ export default function MediaLibraryModal({
 
   if (!isOpen) return null;
 
+  if (activeTab === "browse" && !imagesReady) return null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col overflow-hidden">
@@ -174,7 +183,7 @@ export default function MediaLibraryModal({
             <h3 className="text-lg font-bold text-nfw-blackberry">Media Library</h3>
             <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
               <button
-                onClick={() => { setActiveTab("browse"); setImagesReady(false); }}
+                onClick={() => setActiveTab("browse")}
                 className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
                   activeTab === "browse"
                     ? "bg-white text-nfw-blackberry shadow-sm"
@@ -204,7 +213,7 @@ export default function MediaLibraryModal({
         </div>
 
         {/* Content */}
-        <div className="h-96 overflow-hidden">
+        <div className="h-[32rem] overflow-hidden">
           {activeTab === "browse" ? (
             <div className="h-full flex flex-col p-6 overflow-hidden">
               {/* Search */}
@@ -220,7 +229,7 @@ export default function MediaLibraryModal({
               </div>
 
               {/* Grid */}
-              <div className="flex-1 overflow-y-auto">
+              <div className="overflow-y-auto flex-1 min-h-0">
                 {!imagesReady ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="animate-spin rounded-full h-12 w-12 border-4 border-nfw-blackberry/20 border-t-nfw-blackberry" />
@@ -233,7 +242,7 @@ export default function MediaLibraryModal({
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 overflow-y-auto h-full">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {files.map((file) => (
                       <div
                         key={file.name}

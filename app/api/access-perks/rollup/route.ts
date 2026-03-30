@@ -120,9 +120,17 @@ export async function GET(request: Request) {
       groups = Array.from(locationMap.values());
       groups.sort((a, b) => (a.distance || 0) - (b.distance || 0));
     } else {
-      groups = result.offers.map((offer: any) => ({
+      const seen = new Set();
+      const uniqueOffers = result.offers.filter((offer: any) => {
+        const key = offer.offer_group_key || offer.offer_key;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      
+      groups = uniqueOffers.map((offer: any) => ({
         ...offer,
-        key: offer.offer_key,
+        key: offer.offer_group_key || offer.offer_key,
       }));
     }
 

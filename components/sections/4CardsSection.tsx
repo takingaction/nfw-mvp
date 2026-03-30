@@ -12,6 +12,7 @@ export default function FourCardsSection({ content }: Props) {
   const eyebrowColor = getEyebrowColorForBackground(c.background);
   const cardTextColor = getCardTextColorForBackground(c.background);
   const cardBorderColor = getCardBorderColorForBackground(c.background);
+  const cardBg = c.background === "dove" ? "bg-white" : "bg-white/10";
 
   return (
     <div className={`py-20 lg:py-28 ${bgClass}`}>
@@ -35,11 +36,11 @@ export default function FourCardsSection({ content }: Props) {
           {c.cards?.map((card, i) => (
             <div
               key={i}
-              className={`border ${cardBorderColor} p-6`}
+              className={`${cardBg} border ${cardBorderColor} p-6`}
             >
               <div
                 className="w-12 h-12 mb-4"
-                style={{ backgroundColor: `${getCardSwatchColor(card.color)}50` }}
+                style={{ backgroundColor: getCardSwatchColor(card.color) }}
               />
               <p className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${cardTextColor} opacity-40 mb-1`}>
                 {card.age}

@@ -20,6 +20,7 @@ export default function ThreeCardsSection({ content }: Props) {
   const eyebrowColor = getEyebrowColorForBackground(c.background);
   const cardTextColor = getCardTextColorForBackground(c.background);
   const cardBorderColor = getCardBorderColorForBackground(c.background);
+  const cardBg = c.background === "dove" ? "bg-white" : "bg-white/10";
   const cardLinkColor = c.background === "dove" ? "text-nfw-aubergine" : "text-nfw-dove";
 
   return (
@@ -39,11 +40,11 @@ export default function ThreeCardsSection({ content }: Props) {
           {c.cards?.map((card, i) => (
             <div
               key={i}
-              className={`border ${cardBorderColor} p-8`}
+              className={`${cardBg} border ${cardBorderColor} p-8`}
             >
               <div
                 className="w-14 h-14 mb-6"
-                style={{ backgroundColor: `${getCardSwatchColor(card.color)}50` }}
+                style={{ backgroundColor: getCardSwatchColor(card.color) }}
               />
               <h3 className={`font-ui text-sm font-black tracking-[0.06em] uppercase ${cardTextColor} mb-3`}>
                 {card.title}
