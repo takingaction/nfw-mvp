@@ -10,6 +10,7 @@ import {
   getPrimaryButtonClass,
   getMutedTextColorForBackground,
 } from "@/lib/colors";
+import PlanButton from "./PlanButton";
 
 interface Props {
   content: Record<string, unknown>;
@@ -19,6 +20,7 @@ const CHECKED_COLORS: Record<CheckboxColor, string> = {
   green: "#d4f1ad",
   aubergine: "#3e155f",
   wisteria: "#7786be",
+  lilac: "#c4b7eb",
   citrine: "#e8d5a3",
 };
 
@@ -127,11 +129,18 @@ export default function PricingCardsSection({ content }: Props) {
                   </li>
                 ))}
               </ul>
+
+              {c.show_buttons !== false && (
+                <div className="mt-6 pt-6 border-t border-nfw-blackberry/10">
+                  <PlanButton plan={plan} background={c.background} />
+                </div>
+              )}
             </div>
           ))}
         </div>
 
-        <div className={`text-center p-10 border ${innerCardBorder} ${c.background === "dove" ? "bg-white" : "bg-white/10"}`}>
+        {c.show_cta !== false && (
+          <div className={`text-center p-10 border ${innerCardBorder} ${c.background === "dove" ? "bg-white" : "bg-white/10"}`}>
           <h3 className={`font-serif text-2xl ${textColor} mb-3`}>
             {c.cta_headline || "Ready to join?"}
           </h3>
@@ -154,6 +163,7 @@ export default function PricingCardsSection({ content }: Props) {
             </Link>
           </p>
         </div>
+        )}
       </div>
     </section>
   );

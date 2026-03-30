@@ -237,7 +237,7 @@ export interface MembershipCtaContent {
 
 // ── Shared color types ────────────────────────────────────────
 
-export type BackgroundColor = "dove" | "aubergine" | "wisteria" | "blackberry";
+export type BackgroundColor = "dove" | "aubergine" | "wisteria" | "lilac" | "blackberry";
 
 export type CardSwatchColor = "yellow" | "green" | "blue" | "lavender" | "citrine" | "lilac" | "powder" | "dark_purple" | "medium_lavender" | "soft_blue";
 
@@ -343,8 +343,8 @@ export interface PerksFeatureContent {
 
 // ── Shared color types for new templates ────────────────────
 
-export type IconColor = "green" | "yellow" | "blue";
-export type CheckboxColor = "green" | "aubergine" | "wisteria" | "citrine";
+export type IconColor = "green" | "yellow" | "blue" | "lilac";
+export type CheckboxColor = "green" | "aubergine" | "wisteria" | "lilac" | "citrine";
 export type UncheckedColor = "blackberry10" | "blackberry20" | "wisteria20";
 
 export type IconName =
@@ -398,6 +398,7 @@ export interface PricingPlan {
   features: string[];
   highlighted: boolean;
   badge: string | null;
+  stripe_price_id?: string;
 }
 
 export interface PricingCardsContent {
@@ -406,6 +407,8 @@ export interface PricingCardsContent {
   subheadline: string;
   cards: PricingPlan[];
   checkbox_checked: CheckboxColor;
+  show_buttons?: boolean;
+  show_cta?: boolean;
   cta_headline: string;
   cta_body: string;
   cta_label: string;

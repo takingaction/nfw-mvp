@@ -48,7 +48,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow text", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       {
         key: "headline_italic_phrase",
@@ -92,7 +92,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow text", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       {
         key: "headline_italic_phrase",
@@ -134,7 +134,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       {
         key: "stats",
         label: "Stats",
@@ -159,7 +159,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       { key: "quote_text", label: "Quote text", type: "textarea" },
     ],
   },
@@ -254,7 +254,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "headline_italic_phrase", label: "Italic phrase", type: "text" },
       { key: "body", label: "Body", type: "textarea" },
@@ -279,7 +279,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "headline_italic_phrase", label: "Italic phrase", type: "text" },
       { key: "body", label: "Body", type: "textarea" },
@@ -305,7 +305,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "headline_italic_phrase", label: "Italic phrase", type: "text" },
       { key: "body", label: "Body", type: "textarea" },
@@ -340,7 +340,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "headline_italic_phrase", label: "Italic phrase", type: "text" },
       { key: "body", label: "Body", type: "textarea" },
@@ -380,7 +380,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "headline_italic_phrase", label: "Italic phrase", type: "text" },
       { key: "body", label: "Body", type: "textarea" },
@@ -449,7 +449,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       { key: "heading", label: "Heading", type: "text" },
       {
         key: "items",
@@ -487,7 +487,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "headline_italic_phrase", label: "Italic phrase", type: "text" },
       { key: "body", label: "Body", type: "textarea" },
@@ -535,7 +535,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "body", label: "Body (2 paragraphs)", type: "textarea" },
       { key: "cta_label", label: "CTA label", type: "text" },
@@ -591,7 +591,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "subheadline", label: "Subheadline", type: "textarea" },
       {
@@ -642,7 +642,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       {
         key: "cards",
@@ -692,7 +692,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Section eyebrow", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       {
         key: "columns",
         label: "Columns",
@@ -722,7 +722,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "subheadline", label: "Subheadline", type: "textarea" },
       { key: "trust_badges", label: "Trust badges", type: "string-array", itemLabel: "Badge" },
@@ -746,6 +746,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
           features: ["Access to NFW community", "Monthly newsletter", "Event notifications", "Read member articles and resources"],
           highlighted: false,
           badge: null,
+          stripe_price_id: "",
         },
         {
           id: "contributing",
@@ -756,6 +757,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
           features: ["Everything in Free", "Apply for microgrants up to $1,000", "Member perks and discounts platform", "Access to Zero Dollar Store", "Voting rights on NFW initiatives", "Member badge and recognition"],
           highlighted: false,
           badge: "Most Popular",
+          stripe_price_id: "",
         },
         {
           id: "founding",
@@ -766,9 +768,12 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
           features: ["Everything in Contributing", "Founding member recognition", "Early access to events and programs", "Direct input on NFW initiatives", "Priority grant application review", "Exclusive founding member badge"],
           highlighted: true,
           badge: "Most Impact",
+          stripe_price_id: "",
         },
       ],
       checkbox_checked: "green",
+      show_buttons: true,
+      show_cta: true,
       cta_headline: "Ready to join?",
       cta_body: "Create your free account first, then choose your membership level. It only takes a few minutes.",
       cta_label: "Join Now",
@@ -781,7 +786,8 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "eyebrow", label: "Eyebrow", type: "text" },
       { key: "headline", label: "Headline", type: "text" },
       { key: "subheadline", label: "Subheadline", type: "textarea" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
+      { key: "show_buttons", label: "Show Plan Buttons", type: "boolean" },
       {
         key: "cards",
         label: "Plans",
@@ -795,10 +801,12 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
           { key: "description", label: "Description", type: "textarea" },
           { key: "highlighted", label: "Highlighted (dark card)", type: "boolean" },
           { key: "badge", label: "Badge (optional)", type: "text" },
+          { key: "stripe_price_id", label: "Stripe Price ID", type: "text" },
           { key: "features", label: "Features", type: "string-array", itemLabel: "Feature" },
         ],
       },
-      { key: "checkbox_checked", label: "Checked color", type: "select", options: ["green", "aubergine", "wisteria", "citrine"] },
+      { key: "checkbox_checked", label: "Checked color", type: "select", options: ["green", "aubergine", "wisteria", "lilac", "citrine"] },
+      { key: "show_cta", label: "Show Bottom CTA", type: "boolean" },
       { key: "cta_headline", label: "CTA Headline", type: "text" },
       { key: "cta_body", label: "CTA Body", type: "textarea" },
       { key: "cta_label", label: "CTA Label", type: "text" },
@@ -827,7 +835,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "cta_url", label: "CTA URL", type: "url" },
       { key: "secondary_text", label: "Secondary link text", type: "text" },
       { key: "secondary_url", label: "Secondary link URL", type: "url" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
     ],
   },
 
@@ -867,9 +875,9 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "column1_label", label: "Column 1 label", type: "text" },
       { key: "column2_label", label: "Column 2 label", type: "text" },
       { key: "column3_label", label: "Column 3 label", type: "text" },
-      { key: "checkbox_checked", label: "Checked color", type: "select", options: ["green", "aubergine", "wisteria", "citrine"] },
+      { key: "checkbox_checked", label: "Checked color", type: "select", options: ["green", "aubergine", "wisteria", "lilac", "citrine"] },
       { key: "checkbox_unchecked", label: "Unchecked color", type: "select", options: ["blackberry10", "blackberry20", "wisteria20"] },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       {
         key: "benefits",
         label: "Benefits",
@@ -907,7 +915,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "body", label: "Body", type: "textarea" },
       { key: "cta_label", label: "CTA label", type: "text" },
       { key: "cta_url", label: "CTA URL", type: "url" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       {
         key: "items",
         label: "Benefits",
@@ -916,7 +924,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
         fields: [
           { key: "title", label: "Title", type: "text" },
           { key: "description", label: "Description", type: "textarea" },
-          { key: "icon_color", label: "Icon color", type: "select", options: ["green", "yellow", "blue"] },
+          { key: "icon_color", label: "Icon color", type: "select", options: ["green", "yellow", "blue", "lilac"] },
         ],
       },
     ],
@@ -944,7 +952,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "cta_label", label: "CTA label", type: "text" },
       { key: "cta_url", label: "CTA URL", type: "url" },
       { key: "footnote", label: "Footnote", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       {
         key: "items",
         label: "Items",
@@ -953,7 +961,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
         fields: [
           { key: "title", label: "Title", type: "text" },
           { key: "sub", label: "Subtitle", type: "text" },
-          { key: "icon_color", label: "Icon color", type: "select", options: ["green", "yellow", "blue"] },
+          { key: "icon_color", label: "Icon color", type: "select", options: ["green", "yellow", "blue", "lilac"] },
         ],
       },
     ],
@@ -977,7 +985,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "eyebrow", label: "Eyebrow", type: "text" },
       { key: "headline", label: "Headline", type: "text" },
       { key: "subheadline", label: "Subheadline", type: "textarea" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       {
         key: "steps",
         label: "Steps",
@@ -985,7 +993,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
         itemLabel: "Step",
         fields: [
           { key: "icon", label: "Icon", type: "select", options: ["FileText", "Eye", "Clock", "Banknote", "DollarSign", "Coins", "CheckCircle", "CircleCheck", "Gift", "Package", "ShieldCheck", "ClipboardList", "Send", "Search", "CreditCard", "UserCheck", "Rocket", "Calendar", "MapPin", "HandHeart", "Sparkles", "Star", "Zap", "Tag", "Bookmark", "CalendarCheck", "Lock", "Shield"] },
-          { key: "icon_color", label: "Icon color", type: "select", options: ["green", "yellow", "blue"] },
+          { key: "icon_color", label: "Icon color", type: "select", options: ["green", "yellow", "blue", "lilac"] },
           { key: "title", label: "Title", type: "text" },
           { key: "description", label: "Description", type: "textarea" },
         ],
@@ -1015,14 +1023,14 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "body", label: "Body", type: "textarea" },
       { key: "cta_label", label: "CTA label", type: "text" },
       { key: "cta_url", label: "CTA URL", type: "url" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       {
         key: "benefits",
         label: "Benefits",
         type: "array",
         itemLabel: "Benefit",
         fields: [
-          { key: "check_color", label: "Check color", type: "select", options: ["green", "yellow", "blue"] },
+          { key: "check_color", label: "Check color", type: "select", options: ["green", "yellow", "blue", "lilac"] },
           { key: "title", label: "Title", type: "text" },
           { key: "description", label: "Description", type: "textarea" },
         ],
@@ -1051,7 +1059,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       { key: "headline", label: "Headline", type: "text" },
       { key: "subheadline", label: "Subheadline", type: "textarea" },
       { key: "cta_label", label: "Primary CTA label", type: "text" },
@@ -1092,7 +1100,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "subheadline", label: "Subheadline", type: "textarea" },
       { key: "cta_label", label: "CTA label", type: "text" },
       { key: "cta_url", label: "CTA URL", type: "url" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       {
         key: "cards",
         label: "Grants",
@@ -1130,7 +1138,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "subheadline", label: "Subheadline", type: "textarea" },
       { key: "cta_label", label: "CTA label", type: "text" },
       { key: "cta_url", label: "CTA URL", type: "url" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       {
         key: "items",
         label: "Amounts",
@@ -1168,7 +1176,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "subheadline", label: "Subheadline", type: "textarea" },
       { key: "cta_label", label: "CTA label", type: "text" },
       { key: "cta_url", label: "CTA URL", type: "url" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       {
         key: "cards",
         label: "Stories",
@@ -1209,7 +1217,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "subheadline", label: "Subheadline", type: "textarea" },
       { key: "cta_label", label: "CTA label", type: "text" },
       { key: "cta_url", label: "CTA URL", type: "url" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       {
         key: "cards",
         label: "Items",
@@ -1246,7 +1254,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "eyebrow", label: "Eyebrow", type: "text" },
       { key: "headline", label: "Headline", type: "text" },
       { key: "subheadline", label: "Subheadline", type: "textarea" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       {
         key: "cards",
         label: "Testimonials",
@@ -1287,7 +1295,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "image2_url", label: "Image 2 URL", type: "image" },
       { key: "image3_url", label: "Image 3 URL", type: "image" },
       { key: "image4_url", label: "Image 4 URL", type: "image" },
-      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "blackberry"] },
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
     ],
   },
 
