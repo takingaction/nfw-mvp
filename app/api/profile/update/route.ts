@@ -88,8 +88,9 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
+      console.error("Profile update error:", error);
       return NextResponse.json(
-        { error: "Failed to update profile" },
+        { error: "Failed to update profile", details: error.message },
         { status: 500 },
       );
     }
