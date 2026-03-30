@@ -2,12 +2,14 @@
 
 ## Overview
 
-The membership sign-up flow handles user registration, email confirmation, profile completion, and membership tier selection.
+The membership sign-up flow handles user registration, email confirmation, profile completion, and membership tier selection. It supports both email/password and Google OAuth sign-up.
 
 ## Sign-Up Flow Steps
 
 ```
 /auth/sign-up → [Email/Password] → Check Email Page → Email Confirmation
+                 OR
+              [Google OAuth] → /auth/callback → Step 1 or Dashboard
                                                             ↓
                               User clicks link → /auth/sign-up?step=1
                                                             ↓
@@ -18,9 +20,8 @@ The membership sign-up flow handles user registration, email confirmation, profi
 ```
 
 ### Step 0: Account Creation (`/auth/sign-up?step=0`)
-- User enters email and password
-- Calls `supabase.auth.signUp()` with `emailRedirectTo` pointing to `/auth/sign-up?step=1`
-- Redirects to `/auth/sign-up-success?email={email}` to check email
+- **Email/Password:** User enters email and password, calls `supabase.auth.signUp()` with `emailRedirectTo` pointing to `/auth/sign-up?step=1`, redirects to `/auth/sign-up-success?email={email}` to check email
+- **Google OAuth:** User clicks "Sign up with Google", redirected to Google OAuth, returns to `/auth/callback`
 
 ### Step 1: Personal Info (`/auth/sign-up?step=1`)
 - Full name
@@ -163,3 +164,82 @@ STRIPE_PRICE_FOUNDING=price_xxx
 - `app/api/profile/update/route.ts` - Profile update endpoint
 - `app/api/checkout/route.ts` - Stripe checkout
 - `app/api/portal/route.ts` - Stripe portal
+
+## Google OAuth Setup
+
+### Supabase Configuration
+1. Enable Google provider in **Supabase Dashboard → Authentication → Providers → Google**
+2. Enter Client ID and Client Secret from Google Cloud Console
+
+### Google Cloud Console Setup
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create OAuth 2.0 Client ID (Web application)
+3. Add Authorized redirect URI: `https://lirsaxhujjgnibcwyzpl.supabase.co/auth/v1/callback`
+4. Configure OAuth consent screen with app name ("National Fund for Women") and authorized domains
+
+### Code Changes
+- `app/auth/callback/route.ts` - Handles OAuth callback, checks profile completion, redirects
+- `components/login-form.tsx` - Added "Continue with Google" button
+- `components/SignUpFlow.tsx` - Added "Sign up with Google" button on Step 0
+
+### OAuth Callback Flow
+```
+User clicks Google sign-in → Redirect to Google OAuth
+    → User grants permission
+    → Redirect to /auth/callback?code=xxx
+    → Exchange code for session
+    → Check if profile exists and profile_completed=true
+    → Existing complete user → /dashboard
+    → New user or incomplete profile → /auth/sign-up?step=1
+```
+
+### OAuth Files
+- `app/auth/callback/route.ts` - OAuth callback handler
+
+## FAQ Section: Linked Text
+
+### Overview
+FAQ section answers support inline hyperlinks using markdown-style syntax.
+
+### Syntax
+```
+[link text](https://example.com)              - Same window
+[link text](https://example.com)|_blank        - New tab
+```
+
+### How It Works
+1. Admin enters markdown link syntax in the answer field
+2. `parseMarkdownLinks()` function converts to HTML on render
+3. Links styled to match background color (aubergine/citrine/lilac)
+
+### Code Files
+- `components/sections/FaqSection.tsx` - Parses markdown links and renders HTML
+- `components/admin/pages/SectionEditorPanel.tsx` - Link insert modal for richtext fields
+
+### Link Insert Modal
+Admin can click "Insert Link" button to open modal with:
+- Link Text field
+- URL field  
+- "Open in new tab" checkbox
+
+## Bug Fixes
+
+### Age Range Field (2026-03-30)
+**Problem:** `age_range` was still being sent from Step 1 even though it was moved to Step 2, causing database constraint violation.
+
+**Fix:** Removed `age_range` from `handlePersonalInfo` payload in `SignUpFlow.tsx`.
+
+### Spinning Buttons (2026-03-30)
+**Problem:** Clicking paid membership buttons and then hitting back left buttons in permanent loading state.
+
+**Fix:** Added `finally` block and 30-second timeout in `handleSelectPlan` to reset loading state.
+
+### Profile Phone Field (2026-03-30)
+**Problem:** Database had duplicate `phone` and `phone_number` columns.
+
+**Fix:** Removed `phone` column definition from migration file. Data preserved in `phone_number`.
+
+### FAQ Question Font Size (2026-03-30)
+**Problem:** FAQ question and answer text were same size.
+
+**Fix:** Increased question text from `text-lg` to `text-xl` in `FaqSection.tsx`.
