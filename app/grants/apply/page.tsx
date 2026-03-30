@@ -19,6 +19,17 @@ export default async function ApplyForGrantPage() {
     redirect("/auth/login");
   }
 
+  // Check profile completion
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("profile_completed")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile?.profile_completed) {
+    redirect("/auth/sign-up?step=1");
+  }
+
   const { data: cycles } = await supabaseAdmin
     .from("grant_cycles")
     .select("*")

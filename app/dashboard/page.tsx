@@ -54,6 +54,11 @@ export default async function DashboardPage() {
     .eq("id", user.id)
     .single();
 
+  // Redirect if profile is not completed
+  if (!profile?.profile_completed) {
+    redirect("/auth/sign-up?step=1");
+  }
+
   // Fetch grant applications for status widget
   const { data: grants } = await supabase
     .from("grants")

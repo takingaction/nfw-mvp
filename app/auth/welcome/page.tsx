@@ -1,7 +1,28 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
-export default function WelcomePage() {
+export default async function WelcomePage() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("profile_completed, membership_level")
+      .eq("id", user.id)
+      .single();
+
+    // If profile is not completed, redirect to signup flow
+    if (!profile?.profile_completed) {
+      redirect("/auth/sign-up?step=1");
+    }
+  }
+
   return (
     <main className="min-h-screen bg-nfw-blackberry flex items-center justify-center px-4 relative overflow-hidden">
       <div className="relative max-w-lg w-full text-center">

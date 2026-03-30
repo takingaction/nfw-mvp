@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, Check, ChevronRight, ArrowLeft } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -178,12 +178,35 @@ export default function SignUpFlow() {
   const [zip, setZip] = useState("");
   const [income, setIncome] = useState("");
   const [identities, setIdentities] = useState<string[]>([]);
+  const [socialHandles, setSocialHandles] = useState({
+    instagram: "",
+    twitter: "",
+    facebook: "",
+    linkedin: "",
+  });
 
   const toggleIdentity = (id: string) => {
     setIdentities((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
   };
+
+  // Check if user has confirmed email when on steps 1-3
+  useEffect(() => {
+    if (step === 0) return;
+    
+    const checkConfirmation = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user || !user.email_confirmed_at) {
+        // User hasn't confirmed email, redirect to success page
+        window.location.href = "/auth/sign-up-success";
+      }
+    };
+    
+    checkConfirmation();
+  }, [step]);
 
   const inputClass =
     "w-full px-4 py-3 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent transition-all text-sm";
@@ -214,9 +237,16 @@ export default function SignUpFlow() {
     setError(null);
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/sign-up?step=1`,
+        },
+      });
       if (error) throw error;
-      setStep(1);
+      // Redirect to success page to check email
+      window.location.href = "/auth/sign-up-success?email=" + encodeURIComponent(email);
     } catch (err: any) {
       setError(err.message || "Failed to create account");
     } finally {
@@ -265,6 +295,7 @@ export default function SignUpFlow() {
         zip,
         household_income: income,
         identities,
+        social_handles: socialHandles,
       });
       setStep(3);
     } catch (err: any) {
@@ -277,6 +308,8 @@ export default function SignUpFlow() {
   // Step 3 — Select membership
   const handleSelectPlan = async (plan: (typeof PLANS)[0]) => {
     if (!plan.priceId) {
+      // Free plan - mark profile as completed and redirect to welcome
+      await saveProfile({ profile_completed: true });
       window.location.href = "/auth/welcome";
       return;
     }
@@ -593,6 +626,28 @@ export default function SignUpFlow() {
                   This helps us serve you better. All information is private.
                 </p>
               </div>
+
+              {/* Age Range - moved to top */}
+              <div>
+                <label className={labelClass}>
+                  Age range <span className="text-nfw-lilac">*</span>
+                </label>
+                <select
+                  required
+                  value={ageRange}
+                  onChange={(e) => setAgeRange(e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">Select age range</option>
+                  {AGE_RANGES.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Household Income */}
               <div>
                 <label className={labelClass}>
                   Which best describes your current annual income?{" "}
@@ -620,6 +675,8 @@ export default function SignUpFlow() {
                   ))}
                 </div>
               </div>
+
+              {/* Identities */}
               <div>
                 <label className={labelClass}>
                   Which identities do you identify with?{" "}
@@ -644,9 +701,58 @@ export default function SignUpFlow() {
                   ))}
                 </div>
               </div>
+
+              {/* Social Handles - optional */}
+              <div>
+                <label className={labelClass}>
+                  Social media handles{" "}
+                  <span className="text-nfw-blackberry/40 font-normal">
+                    (Optional)
+                  </span>
+                </label>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Instagram (@username)"
+                    value={socialHandles.instagram}
+                    onChange={(e) =>
+                      setSocialHandles((prev) => ({ ...prev, instagram: e.target.value }))
+                    }
+                    className={inputClass}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Twitter (@username)"
+                    value={socialHandles.twitter}
+                    onChange={(e) =>
+                      setSocialHandles((prev) => ({ ...prev, twitter: e.target.value }))
+                    }
+                    className={inputClass}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Facebook (profile URL)"
+                    value={socialHandles.facebook}
+                    onChange={(e) =>
+                      setSocialHandles((prev) => ({ ...prev, facebook: e.target.value }))
+                    }
+                    className={inputClass}
+                  />
+                  <input
+                    type="text"
+                    placeholder="LinkedIn (profile URL)"
+                    value={socialHandles.linkedin}
+                    onChange={(e) =>
+                      setSocialHandles((prev) => ({ ...prev, linkedin: e.target.value }))
+                    }
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
               <button
                 type="submit"
-                disabled={loading || !income}
+                disabled={loading || !income || !ageRange}
                 className="w-full py-3.5 bg-nfw-blackberry text-white font-bold text-base hover:bg-nfw-blackberry/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}

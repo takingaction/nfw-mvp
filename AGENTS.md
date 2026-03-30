@@ -165,6 +165,47 @@ Added inline location list display on **OfferDetailPanel** to show nearby store 
 - Empty state message: "No locations found within X miles. Try a larger distance."
 - Auth check now handled by API (not client-side) to avoid race condition
 
+### Session 2026-03-30: Email Confirmation + Profile Completion Flow
+
+Implemented Supabase email confirmation flow with profile completion tracking.
+
+**Goal:** Users must confirm their email before completing signup, then complete their profile before accessing features.
+
+**Files modified:**
+- `components/SignUpFlow.tsx`
+  - Step 0: After signUp success, redirect to `/auth/sign-up-success?email=...`
+  - Added emailRedirectTo option for confirmation link
+  - Added useEffect confirmation check on steps 1-3 (redirects if not confirmed)
+  - Reordered Step 2: Age Range moved to top
+  - Added social handles (optional) to Step 2 - Instagram, Twitter, Facebook, LinkedIn
+  - Step 3 (free plan): Sets profile_completed = true before redirecting to welcome
+- `app/auth/sign-up-success/page.tsx`
+  - Added resend confirmation email button with 60s cooldown
+  - Shows email address passed via URL query param
+  - Uses supabase.auth.resend({ type: 'signup' })
+- `app/auth/welcome/page.tsx`
+  - Added profile_completed check - redirects to signup if not completed
+- `app/dashboard/page.tsx` - Added profile_completed guard
+- `app/perks/page.tsx` - Added profile_completed guard in useEffect
+- `app/grants/apply/page.tsx` - Added profile_completed guard
+
+**Database change (run in Supabase SQL Editor):**
+```sql
+ALTER TABLE profiles ADD COLUMN profile_completed BOOLEAN DEFAULT FALSE;
+```
+
+**Supabase Dashboard changes (manual):**
+- Confirmed email confirmation is ON (Confirm sign up toggle)
+- Updated email template next param to `/auth/sign-up?step=1`
+
+**Flow:**
+1. User signs up at /auth/sign-up → receives confirmation email
+2. User clicks link → redirected to /auth/sign-up?step=1
+3. User completes Personal Info (Step 1) → Identity (Step 2) → Membership (Step 3)
+4. Free plan → profile_completed = true → /auth/welcome
+5. Paid plan → Stripe checkout → /auth/welcome (sets profile_completed on return)
+6. Incomplete profiles blocked from /perks, /dashboard, /grants/apply
+
 ### Previous Sessions
 - Fixed intermittent "Failed to Add Section" error by computing order_index in database instead of client-side (race condition fix)
 - Fixed inline editor stale closure bug in triggerAutoSave

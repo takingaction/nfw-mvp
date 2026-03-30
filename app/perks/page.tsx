@@ -63,6 +63,19 @@ export default function PerksPage() {
     const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      
+      // Check profile completion for logged-in users
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("profile_completed")
+          .eq("id", user.id)
+          .single();
+        
+        if (profile && !profile.profile_completed) {
+          window.location.href = "/auth/sign-up?step=1";
+        }
+      }
     };
     
     fetchUser();
