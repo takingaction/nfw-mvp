@@ -34,7 +34,7 @@ export default function ManageSubscription({
   if (membershipLevel === "free") {
     return (
       <a
-        href="/membership"
+        href="/plans"
         className="inline-block bg-nfw-blackberry text-white px-4 py-2 hover:bg-nfw-blackberry/90 font-medium transition-colors"
       >
         Upgrade Membership
