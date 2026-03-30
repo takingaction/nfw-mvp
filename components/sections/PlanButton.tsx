@@ -10,7 +10,7 @@ interface PlanButtonProps {
   plan: PricingPlan;
 }
 
-const CITRINE_BUTTON_CLASS = "inline-flex items-center justify-center px-8 py-4 bg-nfw-citrine text-nfw-blackberry font-ui font-black text-sm tracking-[0.06em] uppercase transition-colors hover:brightness-110";
+const CITRINE_BUTTON_CLASS = "inline-flex items-center justify-center px-8 py-4 bg-nfw-citrine text-nfw-blackberry font-ui font-black text-sm tracking-[0.06em] uppercase transition-colors hover:bg-[#f0e0b3]";
 const GREY_BUTTON_CLASS = "inline-flex items-center justify-center px-8 py-4 bg-gray-200 text-gray-500 font-ui font-black text-sm tracking-[0.06em] uppercase cursor-not-allowed";
 
 export default function PlanButton({ plan }: PlanButtonProps) {
