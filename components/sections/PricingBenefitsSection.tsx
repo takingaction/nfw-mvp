@@ -18,6 +18,7 @@ const ICON_COLORS: Record<IconColor, string> = {
   green: "#d4f1ad",
   yellow: "#fdf493",
   blue: "#b2d1ee",
+  lilac: "#c4b7eb",
 };
 
 export default function PricingBenefitsSection({ content }: Props) {

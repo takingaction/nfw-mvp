@@ -11,6 +11,7 @@ const RULE_CLASSES: Record<BackgroundColor, string> = {
   dove: "bg-nfw-aubergine",
   aubergine: "bg-nfw-citrine",
   wisteria: "bg-nfw-citrine",
+  lilac: "bg-nfw-citrine",
   blackberry: "bg-nfw-citrine",
 };
 
@@ -18,6 +19,7 @@ const DOT_ACTIVE: Record<BackgroundColor, string> = {
   dove: "bg-nfw-aubergine",
   aubergine: "bg-nfw-citrine",
   wisteria: "bg-nfw-citrine",
+  lilac: "bg-nfw-citrine",
   blackberry: "bg-nfw-citrine",
 };
 
@@ -25,6 +27,7 @@ const DOT_INACTIVE: Record<BackgroundColor, string> = {
   dove: "bg-nfw-blackberry/20",
   aubergine: "bg-nfw-dove/20",
   wisteria: "bg-nfw-dove/20",
+  lilac: "bg-nfw-dove/20",
   blackberry: "bg-nfw-dove/20",
 };
 
