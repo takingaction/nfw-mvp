@@ -500,24 +500,6 @@ export default function SignUpFlow() {
               </div>
               <div>
                 <label className={labelClass}>
-                  Age range <span className="text-nfw-lilac">*</span>
-                </label>
-                <select
-                  required
-                  value={ageRange}
-                  onChange={(e) => setAgeRange(e.target.value)}
-                  className={inputClass}
-                >
-                  <option value="">Select age range</option>
-                  {AGE_RANGES.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>
                   Phone number <span className="text-nfw-lilac">*</span>
                 </label>
                 <input
