@@ -57,7 +57,38 @@ function FieldEditor({
         <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
           {field.label}
         </label>
+        {field.type === "richtext" && (
+          <div className="mb-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const textarea = document.querySelector(`[data-richtext="${field.key}"]`) as HTMLTextAreaElement;
+                if (textarea) {
+                  const start = textarea.selectionStart;
+                  const end = textarea.selectionEnd;
+                  const selectedText = textarea.value.substring(start, end);
+                  const replacement = selectedText
+                    ? `[${selectedText}](url)`
+                    : `[link text](url)`;
+                  const newValue = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
+                  onChange(newValue);
+                  setTimeout(() => {
+                    textarea.focus();
+                    textarea.setSelectionRange(start + 1, start + 1 + selectedText.length);
+                  }, 0);
+                }
+              }}
+              className="px-2 py-1 text-xs bg-nfw-lilac/30 text-nfw-blackberry hover:bg-nfw-lilac/50 transition-colors rounded"
+            >
+              Insert Link
+            </button>
+            <span className="text-xs text-nfw-blackberry/40">
+              Use [text](url) for links
+            </span>
+          </div>
+        )}
         <textarea
+          data-richtext={field.key}
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
           rows={4}

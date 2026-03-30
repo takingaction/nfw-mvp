@@ -9,6 +9,13 @@ interface Props {
   content: Record<string, unknown>;
 }
 
+function parseMarkdownLinks(text: string, linkClass: string): string {
+  return text.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    `<a href="$2" class="${linkClass}">$1</a>`
+  );
+}
+
 function AccordionItem({
   question,
   answer,
@@ -16,6 +23,7 @@ function AccordionItem({
   onToggle,
   textColor,
   hoverColor,
+  linkClass,
 }: {
   question: string;
   answer: string;
@@ -23,6 +31,7 @@ function AccordionItem({
   onToggle: () => void;
   textColor: string;
   hoverColor: string;
+  linkClass: string;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(0);
@@ -32,6 +41,8 @@ function AccordionItem({
       setHeight(isOpen ? contentRef.current.scrollHeight : 0);
     }
   }, [isOpen]);
+
+  const parsedAnswer = parseMarkdownLinks(answer, linkClass);
 
   return (
     <div className="border-b border-nfw-dove/10">
@@ -57,9 +68,10 @@ function AccordionItem({
         }}
       >
         <div ref={contentRef} className="pb-6">
-          <p className={`font-serif text-lg ${textColor} leading-relaxed`}>
-            {answer}
-          </p>
+          <p
+            className={`font-serif text-lg ${textColor} leading-relaxed`}
+            dangerouslySetInnerHTML={{ __html: parsedAnswer }}
+          />
         </div>
       </div>
     </div>
@@ -97,6 +109,7 @@ export default function FaqSection({ content }: Props) {
               onToggle={() => setOpen(open === i ? null : i)}
               textColor={textColor}
               hoverColor={hoverColor}
+              linkClass={c.background === "dove" ? "text-nfw-aubergine underline hover:text-nfw-lilac transition-colors" : "text-nfw-citrine underline hover:text-nfw-lilac transition-colors"}
             />
           ))}
         </div>
