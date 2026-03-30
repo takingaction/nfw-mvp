@@ -15,7 +15,7 @@ const ALLOWED_FIELDS = [
   "zip",
   "city",
   "state",
-  "phone",
+  "phone_number",
   "date_of_birth",
   "occupation",
   "industry",
