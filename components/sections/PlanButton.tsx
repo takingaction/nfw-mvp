@@ -103,11 +103,12 @@ export default function PlanButton({ plan, background = "dove" }: PlanButtonProp
 
   const getButtonConfig = () => {
     if (checkingAuth) {
-      return { text: "", disabled: true, className: "" };
+      return null;
     }
 
     const isPaidPlan = Boolean(plan.stripe_price_id);
     const isCurrentPlan = userMembership === plan.id;
+    const isPaidMember = userMembership === "contributing" || userMembership === "founding";
 
     if (!isLoggedIn) {
       return {
@@ -132,32 +133,23 @@ export default function PlanButton({ plan, background = "dove" }: PlanButtonProp
       };
     }
 
-    if (!isPaidPlan && userMembership !== "free" && userMembership) {
-      return {
-        text: "Current Plan",
-        disabled: true,
-        className: "bg-gray-200 text-gray-400 cursor-not-allowed",
-      };
+    // Free plan - if user is already a paid member, don't show button
+    if (!isPaidPlan && isPaidMember) {
+      return null;
     }
 
+    // Free plan - user is on free tier
     return {
       text: "Current Plan",
       disabled: true,
-      className: "bg-gray-200 text-gray-400 cursor-not-allowed",
+      className: getPrimaryButtonClass(background),
     };
   };
 
   const config = getButtonConfig();
 
-  if (checkingAuth) {
-    return (
-      <button
-        disabled
-        className="w-full py-3 px-6 bg-gray-200 text-gray-400 font-ui font-black text-sm tracking-[0.06em] uppercase flex items-center justify-center"
-      >
-        <Loader2 className="w-4 h-4 animate-spin" />
-      </button>
-    );
+  if (checkingAuth || !config) {
+    return null;
   }
 
   return (
