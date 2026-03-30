@@ -11,8 +11,13 @@ interface Props {
 
 function parseMarkdownLinks(text: string, linkClass: string): string {
   return text.replace(
-    /\[([^\]]+)\]\(([^)]+)\)/g,
-    `<a href="$2" class="${linkClass}">$1</a>`
+    /\[([^\]]+)\]\(([^)]+)\)(?:\|(\w+))?/g,
+    (match, linkText, url, target) => {
+      const attrs = target === '_blank'
+        ? ` target="_blank" rel="noopener noreferrer"`
+        : '';
+      return `<a href="${url}" class="${linkClass}"${attrs}>${linkText}</a>`;
+    }
   );
 }
 

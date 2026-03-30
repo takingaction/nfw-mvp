@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
-import { X, Upload, Check } from "lucide-react";
+import { X, Upload, Check, Link2 } from "lucide-react";
 import { PageSection } from "@/lib/sections/types";
 import { SECTION_REGISTRY, EditorField } from "@/lib/sections/registry";
 import { uploadImage } from "@/lib/upload";
@@ -52,6 +52,30 @@ function FieldEditor({
   }
 
   if (field.type === "textarea" || field.type === "richtext") {
+    const [showLinkModal, setShowLinkModal] = useState(false);
+    const [linkText, setLinkText] = useState("");
+    const [linkUrl, setLinkUrl] = useState("");
+    const [openNewTab, setOpenNewTab] = useState(false);
+
+    const insertLinkAtCursor = (text: string) => {
+      const textarea = document.querySelector(`[data-richtext="${field.key}"]`) as HTMLTextAreaElement;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const replacement = `[${text}](${linkUrl})${openNewTab ? "|_blank" : ""}`;
+        const newValue = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
+        onChange(newValue);
+        setShowLinkModal(false);
+        setLinkText("");
+        setLinkUrl("");
+        setOpenNewTab(false);
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(start + 2, start + 2 + text.length);
+        }, 0);
+      }
+    };
+
     return (
       <div>
         <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
@@ -61,30 +85,12 @@ function FieldEditor({
           <div className="mb-2 flex items-center gap-2">
             <button
               type="button"
-              onClick={() => {
-                const textarea = document.querySelector(`[data-richtext="${field.key}"]`) as HTMLTextAreaElement;
-                if (textarea) {
-                  const start = textarea.selectionStart;
-                  const end = textarea.selectionEnd;
-                  const selectedText = textarea.value.substring(start, end);
-                  const replacement = selectedText
-                    ? `[${selectedText}](url)`
-                    : `[link text](url)`;
-                  const newValue = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
-                  onChange(newValue);
-                  setTimeout(() => {
-                    textarea.focus();
-                    textarea.setSelectionRange(start + 1, start + 1 + selectedText.length);
-                  }, 0);
-                }
-              }}
-              className="px-2 py-1 text-xs bg-nfw-lilac/30 text-nfw-blackberry hover:bg-nfw-lilac/50 transition-colors rounded"
+              onClick={() => setShowLinkModal(true)}
+              className="px-2 py-1 text-xs bg-nfw-lilac/30 text-nfw-blackberry hover:bg-nfw-lilac/50 transition-colors rounded flex items-center gap-1"
             >
+              <Link2 className="w-3 h-3" />
               Insert Link
             </button>
-            <span className="text-xs text-nfw-blackberry/40">
-              Use [text](url) for links
-            </span>
           </div>
         )}
         <textarea
@@ -94,6 +100,92 @@ function FieldEditor({
           rows={4}
           className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry transition-colors resize-none"
         />
+
+        {showLinkModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-nfw-blackberry">Insert Link</h3>
+                <button
+                  onClick={() => {
+                    setShowLinkModal(false);
+                    setLinkText("");
+                    setLinkUrl("");
+                    setOpenNewTab(false);
+                  }}
+                  className="text-nfw-blackberry/50 hover:text-nfw-blackberry"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
+                    Link Text
+                  </label>
+                  <input
+                    type="text"
+                    value={linkText}
+                    onChange={(e) => setLinkText(e.target.value)}
+                    placeholder="Enter link text"
+                    className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry transition-colors"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
+                    URL
+                  </label>
+                  <input
+                    type="text"
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry transition-colors"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="openNewTab"
+                    checked={openNewTab}
+                    onChange={(e) => setOpenNewTab(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <label htmlFor="openNewTab" className="text-sm text-nfw-blackberry">
+                    Open in new tab
+                  </label>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLinkModal(false);
+                      setLinkText("");
+                      setLinkUrl("");
+                      setOpenNewTab(false);
+                    }}
+                    className="px-4 py-2 text-sm text-nfw-blackberry/70 hover:text-nfw-blackberry transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (linkText.trim() && linkUrl.trim()) {
+                        insertLinkAtCursor(linkText.trim());
+                      }
+                    }}
+                    disabled={!linkText.trim() || !linkUrl.trim()}
+                    className="px-4 py-2 text-sm bg-nfw-aubergine text-white hover:bg-nfw-blackberry transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Insert Link
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
