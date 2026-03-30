@@ -10,7 +10,8 @@ interface PlanButtonProps {
   plan: PricingPlan;
 }
 
-const CITRINE_BUTTON_CLASS = "inline-flex items-center justify-center px-8 py-4 bg-nfw-citrine text-nfw-blackberry font-ui font-black text-sm tracking-[0.06em] uppercase transition-colors hover:bg-[#d4c490]";
+const CITRINE_BUTTON_CLASS = "inline-flex items-center justify-center px-8 py-4 bg-nfw-citrine text-nfw-blackberry font-ui font-black text-sm tracking-[0.06em] uppercase transition-colors hover:brightness-110";
+const GREY_BUTTON_CLASS = "inline-flex items-center justify-center px-8 py-4 bg-gray-200 text-gray-500 font-ui font-black text-sm tracking-[0.06em] uppercase cursor-not-allowed";
 
 export default function PlanButton({ plan }: PlanButtonProps) {
   const router = useRouter();
@@ -135,11 +136,11 @@ export default function PlanButton({ plan }: PlanButtonProps) {
       return null;
     }
 
-    // Free plan - user is on free tier - show disabled but styled button
+    // Free plan - user is on free tier - show disabled grey button
     return {
       text: "Current Plan",
       disabled: true,
-      className: CITRINE_BUTTON_CLASS + " opacity-50 cursor-not-allowed",
+      className: GREY_BUTTON_CLASS,
     };
   };
 
