@@ -5,17 +5,14 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2 } from "lucide-react";
 import { PricingPlan } from "@/lib/sections/types";
-import {
-  getPrimaryButtonClass,
-} from "@/lib/colors";
-import { BackgroundColor } from "@/lib/sections/types";
 
 interface PlanButtonProps {
   plan: PricingPlan;
-  background?: BackgroundColor;
 }
 
-export default function PlanButton({ plan, background = "dove" }: PlanButtonProps) {
+const CITRINE_BUTTON_CLASS = "inline-flex items-center justify-center px-8 py-4 bg-nfw-citrine text-nfw-blackberry font-ui font-black text-sm tracking-[0.06em] uppercase transition-colors hover:bg-[#d4c490]";
+
+export default function PlanButton({ plan }: PlanButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [userMembership, setUserMembership] = useState<string | null>(null);
@@ -114,7 +111,7 @@ export default function PlanButton({ plan, background = "dove" }: PlanButtonProp
       return {
         text: isPaidPlan ? "Upgrade" : "Join Free",
         disabled: false,
-        className: getPrimaryButtonClass(background),
+        className: CITRINE_BUTTON_CLASS,
       };
     }
 
@@ -123,13 +120,13 @@ export default function PlanButton({ plan, background = "dove" }: PlanButtonProp
         return {
           text: "Manage Subscription",
           disabled: false,
-          className: getPrimaryButtonClass(background),
+          className: CITRINE_BUTTON_CLASS,
         };
       }
       return {
         text: "Upgrade",
         disabled: false,
-        className: getPrimaryButtonClass(background),
+        className: CITRINE_BUTTON_CLASS,
       };
     }
 
@@ -138,11 +135,11 @@ export default function PlanButton({ plan, background = "dove" }: PlanButtonProp
       return null;
     }
 
-    // Free plan - user is on free tier
+    // Free plan - user is on free tier - show disabled but styled button
     return {
       text: "Current Plan",
       disabled: true,
-      className: getPrimaryButtonClass(background),
+      className: CITRINE_BUTTON_CLASS + " opacity-50 cursor-not-allowed",
     };
   };
 

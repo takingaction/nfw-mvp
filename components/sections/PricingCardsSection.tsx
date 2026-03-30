@@ -132,7 +132,7 @@ export default function PricingCardsSection({ content }: Props) {
 
               {c.show_buttons !== false && (
                 <div className="mt-6 pt-6 border-t border-nfw-blackberry/10">
-                  <PlanButton plan={plan} background={c.background} />
+                  <PlanButton plan={plan} />
                 </div>
               )}
             </div>
