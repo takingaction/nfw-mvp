@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     zip TEXT,
     city TEXT,
     state TEXT,
+    phone_number TEXT,
     date_of_birth DATE,
     occupation TEXT,
     industry TEXT,

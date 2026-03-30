@@ -36,7 +36,6 @@ async function AdminMembersContent() {
     ...profile,
     email:
       users?.users.find((u) => u.id === profile.id)?.email ||
-      profile.email ||
       "N/A",
   }));
 
