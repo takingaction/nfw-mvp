@@ -329,9 +329,19 @@ export default function SignUpFlow() {
       window.location.href = data.url;
     } catch (err: any) {
       setError(err.message || "Failed to start checkout");
+    } finally {
       setLoading(false);
     }
   };
+
+  // Safety timeout to reset loading state if checkout hangs
+  useEffect(() => {
+    if (!loading) return;
+    const timeout = setTimeout(() => {
+      setLoading(false);
+    }, 30000);
+    return () => clearTimeout(timeout);
+  }, [loading]);
 
   const BackButton = ({ toStep }: { toStep: number }) => (
     <button

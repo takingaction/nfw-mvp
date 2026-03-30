@@ -19,7 +19,6 @@ CREATE TABLE IF NOT EXISTS profiles (
     zip TEXT,
     city TEXT,
     state TEXT,
-    phone TEXT CHECK (phone IS NULL OR phone ~ '^[0-9]{10}$'),  -- 10 digits only: 1234567890
     date_of_birth DATE,
     occupation TEXT,
     industry TEXT,
