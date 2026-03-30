@@ -23,9 +23,20 @@ const ALLOWED_FIELDS = [
   "company_website",
   "linkedin_url",
   "twitter_handle",
+  "age_range",
+  "address_line1",
+  "address_line2",
+  "household_income",
+  "identities",
+  "social_handles",
+  "profile_completed",
 ] as const;
 
 type AllowedField = (typeof ALLOWED_FIELDS)[number];
+
+const ALLOWED_ARRAYS = ["identities"];
+const ALLOWED_OBJECTS = ["social_handles"];
+const ALLOWED_BOOLEANS = ["profile_completed"];
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,10 +60,17 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    const updates: Partial<Record<AllowedField, string>> = {};
+    const updates: Record<string, any> = {};
+    
     for (const key of Object.keys(body) as string[]) {
-      if (ALLOWED_FIELDS.includes(key as AllowedField)) {
-        updates[key as AllowedField] = String(body[key]);
+      if (ALLOWED_BOOLEANS.includes(key)) {
+        updates[key] = Boolean(body[key]);
+      } else if (ALLOWED_ARRAYS.includes(key)) {
+        updates[key] = Array.isArray(body[key]) ? body[key] : [];
+      } else if (ALLOWED_OBJECTS.includes(key)) {
+        updates[key] = typeof body[key] === 'object' ? body[key] : {};
+      } else if (ALLOWED_FIELDS.includes(key as AllowedField)) {
+        updates[key] = String(body[key]);
       }
     }
 
