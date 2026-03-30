@@ -4,6 +4,7 @@ const BACKGROUND_CLASSES: Record<BackgroundColor, string> = {
   dove: "bg-nfw-dove",
   aubergine: "bg-nfw-aubergine",
   wisteria: "bg-nfw-wisteria",
+  lilac: "bg-nfw-lilac",
   blackberry: "bg-nfw-blackberry",
 };
 
@@ -20,6 +21,7 @@ export function getTextColorForBackground(background?: BackgroundColor): string 
       return "text-nfw-aubergine";
     case "aubergine":
     case "wisteria":
+    case "lilac":
     case "blackberry":
       return "text-white";
     default:
@@ -35,6 +37,7 @@ export function getMutedTextColorForBackground(background?: BackgroundColor): st
       return "text-nfw-blackberry/70";
     case "aubergine":
     case "wisteria":
+    case "lilac":
     case "blackberry":
       return "text-white/80";
     default:
@@ -50,6 +53,7 @@ export function getEyebrowColorForBackground(background?: BackgroundColor): stri
       return "text-nfw-blackberry/40";
     case "aubergine":
     case "wisteria":
+    case "lilac":
     case "blackberry":
       return "text-nfw-dove";
     default:
@@ -59,29 +63,30 @@ export function getEyebrowColorForBackground(background?: BackgroundColor): stri
 
 export function getPrimaryButtonClass(background?: BackgroundColor): string {
   if (!background) {
-    return "bg-nfw-citrine text-nfw-blackberry";
+    return "inline-flex items-center justify-center px-8 py-4 bg-nfw-citrine text-nfw-blackberry font-ui font-black text-sm tracking-[0.06em] uppercase";
   }
   
   switch (background) {
     case "dove":
-      return "bg-nfw-citrine text-nfw-blackberry";
+      return "inline-flex items-center justify-center px-8 py-4 bg-nfw-citrine text-nfw-blackberry font-ui font-black text-sm tracking-[0.06em] uppercase";
     case "aubergine":
     case "wisteria":
+    case "lilac":
     case "blackberry":
-      return "bg-nfw-citrine text-nfw-blackberry";
+      return "inline-flex items-center justify-center px-8 py-4 bg-nfw-citrine text-nfw-blackberry font-ui font-black text-sm tracking-[0.06em] uppercase";
     default:
-      return "bg-nfw-citrine text-nfw-blackberry";
+      return "inline-flex items-center justify-center px-8 py-4 bg-nfw-citrine text-nfw-blackberry font-ui font-black text-sm tracking-[0.06em] uppercase";
   }
 }
 
 const CARD_COLOR_MAP: Record<CardSwatchColor, string> = {
-  yellow: "#fdf493",
-  green: "#d4f1ad",
-  blue: "#b2d1ee",
-  lavender: "#bcafcf",
-  citrine: "#e8d5a3",
-  lilac: "#c9b8d9",
-  powder: "#b8c5d6",
+  yellow: "#FEFCDE",
+  green: "#F1FAE5",
+  blue: "#E7F0FA",
+  lavender: "#E9E6F0",
+  citrine: "#F8F2E2",
+  lilac: "#EEE9F3",
+  powder: "#E9EDF2",
   dark_purple: "#3e155f",
   medium_lavender: "#b693c0",
   soft_blue: "#7786be",
@@ -102,11 +107,11 @@ export function getCardSwatchBgClass(color: CardSwatchColor): string {
     case "lavender":
       return "bg-purple-100";
     case "citrine":
-      return "bg-nfw-citrine/20";
+      return "bg-[#F8F2E2]";
     case "lilac":
-      return "bg-nfw-lilac/20";
+      return "bg-[#EEE9F3]";
     case "powder":
-      return "bg-nfw-powder/20";
+      return "bg-[#E9EDF2]";
     case "dark_purple":
       return "bg-[#3e155f]";
     case "medium_lavender":
@@ -129,12 +134,18 @@ export function getCardTextColorForBackground(background?: BackgroundColor): str
   if (!background || background === "dove") {
     return "text-nfw-blackberry";
   }
+  if (background === "lilac") {
+    return "text-white";
+  }
   return "text-white";
 }
 
 export function getCardBorderColorForBackground(background?: BackgroundColor): string {
   if (!background || background === "dove") {
     return "border-nfw-blackberry/10";
+  }
+  if (background === "lilac") {
+    return "border-white/20";
   }
   return "border-white/20";
 }
