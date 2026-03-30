@@ -262,7 +262,6 @@ export default function SignUpFlow() {
     try {
       await saveProfile({
         full_name: fullName,
-        age_range: ageRange,
         phone_number: phone,
         address_line1: addressLine1,
         address_line2: addressLine2,
