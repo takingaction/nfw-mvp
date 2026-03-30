@@ -56,7 +56,7 @@ function AccordionItem({
         className="w-full flex items-center justify-between py-6 text-left group"
         aria-expanded={isOpen}
       >
-        <span className={`font-serif text-lg ${textColor} pr-8 group-hover:${hoverColor} transition-colors duration-300`}>
+          <span className={`font-serif text-xl ${textColor} pr-8 group-hover:${hoverColor} transition-colors duration-300`}>
           {question}
         </span>
         <ChevronDown
