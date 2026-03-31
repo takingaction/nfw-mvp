@@ -20,11 +20,11 @@ interface NavigationClientProps {
 }
 
 const dropdownClass =
-  "w-48 bg-[#3e155f] rounded-lg shadow-xl py-2 border border-white/10";
+  "w-48 bg-[#3e155f] rounded-lg shadow-xl py-2 border-white/10";
 const linkClass =
-  "block px-4 py-2 text-white hover:bg-white/10 transition-colors";
+  "block px-4 py-2 text-[#ac9bb6] hover:bg-white/10 transition-colors";
 const buttonClass =
-  "flex items-center gap-1 text-white font-semibold hover:text-white/80 transition-colors py-6 uppercase text-sm tracking-wider";
+  "flex items-center gap-1 text-[#ac9bb6] font-semibold hover:text-white/80 transition-colors py-6 uppercase text-sm tracking-wider";
 
 export default function NavigationClient({
   side,
@@ -43,7 +43,7 @@ export default function NavigationClient({
         <Link href={url} className={buttonClass}>
           {label}
         </Link>
-        <ChevronDown className="w-4 h-4 text-white" />
+        <ChevronDown className="w-4 h-4 text-[#ac9bb6]" />
       </div>
       {openDropdown === label && (
         <div className="absolute top-full left-0 pt-0">
