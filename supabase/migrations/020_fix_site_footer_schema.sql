@@ -19,11 +19,26 @@ ALTER TABLE site_footer ADD COLUMN IF NOT EXISTS footer_link3_url TEXT DEFAULT '
 -- Update existing row with new values (use COALESCE to preserve existing data)
 UPDATE site_footer SET
   column1_heading = COALESCE(NULLIF(column1_heading, ''), 'MEMBERSHIP'),
-  column1_links = COALESCE(column1_links, '[{"label":"Become a Member","url":"/auth/sign-up"},{"label":"Perks & Discounts","url":"/perks/info"},{"label":"Microgrants","url":"/grants"},{"label":"Zero Dollar Store","url":"/store"}]'::jsonb),
+  column1_links = COALESCE(column1_links, '[
+    {"label":"Become a Member","url":"/auth/sign-up"},
+    {"label":"Perks & Discounts","url":"/perks/info"},
+    {"label":"Microgrants","url":"/grants"},
+    {"label":"Zero Dollar Store","url":"/store"}
+  ]'::jsonb),
   column2_heading = COALESCE(NULLIF(column2_heading, ''), 'COMMUNITY'),
-  column2_links = COALESCE(column2_links, '[{"label":"Become a Member","url":"/auth/sign-up"},{"label":"Perks & Discounts","url":"/perks/info"},{"label":"Microgrants","url":"/grants"},{"label":"Zero Dollar Store","url":"/store"}]'::jsonb),
+  column2_links = COALESCE(column2_links, '[
+    {"label":"Become a Member","url":"/auth/sign-up"},
+    {"label":"Perks & Discounts","url":"/perks/info"},
+    {"label":"Microgrants","url":"/grants"},
+    {"label":"Zero Dollar Store","url":"/store"}
+  ]'::jsonb),
   column3_heading = COALESCE(NULLIF(column3_heading, ''), 'ORGANIZATION'),
-  column3_links = COALESCE(column3_links, '[{"label":"Become a Member","url":"/auth/sign-up"},{"label":"Perks & Discounts","url":"/perks/info"},{"label":"Microgrants","url":"/grants"},{"label":"Zero Dollar Store","url":"/store"}]'::jsonb),
+  column3_links = COALESCE(column3_links, '[
+    {"label":"Become a Member","url":"/auth/sign-up"},
+    {"label":"Perks & Discounts","url":"/perks/info"},
+    {"label":"Microgrants","url":"/grants"},
+    {"label":"Zero Dollar Store","url":"/store"}
+  ]'::jsonb),
   copyright_text = COALESCE(NULLIF(copyright_text, ''), '© 2026 National Fund for Women. All rights reserved.'),
   footer_link1_text = COALESCE(NULLIF(footer_link1_text, ''), 'Privacy Policy'),
   footer_link1_url = COALESCE(NULLIF(footer_link1_url, ''), '/privacy'),
