@@ -15,8 +15,8 @@ The membership sign-up flow handles user registration, email confirmation, profi
                                                             ↓
                     Step 1 (Personal Info) → Step 2 (Identity) → Step 3 (Membership)
                                                             ↓
-                              Free: /auth/welcome → /dashboard
-                              Paid: Stripe Checkout → /auth/welcome → /dashboard
+                         Free: /auth/welcome → /dashboard
+                         Paid: Stripe Checkout → Webhook → /auth/welcome → /dashboard
 ```
 
 ### Step 0: Account Creation (`/auth/sign-up?step=0`)
@@ -35,9 +35,10 @@ The membership sign-up flow handles user registration, email confirmation, profi
 - Identities (multi-select)
 - Social handles (optional): Instagram, Twitter, Facebook, LinkedIn
 - **Auth check:** Redirects to `/auth/sign-up-success` if email not confirmed
+- **Sets `profile_completed: true`** - Profile is considered complete after this step
 
 ### Step 3: Membership Selection (`/auth/sign-up?step=3`)
-- Free: Redirects to `/auth/welcome` after setting `profile_completed: true`
+- Free: Redirects to `/auth/welcome`
 - Contributing ($15/year): Redirects to Stripe Checkout
 - Founding ($100/year): Redirects to Stripe Checkout
 - **Auth check:** Redirects to `/auth/sign-up-success` if email not confirmed
@@ -50,7 +51,10 @@ The membership sign-up flow handles user registration, email confirmation, profi
 ### Welcome Page (`/auth/welcome`)
 - Checks if `profile_completed` is true
 - If false, redirects to `/auth/sign-up?step=1`
-- If true, shows welcome celebration page
+- If true, shows appropriate welcome message based on membership level:
+  - **Free members:** "You're officially a member!"
+  - **Contributing members:** "You're a Contributing Member!" (after upgrade or new paid signup)
+  - **Founding members:** "You're a Founding Member!" (after upgrade or new paid signup)
 - Links to `/dashboard`
 
 ## Membership Tiers
@@ -101,10 +105,24 @@ Creates Stripe Customer Portal session for managing existing subscriptions.
 
 ## Protected Routes
 
-The following pages check for `profile_completed` and redirect to sign-up if incomplete:
+The following pages check for `profile_completed` AND `membership_level` before allowing access:
+
+| Check | Result | Redirect To |
+|-------|--------|-------------|
+| `profile_completed = false` | Profile not filled | `/auth/sign-up?step=1` |
+| `membership_level = null` | Profile complete, no membership selected | `/auth/sign-up?step=3` |
+| Both pass | Allow access | Continue to page |
+
+Protected pages:
 - `/dashboard`
 - `/perks`
 - `/grants/apply`
+
+### Why Separate Profile from Membership?
+
+A user can fill out their profile (steps 1-2) but not yet select a membership tier. They should still be able to access some parts of the site but not others. The separation allows:
+- Users who abandoned at step 3 to be redirected to complete membership selection
+- Paid members to see appropriate welcome messaging after payment
 
 ## Supabase Configuration
 
@@ -243,3 +261,12 @@ Admin can click "Insert Link" button to open modal with:
 **Problem:** FAQ question and answer text were same size.
 
 **Fix:** Increased question text from `text-lg` to `text-xl` in `FaqSection.tsx`.
+
+### Profile vs Membership Completion (2026-03-30)
+**Problem:** `profile_completed` was only set after step 3 (membership selection), conflating profile completion with membership selection. Users who filled their profile but hadn't selected a tier were blocked from dashboard/perks.
+
+**Fix:** 
+- Set `profile_completed = true` after step 2 (identity) completes
+- Protected routes now check both `profile_completed` AND `membership_level`
+- Users with profile complete but no membership are redirected to step 3
+- `/auth/welcome` now shows appropriate messages based on membership level (free vs paid)
