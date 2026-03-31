@@ -26,7 +26,7 @@ export default function PricingHeroSection({ content }: Props) {
           {c.subheadline}
         </p>
         {c.trust_badges && c.trust_badges.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-6 font-sans text-sm text-opacity-70">
+          <div className="flex flex-wrap justify-center gap-6 font-serif text-sm text-opacity-70">
             {c.trust_badges.map((badge, i) => (
               <span key={i} className={textColor}>{badge}</span>
             ))}

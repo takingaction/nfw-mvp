@@ -49,7 +49,7 @@ export default function PricingFinalCtaSection({ content }: Props) {
               </div>
               <div>
                 <div className={`font-ui text-sm font-black tracking-[0.03em] uppercase ${textColor} mb-1`}>{item.title}</div>
-                <div className={`font-sans text-sm ${mutedTextColor}`}>{item.sub}</div>
+                <div className={`font-serif text-sm ${mutedTextColor}`}>{item.sub}</div>
               </div>
             </div>
           ))}
@@ -61,7 +61,7 @@ export default function PricingFinalCtaSection({ content }: Props) {
           {c.cta_label}
         </Link>
         {c.footnote && (
-          <p className={`font-sans text-sm ${mutedTextColor} mt-6`}>
+          <p className={`font-serif text-sm ${mutedTextColor} mt-6`}>
             {c.footnote}
           </p>
         )}

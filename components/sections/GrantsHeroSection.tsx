@@ -79,7 +79,7 @@ export default function GrantsHeroSection({ content }: Props) {
                 <p className={`font-ui text-2xl font-black tracking-[0.03em] uppercase ${statTextClass}`}>
                   {c.stat_value}
                 </p>
-                <p className={`font-sans text-xs ${c.background === "dove" ? "text-nfw-blackberry/60" : "text-white/60"}`}>
+                <p className={`font-serif text-xs ${c.background === "dove" ? "text-nfw-blackberry/60" : "text-white/60"}`}>
                   {c.stat_label}
                 </p>
               </div>
@@ -87,7 +87,7 @@ export default function GrantsHeroSection({ content }: Props) {
                 <p className="font-ui text-xs font-black text-nfw-blackberry tracking-[0.03em] uppercase">
                   {c.secondary_stat_value}
                 </p>
-                <p className="font-sans text-xs text-nfw-blackberry/70">{c.secondary_stat_label}</p>
+                <p className="font-serif text-xs text-nfw-blackberry/70">{c.secondary_stat_label}</p>
               </div>
             </div>
           </div>

@@ -56,11 +56,11 @@ export default function GrantAmountCardsSection({ content }: Props) {
                 <div>
                   <p className="font-ui text-lg font-black tracking-[0.03em] uppercase text-nfw-blackberry">
                     {item.range}{" "}
-                    <span className="font-sans font-medium text-base text-nfw-blackberry">
+                    <span className="font-serif font-medium text-base text-nfw-blackberry">
                       {item.label}
                     </span>
                   </p>
-                  <p className="font-sans text-sm text-nfw-blackberry/70 mt-1">
+                  <p className="font-serif text-sm text-nfw-blackberry/70 mt-1">
                     {item.description}
                   </p>
                 </div>
