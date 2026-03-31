@@ -103,7 +103,7 @@ export default function Footer() {
 
           {/* Column 1 - Membership */}
           <div>
-            <h4 className="font-ui font-bold mb-6" style={{ color: "#F6F5F0" }}>{data.column1_heading}</h4>
+            <h4 className="font-ui font-bold mb-6" style={{ color: "#B7B6B9" }}>{data.column1_heading}</h4>
             <ul className="space-y-4 text-sm">
               {data.column1_links.map((link, i) => (
                 <li key={i}>
@@ -111,7 +111,7 @@ export default function Footer() {
                     prefetch={false}
                     href={link.url}
                     className="hover:opacity-80 transition-colors"
-                    style={{ color: "#F6F5F0" }}
+                    style={{ color: "#B7B6B9" }}
                   >
                     {link.label}
                   </Link>
@@ -122,7 +122,7 @@ export default function Footer() {
 
           {/* Column 2 - Community */}
           <div>
-            <h4 className="font-ui font-bold mb-6" style={{ color: "#F6F5F0" }}>{data.column2_heading}</h4>
+            <h4 className="font-ui font-bold mb-6" style={{ color: "#B7B6B9" }}>{data.column2_heading}</h4>
             <ul className="space-y-4 text-sm">
               {data.column2_links.map((link, i) => (
                 <li key={i}>
@@ -130,7 +130,7 @@ export default function Footer() {
                     prefetch={false}
                     href={link.url}
                     className="hover:opacity-80 transition-colors"
-                    style={{ color: "#F6F5F0" }}
+                    style={{ color: "#B7B6B9" }}
                   >
                     {link.label}
                   </Link>
@@ -141,7 +141,7 @@ export default function Footer() {
 
           {/* Column 3 - Organization */}
           <div>
-            <h4 className="font-ui font-bold mb-6" style={{ color: "#F6F5F0" }}>{data.column3_heading}</h4>
+            <h4 className="font-ui font-bold mb-6" style={{ color: "#B7B6B9" }}>{data.column3_heading}</h4>
             <ul className="space-y-4 text-sm">
               {data.column3_links.map((link, i) => (
                 <li key={i}>
@@ -149,7 +149,7 @@ export default function Footer() {
                     prefetch={false}
                     href={link.url}
                     className="hover:opacity-80 transition-colors"
-                    style={{ color: "#F6F5F0" }}
+                    style={{ color: "#B7B6B9" }}
                   >
                     {link.label}
                   </Link>
@@ -160,8 +160,8 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t pt-8 flex flex-col sm:flex-row justify-between items-center gap-4" style={{ borderColor: "rgba(246, 245, 240, 0.1)" }}>
-          <p className="text-sm" style={{ color: "#F6F5F0" }}>
+        <div className="border-t pt-8 flex flex-col sm:flex-row justify-between items-center gap-4" style={{ borderColor: "rgba(183, 182, 185, 0.2)" }}>
+          <p className="text-sm" style={{ color: "#B7B6B9" }}>
             {data.copyright_text}
           </p>
 
@@ -170,7 +170,7 @@ export default function Footer() {
               prefetch={false}
               href={data.footer_link1_url}
               className="hover:opacity-80 transition-colors text-sm"
-              style={{ color: "#F6F5F0" }}
+              style={{ color: "#B7B6B9" }}
             >
               {data.footer_link1_text}
             </Link>
@@ -178,7 +178,7 @@ export default function Footer() {
               prefetch={false}
               href={data.footer_link2_url}
               className="hover:opacity-80 transition-colors text-sm"
-              style={{ color: "#F6F5F0" }}
+              style={{ color: "#B7B6B9" }}
             >
               {data.footer_link2_text}
             </Link>
@@ -186,7 +186,7 @@ export default function Footer() {
               prefetch={false}
               href={data.footer_link3_url}
               className="hover:opacity-80 transition-colors text-sm"
-              style={{ color: "#F6F5F0" }}
+              style={{ color: "#B7B6B9" }}
             >
               {data.footer_link3_text}
             </Link>

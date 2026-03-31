@@ -128,20 +128,17 @@ export default function FooterEditorClient({
   };
 
   const renderLinkEditor = (
-    label: string,
+    heading: string,
+    setHeading: (v: string) => void,
     links: FooterLink[],
-    setter: React.Dispatch<React.SetStateAction<FooterLink[]>>
+    setLinks: React.Dispatch<React.SetStateAction<FooterLink[]>>
   ) => (
     <div className="border border-nfw-blackberry/5 p-4 bg-nfw-dove/50">
       <div className="flex items-center gap-2 mb-4">
         <input
           type="text"
-          value={label}
-          onChange={(e) => {
-            if (setter === setColumn1Links) setColumn1Heading(e.target.value);
-            else if (setter === setColumn2Links) setColumn2Heading(e.target.value);
-            else setColumn3Heading(e.target.value);
-          }}
+          value={heading}
+          onChange={(e) => setHeading(e.target.value)}
           placeholder="Column heading"
           className="flex-1 px-3 py-2 border border-nfw-blackberry/20 text-sm font-semibold focus:outline-none focus:border-nfw-blackberry font-ui"
         />
@@ -152,19 +149,19 @@ export default function FooterEditorClient({
             <input
               type="text"
               value={link.label}
-              onChange={(e) => updateLink(setter, linkIndex, "label", e.target.value)}
+              onChange={(e) => updateLink(setLinks, linkIndex, "label", e.target.value)}
               placeholder="Label"
               className="px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
             />
             <input
               type="text"
               value={link.url}
-              onChange={(e) => updateLink(setter, linkIndex, "url", e.target.value)}
+              onChange={(e) => updateLink(setLinks, linkIndex, "url", e.target.value)}
               placeholder="URL"
               className="px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
             />
             <button
-              onClick={() => removeLink(setter, linkIndex)}
+              onClick={() => removeLink(setLinks, linkIndex)}
               className="p-1.5 text-nfw-blackberry/30 hover:text-red-500 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
@@ -172,7 +169,7 @@ export default function FooterEditorClient({
           </div>
         ))}
         <button
-          onClick={() => addLink(setter)}
+          onClick={() => addLink(setLinks)}
           className="mt-2 text-xs font-semibold text-nfw-blackberry/40 hover:text-nfw-blackberry transition-colors flex items-center gap-1"
         >
           <Plus className="w-3 h-3" /> Add Link
@@ -258,9 +255,9 @@ export default function FooterEditorClient({
       <div className="bg-white border border-nfw-blackberry/10 p-6">
         <h2 className="font-black text-nfw-blackberry font-ui mb-4">Link Columns</h2>
         <div className="space-y-6">
-          {renderLinkEditor("Column 1", column1Links, setColumn1Links)}
-          {renderLinkEditor("Column 2", column2Links, setColumn2Links)}
-          {renderLinkEditor("Column 3", column3Links, setColumn3Links)}
+          {renderLinkEditor(column1Heading, setColumn1Heading, column1Links, setColumn1Links)}
+          {renderLinkEditor(column2Heading, setColumn2Heading, column2Links, setColumn2Links)}
+          {renderLinkEditor(column3Heading, setColumn3Heading, column3Links, setColumn3Links)}
         </div>
       </div>
 
