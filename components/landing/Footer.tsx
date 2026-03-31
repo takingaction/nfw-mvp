@@ -160,7 +160,7 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t pt-8 flex flex-col sm:flex-row justify-between items-center gap-4" style={{ borderColor: "rgba(183, 182, 185, 0.1)" }}>
+        <div className="border-t pt-8 flex flex-col sm:flex-row justify-between items-center gap-4" style={{ borderColor: "#B7B6B9" }}>
           <p className="text-sm" style={{ color: "#B7B6B9" }}>
             {data.copyright_text}
           </p>
