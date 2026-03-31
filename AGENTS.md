@@ -299,6 +299,7 @@ site_footer (
 - Divider line: `#B7B6B9` (full opacity)
 - Column headings: font-weight 900
 - Spacing: `mb-6` between heading and links, `space-y-4` between links
+- Width: `max-w-[1400px]` matching header
 
 #### Header Updates
 
