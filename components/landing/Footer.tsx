@@ -77,6 +77,7 @@ export default function Footer() {
   const data = footerData ? {
     ...defaultData,
     ...footerData,
+    logo_url: footerData.logo_url || defaultData.logo_url,
     column1_links: footerData.column1_links || defaultData.column1_links,
     column2_links: footerData.column2_links || defaultData.column2_links,
     column3_links: footerData.column3_links || defaultData.column3_links,
@@ -102,14 +103,15 @@ export default function Footer() {
 
           {/* Column 1 - Membership */}
           <div>
-            <h4 className="font-ui font-bold mb-4">{data.column1_heading}</h4>
-            <ul className="space-y-2 text-sm">
+            <h4 className="font-ui font-bold mb-6" style={{ color: "#F6F5F0" }}>{data.column1_heading}</h4>
+            <ul className="space-y-4 text-sm">
               {data.column1_links.map((link, i) => (
                 <li key={i}>
                   <Link
                     prefetch={false}
                     href={link.url}
-                    className="text-nfw-dove hover:text-white transition-colors"
+                    className="hover:opacity-80 transition-colors"
+                    style={{ color: "#F6F5F0" }}
                   >
                     {link.label}
                   </Link>
@@ -120,14 +122,15 @@ export default function Footer() {
 
           {/* Column 2 - Community */}
           <div>
-            <h4 className="font-ui font-bold mb-4">{data.column2_heading}</h4>
-            <ul className="space-y-2 text-sm">
+            <h4 className="font-ui font-bold mb-6" style={{ color: "#F6F5F0" }}>{data.column2_heading}</h4>
+            <ul className="space-y-4 text-sm">
               {data.column2_links.map((link, i) => (
                 <li key={i}>
                   <Link
                     prefetch={false}
                     href={link.url}
-                    className="text-nfw-dove hover:text-white transition-colors"
+                    className="hover:opacity-80 transition-colors"
+                    style={{ color: "#F6F5F0" }}
                   >
                     {link.label}
                   </Link>
@@ -138,14 +141,15 @@ export default function Footer() {
 
           {/* Column 3 - Organization */}
           <div>
-            <h4 className="font-ui font-bold mb-4">{data.column3_heading}</h4>
-            <ul className="space-y-2 text-sm">
+            <h4 className="font-ui font-bold mb-6" style={{ color: "#F6F5F0" }}>{data.column3_heading}</h4>
+            <ul className="space-y-4 text-sm">
               {data.column3_links.map((link, i) => (
                 <li key={i}>
                   <Link
                     prefetch={false}
                     href={link.url}
-                    className="text-nfw-dove hover:text-white transition-colors"
+                    className="hover:opacity-80 transition-colors"
+                    style={{ color: "#F6F5F0" }}
                   >
                     {link.label}
                   </Link>
@@ -156,8 +160,8 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-nfw-dove text-sm">
+        <div className="border-t pt-8 flex flex-col sm:flex-row justify-between items-center gap-4" style={{ borderColor: "rgba(246, 245, 240, 0.1)" }}>
+          <p className="text-sm" style={{ color: "#F6F5F0" }}>
             {data.copyright_text}
           </p>
 
@@ -165,21 +169,24 @@ export default function Footer() {
             <Link
               prefetch={false}
               href={data.footer_link1_url}
-              className="text-nfw-dove hover:text-white transition-colors text-sm"
+              className="hover:opacity-80 transition-colors text-sm"
+              style={{ color: "#F6F5F0" }}
             >
               {data.footer_link1_text}
             </Link>
             <Link
               prefetch={false}
               href={data.footer_link2_url}
-              className="text-nfw-dove hover:text-white transition-colors text-sm"
+              className="hover:opacity-80 transition-colors text-sm"
+              style={{ color: "#F6F5F0" }}
             >
               {data.footer_link2_text}
             </Link>
             <Link
               prefetch={false}
               href={data.footer_link3_url}
-              className="text-nfw-dove hover:text-white transition-colors text-sm"
+              className="hover:opacity-80 transition-colors text-sm"
+              style={{ color: "#F6F5F0" }}
             >
               {data.footer_link3_text}
             </Link>
