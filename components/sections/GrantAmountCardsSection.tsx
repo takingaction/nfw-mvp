@@ -54,7 +54,7 @@ export default function GrantAmountCardsSection({ content }: Props) {
                 className={`flex items-start gap-4 p-6 border border-nfw-blackberry/10 ${BG_TINT_CLASSES[item.bg_tint]}`}
               >
                 <div>
-                  <p className="font-ui text-lg font-black tracking-[0.03em] uppercase text-nfw-blackberry">
+                  <p className="font-serif text-lg font-black tracking-[0.03em] uppercase text-nfw-blackberry">
                     {item.range}{" "}
                     <span className="font-serif font-medium text-base text-nfw-blackberry">
                       {item.label}
