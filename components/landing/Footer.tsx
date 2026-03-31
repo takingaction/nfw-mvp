@@ -74,7 +74,13 @@ export default function Footer() {
       .catch(console.error);
   }, []);
 
-  const data = footerData || defaultData;
+  const data = footerData ? {
+    ...defaultData,
+    ...footerData,
+    column1_links: footerData.column1_links || defaultData.column1_links,
+    column2_links: footerData.column2_links || defaultData.column2_links,
+    column3_links: footerData.column3_links || defaultData.column3_links,
+  } : defaultData;
 
   return (
     <footer className="bg-nfw-aubergine text-nfw-dove">
