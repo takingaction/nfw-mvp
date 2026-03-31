@@ -21,7 +21,7 @@ async function AdminMembersContent() {
   const { data: profiles, error } = await supabaseAdmin
     .from("profiles")
     .select(
-      "id, full_name, email, age_range, state, city, household_income, identities, subscription_status, subscription_ends_at, joined_at, is_admin, access_perks_synced_at",
+      "id, full_name, age_range, state, city, household_income, identities, subscription_status, subscription_ends_at, joined_at, is_admin, access_perks_synced_at",
     )
     .order("joined_at", { ascending: false });
 
