@@ -12,8 +12,8 @@ const supabaseAdmin = createClient(
 );
 
 const PRICE_TO_MEMBERSHIP: Record<string, string> = {
-  price_1SwcFWCeca9TSF9AWfCnn2yk: "contributing",
-  price_1SwcJeCeca9TSF9AetEiWuUB: "founding",
+  [process.env.STRIPE_PRICE_CONTRIBUTING!]: "contributing",
+  [process.env.STRIPE_PRICE_FOUNDING!]: "founding",
 };
 
 export async function POST(request: Request) {
