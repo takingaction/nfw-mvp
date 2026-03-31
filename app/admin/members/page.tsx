@@ -30,13 +30,7 @@ async function AdminMembersContent() {
     return <div className="text-red-600 p-8">Error loading members</div>;
   }
 
-  const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
-  
-  console.log("DEBUG: profiles count:", profiles?.length);
-  console.log("DEBUG: users count:", users?.users?.length);
-  console.log("DEBUG: first profile id:", profiles?.[0]?.id);
-  console.log("DEBUG: first user id:", users?.users?.[0]?.id);
-  console.log("DEBUG: usersError:", usersError);
+  const { data: users, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
 
   const membersWithEmails = profiles?.map((profile) => ({
     ...profile,
