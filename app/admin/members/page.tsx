@@ -21,7 +21,7 @@ async function AdminMembersContent() {
   const { data: profiles, error } = await supabaseAdmin
     .from("profiles")
     .select(
-      "id, full_name, age_range, state, city, household_income, identities, subscription_status, subscription_ends_at, joined_at, is_admin, access_perks_synced_at",
+      "id, full_name, membership_level, subscription_status, age_range, state, city, household_income, identities, subscription_ends_at, joined_at, is_admin, access_perks_synced_at",
     )
     .order("joined_at", { ascending: false });
 
@@ -30,7 +30,13 @@ async function AdminMembersContent() {
     return <div className="text-red-600 p-8">Error loading members</div>;
   }
 
-  const { data: users } = await supabase.auth.admin.listUsers();
+  const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
+  
+  console.log("DEBUG: profiles count:", profiles?.length);
+  console.log("DEBUG: users count:", users?.users?.length);
+  console.log("DEBUG: first profile id:", profiles?.[0]?.id);
+  console.log("DEBUG: first user id:", users?.users?.[0]?.id);
+  console.log("DEBUG: usersError:", usersError);
 
   const membersWithEmails = profiles?.map((profile) => ({
     ...profile,
