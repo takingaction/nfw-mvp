@@ -59,10 +59,10 @@ export default function RightSide3FeaturesSection({ content }: Props) {
                 className={`flex items-start gap-4 p-6 border border-nfw-blackberry/10 ${getCardSwatchBgClass(item.bg)}`}
               >
                 <div>
-                  <p className={`font-ui text-sm font-black tracking-[0.03em] uppercase ${mutedTextColor} mb-1`}>
+                  <p className={`font-serif text-sm font-black tracking-[0.03em] uppercase ${mutedTextColor} mb-1`}>
                     {item.title}
                   </p>
-                  <p className={`font-sans text-sm ${mutedTextColor}`}>
+                  <p className={`font-serif text-sm ${mutedTextColor}`}>
                     {item.description}
                   </p>
                 </div>

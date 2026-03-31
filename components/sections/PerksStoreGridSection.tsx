@@ -31,7 +31,7 @@ export default function PerksStoreGridSection({ content }: Props) {
             <h2 className={`font-serif text-4xl lg:text-6xl ${textColor} mb-2`}>
               {c.headline}
             </h2>
-            <p className={mutedTextColor}>
+            <p className={`font-serif ${mutedTextColor}`}>
               {c.subheadline}
             </p>
           </div>
@@ -72,10 +72,10 @@ export default function PerksStoreGridSection({ content }: Props) {
                   </span>
                 </div>
               </div>
-              <p className={`text-sm ${mutedTextColor} mb-3`}>{item.description}</p>
+              <p className={`font-serif text-sm ${mutedTextColor} mb-3`}>{item.description}</p>
               <Link
                 href={c.cta_url}
-                className={`text-xs font-semibold ${ctaLinkColor} transition-colors`}
+                className={`font-ui text-xs font-semibold ${ctaLinkColor} transition-colors`}
               >
                 {c.cta_label}
               </Link>

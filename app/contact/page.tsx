@@ -53,7 +53,7 @@ export default function ContactPage() {
                 <h2 className="font-serif text-4xl lg:text-6xl text-nfw-aubergine mb-4 leading-tight">
                   How can we help?
                 </h2>
-                <p className="font-sans text-lg text-nfw-blackberry/70 leading-relaxed">
+                <p className="font-serif text-lg text-nfw-blackberry/70 leading-relaxed">
                   Our team is made up of real women who care deeply about this
                   community. We read every message and do our best to respond
                   within one business day.
@@ -67,12 +67,12 @@ export default function ContactPage() {
                     <Mail className="w-5 h-5 text-nfw-blackberry" />
                   </div>
                   <div>
-                    <p className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-1">
+                    <p className="font-serif text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-1">
                       Email us directly
                     </p>
                     <a
                       href="mailto:michelle@nationalfundforwomen.org"
-                      className="font-sans text-sm text-nfw-blackberry/70 hover:text-nfw-blackberry transition-colors underline"
+                      className="font-ui text-sm text-nfw-blackberry/70 hover:text-nfw-blackberry transition-colors underline"
                     >
                       michelle@nationalfundforwomen.org
                     </a>
@@ -84,10 +84,10 @@ export default function ContactPage() {
                     <Clock className="w-5 h-5 text-nfw-blackberry" />
                   </div>
                   <div>
-                    <p className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-1">
+                    <p className="font-serif text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-1">
                       Response time
                     </p>
-                    <p className="font-sans text-sm text-nfw-blackberry/70">
+                    <p className="font-serif text-sm text-nfw-blackberry/70">
                       We typically respond within one business day. For urgent
                       grant-related questions, please note that in your message.
                     </p>
@@ -99,10 +99,10 @@ export default function ContactPage() {
                     <Heart className="w-5 h-5 text-nfw-blackberry" />
                   </div>
                   <div>
-                    <p className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-1">
+                    <p className="font-serif text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-1">
                       A note from us
                     </p>
-                    <p className="font-sans text-sm text-nfw-blackberry/70">
+                    <p className="font-serif text-sm text-nfw-blackberry/70">
                       No question is too small. Whether you need help with your
                       account, have a grant question, or just want to share your
                       story — we want to hear it.
@@ -126,7 +126,7 @@ export default function ContactPage() {
                     <Link
                       key={link.label}
                       href={link.href}
-                      className="flex items-center gap-2 p-3 border border-nfw-blackberry/10 font-sans text-sm text-nfw-blackberry hover:bg-nfw-lilac/10 transition-colors"
+                      className="flex items-center gap-2 p-3 border border-nfw-blackberry/10 font-ui text-sm text-nfw-blackberry hover:bg-nfw-lilac/10 transition-colors"
                     >
                       <span className="w-1.5 h-1.5 bg-nfw-lilac rounded-full flex-shrink-0"></span>
                       {link.label}
@@ -147,7 +147,7 @@ export default function ContactPage() {
                     <h3 className="font-serif text-2xl text-nfw-aubergine mb-3">
                       Message received!
                     </h3>
-                    <p className="font-sans text-nfw-blackberry/60 mb-6">
+                    <p className="font-serif text-nfw-blackberry/60 mb-6">
                       Thank you for reaching out. We&apos;ll get back to you
                       within one business day.
                     </p>
@@ -161,7 +161,7 @@ export default function ContactPage() {
                           message: "",
                         });
                       }}
-                      className="font-sans text-sm text-nfw-blackberry hover:text-nfw-aubergine underline transition-colors"
+                      className="font-ui text-sm text-nfw-blackberry hover:text-nfw-aubergine underline transition-colors"
                     >
                       Send another message
                     </button>
@@ -174,7 +174,7 @@ export default function ContactPage() {
                     <form onSubmit={handleSubmit} className="space-y-5">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block font-sans text-sm font-medium text-nfw-blackberry mb-2">
+                          <label className="block font-ui text-sm font-medium text-nfw-blackberry mb-2">
                             Your name
                           </label>
                           <input
@@ -189,7 +189,7 @@ export default function ContactPage() {
                           />
                         </div>
                         <div>
-                          <label className="block font-sans text-sm font-medium text-nfw-blackberry mb-2">
+                          <label className="block font-ui text-sm font-medium text-nfw-blackberry mb-2">
                             Email address
                           </label>
                           <input
@@ -206,7 +206,7 @@ export default function ContactPage() {
                       </div>
 
                       <div>
-                        <label className="block font-sans text-sm font-medium text-nfw-blackberry mb-2">
+                        <label className="block font-ui text-sm font-medium text-nfw-blackberry mb-2">
                           What&apos;s this about?
                         </label>
                         <select
@@ -236,7 +236,7 @@ export default function ContactPage() {
                       </div>
 
                       <div>
-                        <label className="block font-sans text-sm font-medium text-nfw-blackberry mb-2">
+                        <label className="block font-ui text-sm font-medium text-nfw-blackberry mb-2">
                           Your message
                         </label>
                         <textarea
@@ -259,7 +259,7 @@ export default function ContactPage() {
                         {loading ? "Sending..." : "Send Message"}
                       </button>
 
-                      <p className="font-sans text-xs text-nfw-blackberry/40 text-center">
+                      <p className="font-ui text-xs text-nfw-blackberry/40 text-center">
                         We never share your information with third parties.
                       </p>
                     </form>
@@ -277,7 +277,7 @@ export default function ContactPage() {
           <h2 className="font-serif text-3xl text-nfw-aubergine mb-4">
             Not a member yet?
           </h2>
-          <p className="font-sans text-nfw-blackberry/60 mb-8 text-lg max-w-xl mx-auto">
+          <p className="font-serif text-nfw-blackberry/60 mb-8 text-lg max-w-xl mx-auto">
             Join thousands of women who have already found relief, connection,
             and real support through NFW. It&apos;s free to get started.
           </p>

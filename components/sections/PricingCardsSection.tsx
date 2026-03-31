@@ -56,7 +56,7 @@ export default function PricingCardsSection({ content }: Props) {
             {c.headline}
           </h2>
           {c.subheadline && (
-            <p className="font-sans text-lg text-nfw-blackberry/60">
+            <p className="font-serif text-lg text-nfw-blackberry/60">
               {c.subheadline}
             </p>
           )}
@@ -106,7 +106,7 @@ export default function PricingCardsSection({ content }: Props) {
               </div>
 
               <p
-                className={`font-sans text-sm mb-6 ${
+                className={`font-serif text-sm mb-6 ${
                   plan.highlighted ? "text-nfw-lilac" : cardSubtextColor
                 }`}
               >
@@ -120,7 +120,7 @@ export default function PricingCardsSection({ content }: Props) {
                       <Check className="w-3 h-3" style={{ color: checkIconColor }} />
                     </div>
                     <span
-                      className={`font-sans text-sm ${
+                      className={`font-serif text-sm ${
                         plan.highlighted ? "text-nfw-dove" : cardSubtextColor
                       }`}
                     >
@@ -144,7 +144,7 @@ export default function PricingCardsSection({ content }: Props) {
           <h3 className={`font-serif text-2xl ${textColor} mb-3`}>
             {c.cta_headline || "Ready to join?"}
           </h3>
-          <p className={`font-sans ${mutedTextColor} mb-6 max-w-md mx-auto`}>
+          <p className={`font-serif ${mutedTextColor} mb-6 max-w-md mx-auto`}>
             {c.cta_body || "Create your free account to get started."}
           </p>
           <Link
@@ -153,7 +153,7 @@ export default function PricingCardsSection({ content }: Props) {
           >
             {c.cta_label || "Join Now"}
           </Link>
-          <p className={`font-sans text-sm ${mutedTextColor} mt-4`}>
+          <p className={`font-serif text-sm ${mutedTextColor} mt-4`}>
             {c.cta_secondary_text || "Already a member?"}{" "}
             <Link
               href={c.cta_secondary_url || "/auth/login"}

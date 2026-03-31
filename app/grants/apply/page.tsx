@@ -45,7 +45,7 @@ export default async function ApplyForGrantPage() {
           <h2 className="font-serif text-4xl lg:text-6xl leading-[1.1] text-nfw-aubergine mb-2">
             Apply for a Microgrant
           </h2>
-          <p className="font-sans text-nfw-blackberry/60">
+          <p className="font-serif text-nfw-blackberry/60">
             NFW microgrants help with real-life needs like childcare, medical
             costs, car repairs, and more.
           </p>
@@ -57,10 +57,10 @@ export default async function ApplyForGrantPage() {
           <GrantApplicationForm userId={user!.id} cycles={cycles} />
         ) : (
           <div className="bg-nfw-citrine/20 border border-nfw-citrine p-6">
-            <h3 className="font-sans text-lg font-semibold text-nfw-blackberry mb-2">
+            <h3 className="font-serif text-lg font-semibold text-nfw-blackberry mb-2">
               No Grant Cycles Available
             </h3>
-            <p className="font-sans text-nfw-blackberry/70">
+            <p className="font-serif text-nfw-blackberry/70">
               There are currently no open grant cycles. Please check back later
               or contact us for more information.
             </p>

@@ -50,18 +50,18 @@ export default function GrantsGridSection({ content }: Props) {
                 />
               </div>
               <div className="p-5">
-                <p className={`font-sans text-xs ${mutedTextColor} mb-2`}>
+                <p className={`font-serif text-xs ${mutedTextColor} mb-2`}>
                   {grant.closing}
                 </p>
                 <h3 className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-2">
                   {grant.title}
                 </h3>
-                <p className="font-sans text-sm text-nfw-blackberry/70 mb-4 line-clamp-2">
+                <p className="font-serif text-sm text-nfw-blackberry/70 mb-4 line-clamp-2">
                   {grant.description}
                 </p>
                 <Link
                   href={c.cta_url}
-                  className={`inline-flex items-center gap-1 font-sans text-sm font-medium ${c.background === "dove" ? "text-nfw-aubergine hover:text-nfw-blackberry" : "text-nfw-dove hover:text-white"} transition-colors`}
+                  className={`inline-flex items-center gap-1 font-ui text-sm font-medium ${c.background === "dove" ? "text-nfw-aubergine hover:text-nfw-blackberry" : "text-nfw-dove hover:text-white"} transition-colors`}
                 >
                   {c.cta_label}
                 </Link>

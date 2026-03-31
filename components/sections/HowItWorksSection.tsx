@@ -98,7 +98,7 @@ export default function HowItWorksSection({ content }: Props) {
                 >
                   <IconComponent className="w-10 h-10 text-nfw-blackberry" />
                 </div>
-                <h3 className={`font-ui text-sm font-black tracking-[0.06em] uppercase ${cardTextClass} mb-3`}>
+                <h3 className={`font-serif text-sm font-black tracking-[0.06em] uppercase ${cardTextClass} mb-3`}>
                   {step.title}
                 </h3>
                 <p className={`font-serif ${cardDescClass}`}>{step.description}</p>

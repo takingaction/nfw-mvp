@@ -26,7 +26,7 @@ export default function PricingCtaBoxSection({ content }: Props) {
           <h3 className={`font-serif text-2xl ${textColor} mb-3`}>
             {c.headline}
           </h3>
-          <p className={`font-sans ${mutedTextColor} mb-6 max-w-md mx-auto`}>
+          <p className={`font-serif ${mutedTextColor} mb-6 max-w-md mx-auto`}>
             {c.body}
           </p>
           <Link
@@ -35,7 +35,7 @@ export default function PricingCtaBoxSection({ content }: Props) {
           >
             {c.cta_label}
           </Link>
-          <p className={`font-sans text-sm ${mutedTextColor} mt-4`}>
+          <p className={`font-serif text-sm ${mutedTextColor} mt-4`}>
             {c.secondary_text}{" "}
             <Link
               href={c.secondary_url}

@@ -43,7 +43,7 @@ export default function BenefitsCheckmarksSection({ content }: Props) {
             <h2 className={`font-serif text-4xl lg:text-6xl ${textColor} mb-4 leading-tight`}>
               {c.headline}
             </h2>
-            <p className={`font-sans text-lg ${mutedTextColor} mb-8`}>
+            <p className={`font-serif text-lg ${mutedTextColor} mb-8`}>
               {c.body}
             </p>
             {c.cta_label && (
@@ -72,7 +72,7 @@ export default function BenefitsCheckmarksSection({ content }: Props) {
                   <p className={`font-serif text-lg font-black ${cardTextColor} mb-1`}>
                     {benefit.title}
                   </p>
-                  <p className={`font-sans text-sm ${mutedTextColor}`}>
+                  <p className={`font-serif text-sm ${mutedTextColor}`}>
                     {benefit.description}
                   </p>
                 </div>

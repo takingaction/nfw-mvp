@@ -175,7 +175,7 @@ export default function FAQPage() {
           <div className="space-y-12">
             {faqs.map((section, sectionIndex) => (
               <div key={section.category}>
-                <h2 className="font-ui text-lg font-black tracking-[0.06em] uppercase text-nfw-aubergine mb-6">
+                <h2 className="font-serif text-lg font-black tracking-[0.06em] uppercase text-nfw-aubergine mb-6">
                   {section.category}
                 </h2>
                 <div className="space-y-0">
@@ -191,7 +191,7 @@ export default function FAQPage() {
                           onClick={() => toggle(key)}
                           className="w-full flex items-center justify-between py-4 text-left group"
                         >
-                          <span className="font-sans text-base font-medium text-nfw-blackberry group-hover:text-nfw-aubergine transition-colors pr-4">
+                          <span className="font-serif text-base font-medium text-nfw-blackberry group-hover:text-nfw-aubergine transition-colors pr-4">
                             {faq.question}
                           </span>
                           <ChevronDown
@@ -201,7 +201,7 @@ export default function FAQPage() {
                         <div
                           className={`overflow-hidden transition-all duration-300 ${isOpen ? "max-h-96 pb-4" : "max-h-0"}`}
                         >
-                          <p className="font-sans text-nfw-blackberry/70 leading-relaxed">
+                          <p className="font-serif text-nfw-blackberry/70 leading-relaxed">
                             {faq.answer}
                           </p>
                         </div>
@@ -221,7 +221,7 @@ export default function FAQPage() {
           <h2 className="font-serif text-3xl text-nfw-aubergine mb-4">
             Still have questions?
           </h2>
-          <p className="font-sans text-nfw-blackberry/60 mb-8 text-lg">
+          <p className="font-serif text-nfw-blackberry/60 mb-8 text-lg">
             We&apos;re here to help. Reach out and a real person will get back
             to you.
           </p>

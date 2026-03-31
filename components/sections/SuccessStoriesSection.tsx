@@ -48,7 +48,7 @@ export default function SuccessStoriesSection({ content }: Props) {
           </div>
           <Link
             href={c.cta_url}
-            className={`hidden sm:flex items-center gap-1 font-sans text-sm font-medium ${ctaLinkColor} transition-colors whitespace-nowrap`}
+            className={`hidden sm:flex items-center gap-1 font-ui text-sm font-medium ${ctaLinkColor} transition-colors whitespace-nowrap`}
           >
             {c.cta_label}
           </Link>
@@ -80,7 +80,7 @@ export default function SuccessStoriesSection({ content }: Props) {
                 </h3>
                 <Link
                   href={c.cta_url}
-                  className={`font-sans text-sm font-medium ${ctaLinkColor} transition-colors`}
+                  className={`font-ui text-sm font-medium ${ctaLinkColor} transition-colors`}
                 >
                   Read more
                 </Link>

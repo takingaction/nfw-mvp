@@ -27,13 +27,13 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-bold mb-4">Quick Links</h4>
+            <h4 className="font-ui font-bold mb-4">Quick Links</h4>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
                   prefetch={false}
                   href="/about"
-                  className="text-nfw-lilac hover:text-white transition-colors"
+                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
                 >
                   About Us
                 </Link>
@@ -42,7 +42,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/grants"
-                  className="text-nfw-lilac hover:text-white transition-colors"
+                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
                 >
                   Microgrants
                 </Link>
@@ -51,7 +51,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/perks/info"
-                  className="text-nfw-lilac hover:text-white transition-colors"
+                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
                 >
                   Perks & Discounts
                 </Link>
@@ -60,7 +60,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/store/info"
-                  className="text-nfw-lilac hover:text-white transition-colors"
+                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
                 >
                   Zero Dollar Store
                 </Link>
@@ -70,13 +70,13 @@ export default function Footer() {
 
           {/* Support */}
           <div>
-            <h4 className="font-bold mb-4">Support</h4>
+            <h4 className="font-ui font-bold mb-4">Support</h4>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
                   prefetch={false}
                   href="/contact"
-                  className="text-nfw-lilac hover:text-white transition-colors"
+                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
                 >
                   Contact Us
                 </Link>
@@ -85,7 +85,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/faq"
-                  className="text-nfw-lilac hover:text-white transition-colors"
+                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
                 >
                   FAQ
                 </Link>
@@ -94,7 +94,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/pricing"
-                  className="text-nfw-lilac hover:text-white transition-colors"
+                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
                 >
                   Membership Info
                 </Link>
@@ -104,13 +104,13 @@ export default function Footer() {
 
           {/* Legal */}
           <div>
-            <h4 className="font-bold mb-4">Legal</h4>
+            <h4 className="font-ui font-bold mb-4">Legal</h4>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
                   prefetch={false}
                   href="/privacy"
-                  className="text-nfw-lilac hover:text-white transition-colors"
+                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
                 >
                   Privacy Policy
                 </Link>
@@ -119,7 +119,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/terms"
-                  className="text-nfw-lilac hover:text-white transition-colors"
+                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
                 >
                   Terms of Service
                 </Link>
@@ -128,7 +128,7 @@ export default function Footer() {
                 <Link
                   prefetch={false}
                   href="/accessibility"
-                  className="text-nfw-lilac hover:text-white transition-colors"
+                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
                 >
                   Accessibility
                 </Link>

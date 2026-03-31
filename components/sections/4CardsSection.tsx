@@ -27,7 +27,7 @@ export default function FourCardsSection({ content }: Props) {
             {c.headline}
           </h2>
           {c.subheadline && (
-            <p className={`font-sans text-lg ${textColor} opacity-70`}>
+            <p className={`font-serif text-lg ${textColor} opacity-70`}>
               {c.subheadline}
             </p>
           )}
@@ -45,10 +45,10 @@ export default function FourCardsSection({ content }: Props) {
               <p className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${cardTextColor} opacity-40 mb-1`}>
                 {card.age}
               </p>
-              <h3 className={`font-ui text-sm font-black tracking-[0.03em] uppercase ${cardTextColor} mb-2`}>
+              <h3 className={`font-serif text-sm font-black tracking-[0.03em] uppercase ${cardTextColor} mb-2`}>
                 {card.title}
               </h3>
-              <p className={`font-sans text-sm ${cardTextColor} opacity-60`}>{card.description}</p>
+              <p className={`font-serif text-sm ${cardTextColor} opacity-60`}>{card.description}</p>
             </div>
           ))}
         </div>

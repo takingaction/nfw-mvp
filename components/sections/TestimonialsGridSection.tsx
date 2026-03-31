@@ -55,7 +55,7 @@ export default function TestimonialsGridSection({ content }: Props) {
               key={card.name || index}
               className={`${cardBg} border ${cardBorderColor} p-6`}
             >
-              <p className={`${cardTextColor}/70 text-sm leading-relaxed mb-6`}>
+              <p className={`font-serif ${cardTextColor}/70 text-sm leading-relaxed mb-6`}>
                 &ldquo;{card.quote}&rdquo;
               </p>
               <div className="flex items-center gap-3">

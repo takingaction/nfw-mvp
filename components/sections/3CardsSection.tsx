@@ -49,7 +49,7 @@ export default function ThreeCardsSection({ content }: Props) {
               <h3 className={`font-ui text-sm font-black tracking-[0.06em] uppercase ${cardTextColor} mb-3`}>
                 {card.title}
               </h3>
-              <p className={`font-sans ${cardTextColor} opacity-60 mb-6 leading-relaxed`}>
+              <p className={`font-serif ${cardTextColor} opacity-60 mb-6 leading-relaxed`}>
                 {card.description}
               </p>
               <Link

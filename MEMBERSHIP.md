@@ -270,3 +270,57 @@ Admin can click "Insert Link" button to open modal with:
 - Protected routes now check both `profile_completed` AND `membership_level`
 - Users with profile complete but no membership are redirected to step 3
 - `/auth/welcome` now shows appropriate messages based on membership level (free vs paid)
+
+## Font Consistency (2026-03-31)
+
+All NFW pages follow brand font guidelines:
+- **Playfair Display** (`font-serif`) - Headings, body text, descriptions
+- **DM Sans** (`font-ui`) - Button text, navigation links, eyebrow text, labels
+
+### Brand Font Rules
+
+| Element | Font | Tailwind Class |
+|---------|------|----------------|
+| Headings, body text | Playfair Display | `font-serif` |
+| Button text | DM Sans | `font-ui` |
+| Navigation links | DM Sans | `font-ui` |
+| Eyebrow text | DM Sans | `font-ui` |
+| Labels, card titles | DM Sans or Playfair Display | See guidelines |
+
+### Files Fixed
+
+**Section Templates:**
+- `PricingCardsSection.tsx` - Body text → `font-serif`
+- `PricingComparisonSection.tsx` - Benefit labels → `font-serif`
+- `PricingBenefitsSection.tsx` - Body and item descriptions → `font-serif`
+- `PricingCtaBoxSection.tsx` - Body and secondary text → `font-serif`
+- `GrantsGridSection.tsx` - Card text → `font-serif`, CTA links → `font-ui`
+- `SuccessStoriesSection.tsx` - CTA links → `font-ui`
+- `TestimonialsGridSection.tsx` - Quote text → `font-serif`
+- `MemberCelebrationGridSection.tsx` - Body text → `font-serif`
+- `BenefitsCheckmarksSection.tsx` - Body and descriptions → `font-serif`
+- `HowItWorksSection.tsx` - Step titles → `font-serif`
+- `RightSide3FeaturesSection.tsx` - Item titles → `font-serif`
+- `3CardsSection.tsx` - Card descriptions → `font-serif`
+- `4CardsSection.tsx` - Subheadlines, card titles, descriptions → `font-serif`
+- `PerksStoreGridSection.tsx` - Subheadline, card descriptions → `font-serif`, CTA links → `font-ui`
+- `ZeroDollarStoreTeaserSection.tsx` - Product titles → `font-serif`
+
+**Landing Components:**
+- `Footer.tsx` - All navigation link text → `font-ui`
+
+**App Pages:**
+- `perks/page.tsx` - Body text → `font-serif`, buttons → `font-ui`
+- `grants/apply/page.tsx` - Headings/body → `font-serif`
+- `contact/page.tsx` - All body text → `font-serif`, labels/links → `font-ui`
+- `faq/page.tsx` - Category headings, questions, answers → `font-serif`
+
+### Pages Now Consistent
+
+- `/membership` - "Why become a member?" section
+- `/about-us-new` - "Our Values" section, 3 blocks
+- `/faq` - FAQ accordion section
+- `/microgrants` - "How microgrants work" step titles
+- `/perks-about` - "Browse Our Perks" section
+- `/store-about` - "$0 every item" product titles, "What else do I need to know?" section
+- `/contact` - All contact cards and form

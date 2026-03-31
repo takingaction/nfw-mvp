@@ -51,7 +51,7 @@ export default function MemberCelebrationGridSection({ content }: Props) {
               </h2>
             )}
             {c.body && (
-              <p className={`text-lg ${mutedColor}`}>
+              <p className={`font-serif text-lg ${mutedColor}`}>
                 {c.body}
               </p>
             )}

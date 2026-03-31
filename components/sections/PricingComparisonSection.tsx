@@ -82,7 +82,7 @@ export default function PricingComparisonSection({ content }: Props) {
                 i % 2 === 0 ? rowBgEven : rowBgOdd
               }`}
             >
-              <div className={`font-sans text-sm ${textColor}`}>
+              <div className={`font-serif text-sm ${textColor}`}>
                 {benefit.label}
               </div>
               <div className="flex justify-center">

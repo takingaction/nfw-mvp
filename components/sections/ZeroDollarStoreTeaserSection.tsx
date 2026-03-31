@@ -67,7 +67,7 @@ export default async function ZeroDollarStoreTeaserSection({ content }: Props) {
                       )}
                     </div>
                     <div className="py-4">
-                      <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-blackberry">
+                      <p className="font-serif text-xs font-black tracking-[0.06em] uppercase text-nfw-blackberry">
                         {product.title}
                       </p>
                     </div>

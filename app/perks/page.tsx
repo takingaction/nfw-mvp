@@ -450,7 +450,7 @@ export default function PerksPage() {
           <h2 className="font-serif text-4xl lg:text-6xl leading-[1.1] text-nfw-aubergine mb-2">
             Member Perks
           </h2>
-          <p className="font-sans text-nfw-blackberry/60">
+          <p className="font-serif text-nfw-blackberry/60">
             Exclusive discounts and offers for NFW members.
           </p>
         </div>
@@ -519,7 +519,7 @@ export default function PerksPage() {
             />
 
             {searchInfo && !loading && !error && (
-              <div className="mb-4 font-sans text-sm text-nfw-blackberry/50 flex items-center justify-between">
+              <div className="mb-4 font-serif text-sm text-nfw-blackberry/50 flex items-center justify-between">
                 <span>
                   Showing {rollupGroups.length} of {(currentView === "stores" ? viewCounts.stores : currentView === "locations" ? viewCounts.locations : searchInfo.total_results)?.toLocaleString() || 0} {currentView}
                   {searchInfo.total_pages > 1 &&
@@ -549,7 +549,7 @@ export default function PerksPage() {
             {loading && (
               <div className="flex items-center justify-center py-16">
                 <div className="w-6 h-6 border-2 border-nfw-lilac border-t-transparent rounded-full animate-spin" />
-                <span className="font-sans text-nfw-blackberry/60 ml-3">Loading...</span>
+                <span className="font-serif text-nfw-blackberry/60 ml-3">Loading...</span>
               </div>
             )}
 
@@ -558,16 +558,16 @@ export default function PerksPage() {
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="w-5 h-5 text-nfw-blackberry flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <h3 className="font-sans font-semibold text-nfw-blackberry mb-1">
+                    <h3 className="font-serif font-semibold text-nfw-blackberry mb-1">
                       Service Temporarily Unavailable
                     </h3>
-                    <p className="font-sans text-sm text-nfw-blackberry/70 mb-4">
+                    <p className="font-serif text-sm text-nfw-blackberry/70 mb-4">
                       The Access Perks service is currently experiencing issues.
                       Please try again shortly.
                     </p>
                     <button
                       onClick={fetchRollup}
-                      className="px-4 py-2 bg-nfw-aubergine text-white font-sans text-sm font-medium hover:bg-nfw-blackberry transition-colors"
+                      className="px-4 py-2 bg-nfw-aubergine text-white font-ui text-sm font-medium hover:bg-nfw-blackberry transition-colors"
                     >
                       Try Again
                     </button>
@@ -581,13 +581,13 @@ export default function PerksPage() {
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <h3 className="font-sans font-semibold text-red-900 mb-1">
+                    <h3 className="font-serif font-semibold text-red-900 mb-1">
                       Unable to Load Results
                     </h3>
-                    <p className="font-sans text-sm text-red-700 mb-4">{error}</p>
+                    <p className="font-serif text-sm text-red-700 mb-4">{error}</p>
                     <button
                       onClick={fetchRollup}
-                      className="px-4 py-2 bg-red-600 text-white font-sans text-sm font-medium hover:bg-red-700 transition-colors"
+                      className="px-4 py-2 bg-red-600 text-white font-ui text-sm font-medium hover:bg-red-700 transition-colors"
                     >
                       Try Again
                     </button>
@@ -661,15 +661,15 @@ export default function PerksPage() {
 
             {!loading && !error && rollupGroups.length === 0 && searchInfo?.total_results === 0 && (
               <div className="text-center py-16">
-                <h3 className="font-sans text-lg font-semibold text-nfw-blackberry mb-2">
+                <h3 className="font-serif text-lg font-semibold text-nfw-blackberry mb-2">
                   No results found
                 </h3>
-                <p className="font-sans text-nfw-blackberry/60 mb-6">
+                <p className="font-serif text-nfw-blackberry/60 mb-6">
                   Try adjusting your filters or browse all offers.
                 </p>
                 <button
                   onClick={clearAllFilters}
-                  className="px-6 py-2.5 bg-nfw-aubergine text-white font-sans text-sm font-medium hover:bg-nfw-blackberry transition-colors"
+                  className="px-6 py-2.5 bg-nfw-aubergine text-white font-ui text-sm font-medium hover:bg-nfw-blackberry transition-colors"
                 >
                   Browse All
                 </button>
