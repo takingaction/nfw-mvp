@@ -24,7 +24,7 @@ const plans = [
       "Voting rights",
       "Member badge",
     ],
-    priceId: "price_1SwcFWCeca9TSF9AWfCnn2yk", // ← Replace with your actual Contributing Price ID
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_CONTRIBUTING,
   },
   {
     id: "founding",
@@ -38,7 +38,7 @@ const plans = [
       "Early access to events",
       "Direct input on initiatives",
     ],
-    priceId: "price_1SwcFWCeca9TSF9AWfCnn2yk", // ← Replace with your actual Founding Price ID
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_FOUNDING,
     highlighted: true,
   },
 ];

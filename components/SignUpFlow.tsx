@@ -93,6 +93,22 @@ const US_STATES = [
 
 const PLANS = [
   {
+    id: "free",
+    name: "Free Member",
+    price: "$0",
+    period: "forever",
+    description: "A warm welcome to the NFW community.",
+    features: [
+      "Community access",
+      "Monthly newsletter",
+      "Event notifications",
+      "Member articles & resources",
+    ],
+    priceId: null,
+    highlighted: false,
+    badge: null,
+  },
+  {
     id: "contributing",
     name: "Contributing Member",
     price: "$15",
@@ -105,7 +121,7 @@ const PLANS = [
       "Zero Dollar Store access",
       "Voting rights on NFW initiatives",
     ],
-    priceId: "price_1SwcFWCeca9TSF9AWfCnn2yk",
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_CONTRIBUTING,
     highlighted: true,
     badge: "Most Popular",
   },
@@ -122,25 +138,9 @@ const PLANS = [
       "Priority grant review",
       "Direct input on NFW initiatives",
     ],
-    priceId: "price_1SwcJeCeca9TSF9AetEiWuUB",
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_FOUNDING,
     highlighted: false,
     badge: "Most Impact",
-  },
-  {
-    id: "free",
-    name: "Free Member",
-    price: "$0",
-    period: "forever",
-    description: "A warm welcome to the NFW community.",
-    features: [
-      "Community access",
-      "Monthly newsletter",
-      "Event notifications",
-      "Member articles & resources",
-    ],
-    priceId: null,
-    highlighted: false,
-    badge: null,
   },
 ];
 
