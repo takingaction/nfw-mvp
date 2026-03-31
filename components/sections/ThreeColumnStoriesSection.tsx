@@ -59,7 +59,7 @@ export default function ThreeColumnStoriesSection({ content }: Props) {
                   <h3 className={`font-serif text-xl ${textColor} mb-3 leading-snug`}>
                     {column.title}
                   </h3>
-                  <p className={`font-sans text-sm ${textColor} opacity-70 leading-relaxed flex-grow`}>
+                  <p className={`font-serif text-sm ${textColor} opacity-70 leading-relaxed flex-grow`}>
                     {column.content}
                   </p>
                   {column.link_text && column.link_url && (
