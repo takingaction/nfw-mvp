@@ -76,7 +76,7 @@ export function AuthButtonCombined() {
     return (
       <Link
         href="/auth/sign-up"
-        className="inline-flex items-center justify-center px-4 h-10 border border-white text-white font-bold text-sm hover:bg-white/10 transition-all"
+        className="inline-flex items-center justify-center px-4 h-10 border border-[#ac9bb6] text-[#ac9bb6] font-bold text-sm hover:bg-[#ac9bb6]/10 transition-all"
       >
         Join Now
       </Link>
