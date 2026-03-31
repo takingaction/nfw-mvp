@@ -57,7 +57,7 @@ export async function POST(request: Request) {
           quantity: 1,
         },
       ],
-      success_url: `${request.headers.get("origin")}/auth/welcome`,
+      success_url: `${request.headers.get("origin")}/dashboard`,
       cancel_url: cancelUrl || `${request.headers.get("origin")}/membership`,
       customer_email: session.user.email,
       metadata: {
