@@ -1,197 +1,182 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
+interface FooterLink {
+  label: string;
+  url: string;
+}
+
+interface FooterData {
+  id: string;
+  logo_url: string | null;
+  column1_heading: string;
+  column1_links: FooterLink[];
+  column2_heading: string;
+  column2_links: FooterLink[];
+  column3_heading: string;
+  column3_links: FooterLink[];
+  copyright_text: string;
+  footer_link1_text: string;
+  footer_link1_url: string;
+  footer_link2_text: string;
+  footer_link2_url: string;
+  footer_link3_text: string;
+  footer_link3_url: string;
+}
+
+const defaultData: FooterData = {
+  id: "",
+  logo_url: "/images/footer-logo.png",
+  column1_heading: "MEMBERSHIP",
+  column1_links: [
+    { label: "Become a Member", url: "/auth/sign-up" },
+    { label: "Perks & Discounts", url: "/perks/info" },
+    { label: "Microgrants", url: "/grants" },
+    { label: "Zero Dollar Store", url: "/store" },
+  ],
+  column2_heading: "COMMUNITY",
+  column2_links: [
+    { label: "Become a Member", url: "/auth/sign-up" },
+    { label: "Perks & Discounts", url: "/perks/info" },
+    { label: "Microgrants", url: "/grants" },
+    { label: "Zero Dollar Store", url: "/store" },
+  ],
+  column3_heading: "ORGANIZATION",
+  column3_links: [
+    { label: "Become a Member", url: "/auth/sign-up" },
+    { label: "Perks & Discounts", url: "/perks/info" },
+    { label: "Microgrants", url: "/grants" },
+    { label: "Zero Dollar Store", url: "/store" },
+  ],
+  copyright_text: "© 2026 National Fund for Women. All rights reserved.",
+  footer_link1_text: "Privacy Policy",
+  footer_link1_url: "/privacy",
+  footer_link2_text: "Terms of Use",
+  footer_link2_url: "/terms",
+  footer_link3_text: "Accessibility",
+  footer_link3_url: "/accessibility",
+};
+
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
+  const [footerData, setFooterData] = useState<FooterData | null>(null);
+
+  useEffect(() => {
+    fetch("/api/footer")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data) {
+          setFooterData(data);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  const data = footerData || defaultData;
 
   return (
-    <footer className="bg-nfw-blackberry text-white">
+    <footer className="bg-nfw-aubergine text-nfw-dove">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 lg:gap-12 mb-12">
-          {/* Brand Column */}
-          <div className="md:col-span-1">
-            <Image
-              src="/images/footer-logo.png"
-              alt="NFW Logo"
-              width={128}
-              height={64}
-              className="h-32 w-auto mb-4"
-              priority
-            />
-            <p className="text-nfw-lilac text-sm leading-relaxed">
-              A space to celebrate, listen, and uplift American women.
-            </p>
+          {/* Logo Column - vertically centered */}
+          <div className="md:col-span-1 flex items-center justify-center md:justify-start">
+            {data.logo_url && (
+              <Image
+                src={data.logo_url}
+                alt="NFW Logo"
+                width={128}
+                height={64}
+                className="h-32 w-auto"
+                priority
+              />
+            )}
           </div>
 
-          {/* Quick Links */}
+          {/* Column 1 - Membership */}
           <div>
-            <h4 className="font-ui font-bold mb-4">Quick Links</h4>
+            <h4 className="font-ui font-bold mb-4">{data.column1_heading}</h4>
             <ul className="space-y-2 text-sm">
-              <li>
-                <Link
-                  prefetch={false}
-                  href="/about"
-                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
-                >
-                  About Us
-                </Link>
-              </li>
-              <li>
-                <Link
-                  prefetch={false}
-                  href="/grants"
-                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
-                >
-                  Microgrants
-                </Link>
-              </li>
-              <li>
-                <Link
-                  prefetch={false}
-                  href="/perks/info"
-                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
-                >
-                  Perks & Discounts
-                </Link>
-              </li>
-              <li>
-                <Link
-                  prefetch={false}
-                  href="/store/info"
-                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
-                >
-                  Zero Dollar Store
-                </Link>
-              </li>
+              {data.column1_links.map((link, i) => (
+                <li key={i}>
+                  <Link
+                    prefetch={false}
+                    href={link.url}
+                    className="text-nfw-dove hover:text-white transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Support */}
+          {/* Column 2 - Community */}
           <div>
-            <h4 className="font-ui font-bold mb-4">Support</h4>
+            <h4 className="font-ui font-bold mb-4">{data.column2_heading}</h4>
             <ul className="space-y-2 text-sm">
-              <li>
-                <Link
-                  prefetch={false}
-                  href="/contact"
-                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
-                >
-                  Contact Us
-                </Link>
-              </li>
-              <li>
-                <Link
-                  prefetch={false}
-                  href="/faq"
-                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
-                >
-                  FAQ
-                </Link>
-              </li>
-              <li>
-                <Link
-                  prefetch={false}
-                  href="/pricing"
-                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
-                >
-                  Membership Info
-                </Link>
-              </li>
+              {data.column2_links.map((link, i) => (
+                <li key={i}>
+                  <Link
+                    prefetch={false}
+                    href={link.url}
+                    className="text-nfw-dove hover:text-white transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Legal */}
+          {/* Column 3 - Organization */}
           <div>
-            <h4 className="font-ui font-bold mb-4">Legal</h4>
+            <h4 className="font-ui font-bold mb-4">{data.column3_heading}</h4>
             <ul className="space-y-2 text-sm">
-              <li>
-                <Link
-                  prefetch={false}
-                  href="/privacy"
-                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
-                >
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link
-                  prefetch={false}
-                  href="/terms"
-                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
-                >
-                  Terms of Service
-                </Link>
-              </li>
-              <li>
-                <Link
-                  prefetch={false}
-                  href="/accessibility"
-                  className="font-ui text-nfw-lilac hover:text-white transition-colors"
-                >
-                  Accessibility
-                </Link>
-              </li>
+              {data.column3_links.map((link, i) => (
+                <li key={i}>
+                  <Link
+                    prefetch={false}
+                    href={link.url}
+                    className="text-nfw-dove hover:text-white transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
 
         {/* Bottom Bar */}
         <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-nfw-lilac text-sm">
-            © {currentYear} National Fund for Women. All rights reserved.
+          <p className="text-nfw-dove text-sm">
+            {data.copyright_text}
           </p>
 
           <div className="flex gap-6 items-center">
-            <a
-              href="https://www.facebook.com/nationalfundforwomen/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:opacity-80 transition-opacity"
-              aria-label="Facebook"
+            <Link
+              prefetch={false}
+              href={data.footer_link1_url}
+              className="text-nfw-dove hover:text-white transition-colors text-sm"
             >
-              <Image
-                src="/images/social/White-Lavender-Facebook.png"
-                alt="Facebook"
-                width={48}
-                height={48}
-                className="h-12 w-12"
-                loading="lazy"
-              />
-            </a>
-            <a
-              href="https://www.instagram.com/nationalfundforwomen"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:opacity-80 transition-opacity"
-              aria-label="Instagram"
+              {data.footer_link1_text}
+            </Link>
+            <Link
+              prefetch={false}
+              href={data.footer_link2_url}
+              className="text-nfw-dove hover:text-white transition-colors text-sm"
             >
-              <Image
-                src="/images/social/White-Lavender-Instagram.png"
-                alt="Instagram"
-                width={48}
-                height={48}
-                className="h-12 w-12"
-                loading="lazy"
-              />
-            </a>
-            <a
-              href="https://www.tiktok.com/@nationalfundforwomen"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:opacity-80 transition-opacity"
-              aria-label="TikTok"
+              {data.footer_link2_text}
+            </Link>
+            <Link
+              prefetch={false}
+              href={data.footer_link3_url}
+              className="text-nfw-dove hover:text-white transition-colors text-sm"
             >
-              <Image
-                src="/images/social/White-Lavender-TikTok.png"
-                alt="TikTok"
-                width={48}
-                height={48}
-                className="h-12 w-12"
-                loading="lazy"
-              />
-            </a>
+              {data.footer_link3_text}
+            </Link>
           </div>
         </div>
       </div>
