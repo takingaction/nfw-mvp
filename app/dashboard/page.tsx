@@ -54,9 +54,11 @@ export default async function DashboardPage() {
     .eq("id", user.id)
     .single();
 
-  // Redirect if profile is not completed
+  // Redirect if profile is not completed or membership not selected
   if (!profile?.profile_completed) {
     redirect("/auth/sign-up?step=1");
+  } else if (!profile?.membership_level) {
+    redirect("/auth/sign-up?step=3");
   }
 
   // Fetch grant applications for status widget

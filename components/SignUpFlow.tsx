@@ -314,6 +314,7 @@ export default function SignUpFlow() {
         household_income: income,
         identities,
         social_handles: socialHandles,
+        profile_completed: true,
       });
       setStep(3);
     } catch (err: any) {

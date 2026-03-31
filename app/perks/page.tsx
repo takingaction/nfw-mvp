@@ -64,16 +64,18 @@ export default function PerksPage() {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       
-      // Check profile completion for logged-in users
+      // Check profile completion and membership for logged-in users
       if (user) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("profile_completed")
+          .select("profile_completed, membership_level")
           .eq("id", user.id)
           .single();
         
-        if (profile && !profile.profile_completed) {
+        if (!profile?.profile_completed) {
           window.location.href = "/auth/sign-up?step=1";
+        } else if (!profile?.membership_level) {
+          window.location.href = "/auth/sign-up?step=3";
         }
       }
     };

@@ -17,11 +17,39 @@ export default async function WelcomePage() {
       .eq("id", user.id)
       .single();
 
-    // If profile is not completed, redirect to signup flow
     if (!profile?.profile_completed) {
       redirect("/auth/sign-up?step=1");
     }
   }
+
+  const membershipLevel = user ? (await supabase
+    .from("profiles")
+    .select("membership_level")
+    .eq("id", user!.id)
+    .single()).data?.membership_level : null;
+
+  const isPaidMember = membershipLevel === "contributing" || membershipLevel === "founding";
+
+  const getWelcomeContent = () => {
+    if (isPaidMember) {
+      return {
+        badge: "Membership Activated",
+        title: membershipLevel === "founding" 
+          ? "You're a Founding Member!" 
+          : "You're a Contributing Member!",
+        description: membershipLevel === "founding"
+          ? "Thank you for your Founding Membership. You now have access to everything NFW offers — with exclusive Founding Member benefits."
+          : "Thank you for your Contributing Membership. You now have access to everything we offer — microgrants, perks, the Zero Dollar Store, and a community that has your back.",
+      };
+    }
+    return {
+      badge: "Welcome to the community",
+      title: "You're officially a member!",
+      description: "Welcome to NFW. You now have access to everything we offer — microgrants, perks, the Zero Dollar Store, and a community that has your back.",
+    };
+  };
+
+  const content = getWelcomeContent();
 
   return (
     <main className="min-h-screen bg-nfw-blackberry flex items-center justify-center px-4 relative overflow-hidden">
@@ -33,18 +61,16 @@ export default async function WelcomePage() {
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-nfw-lilac/20 border border-nfw-lilac/30 text-sm mb-6">
           <span className="w-2 h-2 bg-[#d4f1ad]"></span>
           <span className="text-nfw-dove font-semibold">
-            Welcome to the community
+            {content.badge}
           </span>
         </div>
 
         <h1 className="font-serif text-4xl lg:text-6xl text-white mb-4 leading-tight">
-          You&apos;re officially a member!
+          {content.title}
         </h1>
 
         <p className="text-nfw-lilac text-lg mb-10 max-w-md mx-auto leading-relaxed">
-          Welcome to NFW. You now have access to everything we offer —
-          microgrants, perks, the Zero Dollar Store, and a community that has
-          your back.
+          {content.description}
         </p>
 
         <div className="grid grid-cols-3 gap-4 mb-10 max-w-sm mx-auto">
