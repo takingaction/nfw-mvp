@@ -41,9 +41,11 @@ async function AdminMembersContent() {
 
   const total = membersWithEmails?.length || 0;
   const paid =
-    membersWithEmails?.filter((m) => m.subscription_status === "active")
+    membersWithEmails?.filter((m) => m.membership_level === "contributing" || m.membership_level === "founding")
       .length || 0;
-  const free = total - paid;
+  const free =
+    membersWithEmails?.filter((m) => m.membership_level === "free" || m.membership_level === null)
+      .length || 0;
   const admins = membersWithEmails?.filter((m) => m.is_admin).length || 0;
 
   return (

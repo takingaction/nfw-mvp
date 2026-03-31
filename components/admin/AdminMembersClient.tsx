@@ -26,6 +26,7 @@ type Member = {
   joined_at: string | null;
   is_admin: boolean | null;
   access_perks_synced_at: string | null;
+  membership_level: string | null;
 };
 
 export default function AdminMembersClient({
@@ -55,8 +56,8 @@ export default function AdminMembersClient({
 
     const matchesFilter =
       filter === "all" ||
-      (filter === "paid" && m.subscription_status === "active") ||
-      (filter === "free" && m.subscription_status !== "active") ||
+      (filter === "paid" && (m.membership_level === "contributing" || m.membership_level === "founding")) ||
+      (filter === "free" && (m.membership_level === "free" || m.membership_level === null)) ||
       (filter === "admin" && m.is_admin);
 
     return matchesSearch && matchesFilter;
@@ -147,6 +148,26 @@ export default function AdminMembersClient({
     );
   };
 
+  const membershipBadge = (level: string | null) => {
+    if (level === "founding")
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#fdf493] text-nfw-blackberry">
+          Founding
+        </span>
+      );
+    if (level === "contributing")
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#d4f1ad] text-nfw-blackberry">
+          Contributing
+        </span>
+      );
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/20 text-nfw-blackberry/60">
+        Free
+      </span>
+    );
+  };
+
   const formatDate = (date: string | null) => {
     if (!date) return "—";
     return new Date(date).toLocaleDateString("en-US", {
@@ -218,6 +239,9 @@ export default function AdminMembersClient({
                   Status
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-nfw-blackberry/50 uppercase tracking-wider">
+                  Membership
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-nfw-blackberry/50 uppercase tracking-wider">
                   Income
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-nfw-blackberry/50 uppercase tracking-wider">
@@ -235,7 +259,7 @@ export default function AdminMembersClient({
               {filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-4 py-12 text-center text-nfw-blackberry/40 text-sm"
                   >
                     No members found matching your search.
@@ -271,6 +295,9 @@ export default function AdminMembersClient({
                     </td>
                     <td className="px-4 py-3">
                       {statusBadge(member.subscription_status)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {membershipBadge(member.membership_level)}
                     </td>
                     <td className="px-4 py-3 text-nfw-blackberry/60 text-xs">
                       {member.household_income || "—"}
