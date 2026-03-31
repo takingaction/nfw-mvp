@@ -191,7 +191,7 @@ export default function FAQPage() {
                           onClick={() => toggle(key)}
                           className="w-full flex items-center justify-between py-4 text-left group"
                         >
-                          <span className="font-serif text-base font-medium text-nfw-blackberry group-hover:text-nfw-aubergine transition-colors pr-4">
+                          <span className="font-serif text-xl font-medium text-nfw-blackberry group-hover:text-nfw-aubergine transition-colors pr-4">
                             {faq.question}
                           </span>
                           <ChevronDown
@@ -201,7 +201,7 @@ export default function FAQPage() {
                         <div
                           className={`overflow-hidden transition-all duration-300 ${isOpen ? "max-h-96 pb-4" : "max-h-0"}`}
                         >
-                          <p className="font-serif text-nfw-blackberry/70 leading-relaxed">
+                          <p className="font-serif text-lg text-nfw-blackberry/70 leading-relaxed">
                             {faq.answer}
                           </p>
                         </div>
