@@ -103,7 +103,7 @@ export default function Footer() {
 
           {/* Column 1 - Membership */}
           <div>
-            <h4 className="font-ui font-bold mb-6" style={{ color: "#B7B6B9" }}>{data.column1_heading}</h4>
+            <h4 className="font-ui mb-6" style={{ color: "#B7B6B9", fontWeight: 1000 }}>{data.column1_heading}</h4>
             <ul className="space-y-4 text-sm">
               {data.column1_links.map((link, i) => (
                 <li key={i}>
@@ -122,7 +122,7 @@ export default function Footer() {
 
           {/* Column 2 - Community */}
           <div>
-            <h4 className="font-ui font-bold mb-6" style={{ color: "#B7B6B9" }}>{data.column2_heading}</h4>
+            <h4 className="font-ui mb-6" style={{ color: "#B7B6B9", fontWeight: 1000 }}>{data.column2_heading}</h4>
             <ul className="space-y-4 text-sm">
               {data.column2_links.map((link, i) => (
                 <li key={i}>
@@ -141,7 +141,7 @@ export default function Footer() {
 
           {/* Column 3 - Organization */}
           <div>
-            <h4 className="font-ui font-bold mb-6" style={{ color: "#B7B6B9" }}>{data.column3_heading}</h4>
+            <h4 className="font-ui mb-6" style={{ color: "#B7B6B9", fontWeight: 1000 }}>{data.column3_heading}</h4>
             <ul className="space-y-4 text-sm">
               {data.column3_links.map((link, i) => (
                 <li key={i}>
