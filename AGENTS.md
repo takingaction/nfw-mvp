@@ -217,3 +217,100 @@ ALTER TABLE profiles ADD COLUMN profile_completed BOOLEAN DEFAULT FALSE;
 - Removed hover grow effect from back to top button
 - Changed grants page CTA text color from blackberry to dove for readability
 - Fixed perks page auth state sync with onAuthStateChange listener
+
+### Session 2026-03-31: Font Consistency + Footer Admin
+
+#### Font Consistency Audit & Fix
+
+Systematic audit and fix of all font usage to follow brand guidelines across all section templates and pages.
+
+**Brand Font Rules:**
+- Playfair Display (`font-serif`) - Headings, body text, descriptions
+- DM Sans (`font-ui`) - Button text, navigation links, eyebrow text, labels
+
+**Files Fixed (20 total):**
+
+Section Templates:
+- `PricingCardsSection.tsx` - Body text → `font-serif`
+- `PricingComparisonSection.tsx` - Benefit labels → `font-serif`
+- `PricingBenefitsSection.tsx` - Body and item descriptions → `font-serif`
+- `PricingCtaBoxSection.tsx` - Body and secondary text → `font-serif`
+- `PricingFinalCtaSection.tsx` - Item sub and footnote → `font-serif`
+- `GrantsHeroSection.tsx` - stat_label, secondary_stat_label → `font-serif`
+- `GrantAmountCardsSection.tsx` - Item range, label, description → `font-serif`
+- `GrantsGridSection.tsx` - Card text → `font-serif`, CTA links → `font-ui`
+- `SuccessStoriesSection.tsx` - CTA links → `font-ui`
+- `TestimonialsGridSection.tsx` - Quote text → `font-serif`
+- `MemberCelebrationGridSection.tsx` - Body text → `font-serif`
+- `BenefitsCheckmarksSection.tsx` - Body and descriptions → `font-serif`
+- `HowItWorksSection.tsx` - Step titles → `font-serif`
+- `RightSide3FeaturesSection.tsx` - Item titles → `font-serif`
+- `ThreeColumnStoriesSection.tsx` - Column content → `font-serif`
+- `3CardsSection.tsx` - Card descriptions → `font-serif`
+- `4CardsSection.tsx` - Subheadlines, card titles, descriptions → `font-serif`
+- `PerksStoreGridSection.tsx` - Subheadline, card descriptions → `font-serif`, CTA links → `font-ui`
+- `ZeroDollarStoreTeaserSection.tsx` - Product titles → `font-serif`
+
+Landing Components:
+- `Footer.tsx` - All navigation link text → `font-ui`
+
+App Pages:
+- `perks/page.tsx` - Body text → `font-serif`, buttons → `font-ui`
+- `grants/apply/page.tsx` - Headings/body → `font-serif`
+- `contact/page.tsx` - All body text → `font-serif`, labels/links → `font-ui`
+- `faq/page.tsx` - Category headings, questions, answers → `font-serif`
+
+#### Footer Admin Feature
+
+Created admin-editable footer at `/admin/footer`.
+
+**Database:**
+- `supabase/migrations/019_add_site_footer.sql` - Creates `site_footer` table
+- `supabase/migrations/020_fix_site_footer_schema.sql` - Adds missing columns to existing row
+
+**Schema:**
+```sql
+site_footer (
+  id UUID PRIMARY KEY,
+  logo_url TEXT,
+  column1_heading TEXT DEFAULT 'MEMBERSHIP',
+  column1_links JSONB DEFAULT '[...]',
+  column2_heading TEXT DEFAULT 'COMMUNITY',
+  column2_links JSONB DEFAULT '[...]',
+  column3_heading TEXT DEFAULT 'ORGANIZATION',
+  column3_links JSONB DEFAULT '[...]',
+  copyright_text TEXT DEFAULT '© 2026 National Fund for Women...',
+  footer_link1-3_text TEXT,
+  footer_link1-3_url TEXT
+)
+```
+
+**Files created:**
+- `app/api/footer/route.ts` - GET/POST API endpoints
+- `app/admin/footer/page.tsx` - Admin page wrapper
+- `components/admin/FooterEditorClient.tsx` - Admin form UI
+
+**Files modified:**
+- `components/landing/Footer.tsx` - Dynamic data fetching from `/api/footer`
+
+**Footer Styling:**
+- Background: aubergine (`#3E145F`)
+- Text color: `#B7B6B9`
+- Divider line: `#B7B6B9` (full opacity)
+- Column headings: font-weight 900
+- Spacing: `mb-6` between heading and links, `space-y-4` between links
+
+#### Header Updates
+
+- `NavigationClient.tsx` - Menu items and dropdown text color changed to `#ac9bb6`
+- `AuthButtonCombined.tsx` - "Join Now" ghost button border/text color changed to `#ac9bb6`
+- `app/layout.tsx` - Added DM Sans weight 900 to font loading
+
+#### Database Fix
+- Fixed `profile_completed` for `ron@myherodesign.com` via SQL update
+- Recommended backfill query for all existing paid members:
+  ```sql
+  UPDATE profiles SET profile_completed = true 
+  WHERE membership_level IN ('contributing', 'founding') 
+  AND (profile_completed IS NULL OR profile_completed = false);
+  ```
