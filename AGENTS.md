@@ -315,3 +315,8 @@ site_footer (
   WHERE membership_level IN ('contributing', 'founding') 
   AND (profile_completed IS NULL OR profile_completed = false);
   ```
+
+#### Security Fix
+- Moved `shopify_product_mappings` table from `public` schema to `internal` schema
+- This removes it from PostgREST public exposure
+- Migration: `021_move_shopify_table_to_internal_schema.sql`
