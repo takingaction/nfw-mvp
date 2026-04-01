@@ -10,12 +10,15 @@ const supabaseAdmin = createClient(
 
 export async function POST() {
   try {
+    console.log("Starting Shopify sync...");
     const supabase = await createSupabaseClient();
 
     const data = await shopifyFetch<{ products: { edges: Array<{ node: ShopifyProduct }> } }>({
       query: PRODUCTS_QUERY,
       variables: { first: 250 },
     });
+
+    console.log(`Shopify returned ${data.products.edges.length} products`);
 
     let syncedCount = 0;
 
@@ -36,7 +39,9 @@ export async function POST() {
           },
         );
 
-      if (!error) {
+      if (error) {
+        console.error(`Upsert failed for ${node.id}:`, error);
+      } else {
         syncedCount++;
       }
     }
@@ -45,6 +50,7 @@ export async function POST() {
   } catch (error) {
     console.error("Error syncing from Shopify:", error);
     const message = error instanceof Error ? error.message : "Sync failed";
+    console.error("Sync failed with message:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
