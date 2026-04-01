@@ -25,19 +25,11 @@ export async function POST() {
     for (const { node } of data.products.edges) {
       const firstVariant = node.variants.edges[0]?.node;
 
-      const { error } = await supabaseAdmin
-        .from("shopify_product_mappings")
-        .upsert(
-          {
-            shopify_product_id: node.id,
-            shopify_variant_id: firstVariant?.id || "",
-            eligibility_tiers: ["free", "contributing", "founding"],
-            display_order: syncedCount + 1,
-          },
-          {
-            onConflict: "shopify_product_id",
-          },
-        );
+      const { error } = await supabaseAdmin.rpc('upsert_shopify_product', {
+        p_shopify_product_id: node.id,
+        p_shopify_variant_id: firstVariant?.id || "",
+        p_display_order: syncedCount + 1,
+      });
 
       if (error) {
         console.error(`Upsert failed for ${node.id}:`, error);
