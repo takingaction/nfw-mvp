@@ -316,7 +316,9 @@ site_footer (
   AND (profile_completed IS NULL OR profile_completed = false);
   ```
 
-#### Security Fix
-- Moved `shopify_product_mappings` table from `public` schema to `internal` schema
-- This removes it from PostgREST public exposure
-- Migration: `021_move_shopify_table_to_internal_schema.sql`
+#### Shopify Schema Security Issue & Resolution
+- Initially moved `shopify_product_mappings` to `internal` schema to isolate from PostgREST
+- Encountered PostgREST schema cache issues preventing RPC function access
+- Reverted table to `public` schema (acceptable for product mappings - not sensitive data)
+- Created `SHOPIFY.md` with full documentation of the issue and learnings
+- Key files: `app/api/shopify/products/route.ts`, `app/api/admin/shopify/sync/route.ts`, `app/api/admin/shopify/update-product/route.ts`
