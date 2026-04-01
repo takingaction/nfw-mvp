@@ -24,15 +24,21 @@ export async function POST() {
 
     for (const { node } of data.products.edges) {
       const firstVariant = node.variants.edges[0]?.node;
+      const productId = node.id;
+      const variantId = firstVariant?.id || "";
 
-      const { error } = await supabaseAdmin.rpc('upsert_shopify_product', {
-        p_shopify_product_id: node.id,
-        p_shopify_variant_id: firstVariant?.id || "",
+      console.log(`Calling RPC for product: ${productId}, variant: ${variantId}`);
+
+      const result = await supabaseAdmin.rpc('upsert_shopify_product', {
+        p_shopify_product_id: productId,
+        p_shopify_variant_id: variantId,
         p_display_order: syncedCount + 1,
       });
 
-      if (error) {
-        console.error(`Upsert failed for ${node.id}:`, error);
+      console.log(`RPC result for ${productId}:`, result);
+
+      if (result.error) {
+        console.error(`Upsert failed for ${productId}:`, result.error);
       } else {
         syncedCount++;
       }
