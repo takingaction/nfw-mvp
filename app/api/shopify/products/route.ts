@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { shopifyFetch, PRODUCTS_QUERY, ShopifyProduct, getShopifyAccessToken } from "@/lib/shopify";
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 import { MOCK_PRODUCTS, transformShopifyProduct, MockProduct } from "@/lib/mock-shopify";
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,8 +37,7 @@ export async function GET(request: NextRequest) {
           variables: { first: 50 },
         });
 
-        const supabase = await createClient();
-        const { data: mappings } = await supabase
+        const { data: mappings } = await supabaseAdmin
           .from("shopify_product_mappings")
           .select("*");
 

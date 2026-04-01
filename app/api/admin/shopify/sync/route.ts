@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { shopifyFetch, PRODUCTS_QUERY, ShopifyProduct } from "@/lib/shopify";
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST() {
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseClient();
 
     const data = await shopifyFetch<{ products: { edges: Array<{ node: ShopifyProduct }> } }>({
       query: PRODUCTS_QUERY,
@@ -16,7 +22,7 @@ export async function POST() {
     for (const { node } of data.products.edges) {
       const firstVariant = node.variants.edges[0]?.node;
 
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from("shopify_product_mappings")
         .upsert(
           {
