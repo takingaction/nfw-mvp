@@ -1,7 +1,8 @@
--- Create RPC functions for Shopify product operations in internal schema
+-- Create RPC functions for Shopify product operations
+-- These functions live in public schema but access internal.shopify_product_mappings
 -- This bypasses PostgREST schema cache issues
 
-CREATE OR REPLACE FUNCTION internal.upsert_shopify_product(
+CREATE OR REPLACE FUNCTION public.upsert_shopify_product(
   p_shopify_product_id TEXT,
   p_shopify_variant_id TEXT,
   p_display_order INTEGER DEFAULT 1
@@ -25,7 +26,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE OR REPLACE FUNCTION internal.get_all_shopify_mappings()
+CREATE OR REPLACE FUNCTION public.get_all_shopify_mappings()
 RETURNS TABLE (
   id UUID,
   shopify_product_id TEXT,
