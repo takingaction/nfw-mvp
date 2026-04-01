@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
           variables: { first: 50 },
         });
 
-        const { data: mappings } = await supabaseAdmin.rpc('public.get_all_shopify_mappings') as { data: Array<{
+        const { data: mappings } = await supabaseAdmin.rpc('get_all_shopify_mappings') as { data: Array<{
         id: string;
         shopify_product_id: string;
         shopify_variant_id: string;

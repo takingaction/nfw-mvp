@@ -29,7 +29,7 @@ export async function POST() {
 
       console.log(`Calling RPC for product: ${productId}, variant: ${variantId}`);
 
-      const result = await supabaseAdmin.rpc('public.upsert_shopify_product', {
+      const result = await supabaseAdmin.rpc('upsert_shopify_product', {
         p_shopify_product_id: productId,
         p_shopify_variant_id: variantId,
         p_display_order: syncedCount + 1,
