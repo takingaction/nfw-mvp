@@ -575,11 +575,15 @@ export default function PerksPage() {
                       ← Back to stores results
                     </button>
                   )}
-                  <span>
-                    Showing {rollupGroups.length} of {(currentView === "stores" ? (searchInfo.total_stores || viewCounts.stores) : currentView === "locations" ? (searchInfo.total_locations || viewCounts.locations) : searchInfo.total_results)?.toLocaleString() || 0} {currentView}
-                    {searchInfo.total_pages > 1 &&
-                      ` - Page ${currentPage} of ${searchInfo.total_pages}`}
-                  </span>
+                  {rollupGroups.length === 0 ? (
+                    <span className="text-nfw-blackberry/50">No Results</span>
+                  ) : (
+                    <span>
+                      Showing {rollupGroups.length} of {(currentView === "stores" ? (searchInfo.total_stores || viewCounts.stores) : currentView === "locations" ? (searchInfo.total_locations || viewCounts.locations) : searchInfo.total_results)?.toLocaleString() || 0} {currentView}
+                      {searchInfo.total_pages > 1 &&
+                        ` - Page ${currentPage} of ${searchInfo.total_pages}`}
+                    </span>
+                  )}
                 </div>
                 {searchInfo.total_pages > 1 && (
                   <div className="flex gap-2">
