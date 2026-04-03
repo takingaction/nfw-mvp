@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Image from "next/image";
 import { Navigation, ChevronRight } from "lucide-react";
 
 interface StoreCardProps {
@@ -42,13 +41,12 @@ export default function StoreCard({ store, onClick }: StoreCardProps) {
       className="bg-white border border-nfw-blackberry/10 p-4 hover:shadow-md transition-shadow cursor-pointer"
     >
       <div className="flex items-start gap-3">
-        <div className="w-12 h-12 flex-shrink-0 relative bg-nfw-dove rounded overflow-hidden">
+        <div className="w-12 h-12 flex-shrink-0 bg-nfw-dove rounded overflow-hidden">
           {store.logo_url ? (
-            <Image
+            <img
               src={store.logo_url}
               alt=""
-              fill
-              className="object-contain p-1"
+              className="w-full h-full object-contain p-1"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-nfw-blackberry/30 text-xs">

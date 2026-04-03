@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Image from "next/image";
 import { MapPin, Navigation } from "lucide-react";
 
 interface LocationCardProps {
@@ -52,13 +51,12 @@ export default function LocationCard({ location, onClick }: LocationCardProps) {
       className="bg-white border border-nfw-blackberry/10 p-4 hover:shadow-md transition-shadow cursor-pointer"
     >
       <div className="flex items-start gap-3 mb-3">
-        <div className="w-12 h-12 flex-shrink-0 relative bg-nfw-dove rounded overflow-hidden">
+        <div className="w-12 h-12 flex-shrink-0 bg-nfw-dove rounded overflow-hidden">
           {location.store?.logo_url ? (
-            <Image
+            <img
               src={location.store.logo_url}
               alt=""
-              fill
-              className="object-contain p-1"
+              className="w-full h-full object-contain p-1"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-nfw-blackberry/30">
