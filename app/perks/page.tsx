@@ -111,7 +111,7 @@ export default function PerksPage() {
     setCurrentPage(1);
     setCurrentView("stores");
     setSavedFilters(null);
-    fetchAllCounts();
+    fetchAllCounts(false);
   };
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [currentView, setCurrentView] = useState<ViewType>("stores");
@@ -121,7 +121,7 @@ export default function PerksPage() {
   useEffect(() => {
     fetchCategories();
     fetchFacets();
-    fetchAllCounts();
+    fetchAllCounts(onlineOnly);
     fetchRollup();
   }, [onlineOnly]);
 
@@ -129,9 +129,9 @@ export default function PerksPage() {
     fetchRollup();
   }, [selectedCategories, selectedFacets, selectedStore, selectedLocation, selectedOfferTypes, searchQuery, searchPostalCode, searchDistance, currentView, currentPage]);
 
-  const fetchAllCounts = async () => {
+  const fetchAllCounts = async (isOnlineOnly: boolean) => {
     try {
-      const onlineParam = onlineOnly ? "&online=only" : "";
+      const onlineParam = isOnlineOnly ? "&online=only" : "";
       const [storesRes, offersRes, locationsRes] = await Promise.all([
         fetch(`/api/access-perks/rollup?rollup=stores${onlineParam}`),
         fetch(`/api/access-perks/offers/search?per_page=1${onlineParam}`),
