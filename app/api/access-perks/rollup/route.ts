@@ -13,6 +13,7 @@ export async function GET(request: Request) {
     const page = searchParams.get("page");
     const offerTypes = searchParams.get("offer_types");
     const query = searchParams.get("query");
+    const online = searchParams.get("online");
 
     let isAuthenticated = false;
 
@@ -43,6 +44,7 @@ export async function GET(request: Request) {
     }
     if (facet) params.facet = facet;
     if (offerTypes) params.offer_type = offerTypes;
+    if (online) params.online = online;
     if (rollup) params.rollup = rollup;
     if (rollup === "stores") params.aggregations = "stores";
     if (rollup === "locations") params.aggregations = "locations";
