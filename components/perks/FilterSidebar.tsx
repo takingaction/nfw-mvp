@@ -213,6 +213,12 @@ export default function FilterSidebar({
           </div>
         )}
 
+        {categories.length > 0 && (
+          <div className="mb-3">
+            <span className="text-xs font-ui text-nfw-blackberry/50 uppercase tracking-wider">Stores</span>
+          </div>
+        )}
+
         <div className="space-y-1">
           {categories.map((category) => (
             <div key={category.category_key}>
