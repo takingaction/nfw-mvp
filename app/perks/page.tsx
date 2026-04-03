@@ -548,7 +548,7 @@ export default function PerksPage() {
                     </button>
                   )}
                   <span>
-                    Showing {rollupGroups.length} of {(currentView === "stores" ? viewCounts.stores : currentView === "locations" ? viewCounts.locations : searchInfo.total_results)?.toLocaleString() || 0} {currentView}
+                    Showing {rollupGroups.length} of {(currentView === "stores" ? (searchInfo.total_stores || viewCounts.stores) : currentView === "locations" ? (searchInfo.total_locations || viewCounts.locations) : searchInfo.total_results)?.toLocaleString() || 0} {currentView}
                     {searchInfo.total_pages > 1 &&
                       ` - Page ${currentPage} of ${searchInfo.total_pages}`}
                   </span>
