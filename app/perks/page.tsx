@@ -123,7 +123,7 @@ export default function PerksPage() {
     fetchFacets();
     fetchAllCounts();
     fetchRollup();
-  }, []);
+  }, [onlineOnly]);
 
   useEffect(() => {
     fetchRollup();
@@ -131,10 +131,11 @@ export default function PerksPage() {
 
   const fetchAllCounts = async () => {
     try {
+      const onlineParam = onlineOnly ? "&online=only" : "";
       const [storesRes, offersRes, locationsRes] = await Promise.all([
-        fetch("/api/access-perks/rollup?rollup=stores"),
-        fetch("/api/access-perks/offers/search?per_page=1"),
-        fetch("/api/access-perks/rollup?rollup=locations"),
+        fetch(`/api/access-perks/rollup?rollup=stores${onlineParam}`),
+        fetch(`/api/access-perks/offers/search?per_page=1${onlineParam}`),
+        fetch(`/api/access-perks/rollup?rollup=locations${onlineParam}`),
       ]);
 
       const [storesData, offersData, locationsData] = await Promise.all([
@@ -273,6 +274,10 @@ export default function PerksPage() {
 
         if (selectedFacets.length > 0) {
           params.facet = selectedFacets.join(",");
+        }
+
+        if (onlineOnly) {
+          params.online = "only";
         }
 
         const queryParams = new URLSearchParams(params);
