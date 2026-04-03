@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCategories } from "@/lib/access-perks/offers";
+import { filterCategoriesByExclusion } from "@/lib/access-perks/category-filters";
 
-export async function GET(_request: Request) {
+export async function GET() {
   try {
     const supabase = await createClient();
 
@@ -18,6 +19,17 @@ export async function GET(_request: Request) {
 
     // Get categories
     const result = await getCategories(memberKey);
+
+    // Filter out excluded categories
+    if (result && typeof result === "object" && Array.isArray(result.categories)) {
+      const filtered = filterCategoriesByExclusion(result.categories);
+      return NextResponse.json({ categories: filtered });
+    }
+
+    if (Array.isArray(result)) {
+      const filtered = filterCategoriesByExclusion(result);
+      return NextResponse.json(filtered);
+    }
 
     return NextResponse.json(result);
   } catch (error: unknown) {

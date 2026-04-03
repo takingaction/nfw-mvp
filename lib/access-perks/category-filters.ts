@@ -1,0 +1,68 @@
+export const CATEGORY_EXCLUSIONS = [
+  "Auto Body & Paint",
+  "Auto Parts",
+  "Car Wash Detail",
+  "Condos & Resorts",
+  "Catering",
+  "Convenience Stores",
+  "Golf",
+  "Chiropractic",
+  "Day Spa",
+  "Dental",
+  "Fitness Equipment",
+  "Massage",
+  "Medical",
+  "Tanning Salons",
+  "Garden Centers",
+  "Pest Control",
+  "Siding",
+  "Water Purification/softening",
+  "Business Services",
+  "Carpet Cleaner",
+  "Cell Phone",
+  "Financial Services",
+  "Office Services",
+  "Transportation",
+  "Tuxedo Rental",
+  "Weddings",
+  "Boutique",
+  "Bridal",
+  "Cycling",
+  "Outdoor Equipment",
+  "Toys",
+  "Wireless",
+  "Ski & Snowboard",
+];
+
+const excludedNames = new Set(CATEGORY_EXCLUSIONS.map((n) => n.toLowerCase()));
+
+export function isCategoryExcluded(categoryName: string): boolean {
+  return excludedNames.has(categoryName.toLowerCase());
+}
+
+export function filterCategoriesByExclusion<T extends { category_name: string; subcategories?: T[] }>(
+  categories: T[]
+): T[] {
+  return categories
+    .filter((cat) => !excludedNames.has(cat.category_name.toLowerCase()))
+    .map((cat) => ({
+      ...cat,
+      subcategories: cat.subcategories ? filterCategoriesByExclusion(cat.subcategories) : undefined,
+    }));
+}
+
+export function filterCategoryCounts(
+  counts: Record<string, number>,
+  categoriesMap: Map<number, string>
+): Record<number, number> {
+  const filteredCounts: Record<number, number> = {};
+
+  for (const [key, count] of Object.entries(counts)) {
+    const categoryName = categoriesMap.get(Number(key));
+    if (categoryName && !excludedNames.has(categoryName.toLowerCase())) {
+      filteredCounts[Number(key)] = count;
+    }
+  }
+
+  return filteredCounts;
+}
