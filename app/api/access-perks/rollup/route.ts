@@ -37,11 +37,9 @@ export async function GET(request: Request) {
 
     if (categoryKey) params.category_key = categoryKey;
     if (query) params.query = query;
-    if (postalCode) {
+    if (postalCode && distance !== "2500mi") {
       params.postal_code = postalCode;
-      if (distance !== "2500mi") {
-        params.distance = distance;
-      }
+      params.distance = distance;
       params.sort = "distance";
     }
     if (facet) params.facet = facet;
