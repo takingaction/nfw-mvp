@@ -20,7 +20,6 @@ export default function ViewToggle({
   const views = [
     { key: "stores" as const, label: "Stores", count: counts.stores },
     { key: "offers" as const, label: "Offers", count: counts.offers },
-    { key: "locations" as const, label: "Locations", count: counts.locations },
   ];
 
   return (
