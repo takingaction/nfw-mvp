@@ -84,13 +84,15 @@ export function transformCategoryTree(categories: CategoryNode[]): CategoryNode[
   if (automotiveIndex !== -1 && carRentalIndex !== -1) {
     const carRental = result[carRentalIndex];
 
+    const mergedSubcategories = [
+      ...(result[automotiveIndex].subcategories || []),
+      { ...carRental, subcategories: carRental.subcategories || [] },
+    ].sort((a, b) => a.category_name.localeCompare(b.category_name));
+
     result[automotiveIndex] = {
       ...result[automotiveIndex],
       category_name: "Auto, Gas, & Car Rental",
-      subcategories: [
-        ...(result[automotiveIndex].subcategories || []),
-        { ...carRental, subcategories: carRental.subcategories || [] },
-      ],
+      subcategories: mergedSubcategories,
     };
 
     result.splice(carRentalIndex, 1);
