@@ -65,6 +65,7 @@ export default function PerksSearch({
           onChange={(e) => onDistanceChange(e.target.value)}
           className="px-2 py-2 border border-nfw-blackberry/20 text-nfw-blackberry bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent transition-all text-sm"
         >
+          <option value="5mi">5 mi</option>
           <option value="10mi">10 mi</option>
           <option value="25mi">25 mi</option>
           <option value="50mi">50 mi</option>

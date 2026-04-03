@@ -113,20 +113,33 @@ export default function PerksPage() {
     fetchUserZip();
   }, []);
 
-  const clearAllFilters = () => {
+  const clearAllFilters = async () => {
     setSelectedCategories([]);
     setSelectedFacets([]);
     setSelectedOfferTypes([]);
     setSelectedStore(null);
     setSelectedLocation(null);
     setSearchQuery("");
-    setSearchPostalCode("");
-    setSearchDistance("10mi");
     setOnlineOnly(false);
     setCurrentPage(1);
     setCurrentView("stores");
     setSavedFilters(null);
-    fetchAllCounts(false);
+
+    try {
+      const res = await fetch('/api/profile');
+      const data = await res.json();
+      if (data.zip) {
+        setSearchPostalCode(data.zip);
+        setSearchDistance("10mi");
+      } else {
+        setSearchPostalCode("");
+        setSearchDistance("2500mi");
+      }
+    } catch (err) {
+      console.error("Failed to fetch profile ZIP:", err);
+      setSearchPostalCode("");
+      setSearchDistance("2500mi");
+    }
   };
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [currentView, setCurrentView] = useState<ViewType>("stores");
