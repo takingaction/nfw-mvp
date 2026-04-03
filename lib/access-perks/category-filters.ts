@@ -66,3 +66,40 @@ export function filterCategoryCounts(
 
   return filteredCounts;
 }
+
+export interface CategoryNode {
+  category_key: number;
+  category_name: string;
+  category_type?: string;
+  offer_count?: number;
+  subcategories?: CategoryNode[];
+}
+
+export function transformCategoryTree(categories: CategoryNode[]): CategoryNode[] {
+  const result = [...categories];
+
+  const automotiveIndex = result.findIndex((c) => c.category_name === "Automotive");
+  const carRentalIndex = result.findIndex((c) => c.category_name === "Car Rental");
+
+  if (automotiveIndex !== -1 && carRentalIndex !== -1) {
+    const carRental = result[carRentalIndex];
+
+    result[automotiveIndex] = {
+      ...result[automotiveIndex],
+      category_name: "Auto, Gas, & Car Rental",
+      subcategories: [
+        ...(result[automotiveIndex].subcategories || []),
+        { ...carRental, subcategories: carRental.subcategories || [] },
+      ],
+    };
+
+    result.splice(carRentalIndex, 1);
+  } else if (automotiveIndex !== -1) {
+    result[automotiveIndex] = {
+      ...result[automotiveIndex],
+      category_name: "Auto, Gas, & Car Rental",
+    };
+  }
+
+  return result;
+}

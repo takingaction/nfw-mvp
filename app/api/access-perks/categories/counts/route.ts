@@ -1,14 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { searchOffers } from "@/lib/access-perks/offers";
-import { isCategoryExcluded } from "@/lib/access-perks/category-filters";
-
-interface CategoryNode {
-  category_key?: number;
-  category_name?: string;
-  offer_count?: number;
-  subcategories?: CategoryNode[];
-}
+import { isCategoryExcluded, transformCategoryTree, CategoryNode } from "@/lib/access-perks/category-filters";
 
 let categoryCountsCache: { data: Record<number, number>; timestamp: number } | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -40,6 +33,8 @@ export async function GET() {
     const counts: Record<number, number> = {};
 
     if (result.offer_count_in_categories) {
+      const transformedCategories = transformCategoryTree(result.offer_count_in_categories as CategoryNode[]);
+
       const processCategory = (cat: CategoryNode) => {
         if (cat.category_key && cat.category_name && !isCategoryExcluded(cat.category_name)) {
           counts[cat.category_key] = cat.offer_count || 0;
@@ -51,7 +46,7 @@ export async function GET() {
         }
       };
 
-      for (const category of result.offer_count_in_categories) {
+      for (const category of transformedCategories) {
         processCategory(category);
       }
     }

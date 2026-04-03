@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCategories } from "@/lib/access-perks/offers";
-import { filterCategoriesByExclusion } from "@/lib/access-perks/category-filters";
+import { filterCategoriesByExclusion, transformCategoryTree, CategoryNode } from "@/lib/access-perks/category-filters";
 
 export async function GET() {
   try {
@@ -20,15 +20,17 @@ export async function GET() {
     // Get categories
     const result = await getCategories(memberKey);
 
-    // Filter out excluded categories
+    // Filter out excluded categories and transform
     if (result && typeof result === "object" && Array.isArray(result.categories)) {
-      const filtered = filterCategoriesByExclusion(result.categories);
-      return NextResponse.json({ categories: filtered });
+      const filtered = filterCategoriesByExclusion(result.categories) as CategoryNode[];
+      const transformed = transformCategoryTree(filtered);
+      return NextResponse.json({ categories: transformed });
     }
 
     if (Array.isArray(result)) {
-      const filtered = filterCategoriesByExclusion(result);
-      return NextResponse.json(filtered);
+      const filtered = filterCategoriesByExclusion(result) as CategoryNode[];
+      const transformed = transformCategoryTree(filtered);
+      return NextResponse.json(transformed);
     }
 
     return NextResponse.json(result);
