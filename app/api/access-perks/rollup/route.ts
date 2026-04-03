@@ -42,6 +42,9 @@ export async function GET(request: Request) {
       params.distance = distance;
       params.sort = "distance";
     }
+    if (distance === "2500mi") {
+      params.national = "include";
+    }
     if (facet) params.facet = facet;
     if (offerTypes) params.offer_type = offerTypes;
     if (online) params.online = online;
