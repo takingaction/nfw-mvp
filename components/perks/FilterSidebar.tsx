@@ -21,7 +21,6 @@ interface FilterSidebarProps {
   categories: Category[];
   selectedCategories: number[];
   onCategoriesChange: (categoryKeys: number[]) => void;
-  categoryCounts?: Record<number, number>;
   facets?: Facet[];
   selectedFacets?: string[];
   onFacetsChange?: (facetKeys: string[]) => void;
@@ -46,7 +45,6 @@ export default function FilterSidebar({
   categories,
   selectedCategories,
   onCategoriesChange,
-  categoryCounts = {},
   facets = [],
   selectedFacets = [],
   onFacetsChange,
@@ -213,12 +211,6 @@ export default function FilterSidebar({
           </div>
         )}
 
-        {categories.length > 0 && (
-          <div className="mb-3">
-            <span className="text-xs font-ui text-nfw-blackberry/50 uppercase tracking-wider">Stores</span>
-          </div>
-        )}
-
         <div className="space-y-1">
           {categories.map((category) => (
             <div key={category.category_key}>
@@ -247,12 +239,9 @@ export default function FilterSidebar({
 
                 <label
                   htmlFor={`cat-${category.category_key}`}
-                  className="text-sm text-nfw-blackberry cursor-pointer flex-1 hover:text-nfw-aubergine transition-colors flex items-center justify-between gap-2"
+                  className="text-sm text-nfw-blackberry cursor-pointer flex-1 hover:text-nfw-aubergine transition-colors"
                 >
-                  <span>{category.category_name}</span>
-                  <span className="px-1.5 py-0.5 bg-nfw-lilac/20 text-nfw-aubergine text-xs font-medium">
-                    {categoryCounts[category.category_key]?.toLocaleString() ?? '—'}
-                  </span>
+                  {category.category_name}
                 </label>
               </div>
 
@@ -272,12 +261,9 @@ export default function FilterSidebar({
                         />
                         <label
                           htmlFor={`cat-${sub.category_key}`}
-                          className="text-sm text-nfw-blackberry/70 cursor-pointer flex-1 hover:text-nfw-aubergine transition-colors flex items-center justify-between gap-2"
+                          className="text-sm text-nfw-blackberry/70 cursor-pointer flex-1 hover:text-nfw-aubergine transition-colors"
                         >
-                          <span>{sub.category_name}</span>
-                          <span className="px-1.5 py-0.5 bg-nfw-lilac/20 text-nfw-aubergine text-xs font-medium">
-                            {categoryCounts[sub.category_key]?.toLocaleString() ?? '—'}
-                          </span>
+                          {sub.category_name}
                         </label>
                       </div>
                     ))}

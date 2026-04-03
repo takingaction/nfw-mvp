@@ -52,7 +52,6 @@ export default function PerksPage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchPostalCode, setSearchPostalCode] = useState<string>("");
   const [searchDistance, setSearchDistance] = useState<string>("25mi");
-  const [categoryCounts, setCategoryCounts] = useState<Record<number, number>>({});
   const [selectedOfferKey, setSelectedOfferKey] = useState<string | null>(null);
   const [isOfferPanelOpen, setIsOfferPanelOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -111,7 +110,6 @@ export default function PerksPage() {
 
   useEffect(() => {
     fetchCategories();
-    fetchCategoryCounts();
     fetchFacets();
     fetchAllCounts();
     fetchRollup();
@@ -154,18 +152,6 @@ export default function PerksPage() {
       }
     } catch (err) {
       console.error("Failed to fetch categories:", err);
-    }
-  };
-
-  const fetchCategoryCounts = async () => {
-    try {
-      const response = await fetch("/api/access-perks/categories/counts");
-      if (response.ok) {
-        const data = await response.json();
-        setCategoryCounts(data.counts || {});
-      }
-    } catch (err) {
-      console.error("Failed to fetch category counts:", err);
     }
   };
 
@@ -476,7 +462,6 @@ export default function PerksPage() {
             categories={categories}
             selectedCategories={selectedCategories}
             onCategoriesChange={handleCategoryFilterChange}
-            categoryCounts={categoryCounts}
             facets={facets}
             selectedFacets={selectedFacets}
             onFacetsChange={handleFacetsChange}
