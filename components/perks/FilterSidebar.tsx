@@ -142,7 +142,7 @@ export default function FilterSidebar({
             onClick={clearAllFilters}
             className="text-xs text-nfw-blackberry/60 hover:text-nfw-blackberry transition-colors"
           >
-            Clear all
+            Reset
           </button>
         )}
       </div>

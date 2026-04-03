@@ -74,14 +74,14 @@ export default function PerksSearch({
         </select>
       </div>
 
-      {hasFilters && (
-        <button
-          onClick={onClear}
-          className="px-4 py-2.5 border border-nfw-blackberry/20 text-nfw-blackberry/70 hover:bg-nfw-blackberry/5 transition-colors font-medium text-sm"
-        >
-          CLEAR ALL
-        </button>
-      )}
+        {hasFilters && (
+          <button
+            onClick={onClear}
+            className="px-4 py-2.5 border border-nfw-blackberry/20 text-nfw-blackberry/70 hover:bg-nfw-blackberry/5 transition-colors font-medium text-sm"
+          >
+            RESET
+          </button>
+        )}
     </div>
   );
 }
