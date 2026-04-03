@@ -6,7 +6,6 @@ import { AlertTriangle, SlidersHorizontal, X } from "lucide-react";
 import PerksSearch from "@/components/perks/PerksSearch";
 import OfferCard from "@/components/perks/OfferCard";
 import FilterSidebar from "@/components/perks/FilterSidebar";
-import ViewToggle from "@/components/perks/ViewToggle";
 import StoreCard from "@/components/perks/StoreCard";
 import LocationCard from "@/components/perks/LocationCard";
 import OfferDetailPanel from "@/components/perks/OfferDetailPanel";
@@ -53,6 +52,14 @@ export default function PerksPage() {
   const [searchPostalCode, setSearchPostalCode] = useState<string>("");
   const [searchDistance, setSearchDistance] = useState<string>("25mi");
   const [selectedOfferKey, setSelectedOfferKey] = useState<string | null>(null);
+  const [savedFilters, setSavedFilters] = useState<{
+    selectedCategories: number[];
+    selectedFacets: string[];
+    selectedOfferTypes: string[];
+    searchQuery: string;
+    searchPostalCode: string;
+    searchDistance: string;
+  } | null>(null);
   const [isOfferPanelOpen, setIsOfferPanelOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
 
@@ -101,6 +108,7 @@ export default function PerksPage() {
     setSearchDistance("25mi");
     setCurrentPage(1);
     setCurrentView("stores");
+    setSavedFilters(null);
     fetchAllCounts();
   };
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
@@ -389,10 +397,6 @@ export default function PerksPage() {
     setSelectedFacets(facetKeys);
   };
 
-  const handleViewChange = (view: ViewType) => {
-    setCurrentView(view);
-  };
-
   const handleSearch = (params: any) => {
     if (params.query !== undefined) setSearchQuery(params.query);
     if (params.postal_code !== undefined) setSearchPostalCode(params.postal_code);
@@ -406,6 +410,14 @@ export default function PerksPage() {
   };
 
   const handleStoreClick = (storeKey: number) => {
+    setSavedFilters({
+      selectedCategories,
+      selectedFacets,
+      selectedOfferTypes,
+      searchQuery,
+      searchPostalCode,
+      searchDistance,
+    });
     setSelectedStore(storeKey);
     setSelectedCategories([]);
     setSelectedFacets([]);
@@ -414,6 +426,20 @@ export default function PerksPage() {
     setSearchQuery("");
     setSearchPostalCode("");
     setCurrentView("offers");
+    setCurrentPage(1);
+  };
+
+  const handleBackToStores = () => {
+    if (savedFilters) {
+      setSelectedCategories(savedFilters.selectedCategories);
+      setSelectedFacets(savedFilters.selectedFacets);
+      setSelectedOfferTypes(savedFilters.selectedOfferTypes);
+      setSearchQuery(savedFilters.searchQuery);
+      setSearchPostalCode(savedFilters.searchPostalCode);
+      setSearchDistance(savedFilters.searchDistance);
+    }
+    setSelectedStore(null);
+    setCurrentView("stores");
     setCurrentPage(1);
   };
 
@@ -497,19 +523,23 @@ export default function PerksPage() {
               )}
             </div>
 
-            <ViewToggle
-              currentView={currentView}
-              onViewChange={handleViewChange}
-              counts={viewCounts}
-            />
-
             {searchInfo && !loading && !error && (
               <div className="mb-4 font-serif text-sm text-nfw-blackberry/50 flex items-center justify-between">
-                <span>
-                  Showing {rollupGroups.length} of {(currentView === "stores" ? viewCounts.stores : currentView === "locations" ? viewCounts.locations : searchInfo.total_results)?.toLocaleString() || 0} {currentView}
-                  {searchInfo.total_pages > 1 &&
-                    ` - Page ${currentPage} of ${searchInfo.total_pages}`}
-                </span>
+                <div className="flex items-center gap-4">
+                  {selectedStore && currentView === "offers" && (
+                    <button
+                      onClick={handleBackToStores}
+                      className="text-nfw-aubergine hover:underline flex items-center gap-1"
+                    >
+                      ← Back to stores results
+                    </button>
+                  )}
+                  <span>
+                    Showing {rollupGroups.length} of {(currentView === "stores" ? viewCounts.stores : currentView === "locations" ? viewCounts.locations : searchInfo.total_results)?.toLocaleString() || 0} {currentView}
+                    {searchInfo.total_pages > 1 &&
+                      ` - Page ${currentPage} of ${searchInfo.total_pages}`}
+                  </span>
+                </div>
                 {searchInfo.total_pages > 1 && (
                   <div className="flex gap-2">
                     <button
