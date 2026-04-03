@@ -131,11 +131,12 @@ export default function PerksPage() {
 
   const fetchAllCounts = async (isOnlineOnly: boolean) => {
     try {
+      const cacheBuster = Date.now();
       const onlineParam = isOnlineOnly ? "&online=only" : "";
       const [storesRes, offersRes, locationsRes] = await Promise.all([
-        fetch(`/api/access-perks/rollup?rollup=stores${onlineParam}`),
-        fetch(`/api/access-perks/offers/search?per_page=1${onlineParam}`),
-        fetch(`/api/access-perks/rollup?rollup=locations${onlineParam}`),
+        fetch(`/api/access-perks/rollup?rollup=stores${onlineParam}&cb=${cacheBuster}`),
+        fetch(`/api/access-perks/offers/search?per_page=1${onlineParam}&cb=${cacheBuster}`),
+        fetch(`/api/access-perks/rollup?rollup=locations${onlineParam}&cb=${cacheBuster}`),
       ]);
 
       const [storesData, offersData, locationsData] = await Promise.all([

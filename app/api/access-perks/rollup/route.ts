@@ -49,8 +49,6 @@ export async function GET(request: Request) {
     if (rollup === "stores") params.aggregations = "stores";
     if (rollup === "locations") params.aggregations = "locations";
 
-    console.log("Rollup API call with params:", JSON.stringify(params, null, 2));
-
     const result = await searchOffers(params);
 
     if (!result.offers || result.offers.length === 0) {
