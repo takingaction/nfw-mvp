@@ -50,7 +50,7 @@ export default function PerksPage() {
   const [selectedOfferTypes, setSelectedOfferTypes] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchPostalCode, setSearchPostalCode] = useState<string>("");
-  const [searchDistance, setSearchDistance] = useState<string>("25mi");
+  const [searchDistance, setSearchDistance] = useState<string>("10mi");
   const [selectedOfferKey, setSelectedOfferKey] = useState<string | null>(null);
   const [onlineOnly, setOnlineOnly] = useState<boolean>(false);
   const [savedFilters, setSavedFilters] = useState<{
@@ -98,6 +98,21 @@ export default function PerksPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const fetchUserZip = async () => {
+      try {
+        const res = await fetch('/api/profile');
+        const data = await res.json();
+        if (data.zip) {
+          setSearchPostalCode(data.zip);
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile ZIP:", err);
+      }
+    };
+    fetchUserZip();
+  }, []);
+
   const clearAllFilters = () => {
     setSelectedCategories([]);
     setSelectedFacets([]);
@@ -106,7 +121,7 @@ export default function PerksPage() {
     setSelectedLocation(null);
     setSearchQuery("");
     setSearchPostalCode("");
-    setSearchDistance("25mi");
+    setSearchDistance("10mi");
     setOnlineOnly(false);
     setCurrentPage(1);
     setCurrentView("stores");
