@@ -26,6 +26,8 @@ interface FilterSidebarProps {
   onFacetsChange?: (facetKeys: string[]) => void;
   selectedOfferTypes?: string[];
   onOfferTypeChange?: (types: string[]) => void;
+  onlineOnly?: boolean;
+  onOnlineOnlyChange?: (onlineOnly: boolean) => void;
   isMobileOpen?: boolean;
   onMobileClose?: () => void;
 }
@@ -50,6 +52,8 @@ export default function FilterSidebar({
   onFacetsChange,
   selectedOfferTypes = [],
   onOfferTypeChange,
+  onlineOnly = false,
+  onOnlineOnlyChange,
   isMobileOpen = false,
   onMobileClose,
 }: FilterSidebarProps) {
@@ -207,6 +211,25 @@ export default function FilterSidebar({
                   </span>
                 ) : null;
               })}
+            </div>
+          </div>
+        )}
+
+        {onOnlineOnlyChange && (
+          <div className="mb-4 pb-4 border-b border-nfw-blackberry/10">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="online-only"
+                checked={onlineOnly}
+                onCheckedChange={(checked) => onOnlineOnlyChange(checked === true)}
+                className="border-nfw-blackberry/40 data-[state=checked]:bg-nfw-aubergine data-[state=checked]:border-nfw-aubergine"
+              />
+              <label
+                htmlFor="online-only"
+                className="text-sm text-nfw-blackberry cursor-pointer hover:text-nfw-aubergine transition-colors"
+              >
+                Online Only
+              </label>
             </div>
           </div>
         )}

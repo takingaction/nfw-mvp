@@ -52,6 +52,7 @@ export default function PerksPage() {
   const [searchPostalCode, setSearchPostalCode] = useState<string>("");
   const [searchDistance, setSearchDistance] = useState<string>("25mi");
   const [selectedOfferKey, setSelectedOfferKey] = useState<string | null>(null);
+  const [onlineOnly, setOnlineOnly] = useState<boolean>(false);
   const [savedFilters, setSavedFilters] = useState<{
     selectedCategories: number[];
     selectedFacets: string[];
@@ -106,6 +107,7 @@ export default function PerksPage() {
     setSearchQuery("");
     setSearchPostalCode("");
     setSearchDistance("25mi");
+    setOnlineOnly(false);
     setCurrentPage(1);
     setCurrentView("stores");
     setSavedFilters(null);
@@ -216,6 +218,10 @@ export default function PerksPage() {
 
         if (selectedOfferTypes.length > 0) {
           params.offer_type = selectedOfferTypes.join(",");
+        }
+
+        if (onlineOnly) {
+          params.online = "only";
         }
 
         const queryParams = new URLSearchParams(params);
@@ -493,6 +499,8 @@ export default function PerksPage() {
             onFacetsChange={handleFacetsChange}
             selectedOfferTypes={selectedOfferTypes}
             onOfferTypeChange={setSelectedOfferTypes}
+            onlineOnly={onlineOnly}
+            onOnlineOnlyChange={setOnlineOnly}
             isMobileOpen={isFilterDrawerOpen}
             onMobileClose={() => setIsFilterDrawerOpen(false)}
           />
