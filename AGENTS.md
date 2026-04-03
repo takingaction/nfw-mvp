@@ -346,3 +346,23 @@ Auto Body & Paint, Auto Parts, Car Wash Detail, Condos & Resorts, Catering, Conv
 - API response structure: `{ categories: [...] }` - filter applied to nested array
 - Category counts route has 5-minute cache (filtered counts cached)
 - To apply changes after deploy: restart dev server and clear `.next` cache
+
+### Session 2026-04-03: Access Perks Category Transformation
+
+Transformed the category tree to rename categories and restructure the hierarchy.
+
+**Files modified:**
+- `lib/access-perks/category-filters.ts` - Added `CategoryNode` interface and `transformCategoryTree()` helper
+- `app/api/access-perks/categories/route.ts` - Applies transformation after filtering
+- `app/api/access-perks/categories/counts/route.ts` - Applies same transformation to counts tree
+
+**Transformations applied:**
+1. **Rename "Automotive" → "Auto, Gas, & Car Rental"**
+2. **Move "Car Rental"** from top-level category to subcategory under "Auto, Gas, & Car Rental"
+
+**Key implementation details:**
+- `transformCategoryTree()` finds "Automotive" and "Car Rental" in the category tree
+- If both exist: renames Automotive, moves Car Rental into Automotive's subcategories array
+- If only Automotive exists: renames it (handles case where Car Rental was already excluded)
+- Counts route applies same transformation before processing, so counts stay in sync
+- Cache auto-invalidates (5 min TTL on counts route)
