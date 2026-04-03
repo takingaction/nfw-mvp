@@ -130,13 +130,14 @@ export default function FilterSidebar({
     onCategoriesChange([]);
     if (onFacetsChange) onFacetsChange([]);
     if (onOfferTypeChange) onOfferTypeChange([]);
+    if (onOnlineOnlyChange) onOnlineOnlyChange(false);
   };
 
   const sidebarContent = (
     <div className="bg-white border border-nfw-blackberry/10">
       <div className="p-4 border-b border-nfw-blackberry/10 flex items-center justify-between">
         <h3 className="font-serif text-lg text-nfw-aubergine">Filters</h3>
-        {(selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0) && (
+        {(selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0 || onlineOnly) && (
           <button
             onClick={clearAllFilters}
             className="text-xs text-nfw-blackberry/60 hover:text-nfw-blackberry transition-colors"
