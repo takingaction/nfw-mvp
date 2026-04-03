@@ -322,3 +322,27 @@ site_footer (
 - Reverted table to `public` schema (acceptable for product mappings - not sensitive data)
 - Created `SHOPIFY.md` with full documentation of the issue and learnings
 - Key files: `app/api/shopify/products/route.ts`, `app/api/admin/shopify/sync/route.ts`, `app/api/admin/shopify/update-product/route.ts`
+
+### Session 2026-04-03: Access Perks Category Filtering
+
+Disabled 34 unwanted categories from the Access Perks API integration.
+
+**Categories Excluded (34 total):**
+Auto Body & Paint, Auto Parts, Car Wash Detail, Condos & Resorts, Catering, Convenience Stores, Golf, Chiropractic, Day Spa, Dental, Fitness Equipment, Massage, Medical, Tanning Salons, Garden Centers, Pest Control, Siding, Water Purification/softening, Business Services, Carpet Cleaner, Cell Phone, Financial Services, Office Services, Transportation, Tuxedo Rental, Weddings, Boutique, Bridal, Cycling, Outdoor Equipment, Toys, Wireless, Ski & Snowboard
+
+**Files created:**
+- `lib/access-perks/category-filters.ts` - Shared utility with:
+  - `CATEGORY_EXCLUSIONS` constant array (34 category names)
+  - `isCategoryExcluded()` - Case-insensitive exclusion check
+  - `filterCategoriesByExclusion()` - Recursive category/subcategory filtering
+
+**Files modified:**
+- `app/api/access-perks/categories/route.ts` - Filters `result.categories` before returning
+- `app/api/access-perks/categories/counts/route.ts` - Skips excluded categories when building counts
+
+**Key implementation details:**
+- Filtering is case-insensitive
+- Subcategories are recursively filtered
+- API response structure: `{ categories: [...] }` - filter applied to nested array
+- Category counts route has 5-minute cache (filtered counts cached)
+- To apply changes after deploy: restart dev server and clear `.next` cache
