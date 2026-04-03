@@ -31,7 +31,7 @@ export default function PerksSearch({
     }
   };
 
-  const hasFilters = hasActiveFilters || query.trim() || postalCode.trim();
+  const hasFilters = hasActiveFilters || query.trim();
 
   return (
     <div className="flex gap-3">
@@ -74,14 +74,17 @@ export default function PerksSearch({
         </select>
       </div>
 
-        {hasFilters && (
           <button
-            onClick={onClear}
-            className="px-4 py-2.5 border border-nfw-blackberry/20 text-nfw-blackberry/70 hover:bg-nfw-blackberry/5 transition-colors font-medium text-sm"
-          >
-            RESET
-          </button>
-        )}
+          onClick={onClear}
+          disabled={!hasActiveFilters && !query.trim()}
+          className={`px-4 py-2.5 border font-medium text-sm transition-colors ${
+            hasActiveFilters || query.trim()
+              ? "border-nfw-blackberry/20 text-nfw-blackberry/70 hover:bg-nfw-blackberry/5 cursor-pointer"
+              : "border-nfw-blackberry/10 text-nfw-blackberry/30 cursor-not-allowed"
+          }`}
+        >
+          RESET
+        </button>
     </div>
   );
 }
