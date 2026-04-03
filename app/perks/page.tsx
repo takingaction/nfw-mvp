@@ -121,13 +121,12 @@ export default function PerksPage() {
   useEffect(() => {
     fetchCategories();
     fetchFacets();
-    fetchAllCounts(onlineOnly);
-    fetchRollup();
-  }, [onlineOnly]);
+  }, []);
 
   useEffect(() => {
-    fetchRollup();
-  }, [selectedCategories, selectedFacets, selectedStore, selectedLocation, selectedOfferTypes, searchQuery, searchPostalCode, searchDistance, currentView, currentPage]);
+    fetchAllCounts(onlineOnly);
+    fetchRollup(onlineOnly);
+  }, [onlineOnly, selectedCategories, selectedFacets, selectedStore, selectedLocation, selectedOfferTypes, searchQuery, searchPostalCode, searchDistance, currentView, currentPage]);
 
   const fetchAllCounts = async (isOnlineOnly: boolean) => {
     try {
@@ -179,7 +178,7 @@ export default function PerksPage() {
     }
   };
 
-  const fetchRollup = async () => {
+  const fetchRollup = async (isOnlineOnly: boolean) => {
     setLoading(true);
     setError(null);
 
@@ -222,7 +221,7 @@ export default function PerksPage() {
           params.offer_type = selectedOfferTypes.join(",");
         }
 
-        if (onlineOnly) {
+        if (isOnlineOnly) {
           params.online = "only";
         }
 
@@ -277,7 +276,7 @@ export default function PerksPage() {
           params.facet = selectedFacets.join(",");
         }
 
-        if (onlineOnly) {
+        if (isOnlineOnly) {
           params.online = "only";
         }
 
@@ -595,7 +594,7 @@ export default function PerksPage() {
                       Please try again shortly.
                     </p>
                     <button
-                      onClick={fetchRollup}
+                      onClick={() => fetchRollup(onlineOnly)}
                       className="px-4 py-2 bg-nfw-aubergine text-white font-ui text-sm font-medium hover:bg-nfw-blackberry transition-colors"
                     >
                       Try Again
@@ -615,7 +614,7 @@ export default function PerksPage() {
                     </h3>
                     <p className="font-serif text-sm text-red-700 mb-4">{error}</p>
                     <button
-                      onClick={fetchRollup}
+                      onClick={() => fetchRollup(onlineOnly)}
                       className="px-4 py-2 bg-red-600 text-white font-ui text-sm font-medium hover:bg-red-700 transition-colors"
                     >
                       Try Again
