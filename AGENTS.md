@@ -366,3 +366,38 @@ Transformed the category tree to rename categories and restructure the hierarchy
 - If only Automotive exists: renames it (handles case where Car Rental was already excluded)
 - Counts route applies same transformation before processing, so counts stay in sync
 - Cache auto-invalidates (5 min TTL on counts route)
+
+### Session 2026-04-03: Perks Page UX Improvements
+
+Major UX refactor for the /perks page.
+
+**Files modified:**
+- `components/perks/ViewToggle.tsx` - **DELETED** - Removed toggle buttons
+- `components/perks/PerksSearch.tsx` - Distance dropdown now: 5mi, 10mi, 25mi, 50mi, 100mi, Nationwide
+- `components/perks/StoreCard.tsx` - Replaced Next.js Image with HTML img for logos
+- `components/perks/LocationCard.tsx` - Replaced Next.js Image with HTML img for logos
+- `components/perks/FilterSidebar.tsx` - Added "Online Only" checkbox filter, renamed "Clear all" to "Reset"
+- `app/perks/page.tsx` - Multiple changes:
+  - Added savedFilters state for back navigation
+  - Added handleBackToStores function
+  - Added "← Back to stores results" link in offers view
+  - Added profile ZIP fetching on mount, triggers auto-search
+  - Changed default distance from 25mi to 10mi
+  - clearAllFilters resets to user's profile ZIP or Nationwide
+  - Added "No Results" display when 0 results
+- `app/api/access-perks/rollup/route.ts` - Added online and national=include support for filters
+
+**Key changes:**
+1. **Removed ViewToggle** - Stores/Offers view toggle removed
+2. **Back navigation** - When viewing offers, "← Back to stores results" preserves filters
+3. **Profile ZIP default** - Page auto-searches with user's profile ZIP on load
+4. **Online Only filter** - Checkbox to filter online-redeemable offers
+5. **Nationwide distance** - 2500mi triggers national=include API parameter
+6. **RESET button** - Always visible, greyed out when in default state
+7. **Image optimization** - Replaced Next.js Image with HTML img to save transform credits
+8. **No Results text** - Shows "No Results" instead of "Showing 0 of X stores"
+
+**Behavior notes:**
+- GoDaddy (online-only) only appears in Nationwide searches - this is correct behavior
+- Distance dropdown: 5mi, 10mi (default), 25mi, 50mi, 100mi, Nationwide
+- RESET returns to user's profile ZIP + 10mi, or Nationwide if no profile ZIP
