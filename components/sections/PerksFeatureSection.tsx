@@ -25,37 +25,69 @@ export default function PerksFeatureSection({ content }: Props) {
   const logos = c.logos ?? [];
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const [scrollPosition, setScrollPosition] = useState(0);
-  const animationRef = useRef<number>();
-  const lastTimeRef = useRef<number>();
+  const [isReady, setIsReady] = useState(false);
+  const animationRef = useRef<number | null>(null);
+  const lastTimeRef = useRef<number | null>(null);
+  const singleSetWidthRef = useRef<number>(0);
+  const loopCountRef = useRef<number>(0);
 
   useEffect(() => {
     if (logos.length === 0) return;
 
     const container = containerRef.current;
-    if (!container) return;
+    const content = contentRef.current;
+    if (!container || !content) return;
 
-    // Get the width of the FIRST set of logos (one half of the container)
-    let singleSetWidth = 0;
+    // Wait for images to load before starting animation
+    const images = container.querySelectorAll("img");
+    let loadedCount = 0;
 
-    const calculateWidths = () => {
-      // The container has 2x logos, so half is one set
-      singleSetWidth = container.scrollWidth / 2;
+    const checkAllLoaded = () => {
+      loadedCount++;
+      if (loadedCount >= images.length) {
+        // All images loaded, calculate width and start animation
+        const totalWidth = content.scrollWidth;
+        const setWidth = totalWidth / 3; // 3x content
+        singleSetWidthRef.current = setWidth;
+        console.log("[LogoScroll] All images loaded. Set width:", setWidth, "Total width:", totalWidth);
+        setIsReady(true);
+      }
     };
 
-    // Initial calculation
-    calculateWidths();
+    if (images.length === 0) {
+      // No images, just use the content width
+      const totalWidth = content.scrollWidth;
+      const setWidth = totalWidth / 3;
+      singleSetWidthRef.current = setWidth;
+      console.log("[LogoScroll] No images. Set width:", setWidth, "Total width:", totalWidth);
+      setIsReady(true);
+    } else {
+      images.forEach((img) => {
+        if (img.complete) {
+          checkAllLoaded();
+        } else {
+          img.onload = checkAllLoaded;
+          img.onerror = checkAllLoaded; // Also count as loaded on error
+        }
+      });
+    }
 
-    // Recalculate after images load
-    const images = container.querySelectorAll("img");
-    images.forEach((img) => {
-      if (!img.complete) {
-        img.onload = calculateWidths;
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
       }
-    });
+    };
+  }, [logos.length]);
 
-    // Animation parameters
-    const speed = 50; // pixels per second
+  useEffect(() => {
+    if (!isReady) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const speed = 80; // pixels per second
 
     const animate = (timestamp: number) => {
       if (!lastTimeRef.current) {
@@ -67,11 +99,14 @@ export default function PerksFeatureSection({ content }: Props) {
 
       setScrollPosition((prev) => {
         const newPosition = prev + movement;
+        const setWidth = singleSetWidthRef.current;
 
         // When we've scrolled one full set width, reset to 0 seamlessly
-        if (newPosition >= singleSetWidth) {
-          // This creates the seamless loop
-          return newPosition - singleSetWidth;
+        if (newPosition >= setWidth) {
+          loopCountRef.current++;
+          console.log("[LogoScroll] Loop #" + loopCountRef.current + " at position:", newPosition, "Resetting...");
+          // This creates the seamless loop - return to 0 (which is same as setWidth)
+          return newPosition - setWidth;
         }
 
         return newPosition;
@@ -82,25 +117,18 @@ export default function PerksFeatureSection({ content }: Props) {
     };
 
     // Start animation
+    lastTimeRef.current = null;
     animationRef.current = requestAnimationFrame(animate);
-
-    // Recalculate on resize
-    const handleResize = () => {
-      calculateWidths();
-    };
-
-    window.addEventListener("resize", handleResize);
 
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
-      window.removeEventListener("resize", handleResize);
     };
-  }, [logos.length]);
+  }, [isReady]);
 
-  // We need at least 2 sets for the infinite scroll effect
-  const displayLogos = logos.length >= 5 ? [...logos, ...logos, ...logos] : [...logos, ...logos];
+  // 3x content for seamless loop
+  const displayLogos = [...logos, ...logos, ...logos];
 
   return (
     <section className={`py-20 lg:py-28 ${bgClass}`}>
@@ -143,28 +171,33 @@ export default function PerksFeatureSection({ content }: Props) {
           <div className="overflow-hidden">
             <div
               ref={containerRef}
-              className="flex gap-16 items-center"
-              style={{
-                transform: `translateX(-${scrollPosition}px)`,
-                width: "max-content",
-              }}
+              className="overflow-hidden"
             >
-              {displayLogos.map((logo, i) => {
-                const logoSrc = typeof logo.image_url === "string"
-                  ? logo.image_url
-                  : ((logo.image_url as { url?: string })?.url ?? "");
-                if (!logoSrc) return null;
-                return (
-                  <div key={`${logo.name}-${i}`} className="flex-shrink-0 h-8 flex items-center">
-                    <img
-                      src={logoSrc}
-                      alt={logo.name}
-                      className="h-full w-auto object-contain"
-                      style={shouldWhiteLogos ? { filter: 'brightness(0) invert(1)' } : undefined}
-                    />
-                  </div>
-                );
-              })}
+              <div
+                ref={contentRef}
+                className="flex gap-16 items-center"
+                style={{
+                  transform: `translateX(-${scrollPosition}px)`,
+                  width: "max-content",
+                }}
+              >
+                {displayLogos.map((logo, i) => {
+                  const logoSrc = typeof logo.image_url === "string"
+                    ? logo.image_url
+                    : ((logo.image_url as { url?: string })?.url ?? "");
+                  if (!logoSrc) return null;
+                  return (
+                    <div key={`${logo.name}-${i}`} className="flex-shrink-0 h-8 flex items-center">
+                      <img
+                        src={logoSrc}
+                        alt={logo.name}
+                        className="h-full w-auto object-contain"
+                        style={shouldWhiteLogos ? { filter: 'brightness(0) invert(1)' } : undefined}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
