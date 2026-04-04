@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, ChevronDown, ChevronUp } from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
 
 interface EditPageModalProps {
   isOpen: boolean;
@@ -43,13 +44,12 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
     setError(null);
 
     try {
-      const { createClient } = await import("@supabase/supabase-js");
       const supabaseAdmin = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       );
 
-      console.log("metaTitle value:", metaTitle, "length:", metaTitle?.length);
+      console.log("Starting save with page.id:", page.id);
       console.log("metaDescription value:", metaDescription, "length:", metaDescription?.length);
 
       const updateData: Record<string, string> = {
@@ -86,8 +86,9 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
 
       onSaved();
       onClose();
-    } catch {
-      setError("Failed to update page");
+    } catch (err) {
+      console.error("Catch error:", err);
+      setError(`Failed to update page: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setSaving(false);
     }
