@@ -528,3 +528,13 @@ Added SEO title and description fields to the page builder's Edit Page modal.
 - Collapsible "SEO Settings" section below Title/Slug fields
 - Character counters with red highlighting when over recommended limit
 - Fields auto-clear to null when left empty
+
+**API Route:**
+- `app/api/admin/pages/update/route.ts` - Handles page updates via POST
+- Required because SUPABASE_SERVICE_ROLE_KEY is server-only
+
+**Page Metadata Support:**
+- `app/[slug]/page.tsx` - Updated to fetch and use meta_title, meta_description
+- `app/page.tsx` - Updated to fetch and use meta_title, meta_description for homepage
+- Added generateMetadata() to dynamically set page titles and descriptions
+- Falls back to default title/description if SEO fields not set
