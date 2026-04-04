@@ -2,18 +2,28 @@ import { createClient } from "@/lib/supabase/server";
 import SectionRenderer from "@/components/sections/SectionRenderer";
 import { notFound } from "next/navigation";
 
-export const metadata = {
-  title: "National Fund for Women",
-  description:
-    "Uplifting American women through microgrants, perks, discounts, and more. Join today!",
-  openGraph: {
-    title: "National Fund for Women",
-    description:
-      "Uplifting American women through microgrants, perks, discounts, and more. Join today!",
-    url: "https://nationalfundforwomen.org",
-    images: [{ url: "/images/og-default.jpg", width: 1200, height: 630 }],
-  },
-};
+export const dynamic = "force-static";
+
+export async function generateMetadata() {
+  const supabase = await createClient();
+
+  const { data: page } = await supabase
+    .from("pages")
+    .select("meta_title, meta_description")
+    .eq("slug", "home")
+    .single();
+
+  return {
+    title: page?.meta_title || "National Fund for Women",
+    description: page?.meta_description || "Uplifting American women through microgrants, perks, discounts, and more. Join today!",
+    openGraph: {
+      title: page?.meta_title || "National Fund for Women",
+      description: page?.meta_description || "Uplifting American women through microgrants, perks, discounts, and more. Join today!",
+      url: "https://nationalfundforwomen.org",
+      images: [{ url: "/images/og-default.jpg", width: 1200, height: 630 }],
+    },
+  };
+}
 
 export default async function Home() {
   const supabase = await createClient();
