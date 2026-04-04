@@ -55,13 +55,15 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
       };
 
       // Only include SEO fields if they have content
-      if (metaTitle.trim()) {
+      if (metaTitle?.trim()) {
         updateData.meta_title = metaTitle.trim();
       }
 
-      if (metaDescription.trim()) {
+      if (metaDescription?.trim()) {
         updateData.meta_description = metaDescription.trim();
       }
+
+      console.log("Updating page:", page.id, "with:", updateData);
 
       const { error: updateError } = await supabaseAdmin
         .from("pages")
@@ -69,10 +71,11 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
         .eq("id", page.id);
 
       if (updateError) {
+        console.error("Update error:", updateError);
         if (updateError.message.includes("slug")) {
           setError("A page with this slug already exists");
         } else {
-          setError("Failed to update page");
+          setError(`Failed to update page: ${updateError.message}`);
         }
         return;
       }
