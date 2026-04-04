@@ -19,6 +19,7 @@ interface Page {
 }
 
 export default function AdminPagesClient({ pages }: { pages: Page[] }) {
+  console.log("AdminPagesClient received pages:", pages.map(p => ({ id: p.id, title: p.title, meta_title: p.meta_title, meta_description: p.meta_description })));
   const [showNewModal, setShowNewModal] = useState(false);
   const [editModal, setEditModal] = useState<{
     isOpen: boolean;
