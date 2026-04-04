@@ -41,7 +41,7 @@ export default function ApplicationSuccessPage() {
                 <span className="font-ui text-xs font-black text-nfw-lilac/50 w-6 flex-shrink-0">
                   {item.step}
                 </span>
-                <p className="font-sans text-sm text-nfw-dove">{item.text}</p>
+                <p className="font-serif text-sm text-nfw-dove">{item.text}</p>
               </div>
             ))}
           </div>
@@ -62,8 +62,8 @@ export default function ApplicationSuccessPage() {
           </Link>
         </div>
 
-        <p className="font-sans text-xs text-nfw-lilac/50 mt-8">
-          Questions?{" "}
+        <p className="font-ui text-xs text-nfw-lilac/50 mt-8">
+          Questions? 
           <a
             href="mailto:michelle@nationalfundforwomen.org"
             className="underline hover:text-nfw-lilac transition-colors"

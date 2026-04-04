@@ -37,7 +37,7 @@ export default function GrantApplicationForm({
 
   const inputClass =
     "w-full px-4 py-3 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent transition-all text-sm";
-  const labelClass = "block text-sm font-semibold text-nfw-blackberry mb-1.5";
+  const labelClass = "block text-sm font-serif text-nfw-blackberry mb-1.5";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,11 +147,11 @@ export default function GrantApplicationForm({
                     )}
                   </div>
                   <div>
-                    <p className="font-bold text-nfw-blackberry">
+                    <p className="font-serif text-lg text-nfw-blackberry">
                       {cycle.cycle_name}
                     </p>
-                    <p className="text-xs text-nfw-blackberry/50 mt-0.5">
-                      Deadline:{" "}
+                    <p className="text-xs font-ui text-nfw-blackberry/50 mt-0.5">
+                      Deadline: 
                       {new Date(cycle.end_date).toLocaleDateString("en-US", {
                         month: "long",
                         day: "numeric",
@@ -159,17 +159,17 @@ export default function GrantApplicationForm({
                       })}
                     </p>
                     {cycle.description && (
-                      <p className="text-xs text-nfw-blackberry/60 mt-1">
+                      <p className="text-xs font-serif text-nfw-blackberry/60 mt-1">
                         {cycle.description}
                       </p>
                     )}
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-lg font-black text-nfw-blackberry font-sans">
+                  <p className="text-lg font-black text-nfw-blackberry font-ui">
                     ${cycle.amount_per_grant?.toLocaleString()}
                   </p>
-                  <p className="text-xs text-nfw-blackberry/50">
+                  <p className="text-xs font-ui text-nfw-blackberry/50">
                     {cycle.grants_available} available
                   </p>
                 </div>
@@ -185,11 +185,11 @@ export default function GrantApplicationForm({
           <div className="flex items-start justify-between">
             <div>
               <h3
-                className="font-black text-nfw-blackberry text-lg font-ui"
+                className="font-serif text-xl text-nfw-blackberry"
               >
                 {selectedCycle.cycle_name}
               </h3>
-              <p className="text-sm text-nfw-blackberry/60 mt-1">
+              <p className="text-sm font-ui text-nfw-blackberry/60 mt-1">
                 Deadline:{" "}
                 {new Date(selectedCycle.end_date).toLocaleDateString("en-US", {
                   month: "long",
@@ -204,7 +204,7 @@ export default function GrantApplicationForm({
               >
                 ${selectedCycle.amount_per_grant?.toLocaleString()}
               </p>
-              <p className="text-xs text-nfw-blackberry/50">
+              <p className="text-xs font-ui text-nfw-blackberry/50">
                 {selectedCycle.grants_available} grants available
               </p>
             </div>
@@ -235,8 +235,8 @@ export default function GrantApplicationForm({
               />
             </div>
             <div className="text-left">
-              <p className="font-bold text-nfw-blackberry text-sm">Myself</p>
-              <p className="text-xs text-nfw-blackberry/50">I'm applying for me</p>
+              <p className="font-ui text-nfw-blackberry text-sm">Myself</p>
+              <p className="text-xs font-serif text-nfw-blackberry/50">I'm applying for me</p>
             </div>
           </button>
           <button
@@ -256,8 +256,8 @@ export default function GrantApplicationForm({
               />
             </div>
             <div className="text-left">
-              <p className="font-bold text-nfw-blackberry text-sm">Someone else</p>
-              <p className="text-xs text-nfw-blackberry/50">
+              <p className="font-ui text-nfw-blackberry text-sm">Someone else</p>
+              <p className="text-xs font-serif text-nfw-blackberry/50">
                 I'm nominating someone
               </p>
             </div>
@@ -273,7 +273,7 @@ export default function GrantApplicationForm({
             : "Who are you?"}{" "}
           <span className="text-nfw-lilac">*</span>
         </label>
-        <p className="text-xs text-nfw-blackberry/50 mb-2">
+        <p className="text-xs font-serif text-nfw-blackberry/50 mb-2">
           {isNominating
             ? "Share their name, background, and why you're nominating them."
             : "Tell us a little about yourself — your situation, your life, what matters to you."}
@@ -293,7 +293,7 @@ export default function GrantApplicationForm({
           className={inputClass + " resize-none"}
           required
         />
-        <p className="text-xs text-nfw-blackberry/40 mt-1 text-right">
+        <p className="text-xs font-ui text-nfw-blackberry/40 mt-1 text-right">
           {formData.who_are_you.length}/500
         </p>
       </div>
@@ -306,7 +306,7 @@ export default function GrantApplicationForm({
             : "What's the biggest challenge you're facing right now?"}{" "}
           <span className="text-nfw-lilac">*</span>
         </label>
-        <p className="text-xs text-nfw-blackberry/50 mb-2">
+        <p className="text-xs font-serif text-nfw-blackberry/50 mb-2">
           Be specific. The more we understand the situation, the better we can
           help.
         </p>
@@ -328,7 +328,7 @@ export default function GrantApplicationForm({
           className={inputClass + " resize-none"}
           required
         />
-        <p className="text-xs text-nfw-blackberry/40 mt-1 text-right">
+        <p className="text-xs font-ui text-nfw-blackberry/40 mt-1 text-right">
           {formData.biggest_challenge.length}/1000
         </p>
       </div>
@@ -341,7 +341,7 @@ export default function GrantApplicationForm({
             : "What would you do with the microgrant funds?"}{" "}
           <span className="text-nfw-lilac">*</span>
         </label>
-        <p className="text-xs text-nfw-blackberry/50 mb-2">
+        <p className="text-xs font-serif text-nfw-blackberry/50 mb-2">
           {isNominating
             ? "Describe how you think the funds would make a difference for them."
             : "Tell us exactly how you'd use the money and what difference it would make."}
@@ -361,7 +361,7 @@ export default function GrantApplicationForm({
           className={inputClass + " resize-none"}
           required
         />
-        <p className="text-xs text-nfw-blackberry/40 mt-1 text-right">
+        <p className="text-xs font-ui text-nfw-blackberry/40 mt-1 text-right">
           {formData.fund_usage.length}/500
         </p>
       </div>
@@ -372,7 +372,7 @@ export default function GrantApplicationForm({
           Supporting Documents{" "}
           <span className="text-nfw-blackberry/40 font-normal">(Optional)</span>
         </label>
-        <p className="text-xs text-nfw-blackberry/50 mb-3">
+        <p className="text-xs font-ui text-nfw-blackberry/50 mb-3">
           Upload receipts, quotes, or other supporting documents. PDF, JPG, PNG,
           DOC accepted.
         </p>
@@ -382,7 +382,7 @@ export default function GrantApplicationForm({
           multiple
           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
           onChange={handleFileChange}
-          className="w-full text-sm text-nfw-blackberry/60 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-nfw-blackberry file:text-white hover:file:bg-nfw-blackberry/90 file:cursor-pointer cursor-pointer border border-nfw-blackberry/20 p-2"
+          className="w-full text-sm text-nfw-blackberry/60 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-ui file:bg-nfw-blackberry file:text-white hover:file:bg-nfw-blackberry/90 file:cursor-pointer cursor-pointer border border-nfw-blackberry/20 p-2"
         />
         {documents.length > 0 && (
           <div className="mt-3 space-y-2">
@@ -391,13 +391,13 @@ export default function GrantApplicationForm({
                 key={index}
                 className="flex items-center justify-between bg-nfw-dove px-3 py-2 border border-nfw-blackberry/10"
               >
-                <span className="text-sm text-nfw-blackberry/70 truncate flex-1">
+                <span className="text-sm font-ui text-nfw-blackberry/70 truncate flex-1">
                   {file.name} ({(file.size / 1024).toFixed(1)} KB)
                 </span>
                 <button
                   type="button"
                   onClick={() => removeDocument(index)}
-                  className="ml-2 text-red-500 hover:text-red-700 text-sm font-medium"
+                  className="ml-2 text-red-500 hover:text-red-700 text-sm font-ui"
                 >
                   Remove
                 </button>
@@ -419,7 +419,7 @@ export default function GrantApplicationForm({
         <button
           type="submit"
           disabled={loading || uploadingDocs || !formData.cycle_id}
-          className="flex-1 bg-nfw-blackberry text-white px-6 py-4 hover:bg-nfw-blackberry/90 disabled:opacity-50 disabled:cursor-not-allowed font-bold transition-colors flex items-center justify-center gap-2"
+          className="flex-1 bg-nfw-blackberry text-white px-6 py-4 hover:bg-nfw-blackberry/90 disabled:opacity-50 disabled:cursor-not-allowed font-ui transition-colors flex items-center justify-center gap-2"
         >
           {(loading || uploadingDocs) && (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -433,13 +433,13 @@ export default function GrantApplicationForm({
         <button
           type="button"
           onClick={() => router.push("/grants/my-applications")}
-          className="px-6 py-4 border border-nfw-blackberry/20 text-nfw-blackberry hover:bg-nfw-blackberry/5 font-medium transition-colors"
+          className="px-6 py-4 border border-nfw-blackberry/20 text-nfw-blackberry hover:bg-nfw-blackberry/5 font-ui transition-colors"
         >
           Cancel
         </button>
       </div>
 
-      <p className="text-xs text-nfw-blackberry/40 text-center">
+      <p className="text-xs font-serif text-nfw-blackberry/40 text-center">
         Your application will be reviewed by our team. You cannot edit it after
         submission.
       </p>

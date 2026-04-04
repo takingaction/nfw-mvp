@@ -401,3 +401,76 @@ Major UX refactor for the /perks page.
 - GoDaddy (online-only) only appears in Nationwide searches - this is correct behavior
 - Distance dropdown: 5mi, 10mi (default), 25mi, 50mi, 100mi, Nationwide
 - RESET returns to user's profile ZIP + 10mi, or Nationwide if no profile ZIP
+
+### Session 2026-04-04: Font Consistency - Microgrants Flow + Admin Grants Bug Fix
+
+#### Font Consistency Fix - Microgrants Application Flow
+
+Fixed fonts across all microgrants flow pages to follow brand guidelines.
+
+**Brand Font Rules:**
+- Playfair Display (`font-serif`) - Headings, body text, descriptions, questions
+- DM Sans (`font-ui`) - Button text, labels, links, amounts, metadata
+
+**Files Fixed (6 total):**
+
+- `components/GrantApplicationForm.tsx` - ~20 fonts fixed
+  - Form labels (Who is this application for?, etc.) → `font-serif`
+  - Grant cycle names (MH Test - April, 5K Grant, etc.) → `font-serif` (larger sizes: text-lg/text-xl)
+  - Dollar amounts, Deadline labels, "available" counts → `font-ui`
+  - Helper/instruction text (Tell us a little about yourself...) → `font-serif`
+  - Character counts (0/500), button text, "Remove" link → `font-ui`
+  - labelClass changed from `font-semibold` to `font-serif`
+
+- `app/grants/my-applications/page.tsx` - ~15 fonts fixed
+  - Body text (Track your microgrant applications...) → `font-serif`
+  - Status counts, deadline labels, "Grant amount" labels → `font-ui`
+  - Links (View Details, Connect Bank Account) → `font-ui`
+  - Status messages (Approved!, Payment sent!, etc.) → `font-serif`
+
+- `app/grants/view/[id]/page.tsx` - ~25 fonts fixed
+  - Back link, section labels (Grant Cycle, Who are you?, etc.) → `font-ui`
+  - Body text (application answers, timeline descriptions) → `font-serif`
+  - Status-specific messages (Connect bank account..., Payment processing...) → `font-serif`
+
+- `app/grants/application-success/page.tsx` - 2 fonts fixed
+  - Step descriptions (Our team reviews your application...) → `font-serif`
+  - "Questions?" label → `font-ui`
+
+- `components/grants/GrantDocuments.tsx` - 4 fonts fixed
+  - Heading, filename, metadata, View button → `font-ui`
+
+- `components/grants/ConnectBankButton.tsx` - 1 font fixed
+  - Button text → `font-ui`
+
+#### Admin Grants Bug Fix - Missing Applications
+
+Fixed critical bug where admin grant review page showed "0 applications" even when applications existed.
+
+**Root Cause:** Query in `app/admin/grants/[id]/page.tsx` was selecting `email` from `profiles` table, but `profiles` table has no `email` column (only `full_name`, `city`, `state`, etc.). This caused the query to silently fail and return `null`.
+
+**Error Message:**
+```
+"column profiles_1.email does not exist"
+```
+
+**Fix Applied:**
+Removed `email` from the profile select query:
+```typescript
+// Before:
+profiles:user_id (full_name, email, city, state, age_range, household_income)
+
+// After:
+profiles:user_id (full_name, city, state, age_range, household_income)
+```
+
+**Files modified:**
+- `app/admin/grants/[id]/page.tsx` - Removed `email` from profiles join query
+
+**Note:** This was a silent failure - the error wasn't being logged. Added defensive error logging. Always log both `data` AND `error` when debugging Supabase queries.
+
+#### Additional Notes
+
+- `app/grants/apply/page.tsx` was already correctly using `font-serif` - no changes needed
+- Section templates (GrantsHeroSection, GrantAmountCardsSection, etc.) were already correct - no changes needed
+- Grant names in application form now larger (text-lg for multi-cycle, text-xl for single cycle)

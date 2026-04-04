@@ -74,7 +74,7 @@ export default async function MyApplicationsPage() {
               <h2 className="font-serif text-4xl lg:text-6xl leading-[1.1] text-nfw-aubergine mb-2">
                 My Grant Applications
               </h2>
-              <p className="font-sans text-nfw-blackberry/60">
+              <p className="font-serif text-nfw-blackberry/60">
                 Track your microgrant applications and their status
               </p>
             </div>
@@ -127,10 +127,10 @@ export default async function MyApplicationsPage() {
               key={stat.label}
               className="bg-white p-4 border border-nfw-blackberry/10"
             >
-              <div className={`font-sans text-2xl font-bold ${stat.color}`}>
+              <div className={`font-ui text-2xl font-bold ${stat.color}`}>
                 {stat.value}
               </div>
-              <div className="font-sans text-sm text-nfw-blackberry/60">{stat.label}</div>
+              <div className="font-ui text-sm text-nfw-blackberry/60">{stat.label}</div>
             </div>
           ))}
         </div>
@@ -160,7 +160,7 @@ export default async function MyApplicationsPage() {
                         </span>
                       )}
                     </div>
-                    <p className="font-sans text-sm text-nfw-blackberry/50">
+                    <p className="font-ui text-sm text-nfw-blackberry/50">
                       Deadline:{" "}
                       {grant.grant_cycles?.end_date
                         ? new Date(
@@ -179,7 +179,7 @@ export default async function MyApplicationsPage() {
                         <p className="font-ui text-xl font-black tracking-[0.03em] uppercase text-nfw-blackberry">
                           ${grant.amount_approved.toLocaleString()}
                         </p>
-                        <p className="font-sans text-xs text-nfw-blackberry/50">
+                        <p className="font-ui text-xs text-nfw-blackberry/50">
                           Approved amount
                         </p>
                       </>
@@ -189,12 +189,12 @@ export default async function MyApplicationsPage() {
                           $
                           {grant.grant_cycles.amount_per_grant.toLocaleString()}
                         </p>
-                        <p className="font-sans text-xs text-nfw-blackberry/50">
+                        <p className="font-ui text-xs text-nfw-blackberry/50">
                           Grant amount
                         </p>
                       </>
                     ) : null}
-                    <p className="font-sans text-xs text-nfw-blackberry/40 mt-1">
+                    <p className="font-serif text-xs text-nfw-blackberry/40 mt-1">
                       {grant.submitted_at
                         ? `Submitted ${new Date(grant.submitted_at).toLocaleDateString()}`
                         : `Created ${new Date(grant.created_at).toLocaleDateString()}`}
@@ -204,7 +204,7 @@ export default async function MyApplicationsPage() {
 
                 {/* Preview of application */}
                 {grant.who_are_you && (
-                  <p className="font-sans text-sm text-nfw-blackberry/60 mb-4 line-clamp-2">
+                  <p className="font-serif text-sm text-nfw-blackberry/60 mb-4 line-clamp-2">
                     {grant.who_are_you}
                   </p>
                 )}
@@ -213,21 +213,21 @@ export default async function MyApplicationsPage() {
                 {grant.status === "approved" &&
                   !grant.stripe_connect_account_id && (
                     <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] p-3 mb-4">
-                      <p className="font-sans text-sm font-semibold text-nfw-blackberry">
+                      <p className="font-serif text-sm text-nfw-blackberry">
                         Approved! Connect your bank account to receive your funds.
                       </p>
                     </div>
                   )}
                 {grant.status === "payment_pending" && (
                   <div className="bg-nfw-citrine/20 border border-nfw-citrine p-3 mb-4">
-                    <p className="font-sans text-sm font-semibold text-nfw-blackberry">
+                    <p className="font-serif text-sm text-nfw-blackberry">
                       Your payment is being processed — arriving within 1-3 business days.
                     </p>
                   </div>
                 )}
                 {grant.status === "payment_sent" && (
                   <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] p-3 mb-4">
-                    <p className="font-sans text-sm font-semibold text-nfw-blackberry">
+                    <p className="font-serif text-sm text-nfw-blackberry">
                       Payment sent! Check your bank account.
                     </p>
                   </div>
@@ -236,7 +236,7 @@ export default async function MyApplicationsPage() {
                 <div className="flex gap-4 pt-4 border-t border-nfw-blackberry/10">
                   <Link
                     href={`/grants/view/${grant.id}`}
-                    className="font-sans text-sm font-medium text-nfw-aubergine hover:text-nfw-blackberry transition-colors"
+                    className="font-ui text-sm text-nfw-aubergine hover:text-nfw-blackberry transition-colors"
                   >
                     View Details
                   </Link>
@@ -244,7 +244,7 @@ export default async function MyApplicationsPage() {
                     !grant.stripe_connect_account_id && (
                       <Link
                         href={`/grants/view/${grant.id}`}
-                        className="font-sans text-sm font-medium text-green-600 hover:text-green-700 transition-colors"
+                        className="font-ui text-sm text-green-600 hover:text-green-700 transition-colors"
                       >
                         Connect Bank Account
                       </Link>
@@ -258,7 +258,7 @@ export default async function MyApplicationsPage() {
             <h3 className="font-serif text-xl text-nfw-aubergine mb-2">
               No Applications Yet
             </h3>
-            <p className="font-sans text-nfw-blackberry/60 mb-6 max-w-md mx-auto">
+            <p className="font-serif text-nfw-blackberry/60 mb-6 max-w-md mx-auto">
               You haven&apos;t submitted any grant applications. Start your
               first application to get support for your needs.
             </p>

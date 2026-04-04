@@ -26,16 +26,20 @@ export default async function AdminGrantCyclePage({
   if (!cycle)
     return <div className="p-8 text-red-600">Grant cycle not found.</div>;
 
-  const { data: grants } = await supabaseAdmin
+  const { data: grants, error: grantsError } = await supabaseAdmin
     .from("grants")
     .select(
       `
       *,
-      profiles:user_id (full_name, email, city, state, age_range, household_income)
+      profiles:user_id (full_name, city, state, age_range, household_income)
     `,
     )
     .eq("cycle_id", id)
     .order("submitted_at", { ascending: false });
+
+  if (grantsError) {
+    console.error("Error fetching grants:", grantsError);
+  }
 
   const { data: documents } = await supabaseAdmin
     .from("grant_documents")
