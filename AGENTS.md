@@ -474,3 +474,20 @@ profiles:user_id (full_name, city, state, age_range, household_income)
 - `app/grants/apply/page.tsx` was already correctly using `font-serif` - no changes needed
 - Section templates (GrantsHeroSection, GrantAmountCardsSection, etc.) were already correct - no changes needed
 - Grant names in application form now larger (text-lg for multi-cycle, text-xl for single cycle)
+
+### Session 2026-04-04: Logo Scroll Bug Fix
+
+Fixed logo scroll jump/skip glitch in "Perks Feature + Brand Logos" section template.
+
+**Root Cause:** 
+- CSS animation: `translateX(-50%)` scrolls half the container width
+- JS duplication: `[...logos, ...logos, ...logos]` (3x)
+- Mismatch caused animation to reset mid-scroll, creating visible "jump" every ~10 seconds
+
+**Fix Applied:**
+- Changed `[...logos, ...logos, ...logos]` to `[...logos, ...logos]` (2x)
+- Removed unused `scrollLogos` variable
+- Now scrolls exactly through one full set of logos and loops seamlessly
+
+**Files modified:**
+- `components/sections/PerksFeatureSection.tsx` - Fixed logo array duplication and removed unused variable

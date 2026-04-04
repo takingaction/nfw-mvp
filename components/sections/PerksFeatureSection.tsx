@@ -20,7 +20,6 @@ export default function PerksFeatureSection({ content }: Props) {
   const parts = (c.headline || "").split(c.headline_italic_phrase || "");
   const shouldWhiteLogos = c.background && c.background !== "dove";
   const logos = c.logos ?? [];
-  const scrollLogos = [...logos, ...logos];
 
   return (
     <section className={`py-20 lg:py-28 ${bgClass}`}>
@@ -69,7 +68,7 @@ export default function PerksFeatureSection({ content }: Props) {
                 willChange: "transform",
               }}
             >
-              {[...logos, ...logos, ...logos].map((logo, i) => {
+              {[...logos, ...logos].map((logo, i) => {
                 const logoSrc = typeof logo.image_url === "string"
                   ? logo.image_url
                   : ((logo.image_url as { url?: string })?.url ?? "");
