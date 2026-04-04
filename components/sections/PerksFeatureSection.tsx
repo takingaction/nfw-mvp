@@ -89,26 +89,18 @@ export default function PerksFeatureSection({ content }: Props) {
   useEffect(() => {
     if (logoSetWidth === 0) return;
 
-    const container = containerRef.current;
-    if (!container) return;
-
     // Speed: pixels per second
     const speed = 100;
-    let currentOffset = 0;
-    let lastTime = performance.now();
+    const startTime = performance.now();
 
     const animate = (time: number) => {
-      const delta = (time - lastTime) / 1000;
-      lastTime = time;
+      // Calculate offset based on elapsed time - no accumulation
+      const elapsedSeconds = (time - startTime) / 1000;
+      const totalPixels = elapsedSeconds * speed;
+      // Use modulo to get seamless loop position
+      const displayOffset = totalPixels % logoSetWidth;
 
-      currentOffset += speed * delta;
-
-      // When we've scrolled one full set width, seamlessly reset
-      if (currentOffset >= logoSetWidth) {
-        currentOffset = currentOffset % logoSetWidth;
-      }
-
-      setScrollPosition(currentOffset);
+      setScrollPosition(displayOffset);
       rafRef.current = requestAnimationFrame(animate);
     };
 
