@@ -63,9 +63,8 @@ export default function PerksFeatureSection({ content }: Props) {
             <div
               className="flex gap-16 items-center"
               style={{
-                animation: "scroll-logos 30s linear infinite",
+                animation: "scroll-logos-seamless 20s linear infinite",
                 width: "max-content",
-                willChange: "transform",
               }}
             >
               {[...logos, ...logos].map((logo, i) => {
