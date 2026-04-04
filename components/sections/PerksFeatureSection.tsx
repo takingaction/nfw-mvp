@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { PerksFeatureContent } from "@/lib/sections/types";
 import {
@@ -24,97 +23,12 @@ export default function PerksFeatureSection({ content }: Props) {
   const shouldWhiteLogos = c.background && c.background !== "dove";
   const logos = c.logos ?? [];
 
-  const [logoSetWidth, setLogoSetWidth] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [scrollPosition, setScrollPosition] = useState(0);
-  const rafRef = useRef<number | null>(null);
+  // Pure CSS animation - 2x content with -50% transform for seamless loop
+  // Animation duration based on number of logos for consistent speed
+  const logoCount = logos.length;
+  const duration = Math.max(20, logoCount * 4); // ~4 seconds per logo, minimum 20s
 
-  useEffect(() => {
-    if (logos.length === 0) return;
-
-    const container = containerRef.current;
-    if (!container) return;
-
-    // Wait for images to load
-    const images = container.querySelectorAll("img");
-    let loadedCount = 0;
-
-    const measureWidth = () => {
-      // Get the width of ONE logo item (we'll measure the first one)
-      const firstLogo = container.querySelector(".logo-item") as HTMLElement;
-      const gap = 64; // gap-16 = 4rem = 64px
-      if (firstLogo) {
-        const logoWidth = firstLogo.offsetWidth;
-        const totalWidth = (logoWidth + gap) * logos.length - gap;
-        console.log("[LogoScroll] Single set width:", totalWidth, "(logo:", logoWidth, "gap:", gap, "count:", logos.length, ")");
-        setLogoSetWidth(totalWidth);
-      }
-    };
-
-    const checkAllLoaded = () => {
-      loadedCount++;
-      if (loadedCount >= images.length) {
-        // Small delay to ensure layout is complete
-        setTimeout(measureWidth, 50);
-      }
-    };
-
-    if (images.length === 0) {
-      measureWidth();
-    } else {
-      images.forEach((img) => {
-        if (img.complete) {
-          checkAllLoaded();
-        } else {
-          img.onload = checkAllLoaded;
-          img.onerror = checkAllLoaded;
-        }
-      });
-    }
-
-    // Also measure on resize
-    const resizeObserver = new ResizeObserver(() => {
-      measureWidth();
-    });
-    resizeObserver.observe(container);
-
-    return () => {
-      resizeObserver.disconnect();
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
-    };
-  }, [logos.length]);
-
-  useEffect(() => {
-    if (logoSetWidth === 0) return;
-
-    // Speed: pixels per second
-    const speed = 100;
-    const startTime = performance.now();
-
-    const animate = (time: number) => {
-      // Calculate offset based on elapsed time - no accumulation
-      const elapsedSeconds = (time - startTime) / 1000;
-      const totalPixels = elapsedSeconds * speed;
-      // Use modulo to get seamless loop position
-      const displayOffset = totalPixels % logoSetWidth;
-
-      setScrollPosition(displayOffset);
-      rafRef.current = requestAnimationFrame(animate);
-    };
-
-    rafRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
-    };
-  }, [logoSetWidth]);
-
-  // 3x content for seamless loop
-  const displayLogos = [...logos, ...logos, ...logos];
+  const displayLogos = [...logos, ...logos];
 
   return (
     <section className={`py-20 lg:py-28 ${bgClass}`}>
@@ -155,30 +69,34 @@ export default function PerksFeatureSection({ content }: Props) {
             </p>
           )}
           <div className="overflow-hidden">
-            <div
-              ref={containerRef}
-              className="flex gap-16 items-center"
-              style={{
-                transform: `translateX(-${scrollPosition}px)`,
-                width: "max-content",
-              }}
-            >
-              {displayLogos.map((logo, i) => {
-                const logoSrc = typeof logo.image_url === "string"
-                  ? logo.image_url
-                  : ((logo.image_url as { url?: string })?.url ?? "");
-                if (!logoSrc) return null;
-                return (
-                  <div key={`${logo.name}-${i}`} className="logo-item flex-shrink-0 h-8 flex items-center">
-                    <img
-                      src={logoSrc}
-                      alt={logo.name}
-                      className="h-full w-auto object-contain"
-                      style={shouldWhiteLogos ? { filter: 'brightness(0) invert(1)' } : undefined}
-                    />
-                  </div>
-                );
-              })}
+            <div className="logo-scroll-container overflow-hidden">
+              <div
+                className="logo-scroll-track flex gap-16 items-center"
+                style={{
+                  animation: `logo-scroll ${duration}s linear infinite`,
+                  width: "max-content",
+                }}
+              >
+                {displayLogos.map((logo, i) => {
+                  const logoSrc = typeof logo.image_url === "string"
+                    ? logo.image_url
+                    : ((logo.image_url as { url?: string })?.url ?? "");
+                  if (!logoSrc) return null;
+                  return (
+                    <div
+                      key={`${logo.name}-${i}`}
+                      className="logo-item flex-shrink-0 h-8 flex items-center"
+                    >
+                      <img
+                        src={logoSrc}
+                        alt={logo.name}
+                        className="h-full w-auto object-contain"
+                        style={shouldWhiteLogos ? { filter: 'brightness(0) invert(1)' } : undefined}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
