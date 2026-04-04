@@ -32,6 +32,7 @@ export default function PerksFeatureSection({ content }: Props) {
   const lastTimeRef = useRef<number | null>(null);
   const singleSetWidthRef = useRef<number>(0);
   const loopCountRef = useRef<number>(0);
+  const rawScrollRef = useRef<number>(0);
 
   useEffect(() => {
     if (logos.length === 0) return;
@@ -95,22 +96,20 @@ export default function PerksFeatureSection({ content }: Props) {
       }
 
       const delta = timestamp - lastTimeRef.current;
-      const movement = (speed * delta) / 1000;
+      rawScrollRef.current += (speed * delta) / 1000;
 
-      setScrollPosition((prev) => {
-        const newPosition = prev + movement;
-        const setWidth = singleSetWidthRef.current;
+      const setWidth = singleSetWidthRef.current;
+      const displayPosition = rawScrollRef.current % setWidth;
 
-        // When we've scrolled one full set width, reset to 0 seamlessly
-        if (newPosition >= setWidth) {
-          loopCountRef.current++;
-          console.log("[LogoScroll] Loop #" + loopCountRef.current + " at position:", newPosition, "Resetting...");
-          // This creates the seamless loop - return to 0 (which is same as setWidth)
-          return newPosition - setWidth;
-        }
+      setScrollPosition(displayPosition);
 
-        return newPosition;
-      });
+      if (rawScrollRef.current >= setWidth) {
+        loopCountRef.current++;
+        console.log("[LogoScroll] Loop #" + loopCountRef.current + " raw:",
+          rawScrollRef.current, "display:", displayPosition);
+        // Reset raw accumulator
+        rawScrollRef.current = displayPosition;
+      }
 
       lastTimeRef.current = timestamp;
       animationRef.current = requestAnimationFrame(animate);
