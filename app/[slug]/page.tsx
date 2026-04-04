@@ -1,6 +1,31 @@
 import { createClient } from "@/lib/supabase/server";
 import SectionRenderer from "@/components/sections/SectionRenderer";
 import { redirect } from "next/navigation";
+import { Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+
+  const { data: page } = await supabase
+    .from("pages")
+    .select("meta_title, meta_description, title")
+    .eq("slug", slug)
+    .single();
+
+  if (!page) {
+    return { title: "National Fund for Women" };
+  }
+
+  return {
+    title: page.meta_title || page.title || "National Fund for Women",
+    description: page.meta_description || "Uplifting American women through microgrants, perks, discounts, and more.",
+  };
+}
 
 export default async function DynamicPage({
   params,
@@ -12,7 +37,7 @@ export default async function DynamicPage({
 
   const { data: page } = await supabase
     .from("pages")
-    .select("id, status, slug")
+    .select("id, status, slug, title, meta_title, meta_description")
     .eq("slug", slug)
     .single();
 
