@@ -49,34 +49,38 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       );
 
+      console.log("metaTitle value:", metaTitle, "length:", metaTitle?.length);
+      console.log("metaDescription value:", metaDescription, "length:", metaDescription?.length);
+
       const updateData: Record<string, string> = {
         title: title.trim(),
         slug: slug.trim(),
       };
 
       // Only include SEO fields if they have content
-      if (metaTitle?.trim()) {
+      if (metaTitle && metaTitle.trim()) {
         updateData.meta_title = metaTitle.trim();
+        console.log("Added meta_title:", metaTitle.trim());
       }
 
-      if (metaDescription?.trim()) {
+      if (metaDescription && metaDescription.trim()) {
         updateData.meta_description = metaDescription.trim();
+        console.log("Added meta_description:", metaDescription.trim());
       }
 
       console.log("Updating page:", page.id, "with:", updateData);
+      console.log("page.id type:", typeof page.id);
 
       const { error: updateError } = await supabaseAdmin
         .from("pages")
         .update(updateData)
         .eq("id", page.id);
 
+      console.log("Update result, error:", updateError);
+
       if (updateError) {
-        console.error("Update error:", updateError);
-        if (updateError.message.includes("slug")) {
-          setError("A page with this slug already exists");
-        } else {
-          setError(`Failed to update page: ${updateError.message}`);
-        }
+        console.error("Update error details:", updateError.code, updateError.message, updateError.details);
+        setError(`Failed to update page: ${updateError.code} - ${updateError.message}`);
         return;
       }
 
