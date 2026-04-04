@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { X, ChevronDown, ChevronUp } from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
 
 interface EditPageModalProps {
   isOpen: boolean;
@@ -44,43 +43,30 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
     setError(null);
 
     try {
-      const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
-
-      console.log("Starting save with page.id:", page.id);
-      console.log("metaDescription value:", metaDescription, "length:", metaDescription?.length);
-
-      const updateData: Record<string, string> = {
+      const body: Record<string, string | null> = {
+        id: page.id,
         title: title.trim(),
         slug: slug.trim(),
       };
 
-      // Only include SEO fields if they have content
-      if (metaTitle && metaTitle.trim()) {
-        updateData.meta_title = metaTitle.trim();
-        console.log("Added meta_title:", metaTitle.trim());
+      if (metaTitle.trim()) {
+        body.meta_title = metaTitle.trim();
       }
 
-      if (metaDescription && metaDescription.trim()) {
-        updateData.meta_description = metaDescription.trim();
-        console.log("Added meta_description:", metaDescription.trim());
+      if (metaDescription.trim()) {
+        body.meta_description = metaDescription.trim();
       }
 
-      console.log("Updating page:", page.id, "with:", updateData);
-      console.log("page.id type:", typeof page.id);
+      const res = await fetch("/api/admin/pages/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-      const { error: updateError } = await supabaseAdmin
-        .from("pages")
-        .update(updateData)
-        .eq("id", page.id);
+      const data = await res.json();
 
-      console.log("Update result, error:", updateError);
-
-      if (updateError) {
-        console.error("Update error details:", updateError.code, updateError.message, updateError.details);
-        setError(`Failed to update page: ${updateError.code} - ${updateError.message}`);
+      if (!res.ok || data.error) {
+        setError(data.error || "Failed to update page");
         return;
       }
 
