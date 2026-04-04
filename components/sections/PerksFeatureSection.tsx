@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { PerksFeatureContent } from "@/lib/sections/types";
 import {
@@ -20,6 +23,84 @@ export default function PerksFeatureSection({ content }: Props) {
   const parts = (c.headline || "").split(c.headline_italic_phrase || "");
   const shouldWhiteLogos = c.background && c.background !== "dove";
   const logos = c.logos ?? [];
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const animationRef = useRef<number>();
+  const lastTimeRef = useRef<number>();
+
+  useEffect(() => {
+    if (logos.length === 0) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Get the width of the FIRST set of logos (one half of the container)
+    let singleSetWidth = 0;
+
+    const calculateWidths = () => {
+      // The container has 2x logos, so half is one set
+      singleSetWidth = container.scrollWidth / 2;
+    };
+
+    // Initial calculation
+    calculateWidths();
+
+    // Recalculate after images load
+    const images = container.querySelectorAll("img");
+    images.forEach((img) => {
+      if (!img.complete) {
+        img.onload = calculateWidths;
+      }
+    });
+
+    // Animation parameters
+    const speed = 50; // pixels per second
+
+    const animate = (timestamp: number) => {
+      if (!lastTimeRef.current) {
+        lastTimeRef.current = timestamp;
+      }
+
+      const delta = timestamp - lastTimeRef.current;
+      const movement = (speed * delta) / 1000;
+
+      setScrollPosition((prev) => {
+        const newPosition = prev + movement;
+
+        // When we've scrolled one full set width, reset to 0 seamlessly
+        if (newPosition >= singleSetWidth) {
+          // This creates the seamless loop
+          return newPosition - singleSetWidth;
+        }
+
+        return newPosition;
+      });
+
+      lastTimeRef.current = timestamp;
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    // Start animation
+    animationRef.current = requestAnimationFrame(animate);
+
+    // Recalculate on resize
+    const handleResize = () => {
+      calculateWidths();
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [logos.length]);
+
+  // We need at least 2 sets for the infinite scroll effect
+  const displayLogos = logos.length >= 5 ? [...logos, ...logos, ...logos] : [...logos, ...logos];
 
   return (
     <section className={`py-20 lg:py-28 ${bgClass}`}>
@@ -61,19 +142,20 @@ export default function PerksFeatureSection({ content }: Props) {
           )}
           <div className="overflow-hidden">
             <div
+              ref={containerRef}
               className="flex gap-16 items-center"
               style={{
-                animation: "scroll-logos-seamless 20s linear infinite",
+                transform: `translateX(-${scrollPosition}px)`,
                 width: "max-content",
               }}
             >
-              {[...logos, ...logos].map((logo, i) => {
+              {displayLogos.map((logo, i) => {
                 const logoSrc = typeof logo.image_url === "string"
                   ? logo.image_url
                   : ((logo.image_url as { url?: string })?.url ?? "");
                 if (!logoSrc) return null;
                 return (
-                  <div key={i} className="flex-shrink-0 h-8 flex items-center">
+                  <div key={`${logo.name}-${i}`} className="flex-shrink-0 h-8 flex items-center">
                     <img
                       src={logoSrc}
                       alt={logo.name}
