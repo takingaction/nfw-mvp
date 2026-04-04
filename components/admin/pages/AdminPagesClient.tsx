@@ -14,6 +14,8 @@ interface Page {
   slug: string;
   status: string;
   preview_token: string;
+  meta_title?: string | null;
+  meta_description?: string | null;
 }
 
 export default function AdminPagesClient({ pages }: { pages: Page[] }) {

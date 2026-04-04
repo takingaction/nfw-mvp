@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { X, ChevronDown, ChevronUp } from "lucide-react";
 
 interface EditPageModalProps {
   isOpen: boolean;
@@ -10,6 +10,8 @@ interface EditPageModalProps {
     id: string;
     title: string;
     slug: string;
+    meta_title?: string | null;
+    meta_description?: string | null;
   };
   onSaved: () => void;
 }
@@ -17,8 +19,14 @@ interface EditPageModalProps {
 export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPageModalProps) {
   const [title, setTitle] = useState(page.title);
   const [slug, setSlug] = useState(page.slug);
+  const [metaTitle, setMetaTitle] = useState(page.meta_title || "");
+  const [metaDescription, setMetaDescription] = useState(page.meta_description || "");
+  const [seoExpanded, setSeoExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const MAX_TITLE = 60;
+  const MAX_DESCRIPTION = 160;
 
   const handleSave = async () => {
     if (!title.trim() || !slug.trim()) {
@@ -41,9 +49,23 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       );
 
+      const updateData: Record<string, string> = {
+        title: title.trim(),
+        slug: slug.trim(),
+      };
+
+      // Only include SEO fields if they have content
+      if (metaTitle.trim()) {
+        updateData.meta_title = metaTitle.trim();
+      }
+
+      if (metaDescription.trim()) {
+        updateData.meta_description = metaDescription.trim();
+      }
+
       const { error: updateError } = await supabaseAdmin
         .from("pages")
-        .update({ title: title.trim(), slug: slug.trim() })
+        .update(updateData)
         .eq("id", page.id);
 
       if (updateError) {
@@ -57,7 +79,7 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
 
       onSaved();
       onClose();
-    } catch (err) {
+    } catch {
       setError("Failed to update page");
     } finally {
       setSaving(false);
@@ -105,6 +127,70 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
                 className="flex-1 px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
               />
             </div>
+          </div>
+
+          {/* SEO Settings - Collapsible */}
+          <div className="border border-nfw-blackberry/10 rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setSeoExpanded(!seoExpanded)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+            >
+              <span className="text-sm font-semibold text-nfw-blackberry">SEO Settings</span>
+              {seoExpanded ? (
+                <ChevronUp className="w-4 h-4 text-nfw-blackberry/50" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-nfw-blackberry/50" />
+              )}
+            </button>
+
+            {seoExpanded && (
+              <div className="px-4 py-4 space-y-4 border-t border-nfw-blackberry/10">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50">
+                      SEO Title
+                    </label>
+                    <span className={`text-xs ${metaTitle.length > MAX_TITLE ? "text-red-500" : "text-nfw-blackberry/40"}`}>
+                      {metaTitle.length}/{MAX_TITLE}
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={metaTitle}
+                    onChange={(e) => setMetaTitle(e.target.value)}
+                    maxLength={MAX_TITLE + 20}
+                    placeholder={title || "Page title will be used if empty"}
+                    className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
+                  />
+                  {metaTitle.length > MAX_TITLE && (
+                    <p className="text-xs text-red-500 mt-1">Recommended: 60 characters or less</p>
+                  )}
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50">
+                      SEO Description
+                    </label>
+                    <span className={`text-xs ${metaDescription.length > MAX_DESCRIPTION ? "text-red-500" : "text-nfw-blackberry/40"}`}>
+                      {metaDescription.length}/{MAX_DESCRIPTION}
+                    </span>
+                  </div>
+                  <textarea
+                    value={metaDescription}
+                    onChange={(e) => setMetaDescription(e.target.value)}
+                    maxLength={MAX_DESCRIPTION + 40}
+                    rows={3}
+                    placeholder="Brief description for search results..."
+                    className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry resize-none"
+                  />
+                  {metaDescription.length > MAX_DESCRIPTION && (
+                    <p className="text-xs text-red-500 mt-1">Recommended: 160 characters or less</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {error && (

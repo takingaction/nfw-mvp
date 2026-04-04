@@ -506,3 +506,25 @@ Fixed logo scroll jump/skip glitch in "Perks Feature + Brand Logos" section temp
 
 **Dependencies:**
 - `react-fast-marquee` - Seamless infinite scroll library
+
+### Session 2026-04-04: Add SEO Fields to Pages
+
+Added SEO title and description fields to the page builder's Edit Page modal.
+
+**Database:**
+- Created `supabase/migrations/021_add_seo_fields_to_pages.sql`
+- Added columns: `meta_title TEXT`, `meta_description TEXT`
+- Created indexes on SEO fields
+
+**Files modified:**
+- `components/admin/pages/EditPageModal.tsx` - Added collapsible SEO Settings section
+  - SEO Title field with 60 character limit and counter
+  - SEO Description field with 160 character limit and counter
+  - Red warning text when character count exceeds recommended limit
+  - Fields are optional (null if empty)
+- `components/admin/pages/AdminPagesClient.tsx` - Updated Page interface to include SEO fields
+
+**UX:**
+- Collapsible "SEO Settings" section below Title/Slug fields
+- Character counters with red highlighting when over recommended limit
+- Fields auto-clear to null when left empty
