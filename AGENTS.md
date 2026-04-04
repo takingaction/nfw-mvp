@@ -475,19 +475,34 @@ profiles:user_id (full_name, city, state, age_range, household_income)
 - Section templates (GrantsHeroSection, GrantAmountCardsSection, etc.) were already correct - no changes needed
 - Grant names in application form now larger (text-lg for multi-cycle, text-xl for single cycle)
 
-### Session 2026-04-04: Logo Scroll Bug Fix
+### Session 2026-04-04: Logo Scroll Bug Fix (Multiple Iterations)
 
 Fixed logo scroll jump/skip glitch in "Perks Feature + Brand Logos" section template.
 
-**Root Cause:** 
-- CSS animation: `translateX(-50%)` scrolls half the container width
-- JS duplication: `[...logos, ...logos, ...logos]` (3x)
-- Mismatch caused animation to reset mid-scroll, creating visible "jump" every ~10 seconds
+**Problem:** Logo scroll had visible "jump" every 15-40 seconds despite various CSS/JS fixes.
 
-**Fix Applied:**
-- Changed `[...logos, ...logos, ...logos]` to `[...logos, ...logos]` (2x)
-- Removed unused `scrollLogos` variable
-- Now scrolls exactly through one full set of logos and loops seamlessly
+**Root Cause:** Floating-point precision errors in JavaScript animation calculations causing drift.
+
+**Iterations:**
+1. CSS 3x content with -50% animation - jumped every 15s
+2. CSS 2x content with -50% animation - jumped every 15s
+3. CSS 2x content with -100% animation - still jumped
+4. JS requestAnimationFrame with accumulated offset - jumped every 35-40s due to precision drift
+5. JS with modulo arithmetic - still jumped every 12s
+6. JS with elapsed time calculation - jumped every 12s
+7. CSS with opacity fade at loop point - fade didn't sync properly
+8. Pure CSS 2x with -50% - still jumped (browser rounding issues)
+
+**Final Working Solution:**
+- Installed `react-fast-marquee` library
+- Library handles all seamless loop calculations properly
+- Uses CSS transform animations offloaded to GPU compositor
+- No JavaScript timing calculations that can drift
+- `pauseOnHover` for better UX
 
 **Files modified:**
-- `components/sections/PerksFeatureSection.tsx` - Fixed logo array duplication and removed unused variable
+- `components/sections/PerksFeatureSection.tsx` - Replaced custom animation with react-fast-marquee
+- `app/globals.css` - Removed custom keyframes (library handles animation)
+
+**Dependencies:**
+- `react-fast-marquee` - Seamless infinite scroll library
