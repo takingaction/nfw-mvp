@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Marquee from "react-fast-marquee";
 import { PerksFeatureContent } from "@/lib/sections/types";
 import {
   getBackgroundClass,
@@ -22,13 +23,6 @@ export default function PerksFeatureSection({ content }: Props) {
   const parts = (c.headline || "").split(c.headline_italic_phrase || "");
   const shouldWhiteLogos = c.background && c.background !== "dove";
   const logos = c.logos ?? [];
-
-  // Pure CSS animation - 2x content with -50% transform for seamless loop
-  // Animation duration based on number of logos for consistent speed
-  const logoCount = logos.length;
-  const duration = Math.max(20, logoCount * 4); // ~4 seconds per logo, minimum 20s
-
-  const displayLogos = [...logos, ...logos];
 
   return (
     <section className={`py-20 lg:py-28 ${bgClass}`}>
@@ -68,37 +62,33 @@ export default function PerksFeatureSection({ content }: Props) {
               {c.logo_strip_eyebrow}
             </p>
           )}
-          <div className="overflow-hidden">
-            <div className="logo-scroll-container overflow-hidden">
-              <div
-                className="logo-scroll-track flex gap-16 items-center"
-                style={{
-                  animation: `logo-scroll ${duration}s linear infinite`,
-                  width: "max-content",
-                }}
-              >
-                {displayLogos.map((logo, i) => {
-                  const logoSrc = typeof logo.image_url === "string"
-                    ? logo.image_url
-                    : ((logo.image_url as { url?: string })?.url ?? "");
-                  if (!logoSrc) return null;
-                  return (
-                    <div
-                      key={`${logo.name}-${i}`}
-                      className="logo-item flex-shrink-0 h-8 flex items-center"
-                    >
-                      <img
-                        src={logoSrc}
-                        alt={logo.name}
-                        className="h-full w-auto object-contain"
-                        style={shouldWhiteLogos ? { filter: 'brightness(0) invert(1)' } : undefined}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+          <Marquee
+            speed={50}
+            pauseOnHover
+            gradient={false}
+          >
+            <div className="flex gap-16 items-center mr-16">
+              {logos.map((logo, i) => {
+                const logoSrc = typeof logo.image_url === "string"
+                  ? logo.image_url
+                  : ((logo.image_url as { url?: string })?.url ?? "");
+                if (!logoSrc) return null;
+                return (
+                  <div
+                    key={`${logo.name}-${i}`}
+                    className="flex-shrink-0 h-8 flex items-center"
+                  >
+                    <img
+                      src={logoSrc}
+                      alt={logo.name}
+                      className="h-full w-auto object-contain"
+                      style={shouldWhiteLogos ? { filter: 'brightness(0) invert(1)' } : undefined}
+                    />
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          </Marquee>
         </div>
       )}
     </section>
