@@ -63,7 +63,7 @@ export default function ApplicationSuccessPage() {
         </div>
 
         <p className="font-ui text-xs text-nfw-lilac/50 mt-8">
-          Questions? 
+          Questions?{" "}
           <a
             href="mailto:michelle@nationalfundforwomen.org"
             className="underline hover:text-nfw-lilac transition-colors"
