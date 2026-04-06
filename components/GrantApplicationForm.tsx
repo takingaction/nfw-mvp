@@ -192,9 +192,6 @@ export default function GrantApplicationForm({
                   <p className="text-lg font-black text-nfw-blackberry font-ui">
                     ${cycle.amount_per_grant?.toLocaleString()}
                   </p>
-                  <p className="text-xs font-ui text-nfw-blackberry/50">
-                    {cycle.grants_available} available
-                  </p>
                 </div>
               </div>
             ))}
@@ -226,9 +223,6 @@ export default function GrantApplicationForm({
                 className="text-2xl font-black text-nfw-blackberry font-ui"
               >
                 ${selectedCycle.amount_per_grant?.toLocaleString()}
-              </p>
-              <p className="text-xs font-ui text-nfw-blackberry/50">
-                {selectedCycle.grants_available} grants available
               </p>
             </div>
           </div>
