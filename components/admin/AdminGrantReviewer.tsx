@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronUp,
   FileText,
+  Mail,
   User,
   X,
 } from "lucide-react";
@@ -58,6 +59,26 @@ export default function AdminGrantReviewer({
   const [amountApproved, setAmountApproved] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   const [localGrants, setLocalGrants] = useState(grants);
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  const handleSendBankInfoEmail = async () => {
+    if (!selected) return;
+    setSendingEmail(true);
+    try {
+      const res = await fetch("/api/admin/grants/send-bank-info-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ grantId: selected.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send email");
+      alert("Bank info request email sent successfully!");
+    } catch (err: any) {
+      alert(err.message || "Failed to send email");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
 
   const filtered =
     filter === "all"
@@ -173,7 +194,6 @@ export default function AdminGrantReviewer({
                     <div className="w-10 h-10 bg-nfw-lilac/30 flex items-center justify-center text-sm font-black text-nfw-blackberry flex-shrink-0">
                       {(
                         grant.profiles?.full_name ||
-                        grant.profiles?.email ||
                         "U"
                       )
                         .charAt(0)
@@ -182,9 +202,6 @@ export default function AdminGrantReviewer({
                     <div>
                       <p className="font-bold text-nfw-blackberry">
                         {grant.profiles?.full_name || "Unknown"}
-                      </p>
-                      <p className="text-xs text-nfw-blackberry/40">
-                        {grant.profiles?.email}
                       </p>
                       {grant.profiles?.city && (
                         <p className="text-xs text-nfw-blackberry/40">
@@ -199,6 +216,11 @@ export default function AdminGrantReviewer({
                     >
                       {getStatusLabel(grant.status)}
                     </span>
+                    {grant.status === "payment_pending" && (
+                      <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 font-bold animate-pulse">
+                        Ready to Pay!
+                      </span>
+                    )}
                     {grant.is_nominating && (
                       <span className="text-xs px-2 py-0.5 bg-nfw-lilac/20 text-nfw-blackberry font-medium">
                         Nomination
@@ -258,9 +280,11 @@ export default function AdminGrantReviewer({
                     <p className="font-black text-nfw-blackberry">
                       {selected.profiles?.full_name || "Unknown"}
                     </p>
-                    <p className="text-xs text-nfw-blackberry/50">
-                      {selected.profiles?.email}
-                    </p>
+                    {selected.profiles?.city && (
+                      <p className="text-xs text-nfw-blackberry/50">
+                        {selected.profiles.city}, {selected.profiles.state}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
@@ -291,8 +315,14 @@ export default function AdminGrantReviewer({
                 </div>
                 {selected.is_nominating && (
                   <div className="mt-2 px-3 py-1.5 bg-nfw-lilac/20">
-                    <p className="text-xs font-semibold text-nfw-blackberry">
-                      This is a nomination
+                    <p className="text-xs font-semibold text-nfw-blackberry mb-1">
+                      Nomination
+                    </p>
+                    <p className="text-xs text-nfw-blackberry/70">
+                      <span className="font-semibold">Nominee:</span> {selected.nominee_name}
+                    </p>
+                    <p className="text-xs text-nfw-blackberry/70">
+                      <span className="font-semibold">Email:</span> {selected.nominee_email}
                     </p>
                   </div>
                 )}
@@ -448,6 +478,25 @@ export default function AdminGrantReviewer({
                   <p className="text-red-600 text-sm">{error}</p>
                 </div>
               )}
+
+              {/* Send Bank Info Email Button */}
+              <button
+                onClick={handleSendBankInfoEmail}
+                disabled={sendingEmail}
+                className="w-full py-3 bg-nfw-aubergine text-white font-bold hover:bg-nfw-aubergine/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+              >
+                {sendingEmail ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-4 h-4" />
+                    Send Bank Info Email
+                  </>
+                )}
+              </button>
 
               {/* Save Button */}
               <button

@@ -30,6 +30,8 @@ export async function POST(request: Request) {
       biggest_challenge,
       fund_usage,
       is_nominating,
+      nominee_name,
+      nominee_email,
     } = body;
 
     if (!cycle_id || !isValidUUID(cycle_id)) {
@@ -37,6 +39,22 @@ export async function POST(request: Request) {
         { error: "Invalid cycle ID" },
         { status: 400 },
       );
+    }
+
+    // Validate nominee fields when nominating
+    if (is_nominating) {
+      if (!nominee_name || typeof nominee_name !== "string" || nominee_name.trim().length < 1) {
+        return NextResponse.json(
+          { error: "Please provide the nominee's name" },
+          { status: 400 },
+        );
+      }
+      if (!nominee_email || typeof nominee_email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nominee_email.trim())) {
+        return NextResponse.json(
+          { error: "Please provide a valid nominee email address" },
+          { status: 400 },
+        );
+      }
     }
 
     if (!who_are_you || typeof who_are_you !== "string" || who_are_you.trim().length < 10) {
@@ -103,6 +121,8 @@ export async function POST(request: Request) {
         biggest_challenge: biggest_challenge.trim(),
         fund_usage: fund_usage.trim(),
         is_nominating: Boolean(is_nominating),
+        nominee_name: is_nominating ? nominee_name.trim() : null,
+        nominee_email: is_nominating ? nominee_email.trim() : null,
         status: "submitted",
         submitted_at: new Date().toISOString(),
       })

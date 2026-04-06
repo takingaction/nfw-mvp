@@ -142,6 +142,19 @@ export default async function GrantDetailPage({
 
           {/* Application Answers */}
           <div className="space-y-6">
+            {grant.is_nominating && grant.nominee_name && (
+              <div className="bg-nfw-lilac/20 border border-nfw-lilac/30 p-4">
+                <h3 className="font-ui text-sm text-nfw-blackberry mb-2">
+                  Nominee Information
+                </h3>
+                <p className="font-serif text-nfw-blackberry/70">
+                  <span className="font-semibold">Name:</span> {grant.nominee_name}
+                </p>
+                <p className="font-serif text-nfw-blackberry/70">
+                  <span className="font-semibold">Email:</span> {grant.nominee_email}
+                </p>
+              </div>
+            )}
             {grant.who_are_you && (
               <div>
                 <h3 className="font-ui text-sm text-nfw-blackberry mb-2">

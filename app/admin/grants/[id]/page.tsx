@@ -52,6 +52,10 @@ export default async function AdminGrantCyclePage({
       documents: documents?.filter((d) => d.grant_id === g.id) || [],
     })) || [];
 
+  const readyToPayCount = grants?.filter(
+    (g) => g.status === "payment_pending",
+  ).length || 0;
+
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-7xl mx-auto">
@@ -74,13 +78,25 @@ export default async function AdminGrantCyclePage({
               {cycle.grants_available} available
             </p>
           </div>
-          <div className="text-right">
-            <p
-              className="text-3xl font-black text-nfw-blackberry font-ui"
-            >
-              {grants?.length || 0}
-            </p>
-            <p className="text-sm text-nfw-blackberry/50">applications</p>
+          <div className="text-right flex gap-6">
+            <div>
+              <p
+                className={`text-3xl font-black font-ui ${
+                  readyToPayCount > 0 ? "text-green-600" : "text-nfw-blackberry"
+                }`}
+              >
+                {readyToPayCount}
+              </p>
+              <p className="text-sm text-nfw-blackberry/50">ready to pay</p>
+            </div>
+            <div className="border-l border-nfw-blackberry/10 pl-6">
+              <p
+                className="text-3xl font-black text-nfw-blackberry font-ui"
+              >
+                {grants?.length || 0}
+              </p>
+              <p className="text-sm text-nfw-blackberry/50">applications</p>
+            </div>
           </div>
         </div>
 

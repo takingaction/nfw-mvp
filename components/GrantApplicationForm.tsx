@@ -27,6 +27,9 @@ export default function GrantApplicationForm({
   const [isNominating, setIsNominating] = useState(false);
   const [documents, setDocuments] = useState<File[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
+  const [nomineeName, setNomineeName] = useState("");
+  const [nomineeEmail, setNomineeEmail] = useState("");
+  const [consentChecked, setConsentChecked] = useState(false);
 
   const [formData, setFormData] = useState({
     cycle_id: cycles.length === 1 ? cycles[0].id : "",
@@ -54,12 +57,32 @@ export default function GrantApplicationForm({
         throw new Error("Please fill in all required fields");
       }
 
+      // Validate nominee fields when nominating
+      if (isNominating) {
+        if (!nomineeName.trim()) {
+          throw new Error("Please enter the nominee's name");
+        }
+        if (!nomineeEmail.trim()) {
+          throw new Error("Please enter the nominee's email");
+        }
+        // Simple email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(nomineeEmail.trim())) {
+          throw new Error("Please enter a valid email address for the nominee");
+        }
+        if (!consentChecked) {
+          throw new Error("Please confirm the nominee has consented to being nominated");
+        }
+      }
+
       const response = await fetch("/api/grants/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
           is_nominating: isNominating,
+          nominee_name: isNominating ? nomineeName.trim() : null,
+          nominee_email: isNominating ? nomineeEmail.trim() : null,
         }),
       });
 
@@ -264,6 +287,57 @@ export default function GrantApplicationForm({
           </button>
         </div>
       </div>
+
+      {/* Nominee Information - shown when nominating */}
+      {isNominating && (
+        <div className="bg-nfw-dove/50 border border-nfw-blackberry/10 p-6 space-y-4">
+          <h4 className="font-serif text-lg text-nfw-blackberry">Nominee Information</h4>
+          
+          <div>
+            <label className={labelClass}>
+              Nominee's Name <span className="text-nfw-lilac">*</span>
+            </label>
+            <input
+              type="text"
+              value={nomineeName}
+              onChange={(e) => setNomineeName(e.target.value)}
+              placeholder="Maria Garcia"
+              className={inputClass}
+              required={isNominating}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>
+              Nominee's Email <span className="text-nfw-lilac">*</span>
+            </label>
+            <input
+              type="email"
+              value={nomineeEmail}
+              onChange={(e) => setNomineeEmail(e.target.value)}
+              placeholder="maria@example.com"
+              className={inputClass}
+              required={isNominating}
+            />
+            <p className="text-xs font-ui text-nfw-blackberry/50 mt-1">
+              They will receive an email to create an account and add their bank info if approved.
+            </p>
+          </div>
+
+          <div className="flex items-start gap-3 pt-2">
+            <input
+              type="checkbox"
+              id="consent"
+              checked={consentChecked}
+              onChange={(e) => setConsentChecked(e.target.checked)}
+              className="mt-1 w-4 h-4 accent-nfw-blackberry"
+            />
+            <label htmlFor="consent" className="text-sm font-serif text-nfw-blackberry/70">
+              I confirm the nominated person has consented to being nominated and understands their information will be shared with National Fund for Women to facilitate this grant.
+            </label>
+          </div>
+        </div>
+      )}
 
       {/* Question 1 */}
       <div>

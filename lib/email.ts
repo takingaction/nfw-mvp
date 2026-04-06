@@ -50,3 +50,36 @@ export async function sendGrantStatusEmail({
     console.error("Failed to send email:", err);
   }
 }
+
+export async function sendBankInfoRequestEmail({
+  to,
+  name,
+  grantCycleName,
+  amountApproved,
+  isNominee,
+}: {
+  to: string;
+  name: string;
+  grantCycleName: string;
+  amountApproved?: number;
+  isNominee: boolean;
+}) {
+  const subject = "Action Required: Connect Your Bank Account for Your NFW Grant";
+
+  const nomineeIntro = isNominee
+    ? `You've been nominated for the ${grantCycleName} and your nomination has been approved${amountApproved ? ` for $${amountApproved.toLocaleString()}` : ""}!`
+    : `Great news — your application for the ${grantCycleName} has been approved${amountApproved ? ` for $${amountApproved.toLocaleString()}` : ""}!`;
+
+  const text = `${name},\n\n${nomineeIntro}\n\nTo receive your grant funds, please click the link below to securely connect your bank account. This only takes a few minutes.\n\nIf you don't already have an NFW account, you'll be prompted to create one before connecting your bank info.\n\nLink: ${process.env.NEXT_PUBLIC_SITE_URL || "https://nationalfundforwomen.org"}/grants/my-applications\n\nIf you have any questions, please reply to this email.\n\nWith love,\nThe NFW Team`;
+
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to,
+      subject,
+      text,
+    });
+  } catch (err) {
+    console.error("Failed to send bank info request email:", err);
+  }
+}
