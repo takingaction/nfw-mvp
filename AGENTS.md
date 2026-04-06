@@ -538,3 +538,107 @@ Added SEO title and description fields to the page builder's Edit Page modal.
 - `app/page.tsx` - Updated to fetch and use meta_title, meta_description for homepage
 - Added generateMetadata() to dynamically set page titles and descriptions
 - Falls back to default title/description if SEO fields not set
+
+### Session 2026-04-05: Nomination Feature + Stripe Connect Integration
+
+#### Nomination Feature Implementation
+
+Added ability for members to nominate someone else for a microgrant.
+
+**Database:**
+- Created `supabase/migrations/022_add_nominee_fields_to_grants.sql`
+- Added columns: `nominee_name TEXT`, `nominee_email TEXT`
+- Created index on `nominee_email`
+
+**Files created:**
+- `app/api/admin/grants/send-bank-info-email/route.ts` - API endpoint for sending bank info request emails to nominees or applicants
+- `lib/email.ts` - Added `sendBankInfoRequestEmail()` function
+
+**Files modified:**
+- `components/GrantApplicationForm.tsx` - Added nominee fields:
+  - "Who is this application for?" toggle (Myself / Someone else)
+  - Nominee Information section with name, email inputs
+  - Consent checkbox: "I confirm the nominated person has consented to being nominated and understands their information will be shared with National Fund for Women to facilitate this grant."
+  - Validation for nominee fields when nominating
+- `app/api/grants/create/route.ts` - Updated to accept and store `nominee_name`, `nominee_email`
+- `components/admin/AdminGrantReviewer.tsx` - Multiple updates:
+  - Added "Send Bank Info Email" button with aubergine styling
+  - Fixed `profiles.email` reference bug (table has no email column)
+  - Added nominee name/email display in review panel
+  - Added "Ready to Pay!" badge with pulse animation for grants with `payment_pending` status
+- `app/grants/view/[id]/page.tsx` - Added nominee information section when viewing a nomination
+- `app/admin/grants/[id]/page.tsx` - Added "ready to pay" counter in stats header
+
+**Email Flow:**
+- Admin clicks "Send Bank Info Email" button in grant review panel
+- For nominations: email sent to `nominee_email`
+- For self-applications: email sent to user's email from auth.users
+- Email contains link to `/grants/my-applications` for bank account connection
+
+#### Stripe Connect Integration
+
+Fixed and verified Stripe Connect onboarding flow.
+
+**Problem:** API error `"You can only create new accounts if you've signed up for Connect"` despite Connect being enabled.
+
+**Root Cause:** Test mode credentials vs Sandbox mode credentials mismatch. Stripe Connect requires **Sandbox mode** credentials for platform integration testing.
+
+**Files modified:**
+- `app/api/stripe/connect/route.ts` - Fixed API endpoint path issue (was at `/api/stripe/connect` but components called `/api/stripe/connect/create`)
+- `app/grants/connect/refresh/page.tsx` - Updated API endpoint from `/api/stripe/connect/create` to `/api/stripe/connect`
+- `components/grants/ConnectBankButton.tsx` - Updated API endpoint from `/api/stripe/connect/create` to `/api/stripe/connect`
+- `lib/email.ts` - Changed Resend initialization from module-level (at build time) to lazy initialization (at runtime) to fix build error: `"Missing API key. Pass it to the constructor"`
+
+**Key Fix - Resend Build Error:**
+```typescript
+// Before (fails at build time):
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// After (works at runtime):
+function getResend() {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("RESEND_API_KEY is not configured");
+  }
+  return new Resend(process.env.RESEND_API_KEY);
+}
+```
+
+**Key Fix - API Endpoint Path:**
+RESTful design: `POST /api/stripe/connect` (not `/api/stripe/connect/create`)
+
+**Required Environment Variables for Stripe Connect:**
+- `STRIPE_SECRET_KEY` - Sandbox credentials for test mode
+- `STRIPE_CONNECT_REFRESH_URL` - URL for expired onboarding links
+- `STRIPE_CONNECT_RETURN_URL` - URL after onboarding completion
+- `RESEND_API_KEY` - For email sending
+- `RESEND_FROM_EMAIL` - From address for emails
+
+**Production URLs (configured in Vercel):**
+- `STRIPE_CONNECT_REFRESH_URL=https://nationalfundforwomen.org/grants/connect/refresh`
+- `STRIPE_CONNECT_RETURN_URL=https://nationalfundforwomen.org/grants/connect/return`
+
+#### Admin "Ready to Pay" Dashboard Indicator
+
+Added visual indicators for grants ready for payment disbursement.
+
+**Files modified:**
+- `app/admin/grants/[id]/page.tsx` - Added "ready to pay" count in header (green when > 0)
+- `components/admin/AdminGrantReviewer.tsx` - Added "Ready to Pay!" badge with pulse animation on grant cards with `payment_pending` status
+
+#### Database Migration Required
+
+For production deployment, run in Supabase SQL Editor:
+```sql
+-- Migration: Add nominee fields to grants table
+ALTER TABLE grants 
+ADD COLUMN nominee_name TEXT,
+ADD COLUMN nominee_email TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_grants_nominee_email ON grants(nominee_email);
+```
+
+#### Known Issues / Remaining Work
+
+1. **Email sending** - Resend shows "no emails sent yet" despite API calls succeeding. Domain verification may be needed in Resend dashboard.
+2. **Manual fund release** - "Release Funds" button not yet implemented. Admin must manually trigger transfers via Stripe dashboard.
+3. **Nominee account creation flow** - Nominee receives email but needs clear instructions to create account and connect bank. Consider sending a separate onboarding email.
