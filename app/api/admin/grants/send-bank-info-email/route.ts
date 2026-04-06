@@ -101,11 +101,11 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch {
-    console.error("Error sending bank info email:",);
+  } catch (err) {
+    console.error("Error sending bank info email:", err);
     return NextResponse.json(
       { error: "An error occurred" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
