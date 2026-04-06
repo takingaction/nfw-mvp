@@ -20,7 +20,7 @@ export default function ApplicationSuccessPage() {
 
         <p className="font-serif text-lg text-nfw-lilac mb-10 max-w-md mx-auto leading-relaxed">
           Your microgrant application has been received. Our team will review it
-          and notify you of the decision — usually within 48 hours.
+          and notify you of the decision on the last day of the month.
         </p>
 
         {/* What happens next */}
@@ -31,10 +31,10 @@ export default function ApplicationSuccessPage() {
           <div className="space-y-3">
             {[
               { step: "01", text: "Our team reviews your application" },
-              { step: "02", text: "You'll receive a decision within 48 hours" },
+              { step: "02", text: "You'll receive a decision on the last day of the month" },
               {
                 step: "03",
-                text: "If approved, you'll connect your bank account to receive funds",
+                text: "If approved, you'll receive funds via a digital transfer",
               },
             ].map((item) => (
               <div key={item.step} className="flex items-center gap-3">
@@ -64,12 +64,12 @@ export default function ApplicationSuccessPage() {
 
         <p className="font-ui text-xs text-nfw-lilac/50 mt-8">
           Questions?{" "}
-          <a
-            href="mailto:michelle@nationalfundforwomen.org"
+          <Link
+            href="/contact"
             className="underline hover:text-nfw-lilac transition-colors"
           >
             Contact us
-          </a>
+          </Link>
         </p>
       </div>
     </main>
