@@ -95,16 +95,18 @@ export default function ArticleForm({
         meta_description: formData.meta_description || null,
         is_published: formData.is_published,
         author_id: userId,
-        published_at: formData.is_published ? (article?.published_at || new Date().toISOString()) : null,
+        published_at: formData.is_published ? new Date().toISOString() : null,
       };
 
       if (article) {
         // Update existing article
+        console.log("[ArticleForm] Updating article:", article.id, articleData);
         const { error: updateError } = await supabase
           .from("articles")
           .update(articleData)
           .eq("id", article.id);
 
+        console.log("[ArticleForm] Update result:", { error: updateError });
         if (updateError) throw updateError;
       } else {
         // Create new article
