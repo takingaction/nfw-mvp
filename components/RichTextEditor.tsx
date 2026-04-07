@@ -11,6 +11,7 @@ type Props = {
 
 export default function RichTextEditor({ content, onChange }: Props) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Placeholder.configure({
