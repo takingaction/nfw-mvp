@@ -6,7 +6,6 @@ import {
   ZeroDollarItemWithClaim,
   ZeroDollarCategory,
 } from "@/types/zero-dollar-store";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 export default function ZeroDollarStoreClient({
@@ -229,12 +228,11 @@ export default function ZeroDollarStoreClient({
 
                 {/* Image */}
                 {item.image_url && (
-                  <div className="relative h-48 bg-gray-100">
-                    <Image
+                  <div className="h-48 bg-gray-100">
+                    <img
                       src={item.image_url}
                       alt={item.name}
-                      fill
-                      className="object-cover"
+                      className="w-full h-full object-cover"
                     />
                   </div>
                 )}

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import ClaimItemModal from "./ClaimItemModal";
 import Link from "next/link";
@@ -165,12 +164,10 @@ export default function StoreClient({
                 >
                   <div className="relative aspect-[3/4] overflow-hidden bg-nfw-stone/10">
                     {product.imageUrl ? (
-                      <Image
+                      <img
                         src={product.imageUrl}
                         alt={product.title}
-                        fill
-                        className={`object-cover ${!product.availableForSale ? "grayscale opacity-60" : ""}`}
-                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        className={`w-full h-full object-cover ${!product.availableForSale ? "grayscale opacity-60" : ""}`}
                       />
                     ) : (
                       <div className="w-full h-full bg-nfw-powder/20" />

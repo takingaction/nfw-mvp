@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import { GripVertical } from "lucide-react";
 import {
   DndContext,
@@ -77,14 +76,12 @@ function SortableProductRow({
           >
             <GripVertical className="w-5 h-5" />
           </button>
-          <div className="h-12 w-12 bg-nfw-stone/10 flex-shrink-0 overflow-hidden relative rounded">
+          <div className="h-12 w-12 bg-nfw-stone/10 flex-shrink-0 overflow-hidden rounded">
             {product.imageUrl ? (
-              <Image
+              <img
                 src={product.imageUrl}
                 alt={product.title}
-                fill
-                className="object-cover"
-                sizes="48px"
+                className="w-full h-full object-cover"
               />
             ) : (
               <div className="h-full w-full flex items-center justify-center text-nfw-stone/30 text-xs">
