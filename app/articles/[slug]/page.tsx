@@ -148,7 +148,7 @@ export default async function ArticlePage({
 
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3 text-nfw-blackberry/50 text-sm">
-              <span>By {author?.full_name || "NFW Team"}</span>
+              <span>By {article.show_as_nfw_team ? "NFW Team" : (author?.full_name || "NFW Team")}</span>
               <span>•</span>
               <span>
                 {new Date(

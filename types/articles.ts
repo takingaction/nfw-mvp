@@ -18,6 +18,7 @@ export type Article = {
   like_count: number;
   meta_title: string | null;
   meta_description: string | null;
+  show_as_nfw_team: boolean;
 };
 
 export type ArticleCategory = {

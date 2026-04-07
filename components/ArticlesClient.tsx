@@ -213,7 +213,7 @@ export default function ArticlesClient({
 
                   <div className="flex items-center justify-between text-sm pt-4 border-t border-nfw-blackberry/10">
                     <div className="flex items-center gap-2 text-nfw-blackberry/50">
-                      <span>{article.author?.full_name || "NFW Team"}</span>
+                      <span>{article.show_as_nfw_team ? "NFW Team" : (article.author?.full_name || "NFW Team")}</span>
                       <span>•</span>
                       <span>
                         {new Date(

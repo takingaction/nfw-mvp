@@ -50,6 +50,7 @@ export default function ArticleForm({
     content: article?.content || "",
     category_id: article?.category_id || "",
     author_id: article?.author_id || "",
+    show_as_nfw_team: article?.show_as_nfw_team || false,
     tags: article?.tags?.join(", ") || "",
     featured_image_url: article?.featured_image_url || "",
     hero_image_url: article?.hero_image_url || "",
@@ -97,6 +98,7 @@ export default function ArticleForm({
         content: formData.content,
         category_id: formData.category_id || null,
         author_id: formData.author_id || null,
+        show_as_nfw_team: formData.show_as_nfw_team,
         tags: tagsArray,
         featured_image_url: formData.featured_image_url || null,
         hero_image_url: formData.hero_image_url || null,
@@ -239,20 +241,37 @@ export default function ArticleForm({
           <label className="block text-sm font-medium text-nfw-blackberry mb-2">
             Author
           </label>
-        <select
-          value={formData.author_id}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, author_id: e.target.value }))
-          }
-          className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
-        >
-          <option value="">Select author</option>
-          {authors.map((author) => (
-            <option key={author.id} value={author.id}>
-              {author.full_name || "Unknown Author"}
-            </option>
-          ))}
-        </select>
+          <select
+            value={formData.author_id}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, author_id: e.target.value }))
+            }
+            className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac mb-2"
+          >
+            <option value="">Select author</option>
+            {authors.map((author) => (
+              <option key={author.id} value={author.id}>
+                {author.full_name || "Unknown Author"}
+              </option>
+            ))}
+          </select>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="show_as_nfw_team"
+              checked={formData.show_as_nfw_team}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, show_as_nfw_team: e.target.checked }))
+              }
+              className="w-4 h-4 accent-nfw-blackberry"
+            />
+            <label
+              htmlFor="show_as_nfw_team"
+              className="text-sm text-nfw-blackberry/70"
+            >
+              Display publicly as "NFW Team"
+            </label>
+          </div>
         </div>
       </div>
 
