@@ -45,6 +45,13 @@ export default async function EditArticlePage({
     .select("*")
     .order("display_order", { ascending: true });
 
+  // Fetch admin users for author dropdown
+  const { data: authors } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .eq("is_admin", true)
+    .order("full_name", { ascending: true });
+
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-5xl mx-auto">
@@ -60,6 +67,7 @@ export default async function EditArticlePage({
         </div>
         <ArticleForm
           categories={categories || []}
+          authors={authors || []}
           userId={user.id}
           article={article}
         />

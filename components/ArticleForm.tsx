@@ -22,12 +22,20 @@ type Category = {
   slug: string;
 };
 
+type Author = {
+  id: string;
+  full_name: string;
+  email: string;
+};
+
 export default function ArticleForm({
   categories,
+  authors,
   userId,
   article,
 }: {
   categories: Category[];
+  authors: Author[];
   userId: string;
   article?: any;
 }) {
@@ -42,6 +50,7 @@ export default function ArticleForm({
     excerpt: article?.excerpt || "",
     content: article?.content || "",
     category_id: article?.category_id || "",
+    author_id: article?.author_id || "",
     tags: article?.tags?.join(", ") || "",
     featured_image_url: article?.featured_image_url || "",
     hero_image_url: article?.hero_image_url || "",
@@ -88,13 +97,13 @@ export default function ArticleForm({
         excerpt: formData.excerpt || null,
         content: formData.content,
         category_id: formData.category_id || null,
+        author_id: formData.author_id || null,
         tags: tagsArray,
         featured_image_url: formData.featured_image_url || null,
         hero_image_url: formData.hero_image_url || null,
         meta_title: formData.meta_title || null,
         meta_description: formData.meta_description || null,
         is_published: formData.is_published,
-        author_id: userId,
         published_at: formData.is_published ? new Date().toISOString() : null,
       };
 
@@ -200,24 +209,47 @@ export default function ArticleForm({
       </div>
 
       {/* Category */}
-      <div>
-        <label className="block text-sm font-medium text-nfw-blackberry mb-2">
-          Category
-        </label>
-        <select
-          value={formData.category_id}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, category_id: e.target.value }))
-          }
-          className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
-        >
-          <option value="">No category</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-medium text-nfw-blackberry mb-2">
+            Category
+          </label>
+          <select
+            value={formData.category_id}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, category_id: e.target.value }))
+            }
+            className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
+          >
+            <option value="">No category</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Author */}
+        <div>
+          <label className="block text-sm font-medium text-nfw-blackberry mb-2">
+            Author
+          </label>
+          <select
+            value={formData.author_id}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, author_id: e.target.value }))
+            }
+            className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
+          >
+            <option value="">Select author</option>
+            {authors.map((author) => (
+              <option key={author.id} value={author.id}>
+                {author.full_name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Tags */}

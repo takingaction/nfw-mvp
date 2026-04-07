@@ -29,11 +29,18 @@ export default async function NewArticlePage() {
     .select("*")
     .order("display_order", { ascending: true });
 
+  // Fetch admin users for author dropdown
+  const { data: authors } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .eq("is_admin", true)
+    .order("full_name", { ascending: true });
+
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-5xl mx-auto">
         <h1 className="text-4xl font-bold mb-8 text-nfw-blackberry font-serif">Create New Article</h1>
-        <ArticleForm categories={categories || []} userId={user.id} />
+        <ArticleForm categories={categories || []} authors={authors || []} userId={user.id} />
       </div>
     </main>
   );
