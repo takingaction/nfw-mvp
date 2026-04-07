@@ -32,7 +32,7 @@ export default async function NewArticlePage() {
   // Fetch admin users for author dropdown
   const { data: authors } = await supabase
     .from("profiles")
-    .select("id, full_name, email")
+    .select("id, full_name")
     .eq("is_admin", true)
     .order("full_name", { ascending: true });
 

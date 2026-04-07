@@ -25,7 +25,6 @@ type Category = {
 type Author = {
   id: string;
   full_name: string;
-  email: string;
 };
 
 export default function ArticleForm({
@@ -235,20 +234,20 @@ export default function ArticleForm({
           <label className="block text-sm font-medium text-nfw-blackberry mb-2">
             Author
           </label>
-          <select
-            value={formData.author_id}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, author_id: e.target.value }))
-            }
-            className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
-          >
-            <option value="">Select author</option>
-            {authors.map((author) => (
-              <option key={author.id} value={author.id}>
-                {author.full_name}
-              </option>
-            ))}
-          </select>
+        <select
+          value={formData.author_id}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, author_id: e.target.value }))
+          }
+          className="w-full px-4 py-2 border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry focus:ring-2 focus:ring-nfw-lilac"
+        >
+          <option value="">Select author</option>
+          {authors.map((author) => (
+            <option key={author.id} value={author.id}>
+              {author.full_name || "Unknown Author"}
+            </option>
+          ))}
+        </select>
         </div>
       </div>
 

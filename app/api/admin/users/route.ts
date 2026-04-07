@@ -28,14 +28,18 @@ export async function GET() {
 
     const { data: users, error } = await supabaseAdmin
       .from("profiles")
-      .select("id, full_name, email")
+      .select("id, full_name")
       .eq("is_admin", true)
       .order("full_name", { ascending: true });
 
+    console.log("[Admin Users API] Users found:", users?.length, "Error:", error);
     if (error) throw error;
 
-    return NextResponse.json(users);
-  } catch {
+    // If no admin users found, return empty array
+    // The calling code should handle this case
+    return NextResponse.json(users || []);
+  } catch (err) {
+    console.error("[Admin Users API] Error:", err);
     return NextResponse.json(
       { error: "Failed to fetch users" },
       { status: 500 },

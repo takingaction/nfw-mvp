@@ -31,6 +31,43 @@ This file contains context and instructions for AI agents working on this projec
 - `npm run lint` - Run ESLint
 - `npm run typecheck` - Run TypeScript type checking
 
+## Critical Database Schema Notes
+
+### IMPORTANT: `profiles` Table Does NOT Have `email` Column
+
+The `profiles` table schema does NOT include an `email` column. User email is stored in `auth.users`, NOT in `profiles`.
+
+**Correct `profiles` table columns:**
+- `id` (UUID, PK)
+- `full_name` (TEXT)
+- `membership_level` (TEXT)
+- `is_admin` (BOOLEAN)
+- `profile_completed` (BOOLEAN)
+- `city`, `state`, `zip` (TEXT)
+- `age_range`, `household_income` (TEXT)
+- `stripe_connect_account_id` (TEXT)
+- `subscription_status`, `subscription_ends_at` (TEXT)
+- `shipping_address` (JSONB)
+- `social_handles` (JSONB)
+- And more...
+
+**NEVER query `profiles.email`** - it doesn't exist. To get user email, you must query `auth.users` table directly.
+
+### Bug Pattern to Avoid
+
+```typescript
+// WRONG - profiles table has no email column:
+.supabase.from("profiles").select("id, full_name, email")
+
+// CORRECT - only select columns that exist:
+.supabase.from("profiles").select("id, full_name")
+```
+
+This mistake has caused bugs in:
+- `app/admin/grants/[id]/page.tsx` - Fixed 2026-04-04
+- `components/admin/AdminGrantReviewer.tsx` - Fixed 2026-04-05
+- `app/api/admin/users/route.ts` - Fixed 2026-04-07
+
 ## Accomplishments
 
 ### Session 2026-03-27: Template Building
