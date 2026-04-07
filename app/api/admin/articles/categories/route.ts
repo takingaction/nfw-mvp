@@ -33,7 +33,27 @@ export async function GET() {
 
     if (error) throw error;
 
-    return NextResponse.json(categories);
+    // Get accurate article counts
+    const { data: articles } = await supabaseAdmin
+      .from("articles")
+      .select("category_id");
+
+    const countMap = new Map<string, number>();
+    (articles || []).forEach((article) => {
+      if (article.category_id) {
+        countMap.set(
+          article.category_id,
+          (countMap.get(article.category_id) || 0) + 1,
+        );
+      }
+    });
+
+    const categoriesWithCounts = (categories || []).map((cat) => ({
+      ...cat,
+      article_count: countMap.get(cat.id) || 0,
+    }));
+
+    return NextResponse.json(categoriesWithCounts);
   } catch {
     return NextResponse.json(
       { error: "Failed to fetch categories" },

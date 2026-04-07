@@ -69,11 +69,34 @@ async function ArticlesContent({
     );
   }
 
-  // Fetch categories
+  // Fetch categories with accurate article counts
   const { data: categories } = await supabase
     .from("article_categories")
     .select("*")
     .order("display_order", { ascending: true });
+
+  // Get article counts per category
+  const { data: articleCounts } = await supabase
+    .from("articles")
+    .select("category_id")
+    .eq("is_published", true);
+
+  // Calculate accurate counts
+  const categoryCountMap = new Map<string, number>();
+  (articleCounts || []).forEach((article) => {
+    if (article.category_id) {
+      categoryCountMap.set(
+        article.category_id,
+        (categoryCountMap.get(article.category_id) || 0) + 1,
+      );
+    }
+  });
+
+  // Enhance categories with accurate counts
+  const categoriesWithCounts = (categories || []).map((cat) => ({
+    ...cat,
+    article_count: categoryCountMap.get(cat.id) || 0,
+  }));
 
   // Get user's liked articles
   let likedArticleIds: string[] = [];
@@ -123,7 +146,7 @@ async function ArticlesContent({
   return (
     <ArticlesClient
       articles={articlesWithDetails}
-      categories={categories || []}
+      categories={categoriesWithCounts}
       currentCategory={params.category}
       currentSearch={params.search}
       userId={user?.id}
