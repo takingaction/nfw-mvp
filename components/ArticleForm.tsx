@@ -108,14 +108,17 @@ export default function ArticleForm({
 
       if (article) {
         // Update existing article
-        console.log("[ArticleForm] Updating article:", article.id, articleData);
+        console.log("[ArticleForm] Updating article:", article.id, { ...articleData, content: "[CONTENT]" });
         const { error: updateError } = await supabase
           .from("articles")
           .update(articleData)
           .eq("id", article.id);
 
         console.log("[ArticleForm] Update result:", { error: updateError });
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error("[ArticleForm] Update error:", updateError);
+          throw updateError;
+        }
       } else {
         // Create new article
         const { error: insertError } = await supabase
@@ -126,10 +129,12 @@ export default function ArticleForm({
       }
 
       clearTimeout(timeoutId);
+      console.log("[ArticleForm] Success, redirecting to /admin/articles");
       router.push("/admin/articles");
       router.refresh();
     } catch (err: any) {
       clearTimeout(timeoutId);
+      console.error("[ArticleForm] Catch error:", err);
       setError(err.message || "An error occurred");
       setLoading(false);
     }
