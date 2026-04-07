@@ -70,6 +70,12 @@ export default function ArticleForm({
     setError(null);
     setLoading(true);
 
+    // Timeout to prevent infinite hang
+    const timeoutId = setTimeout(() => {
+      setLoading(false);
+      setError("Request timed out. Please try again.");
+    }, 30000);
+
     try {
       const tagsArray = formData.tags
         .split(",")
@@ -79,7 +85,7 @@ export default function ArticleForm({
       const articleData = {
         title: formData.title,
         slug: formData.slug,
-        excerpt: formData.excerpt,
+        excerpt: formData.excerpt || null,
         content: formData.content,
         category_id: formData.category_id || null,
         tags: tagsArray,
@@ -89,7 +95,7 @@ export default function ArticleForm({
         meta_description: formData.meta_description || null,
         is_published: formData.is_published,
         author_id: userId,
-        published_at: formData.is_published ? new Date().toISOString() : null,
+        published_at: formData.is_published ? (article?.published_at || new Date().toISOString()) : null,
       };
 
       if (article) {
@@ -109,11 +115,12 @@ export default function ArticleForm({
         if (insertError) throw insertError;
       }
 
+      clearTimeout(timeoutId);
       router.push("/admin/articles");
       router.refresh();
     } catch (err: any) {
+      clearTimeout(timeoutId);
       setError(err.message || "An error occurred");
-    } finally {
       setLoading(false);
     }
   };
