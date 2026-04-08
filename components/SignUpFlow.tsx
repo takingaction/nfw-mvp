@@ -144,12 +144,12 @@ const PLANS = [
 ];
 
 const BENEFITS = [
-  "Microgrants from $100–$5,000",
-  "1,000+ member perks & discounts",
-  "Zero Dollar Store access",
+  "Microgrants from $100-$5,000",
+  "Thousands of perks & discounts",
+  "Zero Dollar Store giveaways",
+  "Feel-good support that is simple, fast and low stress",
   "A community that gets it",
-  "Decisions within 48 hours",
-  "Your data is always private",
+  "Part of something bigger — helping shape the future for women",
 ];
 
 const STEPS = ["Account", "Personal Info", "Identity", "Membership"];
@@ -912,14 +912,13 @@ export default function SignUpFlow() {
       <div className="hidden lg:flex w-[420px] xl:w-[480px] bg-nfw-aubergine flex-col justify-center px-12 py-16 relative overflow-hidden flex-shrink-0">
         <div className="relative">
           <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-dove mb-6">
-            Join 50,000+ women
+            JOIN WOMEN NATIONWIDE
           </p>
           <h2 className="font-serif text-4xl lg:text-6xl text-white mb-4 leading-tight">
-            Support that fits your life.
+            Support women simply by belonging
           </h2>
           <p className="text-white text-sm mb-10 leading-relaxed">
-            NFW membership gives you access to real financial support, everyday
-            savings, and a community of women who get it.
+            NFW membership helps you get relief for yourself while helping other women at the same time. Membership includes:
           </p>
           <div className="space-y-4 mb-10">
             {BENEFITS.map((b) => (
