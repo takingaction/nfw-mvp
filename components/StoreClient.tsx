@@ -42,6 +42,11 @@ export default function StoreClient({
   } | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [monthlyClaimed, setMonthlyClaimed] = useState(false);
+  const [heroSettings, setHeroSettings] = useState<{
+    hero_image_url: string | null;
+    hero_heading: string;
+    hero_subheading: string;
+  } | null>(null);
 
   useEffect(() => {
     async function fetchProducts() {
@@ -59,7 +64,21 @@ export default function StoreClient({
         setLoading(false);
       }
     }
+
+    async function fetchHeroSettings() {
+      try {
+        const res = await fetch("/api/store/settings");
+        const data = await res.json();
+        if (data && data.hero_image_url) {
+          setHeroSettings(data);
+        }
+      } catch (error) {
+        console.error("Error fetching hero settings:", error);
+      }
+    }
+
     fetchProducts();
+    fetchHeroSettings();
   }, []);
 
   useEffect(() => {
@@ -133,15 +152,35 @@ export default function StoreClient({
 
   return (
     <main className="min-h-screen bg-nfw-dove">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 py-16">
-        <div className="text-center mb-12">
-          <h1 className="font-serif text-4xl lg:text-6xl text-nfw-aubergine mb-4">
-            Zero Dollar Store
-          </h1>
-          <p className="font-ui text-sm font-medium tracking-[0.03em] text-nfw-blackberry/70">
-            Browse our selection
-          </p>
+      {heroSettings?.hero_image_url && (
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 pt-8">
+          <div
+            className="relative h-[250px] md:h-[500px] bg-cover bg-center bg-no-repeat flex items-center justify-center"
+            style={{ backgroundImage: `url(${heroSettings.hero_image_url})` }}
+          >
+            <div className="text-center">
+              <h1 className="font-serif text-4xl lg:text-6xl text-white mb-2">
+                {heroSettings.hero_heading}
+              </h1>
+              <p className="font-ui text-sm font-medium tracking-[0.03em] text-white/80">
+                {heroSettings.hero_subheading}
+              </p>
+            </div>
+          </div>
         </div>
+      )}
+
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 py-16">
+        {!heroSettings?.hero_image_url && (
+          <div className="text-center mb-12">
+            <h1 className="font-serif text-4xl lg:text-6xl text-nfw-aubergine mb-4">
+              Zero Dollar Store
+            </h1>
+            <p className="font-ui text-sm font-medium tracking-[0.03em] text-nfw-blackberry/70">
+              Browse our selection
+            </p>
+          </div>
+        )}
 
         {products.length === 0 ? (
           <div className="text-center py-20">

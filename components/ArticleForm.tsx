@@ -14,7 +14,7 @@ const RichTextEditor = dynamic(() => import("./RichTextEditor"), {
   ),
 });
 
-import ImageUpload from "./ImageUpload";
+import ImagePicker from "./ImagePicker";
 
 type Category = {
   id: string;
@@ -83,7 +83,7 @@ export default function ArticleForm({
     const timeoutId = setTimeout(() => {
       setLoading(false);
       setError("Request timed out. Please try again.");
-    }, 30000);
+    }, 60000);
 
     try {
       const tagsArray = formData.tags
@@ -294,20 +294,22 @@ export default function ArticleForm({
 
       {/* Images */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <ImageUpload
+        <ImagePicker
           label="Featured Image"
           currentUrl={formData.featured_image_url}
-          onUpload={(url) =>
+          onSelect={(url) =>
             setFormData((prev) => ({ ...prev, featured_image_url: url }))
           }
+          bucket="page-builder"
         />
 
-        <ImageUpload
+        <ImagePicker
           label="Hero Image"
           currentUrl={formData.hero_image_url}
-          onUpload={(url) =>
+          onSelect={(url) =>
             setFormData((prev) => ({ ...prev, hero_image_url: url }))
           }
+          bucket="page-builder"
         />
       </div>
 

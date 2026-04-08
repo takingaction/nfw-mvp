@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Save } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -19,6 +19,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import MediaLibraryModal from "@/components/admin/MediaLibraryModal";
 
 type ProductWithMapping = {
   shopifyProductId: string;
@@ -167,6 +168,12 @@ export default function AdminShopifySync() {
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [heroImageUrl, setHeroImageUrl] = useState("");
+  const [heroHeading, setHeroHeading] = useState("ZERO DOLLAR STORE");
+  const [heroSubheading, setHeroSubheading] = useState("Browse our selection");
+  const [savingHero, setSavingHero] = useState(false);
+  const [heroSaved, setHeroSaved] = useState(false);
+  const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -198,6 +205,23 @@ export default function AdminShopifySync() {
       window.history.replaceState({}, "", "/admin/shopify");
     }
     checkConnection();
+  }, []);
+
+  useEffect(() => {
+    async function fetchHeroSettings() {
+      try {
+        const res = await fetch("/api/store/settings");
+        const data = await res.json();
+        if (data) {
+          setHeroImageUrl(data.hero_image_url || "");
+          setHeroHeading(data.hero_heading || "ZERO DOLLAR STORE");
+          setHeroSubheading(data.hero_subheading || "Browse our selection");
+        }
+      } catch (error) {
+        console.error("Error fetching hero settings:", error);
+      }
+    }
+    fetchHeroSettings();
   }, []);
 
   const fetchProducts = async () => {
@@ -368,6 +392,32 @@ export default function AdminShopifySync() {
     return rankIndex >= 0 ? rankIndex + 1 : null;
   };
 
+  const handleSaveHero = async () => {
+    setSavingHero(true);
+    setHeroSaved(false);
+    try {
+      const res = await fetch("/api/store/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hero_image_url: heroImageUrl || null,
+          hero_heading: heroHeading,
+          hero_subheading: heroSubheading,
+        }),
+      });
+      if (res.ok) {
+        setHeroSaved(true);
+        setTimeout(() => setHeroSaved(false), 3000);
+      } else {
+        setMessage({ type: "error", text: "Failed to save hero settings" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Failed to save hero settings" });
+    } finally {
+      setSavingHero(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8">
@@ -417,6 +467,83 @@ export default function AdminShopifySync() {
               </button>
             </>
           )}
+        </div>
+      </div>
+
+      <div className="bg-white border border-nfw-blackberry/10 overflow-hidden mb-8">
+        <div className="px-6 py-5 border-b border-nfw-blackberry/10">
+          <h2 className="text-lg font-bold text-nfw-blackberry font-ui mb-4">Hero Image</h2>
+          <p className="text-nfw-blackberry/50 text-sm mb-4">
+            Configure the hero banner at the top of the Zero Dollar Store page.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-nfw-blackberry mb-2">
+                Background Image
+              </label>
+              <div className="border border-nfw-blackberry/20 p-4 bg-nfw-dove/50">
+                {heroImageUrl ? (
+                  <div className="relative">
+                    <img
+                      src={heroImageUrl}
+                      alt="Hero preview"
+                      className="w-full h-32 object-cover rounded"
+                    />
+                    <button
+                      onClick={() => setMediaLibraryOpen(true)}
+                      className="mt-2 text-sm text-nfw-aubergine hover:underline"
+                    >
+                      Change Image
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setMediaLibraryOpen(true)}
+                    className="w-full py-8 border-2 border-dashed border-nfw-blackberry/20 hover:border-nfw-aubergine text-nfw-blackberry/40 hover:text-nfw-aubergine transition-colors text-sm"
+                  >
+                    + Select Image from Media Library
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-nfw-blackberry mb-2">
+                  Heading Text
+                </label>
+                <input
+                  type="text"
+                  value={heroHeading}
+                  onChange={(e) => setHeroHeading(e.target.value)}
+                  className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-nfw-blackberry mb-2">
+                  Subheading Text
+                </label>
+                <input
+                  type="text"
+                  value={heroSubheading}
+                  onChange={(e) => setHeroSubheading(e.target.value)}
+                  className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-4">
+            <button
+              onClick={handleSaveHero}
+              disabled={savingHero}
+              className="flex items-center gap-2 px-4 py-2 bg-nfw-blackberry text-white text-sm font-medium hover:bg-nfw-blackberry/90 transition-colors disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {savingHero ? "Saving..." : "Save Hero Settings"}
+            </button>
+            {heroSaved && (
+              <span className="text-sm text-green-600 font-medium">Saved!</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -481,6 +608,16 @@ export default function AdminShopifySync() {
           </table>
         </DndContext>
       </div>
+
+      <MediaLibraryModal
+        isOpen={mediaLibraryOpen}
+        onClose={() => setMediaLibraryOpen(false)}
+        onSelect={(url) => {
+          setHeroImageUrl(url);
+          setMediaLibraryOpen(false);
+        }}
+        bucket="page-builder"
+      />
     </div>
   );
 }

@@ -205,13 +205,7 @@ export default function FooterEditorClient({
       )}
 
       {/* Header with Save Button */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-black text-nfw-blackberry font-serif">Footer Editor</h1>
-          <p className="text-nfw-blackberry/50 text-sm">
-            Manage footer columns, links, and copyright
-          </p>
-        </div>
+      <div className="flex items-center justify-end">
         <button
           onClick={handleSave}
           disabled={saving}

@@ -103,7 +103,7 @@ export default function Footer() {
       <div className="max-w-[1400px] mx-auto px-4 py-12 lg:py-16">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 lg:gap-6 mb-12">
           {/* Logo Column - vertically centered */}
-          <div className="md:col-span-1 flex items-center justify-center md:justify-start">
+          <div className="md:col-span-1 flex items-center justify-center md:justify-start md:pr-8">
             {data.logo_url && (
               <Image
                 src={data.logo_url}
