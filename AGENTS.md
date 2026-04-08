@@ -679,3 +679,42 @@ CREATE INDEX IF NOT EXISTS idx_grants_nominee_email ON grants(nominee_email);
 1. **Email sending** - Resend shows "no emails sent yet" despite API calls succeeding. Domain verification may be needed in Resend dashboard.
 2. **Manual fund release** - "Release Funds" button not yet implemented. Admin must manually trigger transfers via Stripe dashboard.
 3. **Nominee account creation flow** - Nominee receives email but needs clear instructions to create account and connect bank. Consider sending a separate onboarding email.
+
+### Session 2026-04-08: Signup Flow Brand Colors + /perks Members-Only
+
+#### Signup Flow Brand Colors Update
+
+Updated signup flow to use brand-consistent colors instead of generic styles.
+
+**Files modified:**
+- `components/SignUpFlow.tsx` - Updated colors to match brand palette:
+  - Error alert: `bg-red-50` → `bg-nfw-citrine/20` with `text-nfw-blackberry`
+  - Progress step checkmark: Green `#d4f1ad` → `bg-nfw-wisteria` (brand consistency)
+  - Feature checkmarks in right panel: Green `#d4f1ad` → `bg-nfw-wisteria`
+
+**Brand colors for checkmarks/indicators:**
+- wisteria (`#7786BE`) - Used for checkmarks and step indicators
+- NOT green (`#d4f1ad`) which was previously used
+
+#### /perks Members-Only Protection
+
+Made `/perks` page accessible only to logged-in members with completed profiles.
+
+**Files modified:**
+- `app/perks/page.tsx` - Added auth check:
+  - Added `authChecked` state to prevent premature redirect
+  - Added useEffect that redirects to `/auth/login` if user is null after auth check
+  - Free members (membership_level = null) now allowed access
+  - Only paid members (contributing, founding) allowed, or free members with completed profiles
+
+**Logic:**
+```typescript
+if (user === null && authChecked) → redirect to /auth/login
+if (profile?.profile_completed === false) → redirect to /auth/sign-up?step=1
+if (profile?.membership_level exists AND not in ['contributing', 'founding']) → redirect to /auth/sign-up?step=3
+```
+
+**Image Assets Added:**
+- `public/images/nfw-symbol-brandmark-aubergine.png` - Logo for signup page
+- `public/images/nfw-symbol-brandmark-wisteria.png` - Logo for welcome page
+- Deleted: `public/images/nfw-symbol-brandmark-wisteria.svg`
