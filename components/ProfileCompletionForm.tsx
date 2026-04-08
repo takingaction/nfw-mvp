@@ -18,21 +18,20 @@ const INCOME_RANGES = [
 ];
 
 const IDENTITY_OPTIONS = [
-  "AAPI",
-  "Black",
-  "Indigenous",
-  "Latinx",
-  "LGBTQIA+",
-  "Immigrant",
-  "Middle Eastern",
-  "Multi-racial",
-  "Woman",
-  "GNB or GNC",
-  "Disabled",
-  "Parent",
-  "Caregiver",
-  "I'd rather not say",
-  "Other",
+  "I'm raising kids",
+  "I help take care of a family member",
+  "Others rely on me financially",
+  "I'm working full-time",
+  "I'm working part-time or gig work",
+  "I'm juggling multiple jobs or income sources",
+  "I'm in school or training",
+  "I'm dealing with a health issue or disability",
+  "I'm new to the U.S. or first-generation",
+  "I'm part of the LGBTQ+ community",
+  "I'm a woman",
+  "I've faced barriers because of my identity or background",
+  "None of these",
+  "Prefer not to say",
 ];
 
 const US_STATES = [
@@ -102,7 +101,7 @@ interface ProfileFormData {
   identities: string[];
   social_handles: {
     instagram?: string;
-    twitter?: string;
+    tiktok?: string;
     facebook?: string;
     linkedin?: string;
   };
@@ -156,6 +155,13 @@ export default function ProfileCompletionForm({
     setLoading(true);
     setError(null);
     setSuccess(false);
+
+    // Validation: at least one identity must be selected
+    if (formData.identities.length === 0) {
+      setError("Please select at least one option");
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch("/api/profile/update", {
@@ -409,10 +415,10 @@ export default function ProfileCompletionForm({
           />
           <input
             type="text"
-            placeholder="Twitter (@username)"
-            value={formData.social_handles.twitter || ""}
+            placeholder="TikTok (@username)"
+            value={formData.social_handles.tiktok || ""}
             onChange={(e) =>
-              handleSocialHandleChange("twitter", e.target.value)
+              handleSocialHandleChange("tiktok", e.target.value)
             }
             className={inputClass}
           />

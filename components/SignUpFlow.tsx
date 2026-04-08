@@ -20,21 +20,20 @@ const INCOME_RANGES = [
 ];
 
 const IDENTITY_OPTIONS = [
-  "AAPI",
-  "Black",
-  "Indigenous",
-  "Latinx",
-  "LGBTQIA+",
-  "Immigrant",
-  "Middle Eastern",
-  "Multi-racial",
-  "Woman",
-  "GNB or GNC",
-  "Disabled",
-  "Parent",
-  "Caregiver",
-  "I'd rather not say",
-  "Other",
+  "I'm raising kids",
+  "I help take care of a family member",
+  "Others rely on me financially",
+  "I'm working full-time",
+  "I'm working part-time or gig work",
+  "I'm juggling multiple jobs or income sources",
+  "I'm in school or training",
+  "I'm dealing with a health issue or disability",
+  "I'm new to the U.S. or first-generation",
+  "I'm part of the LGBTQ+ community",
+  "I'm a woman",
+  "I've faced barriers because of my identity or background",
+  "None of these",
+  "Prefer not to say",
 ];
 
 const US_STATES = [
@@ -181,7 +180,7 @@ export default function SignUpFlow() {
   const [identities, setIdentities] = useState<string[]>([]);
   const [socialHandles, setSocialHandles] = useState({
     instagram: "",
-    twitter: "",
+    tiktok: "",
     facebook: "",
     linkedin: "",
   });
@@ -299,6 +298,13 @@ export default function SignUpFlow() {
   // Step 2 — Save identity/income (full profile save)
   const handleIdentity = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validation: at least one identity must be selected
+    if (identities.length === 0) {
+      setError("Please select at least one option");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -731,9 +737,9 @@ export default function SignUpFlow() {
               {/* Identities */}
               <div>
                 <label className={labelClass}>
-                  Which identities do you identify with?{" "}
+                  Tell us a little about your life{" "}
                   <span className="text-nfw-blackberry/40 font-normal">
-                    Select all that apply.
+                    (Select all that apply)
                   </span>
                 </label>
                 <div className="grid grid-cols-2 gap-2 mt-2">
@@ -774,10 +780,10 @@ export default function SignUpFlow() {
                   />
                   <input
                     type="text"
-                    placeholder="Twitter (@username)"
-                    value={socialHandles.twitter}
+                    placeholder="TikTok (@username)"
+                    value={socialHandles.tiktok}
                     onChange={(e) =>
-                      setSocialHandles((prev) => ({ ...prev, twitter: e.target.value }))
+                      setSocialHandles((prev) => ({ ...prev, tiktok: e.target.value }))
                     }
                     className={inputClass}
                   />
