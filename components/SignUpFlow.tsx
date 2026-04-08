@@ -406,7 +406,7 @@ export default function SignUpFlow() {
                     <div
                       className={`w-7 h-7 flex items-center justify-center text-xs font-black transition-all ${
                         step > i + 1
-                          ? "bg-[#d4f1ad] text-nfw-blackberry"
+                          ? "bg-nfw-wisteria text-white"
                           : step === i + 1
                             ? "bg-nfw-blackberry text-white"
                             : "bg-nfw-blackberry/10 text-nfw-blackberry/40"
@@ -435,8 +435,8 @@ export default function SignUpFlow() {
           )}
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200">
-              <p className="text-red-600 text-sm">{error}</p>
+            <div className="mb-4 p-3 bg-nfw-citrine/20 border border-nfw-blackberry/20">
+              <p className="text-nfw-blackberry text-sm">{error}</p>
             </div>
           )}
 
@@ -872,8 +872,8 @@ export default function SignUpFlow() {
                     <ul className="space-y-1.5 mb-4">
                       {plan.features.map((f) => (
                         <li key={f} className="flex items-center gap-2">
-                          <div className="w-4 h-4 bg-[#d4f1ad] flex items-center justify-center flex-shrink-0">
-                            <Check className="w-2.5 h-2.5 text-nfw-blackberry" />
+                          <div className="w-4 h-4 bg-nfw-wisteria flex items-center justify-center flex-shrink-0">
+                            <Check className="w-2.5 h-2.5 text-white" />
                           </div>
                           <span
                             className={`text-xs ${plan.highlighted ? "text-nfw-dove" : "text-nfw-blackberry/70"}`}
