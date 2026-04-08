@@ -795,3 +795,11 @@ Created reusable component for selecting images from media library.
 **Files modified:**
 - `components/ArticleForm.tsx` - Replaced ImageUpload with ImagePicker for Featured Image and Hero Image fields
 - Articles now use `page-builder` bucket (same as template editor) instead of `article-images`
+
+#### Bug Fix: Article Slug Auto-Generation
+
+Fixed slug auto-generation to only apply when creating new articles, not when editing.
+
+**Bug:** On `/admin/articles/edit/[id]`, typing in the Title field would only capture the first character for the slug due to incorrect conditional logic (`prev.slug ||` would short-circuit after first character).
+
+**Fix:** Changed `slug: prev.slug || generateSlug(title)` to `slug: !article ? generateSlug(title) : prev.slug`

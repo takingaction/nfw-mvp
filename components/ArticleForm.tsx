@@ -70,7 +70,7 @@ export default function ArticleForm({
     setFormData((prev) => ({
       ...prev,
       title,
-      slug: prev.slug || generateSlug(title),
+      slug: !article ? generateSlug(title) : prev.slug,
     }));
   };
 
