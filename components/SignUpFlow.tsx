@@ -389,7 +389,7 @@ export default function SignUpFlow() {
         <div className="max-w-md w-full mx-auto">
           <Link href="/" className="inline-block mb-8">
             <img
-              src="/images/header-logo.png"
+              src="/images/nfw-symbol-brandmark-aubergine.png"
               alt="NFW"
               className="h-12 w-auto"
               onError={(e) => {

@@ -50,9 +50,11 @@ export default async function WelcomePage() {
   return (
     <main className="min-h-screen bg-nfw-blackberry flex items-center justify-center px-4 relative overflow-hidden">
       <div className="relative max-w-lg w-full text-center">
-        <div className="w-20 h-20 bg-[#d4f1ad] flex items-center justify-center mx-auto mb-8">
-          <Check className="w-10 h-10 text-nfw-blackberry" strokeWidth={3} />
-        </div>
+        <img
+            src="/images/nfw-symbol-brandmark-wisteria.png"
+            alt="NFW"
+            className="w-40 object-contain mx-auto mb-8"
+          />
 
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-nfw-lilac/20 border border-nfw-lilac/30 text-sm mb-6">
           <span className="w-2 h-2 bg-[#d4f1ad]"></span>
@@ -61,11 +63,11 @@ export default async function WelcomePage() {
           </span>
         </div>
 
-        <h1 className="font-serif text-4xl lg:text-6xl text-white mb-4 leading-tight">
+        <h1 className="font-serif text-4xl lg:text-6xl text-white mb-2 leading-tight">
           {content.title}
         </h1>
 
-        <p className="font-serif text-lg text-nfw-lilac mb-10 max-w-md mx-auto leading-relaxed">
+        <p className="font-serif text-lg text-nfw-lilac mb-6 max-w-md mx-auto leading-relaxed">
           Welcome to NFW—and thank you for showing up for women. Your membership helps make this work possible, and gives you access to microgrants, perks, the Zero Dollar Store, a community that has your back, and more.
         </p>
 

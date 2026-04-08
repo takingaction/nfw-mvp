@@ -63,6 +63,7 @@ export default function PerksPage() {
   } | null>(null);
   const [isOfferPanelOpen, setIsOfferPanelOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -71,7 +72,7 @@ export default function PerksPage() {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       
-      // Check profile completion and membership for logged-in users
+      // Only check profile for logged-in users
       if (user) {
         const { data: profile } = await supabase
           .from("profiles")
@@ -81,10 +82,17 @@ export default function PerksPage() {
         
         if (!profile?.profile_completed) {
           window.location.href = "/auth/sign-up?step=1";
-        } else if (!profile?.membership_level) {
+          return;
+        }
+        // membership_level can be null for free members - that's fine
+        // Only redirect if membership_level is explicitly set to a paid plan
+        if (profile?.membership_level && !["contributing", "founding"].includes(profile.membership_level)) {
           window.location.href = "/auth/sign-up?step=3";
+          return;
         }
       }
+      
+      setAuthChecked(true);
     };
     
     fetchUser();
@@ -97,6 +105,12 @@ export default function PerksPage() {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (authChecked && user === null) {
+      window.location.href = "/auth/login";
+    }
+  }, [authChecked, user]);
 
   useEffect(() => {
     const fetchUserZip = async () => {
