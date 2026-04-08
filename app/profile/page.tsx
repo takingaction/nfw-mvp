@@ -153,57 +153,6 @@ export default async function ProfilePage() {
           )}
         </div>
 
-        {/* About You Section - Life Situations and Social Profiles */}
-        {profile?.identities && profile.identities.length > 0 && (
-          <div className="bg-white border border-nfw-blackberry/10 p-6 mb-6">
-            <h3 className="text-lg font-semibold text-nfw-blackberry mb-4">
-              About You
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-nfw-blackberry/50 mb-2">Life Situations</p>
-                <div className="flex flex-wrap gap-2">
-                  {profile.identities.map((identity: string, index: number) => (
-                    <span
-                      key={index}
-                      className="inline-block px-3 py-1 bg-nfw-lilac/20 text-nfw-blackberry text-sm"
-                    >
-                      {identity}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              {profile.social_handles && Object.keys(profile.social_handles).length > 0 && (
-                <div>
-                  <p className="text-sm text-nfw-blackberry/50 mb-2">Social Profiles</p>
-                  <div className="space-y-1">
-                    {profile.social_handles.instagram && (
-                      <p className="text-sm text-nfw-blackberry">
-                        <span className="text-nfw-blackberry/50">Instagram:</span> @{profile.social_handles.instagram}
-                      </p>
-                    )}
-                    {profile.social_handles.tiktok && (
-                      <p className="text-sm text-nfw-blackberry">
-                        <span className="text-nfw-blackberry/50">TikTok:</span> @{profile.social_handles.tiktok}
-                      </p>
-                    )}
-                    {profile.social_handles.facebook && (
-                      <p className="text-sm text-nfw-blackberry">
-                        <span className="text-nfw-blackberry/50">Facebook:</span> {profile.social_handles.facebook}
-                      </p>
-                    )}
-                    {profile.social_handles.linkedin && (
-                      <p className="text-sm text-nfw-blackberry">
-                        <span className="text-nfw-blackberry/50">LinkedIn:</span> {profile.social_handles.linkedin}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         <div className="bg-white border border-nfw-blackberry/10 p-6">
           <h3 className="text-lg font-semibold text-nfw-blackberry mb-4">
             {profile?.full_name
