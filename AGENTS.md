@@ -718,3 +718,37 @@ if (profile?.membership_level exists AND not in ['contributing', 'founding']) â†
 - `public/images/nfw-symbol-brandmark-aubergine.png` - Logo for signup page
 - `public/images/nfw-symbol-brandmark-wisteria.png` - Logo for welcome page
 - Deleted: `public/images/nfw-symbol-brandmark-wisteria.svg`
+
+### Session 2026-04-08: Footer Update - Column 4 + Social Media Links
+
+Expanded footer to 5 columns with social media icons in the bottom bar.
+
+**Database:**
+- Created `supabase/migrations/026_add_column4_and_social_media.sql`
+- Added columns: `column4_heading TEXT DEFAULT 'CONNECT'`, `column4_links JSONB DEFAULT '[]'`
+- Added columns: `social_instagram`, `social_tiktok`, `social_facebook` (TEXT with default URLs)
+
+**Schema Changes:**
+```sql
+ALTER TABLE site_footer ADD COLUMN column4_heading TEXT DEFAULT 'CONNECT';
+ALTER TABLE site_footer ADD COLUMN column4_links JSONB DEFAULT '[]';
+ALTER TABLE site_footer ADD COLUMN social_instagram TEXT DEFAULT 'https://www.instagram.com/nationalfundforwomen';
+ALTER TABLE site_footer ADD COLUMN social_tiktok TEXT DEFAULT 'https://www.tiktok.com/@nationalfundforwomen';
+ALTER TABLE site_footer ADD COLUMN social_facebook TEXT DEFAULT 'https://www.facebook.com/nationalfundforwomen';
+```
+
+**Files Modified:**
+- `app/api/footer/route.ts` - Added column4 and social media fields to POST handler
+- `components/landing/Footer.tsx`:
+  - Grid changed from `md:grid-cols-4` to `md:grid-cols-5` (1 logo + 4 equal link columns)
+  - Added Column 4 rendering (same pattern as columns 1-3)
+  - Added social icons in bottom bar left of Privacy Policy (Instagram, TikTok, Facebook in lilac #B693C0)
+  - Icons are inline SVG, no external dependencies
+- `components/admin/FooterEditorClient.tsx`:
+  - Added Column 4 editor (heading + links, same pattern as other columns)
+  - Added Social Media Links section with Instagram, TikTok, Facebook URL inputs
+  - Updated handleSave to include new fields
+
+**Footer Layout:**
+- Desktop: 5 equal columns (Logo | Column 1 | Column 2 | Column 3 | Column 4)
+- Bottom bar: Copyright text | Social icons | divider | Privacy | Terms | Accessibility
