@@ -37,15 +37,11 @@ export default async function WelcomePage() {
         title: membershipLevel === "founding" 
           ? "You're a Founding Member!" 
           : "You're a Contributing Member!",
-        description: membershipLevel === "founding"
-          ? "Thank you for your Founding Membership. You now have access to everything NFW offers — with exclusive Founding Member benefits."
-          : "Thank you for your Contributing Membership. You now have access to everything we offer — microgrants, perks, the Zero Dollar Store, and a community that has your back.",
       };
     }
     return {
       badge: "Welcome to the community",
       title: "You're officially a member!",
-      description: "Welcome to NFW. You now have access to everything we offer — microgrants, perks, the Zero Dollar Store, and a community that has your back.",
     };
   };
 
@@ -60,7 +56,7 @@ export default async function WelcomePage() {
 
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-nfw-lilac/20 border border-nfw-lilac/30 text-sm mb-6">
           <span className="w-2 h-2 bg-[#d4f1ad]"></span>
-          <span className="text-nfw-dove font-semibold">
+          <span className="text-nfw-dove font-semibold font-ui">
             {content.badge}
           </span>
         </div>
@@ -69,54 +65,45 @@ export default async function WelcomePage() {
           {content.title}
         </h1>
 
-        <p className="text-nfw-lilac text-lg mb-10 max-w-md mx-auto leading-relaxed">
-          {content.description}
+        <p className="font-serif text-lg text-nfw-lilac mb-10 max-w-md mx-auto leading-relaxed">
+          Welcome to NFW—and thank you for showing up for women. Your membership helps make this work possible, and gives you access to microgrants, perks, the Zero Dollar Store, a community that has your back, and more.
         </p>
 
-        <div className="grid grid-cols-3 gap-4 mb-10 max-w-sm mx-auto">
-          {[
-            { color: "bg-[#d4f1ad]", label: "Microgrants", sub: "Apply today" },
-            { color: "bg-nfw-citrine", label: "Perks", sub: "1,000+ deals" },
-            { color: "bg-[#b2d1ee]", label: "Store", sub: "Free items" },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="bg-white/5 border border-white/10 p-4 text-center"
-            >
-              <div
-                className={`w-8 h-8 ${item.color} mx-auto mb-2 flex items-center justify-center`}
-              >
-                <Check className="w-4 h-4 text-nfw-blackberry" />
-              </div>
-              <p className="text-white font-bold text-sm">{item.label}</p>
-              <p className="text-nfw-lilac text-xs">{item.sub}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 justify-center mb-8">
           <Link
             href="/dashboard"
-            className="inline-flex items-center justify-center px-8 py-4 bg-nfw-citrine text-nfw-blackberry font-bold text-lg hover:bg-nfw-citrine/90 transition-all"
+            className="inline-flex items-center justify-center px-6 py-3 bg-nfw-citrine text-nfw-blackberry font-bold font-ui text-sm hover:bg-nfw-citrine/90 transition-all"
           >
-            Go to my dashboard
+            Go to my NFW member dashboard
           </Link>
           <Link
-            href="/grants"
-            className="inline-flex items-center justify-center px-8 py-4 bg-white/10 text-white border border-white/20 font-bold text-lg hover:bg-white/20 transition-all"
+            href="/grants/apply"
+            className="inline-flex items-center justify-center px-6 py-3 bg-nfw-lilac/20 text-nfw-dove border border-nfw-lilac/30 font-bold font-ui text-sm hover:bg-nfw-lilac/30 transition-all"
           >
             Apply for a grant
           </Link>
+          <Link
+            href="/perks"
+            className="inline-flex items-center justify-center px-6 py-3 bg-nfw-lilac/20 text-nfw-dove border border-nfw-lilac/30 font-bold font-ui text-sm hover:bg-nfw-lilac/30 transition-all"
+          >
+            Explore Perks
+          </Link>
+          <Link
+            href="/store"
+            className="inline-flex items-center justify-center px-6 py-3 bg-nfw-lilac/20 text-nfw-dove border border-nfw-lilac/30 font-bold font-ui text-sm hover:bg-nfw-lilac/30 transition-all"
+          >
+            Browse the Zero Dollar Store
+          </Link>
         </div>
 
-        <p className="text-nfw-lilac/50 text-xs mt-8">
+        <p className="font-ui text-xs text-nfw-lilac/50 mt-8">
           Questions?{" "}
-          <a
-            href="mailto:michelle@nationalfundforwomen.org"
+          <Link
+            href="/contact"
             className="underline hover:text-nfw-lilac transition-colors"
           >
             Contact us
-          </a>
+          </Link>
         </p>
       </div>
     </main>
