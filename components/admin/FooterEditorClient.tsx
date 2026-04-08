@@ -18,6 +18,8 @@ interface FooterData {
   column2_links: FooterLink[];
   column3_heading: string;
   column3_links: FooterLink[];
+  column4_heading: string;
+  column4_links: FooterLink[];
   copyright_text: string;
   footer_link1_text: string;
   footer_link1_url: string;
@@ -25,6 +27,9 @@ interface FooterData {
   footer_link2_url: string;
   footer_link3_text: string;
   footer_link3_url: string;
+  social_instagram: string;
+  social_tiktok: string;
+  social_facebook: string;
 }
 
 const defaultLinks: FooterLink[] = [
@@ -52,6 +57,10 @@ export default function FooterEditorClient({
   const [column3Links, setColumn3Links] = useState<FooterLink[]>(
     initialData?.column3_links ?? defaultLinks
   );
+  const [column4Heading, setColumn4Heading] = useState(initialData?.column4_heading ?? "CONNECT");
+  const [column4Links, setColumn4Links] = useState<FooterLink[]>(
+    initialData?.column4_links ?? []
+  );
   const [copyrightText, setCopyrightText] = useState(
     initialData?.copyright_text ?? "© 2026 National Fund for Women. All rights reserved."
   );
@@ -61,6 +70,9 @@ export default function FooterEditorClient({
   const [footerLink2Url, setFooterLink2Url] = useState(initialData?.footer_link2_url ?? "/terms");
   const [footerLink3Text, setFooterLink3Text] = useState(initialData?.footer_link3_text ?? "Accessibility");
   const [footerLink3Url, setFooterLink3Url] = useState(initialData?.footer_link3_url ?? "/accessibility");
+  const [socialInstagram, setSocialInstagram] = useState(initialData?.social_instagram ?? "https://www.instagram.com/nationalfundforwomen");
+  const [socialTiktok, setSocialTiktok] = useState(initialData?.social_tiktok ?? "https://www.tiktok.com/@nationalfundforwomen");
+  const [socialFacebook, setSocialFacebook] = useState(initialData?.social_facebook ?? "https://www.facebook.com/nationalfundforwomen");
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -108,6 +120,8 @@ export default function FooterEditorClient({
           column2_links: column2Links,
           column3_heading: column3Heading,
           column3_links: column3Links,
+          column4_heading: column4Heading,
+          column4_links: column4Links,
           copyright_text: copyrightText,
           footer_link1_text: footerLink1Text,
           footer_link1_url: footerLink1Url,
@@ -115,6 +129,9 @@ export default function FooterEditorClient({
           footer_link2_url: footerLink2Url,
           footer_link3_text: footerLink3Text,
           footer_link3_url: footerLink3Url,
+          social_instagram: socialInstagram,
+          social_tiktok: socialTiktok,
+          social_facebook: socialFacebook,
         }),
       });
 
@@ -258,6 +275,50 @@ export default function FooterEditorClient({
           {renderLinkEditor(column1Heading, setColumn1Heading, column1Links, setColumn1Links)}
           {renderLinkEditor(column2Heading, setColumn2Heading, column2Links, setColumn2Links)}
           {renderLinkEditor(column3Heading, setColumn3Heading, column3Links, setColumn3Links)}
+          {renderLinkEditor(column4Heading, setColumn4Heading, column4Links, setColumn4Links)}
+        </div>
+      </div>
+
+      {/* Social Media */}
+      <div className="bg-white border border-nfw-blackberry/10 p-6">
+        <h2 className="font-black text-nfw-blackberry font-ui mb-4">Social Media Links</h2>
+        <p className="text-xs text-nfw-blackberry/50 mb-4">These links appear in the bottom bar left of the copyright text.</p>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
+                Instagram URL
+              </label>
+              <input
+                type="text"
+                value={socialInstagram}
+                onChange={(e) => setSocialInstagram(e.target.value)}
+                className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
+                TikTok URL
+              </label>
+              <input
+                type="text"
+                value={socialTiktok}
+                onChange={(e) => setSocialTiktok(e.target.value)}
+                className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50 mb-1">
+              Facebook URL
+            </label>
+            <input
+              type="text"
+              value={socialFacebook}
+              onChange={(e) => setSocialFacebook(e.target.value)}
+              className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
+            />
+          </div>
         </div>
       </div>
 

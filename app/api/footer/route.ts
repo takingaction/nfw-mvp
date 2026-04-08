@@ -39,6 +39,8 @@ export async function POST(request: NextRequest) {
       column2_links,
       column3_heading,
       column3_links,
+      column4_heading,
+      column4_links,
       copyright_text,
       footer_link1_text,
       footer_link1_url,
@@ -46,6 +48,9 @@ export async function POST(request: NextRequest) {
       footer_link2_url,
       footer_link3_text,
       footer_link3_url,
+      social_instagram,
+      social_tiktok,
+      social_facebook,
     } = body;
 
     const footerData = {
@@ -56,6 +61,8 @@ export async function POST(request: NextRequest) {
       column2_links: column2_links || [],
       column3_heading: column3_heading || 'ORGANIZATION',
       column3_links: column3_links || [],
+      column4_heading: column4_heading || 'CONNECT',
+      column4_links: column4_links || [],
       copyright_text: copyright_text || '© 2026 National Fund for Women. All rights reserved.',
       footer_link1_text: footer_link1_text || 'Privacy Policy',
       footer_link1_url: footer_link1_url || '/privacy',
@@ -63,6 +70,9 @@ export async function POST(request: NextRequest) {
       footer_link2_url: footer_link2_url || '/terms',
       footer_link3_text: footer_link3_text || 'Accessibility',
       footer_link3_url: footer_link3_url || '/accessibility',
+      social_instagram: social_instagram || 'https://www.instagram.com/nationalfundforwomen',
+      social_tiktok: social_tiktok || 'https://www.tiktok.com/@nationalfundforwomen',
+      social_facebook: social_facebook || 'https://www.facebook.com/nationalfundforwomen',
       updated_at: new Date().toISOString(),
     };
 
