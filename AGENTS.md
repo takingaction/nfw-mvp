@@ -752,3 +752,46 @@ ALTER TABLE site_footer ADD COLUMN social_facebook TEXT DEFAULT 'https://www.fac
 **Footer Layout:**
 - Desktop: 5 equal columns (Logo | Column 1 | Column 2 | Column 3 | Column 4)
 - Bottom bar: Copyright text | Social icons | divider | Privacy | Terms | Accessibility
+
+### Session 2026-04-08: Zero Dollar Store Hero + ImagePicker Component
+
+#### Zero Dollar Store Hero Image
+
+Added configurable hero banner to the Zero Dollar Store page (`/store`) and admin controls (`/admin/shopify`).
+
+**Database:**
+- Created `supabase/migrations/027_create_store_settings.sql`
+- New `store_settings` table:
+  - `hero_image_url TEXT`
+  - `hero_heading TEXT DEFAULT 'ZERO DOLLAR STORE'`
+  - `hero_subheading TEXT DEFAULT 'Browse our selection'`
+  - `updated_at TIMESTAMPTZ`
+
+**API Route:**
+- Created `app/api/store/settings/route.ts`
+  - GET: Fetch hero settings from `store_settings` table
+  - POST: Save hero settings (admin only)
+
+**Store Hero Display (`components/StoreClient.tsx`):**
+- Fetches hero settings on mount
+- Renders full-width hero with 500px height on desktop, 250px on mobile (scales responsively)
+- Centered white text overlay with heading and subheading
+- Only shows if `hero_image_url` exists (hidden until image uploaded)
+
+**Admin Controls (`app/admin/shopify/page.tsx`):**
+- Hero Image section at top of page
+- Image preview with "Change Image" button (opens MediaLibraryModal)
+- Heading and subheading text inputs
+- "Save Hero Settings" button → POST to `/api/store/settings`
+- Uses existing MediaLibraryModal from template editor
+
+#### ImagePicker Component
+
+Created reusable component for selecting images from media library.
+
+**Files created:**
+- `components/ImagePicker.tsx` - Wraps MediaLibraryModal with label/preview/remove UI
+
+**Files modified:**
+- `components/ArticleForm.tsx` - Replaced ImageUpload with ImagePicker for Featured Image and Hero Image fields
+- Articles now use `page-builder` bucket (same as template editor) instead of `article-images`
