@@ -34,20 +34,26 @@ export async function GET(request: Request) {
     };
 
     if (page) params.page = parseInt(page, 10);
-
-    if (categoryKey) params.category_key = categoryKey;
     if (query) params.query = query;
-    if (postalCode && distance !== "2500mi") {
+    if (categoryKey) params.category_key = categoryKey;
+    if (facet) params.facet = facet;
+    if (offerTypes) params.offer_type = offerTypes;
+
+    // Handle Nationwide - use postal_code=50001 (Iowa center) + distance=6000mi as anchor, plus national+online flags
+    if (distance === "2500mi") {
+      params.postal_code = "50001";
+      params.distance = "6000mi";
+      params.national = "include";
+      params.online = online === "only" ? "only" : "include";
+    } else if (postalCode) {
       params.postal_code = postalCode;
       params.distance = distance;
       params.sort = "distance";
+      if (online === "only") {
+        params.online = "only";
+      }
     }
-    if (distance === "2500mi") {
-      params.national = "include";
-    }
-    if (facet) params.facet = facet;
-    if (offerTypes) params.offer_type = offerTypes;
-    if (online) params.online = online;
+
     if (rollup) params.rollup = rollup;
     if (rollup === "stores") params.aggregations = "stores";
     if (rollup === "locations") params.aggregations = "locations";
@@ -130,19 +136,19 @@ export async function GET(request: Request) {
         seen.add(key);
         return true;
       });
-      
+
       groups = uniqueOffers.map((offer: any) => ({
         ...offer,
         key: offer.offer_group_key || offer.offer_key,
       }));
     }
 
-    const totalCount = rollup === "offers" 
+    const totalCount = rollup === "offers"
       ? (result.info?.total_results || 0)
       : groups.length;
 
     return NextResponse.json({
-      info: { 
+      info: {
         total_results: totalCount,
         total_stores: result.info?.total_stores || 0,
         total_locations: result.info?.total_locations || 0,

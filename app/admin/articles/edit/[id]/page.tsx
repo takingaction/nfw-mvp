@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
-import ArticleForm from "@/components/ArticleForm";
+import EditArticleClient from "@/components/admin/EditArticleClient";
 
 export default async function EditArticlePage({
   params,
@@ -55,18 +55,8 @@ export default async function EditArticlePage({
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold text-nfw-blackberry font-serif">Edit Article</h1>
-          <a
-            href={`/articles/${article.slug}`}
-            target="_blank"
-            className="text-nfw-blackberry hover:text-nfw-blackberry/70 font-medium"
-          >
-            View Article
-          </a>
-        </div>
-        <ArticleForm
-          categories={categories || []}
+        <EditArticleClient
+          initialCategories={categories || []}
           authors={authors || []}
           userId={user.id}
           article={article}

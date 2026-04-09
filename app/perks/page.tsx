@@ -173,11 +173,17 @@ export default function PerksPage() {
   const fetchAllCounts = async (isOnlineOnly: boolean) => {
     try {
       const cacheBuster = Date.now();
-      const onlineParam = isOnlineOnly ? "&online=only" : "";
+      const nationwide = searchDistance === "2500mi";
+      const onlineParam = isOnlineOnly ? "&online=only" : (nationwide ? "&online=include" : "");
+      const nationalParam = nationwide ? "&national=include" : "";
+      const geoParams = nationwide
+        ? "&postal_code=50001&distance=6000mi"
+        : (searchPostalCode ? `&postal_code=${searchPostalCode}&distance=${searchDistance}` : "");
+      const categoryParam = selectedCategories.length > 0 ? `&category_key=${selectedCategories.join(",")}` : "";
       const [storesRes, offersRes, locationsRes] = await Promise.all([
-        fetch(`/api/access-perks/rollup?rollup=stores${onlineParam}&cb=${cacheBuster}`),
-        fetch(`/api/access-perks/offers/search?per_page=1${onlineParam}&cb=${cacheBuster}`),
-        fetch(`/api/access-perks/rollup?rollup=locations${onlineParam}&cb=${cacheBuster}`),
+        fetch(`/api/access-perks/rollup?rollup=stores${geoParams}${categoryParam}${nationalParam}${onlineParam}&cb=${cacheBuster}`),
+        fetch(`/api/access-perks/offers/search?per_page=1${geoParams}${categoryParam}${nationalParam}${onlineParam}&cb=${cacheBuster}`),
+        fetch(`/api/access-perks/rollup?rollup=locations${geoParams}${categoryParam}${nationalParam}${onlineParam}&cb=${cacheBuster}`),
       ]);
 
       const [storesData, offersData, locationsData] = await Promise.all([
@@ -238,7 +244,14 @@ export default function PerksPage() {
           params.query = searchQuery;
         }
 
-        if (searchPostalCode) {
+        // Handle Nationwide or normal geolocation
+        if (searchDistance === "2500mi") {
+          // Nationwide: use postal_code=50001 + distance=6000mi as anchor
+          params.postal_code = "50001";
+          params.distance = "6000mi";
+          params.national = "include";
+          params.online = isOnlineOnly ? "only" : "include";
+        } else if (searchPostalCode) {
           params.postal_code = searchPostalCode;
           params.distance = searchDistance;
         }
@@ -263,7 +276,7 @@ export default function PerksPage() {
           params.offer_type = selectedOfferTypes.join(",");
         }
 
-        if (isOnlineOnly) {
+        if (isOnlineOnly && searchDistance !== "2500mi") {
           params.online = "only";
         }
 
@@ -305,7 +318,14 @@ export default function PerksPage() {
           params.query = searchQuery;
         }
 
-        if (searchPostalCode) {
+        // Handle Nationwide or normal geolocation
+        if (searchDistance === "2500mi") {
+          // Nationwide: use postal_code=50001 + distance=6000mi as anchor
+          params.postal_code = "50001";
+          params.distance = "6000mi";
+          params.national = "include";
+          params.online = isOnlineOnly ? "only" : "include";
+        } else if (searchPostalCode) {
           params.postal_code = searchPostalCode;
           params.distance = searchDistance;
         }
@@ -318,7 +338,7 @@ export default function PerksPage() {
           params.facet = selectedFacets.join(",");
         }
 
-        if (isOnlineOnly) {
+        if (isOnlineOnly && searchDistance !== "2500mi") {
           params.online = "only";
         }
 
@@ -530,7 +550,24 @@ export default function PerksPage() {
             hasActiveFilters={selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0 || selectedStore !== null || selectedLocation !== null}
             onQueryChange={setSearchQuery}
             onPostalCodeChange={setSearchPostalCode}
-            onDistanceChange={setSearchDistance}
+            onDistanceChange={(dist) => {
+              if (dist === "2500mi") {
+                setSearchPostalCode(""); // Clear zip when Nationwide is selected
+              } else if (searchDistance === "2500mi") {
+                // Switching FROM Nationwide TO a normal distance - restore user's zip
+                const fetchUserZip = async () => {
+                  try {
+                    const res = await fetch('/api/profile');
+                    const data = await res.json();
+                    setSearchPostalCode(data.zip || "");
+                  } catch {
+                    setSearchPostalCode("");
+                  }
+                };
+                fetchUserZip();
+              }
+              setSearchDistance(dist);
+            }}
             onSearch={() => setCurrentPage(1)}
             onClear={clearAllFilters}
           />
@@ -688,6 +725,7 @@ export default function PerksPage() {
                           distance: group.distance,
                         }}
                         onClick={() => handleStoreClick(typeof group.key === 'number' ? group.key : parseInt(String(group.key)) || 0)}
+                        isNationwide={searchDistance === "2500mi"}
                       />
                     ))}
                   </div>
@@ -711,6 +749,7 @@ export default function PerksPage() {
                           store: group.store,
                         }}
                         onClick={() => handleLocationClick(typeof group.key === 'number' ? group.key : parseInt(String(group.key)) || 0)}
+                        isNationwide={searchDistance === "2500mi"}
                       />
                     ))}
                   </div>

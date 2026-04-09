@@ -30,17 +30,39 @@ export async function GET(request: Request) {
       member_key: memberKey,
     };
 
+    let postalCode: string | null = null;
+    let distance: string | null = null;
+    let onlineParam: string | null = null;
+
     searchParams.forEach((value, key) => {
       if (key !== "member_key") {
-        params[key] = value;
+        if (key === "postal_code") postalCode = value;
+        else if (key === "distance") distance = value;
+        else if (key === "online") onlineParam = value;
+        else params[key] = value;
       }
     });
+
+    // Handle Nationwide - use postal_code=50001 (Iowa center) + distance=6000mi as anchor, plus national+online flags
+    if (distance === "2500mi") {
+      params.postal_code = "50001";
+      params.distance = "6000mi";
+      params.national = "include";
+      params.online = onlineParam === "only" ? "only" : "include";
+    } else if (postalCode && distance) {
+      // Normal geolocation search
+      params.postal_code = postalCode;
+      params.distance = distance;
+      // Only pass online if explicitly requested as "only"
+      if (onlineParam === "only") {
+        params.online = "only";
+      }
+    }
 
     const result = await searchOffers(params as unknown as Parameters<typeof searchOffers>[0]);
 
     // Deduplicate by offer_group_key when filtering by store_key
     if (result.offers && params.store_key) {
-      const beforeCount = result.offers.length;
       const seen = new Set();
       result.offers = result.offers.filter((offer: any) => {
         const key = offer.offer_group_key || offer.offer_key;
@@ -48,9 +70,6 @@ export async function GET(request: Request) {
         seen.add(key);
         return true;
       });
-      const afterCount = result.offers.length;
-      console.log(`[SEARCH] store_key=${params.store_key} before dedup=${beforeCount} after=${afterCount}`);
-      // Update pagination info to reflect deduplicated count
       if (result.info) {
         result.info.total_results = result.offers.length;
         const perPage = parseInt(params.per_page || "10", 10);

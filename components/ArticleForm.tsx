@@ -32,11 +32,15 @@ export default function ArticleForm({
   authors,
   userId,
   article,
+  onOpenCategoryManager,
+  onCategoriesChange,
 }: {
   categories: Category[];
   authors: Author[];
   userId: string;
   article?: any;
+  onOpenCategoryManager?: () => void;
+  onCategoriesChange?: () => void;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -50,7 +54,7 @@ export default function ArticleForm({
     content: article?.content || "",
     category_id: article?.category_id || "",
     author_id: article?.author_id || "",
-    show_as_nfw_team: article?.show_as_nfw_team || false,
+    show_as_nfw_team: article?.show_as_nfw_team ?? true,
     tags: article?.tags?.join(", ") || "",
     featured_image_url: article?.featured_image_url || "",
     hero_image_url: article?.hero_image_url || "",
@@ -234,6 +238,15 @@ export default function ArticleForm({
               </option>
             ))}
           </select>
+          {onOpenCategoryManager && (
+            <button
+              type="button"
+              onClick={onOpenCategoryManager}
+              className="mt-1 text-xs text-nfw-aubergine hover:underline"
+            >
+              Manage categories
+            </button>
+          )}
         </div>
 
         {/* Author */}

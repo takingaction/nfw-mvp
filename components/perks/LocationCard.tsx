@@ -20,6 +20,7 @@ interface LocationCardProps {
     };
   };
   onClick?: () => void;
+  isNationwide?: boolean;
 }
 
 function decodeHTML(html: string): string {
@@ -28,7 +29,7 @@ function decodeHTML(html: string): string {
   return textarea.value;
 }
 
-export default function LocationCard({ location, onClick }: LocationCardProps) {
+export default function LocationCard({ location, onClick, isNationwide }: LocationCardProps) {
   const nameRef = useRef<HTMLHeadingElement>(null);
   const storeNameRef = useRef<HTMLParagraphElement>(null);
 
@@ -87,7 +88,7 @@ export default function LocationCard({ location, onClick }: LocationCardProps) {
           <span className="px-2 py-0.5 bg-nfw-lilac/20 text-nfw-aubergine text-xs font-medium">
             {location.count} {location.count === 1 ? "offer" : "offers"}
           </span>
-          {location.distance && (
+          {!isNationwide && location.distance && (
             <span className="flex items-center gap-0.5 text-nfw-blackberry/50 text-xs">
               <Navigation className="w-3 h-3" />
               {location.distance.toFixed(1)} mi

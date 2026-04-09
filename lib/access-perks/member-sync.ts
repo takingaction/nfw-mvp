@@ -150,3 +150,68 @@ export function profileToAccessMember(
     status: status as "OPEN" | "SUSPEND",
   };
 }
+
+interface SupabaseClient {
+  from: (table: string) => {
+    select: (columns: string) => {
+      eq: (column: string, value: string) => {
+        is: (column: string, value: null) => unknown;
+        single: () => Promise<{ data: Profile | null; error: unknown }>;
+      };
+    };
+    update: (data: Record<string, unknown>) => {
+      eq: (column: string, value: string) => Promise<{ error: unknown }>;
+    };
+  };
+}
+
+/**
+ * Check if member needs sync and sync with Access Perks if needed.
+ * Idempotent - only syncs if access_perks_member_id is null.
+ */
+export async function checkAndSyncAccessMember(
+  supabase: SupabaseClient,
+  userId: string,
+  userEmail: string,
+): Promise<{ synced: boolean; error?: string }> {
+  try {
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .is("access_perks_member_id", null)
+      .single();
+
+    if (profileError || !profile) {
+      return { synced: false };
+    }
+
+    const memberData = profileToAccessMember(profile, userId, userEmail);
+
+    await syncAccessMember(
+      memberData.userId,
+      memberData.firstName,
+      memberData.lastName,
+      memberData.email,
+      memberData.status,
+    );
+
+    const sanitizedMemberId = sanitizeMemberIdentifier(userId);
+
+    await supabase
+      .from("profiles")
+      .update({
+        access_perks_member_id: sanitizedMemberId,
+        access_perks_synced_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
+
+    return { synced: true };
+  } catch (error) {
+    console.error("Failed to sync Access member:", error);
+    return {
+      synced: false,
+      error: error instanceof Error ? error.message : "Sync failed",
+    };
+  }
+}

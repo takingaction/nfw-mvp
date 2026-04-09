@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import ArticleForm from "@/components/ArticleForm";
+import NewArticleClient from "@/components/admin/NewArticleClient";
 
 export default async function NewArticlePage() {
   const supabase = await createClient();
@@ -39,8 +39,11 @@ export default async function NewArticlePage() {
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8 text-nfw-blackberry font-serif">Create New Article</h1>
-        <ArticleForm categories={categories || []} authors={authors || []} userId={user.id} />
+        <NewArticleClient
+          initialCategories={categories || []}
+          authors={authors || []}
+          userId={user.id}
+        />
       </div>
     </main>
   );

@@ -5,6 +5,7 @@ import GrantsStatusWidget from "@/components/GrantsStatusWidget";
 import RecentRedemptions from "@/components/dashboard/RecentRedemptions";
 import RecentClaims from "@/components/dashboard/RecentClaims";
 import Link from "next/link";
+import AccessPerksSync from "@/components/AccessPerksSync";
 import {
   FileText,
   Gift,
@@ -111,6 +112,7 @@ export default async function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-nfw-dove">
+      <AccessPerksSync userId={user.id} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-nfw-aubergine mb-2 font-serif">

@@ -803,3 +803,41 @@ Fixed slug auto-generation to only apply when creating new articles, not when ed
 **Bug:** On `/admin/articles/edit/[id]`, typing in the Title field would only capture the first character for the slug due to incorrect conditional logic (`prev.slug ||` would short-circuit after first character).
 
 **Fix:** Changed `slug: prev.slug || generateSlug(title)` to `slug: !article ? generateSlug(title) : prev.slug`
+
+### Session 2026-04-09: Access Perks Member Sync on Login
+
+**Problem:** Only the user's own profile had `access_perks_member_id` filled. Members weren't being synced to Access Perks during signup.
+
+**Root Cause:** The `syncAccessMember()` function and `/api/access-perks/sync-member` endpoint existed but were never called anywhere in the signup flow.
+
+**Solution:** Sync on next login instead of during signup (non-blocking, idempotent).
+
+**Files created:**
+- `components/AccessPerksSync.tsx` - Client component that fires sync on dashboard mount
+  - Uses fire-and-forget pattern (doesn't block page render)
+  - Checks if `access_perks_member_id` is null before syncing (idempotent)
+
+**Files modified:**
+- `lib/access-perks/member-sync.ts` - Added `checkAndSyncAccessMember()` function
+  - Checks profile for existing `access_perks_member_id`
+  - If null, fetches user email from auth, calls `syncAccessMember()`, updates profile with `access_perks_member_id` and `access_perks_synced_at`
+- `app/dashboard/page.tsx` - Added `<AccessPerksSync userId={user.id} />` to trigger sync on mount
+
+**Sync Logic Flow:**
+```
+User logs in → Dashboard loads → AccessPerksSync fires
+                                               ↓
+                              checkAndSyncAccessMember(userId, email)
+                                           ↓
+                              Check: access_perks_member_id IS NULL?
+                                           ↓
+                              If yes → sync to Access Perks API
+                                      → update profile with member_id
+                              If no → do nothing (already synced)
+```
+
+**Benefits:**
+- Works for all login methods (email/password, Google OAuth)
+- Non-blocking - doesn't slow down login experience
+- Only syncs if not already synced (idempotent)
+- Fire-and-forget with error logging

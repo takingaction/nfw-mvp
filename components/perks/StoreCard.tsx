@@ -18,6 +18,7 @@ interface StoreCardProps {
     distance?: number;
   };
   onClick?: () => void;
+  isNationwide?: boolean;
 }
 
 function decodeHTML(html: string): string {
@@ -26,7 +27,7 @@ function decodeHTML(html: string): string {
   return textarea.value;
 }
 
-export default function StoreCard({ store, onClick }: StoreCardProps) {
+export default function StoreCard({ store, onClick, isNationwide }: StoreCardProps) {
   const nameRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export default function StoreCard({ store, onClick }: StoreCardProps) {
             {store.name}
           </h3>
           <div className="flex items-center gap-2 mt-1">
-            {store.distance !== undefined && (
+            {!isNationwide && store.distance !== undefined && (
               <span className="flex items-center gap-0.5 text-nfw-blackberry/50 text-xs">
                 <Navigation className="w-3 h-3" />
                 {store.distance.toFixed(1)} mi
