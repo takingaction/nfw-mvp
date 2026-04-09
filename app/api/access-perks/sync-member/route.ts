@@ -3,8 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import {
   syncAccessMember,
   profileToAccessMember,
-  sanitizeMemberIdentifier,
 } from "@/lib/access-perks/member-sync";
+
+function sanitizeMemberIdentifier(userId: string): string {
+  return userId
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toUpperCase()
+    .trim();
+}
 
 export async function POST(request: Request) {
   try {
