@@ -333,8 +333,8 @@ export default function SignUpFlow() {
   // Step 3 — Select membership
   const handleSelectPlan = async (plan: (typeof PLANS)[0]) => {
     if (!plan.priceId) {
-      // Free plan - mark profile as completed and redirect to welcome
-      await saveProfile({ profile_completed: true });
+      // Free plan - mark profile as completed, set membership_level, and redirect to welcome
+      await saveProfile({ profile_completed: true, membership_level: "free" });
       window.location.href = "/auth/welcome";
       return;
     }
