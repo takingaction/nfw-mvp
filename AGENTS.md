@@ -841,3 +841,38 @@ User logs in → Dashboard loads → AccessPerksSync fires
 - Non-blocking - doesn't slow down login experience
 - Only syncs if not already synced (idempotent)
 - Fire-and-forget with error logging
+
+### Session 2026-04-09: Access Perks Sync Bug Fixes
+
+**Problem:** Access Perks member sync was not working for existing members on login.
+
+**Root Causes Found:**
+
+1. **Server-only env vars in client code** - `AccessPerksSync` was calling `checkAndSyncAccessMember()` directly, which uses server-side environment variables (`ACCESS_AMT_API_URL`, `ACCESS_AMT_TOKEN`, `ACCESS_ORGANIZATION_ID`, `ACCESS_PROGRAM_ID`). These aren't exposed to the browser without `NEXT_PUBLIC_` prefix.
+
+2. **Missing `membership_level` in profile update** - The `/api/profile/update` endpoint's `ALLOWED_FIELDS` didn't include `membership_level`, so free plan users never had their membership set.
+
+3. **`subscription_status` null handling** - Free users with null `subscription_status` were being marked as "SUSPEND" in Access Perks instead of "OPEN".
+
+**Fixes Applied:**
+
+1. **Changed `AccessPerksSync` to call server-side API** - Component now calls `/api/access-perks/sync-member` API route instead of calling the function directly.
+
+2. **Added idempotency check to API route** - Only syncs if `access_perks_member_id` is null.
+
+3. **Added `membership_level` to allowed fields** - `/api/profile/update/route.ts` now allows `membership_level` to be updated.
+
+4. **Fixed `subscription_status` null handling** - Treats null/empty `subscription_status` as "active" (OPEN) for free users.
+
+5. **Fixed `sanitizeMemberIdentifier` import** - Inlined the function to avoid build errors with module exports.
+
+**Files Modified:**
+- `components/AccessPerksSync.tsx` - Now calls API route instead of function directly
+- `app/api/access-perks/sync-member/route.ts` - Added idempotency check, inlined sanitize function
+- `lib/access-perks/member-sync.ts` - Fixed subscription_status null handling
+- `app/api/profile/update/route.ts` - Added `membership_level` to ALLOWED_FIELDS
+- `components/SignUpFlow.tsx` - Free plan now sets `membership_level: "free"`
+
+**Testing:** Login with Google OAuth account and check browser console for:
+- `[AccessPerksSync] Starting sync for userId: ...`
+- `[AccessPerksSync] Sync result: ...`
