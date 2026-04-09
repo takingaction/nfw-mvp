@@ -140,14 +140,15 @@ export function profileToAccessMember(
   userEmail: string,
 ) {
   const { firstName, lastName } = splitFullName(profile.full_name || "");
-  const status = profile.subscription_status === "active" ? "OPEN" : "SUSPEND";
+  const isActive = profile.subscription_status === "active" || !profile.subscription_status;
+  const status: "OPEN" | "SUSPEND" = isActive ? "OPEN" : "SUSPEND";
 
   return {
     userId,
     firstName,
     lastName,
     email: userEmail,
-    status: status as "OPEN" | "SUSPEND",
+    status,
   };
 }
 
