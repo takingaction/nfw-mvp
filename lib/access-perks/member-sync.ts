@@ -160,6 +160,8 @@ export async function checkAndSyncAccessMember(
   userId: string,
   userEmail: string,
 ): Promise<{ synced: boolean; error?: string }> {
+  console.log("[checkAndSyncAccessMember] Starting with:", { userId, userEmail });
+  
   try {
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
@@ -168,11 +170,16 @@ export async function checkAndSyncAccessMember(
       .is("access_perks_member_id", null)
       .single();
 
+    console.log("[checkAndSyncAccessMember] Profile query result:", { profile, profileError });
+
     if (profileError || !profile) {
+      console.log("[checkAndSyncAccessMember] Profile not found or already synced, returning synced: false");
       return { synced: false };
     }
 
+    console.log("[checkAndSyncAccessMember] Profile found, syncing to Access Perks...");
     const memberData = profileToAccessMember(profile, userId, userEmail);
+    console.log("[checkAndSyncAccessMember] Member data:", memberData);
 
     await syncAccessMember(
       memberData.userId,
@@ -183,8 +190,9 @@ export async function checkAndSyncAccessMember(
     );
 
     const sanitizedMemberId = sanitizeMemberIdentifier(userId);
+    console.log("[checkAndSyncAccessMember] Updating profile with member ID:", sanitizedMemberId);
 
-    await supabase
+    const { error: updateError } = await supabase
       .from("profiles")
       .update({
         access_perks_member_id: sanitizedMemberId,
@@ -192,9 +200,11 @@ export async function checkAndSyncAccessMember(
       })
       .eq("id", userId);
 
+    console.log("[checkAndSyncAccessMember] Update result:", { updateError });
+
     return { synced: true };
   } catch (error) {
-    console.error("Failed to sync Access member:", error);
+    console.error("[checkAndSyncAccessMember] Error:", error);
     return {
       synced: false,
       error: error instanceof Error ? error.message : "Sync failed",
