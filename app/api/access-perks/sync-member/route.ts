@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   syncAccessMember,
   profileToAccessMember,
+  sanitizeMemberIdentifier,
 } from "@/lib/access-perks/member-sync";
 
 export async function POST(request: Request) {
@@ -39,15 +40,21 @@ export async function POST(request: Request) {
       );
     }
 
-    // Fetch user profile
+    // Fetch user profile - only if access_perks_member_id is null (idempotency check)
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
+      .is("access_perks_member_id", null)
       .single();
 
     if (profileError || !profile) {
-      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+      // Either profile doesn't exist or already synced
+      console.log("[sync-member] Profile not found or already synced:", { profileError, profile });
+      return NextResponse.json({ 
+        success: false, 
+        message: profileError ? "Profile not found" : "Already synced" 
+      });
     }
 
     // Convert profile to Access format
@@ -62,14 +69,14 @@ export async function POST(request: Request) {
       memberData.status,
     );
 
-    // Update profile with sync timestamp
+    const sanitizedMemberId = sanitizeMemberIdentifier(userId);
+
+    // Update profile with sync timestamp and member ID
     await supabase
       .from("profiles")
       .update({
         access_perks_synced_at: new Date().toISOString(),
-        access_perks_member_id: memberData.userId
-          .replace(/[^a-zA-Z0-9]/g, "")
-          .toUpperCase(),
+        access_perks_member_id: sanitizedMemberId,
       })
       .eq("id", userId);
 
