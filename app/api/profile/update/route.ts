@@ -30,6 +30,7 @@ const ALLOWED_FIELDS = [
   "identities",
   "social_handles",
   "profile_completed",
+  "membership_level",
 ] as const;
 
 type AllowedField = (typeof ALLOWED_FIELDS)[number];
