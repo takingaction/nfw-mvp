@@ -151,26 +151,12 @@ export function profileToAccessMember(
   };
 }
 
-interface SupabaseClient {
-  from: (table: string) => {
-    select: (columns: string) => {
-      eq: (column: string, value: string) => {
-        is: (column: string, value: null) => unknown;
-        single: () => Promise<{ data: Profile | null; error: unknown }>;
-      };
-    };
-    update: (data: Record<string, unknown>) => {
-      eq: (column: string, value: string) => Promise<{ error: unknown }>;
-    };
-  };
-}
-
 /**
  * Check if member needs sync and sync with Access Perks if needed.
  * Idempotent - only syncs if access_perks_member_id is null.
  */
 export async function checkAndSyncAccessMember(
-  supabase: SupabaseClient,
+  supabase: any,
   userId: string,
   userEmail: string,
 ): Promise<{ synced: boolean; error?: string }> {
