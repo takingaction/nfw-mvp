@@ -17,6 +17,7 @@ export type MockProduct = {
   eligibilityTiers: string[];
   displayOrder: number;
   featuredOrder: number;
+  status: "ACTIVE" | "DRAFT" | "ARCHIVED" | null;
 };
 
 export const MOCK_PRODUCTS: MockProduct[] = [
@@ -39,6 +40,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     eligibilityTiers: ["free", "contributing", "founding"],
     displayOrder: 1,
     featuredOrder: 999,
+    status: "ACTIVE",
   },
   {
     shopifyProductId: "gid://shopify/Product/2",
@@ -59,6 +61,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     eligibilityTiers: ["free", "contributing", "founding"],
     displayOrder: 2,
     featuredOrder: 999,
+    status: "ACTIVE",
   },
   {
     shopifyProductId: "gid://shopify/Product/3",
@@ -79,6 +82,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     eligibilityTiers: ["contributing", "founding"],
     displayOrder: 3,
     featuredOrder: 999,
+    status: "ACTIVE",
   },
   {
     shopifyProductId: "gid://shopify/Product/4",
@@ -99,6 +103,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     eligibilityTiers: ["founding"],
     displayOrder: 4,
     featuredOrder: 999,
+    status: "ACTIVE",
   },
   {
     shopifyProductId: "gid://shopify/Product/5",
@@ -119,6 +124,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     eligibilityTiers: ["free", "contributing", "founding"],
     displayOrder: 5,
     featuredOrder: 999,
+    status: "DRAFT",
   },
   {
     shopifyProductId: "gid://shopify/Product/6",
@@ -139,6 +145,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     eligibilityTiers: ["free", "contributing", "founding"],
     displayOrder: 6,
     featuredOrder: 999,
+    status: "ACTIVE",
   },
 ];
 
@@ -167,5 +174,6 @@ export function transformShopifyProduct(shopifyProduct: ShopifyProduct, mockMapp
     eligibilityTiers: mockMapping?.eligibilityTiers ?? ["free", "contributing", "founding"],
     displayOrder: mockMapping?.displayOrder ?? 999,
     featuredOrder: mockMapping?.featuredOrder ?? 999,
+    status: shopifyProduct.status ?? "ACTIVE",
   };
 }

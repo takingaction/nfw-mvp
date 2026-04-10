@@ -22,6 +22,7 @@ type StoreProduct = {
   mvpVisibility: boolean;
   eligibilityTiers: string[];
   displayOrder: number;
+  status: "ACTIVE" | "DRAFT" | "ARCHIVED" | null;
 };
 
 export default function StoreClient({
@@ -118,6 +119,9 @@ export default function StoreClient({
   };
 
   const canClaim = (product: StoreProduct) => {
+    if (product.status === "DRAFT") {
+      return { eligible: false, reason: "Coming Soon" };
+    }
     if (!userTier || !product.eligibilityTiers.includes(userTier)) {
       return { eligible: false, reason: "Not Available for Your Tier" };
     }
@@ -206,7 +210,9 @@ export default function StoreClient({
                       <img
                         src={product.imageUrl}
                         alt={product.title}
-                        className={`w-full h-full object-cover ${!product.availableForSale ? "grayscale opacity-60" : ""}`}
+                        className={`w-full h-full object-cover ${
+                          !product.availableForSale || product.status === "DRAFT" ? "grayscale opacity-60" : ""
+                        }`}
                       />
                     ) : (
                       <div className="w-full h-full bg-nfw-powder/20" />
@@ -215,6 +221,13 @@ export default function StoreClient({
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                         <span className="bg-nfw-aubergine text-nfw-dove px-4 py-2 font-ui text-xs font-black tracking-[0.06em] uppercase">
                           Out of Stock
+                        </span>
+                      </div>
+                    )}
+                    {product.status === "DRAFT" && (
+                      <div className="absolute top-3 left-3">
+                        <span className="bg-nfw-wisteria text-white px-3 py-1.5 font-ui text-xs font-black tracking-[0.06em] uppercase">
+                          Coming Soon
                         </span>
                       </div>
                     )}

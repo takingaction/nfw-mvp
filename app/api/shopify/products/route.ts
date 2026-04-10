@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
             eligibilityTiers: rawMapping.eligibility_tiers,
             displayOrder: rawMapping.display_order,
             featuredOrder: rawMapping.featured_order,
+            status: null,
           } : undefined;
           return transformShopifyProduct(node, mapping);
         });

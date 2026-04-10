@@ -85,6 +85,7 @@ export type ShopifyProduct = {
       currencyCode: string;
     };
   };
+  status: "ACTIVE" | "DRAFT" | "ARCHIVED" | null;
 };
 
 export type ShopifyVariant = {
@@ -134,6 +135,7 @@ export const PRODUCTS_QUERY = `
           title
           description
           handle
+          status
           featuredImage {
             url
             altText

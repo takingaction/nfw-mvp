@@ -934,3 +934,25 @@ Created a Coming Soon landing page for non-authenticated users with email captur
 - On client-side navigation (clicking logo), `headers()` didn't re-evaluate, causing React error #300
 - Fixed by creating `NavigationContent` client component that uses `usePathname()` for route check
 - Navigation server component fetches data, wraps content in NavigationContent which handles client-side route detection
+
+### Session 2026-04-10: Store Draft Product Visibility
+
+Added Shopify product status awareness to the Zero Dollar Store to show draft items as disabled.
+
+**Feature:** Products with `DRAFT` status in Shopify now appear greyed out with "Coming Soon" badge and disabled claim button.
+
+**Files Modified:**
+- `lib/shopify.ts` - Added `status` field to `ShopifyProduct` type and `PRODUCTS_QUERY` GraphQL
+- `lib/mock-shopify.ts` - Added `status` to `MockProduct` type and `transformShopifyProduct()` function
+- `app/api/shopify/products/route.ts` - Passes `status` through to client
+- `components/StoreClient.tsx` - Updated to handle draft products:
+  - Added `status` check in `canClaim()` - returns "Coming Soon" for DRAFT items
+  - DRAFT products greyed out (same as out-of-stock)
+  - "Coming Soon" badge in top-left of product image
+
+**Behavior:**
+- DRAFT products display with grayscale + reduced opacity
+- "Coming Soon" purple badge overlaid on product image
+- "Claim Item" button disabled with "Coming Soon" label
+- Users cannot open claim modal for DRAFT items
+- Mock data includes "Lip Balm Set" as example DRAFT product for testing
