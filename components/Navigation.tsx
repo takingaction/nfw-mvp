@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { headers } from "next/headers";
 import NavigationClient from "./NavigationClient";
 import MobileMenu from "./MobileMenu";
 import { AuthButtonCombined } from "./AuthButtonCombined";
@@ -25,6 +26,13 @@ interface HeaderData {
 }
 
 export default async function Navigation() {
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") || "/";
+  
+  if (pathname === "/coming-soon") {
+    return null;
+  }
+
   const { data: header } = await supabaseAdmin
     .from("site_header")
     .select("*")

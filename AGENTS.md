@@ -876,3 +876,51 @@ User logs in → Dashboard loads → AccessPerksSync fires
 **Testing:** Login with Google OAuth account and check browser console for:
 - `[AccessPerksSync] Starting sync for userId: ...`
 - `[AccessPerksSync] Sync result: ...`
+
+### Session 2026-04-10: Coming Soon Page
+
+Created a Coming Soon landing page for non-authenticated users with email capture functionality.
+
+**Database:**
+- Created `supabase/migrations/028_create_coming_soon_emails.sql`
+- New `coming_soon_emails` table:
+  - `id` (UUID, PK)
+  - `email` (TEXT, UNIQUE NOT NULL)
+  - `created_at` (TIMESTAMPTZ)
+  - `ip_address` (TEXT)
+  - `user_agent` (TEXT)
+
+**Files Created:**
+- `app/coming-soon/page.tsx` - Coming Soon page component with:
+  - Full-screen background using `/images/landing.jpg`
+  - Logo at top using `/images/nfw-symbol-brandmark-white.png`
+  - Main title in Playfair Display (`font-serif`)
+  - Email signup form with white input, ghost button (`font-ui`)
+  - White social media icons (Instagram, TikTok, Facebook)
+  - Honeypot bot protection (hidden `website` field)
+- `app/api/coming-soon/subscribe/route.ts` - POST endpoint for email capture
+- `app/admin/coming-soon-emails/page.tsx` - Admin page server component
+- `app/admin/coming-soon-emails/AdminComingSoonEmails.tsx` - Admin client component with CSV export
+- `app/api/admin/coming-soon-emails/route.ts` - GET endpoint for CSV/JSON export (admin-only)
+- `proxy.ts` - Sets `x-pathname` header for route detection
+
+**Files Modified:**
+- `app/page.tsx` - Added auth check, redirects non-logged-in users to `/coming-soon`
+- `app/layout.tsx` - Conditionally hides Navigation, Footer, BackToTop based on pathname
+- `components/Navigation.tsx` - Hides on `/coming-soon` route
+- `components/landing/Footer.tsx` - Hides on `/coming-soon` route
+- `components/BackToTop.tsx` - Hides on `/coming-soon` route
+
+**Key Implementation Details:**
+- Coming Soon page shows for non-authenticated users only
+- Authenticated users see normal homepage
+- Bot protection via honeypot field (rejects if `website` field is filled)
+- Email capture stores email, IP, user agent, timestamp
+- Admin page at `/admin/coming-soon-emails` shows subscriber count and CSV download
+- All text uses brand fonts (Playfair Display for headline, DM Sans for UI elements)
+
+**Migration Required:**
+```sql
+-- Run in Supabase SQL Editor:
+-- Contents of supabase/migrations/028_create_coming_soon_emails.sql
+```

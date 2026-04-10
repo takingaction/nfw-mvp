@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Playfair_Display, DM_Sans } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/landing/Footer";
@@ -36,21 +37,25 @@ export const metadata: Metadata = {
     "Empowering women through financial support, resources, and community",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") || "/";
+  const isPublicRoute = pathname === "/coming-soon";
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${playfairDisplay.variable} ${dmSans.variable} antialiased`}
         suppressHydrationWarning
       >
-        <Navigation />
+        {!isPublicRoute && <Navigation />}
         {children}
-        <Footer />
-        <BackToTop />
+        {!isPublicRoute && <Footer />}
+        {!isPublicRoute && <BackToTop />}
       </body>
     </html>
   );

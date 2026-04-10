@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import SectionRenderer from "@/components/sections/SectionRenderer";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   const supabase = await createClient();
@@ -27,6 +27,14 @@ export async function generateMetadata() {
 
 export default async function Home() {
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/coming-soon");
+  }
 
   const { data: page } = await supabase
     .from("pages")

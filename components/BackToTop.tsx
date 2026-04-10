@@ -2,9 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { ArrowUp } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 export default function BackToTop() {
+  const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(false);
+
+  if (pathname === "/coming-soon") {
+    return null;
+  }
 
   // Show button when page is scrolled down
   useEffect(() => {
