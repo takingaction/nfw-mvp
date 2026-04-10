@@ -49,7 +49,6 @@ export default async function Navigation() {
       { label: "Support", url: "/faq", indent: 0 },
       { label: "Contact Support", url: "/contact", indent: 1 },
       { label: "FAQs", url: "/faq", indent: 1 },
-      { label: "Coming Soon Emails", url: "/admin/coming-soon-emails", indent: 1 },
     ],
     cta_label: "Join Now",
     cta_url: "/auth/sign-up",

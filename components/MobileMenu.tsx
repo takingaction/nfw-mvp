@@ -260,9 +260,6 @@ export default function MobileMenu() {
                     <Link href="/faq" onClick={closeMenu} className={linkClass}>
                       FAQs
                     </Link>
-                    <Link href="/admin/coming-soon-emails" onClick={closeMenu} className={linkClass}>
-                      Coming Soon Emails
-                    </Link>
                   </div>
                 )}
               </div>

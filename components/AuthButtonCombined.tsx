@@ -194,6 +194,13 @@ export function AuthButtonCombined() {
                 >
                   Analytics
                 </Link>
+                <Link
+                  href="/admin/coming-soon-emails"
+                  className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Coming Soon Emails
+                </Link>
               </>
             )}
             <div className="border-t border-nfw-aubergine/10 my-2" />
