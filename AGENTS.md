@@ -924,3 +924,7 @@ Created a Coming Soon landing page for non-authenticated users with email captur
 -- Run in Supabase SQL Editor:
 -- Contents of supabase/migrations/028_create_coming_soon_emails.sql
 ```
+
+**Bug Fix - Dashboard Cookie Error:**
+- `app/dashboard/page.tsx` was creating Supabase client inline instead of using `@/lib/supabase/server` helper
+- Fixed by using `createClient()` from `@/lib/supabase/server` which has proper try-catch for Next.js 15 cookie restrictions
