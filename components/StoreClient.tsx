@@ -120,7 +120,7 @@ export default function StoreClient({
 
   const canClaim = (product: StoreProduct) => {
     if (product.status === "DRAFT") {
-      return { eligible: false, reason: "Coming Soon" };
+      return { eligible: false, reason: "Dropping Soon" };
     }
     if (!userTier || !product.eligibilityTiers.includes(userTier)) {
       return { eligible: false, reason: "Not Available for Your Tier" };
@@ -227,7 +227,7 @@ export default function StoreClient({
                     {product.status === "DRAFT" && (
                       <div className="absolute top-3 left-3">
                         <span className="bg-nfw-wisteria text-white px-3 py-1.5 font-ui text-xs font-black tracking-[0.06em] uppercase">
-                          Coming Soon
+                          Dropping Soon
                         </span>
                       </div>
                     )}

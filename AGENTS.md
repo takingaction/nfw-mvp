@@ -952,7 +952,7 @@ Added Shopify product status awareness to the Zero Dollar Store to show draft it
 
 **Behavior:**
 - DRAFT products display with grayscale + reduced opacity
-- "Coming Soon" purple badge overlaid on product image
-- "Claim Item" button disabled with "Coming Soon" label
+- "Dropping Soon" purple badge overlaid on product image
+- "Claim Item" button disabled with "Dropping Soon" label
 - Users cannot open claim modal for DRAFT items
 - Mock data includes "Lip Balm Set" as example DRAFT product for testing
