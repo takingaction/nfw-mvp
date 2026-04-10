@@ -928,3 +928,9 @@ Created a Coming Soon landing page for non-authenticated users with email captur
 **Bug Fix - Dashboard Cookie Error:**
 - `app/dashboard/page.tsx` was creating Supabase client inline instead of using `@/lib/supabase/server` helper
 - Fixed by using `createClient()` from `@/lib/supabase/server` which has proper try-catch for Next.js 15 cookie restrictions
+
+**Bug Fix - Navigation Client-Side Navigation Error:**
+- Navigation component was using server-only `headers()` API for pathname check
+- On client-side navigation (clicking logo), `headers()` didn't re-evaluate, causing React error #300
+- Fixed by creating `NavigationContent` client component that uses `usePathname()` for route check
+- Navigation server component fetches data, wraps content in NavigationContent which handles client-side route detection

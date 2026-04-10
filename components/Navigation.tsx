@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
-import { headers } from "next/headers";
 import NavigationClient from "./NavigationClient";
 import MobileMenu from "./MobileMenu";
 import { AuthButtonCombined } from "./AuthButtonCombined";
+import NavigationContent from "./NavigationContent";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,13 +26,6 @@ interface HeaderData {
 }
 
 export default async function Navigation() {
-  const headersList = await headers();
-  const pathname = headersList.get("x-pathname") || "/";
-  
-  if (pathname === "/coming-soon") {
-    return null;
-  }
-
   const { data: header } = await supabaseAdmin
     .from("site_header")
     .select("*")
@@ -73,52 +66,54 @@ export default async function Navigation() {
   }));
 
   return (
-    <nav className="w-full bg-nfw-aubergine sticky top-0 z-50 shadow-md">
-      <div className="max-w-[1400px] mx-auto px-4">
-        <div className="flex items-center justify-between h-[90px] py-2">
-          {/* Mobile: Logo left, Hamburger right */}
-          <div className="flex lg:hidden items-center w-full">
-            <NavigationClient
-              side="left"
-              logoUrl={headerData.logo_url}
-              navLinks={navLinks}
-            />
-            <div className="ml-auto">
-              <MobileMenu />
-            </div>
-          </div>
-
-          {/* Desktop: Logo left, nav center-right */}
-          <div className="hidden lg:flex w-full h-full items-center gap-8">
-            {/* Left: Logo */}
-            <NavigationClient
-              side="left"
-              logoUrl={headerData.logo_url}
-              navLinks={navLinks}
-            />
-
-            {/* Right: Nav items + donate + auth button */}
-            <div className="flex items-center gap-6 ml-auto">
+    <NavigationContent>
+      <nav className="w-full bg-nfw-aubergine sticky top-0 z-50 shadow-md">
+        <div className="max-w-[1400px] mx-auto px-4">
+          <div className="flex items-center justify-between h-[90px] py-2">
+            {/* Mobile: Logo left, Hamburger right */}
+            <div className="flex lg:hidden items-center w-full">
               <NavigationClient
-                side="right"
+                side="left"
                 logoUrl={headerData.logo_url}
                 navLinks={navLinks}
               />
-              {headerData.donate_label && headerData.donate_url && (
-                <a
-                  href={headerData.donate_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center px-4 h-10 bg-nfw-citrine text-nfw-blackberry font-ui font-bold text-sm tracking-[0.06em] uppercase hover:bg-nfw-citrine/90 transition-colors"
-                >
-                  {headerData.donate_label}
-                </a>
-              )}
-              <AuthButtonCombined />
+              <div className="ml-auto">
+                <MobileMenu />
+              </div>
+            </div>
+
+            {/* Desktop: Logo left, nav center-right */}
+            <div className="hidden lg:flex w-full h-full items-center gap-8">
+              {/* Left: Logo */}
+              <NavigationClient
+                side="left"
+                logoUrl={headerData.logo_url}
+                navLinks={navLinks}
+              />
+
+              {/* Right: Nav items + donate + auth button */}
+              <div className="flex items-center gap-6 ml-auto">
+                <NavigationClient
+                  side="right"
+                  logoUrl={headerData.logo_url}
+                  navLinks={navLinks}
+                />
+                {headerData.donate_label && headerData.donate_url && (
+                  <a
+                    href={headerData.donate_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center px-4 h-10 bg-nfw-citrine text-nfw-blackberry font-ui font-bold text-sm tracking-[0.06em] uppercase hover:bg-nfw-citrine/90 transition-colors"
+                  >
+                    {headerData.donate_label}
+                  </a>
+                )}
+                <AuthButtonCombined />
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </NavigationContent>
   );
 }
