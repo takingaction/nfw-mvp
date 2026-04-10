@@ -935,6 +935,12 @@ Created a Coming Soon landing page for non-authenticated users with email captur
 - Fixed by creating `NavigationContent` client component that uses `usePathname()` for route check
 - Navigation server component fetches data, wraps content in NavigationContent which handles client-side route detection
 
+**Coming Soon Emails Link Added to Navigation:**
+- Added "Coming Soon Emails" link to Support section in both desktop and mobile navigation
+- Links to `/admin/coming-soon-emails`
+- Default header in Navigation.tsx and MobileMenu.tsx updated
+- Note: For production, update `site_header` table in database to include this link
+
 ### Session 2026-04-10: Store Draft Product Visibility
 
 Added Shopify product status awareness to the Zero Dollar Store to show draft items as disabled.
