@@ -90,3 +90,45 @@ export async function sendBankInfoRequestEmail({
     console.error("Failed to send bank info request email:", err);
   }
 }
+
+export async function sendContactFormEmail({
+  name,
+  email,
+  subject,
+  message,
+}: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}) {
+  const timestamp = new Date().toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  const text = `New contact form submission
+
+Name: ${name}
+Email: ${email}
+Subject: ${subject}
+Message: ${message}
+
+Submitted: ${timestamp}
+`;
+
+  try {
+    const resend = getResend();
+    await resend.emails.send({
+      from: "NFW <info@nationalfundforwomen.org>",
+      to: "ronpassaro@gmail.com",
+      subject: "NFW Contact Form Submission",
+      text,
+    });
+  } catch (err) {
+    console.error("Failed to send contact form email:", err);
+  }
+}

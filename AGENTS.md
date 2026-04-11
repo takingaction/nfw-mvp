@@ -944,20 +944,20 @@ Created a Coming Soon landing page for non-authenticated users with email captur
 
 Added Shopify product status awareness to the Zero Dollar Store to show draft items as disabled.
 
-**Feature:** Products with `DRAFT` status in Shopify now appear greyed out with "Coming Soon" badge and disabled claim button.
+**Feature:** Products with `DRAFT` status in Shopify now appear greyed out with "Dropping Soon" badge and disabled claim button.
 
 **Files Modified:**
 - `lib/shopify.ts` - Added `status` field to `ShopifyProduct` type and `PRODUCTS_QUERY` GraphQL
 - `lib/mock-shopify.ts` - Added `status` to `MockProduct` type and `transformShopifyProduct()` function
 - `app/api/shopify/products/route.ts` - Passes `status` through to client
 - `components/StoreClient.tsx` - Updated to handle draft products:
-  - Added `status` check in `canClaim()` - returns "Coming Soon" for DRAFT items
+  - Added `status` check in `canClaim()` - returns "Dropping Soon" for DRAFT items
   - DRAFT products greyed out (same as out-of-stock)
-  - "Coming Soon" badge in top-left of product image
+  - Both "Out of Stock" and "Dropping Soon" badges use wisteria background, top-left placement
 
 **Behavior:**
 - DRAFT products display with grayscale + reduced opacity
-- "Dropping Soon" purple badge overlaid on product image
+- "Dropping Soon" purple badge overlaid on product image (top-left)
 - "Claim Item" button disabled with "Dropping Soon" label
 - Users cannot open claim modal for DRAFT items
 - Mock data includes "Lip Balm Set" as example DRAFT product for testing

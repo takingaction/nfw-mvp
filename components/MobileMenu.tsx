@@ -350,6 +350,20 @@ export default function MobileMenu() {
                           Edit Footer
                         </Link>
                         <Link
+                          href="/admin/faq"
+                          onClick={closeMenu}
+                          className={linkClass}
+                        >
+                          Edit FAQ
+                        </Link>
+                        <Link
+                          href="/admin/contact"
+                          onClick={closeMenu}
+                          className={linkClass}
+                        >
+                          Edit Contact
+                        </Link>
+                        <Link
                           href="/admin/grants"
                           onClick={closeMenu}
                           className={linkClass}

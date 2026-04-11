@@ -158,6 +158,20 @@ export function AuthButton() {
                   Edit Footer
                 </Link>
                 <Link
+                  href="/admin/faq"
+                  className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Edit FAQ
+                </Link>
+                <Link
+                  href="/admin/contact"
+                  className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Edit Contact
+                </Link>
+                <Link
                   href="/admin/grants"
                   className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}

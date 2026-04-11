@@ -218,8 +218,8 @@ export default function StoreClient({
                       <div className="w-full h-full bg-nfw-powder/20" />
                     )}
                     {!product.availableForSale && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                        <span className="bg-nfw-aubergine text-nfw-dove px-4 py-2 font-ui text-xs font-black tracking-[0.06em] uppercase">
+                      <div className="absolute top-3 left-3">
+                        <span className="bg-nfw-wisteria text-white px-3 py-1.5 font-ui text-xs font-black tracking-[0.06em] uppercase">
                           Out of Stock
                         </span>
                       </div>
