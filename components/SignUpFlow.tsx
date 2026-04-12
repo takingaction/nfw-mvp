@@ -840,7 +840,7 @@ export default function SignUpFlow() {
               {/* Identities */}
               <div>
                 <label className={labelClass}>
-                  Tell us a little about your life <span className="text-nfw-lilac">*</span>
+                  Tell us a little about your life <span className="text-nfw-lilac">* </span>
                   <span className="text-nfw-blackberry/40 font-normal">
                     (Select all that apply)
                   </span>
