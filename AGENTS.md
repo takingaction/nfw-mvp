@@ -1095,3 +1095,35 @@ Created new "Tabbed Feature" section template based on TYB website structure.
 - `lib/sections/types.ts` - Added `TabbedFeatureItem`, `TabbedFeatureContent` interfaces, added `tabbed_feature` to unions
 - `lib/sections/registry.ts` - Added `tabbed_feature` entry with editorFields
 - `components/sections/SectionRenderer.tsx` - Added import and case for `tabbed_feature`
+
+### Session 2026-04-12: Database Schema Cleanup
+
+Comprehensive review and cleanup of database schema for structure, relationships, data integrity, and performance.
+
+**Migration 035: Data Integrity Fixes** (`supabase/migrations/035_data_integrity_fixes.sql`)
+
+**NOT NULL Constraints Added:**
+- `profiles.full_name` - Required for grant communications
+- `profiles.membership_level` - Explicit non-null enforcement
+- `grants.who_are_you`, `grants.biggest_challenge`, `grants.fund_usage` - Essay fields enforced
+
+**Unique Constraints Added:**
+- `profiles.access_perks_member_id` - Partial unique index (1:1 with profile)
+- `articles.slug` - URL stability and SEO
+- `article_categories.slug` - Routing consistency
+
+**Gift Code Normalization:**
+- `generate_gift_code()` updated to return uppercase only
+- Existing codes normalized to uppercase
+- CHECK constraint enforces uppercase on new codes
+
+**Migration 036: Performance Indexes** (`supabase/migrations/036_performance_indexes.sql`)
+
+**Indexes Added:**
+- `idx_articles_published_featured` - Homepage featured content
+- `idx_articles_published_at` - Archive/news feeds ordered by date
+- `idx_grant_cycles_status_dates` - Find open cycles with date overlap
+- `idx_offer_redemptions_offer_key` - Quick offer lookup by Access Perks key
+- `idx_profiles_access_perks_id` - Access Perks sync lookups
+- `idx_claims_user_product` - Duplicate claim prevention
+- `idx_article_likes_user_article` - Duplicate like prevention
