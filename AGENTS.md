@@ -1042,3 +1042,31 @@ When gifted membership expires (checked on login/page load):
 Add "Gift Membership" link to:
 - Header navigation
 - Footer navigation
+
+### Session 2026-04-11: Admin SEO Fields for FAQ and Contact Pages
+
+Added admin-editable SEO title and description fields to `/faq` and `/contact` pages via their admin pages.
+
+**Database:**
+- Created `supabase/migrations/033_add_seo_fields_to_faq_and_contact.sql`
+- Added `meta_title TEXT` and `meta_description TEXT` columns to `site_faq` and `site_contact` tables
+- Created indexes on SEO fields
+
+**Files Created:**
+- `components/faq/FaqClient.tsx` - Client component extracted from FAQ page
+- `components/contact/ContactClient.tsx` - Client component extracted from Contact page
+
+**Files Modified:**
+- `app/faq/page.tsx` - Converted to server component with `generateMetadata()` export
+- `app/contact/page.tsx` - Converted to server component with `generateMetadata()` export
+- `app/api/faq/route.ts` - Added `meta_title` and `meta_description` to POST handler
+- `app/api/contact/route.ts` - Added `meta_title` and `meta_description` to POST handler
+- `components/admin/FaqEditorClient.tsx` - Added collapsible SEO Settings section with character counters
+- `components/admin/ContactEditorClient.tsx` - Added collapsible SEO Settings section with character counters
+
+**How it works:**
+- Admin pages have collapsible "SEO Settings" section (similar to /admin/pages)
+- Character counters for title (60 char max) and description (160 char max)
+- Warning text appears when character count exceeds recommended limit
+- FAQ and Contact pages now export proper metadata via `generateMetadata()`
+- Fallback title/description if admin hasn't set custom SEO values

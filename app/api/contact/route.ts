@@ -62,6 +62,8 @@ export async function POST(request: NextRequest) {
       quick_links,
       not_member_heading,
       not_member_subheading,
+      meta_title,
+      meta_description,
     } = body;
 
     const contactData = {
@@ -74,6 +76,8 @@ export async function POST(request: NextRequest) {
       quick_links: quick_links || [],
       not_member_heading: not_member_heading || "Not a member yet?",
       not_member_subheading: not_member_subheading || "Join thousands of women who have already found relief, connection, and real support through NFW. It's free to get started.",
+      meta_title: meta_title || null,
+      meta_description: meta_description || null,
       updated_at: new Date().toISOString(),
     };
 

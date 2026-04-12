@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { Plus, Trash2, Save, Link2, ChevronDown, ChevronUp } from "lucide-react";
 
+const MAX_TITLE = 60;
+const MAX_DESCRIPTION = 160;
+
 interface FaqQuestion {
   question: string;
   answer: string;
@@ -30,6 +33,8 @@ interface FaqData {
   still_have_questions_heading: string;
   still_have_questions_subheading: string;
   still_have_questions_buttons: FaqButton[];
+  meta_title?: string | null;
+  meta_description?: string | null;
 }
 
 const defaultData: FaqData = {
@@ -70,6 +75,9 @@ export default function FaqEditorClient({ initialData }: { initialData: FaqData 
   const [toast, setToast] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<number, boolean>>({});
   const [expandedQuestions, setExpandedQuestions] = useState<Record<string, boolean>>({});
+  const [seoExpanded, setSeoExpanded] = useState(false);
+  const [metaTitle, setMetaTitle] = useState(data.meta_title || "");
+  const [metaDescription, setMetaDescription] = useState(data.meta_description || "");
 
   const [linkModalState, setLinkModalState] = useState<{
     sectionIndex: number;
@@ -225,6 +233,8 @@ export default function FaqEditorClient({ initialData }: { initialData: FaqData 
           still_have_questions_heading: stillHaveQuestionsHeading,
           still_have_questions_subheading: stillHaveQuestionsSubheading,
           still_have_questions_buttons: stillHaveQuestionsButtons,
+          meta_title: metaTitle.trim() || null,
+          meta_description: metaDescription.trim() || null,
         }),
       });
 
@@ -310,6 +320,70 @@ export default function FaqEditorClient({ initialData }: { initialData: FaqData 
             </select>
           </div>
         </div>
+      </div>
+
+      {/* SEO Settings - Collapsible */}
+      <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setSeoExpanded(!seoExpanded)}
+          className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors"
+        >
+          <span className="text-sm font-semibold text-nfw-blackberry">SEO Settings</span>
+          {seoExpanded ? (
+            <ChevronUp className="w-4 h-4 text-nfw-blackberry/50" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-nfw-blackberry/50" />
+          )}
+        </button>
+
+        {seoExpanded && (
+          <div className="px-6 pb-6 space-y-4 border-t border-nfw-blackberry/10 pt-4">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50">
+                  SEO Title
+                </label>
+                <span className={`text-xs ${metaTitle.length > MAX_TITLE ? "text-red-500" : "text-nfw-blackberry/40"}`}>
+                  {metaTitle.length}/{MAX_TITLE}
+                </span>
+              </div>
+              <input
+                type="text"
+                value={metaTitle}
+                onChange={(e) => setMetaTitle(e.target.value)}
+                maxLength={MAX_TITLE + 20}
+                placeholder={heroHeadline || "Page title will be used if empty"}
+                className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry transition-colors"
+              />
+              {metaTitle.length > MAX_TITLE && (
+                <p className="text-xs text-red-500 mt-1">Recommended: 60 characters or less</p>
+              )}
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50">
+                  SEO Description
+                </label>
+                <span className={`text-xs ${metaDescription.length > MAX_DESCRIPTION ? "text-red-500" : "text-nfw-blackberry/40"}`}>
+                  {metaDescription.length}/{MAX_DESCRIPTION}
+                </span>
+              </div>
+              <textarea
+                value={metaDescription}
+                onChange={(e) => setMetaDescription(e.target.value)}
+                maxLength={MAX_DESCRIPTION + 40}
+                rows={3}
+                placeholder="Brief description for search results..."
+                className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry transition-colors resize-none"
+              />
+              {metaDescription.length > MAX_DESCRIPTION && (
+                <p className="text-xs text-red-500 mt-1">Recommended: 160 characters or less</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* FAQ Sections */}

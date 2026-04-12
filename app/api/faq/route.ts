@@ -61,6 +61,8 @@ export async function POST(request: NextRequest) {
       still_have_questions_heading,
       still_have_questions_subheading,
       still_have_questions_buttons,
+      meta_title,
+      meta_description,
     } = body;
 
     const faqData = {
@@ -72,6 +74,8 @@ export async function POST(request: NextRequest) {
       still_have_questions_heading: still_have_questions_heading || "Still have questions?",
       still_have_questions_subheading: still_have_questions_subheading || "We're here to help. Reach out and a real person will get back to you.",
       still_have_questions_buttons: still_have_questions_buttons || [],
+      meta_title: meta_title || null,
+      meta_description: meta_description || null,
       updated_at: new Date().toISOString(),
     };
 
