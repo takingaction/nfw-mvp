@@ -32,6 +32,7 @@ import PerksStoreGridSection from "./PerksStoreGridSection";
 import TestimonialsGridSection from "./TestimonialsGridSection";
 import MemberCelebrationGridSection from "./MemberCelebrationGridSection";
 import StackedFeaturesSection from "./StackedFeaturesSection";
+import TabbedFeatureSection from "./TabbedFeatureSection";
 
 interface Props {
   sections: PageSection[];
@@ -119,6 +120,8 @@ export default function SectionRenderer({ sections }: Props) {
             return <MemberCelebrationGridSection key={section.id} content={content} />;
           case "stacked_features":
             return <StackedFeaturesSection key={section.id} content={content} />;
+          case "tabbed_feature":
+            return <TabbedFeatureSection key={section.id} content={content} />;
           default:
             return null;
         }

@@ -1070,3 +1070,28 @@ Added admin-editable SEO title and description fields to `/faq` and `/contact` p
 - Warning text appears when character count exceeds recommended limit
 - FAQ and Contact pages now export proper metadata via `generateMetadata()`
 - Fallback title/description if admin hasn't set custom SEO values
+
+### Session 2026-04-11: Tabbed Feature Section Template
+
+Created new "Tabbed Feature" section template based on TYB website structure.
+
+**Structure:**
+- 3 toggle buttons at top (Discover, Access, Earn by default)
+- Each tab reveals: eyebrow, headline (with optional italic phrase), body text, image on left, CTA button on right
+- 2-column layout: image left, text + CTA right
+- Responsive (stacks on mobile)
+
+**Styling:**
+- Tab buttons use DM Sans font (font-ui)
+- Active tab: aubergine background, white text
+- Inactive tabs: dove background, aubergine text
+- Border around tab button group
+
+**Files Created:**
+- `components/sections/TabbedFeatureSection.tsx` - Client component with tab toggle and 2-column layout
+- `supabase/migrations/034_add_tabbed_feature_template.sql` - Template insert
+
+**Files Modified:**
+- `lib/sections/types.ts` - Added `TabbedFeatureItem`, `TabbedFeatureContent` interfaces, added `tabbed_feature` to unions
+- `lib/sections/registry.ts` - Added `tabbed_feature` entry with editorFields
+- `components/sections/SectionRenderer.tsx` - Added import and case for `tabbed_feature`

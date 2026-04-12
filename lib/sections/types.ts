@@ -36,7 +36,8 @@ export type SectionType =
   | "perks_store_grid"
   | "testimonials_grid"
   | "member_celebration_grid"
-  | "stacked_features";
+  | "stacked_features"
+  | "tabbed_feature";
 
 // ── Shared primitives ─────────────────────────────────────────
 
@@ -670,6 +671,24 @@ export interface StackedFeaturesContent {
   columns: StackedFeaturesColumn[];
 }
 
+// ── tabbed_feature ─────────────────────────────────────────
+
+export interface TabbedFeatureItem {
+  tab_label: string;
+  eyebrow: string;
+  headline: string;
+  headline_italic_phrase: string;
+  body: string;
+  image_url: string;
+  cta_label: string;
+  cta_url: string;
+}
+
+export interface TabbedFeatureContent {
+  items: [TabbedFeatureItem, TabbedFeatureItem, TabbedFeatureItem];
+  background?: BackgroundColor;
+}
+
 // ── Union type for all content ────────────────────────────────
 
 export type SectionContent =
@@ -705,7 +724,8 @@ export type SectionContent =
   | PerksStoreGridContent
   | TestimonialsGridContent
   | MemberCelebrationGridContent
-  | StackedFeaturesContent;
+  | StackedFeaturesContent
+  | TabbedFeatureContent;
 
 // ── DB row shape ──────────────────────────────────────────────
 

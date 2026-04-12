@@ -1359,4 +1359,62 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       },
     ],
   },
+
+  tabbed_feature: {
+    type: "tabbed_feature",
+    label: "Tabbed Feature",
+    defaultContent: {
+      background: "dove",
+      items: [
+        {
+          tab_label: "Discover",
+          eyebrow: "Explore",
+          headline: "Find new faves, every day.",
+          headline_italic_phrase: "",
+          body: "Find new products to obsess over in beauty, fitness, and more – from hundreds of brands.",
+          image_url: "",
+          cta_label: "Join Now",
+          cta_url: "/auth/sign-up",
+        },
+        {
+          tab_label: "Access",
+          headline_italic_phrase: "",
+          eyebrow: "Exclusive",
+          body: "Limited-edition drops, exclusive collabs, and partnerships—members get first dibs on it all.",
+          image_url: "",
+          cta_label: "Get Insider Access",
+          cta_url: "/auth/sign-up",
+        },
+        {
+          tab_label: "Earn",
+          eyebrow: "Rewards",
+          headline: "Play your way to rewards",
+          headline_italic_phrase: "",
+          body: "Collect coins as you rise to new levels. Play in Challenges. Share current Obsessions. Earn instant rewards.",
+          image_url: "",
+          cta_label: "Start Earning",
+          cta_url: "/auth/sign-up",
+        },
+      ],
+    },
+    editorFields: [
+      { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
+      {
+        key: "items",
+        label: "Tabs",
+        type: "array",
+        itemLabel: "Tab",
+        fields: [
+          { key: "tab_label", label: "Tab button label", type: "text" },
+          { key: "eyebrow", label: "Eyebrow", type: "text" },
+          { key: "headline", label: "Headline", type: "text" },
+          { key: "headline_italic_phrase", label: "Italic phrase in headline", type: "text" },
+          { key: "body", label: "Body", type: "textarea" },
+          { key: "image_url", label: "Image", type: "image" },
+          { key: "cta_label", label: "CTA label", type: "text" },
+          { key: "cta_url", label: "CTA URL", type: "url" },
+        ],
+      },
+    ],
+  },
 };
