@@ -55,13 +55,15 @@ export default function TabbedFeatureSection({ content }: Props) {
             {/* Image - Left side */}
             <div className="relative">
               {activeItem.image_url ? (
-                <img
-                  src={activeItem.image_url}
-                  alt=""
-                  className="w-full h-auto rounded-lg"
-                />
+                <div className="w-full aspect-[3/2] rounded-lg overflow-hidden">
+                  <img
+                    src={activeItem.image_url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               ) : (
-                <div className="w-full aspect-[4/3] bg-nfw-blackberry/10 rounded-lg flex items-center justify-center">
+                <div className="w-full aspect-[3/2] bg-nfw-blackberry/10 rounded-lg flex items-center justify-center">
                   <span className="text-nfw-blackberry/30 text-sm">No image</span>
                 </div>
               )}
