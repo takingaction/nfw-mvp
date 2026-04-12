@@ -211,15 +211,15 @@ export default function GiftMembershipPage() {
 
         <div className="mt-16 text-center">
           <p className="text-nfw-blackberry/50 text-sm">
-            Want to redeem a gift code?{" "}
+            Have a gift code to redeem?{" "}
             <Link href="/auth/sign-up" className="text-nfw-wisteria font-semibold hover:underline">
-              Create an account
+              Sign up
             </Link>{" "}
-            or{" "}
+            and enter it during registration, or{" "}
             <Link href="/auth/login" className="text-nfw-wisteria font-semibold hover:underline">
               sign in
             </Link>{" "}
-            and enter it during signup.
+            and redeem it in your dashboard.
           </p>
         </div>
       </div>
