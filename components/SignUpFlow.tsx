@@ -812,7 +812,7 @@ export default function SignUpFlow() {
               <div>
                 <label className={labelClass}>
                   Which best describes your current annual income?{" "}
-                  <span className="text-nfw-lilac">*</span>
+<span className="text-nfw-lilac">* </span>
                 </label>
                 <div className="space-y-2 mt-2">
                   {INCOME_RANGES.map((range) => (
