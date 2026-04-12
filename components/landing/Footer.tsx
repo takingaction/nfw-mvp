@@ -114,9 +114,9 @@ export default function Footer() {
               <Image
                 src={data.logo_url}
                 alt="NFW Logo"
-                width={180}
-                height={90}
-                className="h-auto w-full max-w-[180px]"
+                width={240}
+                height={120}
+                className="h-auto w-full max-w-[240px]"
                 priority
               />
             )}
