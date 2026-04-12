@@ -91,6 +91,50 @@ export async function sendBankInfoRequestEmail({
   }
 }
 
+export async function sendGiftCodesEmail({
+  to,
+  buyerName,
+  codes,
+}: {
+  to: string;
+  buyerName: string;
+  codes: string[];
+}) {
+  const codesList = codes.map((code) => `  • ${code}`).join("\n");
+
+  const text = `${buyerName},
+
+Thank you for your gift membership purchase! Here are your gift code(s):
+
+${codesList}
+
+Share these codes with your friends. Each code redeems 1 year of Contributing membership ($15 value).
+
+How to redeem:
+1. Friend creates a free NFW account at https://nationalfundforwomen.org/auth/sign-up
+2. During signup, they enter their code on the membership step
+3. They enjoy a full year of Contributing membership!
+
+Note: Each code can only be used once. If your friend already has an account, they can enter the code in their dashboard.
+
+Thank you for supporting National Fund for Women!
+
+With love,
+The NFW Team`;
+
+  try {
+    const resend = getResend();
+    await resend.emails.send({
+      from: FROM,
+      to,
+      subject: "Your NFW Gift Membership Code(s)",
+      text,
+    });
+  } catch (err) {
+    console.error("Failed to send gift codes email:", err);
+  }
+}
+
 export async function sendContactFormEmail({
   name,
   email,

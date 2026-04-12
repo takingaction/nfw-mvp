@@ -5,6 +5,7 @@ import RecentRedemptions from "@/components/dashboard/RecentRedemptions";
 import RecentClaims from "@/components/dashboard/RecentClaims";
 import Link from "next/link";
 import AccessPerksSync from "@/components/AccessPerksSync";
+import DashboardContent from "@/components/dashboard/DashboardContent";
 import {
   FileText,
   Gift,
@@ -105,6 +106,8 @@ export default async function DashboardPage() {
             Here&apos;s what&apos;s happening with your NFW membership
           </p>
         </div>
+
+        <DashboardContent isFreeMember={profile?.membership_level === "free"} />
 
         <div className="grid md:grid-cols-2 gap-6 mb-6">
           <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">

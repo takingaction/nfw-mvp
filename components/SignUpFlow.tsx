@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, Check, ChevronRight, ArrowLeft } from "lucide-react";
+import { Loader2, Check, ChevronRight, ArrowLeft, Gift, ChevronDown } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -143,6 +143,14 @@ const PLANS = [
   },
 ];
 
+interface GiftCodeState {
+  code: string;
+  applied: boolean;
+  validating: boolean;
+  error: string | null;
+  success: boolean;
+}
+
 const BENEFITS = [
   "Microgrants from $100-$5,000",
   "Thousands of perks & discounts",
@@ -160,6 +168,15 @@ export default function SignUpFlow() {
   const [step, setStep] = useState(initialStep);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [giftCode, setGiftCode] = useState<GiftCodeState>({
+    code: "",
+    applied: false,
+    validating: false,
+    error: null,
+    success: false,
+  });
+  const [showGiftCodeInput, setShowGiftCodeInput] = useState(false);
 
   // Step 0
   const [email, setEmail] = useState("");
@@ -357,6 +374,92 @@ export default function SignUpFlow() {
       setError(err.message || "Failed to start checkout");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const validateGiftCode = async () => {
+    if (!giftCode.code.trim()) {
+      setGiftCode((prev) => ({ ...prev, error: "Please enter a gift code" }));
+      return;
+    }
+
+    setGiftCode((prev) => ({ ...prev, validating: true, error: null }));
+
+    try {
+      const res = await fetch(`/api/gift-codes/redeem?code=${encodeURIComponent(giftCode.code)}`);
+      const data = await res.json();
+
+      if (!data.valid) {
+        setGiftCode((prev) => ({
+          ...prev,
+          validating: false,
+          error: data.error || "Invalid gift code",
+        }));
+        return;
+      }
+
+      setGiftCode((prev) => ({
+        ...prev,
+        validating: false,
+        success: true,
+        applied: true,
+      }));
+    } catch (err: any) {
+      setGiftCode((prev) => ({
+        ...prev,
+        validating: false,
+        error: "Failed to validate code. Please try again.",
+      }));
+    }
+  };
+
+  const applyGiftCode = async () => {
+    if (!giftCode.code.trim()) {
+      setGiftCode((prev) => ({ ...prev, error: "Please enter a gift code" }));
+      return;
+    }
+
+    setGiftCode((prev) => ({ ...prev, validating: true, error: null }));
+
+    try {
+      const res = await fetch("/api/gift-codes/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: giftCode.code }),
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        setGiftCode((prev) => ({
+          ...prev,
+          validating: false,
+          error: data.error,
+        }));
+        return;
+      }
+
+      setGiftCode((prev) => ({
+        ...prev,
+        validating: false,
+        success: true,
+        applied: true,
+      }));
+
+      // Save profile as completed with contributing membership
+      await saveProfile({
+        profile_completed: true,
+        membership_level: "contributing",
+        subscription_status: "active",
+        subscription_ends_at: data.subscriptionEndsAt,
+      });
+
+      window.location.href = "/auth/welcome";
+    } catch (err: any) {
+      setGiftCode((prev) => ({
+        ...prev,
+        validating: false,
+        error: "Failed to apply code. Please try again.",
+      }));
     }
   };
 
@@ -830,6 +933,80 @@ export default function SignUpFlow() {
                   Every tier supports the mission. Upgrade anytime.
                 </p>
               </div>
+
+              {!giftCode.applied && (
+                <div className="border border-nfw-lilac/30 rounded-xl overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setShowGiftCodeInput(!showGiftCodeInput)}
+                    className="w-full flex items-center justify-between p-4 bg-nfw-lilac/10 hover:bg-nfw-lilac/20 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Gift className="w-5 h-5 text-nfw-wisteria" />
+                      <span className="font-semibold text-nfw-blackberry text-sm">
+                        I have a gift code
+                      </span>
+                    </div>
+                    <ChevronDown
+                      className={`w-4 h-4 text-nfw-blackberry/40 transition-transform ${showGiftCodeInput ? "rotate-180" : ""}`}
+                    />
+                  </button>
+
+                  {showGiftCodeInput && (
+                    <div className="p-4 border-t border-nfw-lilac/20">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={giftCode.code}
+                          onChange={(e) =>
+                            setGiftCode((prev) => ({
+                              ...prev,
+                              code: e.target.value.toUpperCase(),
+                              error: null,
+                            }))
+                          }
+                          placeholder="Enter your gift code"
+                          className="flex-1 px-4 py-2.5 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent text-sm font-mono uppercase"
+                        />
+                        <button
+                          type="button"
+                          onClick={applyGiftCode}
+                          disabled={giftCode.validating || !giftCode.code.trim()}
+                          className="px-5 py-2.5 bg-nfw-wisteria text-white font-semibold text-sm hover:bg-nfw-wisteria/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+                        >
+                          {giftCode.validating ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            "Apply"
+                          )}
+                        </button>
+                      </div>
+                      {giftCode.error && (
+                        <p className="text-red-600 text-sm mt-2">{giftCode.error}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {giftCode.applied && (
+                <div className="p-4 bg-[#d4f1ad]/20 border border-[#d4f1ad]/30 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-[#d4f1ad] rounded-full flex items-center justify-center">
+                      <Check className="w-4 h-4 text-nfw-blackberry" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-nfw-blackberry text-sm">
+                        Gift code applied!
+                      </p>
+                      <p className="text-nfw-blackberry/60 text-xs">
+                        You now have 1 year of Contributing membership.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3">
                 {PLANS.map((plan) => (
                   <div

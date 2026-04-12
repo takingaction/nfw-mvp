@@ -961,3 +961,84 @@ Added Shopify product status awareness to the Zero Dollar Store to show draft it
 - "Claim Item" button disabled with "Dropping Soon" label
 - Users cannot open claim modal for DRAFT items
 - Mock data includes "Lip Balm Set" as example DRAFT product for testing
+
+### Session 2026-04-11: Gift Membership Feature
+
+Implemented gift membership purchase and redemption system.
+
+#### Purchase Flow
+
+**New pages:**
+- `/gift-membership` - Landing page with quantity selector (1-10), buyer form (name, email), Stripe checkout
+- `/gift-membership/success` - Shows purchased codes after successful payment
+
+**New API routes:**
+- `POST /api/gift-checkout` - Creates Stripe Checkout session (mode: payment, one-time $15/code)
+  - Accepts: `{ quantity, buyerName, buyerEmail }`
+  - Uses inline price_data (no pre-created Stripe product needed)
+- Webhook handles `checkout.session.completed` for gift purchases, generates codes, sends email
+
+**Database migration:** `supabase/migrations/032_create_gift_membership_tables.sql`
+- `gift_membership_purchases` - Stores purchase records (buyer info, quantity, stripe IDs, total)
+- `gift_membership_codes` - Individual codes with redemption tracking
+
+**Email:** `sendGiftCodesEmail()` added to `lib/email.ts`
+- Sent to buyer after purchase
+- Contains all codes + redemption instructions
+
+#### Redemption Flow
+
+**During signup:**
+- `SignUpFlow.tsx` - Added collapsible "I have a gift code" section on Step 3
+- Validates and redeems code, upgrades user to contributing with 1-year subscription
+
+**Dashboard:**
+- `DashboardContent.tsx` - Client component showing gift code prompt for free members
+- `RedeemGiftCodeModal.tsx` - Modal for entering gift codes
+
+**API:** `POST /api/gift-codes/redeem`
+- Validates code, marks as redeemed, upgrades profile to contributing
+- Sets `subscription_ends_at = 1 year from now`
+
+#### Admin Page
+
+**`/admin/gift-codes`** - Gift codes management dashboard
+- Stats: total codes, redeemed, unredeemed, revenue
+- Table with filtering (all/redeemed/unredeemed) and search
+- CSV export
+
+**API:** `GET /api/admin/gift-codes` - Admin-only endpoint with stats and pagination
+
+#### Files Created/Modified
+
+**Created:**
+- `supabase/migrations/032_create_gift_membership_tables.sql`
+- `app/gift-membership/page.tsx`
+- `app/gift-membership/success/page.tsx`
+- `app/api/gift-checkout/route.ts`
+- `app/api/gift-codes/redeem/route.ts`
+- `app/api/admin/gift-codes/route.ts`
+- `app/admin/gift-codes/page.tsx`
+- `app/admin/gift-codes/AdminGiftCodes.tsx`
+- `components/gift/RedeemGiftCodeModal.tsx`
+- `components/dashboard/DashboardContent.tsx`
+- `lib/adminCheck.ts` (moved from middleware/)
+
+**Modified:**
+- `lib/email.ts` - Added `sendGiftCodesEmail()`
+- `app/api/webhook/route.ts` - Handle gift purchase completion
+- `components/SignUpFlow.tsx` - Gift code input on Step 3
+- `app/dashboard/page.tsx` - Added DashboardContent for gift prompt
+
+#### Post-Year Downgrade
+
+When gifted membership expires (checked on login/page load):
+- User's `subscription_ends_at` is checked
+- If expired: `membership_level = 'free'`, `subscription_status = null`, `subscription_ends_at = null`
+- User sees "Membership expired" state and can resubscribe
+
+#### Navigation Links Needed
+
+Add "Gift Membership" link to:
+- Header navigation
+- Footer navigation

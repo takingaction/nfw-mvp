@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
+import { sendGiftCodesEmail } from "@/lib/email";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
@@ -36,22 +37,73 @@ export async function POST(request: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        const userId = session.metadata?.userId;
-        const membershipLevel = session.metadata?.membershipLevel;
+        const isGiftPurchase = session.metadata?.giftPurchase === "true";
 
-        if (userId && membershipLevel) {
-          const { error } = await supabaseAdmin
-            .from("profiles")
-            .update({
-              membership_level: membershipLevel,
-              subscription_status: "active",
-              subscription_ends_at: null,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", userId);
+        if (isGiftPurchase) {
+          const buyerName = session.metadata?.buyerName || "Friend";
+          const buyerEmail = session.metadata?.buyerEmail;
+          const quantity = parseInt(session.metadata?.quantity || "1", 10);
 
-          if (error) {
-            console.error("Failed to update membership:", error);
+          if (buyerEmail && quantity > 0) {
+            // Create purchase record
+            const { data: purchase, error: purchaseError } = await supabaseAdmin
+              .from("gift_membership_purchases")
+              .insert({
+                buyer_name: buyerName,
+                buyer_email: buyerEmail,
+                quantity,
+                stripe_session_id: session.id,
+                stripe_payment_intent_id: session.payment_intent as string,
+                total_amount: session.amount_total || (quantity * 1500),
+              })
+              .select()
+              .single();
+
+            if (purchaseError) {
+              console.error("Failed to create purchase record:", purchaseError);
+              break;
+            }
+
+            // Generate codes
+            const codes: string[] = [];
+            for (let i = 0; i < quantity; i++) {
+              const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+              codes.push(code);
+
+              await supabaseAdmin.from("gift_membership_codes").insert({
+                purchase_id: purchase.id,
+                code,
+              });
+            }
+
+            // Send email with codes
+            await sendGiftCodesEmail({
+              to: buyerEmail,
+              buyerName,
+              codes,
+            });
+
+            console.log(`Gift purchase processed: ${quantity} codes for ${buyerEmail}`);
+          }
+        } else {
+          // Regular membership purchase
+          const userId = session.metadata?.userId;
+          const membershipLevel = session.metadata?.membershipLevel;
+
+          if (userId && membershipLevel) {
+            const { error } = await supabaseAdmin
+              .from("profiles")
+              .update({
+                membership_level: membershipLevel,
+                subscription_status: "active",
+                subscription_ends_at: null,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", userId);
+
+            if (error) {
+              console.error("Failed to update membership:", error);
+            }
           }
         }
         break;
