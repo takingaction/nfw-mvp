@@ -2,9 +2,9 @@ import { Suspense } from "react";
 import SignUpFlow from "@/components/SignUpFlow";
 
 export const metadata = {
-  title: "Join NFW",
+  title: "Become a Member | National Fund for Women",
   description:
-    "Create your National Fund for Women account and start accessing microgrants, perks, and more today.",
+    "Become a member of the National Fund for Women to access resources, perks, and programs designed to support women and strengthen communities.",
 };
 
 export default function SignUpPage() {
