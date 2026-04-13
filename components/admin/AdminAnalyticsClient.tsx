@@ -32,7 +32,7 @@ type Profile = {
   state: string | null;
   city: string | null;
   household_income: string | null;
-  age_range: string | null;
+  date_of_birth: string | null;
 };
 
 type Grant = {

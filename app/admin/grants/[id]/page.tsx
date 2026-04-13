@@ -31,7 +31,7 @@ export default async function AdminGrantCyclePage({
     .select(
       `
       *,
-      profiles:user_id (full_name, city, state, age_range, household_income)
+      profiles:user_id (full_name, city, state, date_of_birth, household_income)
     `,
     )
     .eq("cycle_id", id)

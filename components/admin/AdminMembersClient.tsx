@@ -16,7 +16,7 @@ type Member = {
   id: string;
   full_name: string | null;
   email: string;
-  age_range: string | null;
+  date_of_birth: string | null;
   state: string | null;
   city: string | null;
   household_income: string | null;
@@ -382,9 +382,9 @@ export default function AdminMembersClient({
               {/* Read-only details */}
               <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
                 <div className="bg-white p-3 border border-nfw-blackberry/5">
-                  <p className="text-nfw-blackberry/40 mb-1">Age Range</p>
+                  <p className="text-nfw-blackberry/40 mb-1">Date of Birth</p>
                   <p className="font-semibold text-nfw-blackberry">
-                    {selected.age_range || "—"}
+                    {selected.date_of_birth ? new Date(selected.date_of_birth).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : "—"}
                   </p>
                 </div>
                 <div className="bg-white p-3 border border-nfw-blackberry/5">

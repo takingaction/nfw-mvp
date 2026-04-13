@@ -4,8 +4,6 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2 } from "lucide-react";
 
-const AGE_RANGES = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"];
-
 const INCOME_RANGES = [
   "Less than $25k",
   "$25k-50k",
@@ -90,7 +88,7 @@ const US_STATES = [
 
 interface ProfileFormData {
   full_name: string;
-  age_range: string;
+  date_of_birth: string;
   phone_number: string;
   address_line1: string;
   address_line2: string;
@@ -122,7 +120,7 @@ export default function ProfileCompletionForm({
 
   const [formData, setFormData] = useState<ProfileFormData>({
     full_name: existingProfile?.full_name || "",
-    age_range: existingProfile?.age_range || "",
+    date_of_birth: existingProfile?.date_of_birth || "",
     phone_number: existingProfile?.phone_number || "",
     address_line1: existingProfile?.address_line1 || "",
     address_line2: existingProfile?.address_line2 || "",
@@ -220,26 +218,27 @@ export default function ProfileCompletionForm({
         />
       </div>
 
-      {/* Age Range */}
+      {/* Date of Birth */}
       <div>
         <label className={labelClass}>
-          Age Range <span className="text-nfw-lilac">*</span>
+          Date of birth <span className="text-nfw-lilac">*</span>
         </label>
-        <select
+        <input
+          type="date"
           required
-          value={formData.age_range}
+          value={formData.date_of_birth}
           onChange={(e) =>
-            setFormData({ ...formData, age_range: e.target.value })
+            setFormData({ ...formData, date_of_birth: e.target.value })
           }
+          max={(() => {
+            const today = new Date();
+            const eighteenYearsAgo = new Date(today.setFullYear(today.getFullYear() - 18));
+            return eighteenYearsAgo.toISOString().split('T')[0];
+          })()}
+          min="1900-01-01"
           className={inputClass}
-        >
-          <option value="">Select age range</option>
-          {AGE_RANGES.map((range) => (
-            <option key={range} value={range}>
-              {range}
-            </option>
-          ))}
-        </select>
+        />
+        <p className="text-xs text-nfw-blackberry/40 mt-1">You must be 18 or older to join</p>
       </div>
 
       {/* Phone Number */}

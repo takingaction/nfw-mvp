@@ -6,8 +6,6 @@ import { Loader2, Check, ChevronRight, ArrowLeft, Gift, ChevronDown } from "luci
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-const AGE_RANGES = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"];
-
 const INCOME_RANGES = [
   "Less than $25k",
   "$25k-50k",
@@ -186,7 +184,7 @@ export default function SignUpFlow() {
 
   // Steps 1-2
   const [fullName, setFullName] = useState("");
-  const [ageRange, setAgeRange] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [phone, setPhone] = useState("");
   const [addressLine1, setAddressLine1] = useState("");
   const [addressLine2, setAddressLine2] = useState("");
@@ -327,7 +325,7 @@ export default function SignUpFlow() {
     try {
       await saveProfile({
         full_name: fullName,
-        age_range: ageRange,
+        date_of_birth: dateOfBirth,
         phone_number: phone,
         address_line1: addressLine1,
         address_line2: addressLine2,
@@ -788,24 +786,25 @@ export default function SignUpFlow() {
                 </p>
               </div>
 
-              {/* Age Range - moved to top */}
+              {/* Date of Birth */}
               <div>
                 <label className={labelClass}>
-                  Age range <span className="text-nfw-lilac">*</span>
+                  Date of birth <span className="text-nfw-lilac">*</span>
                 </label>
-                <select
+                <input
+                  type="date"
                   required
-                  value={ageRange}
-                  onChange={(e) => setAgeRange(e.target.value)}
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  max={(() => {
+                    const today = new Date();
+                    const eighteenYearsAgo = new Date(today.setFullYear(today.getFullYear() - 18));
+                    return eighteenYearsAgo.toISOString().split('T')[0];
+                  })()}
+                  min="1900-01-01"
                   className={inputClass}
-                >
-                  <option value="">Select age range</option>
-                  {AGE_RANGES.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+                />
+                <p className="text-xs text-nfw-blackberry/40 mt-1">You must be 18 or older to join</p>
               </div>
 
               {/* Household Income */}
@@ -913,7 +912,7 @@ export default function SignUpFlow() {
 
               <button
                 type="submit"
-                disabled={loading || !income || !ageRange}
+                disabled={loading || !income || !dateOfBirth}
                 className="w-full py-3.5 bg-nfw-blackberry text-white font-bold text-base hover:bg-nfw-blackberry/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}

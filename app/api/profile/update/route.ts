@@ -23,7 +23,6 @@ const ALLOWED_FIELDS = [
   "company_website",
   "linkedin_url",
   "twitter_handle",
-  "age_range",
   "address_line1",
   "address_line2",
   "household_income",

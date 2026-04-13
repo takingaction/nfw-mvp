@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 
 const FROM =
-  process.env.RESEND_FROM_EMAIL || "NFW <noreply@nationalfundforwomen.org>";
+  process.env.RESEND_FROM_EMAIL || "NFW <hello@nationalfundforwomen.org>";
 
 function getResend() {
   if (!process.env.RESEND_API_KEY) {
@@ -167,8 +167,8 @@ Submitted: ${timestamp}
   try {
     const resend = getResend();
     await resend.emails.send({
-      from: "NFW <info@nationalfundforwomen.org>",
-      to: "ronpassaro@gmail.com",
+      from: "NFW <hello@nationalfundforwomen.org>",
+      to: "hello@nationalfundforwomen.org",
       subject: "NFW Contact Form Submission",
       text,
     });

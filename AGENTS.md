@@ -44,7 +44,8 @@ The `profiles` table schema does NOT include an `email` column. User email is st
 - `is_admin` (BOOLEAN)
 - `profile_completed` (BOOLEAN)
 - `city`, `state`, `zip` (TEXT)
-- `age_range`, `household_income` (TEXT)
+- `date_of_birth` (DATE) - must be 18+, born after 1900
+- `household_income` (TEXT)
 - `stripe_connect_account_id` (TEXT)
 - `subscription_status`, `subscription_ends_at` (TEXT)
 - `shipping_address` (JSONB)
@@ -1127,3 +1128,30 @@ Comprehensive review and cleanup of database schema for structure, relationships
 - `idx_profiles_access_perks_id` - Access Perks sync lookups
 - `idx_claims_user_product` - Duplicate claim prevention
 - `idx_article_likes_user_article` - Duplicate like prevention
+
+### Session 2026-04-13: Date of Birth Field
+
+Replaced `age_range` dropdown with `date_of_birth` date input in signup and profile flows.
+
+**Migration 037: Age Range to DOB** (`supabase/migrations/037_age_range_to_dob.sql`)
+
+- Added `date_of_birth` column (DATE) with NOT NULL constraint
+- Backfilled existing NULLs with `1900-01-01` placeholder (for compliance)
+- CHECK constraint enforces: `date_of_birth >= '1900-01-01' AND date_of_birth <= (today - 18 years)`
+- Dropped `age_range` column from `profiles` table
+
+**Files Modified:**
+- `components/SignUpFlow.tsx` - Replaced `AGE_RANGES` dropdown with date input (min=1900-01-01, max=18 years ago)
+- `components/ProfileCompletionForm.tsx` - Same change
+- `components/admin/AdminMembersClient.tsx` - "Age Range" display → "Date of Birth" in US format (MM/DD/YYYY)
+- `components/admin/AdminAnalyticsClient.tsx` - Type updated from `age_range` to `date_of_birth`
+- `components/admin/AdminGrantReviewer.tsx` - "Age Range" display → "Date of Birth" in US format
+- `app/api/profile/update/route.ts` - Removed `age_range` from `ALLOWED_FIELDS`
+- `app/admin/members/page.tsx` - Removed `age_range` from SELECT query
+- `app/admin/analytics/page.tsx` - Removed `age_range` from SELECT query
+- `app/admin/grants/[id]/page.tsx` - Removed `age_range` from profiles join
+
+**Email Updates (`lib/email.ts`):**
+- Changed default FROM fallback from `noreply@` to `hello@nationalfundforwomen.org`
+- Contact form now sends to `hello@nationalfundforwomen.org`
+- Grant-related emails now use `hello@` as sender

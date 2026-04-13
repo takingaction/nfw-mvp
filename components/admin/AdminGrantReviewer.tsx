@@ -296,11 +296,11 @@ export default function AdminGrantReviewer({
                       </p>
                     </div>
                   )}
-                  {selected.profiles?.age_range && (
+                  {selected.profiles?.date_of_birth && (
                     <div className="bg-white p-2 border border-nfw-blackberry/5">
-                      <p className="text-nfw-blackberry/40">Age Range</p>
+                      <p className="text-nfw-blackberry/40">Date of Birth</p>
                       <p className="font-semibold text-nfw-blackberry">
-                        {selected.profiles.age_range}
+                        {new Date(selected.profiles.date_of_birth).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
                       </p>
                     </div>
                   )}

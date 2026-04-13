@@ -22,7 +22,7 @@ async function AdminAnalyticsContent() {
   const { data: profiles } = await supabase
     .from("profiles")
     .select(
-      "id, joined_at, subscription_status, state, city, household_income, age_range",
+      "id, joined_at, subscription_status, state, city, household_income, date_of_birth",
     )
     .order("joined_at", { ascending: true });
 
