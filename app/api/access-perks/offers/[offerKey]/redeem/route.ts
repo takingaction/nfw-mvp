@@ -32,6 +32,22 @@ export async function POST(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check for duplicate active redemption of same offer
+    const { data: existingRedemption } = await supabase
+      .from("offer_redemptions")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("offer_key", offerKey)
+      .eq("status", "active")
+      .limit(1);
+
+    if (existingRedemption && existingRedemption.length > 0) {
+      return NextResponse.json(
+        { error: "You have already redeemed this offer" },
+        { status: 400 }
+      );
+    }
+
     const memberKey = user.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 
     let apiUrl = `https://redeem.adcrws-stage.com/v1/redeem/${offerKey}/${method}?access_token=${process.env.ACCESS_OFFERS_TOKEN}&member_key=${memberKey}`;

@@ -193,6 +193,13 @@ export function AuthButton() {
                   Manage Members
                 </Link>
                 <Link
+                  href="/admin/gift-codes"
+                  className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Gift Codes
+                </Link>
+                <Link
                   href="/admin/analytics"
                   className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}

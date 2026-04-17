@@ -1155,3 +1155,28 @@ Replaced `age_range` dropdown with `date_of_birth` date input in signup and prof
 - Changed default FROM fallback from `noreply@` to `hello@nationalfundforwomen.org`
 - Contact form now sends to `hello@nationalfundforwomen.org`
 - Grant-related emails now use `hello@` as sender
+
+### Session 2026-04-17: Security & Fraud Prevention
+
+Implemented security fixes identified in security audit.
+
+**Migration 038: Fraud Prevention** (`supabase/migrations/038_fraud_prevention.sql`)
+
+- `offer_redemptions` - Added unique index on `(user_id, offer_key)` WHERE status='active' to prevent duplicate redemptions
+- `zero_dollar_claims` - Added unique index on `(user_id, shopify_product_id)` for lifetime product limit
+- Created `monthly_claims` table to track per-user monthly claims for 1-per-month enforcement
+
+**Access Perks Duplicate Prevention:**
+- `app/api/access-perks/offers/[offerKey]/redeem/route.ts` - Added check for existing active redemption before processing
+
+**Zero Dollar Store Security:**
+- `app/api/shopify/checkout/route.ts` - Full security overhaul:
+  - Added authentication verification (userId must match authenticated user)
+  - Added lifetime duplicate check (1 per product per user)
+  - Added monthly claim limit check (1 per month per user)
+  - Added rate limiting (5 requests per minute)
+
+**Shopify Admin Security:**
+- `app/api/admin/shopify/sync/route.ts` - Added `requireAdmin()` authentication
+- `app/api/admin/shopify/update-product/route.ts` - Added `requireAdmin()` authentication
+- Note: `/admin/shopify/page.tsx` is a client component - admin check should be added at API level (done) and via middleware for page access

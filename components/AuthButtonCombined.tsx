@@ -215,6 +215,13 @@ export function AuthButtonCombined() {
                 >
                   Coming Soon Emails
                 </Link>
+                <Link
+                  href="/admin/gift-codes"
+                  className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Gift Codes
+                </Link>
               </>
             )}
             <div className="border-t border-nfw-aubergine/10 my-2" />

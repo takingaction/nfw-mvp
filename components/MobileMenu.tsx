@@ -392,6 +392,13 @@ export default function MobileMenu() {
                           Manage Zero Dollar Store
                         </Link>
                         <Link
+                          href="/admin/gift-codes"
+                          onClick={closeMenu}
+                          className={linkClass}
+                        >
+                          Gift Codes
+                        </Link>
+                        <Link
                           href="/admin/analytics"
                           onClick={closeMenu}
                           className={linkClass}

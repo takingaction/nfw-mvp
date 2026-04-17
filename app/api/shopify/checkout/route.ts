@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createClient as createServerClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/rate-limit";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,9 +10,38 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+    const { success } = rateLimit(`shopify-checkout:${ip}`, 5, 60_000);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429 }
+      );
+    }
+
+    // Verify authentication - userId must match authenticated user
+    const supabase = await createServerClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { variantId, productId, userId } = await request.json();
 
-    if (!variantId || !productId || !userId) {
+    // Verify userId matches authenticated user
+    if (userId !== user.id) {
+      return NextResponse.json(
+        { error: "Invalid user" },
+        { status: 403 }
+      );
+    }
+
+    if (!variantId || !productId) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -28,8 +59,42 @@ export async function POST(request: NextRequest) {
     }
     const numericVariantId = variantIdMatch[1];
 
+    // Check lifetime claim limit (1 per product per user)
+    const { data: existingClaim } = await supabaseAdmin
+      .from("zero_dollar_claims")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("shopify_product_id", productId)
+      .limit(1);
+
+    if (existingClaim && existingClaim.length > 0) {
+      return NextResponse.json(
+        { error: "You have already claimed this product" },
+        { status: 400 }
+      );
+    }
+
+    // Check monthly claim limit (1 per month per user)
+    const now = new Date();
+    const claimMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+
+    const { data: monthlyClaim } = await supabaseAdmin
+      .from("monthly_claims")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("claim_month", claimMonth)
+      .limit(1);
+
+    if (monthlyClaim && monthlyClaim.length > 0) {
+      return NextResponse.json(
+        { error: "Monthly claim limit reached. You can claim 1 item per month." },
+        { status: 400 }
+      );
+    }
+
     const checkoutUrl = `https://${shopDomain}/cart/${numericVariantId}:1`;
 
+    // Create claim record
     const { error: claimError } = await supabaseAdmin
       .from("zero_dollar_claims")
       .insert({
@@ -49,6 +114,12 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Record monthly claim
+    await supabaseAdmin.from("monthly_claims").insert({
+      user_id: userId,
+      claim_month: claimMonth,
+    });
 
     return NextResponse.json({
       checkoutUrl,
