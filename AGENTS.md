@@ -1179,4 +1179,5 @@ Implemented security fixes identified in security audit.
 **Shopify Admin Security:**
 - `app/api/admin/shopify/sync/route.ts` - Added `requireAdmin()` authentication
 - `app/api/admin/shopify/update-product/route.ts` - Added `requireAdmin()` authentication
-- Note: `/admin/shopify/page.tsx` is a client component - admin check should be added at API level (done) and via middleware for page access
+- `app/admin/shopify/page.tsx` - Refactored to server wrapper with `requireAdmin()` (was client component)
+- Created `app/admin/shopify/ShopifyAdminClient.tsx` - Client component extracted from page.tsx
