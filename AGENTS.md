@@ -1176,6 +1176,11 @@ Implemented security fixes identified in security audit.
   - Added monthly claim limit check (1 per month per user)
   - Added rate limiting (5 requests per minute)
 
+**Account Age Requirement:**
+- `app/api/access-perks/offers/[offerKey]/redeem/route.ts` - Added 48-hour account age check before redeeming
+- `app/api/shopify/checkout/route.ts` - Added 48-hour account age check before claiming
+- `supabase/migrations/039_account_age_index.sql` - Added index on profiles.joined_at for query performance
+
 **Shopify Admin Security:**
 - `app/api/admin/shopify/sync/route.ts` - Added `requireAdmin()` authentication
 - `app/api/admin/shopify/update-product/route.ts` - Added `requireAdmin()` authentication

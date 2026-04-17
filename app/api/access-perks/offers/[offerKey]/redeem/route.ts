@@ -32,6 +32,24 @@ export async function POST(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check account age (minimum 48 hours before redeeming)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("joined_at")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.joined_at) {
+      const joinedAt = new Date(profile.joined_at);
+      const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+      if (joinedAt > fortyEightHoursAgo) {
+        return NextResponse.json(
+          { error: "Your account must be at least 48 hours old before redeeming offers" },
+          { status: 403 }
+        );
+      }
+    }
+
     // Check for duplicate active redemption of same offer
     const { data: existingRedemption } = await supabase
       .from("offer_redemptions")
