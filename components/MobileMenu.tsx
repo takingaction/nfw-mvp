@@ -399,6 +399,13 @@ export default function MobileMenu() {
                           Gift Codes
                         </Link>
                         <Link
+                          href="/admin/dashboard"
+                          onClick={closeMenu}
+                          className={linkClass}
+                        >
+                          Manage Dashboard
+                        </Link>
+                        <Link
                           href="/admin/analytics"
                           onClick={closeMenu}
                           className={linkClass}

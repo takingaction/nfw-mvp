@@ -1186,3 +1186,43 @@ Implemented security fixes identified in security audit.
 - `app/api/admin/shopify/update-product/route.ts` - Added `requireAdmin()` authentication
 - `app/admin/shopify/page.tsx` - Refactored to server wrapper with `requireAdmin()` (was client component)
 - Created `app/admin/shopify/ShopifyAdminClient.tsx` - Client component extracted from page.tsx
+
+### Session 2026-04-19: Dashboard Rework
+
+Implemented new member dashboard design with configurable content.
+
+**Database Migrations:**
+
+`supabase/migrations/040_dashboard_settings.sql`:
+- Created `dashboard_settings` table with columns for hero image, featured items, square images, and membership badge images
+- Added `featured_image` column to `grant_cycles` table
+- Seeded default settings row
+
+**Admin Dashboard (`/admin/dashboard`):**
+- Created server wrapper page with `requireAdmin()`
+- Created `DashboardAdminClient.tsx` with:
+  - Hero image picker via MediaLibraryModal
+  - Featured items section (max 5) with drag-and-drop reordering
+  - Support for both Zero Dollar Store products and Microgrants
+  - Badge images for each membership level (Free, Contributing, Founding)
+  - Square image pickers with link inputs for bottom section
+
+**Dashboard Frontend Components:**
+
+- `components/dashboard/DashboardHero.tsx` - Full-width hero with eyebrow, H1, subtext, and wisteria buttons
+- `components/dashboard/MembershipCard.tsx` - Member avatar with badge overlay, name, join date, membership level, and upgrade button
+- `components/dashboard/MembershipImpactCard.tsx` - Total savings display with 3-column breakdown
+- `components/dashboard/PopularAcrossNFW.tsx` - Featured items grid with portrait images and yellow title bars
+- `components/dashboard/BottomActions.tsx` - Aubergine section with 3 square images and overlay buttons (Contact Us, Gift Membership, Share Your Story disabled/coming soon)
+
+**API Routes:**
+- `app/api/dashboard/settings/route.ts` - GET/POST for dashboard settings
+- `app/api/admin/grants/route.ts` - GET for listing grant cycles (used by dashboard admin)
+
+**Updated Pages:**
+- `app/dashboard/page.tsx` - Rewritten to use new components, fetches settings and savings server-side
+- `app/admin/grants/[id]/edit/page.tsx` - Added featured_image field with MediaLibraryModal picker
+- `app/api/admin/grants/update-cycle/route.ts` - Added featured_image to update fields
+
+**Navigation:**
+- Added "Manage Dashboard" link to admin dropdown menus in auth-button.tsx, AuthButtonCombined.tsx, and MobileMenu.tsx

@@ -200,6 +200,13 @@ export function AuthButton() {
                   Gift Codes
                 </Link>
                 <Link
+                  href="/admin/dashboard"
+                  className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Manage Dashboard
+                </Link>
+                <Link
                   href="/admin/analytics"
                   className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}

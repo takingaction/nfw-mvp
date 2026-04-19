@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
       amount_per_grant,
       grants_available,
       status,
+      featured_image,
     } = await request.json();
 
     if (!cycleId)
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
         grants_available: parseInt(grants_available),
         total_funds,
         status,
+        featured_image,
         updated_at: new Date().toISOString(),
       })
       .eq("id", cycleId);

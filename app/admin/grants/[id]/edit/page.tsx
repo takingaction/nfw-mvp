@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import MediaLibraryModal from "@/components/admin/MediaLibraryModal";
 
 export default function EditGrantCyclePage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function EditGrantCyclePage() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
+  const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     cycle_name: "",
@@ -22,6 +24,7 @@ export default function EditGrantCyclePage() {
     amount_per_grant: "",
     grants_available: "",
     status: "open",
+    featured_image: "",
   });
 
   const inputClass =
@@ -42,6 +45,7 @@ export default function EditGrantCyclePage() {
           amount_per_grant: data.amount_per_grant?.toString() || "",
           grants_available: data.grants_available?.toString() || "",
           status: data.status || "open",
+          featured_image: data.featured_image || "",
         });
       } catch (err: any) {
         setError(err.message);
@@ -234,6 +238,42 @@ export default function EditGrantCyclePage() {
             </select>
           </div>
 
+          <div>
+            <label className={labelClass}>
+              Featured Image{" "}
+              <span className="text-nfw-blackberry/40 font-normal">(Optional)</span>
+            </label>
+            <p className="text-xs text-nfw-blackberry/50 mb-2">
+              Image shown in the dashboard Popular across NFW section
+            </p>
+            <div className="border border-nfw-blackberry/20 p-4 bg-nfw-dove/50">
+              {formData.featured_image ? (
+                <div className="flex items-center gap-4">
+                  <img
+                    src={formData.featured_image}
+                    alt="Featured"
+                    className="w-24 h-24 object-cover rounded"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setMediaLibraryOpen(true)}
+                    className="text-nfw-aubergine hover:underline text-sm"
+                  >
+                    Change Image
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setMediaLibraryOpen(true)}
+                  className="w-full py-4 border-2 border-dashed border-nfw-blackberry/20 hover:border-nfw-aubergine text-nfw-blackberry/40 hover:text-nfw-aubergine transition-colors text-sm"
+                >
+                  + Select Featured Image
+                </button>
+              )}
+            </div>
+          </div>
+
           {totalFunds > 0 && (
             <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] p-4">
               <p className="text-sm text-nfw-blackberry/60">Total funds committed</p>
@@ -274,6 +314,16 @@ export default function EditGrantCyclePage() {
           </div>
         </form>
       </div>
+
+      <MediaLibraryModal
+        isOpen={mediaLibraryOpen}
+        onClose={() => setMediaLibraryOpen(false)}
+        onSelect={(url) => {
+          setFormData({ ...formData, featured_image: url });
+          setMediaLibraryOpen(false);
+        }}
+        bucket="page-builder"
+      />
     </main>
   );
 }
