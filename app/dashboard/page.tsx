@@ -121,28 +121,26 @@ export default async function DashboardPage() {
 
       <DashboardHero heroImage={settings.hero_image_url || "/images/landing.jpg"} />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <div className="md:col-span-1 bg-nfw-dove p-6">
-            <MembershipCard
-              memberName={profile?.full_name || "Member"}
-              membershipLevel={profile?.membership_level || "free"}
-              joinedAt={profile?.joined_at || ""}
-              avatarUrl={profile?.avatar_url || null}
-              badgeFreeUrl={settings.badge_free_url || ""}
-              badgeContributingUrl={settings.badge_contributing_url || ""}
-              badgeFoundingUrl={settings.badge_founding_url || ""}
-            />
-          </div>
+      <div className="grid md:grid-cols-4 gap-0 mb-8">
+        <div className="col-span-1 bg-nfw-dove p-6">
+          <MembershipCard
+            memberName={profile?.full_name || "Member"}
+            membershipLevel={profile?.membership_level || "free"}
+            joinedAt={profile?.joined_at || ""}
+            avatarUrl={profile?.avatar_url || null}
+            badgeFreeUrl={settings.badge_free_url || ""}
+            badgeContributingUrl={settings.badge_contributing_url || ""}
+            badgeFoundingUrl={settings.badge_founding_url || ""}
+          />
+        </div>
 
-          <div className="md:col-span-3 bg-nfw-aubergine p-6">
-            <MembershipImpactCard
-              totalSavings={savings.total}
-              micrograntsSavings={savings.microgrants}
-              perksSavings={savings.perks}
-              zeroDollarStoreSavings={savings.zeroDollarStore}
-            />
-          </div>
+        <div className="col-span-3 bg-nfw-aubergine p-6">
+          <MembershipImpactCard
+            totalSavings={savings.total}
+            micrograntsSavings={savings.microgrants}
+            perksSavings={savings.perks}
+            zeroDollarStoreSavings={savings.zeroDollarStore}
+          />
         </div>
       </div>
 
