@@ -150,7 +150,7 @@ export default async function GiftMembershipSuccessPage({
             </li>
             <li className="flex gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-nfw-wisteria text-white text-xs font-bold rounded-full flex items-center justify-center">3</span>
-              <span>Enjoy 1 year of Contributing membership!</span>
+              <span>Enjoy 1 year of membership!</span>
             </li>
           </ol>
         </div>

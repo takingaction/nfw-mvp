@@ -1226,3 +1226,41 @@ Implemented new member dashboard design with configurable content.
 
 **Navigation:**
 - Added "Manage Dashboard" link to admin dropdown menus in auth-button.tsx, AuthButtonCombined.tsx, and MobileMenu.tsx
+
+### Session 2026-04-20: Profile Avatar Upload
+
+Implemented profile avatar upload functionality for the `/profile` page.
+
+**Database Migrations:**
+- `supabase/migrations/043_create_profile_avatars_bucket.sql` - Creates `profile-avatars` private storage bucket
+- `supabase/migrations/044_add_avatar_url_to_profiles.sql` - Adds `avatar_url TEXT` column to profiles table
+
+**Storage:**
+- Bucket `profile-avatars` is private (public: false)
+- Uses signed URLs (1 year validity) for secure access
+- File size limit: 2MB
+- Allowed types: JPEG, PNG, WebP
+
+**Image Processing:**
+- Sharp library for server-side optimization
+- Auto-rotates images based on EXIF orientation
+- Resizes to 400x400 square crop (center crop)
+- Converts to WebP at 80% quality
+
+**Files Created:**
+- `app/api/profile/avatar/route.ts` - Upload endpoint with Sharp optimization
+- `app/api/profile/avatar/delete/route.ts` - Delete avatar endpoint
+- `components/profile/AvatarUpload.tsx` - Upload UI component
+
+**Files Modified:**
+- `app/profile/page.tsx` - Added AvatarUpload component
+
+**Features:**
+- Simple file input for upload (no complex modal)
+- Auto-deletes previous avatar when uploading new one
+- Delete avatar functionality
+- Progress spinner during upload
+- Error and success feedback
+
+**Navigation Fix:**
+- `components/NavigationClient.tsx` - Reduced nav item padding from `py-6` to `py-2` to close gap between dropdown and nav items

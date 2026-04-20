@@ -41,9 +41,9 @@ export default function BottomActions({
                 <div className="absolute inset-0 flex items-end">
                   {item.disabled ? (
                     <div className="w-full">
-                      <div className="bg-nfw-lilac/60 px-4 py-3">
+                      <div className="bg-nfw-lilac px-4 py-3">
                         <p className="text-center font-bold text-white font-ui uppercase text-sm">
-                          Coming Soon
+                          {item.label}
                         </p>
                       </div>
                     </div>
@@ -52,16 +52,16 @@ export default function BottomActions({
                       href={item.link}
                       className="w-full"
                     >
-                      <div className="bg-nfw-lilac/60 hover:bg-nfw-lilac/80 transition-colors px-4 py-3">
-                        <p className="text-center font-bold text-white font-ui">
+                      <div className="bg-nfw-lilac hover:brightness-110 transition-all px-4 py-3">
+                        <p className="text-center font-bold text-white font-ui uppercase text-sm">
                           {item.label}
                         </p>
                       </div>
                     </Link>
                   ) : (
                     <div className="w-full">
-                      <div className="bg-nfw-lilac/60 px-4 py-3">
-                        <p className="text-center font-bold text-white font-ui">
+                      <div className="bg-nfw-lilac px-4 py-3">
+                        <p className="text-center font-bold text-white font-ui uppercase text-sm">
                           {item.label}
                         </p>
                       </div>

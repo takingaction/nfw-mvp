@@ -4,7 +4,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, website } = body;
+    const { email, website, source = "coming-soon" } = body;
 
     if (website) {
       return NextResponse.json({ success: true });
@@ -41,6 +41,7 @@ export async function POST(request: Request) {
       email: email.toLowerCase().trim(),
       ip_address: ipAddress,
       user_agent: userAgent,
+      source,
     });
 
     if (error) {

@@ -157,19 +157,17 @@ export default function StoreClient({
   return (
     <main className="min-h-screen bg-nfw-dove">
       {heroSettings?.hero_image_url && (
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 pt-8">
-          <div
-            className="relative h-[250px] md:h-[500px] bg-cover bg-center bg-no-repeat flex items-center justify-center"
-            style={{ backgroundImage: `url(${heroSettings.hero_image_url})` }}
-          >
-            <div className="text-center">
-              <h1 className="font-serif text-4xl lg:text-6xl text-white mb-2">
-                {heroSettings.hero_heading}
-              </h1>
-              <p className="font-ui text-sm font-medium tracking-[0.03em] text-white/80">
-                {heroSettings.hero_subheading}
-              </p>
-            </div>
+        <div
+          className="relative h-[212px] md:h-[425px] bg-cover bg-center bg-no-repeat flex items-center justify-center"
+          style={{ backgroundImage: `url(${heroSettings.hero_image_url})` }}
+        >
+          <div className="text-center">
+            <h1 className="font-serif text-4xl lg:text-6xl text-white mb-2">
+              {heroSettings.hero_heading}
+            </h1>
+            <p className="font-ui text-sm font-medium tracking-[0.03em] text-white/80">
+              {heroSettings.hero_subheading}
+            </p>
           </div>
         </div>
       )}

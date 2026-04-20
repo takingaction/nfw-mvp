@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 
 export async function requireAdmin() {
   const supabase = await createClient();
@@ -8,7 +7,7 @@ export async function requireAdmin() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth/login");
+    return { authorized: false, user: null, profile: null };
   }
 
   const { data: profile } = await supabase
@@ -18,8 +17,8 @@ export async function requireAdmin() {
     .single();
 
   if (!profile?.is_admin) {
-    redirect("/"); // Redirect non-admins to home
+    return { authorized: false, user: null, profile: null };
   }
 
-  return { user, profile };
+  return { user, profile, authorized: true };
 }

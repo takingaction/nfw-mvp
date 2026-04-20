@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, Plus, X, GripVertical } from "lucide-react";
+import { Save, X, GripVertical } from "lucide-react";
 import MediaLibraryModal from "@/components/admin/MediaLibraryModal";
 import {
   DndContext,
@@ -23,9 +23,10 @@ import { CSS } from "@dnd-kit/utilities";
 
 type FeaturedItem = {
   id: string;
-  type: "shopify_product" | "microgrant";
+  type: "shopify_product" | "microgrant" | "article";
   title: string;
   image: string;
+  slug?: string;
 };
 
 type DashboardSettings = {
@@ -52,6 +53,13 @@ type GrantCycle = {
   id: string;
   cycle_name: string;
   featured_image: string;
+};
+
+type Article = {
+  id: string;
+  title: string;
+  slug: string;
+  featured_image_url: string;
 };
 
 function SortableFeaturedItem({
@@ -90,7 +98,13 @@ function SortableFeaturedItem({
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-medium text-nfw-blackberry truncate">{item.title}</p>
-        <p className="text-xs text-nfw-blackberry/50">{item.type === "shopify_product" ? "Zero Dollar Store" : "Microgrant"}</p>
+        <p className="text-xs text-nfw-blackberry/50">
+          {item.type === "shopify_product"
+            ? "Zero Dollar Store"
+            : item.type === "microgrant"
+            ? "Microgrant"
+            : "Article"}
+        </p>
       </div>
       <button onClick={onRemove} className="p-1 text-nfw-blackberry/30 hover:text-red-500">
         <X className="w-5 h-5" />
@@ -119,10 +133,12 @@ export default function DashboardAdminClient() {
 
   const [shopifyProducts, setShopifyProducts] = useState<ShopifyProduct[]>([]);
   const [grantCycles, setGrantCycles] = useState<GrantCycle[]>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
 
   const [modalOpen, setModalOpen] = useState<string | null>(null);
   const [productsModalOpen, setProductsModalOpen] = useState(false);
   const [grantsModalOpen, setGrantsModalOpen] = useState(false);
+  const [articlesModalOpen, setArticlesModalOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -134,10 +150,11 @@ export default function DashboardAdminClient() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [settingsRes, productsRes, grantsRes] = await Promise.all([
+        const [settingsRes, productsRes, grantsRes, articlesRes] = await Promise.all([
           fetch("/api/dashboard/settings"),
           fetch("/api/shopify/products?admin_view=true"),
           fetch("/api/admin/grants"),
+          fetch("/api/admin/articles"),
         ]);
 
         const settingsData = await settingsRes.json();
@@ -164,6 +181,11 @@ export default function DashboardAdminClient() {
 
         if (grantsData.cycles && Array.isArray(grantsData.cycles)) {
           setGrantCycles(grantsData.cycles);
+        }
+
+        const articlesData = await articlesRes.json();
+        if (Array.isArray(articlesData)) {
+          setArticles(articlesData);
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -242,6 +264,25 @@ export default function DashboardAdminClient() {
       featured_items: [...settings.featured_items, newItem],
     });
     setGrantsModalOpen(false);
+  };
+
+  const addArticle = (article: Article) => {
+    if (settings.featured_items.length >= 5) {
+      setMessage({ type: "error", text: "Maximum 5 featured items allowed" });
+      return;
+    }
+    const newItem: FeaturedItem = {
+      id: `article_${article.id}`,
+      type: "article",
+      title: article.title,
+      image: article.featured_image_url || "",
+      slug: article.slug,
+    };
+    setSettings({
+      ...settings,
+      featured_items: [...settings.featured_items, newItem],
+    });
+    setArticlesModalOpen(false);
   };
 
   const removeFeaturedItem = (id: string) => {
@@ -324,8 +365,7 @@ export default function DashboardAdminClient() {
                     + Select Hero Image
                   </button>
                 )}
-              </div>
-            </div>
+</div>
           </div>
 
           <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
@@ -348,6 +388,13 @@ export default function DashboardAdminClient() {
                   className="px-4 py-2 bg-nfw-blackberry text-white text-sm font-medium hover:bg-nfw-blackberry/90 disabled:opacity-50"
                 >
                   + Add Microgrant
+                </button>
+                <button
+                  onClick={() => setArticlesModalOpen(true)}
+                  disabled={settings.featured_items.length >= 5}
+                  className="px-4 py-2 bg-nfw-wisteria text-white text-sm font-medium hover:bg-nfw-wisteria/90 disabled:opacity-50"
+                >
+                  + Add Article
                 </button>
               </div>
 
@@ -376,43 +423,38 @@ export default function DashboardAdminClient() {
 
           <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
             <div className="px-6 py-4 border-b border-nfw-blackberry/10">
-              <h2 className="text-lg font-bold text-nfw-blackberry font-serif">Membership Badge Images</h2>
-              <p className="text-sm text-nfw-blackberry/60">Badge images displayed on member avatars</p>
+              <h2 className="text-lg font-bold text-nfw-blackberry font-serif">Founding Badge</h2>
+              <p className="text-sm text-nfw-blackberry/60">Badge shown on founding member avatars</p>
             </div>
-            <div className="p-6 grid grid-cols-3 gap-6">
-              {[
-                { key: "badge_free_url", label: "Free Member Badge" },
-                { key: "badge_contributing_url", label: "Contributing Badge" },
-                { key: "badge_founding_url", label: "Founding Badge" },
-              ].map(({ key, label }) => (
-                <div key={key}>
-                  <label className="block text-sm font-medium text-nfw-blackberry mb-2">{label}</label>
-                  <div className="border-2 border-dashed border-nfw-blackberry/20 p-4 text-center bg-nfw-dove/50">
-                    {settings[key as keyof typeof settings] ? (
-                      <div>
-                        <img
-                          src={settings[key as keyof typeof settings] as string}
-                          alt={label}
-                          className="max-h-24 mx-auto rounded"
-                        />
-                        <button
-                          onClick={() => openImageModal(key)}
-                          className="mt-2 text-sm text-nfw-aubergine hover:underline"
-                        >
-                          Change
-                        </button>
-                      </div>
-                    ) : (
+            <div className="p-6 grid grid-cols-1 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-nfw-blackberry mb-2">Founding Member Badge</label>
+                <div className="border-2 border-dashed border-nfw-blackberry/20 p-4 text-center bg-nfw-dove/50">
+                  {settings.badge_founding_url ? (
+                    <div>
+                      <img
+                        src={settings.badge_founding_url}
+                        alt="Founding Badge"
+                        className="max-h-24 mx-auto rounded"
+                      />
                       <button
-                        onClick={() => openImageModal(key)}
-                        className="py-4 w-full text-nfw-blackberry/40 hover:text-nfw-aubergine transition-colors text-sm"
+                        onClick={() => openImageModal("badge_founding_url")}
+                        className="mt-2 text-sm text-nfw-aubergine hover:underline"
                       >
-                        + Select Image
+                        Change
                       </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => openImageModal("badge_founding_url")}
+                      className="py-4 w-full text-nfw-blackberry/40 hover:text-nfw-aubergine transition-colors text-sm"
+                    >
+                      + Select Image
+                    </button>
                     )}
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
 
@@ -554,6 +596,45 @@ export default function DashboardAdminClient() {
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {articlesModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div className="px-6 py-4 border-b border-nfw-blackberry/10 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-nfw-blackberry">Select Article</h3>
+              <button onClick={() => setArticlesModalOpen(false)} className="text-nfw-blackberry/50 hover:text-nfw-blackberry">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              {articles.length === 0 ? (
+                <p className="text-center py-8 text-nfw-blackberry/40">No articles available</p>
+              ) : (
+                <div className="space-y-2">
+                  {articles.map((article) => (
+                    <button
+                      key={article.id}
+                      onClick={() => addArticle(article)}
+                      className="w-full flex items-center gap-3 p-3 border border-nfw-blackberry/10 rounded-lg hover:border-nfw-aubergine text-left"
+                    >
+                      <div className="w-16 h-16 bg-nfw-stone/10 flex-shrink-0 overflow-hidden rounded">
+                        {article.featured_image_url ? (
+                          <img src={article.featured_image_url} alt={article.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-nfw-stone/30 text-xs">No Img</div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-nfw-blackberry">{article.title}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

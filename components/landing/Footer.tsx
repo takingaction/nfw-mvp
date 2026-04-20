@@ -78,6 +78,9 @@ const defaultData: FooterData = {
 export default function Footer() {
   const pathname = usePathname();
   const [footerData, setFooterData] = useState<FooterData | null>(null);
+  const [email, setEmail] = useState("");
+  const [signupStatus, setSignupStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
 
   if (pathname === "/coming-soon") {
     return null;
@@ -94,6 +97,32 @@ export default function Footer() {
       .catch(console.error);
   }, []);
 
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSignupStatus("loading");
+    setErrorMessage("");
+
+    try {
+      const res = await fetch("/api/coming-soon/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, source: "footer" }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setSignupStatus("success");
+        setEmail("");
+      } else {
+        setSignupStatus("error");
+        setErrorMessage(data.error || "Something went wrong. Please try again.");
+      }
+    } catch {
+      setSignupStatus("error");
+      setErrorMessage("Something went wrong. Please try again.");
+    }
+  };
+
   const data = footerData ? {
     ...defaultData,
     ...footerData,
@@ -106,8 +135,8 @@ export default function Footer() {
 
   return (
     <footer className="bg-nfw-aubergine text-nfw-dove">
-      <div className="max-w-[1400px] mx-auto px-4 py-12 lg:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-8 lg:gap-6 mb-12">
+      <div className="max-w-[1400px] mx-auto px-4 py-8 lg:py-12">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-8 lg:gap-6 mb-8">
           {/* Logo Column - vertically centered */}
           <div className="md:col-span-1 flex items-center justify-center md:justify-start md:pr-8">
             {data.logo_url && (
@@ -199,8 +228,53 @@ export default function Footer() {
           </div>
         </div>
 
+{/* Email Signup Section */}
+        <div className="mb-6 flex justify-end">
+          <div className="flex flex-col items-start">
+            <p className="font-ui mb-2 uppercase" style={{ color: "#B7B6B9", fontWeight: 900 }}>
+              Sign Up for Updates
+            </p>
+            <form onSubmit={handleSignup} className="flex flex-col sm:flex-row items-start gap-3">
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Your email"
+                className="w-48 px-2 py-2 bg-transparent border-b text-nfw-dove placeholder-nfw-dove/50 focus:outline-none font-ui text-sm"
+                style={{ color: "#B7B6B9", borderBottomColor: "#B7B6B9" }}
+              />
+              {/* Honeypot field - hidden from real users */}
+              <input
+                type="text"
+                name="website"
+                tabIndex={-1}
+                autoComplete="off"
+                className="absolute -left-[9999px]"
+              />
+              <button
+                type="submit"
+                disabled={signupStatus === "loading" || signupStatus === "success"}
+                className="px-4 py-2 bg-nfw-dove text-nfw-aubergine font-ui text-sm font-black uppercase tracking-[0.06em] hover:bg-white disabled:opacity-60 whitespace-nowrap"
+              >
+                {signupStatus === "loading" ? "Signing up..." : signupStatus === "success" ? "Signed up!" : "Submit"}
+              </button>
+            </form>
+          </div>
+          {signupStatus === "success" && (
+            <p className="mt-2 font-ui text-sm" style={{ color: "#B7B6B9" }}>
+              Thanks! You&apos;re on the list.
+            </p>
+          )}
+          {signupStatus === "error" && (
+            <p className="mt-2 font-ui text-sm text-red-300">
+              {errorMessage}
+            </p>
+          )}
+        </div>
+
         {/* Bottom Bar */}
-        <div className="border-t pt-8 flex flex-col sm:flex-row justify-between items-center gap-4" style={{ borderColor: "#B7B6B9" }}>
+        <div className="border-t pt-4 flex flex-col sm:flex-row justify-between items-center gap-4" style={{ borderColor: "#B7B6B9" }}>
           <p className="text-sm" style={{ color: "#B7B6B9" }}>
             {data.copyright_text}
           </p>

@@ -59,6 +59,8 @@ export async function POST(request: Request) {
       const fulfillment = order.fulfillments?.[0];
       const trackingNumber = fulfillment?.tracking_number || null;
       const trackingUrl = fulfillment?.tracking_url || null;
+      const orderCreatedAt = order.created_at ? new Date(order.created_at) : new Date();
+      const claimMonth = new Date(orderCreatedAt.getFullYear(), orderCreatedAt.getMonth(), 1).toISOString().split('T')[0];
 
       if (variantId) {
         const { data: existingClaims } = await supabaseAdmin
@@ -71,11 +73,38 @@ export async function POST(request: Request) {
 
         if (existingClaims && existingClaims.length > 0) {
           const claim = existingClaims[0];
-          
+
+          // Check if user already has a monthly claim this month
+          const { data: existingMonthlyClaim } = await supabaseAdmin
+            .from("monthly_claims")
+            .select("id")
+            .eq("user_id", claim.user_id)
+            .eq("claim_month", claimMonth)
+            .limit(1);
+
+          if (existingMonthlyClaim && existingMonthlyClaim.length > 0) {
+            // User already completed a claim this month, reject this one
+            console.log(`Rejecting claim ${claim.id} - user ${claim.user_id} already has monthly claim for ${claimMonth}`);
+
+            // Update claim status to rejected
+            await supabaseAdmin
+              .from("zero_dollar_claims")
+              .update({ status: "rejected_monthly_limit" })
+              .eq("id", claim.id);
+
+            return NextResponse.json({ received: true, reason: "Monthly limit exceeded" });
+          }
+
+          // Record monthly claim before updating claim status
+          await supabaseAdmin.from("monthly_claims").insert({
+            user_id: claim.user_id,
+            claim_month: claimMonth,
+          });
+
           // Only set status to fulfilled if there's tracking info (meaning actually shipped)
-          // Otherwise keep as "created" until fulfillment
-          const newStatus = trackingNumber ? "fulfilled" : "created";
-          
+          // Otherwise keep as "completed" (checkout done, awaiting fulfillment)
+          const newStatus = trackingNumber ? "fulfilled" : "completed";
+
           const { error: updateError } = await supabaseAdmin
             .from("zero_dollar_claims")
             .update({
@@ -85,6 +114,7 @@ export async function POST(request: Request) {
               tracking_number: trackingNumber,
               tracking_url: trackingUrl,
               order_status_url: order.order_status_url || null,
+              claim_month: claimMonth,
             })
             .eq("id", claim.id);
 

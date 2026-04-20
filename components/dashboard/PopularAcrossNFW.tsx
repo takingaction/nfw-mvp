@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
+
 type FeaturedItem = {
   id: string;
-  type: "shopify_product" | "microgrant";
+  type: "shopify_product" | "microgrant" | "article";
   title: string;
   image: string;
+  slug?: string;
 };
 
 type PopularAcrossNFWProps = {
@@ -24,9 +27,10 @@ export default function PopularAcrossNFW({ featuredItems }: PopularAcrossNFWProp
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {featuredItems.slice(0, 5).map((item) => (
-          <div
+          <Link
             key={item.id}
-            className="relative group overflow-hidden rounded-lg aspect-[3/4]"
+            href={item.type === "microgrant" ? "/grants/apply" : item.type === "article" ? `/articles/${item.slug}` : "/store"}
+            className="relative group block aspect-[3/4]"
           >
             {item.image ? (
               <img
@@ -39,14 +43,18 @@ export default function PopularAcrossNFW({ featuredItems }: PopularAcrossNFWProp
                 <span className="text-nfw-stone/40 text-sm">No Image</span>
               </div>
             )}
-            <div className="absolute bottom-0 left-0 right-0">
-              <div className="bg-[#F9D65D] px-2 py-2">
-                <p className="text-sm font-bold text-nfw-blackberry font-ui truncate">
+            <div className="absolute inset-x-4 bottom-4">
+              <div className={`mx-auto px-2 py-2 text-center ${
+                item.type === "microgrant" ? "bg-nfw-wisteria" :
+                item.type === "article" ? "bg-nfw-aubergine" :
+                "bg-nfw-citrine"
+              }`}>
+                <p className={`text-sm font-bold font-ui truncate ${item.type === "article" ? "text-white" : "text-nfw-blackberry"}`}>
                   {item.title}
                 </p>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

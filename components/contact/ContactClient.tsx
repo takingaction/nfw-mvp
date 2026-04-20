@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Mail, MessageCircle, Clock, Heart } from "lucide-react";
+import { Mail, Clock, Heart } from "lucide-react";
 
 interface HelpCard {
   icon: string;
@@ -192,13 +192,17 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
                 {submitted ? (
                   <div className="text-center py-12">
                     <div className="w-16 h-16 bg-[#d4f1ad] flex items-center justify-center mx-auto mb-6">
-                      <MessageCircle className="w-8 h-8 text-nfw-blackberry" />
+                      <img
+                        src="/images/nfw-symbol-brandmark-aubergine.png"
+                        alt="NFW"
+                        className="w-10 h-10 object-contain"
+                      />
                     </div>
                     <h3 className="font-serif text-2xl text-nfw-aubergine mb-3">
                       Success!
                     </h3>
                     <p className="font-serif text-nfw-blackberry/60">
-                      We will get back to you within 48 hours.
+                      We will get back to you within 2-3 business days.
                     </p>
                   </div>
                 ) : (

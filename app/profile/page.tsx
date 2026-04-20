@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import ManageSubscription from "../../components/ManageSubscription";
 import ProfileCompletionForm from "../../components/ProfileCompletionForm";
+import AvatarUpload from "../../components/profile/AvatarUpload";
 
 export const metadata = {
   title: "My Profile",
@@ -61,6 +62,8 @@ export default async function ProfilePage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <AvatarUpload currentAvatarUrl={profile?.avatar_url} />
+
         <div className="bg-white border border-nfw-blackberry/10 p-6 mb-6">
           <div className="flex items-center justify-between">
             <div>

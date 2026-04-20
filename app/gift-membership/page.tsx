@@ -23,7 +23,9 @@ export default function GiftMembershipPage() {
   useEffect(() => {
     const prefetchUser = async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user?.email) {
         setBuyerEmail(user.email);
         setPrefilled(true);
@@ -80,9 +82,10 @@ export default function GiftMembershipPage() {
             </h1>
 
             <p className="text-lg text-nfw-blackberry/70 mb-8 leading-relaxed">
-              Share the power of connection and support with the women in your life. 
-              Your gift provides one full year of Contributing Membership — giving them 
-              access to microgrants, hundreds of perks, and a community of women nationwide.
+              Share the power of connection and support with the women in your
+              life. Your gift provides one full year of membership — giving them
+              access to microgrants, hundreds of perks, and a community of women
+              nationwide.
             </p>
 
             <div className="space-y-4 mb-8">
@@ -91,7 +94,9 @@ export default function GiftMembershipPage() {
                   <div className="w-5 h-5 bg-nfw-wisteria flex items-center justify-center flex-shrink-0 mt-0.5">
                     <Check className="w-3 h-3 text-white" />
                   </div>
-                  <span className="text-nfw-blackberry/80 text-sm">{benefit}</span>
+                  <span className="text-nfw-blackberry/80 text-sm">
+                    {benefit}
+                  </span>
                 </div>
               ))}
             </div>
@@ -104,8 +109,9 @@ export default function GiftMembershipPage() {
                     The perfect gift for:
                   </p>
                   <p className="text-nfw-blackberry/60 text-sm">
-                    Sisters, mothers, daughters, friends, colleagues, mentors — any woman 
-                    who deserves access to community, resources, and support.
+                    Sisters, mothers, daughters, friends, colleagues, mentors —
+                    any woman who deserves access to community, resources, and
+                    support.
                   </p>
                 </div>
               </div>
@@ -119,8 +125,12 @@ export default function GiftMembershipPage() {
                   Gift Membership
                 </p>
                 <div className="flex items-baseline justify-center gap-1">
-                  <span className="text-4xl font-black text-nfw-aubergine font-serif">$15</span>
-                  <span className="text-nfw-blackberry/50 text-sm">/year each</span>
+                  <span className="text-4xl font-black text-nfw-aubergine font-serif">
+                    $15
+                  </span>
+                  <span className="text-nfw-blackberry/50 text-sm">
+                    /year each
+                  </span>
                 </div>
               </div>
 
@@ -187,7 +197,9 @@ export default function GiftMembershipPage() {
                   className="w-full py-4 bg-nfw-aubergine text-white font-bold text-base hover:bg-nfw-aubergine/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 rounded-lg"
                 >
                   {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {loading ? "Redirecting to checkout..." : `Purchase ${quantity} ${quantity === 1 ? "Code" : "Codes"} — $${15 * quantity}`}
+                  {loading
+                    ? "Redirecting to checkout..."
+                    : `Purchase ${quantity} ${quantity === 1 ? "Code" : "Codes"} — $${15 * quantity}`}
                 </button>
 
                 <p className="text-xs text-nfw-blackberry/40 text-center">
@@ -212,11 +224,17 @@ export default function GiftMembershipPage() {
         <div className="mt-16 text-center">
           <p className="text-nfw-blackberry/50 text-sm">
             Have a gift code to redeem?{" "}
-            <Link href="/auth/sign-up" className="text-nfw-wisteria font-semibold hover:underline">
+            <Link
+              href="/auth/sign-up"
+              className="text-nfw-wisteria font-semibold hover:underline"
+            >
               Sign up
             </Link>{" "}
             and enter it during registration, or{" "}
-            <Link href="/auth/login" className="text-nfw-wisteria font-semibold hover:underline">
+            <Link
+              href="/auth/login"
+              className="text-nfw-wisteria font-semibold hover:underline"
+            >
               sign in
             </Link>{" "}
             and redeem it in your dashboard.

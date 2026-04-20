@@ -24,7 +24,7 @@ const dropdownClass =
 const linkClass =
   "block px-4 py-2 text-[#ac9bb6] hover:bg-white/10 transition-colors";
 const buttonClass =
-  "flex items-center gap-1 text-[#ac9bb6] font-semibold hover:text-white/80 transition-colors py-6 uppercase text-sm tracking-wider";
+  "flex items-center gap-1 text-[#ac9bb6] font-semibold hover:text-white/80 transition-colors py-2 uppercase text-sm tracking-wider";
 
 export default function NavigationClient({
   side,

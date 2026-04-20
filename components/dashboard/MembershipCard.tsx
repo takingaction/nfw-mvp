@@ -47,7 +47,7 @@ export default function MembershipCard({
     }
   };
 
-  const badgeUrl = getBadgeUrl();
+  const badgeUrl = membershipLevel === "founding" ? badgeFoundingUrl : null;
   const showUpgrade = membershipLevel !== "founding";
 
   return (
@@ -77,7 +77,7 @@ export default function MembershipCard({
         )}
       </div>
 
-      <h2 className="text-xl font-bold text-nfw-blackberry font-serif mb-1 text-center">{memberName}</h2>
+      <h2 className="text-xl font-normal text-nfw-blackberry font-serif mb-1 text-center">{memberName}</h2>
 
       {joinedMonth && joinedYear && (
         <p className="text-sm text-nfw-blackberry/60 font-ui mb-4">
