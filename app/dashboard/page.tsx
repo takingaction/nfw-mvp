@@ -116,12 +116,12 @@ export default async function DashboardPage() {
   const featuredItems = (settings.featured_items || []).slice(0, 5);
 
   return (
-    <main className="min-h-screen bg-nfw-dove">
+    <main className="min-h-screen">
       <AccessPerksSync userId={user.id} />
 
       <DashboardHero heroImage={settings.hero_image_url || "/images/landing.jpg"} />
 
-      <div className="grid md:grid-cols-4 gap-0 mb-8">
+      <div className="grid md:grid-cols-4 gap-0 mb-0">
         <div className="col-span-1 bg-nfw-dove p-6">
           <MembershipCard
             memberName={profile?.full_name || "Member"}
