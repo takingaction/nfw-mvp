@@ -24,11 +24,11 @@ export default function DashboardHero({ heroImage }: DashboardHeroProps) {
               Your Member Dashboard
             </p>
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 font-serif">
-              Here to <em className="not-italic">help.</em>
+              Here to <em>help.</em>
             </h1>
             <div className="space-y-1 mb-8">
-              <p className="text-xl text-white/90 font-ui">Real support today.</p>
-              <p className="text-xl text-white/90 font-ui">Real power over time.</p>
+              <p className="text-xl text-white/90 font-serif">Real support today.</p>
+              <p className="text-xl text-white/90 font-serif">Real power over time.</p>
             </div>
             <div className="flex gap-4">
               <Link
