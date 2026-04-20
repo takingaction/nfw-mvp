@@ -17,7 +17,7 @@ export default function PopularAcrossNFW({ featuredItems }: PopularAcrossNFWProp
   }
 
   return (
-    <div className="bg-nfw-lilac/20 py-12 px-8">
+    <div className="bg-nfw-lilac py-12 px-8">
       <h2 className="text-2xl font-bold text-nfw-blackberry font-serif mb-8">
         Popular across NFW
       </h2>
