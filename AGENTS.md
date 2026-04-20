@@ -1279,3 +1279,12 @@ Implemented profile avatar upload functionality for the `/profile` page.
   - Upgrade button: wisteria (`#7786BE`) background with white text, ALL CAPS
 - `components/dashboard/PopularAcrossNFW.tsx`:
   - "Popular across NFW" heading changed from blackberry to white text
+
+### Session 2026-04-20: Stats Counter Animation Fix
+
+**Issue:** Stats counters on homepage and about page would stutter/hang before reaching final value.
+
+**Fix:**
+- `components/sections/StatsBarSection.tsx`:
+  - Changed `Math.floor` to `Math.round` in the animation step function
+  - This eliminates the stutter at the end of the animation where the counter would pause at one below the target before jumping to the final value
