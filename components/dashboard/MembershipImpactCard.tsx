@@ -32,7 +32,7 @@ export default function MembershipImpactCard({
         {formatCurrency(totalSavings)} saved
       </h1>
 
-      <div className="w-full bg-white/10 rounded-xl p-4">
+      <div className="w-full bg-nfw-lilac rounded-xl p-4">
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
             <p className="text-2xl font-bold text-white font-serif">
