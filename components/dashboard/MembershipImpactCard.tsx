@@ -23,34 +23,34 @@ export default function MembershipImpactCard({
   };
 
   return (
-    <div className="bg-nfw-dove p-6 flex flex-col items-center justify-center">
-      <p className="text-sm font-bold tracking-wide text-nfw-blackberry/60 mb-4 font-ui uppercase">
+    <div className="p-6 flex flex-col items-center justify-center">
+      <p className="text-sm font-bold tracking-wide text-white/80 mb-4 font-ui uppercase">
         Your Membership at Work
       </p>
 
-      <h1 className="text-4xl md:text-5xl font-bold text-nfw-blackberry font-serif mb-8">
+      <h1 className="text-4xl md:text-5xl font-bold text-white font-serif mb-8">
         {formatCurrency(totalSavings)} saved
       </h1>
 
-      <div className="w-full bg-nfw-lilac/20 rounded-xl p-4">
+      <div className="w-full bg-white/10 rounded-xl p-4">
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
-            <p className="text-2xl font-bold text-nfw-blackberry font-serif">
+            <p className="text-2xl font-bold text-white font-serif">
               {formatCurrency(micrograntsSavings)}
             </p>
-            <p className="text-xs text-nfw-blackberry/60 font-ui uppercase mt-1">From Microgrants</p>
+            <p className="text-xs text-white/60 font-ui uppercase mt-1">From Microgrants</p>
           </div>
-          <div className="text-center border-x border-nfw-blackberry/10">
-            <p className="text-2xl font-bold text-nfw-blackberry font-serif">
+          <div className="text-center border-x border-white/10">
+            <p className="text-2xl font-bold text-white font-serif">
               {formatCurrency(perksSavings)}
             </p>
-            <p className="text-xs text-nfw-blackberry/60 font-ui uppercase mt-1">From Perks</p>
+            <p className="text-xs text-white/60 font-ui uppercase mt-1">From Perks</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-bold text-nfw-blackberry font-serif">
+            <p className="text-2xl font-bold text-white font-serif">
               {formatCurrency(zeroDollarStoreSavings)}
             </p>
-            <p className="text-xs text-nfw-blackberry/60 font-ui uppercase mt-1">From Zero Dollar Store</p>
+            <p className="text-xs text-white/60 font-ui uppercase mt-1">From Zero Dollar Store</p>
           </div>
         </div>
       </div>

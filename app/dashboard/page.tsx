@@ -123,7 +123,7 @@ export default async function DashboardPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <div className="md:col-span-1">
+          <div className="md:col-span-1 bg-nfw-dove p-6">
             <MembershipCard
               memberName={profile?.full_name || "Member"}
               membershipLevel={profile?.membership_level || "free"}
@@ -135,7 +135,7 @@ export default async function DashboardPage() {
             />
           </div>
 
-          <div className="md:col-span-3">
+          <div className="md:col-span-3 bg-nfw-aubergine p-6">
             <MembershipImpactCard
               totalSavings={savings.total}
               micrograntsSavings={savings.microgrants}

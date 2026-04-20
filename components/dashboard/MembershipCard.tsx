@@ -51,14 +51,14 @@ export default function MembershipCard({
   const showUpgrade = membershipLevel !== "founding";
 
   return (
-    <div className="bg-nfw-dove p-6 flex flex-col items-center">
+    <div className="flex flex-col items-center">
       <div className="relative mb-4">
-        <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-nfw-stone/20">
+        <div className="w-36 h-36 rounded-full overflow-hidden border-4 border-white shadow-lg bg-nfw-stone/20">
           {avatarUrl ? (
             <img src={avatarUrl} alt={memberName} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <svg viewBox="0 0 100 100" className="w-16 h-16 text-nfw-stone/30">
+              <svg viewBox="0 0 100 100" className="w-24 h-24 text-nfw-stone/30">
                 <circle cx="50" cy="35" r="18" fill="currentColor" />
                 <path d="M50 55 C25 55 10 75 10 90 L90 90 C90 75 75 55 50 55" fill="currentColor" />
               </svg>
@@ -67,7 +67,7 @@ export default function MembershipCard({
         </div>
         {badgeUrl && (
           <div
-            className="absolute -top-1 -right-6 w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-md"
+            className="absolute -top-1 -right-8 w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-md"
             style={{
               transform: "rotate(20deg)",
             }}
