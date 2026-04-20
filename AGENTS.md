@@ -1264,3 +1264,18 @@ Implemented profile avatar upload functionality for the `/profile` page.
 
 **Navigation Fix:**
 - `components/NavigationClient.tsx` - Reduced nav item padding from `py-6` to `py-2` to close gap between dropdown and nav items
+
+### Session 2026-04-20: Dashboard Styling Fixes
+
+**Microgrant Featured Images:**
+- Fixed issue where microgrant images weren't showing in "Popular across NFW" section
+- The `grant_cycles.featured_image` was not being fetched when enriching featured items
+- Added lookup logic in `app/dashboard/page.tsx` to fetch `featured_image` from `grant_cycles` table
+- Also added same enrichment to `app/api/dashboard/settings/route.ts` for API consistency
+
+**Dashboard Component Styling:**
+- `components/dashboard/MembershipCard.tsx`:
+  - Level badge: aubergine background with white text, ALL CAPS
+  - Upgrade button: wisteria (`#7786BE`) background with white text, ALL CAPS
+- `components/dashboard/PopularAcrossNFW.tsx`:
+  - "Popular across NFW" heading changed from blackberry to white text

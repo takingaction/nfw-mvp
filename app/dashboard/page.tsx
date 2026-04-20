@@ -113,7 +113,31 @@ export default async function DashboardPage() {
 
   const savings = await getSavings(user.id);
   const settings = dashboardSettingsResult?.data || {};
-  const featuredItems = (settings.featured_items || []).slice(0, 5);
+
+  // Start with featured items from settings
+  let featuredItems = (settings.featured_items || []).slice(0, 5);
+
+  // Enrich ALL microgrant items with fresh image URLs from grant_cycles
+  const micrograntItems = featuredItems.filter((item: any) => item.type === "microgrant");
+
+  if (micrograntItems.length > 0) {
+    const grantIds = micrograntItems.map((item: any) => item.id.replace("grant_", ""));
+    const { data: grantCycles } = await supabaseAdmin
+      .from("grant_cycles")
+      .select("id, featured_image")
+      .in("id", grantIds);
+
+    if (grantCycles && grantCycles.length > 0) {
+      const grantImageMap = new Map(grantCycles.map(g => [g.id, g.featured_image]));
+      featuredItems = featuredItems.map((item: any) => {
+        if (item.type === "microgrant") {
+          const grantId = item.id.replace("grant_", "");
+          return { ...item, image: grantImageMap.get(grantId) || "" };
+        }
+        return item;
+      });
+    }
+  }
 
   return (
     <main className="min-h-screen">

@@ -87,21 +87,15 @@ export default function MembershipCard({
 
       <div className="flex flex-col items-center gap-2 mb-4">
         <span
-          className={`px-4 py-2 text-sm font-bold font-ui ${
-            membershipLevel === "founding"
-              ? "bg-[#d4f1ad]/30 text-nfw-blackberry"
-              : membershipLevel === "contributing"
-              ? "bg-nfw-lilac/20 text-nfw-blackberry"
-              : "bg-nfw-dove text-nfw-blackberry"
-          }`}
+          className="px-4 py-2 text-sm font-bold font-ui bg-nfw-aubergine text-white"
         >
-          {getLevelDisplay()}
+          {getLevelDisplay().toUpperCase()}
         </span>
 
         {showUpgrade && (
           <Link
             href="/profile"
-            className="px-4 py-2 text-sm font-bold font-ui bg-[#7786BE] text-white hover:bg-[#7786BE]/90"
+            className="px-4 py-2 text-sm font-bold font-ui bg-[#7786BE] text-white hover:bg-[#7786BE]/90 uppercase"
           >
             Upgrade
           </Link>

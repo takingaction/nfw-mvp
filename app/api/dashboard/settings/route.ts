@@ -23,7 +23,35 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json(data || {});
+    const settings = data || {};
+
+    // Enrich microgrant items with fresh image URLs from grant_cycles
+    if (settings.featured_items && Array.isArray(settings.featured_items)) {
+      const micrograntItems = settings.featured_items.filter(
+        (item: any) => item.type === "microgrant" && !item.image
+      );
+
+      if (micrograntItems.length > 0) {
+        const grantIds = micrograntItems.map((item: any) => item.id.replace("grant_", ""));
+        const { data: grantCycles } = await supabaseAdmin
+          .from("grant_cycles")
+          .select("id, featured_image")
+          .in("id", grantIds);
+
+        if (grantCycles && grantCycles.length > 0) {
+          const grantImageMap = new Map(grantCycles.map(g => [g.id, g.featured_image]));
+          settings.featured_items = settings.featured_items.map((item: any) => {
+            if (item.type === "microgrant" && !item.image) {
+              const grantId = item.id.replace("grant_", "");
+              return { ...item, image: grantImageMap.get(grantId) || "" };
+            }
+            return item;
+          });
+        }
+      }
+    }
+
+    return NextResponse.json(settings);
   } catch (error) {
     console.error("Error fetching dashboard settings:", error);
     return NextResponse.json(
