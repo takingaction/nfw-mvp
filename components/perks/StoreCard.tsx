@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { Navigation, ChevronRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Navigation, ChevronRight, Heart } from "lucide-react";
 
 interface StoreCardProps {
   store: {
@@ -19,6 +19,9 @@ interface StoreCardProps {
   };
   onClick?: () => void;
   isNationwide?: boolean;
+  liked?: boolean;
+  onToggleLike?: (storeKey: number, liked: boolean) => void;
+  showLikeButton?: boolean;
 }
 
 function decodeHTML(html: string): string {
@@ -27,8 +30,21 @@ function decodeHTML(html: string): string {
   return textarea.value;
 }
 
-export default function StoreCard({ store, onClick, isNationwide }: StoreCardProps) {
+export default function StoreCard({
+  store,
+  onClick,
+  isNationwide,
+  liked = false,
+  onToggleLike,
+  showLikeButton = true,
+}: StoreCardProps) {
   const nameRef = useRef<HTMLHeadingElement>(null);
+  const [isLiked, setIsLiked] = useState(liked);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    setIsLiked(liked);
+  }, [liked]);
 
   useEffect(() => {
     if (nameRef.current && store.name) {
@@ -36,11 +52,36 @@ export default function StoreCard({ store, onClick, isNationwide }: StoreCardPro
     }
   }, [store.name]);
 
+  const handleLikeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsAnimating(true);
+    const newLiked = !isLiked;
+    setIsLiked(newLiked);
+    onToggleLike?.(store.key, newLiked);
+    setTimeout(() => setIsAnimating(false), 300);
+  };
+
   return (
     <div
       onClick={onClick}
-      className="bg-white border border-nfw-blackberry/10 p-4 hover:shadow-md transition-shadow cursor-pointer"
+      className="bg-white border border-nfw-blackberry/10 p-4 hover:shadow-md transition-shadow cursor-pointer relative"
     >
+      {showLikeButton && (
+        <button
+          onClick={handleLikeClick}
+          className="absolute top-2 right-2 p-1.5 rounded-full hover:bg-nfw-blackberry/5 transition-colors z-10"
+          aria-label={isLiked ? "Unlike store" : "Like store"}
+        >
+          <Heart
+            className={`w-5 h-5 transition-all duration-200 ${
+              isLiked
+                ? "fill-[#B693C0] text-[#B693C0]"
+                : "fill-[#F8F19A] text-[#F8F19A]"
+            } ${isAnimating ? "scale-125" : "scale-100"}`}
+          />
+        </button>
+      )}
+
       <div className="flex items-start gap-3">
         <div className="w-12 h-12 flex-shrink-0 bg-nfw-dove rounded overflow-hidden">
           {store.logo_url ? (
@@ -55,7 +96,7 @@ export default function StoreCard({ store, onClick, isNationwide }: StoreCardPro
             </div>
           )}
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 pr-8">
           <h3
             ref={nameRef}
             className="font-sans text-sm font-semibold text-nfw-blackberry truncate [&_sup]:text-[0.6em] [&_sup]:align-super"

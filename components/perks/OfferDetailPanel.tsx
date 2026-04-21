@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   Globe,
   User,
+  Heart,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -22,6 +23,8 @@ interface OfferDetailPanelProps {
   offerKey: string | null;
   isOpen: boolean;
   onClose: () => void;
+  likedStores?: number[];
+  onToggleLike?: (storeKey: number, storeName: string, logoUrl: string | undefined, liked: boolean) => void;
 }
 
 interface Offer {
@@ -109,10 +112,14 @@ export default function OfferDetailPanel({
   offerKey,
   isOpen,
   onClose,
+  likedStores = [],
+  onToggleLike,
 }: OfferDetailPanelProps) {
   const [offer, setOffer] = useState<Offer | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isStoreLiked, setIsStoreLiked] = useState(false);
+  const [likeAnimating, setLikeAnimating] = useState(false);
   const [redeemingLink, setRedeemingLink] = useState(false);
   const [redeemingInstore, setRedeemingInstore] = useState(false);
   const [redeemingCall, setRedeemingCall] = useState(false);
@@ -162,6 +169,12 @@ export default function OfferDetailPanel({
       return () => clearTimeout(timer);
     }
   }, [isOpen, offerKey]);
+
+  useEffect(() => {
+    if (offer?.offer_store?.key) {
+      setIsStoreLiked(likedStores.includes(offer.offer_store.key));
+    }
+  }, [offer, likedStores]);
 
   const fetchOffer = async (key: string) => {
     setLoading(true);
@@ -232,6 +245,18 @@ export default function OfferDetailPanel({
         .catch(() => {});
     }
   }, [isOpen]);
+
+  const handleToggleLike = () => {
+    if (!offer?.offer_store) return;
+    const storeKey = offer.offer_store.key;
+    const storeName = offer.offer_store.name || "Unknown Store";
+    const logoUrl = offer.offer_store.logo_url;
+    const newLiked = !isStoreLiked;
+    setIsStoreLiked(newLiked);
+    setLikeAnimating(true);
+    onToggleLike?.(storeKey, storeName, logoUrl, newLiked);
+    setTimeout(() => setLikeAnimating(false), 300);
+  };
 
   const handleRedeem = async (method: string, forcedLocationKey?: string) => {
     if (!offer) return;
@@ -554,17 +579,34 @@ export default function OfferDetailPanel({
                               __html: decodeHtml(offer.offer_store.name),
                             }}
                           />
-                          {offer.offer_store.website && (
-                            <a
-                              href={offer.offer_store.website}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-nfw-blackberry/60 hover:text-nfw-blackberry text-xs flex items-center gap-1 transition-colors"
+                          <div className="flex items-center gap-3 mt-1">
+                            {offer.offer_store.website && (
+                              <a
+                                href={offer.offer_store.website}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-nfw-blackberry/60 hover:text-nfw-blackberry text-xs flex items-center gap-1 transition-colors"
+                              >
+                                Visit Website
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            )}
+                            <button
+                              onClick={handleToggleLike}
+                              className="flex items-center gap-1.5 text-xs transition-colors"
                             >
-                              Visit Website
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          )}
+                              <Heart
+                                className={`w-4 h-4 transition-all duration-200 ${
+                                  isStoreLiked
+                                    ? "fill-[#B693C0] text-[#B693C0]"
+                                    : "fill-[#F8F19A] text-[#F8F19A]"
+                                } ${likeAnimating ? "scale-125" : "scale-100"}`}
+                              />
+                              <span className={isStoreLiked ? "text-[#B693C0]" : "text-nfw-blackberry/60"}>
+                                {isStoreLiked ? "Saved" : "Save"}
+                              </span>
+                            </button>
+                          </div>
                         </div>
                       )}
 

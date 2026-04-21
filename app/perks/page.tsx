@@ -64,6 +64,7 @@ export default function PerksPage() {
   const [isOfferPanelOpen, setIsOfferPanelOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [likedStoreKeys, setLikedStoreKeys] = useState<number[]>([]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -90,8 +91,11 @@ export default function PerksPage() {
           window.location.href = "/auth/sign-up?step=3";
           return;
         }
+
+        // Fetch liked stores
+        fetchLikedStores();
       }
-      
+
       setAuthChecked(true);
     };
     
@@ -223,6 +227,45 @@ export default function PerksPage() {
       }
     } catch (err) {
       console.error("Failed to fetch facets:", err);
+    }
+  };
+
+  const fetchLikedStores = async () => {
+    try {
+      const response = await fetch("/api/perks/liked-stores");
+      if (response.ok) {
+        const data = await response.json();
+        const keys = (data.stores || []).map((s: any) => parseInt(s.store_key)).filter(Boolean);
+        setLikedStoreKeys(keys);
+      }
+    } catch (err) {
+      console.error("Failed to fetch liked stores:", err);
+    }
+  };
+
+  const handleToggleLike = async (storeKey: number, storeName: string, logoUrl: string | undefined, liked: boolean) => {
+    try {
+      if (liked) {
+        // Like the store
+        const res = await fetch("/api/perks/liked-stores", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ store_key: storeKey, store_name: storeName, logo_url: logoUrl }),
+        });
+        if (res.ok) {
+          setLikedStoreKeys((prev) => [...prev, storeKey]);
+        }
+      } else {
+        // Unlike the store
+        const res = await fetch(`/api/perks/liked-stores/${storeKey}`, {
+          method: "DELETE",
+        });
+        if (res.ok) {
+          setLikedStoreKeys((prev) => prev.filter((k) => k !== storeKey));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to toggle like:", err);
     }
   };
 
@@ -711,23 +754,28 @@ export default function PerksPage() {
               <>
                 {currentView === "stores" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {rollupGroups.map((group) => (
-                      <StoreCard
-                        key={group.key}
-                        store={{
-                          key: typeof group.key === 'number' ? group.key : parseInt(String(group.key)) || 0,
-                          name: group.name || "Unknown Store",
-                          logo_url: group.logo_url,
-                          description: group.description,
-                          count: group.count,
-                          offers: group.offers || [],
-                          location: group.location,
-                          distance: group.distance,
-                        }}
-                        onClick={() => handleStoreClick(typeof group.key === 'number' ? group.key : parseInt(String(group.key)) || 0)}
-                        isNationwide={searchDistance === "2500mi"}
-                      />
-                    ))}
+                    {rollupGroups.map((group) => {
+                      const storeKey = typeof group.key === 'number' ? group.key : parseInt(String(group.key)) || 0;
+                      return (
+                        <StoreCard
+                          key={group.key}
+                          store={{
+                            key: storeKey,
+                            name: group.name || "Unknown Store",
+                            logo_url: group.logo_url,
+                            description: group.description,
+                            count: group.count,
+                            offers: group.offers || [],
+                            location: group.location,
+                            distance: group.distance,
+                          }}
+                          liked={likedStoreKeys.includes(storeKey)}
+                          onToggleLike={handleToggleLike}
+                          onClick={() => handleStoreClick(storeKey)}
+                          isNationwide={searchDistance === "2500mi"}
+                        />
+                      );
+                    })}
                   </div>
                 )}
 
@@ -796,6 +844,8 @@ export default function PerksPage() {
         offerKey={selectedOfferKey}
         isOpen={isOfferPanelOpen}
         onClose={() => setIsOfferPanelOpen(false)}
+        likedStores={likedStoreKeys}
+        onToggleLike={handleToggleLike}
       />
     </main>
   );

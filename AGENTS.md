@@ -1288,3 +1288,45 @@ Implemented profile avatar upload functionality for the `/profile` page.
 - `components/sections/StatsBarSection.tsx`:
   - Changed `Math.floor` to `Math.round` in the animation step function
   - This eliminates the stutter at the end of the animation where the counter would pause at one below the target before jumping to the final value
+
+### Session 2026-04-21: Store Likes Feature
+
+Implemented ability for users to "like" stores on the /perks page, with liked stores displayed on the dashboard.
+
+**Database:**
+- `supabase/migrations/045_create_store_likes.sql` - Creates `store_likes` table with columns: id, user_id, store_key, store_name, logo_url, created_at
+
+**API Routes:**
+- `app/api/perks/liked-stores/route.ts` - GET (fetch user's liked stores), POST (like a store)
+- `app/api/perks/liked-stores/[storeKey]/route.ts` - DELETE (unlike a store)
+
+**Components Modified:**
+- `components/perks/StoreCard.tsx`:
+  - Added heart icon button in top-right corner
+  - Heart unchecked: citrine (#F8F19A), checked: lilac (#B693C0)
+  - Added scale animation on click
+  - Props: `liked`, `onToggleLike`, `showLikeButton`
+- `components/perks/OfferDetailPanel.tsx`:
+  - Added "Save" heart button next to "Visit Website" link
+  - Same color states as StoreCard
+  - Props: `likedStores`, `onToggleLike`
+
+**New Dashboard Components:**
+- `components/dashboard/YourPerksAndBenefits.tsx` - Aubergine section with "Your Saved Brands" and "Your Redeemed Perks" columns
+- `components/dashboard/SavedBrandsPanel.tsx` - Slide-in panel showing all liked stores with unlike functionality
+- `components/dashboard/RedeemedPerksPanel.tsx` - Slide-in panel showing redeemed perks (adapted from RecentRedemptions)
+- `components/dashboard/DashboardPerksSection.tsx` - Client wrapper component managing panel state
+
+**Dashboard Updates:**
+- `app/dashboard/page.tsx`:
+  - Fetches liked stores server-side
+  - Renders new "Your Perks & Benefits" section below "Popular across NFW"
+- Section has aubergine background, H5 Playfair heading "Your Saved Brands"
+- Two-column layout: Saved Brands (left), Redeemed Perks (right)
+- "Explore Your Saved Brands" / "Explore Your Redeemed Perks" links open slide-in panels
+
+**Perks Page Updates:**
+- `app/perks/page.tsx`:
+  - Added `likedStoreKeys` state to track liked stores
+  - Added `fetchLikedStores()` and `handleToggleLike()` functions
+  - Passes `liked` and `onToggleLike` props to StoreCard and OfferDetailPanel

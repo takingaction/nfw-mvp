@@ -7,6 +7,7 @@ import MembershipImpactCard from "@/components/dashboard/MembershipImpactCard";
 import PopularAcrossNFW from "@/components/dashboard/PopularAcrossNFW";
 import BottomActions from "@/components/dashboard/BottomActions";
 import AccessPerksSync from "@/components/AccessPerksSync";
+import DashboardPerksSection from "@/components/dashboard/DashboardPerksSection";
 
 export const metadata = {
   title: "Dashboard",
@@ -90,7 +91,7 @@ export default async function DashboardPage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const [profileResult, dashboardSettingsResult] = await Promise.all([
+  const [profileResult, dashboardSettingsResult, likedStoresResult] = await Promise.all([
     supabase
       .from("profiles")
       .select("*, joined_at")
@@ -101,6 +102,11 @@ export default async function DashboardPage() {
       .select("*")
       .limit(1)
       .single(),
+    supabaseAdmin
+      .from("store_likes")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
   ]);
 
   const profile = profileResult?.data;
@@ -113,6 +119,7 @@ export default async function DashboardPage() {
 
   const savings = await getSavings(user.id);
   const settings = dashboardSettingsResult?.data || {};
+  const likedStores = likedStoresResult?.data || [];
 
   // Start with featured items from settings
   let featuredItems = (settings.featured_items || []).slice(0, 5);
@@ -169,6 +176,8 @@ export default async function DashboardPage() {
       </div>
 
       <PopularAcrossNFW featuredItems={featuredItems} />
+
+      <DashboardPerksSection likedStores={likedStores} />
 
       <BottomActions
         squareImage1={settings.square_image1_url || ""}
