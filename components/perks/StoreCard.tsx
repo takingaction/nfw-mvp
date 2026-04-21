@@ -20,7 +20,7 @@ interface StoreCardProps {
   onClick?: () => void;
   isNationwide?: boolean;
   liked?: boolean;
-  onToggleLike?: (storeKey: number, liked: boolean) => void;
+  onToggleLike?: (storeKey: number, storeName: string, logoUrl: string | undefined, liked: boolean) => void;
   showLikeButton?: boolean;
 }
 
@@ -57,7 +57,7 @@ export default function StoreCard({
     setIsAnimating(true);
     const newLiked = !isLiked;
     setIsLiked(newLiked);
-    onToggleLike?.(store.key, newLiked);
+    onToggleLike?.(store.key, store.name, store.logo_url, newLiked);
     setTimeout(() => setIsAnimating(false), 300);
   };
 
