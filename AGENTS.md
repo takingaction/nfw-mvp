@@ -1330,3 +1330,6 @@ Implemented ability for users to "like" stores on the /perks page, with liked st
   - Added `likedStoreKeys` state to track liked stores
   - Added `fetchLikedStores()` and `handleToggleLike()` functions
   - Passes `liked` and `onToggleLike` props to StoreCard and OfferDetailPanel
+
+**Build Fix (2026-04-21):**
+- Fixed type mismatch in StoreCard - `onToggleLike` callback signature updated to include `storeName` and `logoUrl` parameters to match OfferDetailPanel
