@@ -244,22 +244,24 @@ export default function PerksPage() {
   };
 
   const handleToggleLike = async (storeKey: number, storeName: string, logoUrl: string | undefined, liked: boolean) => {
+    console.log("handleToggleLike called:", { storeKey, storeName, liked });
     try {
       if (liked) {
-        // Like the store
         const res = await fetch("/api/perks/liked-stores", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ store_key: storeKey, store_name: storeName, logo_url: logoUrl }),
         });
+        const data = await res.json();
+        console.log("Like response:", res.status, data);
         if (res.ok) {
           setLikedStoreKeys((prev) => [...prev, storeKey]);
         }
       } else {
-        // Unlike the store
         const res = await fetch(`/api/perks/liked-stores/${storeKey}`, {
           method: "DELETE",
         });
+        console.log("Unlike response:", res.status);
         if (res.ok) {
           setLikedStoreKeys((prev) => prev.filter((k) => k !== storeKey));
         }

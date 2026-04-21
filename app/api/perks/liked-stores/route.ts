@@ -43,11 +43,14 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
+    console.log("POST /api/perks/liked-stores - user:", user?.id);
+
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { store_key, store_name, logo_url } = await request.json();
+    console.log("Liking store:", { store_key, store_name });
 
     if (!store_key || !store_name) {
       return NextResponse.json(
@@ -66,6 +69,8 @@ export async function POST(request: Request) {
       })
       .select()
       .single();
+
+    console.log("Insert result:", { data, error });
 
     if (error) {
       if (error.code === "23505") {

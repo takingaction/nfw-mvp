@@ -497,7 +497,7 @@ export default function DashboardAdminClient() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-nfw-blackberry mb-2">
-                      Square {num} Link
+                      {num === 1 ? "Contact Us Link" : num === 2 ? "Gift A Membership Link" : "Share Your Story Link"}
                     </label>
                     <input
                       type="text"

@@ -98,12 +98,11 @@ export default function YourPerksAndBenefits({
 }: YourPerksAndBenefitsProps) {
   return (
     <section className="bg-nfw-aubergine py-12 px-8">
-      <div className="max-w-7xl mx-auto">
-        <h2 className="text-2xl font-bold text-white font-serif mb-8">
-          Your Perks & Benefits
-        </h2>
+      <h2 className="text-2xl font-bold text-white font-serif mb-8">
+        Your Perks & Benefits
+      </h2>
 
-        <div className="grid md:grid-cols-2 gap-8">
+      <div className="grid md:grid-cols-2 gap-8">
           {/* Left Column: Saved Brands */}
           <div>
             <div className="bg-white/5 rounded-xl p-6">
@@ -144,7 +143,6 @@ export default function YourPerksAndBenefits({
             </div>
           </div>
         </div>
-      </div>
     </section>
   );
 }
