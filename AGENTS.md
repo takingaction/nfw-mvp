@@ -1333,3 +1333,14 @@ Implemented ability for users to "like" stores on the /perks page, with liked st
 
 **Build Fix (2026-04-21):**
 - Fixed type mismatch in StoreCard - `onToggleLike` callback signature updated to include `storeName` and `logoUrl` parameters to match OfferDetailPanel
+
+**Layout Fixes:**
+- `components/dashboard/YourPerksAndBenefits.tsx` - Removed `max-w-7xl mx-auto` wrapper to match PopularAcrossNFW section positioning
+- `app/admin/dashboard/DashboardAdminClient.tsx` - Renamed Square Link labels:
+  - Square 1 Link → Contact Us Link
+  - Square 2 Link → Gift A Membership Link
+  - Square 3 Link → Share Your Story Link
+
+**Store Likes Debug:**
+- Added console.log debugging to `handleToggleLike` in `/perks/page.tsx`
+- Added console.log debugging to POST `/api/perks/liked-stores` route
