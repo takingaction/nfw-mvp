@@ -1425,4 +1425,27 @@ Fixed "Rendered fewer hooks than expected" error caused by early return statemen
 - `components/BackToTop.tsx` - Moved early return after useEffect
 
 This follows React's rule that hooks must be called before any early returns.
+
+### Session 2026-04-23: Dashboard Redeemed Perks Fix
+
+Fixed "Your Redeemed Perks" section not showing redeemed perks on dashboard.
+
+**Problem:**
+- Redeemed perks showed correctly in slide-out panel but not on main dashboard section
+- The `YourPerksAndBenefits` component had a static "Redeem perks to see them here" message
+
+**Solution:**
+- Added `recentRedemptions` prop to `YourPerksAndBenefits` component
+- Updated `RedeemedPerksList` to accept and display redemptions
+- Modified `DashboardPerksSection` to fetch redemptions on mount via `/api/access-perks/redemptions?limit=50`
+- Removed `status=active` filter from redemptions query to show all redemptions
+
+**Files Modified:**
+- `components/dashboard/YourPerksAndBenefits.tsx` - Updated RedeemedPerksList to display redemptions
+- `components/dashboard/DashboardPerksSection.tsx` - Added redemptions fetching on mount
+- `components/dashboard/RedeemedPerksPanel.tsx` - Changed to fetch all redemptions without status filter
+- `app/api/access-perks/redemptions/route.ts` - Added debug logging
+
+**Additional Fix:**
+- Fixed duplicate `RedeemedPerksList` function definition in YourPerksAndBenefits.tsx
 - Added console.log debugging to POST `/api/perks/liked-stores` route

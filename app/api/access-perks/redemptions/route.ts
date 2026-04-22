@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get("limit") || "10");
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    // Build query
+// Build query
     let query = supabase
       .from("offer_redemptions")
       .select("*", { count: "exact" })
@@ -31,11 +31,12 @@ export async function GET(request: Request) {
     if (status) {
       query = query.eq("status", status);
     } else if (excludeArchived) {
-      // Exclude archived when showing "all"
       query = query.neq("status", "archived");
     }
 
     const { data: redemptions, error, count } = await query;
+
+    console.log("Redemptions for user", user.id, ":", redemptions?.map(r => ({ id: r.id, status: r.status, offer_title: r.offer_title })));
 
     if (error) {
       console.error("Failed to fetch redemptions:", error);

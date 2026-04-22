@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import YourPerksAndBenefits from "./YourPerksAndBenefits";
 import SavedBrandsPanel from "./SavedBrandsPanel";
 import RedeemedPerksPanel from "./RedeemedPerksPanel";
@@ -13,6 +13,13 @@ interface LikedStore {
   created_at: string;
 }
 
+interface Redemption {
+  id: string;
+  offer_title: string;
+  store_name: string | null;
+  redeemed_at: string;
+}
+
 interface DashboardPerksSectionProps {
   likedStores: LikedStore[];
 }
@@ -23,6 +30,23 @@ export default function DashboardPerksSection({
   const [savedBrandsOpen, setSavedBrandsOpen] = useState(false);
   const [redeemedPerksOpen, setRedeemedPerksOpen] = useState(false);
   const [stores, setStores] = useState(likedStores);
+  const [recentRedemptions, setRecentRedemptions] = useState<Redemption[]>([]);
+
+  useEffect(() => {
+    fetchRedemptions();
+  }, []);
+
+  const fetchRedemptions = async () => {
+    try {
+      const response = await fetch("/api/access-perks/redemptions?limit=50");
+      if (response.ok) {
+        const data = await response.json();
+        setRecentRedemptions(data.redemptions || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch redemptions:", err);
+    }
+  };
 
   const handleUnlike = async (storeKey: string) => {
     try {
@@ -43,6 +67,7 @@ export default function DashboardPerksSection({
         likedStores={stores}
         onExploreSavedBrands={() => setSavedBrandsOpen(true)}
         onExploreRedeemedPerks={() => setRedeemedPerksOpen(true)}
+        recentRedemptions={recentRedemptions}
       />
 
       <SavedBrandsPanel

@@ -66,7 +66,7 @@ export default function RedeemedPerksPanel({
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/access-perks/redemptions?status=active&limit=20");
+      const response = await fetch("/api/access-perks/redemptions?limit=50");
       if (!response.ok) throw new Error("Failed to fetch redemptions");
       const data = await response.json();
       setRedemptions(data.redemptions || []);

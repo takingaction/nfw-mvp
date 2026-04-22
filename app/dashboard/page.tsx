@@ -146,6 +146,29 @@ export default async function DashboardPage() {
     }
   }
 
+  // Enrich shopify_product items with fresh image URLs from API
+  const shopifyItems = featuredItems.filter((item: any) => item.type === "shopify_product");
+  if (shopifyItems.length > 0) {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nationalfundforwomen.org";
+      const productsRes = await fetch(`${baseUrl}/api/shopify/products`);
+      if (productsRes.ok) {
+        const products = await productsRes.json();
+        const productMap = new Map(products.map((p: any) => [p.shopifyProductId, p.imageUrl]));
+        featuredItems = featuredItems.map((item: any) => {
+          if (item.type === "shopify_product") {
+            const productId = item.id.replace("shopify_", "");
+            const imageUrl = productMap.get(productId) || item.image;
+            return { ...item, image: imageUrl };
+          }
+          return item;
+        });
+      }
+    } catch (err) {
+      console.error("Failed to enrich shopify product images:", err);
+    }
+  }
+
   return (
     <main className="min-h-screen">
       <AccessPerksSync userId={user.id} />
