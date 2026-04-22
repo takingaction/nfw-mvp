@@ -8,10 +8,6 @@ export default function BackToTop() {
   const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(false);
 
-  if (pathname === "/coming-soon") {
-    return null;
-  }
-
   // Show button when page is scrolled down
   useEffect(() => {
     const toggleVisibility = () => {
@@ -25,6 +21,10 @@ export default function BackToTop() {
     window.addEventListener("scroll", toggleVisibility);
     return () => window.removeEventListener("scroll", toggleVisibility);
   }, []);
+
+  if (pathname === "/coming-soon") {
+    return null;
+  }
 
   const scrollToTop = () => {
     window.scrollTo({

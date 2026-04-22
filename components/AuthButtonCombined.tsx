@@ -70,8 +70,6 @@ export function AuthButtonCombined() {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (user === undefined) return null;
-
   if (!user) {
     return (
       <Link

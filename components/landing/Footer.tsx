@@ -82,10 +82,6 @@ export default function Footer() {
   const [signupStatus, setSignupStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
-  if (pathname === "/coming-soon") {
-    return null;
-  }
-
   useEffect(() => {
     fetch("/api/footer")
       .then((res) => res.json())
@@ -132,6 +128,10 @@ export default function Footer() {
     column3_links: footerData.column3_links || defaultData.column3_links,
     column4_links: footerData.column4_links || defaultData.column4_links,
   } : defaultData;
+
+  if (pathname === "/coming-soon") {
+    return null;
+  }
 
   return (
     <footer className="bg-nfw-aubergine text-nfw-dove">

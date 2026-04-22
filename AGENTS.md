@@ -1411,4 +1411,18 @@ CREATE POLICY "Users can unlike stores"
 
 NOTIFY pgrst, 'reload';
 ```
+
+#### React Error #300 Fix - Early Returns Before Hooks
+
+Fixed "Rendered fewer hooks than expected" error caused by early return statements before hook calls in Footer and BackToTop components.
+
+**Root Cause:**
+- `Footer.tsx` had `if (pathname === "/coming-soon") return null;` before `useEffect`
+- `BackToTop.tsx` had the same issue
+
+**Files Modified:**
+- `components/landing/Footer.tsx` - Moved early return after useEffect
+- `components/BackToTop.tsx` - Moved early return after useEffect
+
+This follows React's rule that hooks must be called before any early returns.
 - Added console.log debugging to POST `/api/perks/liked-stores` route
