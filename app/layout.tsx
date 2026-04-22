@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Playfair_Display, DM_Sans } from "next/font/google";
 import { headers } from "next/headers";
+import Script from "next/script";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/landing/Footer";
@@ -56,6 +57,18 @@ export default async function RootLayout({
         {children}
         {!isPublicRoute && <Footer />}
         {!isPublicRoute && <BackToTop />}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-MXX079LCCS"
+          strategy="afterInteractive"
+        />
+        <Script id="ga4" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-MXX079LCCS');
+          `}
+        </Script>
       </body>
     </html>
   );

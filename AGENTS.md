@@ -1343,4 +1343,72 @@ Implemented ability for users to "like" stores on the /perks page, with liked st
 
 **Store Likes Debug:**
 - Added console.log debugging to `handleToggleLike` in `/perks/page.tsx`
+
+### Session 2026-04-22: Perks Page Updates + GA4 Installation
+
+#### Hidden Gun Range Stores
+
+Added `EXCLUDED_STORES` constant array to filter out gun/shooting related stores from `/perks` page. These stores are hidden from the stores view but may still appear in offers/locations views.
+
+**Stores Excluded:**
+- Williams Gun Works
+- Medlock Range
+- Miami Valley Shooting Grounds
+- Learn 2 Shoot Handgun Training Academy
+- Paladin Tactical Firearms Training
+- Republic Arms
+- Defender Shooting Sports
+- New American Arms
+- Hopkins Gun & Tackle
+- Range Masters of Utah
+- Original Bob's Shooting Range
+- Impact Guns
+- Personal Defense Depot
+- Vegas Machine Gun Experience
+
+**Files Modified:**
+- `app/perks/page.tsx` - Added `EXCLUDED_STORES` array and filter on stores view
+
+#### Login Page Updates
+
+- `components/login-form.tsx` - Commented out "Don't have an account? Sign up" link
+- `app/coming-soon/page.tsx` - Added "Login" button in top right corner linking to `/auth/login`
+
+#### GA4 Installation
+
+- `app/layout.tsx` - Added Google Analytics 4 script with tracking ID `G-MXX079LCCS`
+- Script loads asynchronously after page becomes interactive
+
+#### Store Likes View Offers Fix
+
+Fixed "View Offers" link in SavedBrandsPanel to filter offers by store.
+
+**Files Modified:**
+- `app/perks/page.tsx`:
+  - Added `store` query param handler on mount to set `selectedStore` and switch to offers view
+  - Changed `likedStoreKeys.includes(storeKey)` to `likedStoreKeys.includes(Number(storeKey))` for proper type comparison
+
+#### Coming Soon Page Login Button
+
+- `app/coming-soon/page.tsx` - Added "Login" button in top right corner that links to `/auth/login`
+
+#### RLS Policies for store_likes
+
+Created `supabase/migrations/046_add_store_likes_rls.sql` to add RLS policies for the `store_likes` table.
+
+**SQL Applied:**
+```sql
+ALTER TABLE store_likes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own liked stores"
+  ON store_likes FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can like stores"
+  ON store_likes FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can unlike stores"
+  ON store_likes FOR DELETE USING (auth.uid() = user_id);
+
+NOTIFY pgrst, 'reload';
+```
 - Added console.log debugging to POST `/api/perks/liked-stores` route

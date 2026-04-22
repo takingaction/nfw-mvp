@@ -154,7 +154,8 @@ export function LoginForm({
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
             </div>
-            <div className="mt-4 text-center text-sm text-nfw-blackberry/60">
+            {/* Sign up link hidden temporarily */}
+            {/* <div className="mt-4 text-center text-sm text-nfw-blackberry/60">
               Don&apos;t have an account?{" "}
               <Link
                 href="/auth/sign-up"
@@ -162,7 +163,7 @@ export function LoginForm({
               >
                 Sign up
               </Link>
-            </div>
+            </div> */}
           </form>
         </CardContent>
       </Card>

@@ -70,6 +70,13 @@ export default function ComingSoonPage() {
       />
       <div className="absolute inset-0 z-0 bg-black/40" />
 
+      <a
+        href="/auth/login"
+        className="relative z-20 self-end mt-4 mr-4 md:mr-8 px-6 py-3 border-2 border-white text-white font-ui font-semibold rounded-lg hover:bg-white/10 transition-colors"
+      >
+        Login
+      </a>
+
       <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-4 py-12">
         <img
           src="/images/nfw-symbol-brandmark-white.png"

@@ -34,6 +34,23 @@ interface RollupGroup {
   store?: any;
 }
 
+const EXCLUDED_STORES = [
+  "Williams Gun Works",
+  "Medlock Range",
+  "Miami Valley Shooting Grounds",
+  "Learn 2 Shoot Handgun Training Academy",
+  "Paladin Tactical Firearms Training",
+  "Republic Arms",
+  "Defender Shooting Sports",
+  "New American Arms",
+  "Hopkins Gun & Tackle",
+  "Range Masters of Utah",
+  "Original Bob's Shooting Range",
+  "Impact Guns",
+  "Personal Defense Depot",
+  "Vegas Machine Gun Experience",
+];
+
 export default function PerksPage() {
   const [offers, setOffers] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -65,6 +82,18 @@ export default function PerksPage() {
   const [user, setUser] = useState<any>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [likedStoreKeys, setLikedStoreKeys] = useState<number[]>([]);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const storeParam = urlParams.get("store");
+    if (storeParam) {
+      const storeKey = parseInt(storeParam);
+      if (!isNaN(storeKey)) {
+        setSelectedStore(storeKey);
+        setCurrentView("offers");
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -235,8 +264,17 @@ export default function PerksPage() {
       const response = await fetch("/api/perks/liked-stores");
       if (response.ok) {
         const data = await response.json();
-        const keys = (data.stores || []).map((s: any) => parseInt(s.store_key)).filter(Boolean);
+        const stores = data.stores || [];
+        const keys: number[] = [];
+        for (const s of stores) {
+          const key = parseInt(String(s.store_key), 10);
+          if (!isNaN(key)) {
+            keys.push(key);
+          }
+        }
         setLikedStoreKeys(keys);
+      } else {
+        console.error("Failed to fetch liked stores:", response.status);
       }
     } catch (err) {
       console.error("Failed to fetch liked stores:", err);
@@ -244,7 +282,6 @@ export default function PerksPage() {
   };
 
   const handleToggleLike = async (storeKey: number, storeName: string, logoUrl: string | undefined, liked: boolean) => {
-    console.log("handleToggleLike called:", { storeKey, storeName, liked });
     try {
       if (liked) {
         const res = await fetch("/api/perks/liked-stores", {
@@ -252,8 +289,6 @@ export default function PerksPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ store_key: storeKey, store_name: storeName, logo_url: logoUrl }),
         });
-        const data = await res.json();
-        console.log("Like response:", res.status, data);
         if (res.ok) {
           setLikedStoreKeys((prev) => [...prev, storeKey]);
         }
@@ -261,7 +296,6 @@ export default function PerksPage() {
         const res = await fetch(`/api/perks/liked-stores/${storeKey}`, {
           method: "DELETE",
         });
-        console.log("Unlike response:", res.status);
         if (res.ok) {
           setLikedStoreKeys((prev) => prev.filter((k) => k !== storeKey));
         }
@@ -756,9 +790,11 @@ export default function PerksPage() {
               <>
                 {currentView === "stores" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {rollupGroups.map((group) => {
-                      const storeKey = typeof group.key === 'number' ? group.key : parseInt(String(group.key)) || 0;
-                      return (
+                    {rollupGroups
+                      .filter((group) => !EXCLUDED_STORES.includes(group.name || ""))
+                      .map((group) => {
+                        const storeKey = typeof group.key === 'number' ? group.key : parseInt(String(group.key)) || 0;
+                        return (
                         <StoreCard
                           key={group.key}
                           store={{
@@ -771,7 +807,7 @@ export default function PerksPage() {
                             location: group.location,
                             distance: group.distance,
                           }}
-                          liked={likedStoreKeys.includes(storeKey)}
+                          liked={likedStoreKeys.includes(Number(storeKey))}
                           onToggleLike={handleToggleLike}
                           onClick={() => handleStoreClick(storeKey)}
                           isNationwide={searchDistance === "2500mi"}
