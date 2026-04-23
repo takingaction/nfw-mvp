@@ -55,9 +55,9 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
         {/* Left Column - Your Applications (1/3) */}
         <div className="md:col-span-1">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white font-serif">
-              Your Microgrants
-            </h2>
+            <h3 className="text-lg font-bold text-white font-serif">
+              Your Applications
+            </h3>
             <Link
               href="/grants/apply"
               className="px-4 py-2 bg-nfw-citrine text-nfw-blackberry font-ui text-sm font-medium rounded-lg hover:bg-nfw-citrine/90 transition-colors"
@@ -90,9 +90,9 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
                   className="block bg-white/10 hover:bg-white/15 rounded-xl p-4 transition-colors"
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-white font-serif font-semibold text-sm line-clamp-2 flex-1">
+                    <h4 className="text-white font-serif font-semibold text-sm line-clamp-2 flex-1">
                       {grant.grant_cycles?.cycle_name || "Grant Application"}
-                    </h3>
+                    </h4>
                     <span
                       className={`ml-2 px-2 py-0.5 font-ui text-xs font-black tracking-[0.03em] uppercase rounded ${statusColors[grant.status] || "bg-gray-100 text-gray-600"}`}
                     >
@@ -118,9 +118,9 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
         {/* Right Column - Available Microgrants (2/3) */}
         <div className="md:col-span-2">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white font-serif">
+            <h3 className="text-lg font-bold text-white font-serif">
               Available Microgrants
-            </h2>
+            </h3>
             <Link
               href="/grants"
               className="px-4 py-2 bg-white/20 text-white font-ui text-sm font-medium rounded-lg hover:bg-white/30 transition-colors"
@@ -155,9 +155,9 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
                       />
                     </div>
                   )}
-                  <h3 className="text-white font-serif font-semibold text-sm line-clamp-2 mb-2">
+                  <h4 className="text-white font-serif font-semibold text-sm line-clamp-2 mb-2">
                     {cycle.cycle_name}
-                  </h3>
+                  </h4>
                   <p className="text-nfw-citrine font-ui text-xl font-bold mb-1">
                     ${cycle.amount_per_grant.toLocaleString()}
                   </p>
