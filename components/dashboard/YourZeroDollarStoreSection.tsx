@@ -2,11 +2,15 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Gift, Clock } from "lucide-react";
+import { Gift, Clock, ArrowRight } from "lucide-react";
+
+const SHOPIFY_STORE_DOMAIN = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN || "nationalfundforwomen.myshopify.com";
 
 interface Claim {
   id: string;
   created_at: string;
+  order_status_url?: string | null;
+  shopify_order_id?: string | null;
   shopify_product_mappings: {
     title: string;
     image_url: string | null;
@@ -25,8 +29,18 @@ interface YourZeroDollarStoreSectionProps {
   claims: Claim[];
 }
 
+function getShopifyOrderUrl(claim: Claim): string | null {
+  if (claim.order_status_url) {
+    return claim.order_status_url;
+  }
+  if (!claim.shopify_order_id) return null;
+  const cleanId = claim.shopify_order_id.replace('gid://shopify/Order/', '');
+  return `https://${SHOPIFY_STORE_DOMAIN}/account/orders/${cleanId}`;
+}
+
 function OnlineHistoryItem({ claim }: { claim: Claim }) {
   const product = claim.shopify_product_mappings;
+  const shopifyOrderUrl = getShopifyOrderUrl(claim);
 
   return (
     <div className="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
@@ -48,6 +62,17 @@ function OnlineHistoryItem({ claim }: { claim: Claim }) {
         <p className="text-white/50 text-xs">
           {new Date(claim.created_at).toLocaleDateString()}
         </p>
+        {shopifyOrderUrl && (
+          <a
+            href={shopifyOrderUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 font-ui text-xs font-medium text-nfw-citrine hover:underline mt-1"
+          >
+            View on Shopify
+            <ArrowRight className="w-3 h-3" />
+          </a>
+        )}
       </div>
     </div>
   );
