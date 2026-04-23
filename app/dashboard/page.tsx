@@ -93,7 +93,7 @@ export default async function DashboardPage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const [profileResult, dashboardSettingsResult, likedStoresResult, grantsResult, claimsResult] = await Promise.all([
+  const [profileResult, dashboardSettingsResult, likedStoresResult, grantsResult, claimsResult, cyclesResult] = await Promise.all([
     supabase
       .from("profiles")
       .select("*, joined_at")
@@ -120,6 +120,12 @@ supabaseAdmin
       .select("*, shopify_product_id, order_status_url, shopify_order_id")
       .eq("user_id", user.id)
       .limit(10),
+supabaseAdmin
+      .from("grant_cycles")
+      .select("id, cycle_name, amount_per_grant, end_date, featured_image, status")
+      .eq("status", "open")
+      .order("end_date", { ascending: true })
+      .limit(6),
   ]);
 
   // Fetch shopify product mappings for enrichment
@@ -149,6 +155,7 @@ supabaseAdmin
   const settings = dashboardSettingsResult?.data || {};
   const likedStores = likedStoresResult?.data || [];
   const userGrants = grantsResult?.data || [];
+  const availableCycles = cyclesResult?.data || [];
 
   // Start with featured items from settings
   let featuredItems = (settings.featured_items || []).slice(0, 5);
@@ -229,7 +236,7 @@ supabaseAdmin
 
       <PopularAcrossNFW featuredItems={featuredItems} />
 
-      <YourMicrograntsSection grants={userGrants} />
+      <YourMicrograntsSection grants={userGrants} availableCycles={availableCycles} />
 
       <DashboardPerksSection likedStores={likedStores} />
 
