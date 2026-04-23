@@ -343,7 +343,7 @@ export async function sendWelcomeEmail({
             Your membership snapshot
           </p>
           <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 5px 0;">
-            <strong>Email:</strong> ${memberId}
+            <strong>Email:</strong> <span style="color: #FFFFFF; text-decoration: none;">${memberId.replace('@', '&#64;')}</span>
           </p>
           <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 5px 0;">
             <strong>Membership Tier:</strong> ${membershipType.charAt(0).toUpperCase() + membershipType.slice(1)}
