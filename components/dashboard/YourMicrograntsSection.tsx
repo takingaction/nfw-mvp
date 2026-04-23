@@ -123,16 +123,10 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
 
         {/* Right Column - Available Microgrants (2/3) */}
         <div className="md:col-span-2">
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4">
             <h3 className="text-lg font-bold text-white font-serif">
               Available Microgrants
             </h3>
-            <Link
-              href="/grants"
-              className="px-4 py-2 bg-white/20 text-white font-ui text-sm font-medium rounded-lg hover:bg-white/30 transition-colors"
-            >
-              View All
-            </Link>
           </div>
 
           {availableCycles.length === 0 ? (

@@ -20,7 +20,7 @@ export default function DashboardHero({ heroImage }: DashboardHeroProps) {
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="max-w-7xl mx-auto px-8 w-full">
           <div className="max-w-2xl">
-            <p className="text-3xl font-medium tracking-widest text-white/80 mb-3 font-ui uppercase">
+            <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-white/80 mb-3">
               Your Member Dashboard
             </p>
             <h1 className="text-6xl md:text-8xl lg:text-9xl font-normal text-white mb-6 font-serif whitespace-nowrap">

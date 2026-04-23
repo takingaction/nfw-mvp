@@ -55,7 +55,7 @@ export default function MembershipImpactCard({
 }: MembershipImpactCardProps) {
   return (
     <div className="p-6 flex flex-col items-center justify-center">
-      <p className="text-3xl font-medium tracking-wide text-white/80 mb-4 font-ui uppercase">
+      <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-white/80 mb-4">
         Your Membership at Work
       </p>
 
