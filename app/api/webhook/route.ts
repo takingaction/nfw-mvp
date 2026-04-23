@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
-import { sendGiftCodesEmail } from "@/lib/email";
+import { sendGiftCodesEmail, sendWelcomeEmail } from "@/lib/email";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
@@ -91,6 +91,17 @@ export async function POST(request: Request) {
           const membershipLevel = session.metadata?.membershipLevel;
 
           if (userId && membershipLevel) {
+            // Fetch user email and name
+            const { data: { users } } = await supabaseAdmin.auth.admin.getUserById(userId);
+            const userEmail = users?.email;
+            const { data: profile } = await supabaseAdmin
+              .from("profiles")
+              .select("full_name")
+              .eq("id", userId)
+              .single();
+
+            const firstName = profile?.full_name?.split(" ")[0] || "Friend";
+
             const { error } = await supabaseAdmin
               .from("profiles")
               .update({
@@ -103,6 +114,16 @@ export async function POST(request: Request) {
 
             if (error) {
               console.error("Failed to update membership:", error);
+            }
+
+            // Send welcome email for paid memberships
+            if (userEmail) {
+              await sendWelcomeEmail({
+                to: userEmail,
+                name: firstName,
+                membershipType: membershipLevel as "contributing" | "founding",
+                memberId: userId.slice(0, 8).toUpperCase(),
+              });
             }
           }
         }

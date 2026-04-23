@@ -350,6 +350,8 @@ export default function SignUpFlow() {
     if (!plan.priceId) {
       // Free plan - mark profile as completed, set membership_level, and redirect to welcome
       await saveProfile({ profile_completed: true, membership_level: "free" });
+      // Send welcome email
+      fetch("/api/welcome-email", { method: "POST" }).catch(console.error);
       window.location.href = "/auth/welcome";
       return;
     }
