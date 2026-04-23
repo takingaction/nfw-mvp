@@ -351,7 +351,11 @@ export default function SignUpFlow() {
       // Free plan - mark profile as completed, set membership_level, and redirect to welcome
       await saveProfile({ profile_completed: true, membership_level: "free" });
       // Send welcome email
-      fetch("/api/welcome-email", { method: "POST" }).catch(console.error);
+      try {
+        await fetch("/api/welcome-email", { method: "POST" });
+      } catch (err) {
+        console.error("Failed to send welcome email:", err);
+      }
       window.location.href = "/auth/welcome";
       return;
     }

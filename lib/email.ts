@@ -250,7 +250,7 @@ async function sendTemplateEmail({
   ctaUrl,
   secondaryCtaText,
   secondaryCtaUrl,
-}: SendTemplateEmailOptions) {
+}: SendTemplateEmailOptions): Promise<{ success: boolean; error?: any }> {
   const html = buildEmailHtml({
     name,
     heroImage,
@@ -265,14 +265,20 @@ async function sendTemplateEmail({
 
   try {
     const resend = getResend();
-    await resend.emails.send({
+    const result = await resend.emails.send({
       from: FROM,
       to,
       subject,
       html,
     });
+    if (result.error) {
+      console.error("Resend API error:", result.error);
+      return { success: false, error: result.error };
+    }
+    return { success: true };
   } catch (err) {
     console.error("Failed to send template email:", err);
+    return { success: false, error: err };
   }
 }
 

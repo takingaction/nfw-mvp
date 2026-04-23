@@ -27,12 +27,16 @@ export async function POST(_request: NextRequest) {
     const firstName = profile.full_name?.split(" ")[0] || "Friend";
     const membershipType = profile.membership_level as "free" | "contributing" | "founding";
 
-    await sendWelcomeEmail({
-      to: user.email!,
-      name: firstName,
-      membershipType: membershipType || "free",
-      memberId: user.id.slice(0, 8).toUpperCase(),
-    });
+    try {
+      await sendWelcomeEmail({
+        to: user.email!,
+        name: firstName,
+        membershipType: membershipType || "free",
+        memberId: user.id.slice(0, 8).toUpperCase(),
+      });
+    } catch (err) {
+      console.error("Welcome email failed:", err);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
