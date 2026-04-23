@@ -147,11 +147,11 @@ function buildEmailHtml({
     <tr>
       <td align="center">
         <!-- Email Container -->
-        <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: ${containerBackground}; border-radius: 50px; overflow: hidden; max-width: 600px;">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: ${containerBackground}; border-radius: 50px 50px 0 0; overflow: hidden; max-width: 600px;">
           
           <!-- Header with Logo -->
           <tr>
-            <td style="padding: 0; background-color: ${containerBackground}; border-radius: 50px 50px 0 0; overflow: hidden;">
+            <td style="padding: 0; background-color: ${containerBackground}; overflow: hidden;">
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td align="center" style="padding: 30px 40px 20px 40px;">
