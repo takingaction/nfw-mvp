@@ -24,6 +24,8 @@ interface EmailHtmlOptions {
   ctaUrl?: string;
   secondaryCtaText?: string;
   secondaryCtaUrl?: string;
+  footerCtaText?: string;
+  footerCtaUrl?: string;
 }
 
 function buildEmailHtml({
@@ -36,6 +38,8 @@ function buildEmailHtml({
   ctaUrl,
   secondaryCtaText,
   secondaryCtaUrl,
+  footerCtaText,
+  footerCtaUrl,
 }: EmailHtmlOptions): string {
   const logoUrl = "https://nationalfundforwomen.org/images/nfw-aubergine.png";
   const siteUrl = "https://nationalfundforwomen.org";
@@ -45,6 +49,8 @@ function buildEmailHtml({
   const bodyBackground = "#B693C0";
   const footerBackground = "#3E145F";
   const whiteColor = "#FFFFFF";
+  const footerCtaButtonText = footerCtaText || "VISIT WEBSITE";
+  const footerCtaButtonUrl = footerCtaUrl || "https://nationalfundforwomen.org";
 
   const heroSection = heroImage
     ? `
@@ -183,8 +189,8 @@ function buildEmailHtml({
                 Together, we're building support women need today and the collective power to share the future.
               </p>
 
-              <a href="${siteUrl}/auth/sign-up" style="display: inline-block; background-color: ${ctaBackgroundColor}; color: ${ctaTextColor}; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; text-decoration: none; padding: 12px 24px; border-radius: 0; margin-bottom: 20px;">
-                BECOME A MEMBER
+              <a href="${footerCtaButtonUrl}" style="display: inline-block; background-color: ${ctaBackgroundColor}; color: ${ctaTextColor}; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; text-decoration: none; padding: 12px 24px; border-radius: 0; margin-bottom: 20px;">
+                ${footerCtaButtonText}
               </a>
 
               <p style="font-family: Georgia, 'Times New Roman', serif; font-size: 12px; font-style: italic; font-weight: 400; color: ${whiteColor}; margin: 0 0 15px 0;">
@@ -400,6 +406,8 @@ export async function sendWelcomeEmail({
     ctaUrl: `${siteUrl}/dashboard`,
     secondaryCtaText: "BROWSE PERKS",
     secondaryCtaUrl: `${siteUrl}/perks`,
+    footerCtaText: "VISIT WEBSITE",
+    footerCtaUrl: siteUrl,
   });
 }
 
@@ -459,6 +467,8 @@ export async function sendNewsletterWelcomeEmail({
     body: bodyHtml,
     ctaText: "BECOME A MEMBER",
     ctaUrl: `${siteUrl}/auth/sign-up`,
+    footerCtaText: "VISIT WEBSITE",
+    footerCtaUrl: siteUrl,
   });
 }
 
