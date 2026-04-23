@@ -119,7 +119,7 @@ export default async function DashboardPage() {
       .from("zero_dollar_claims")
       .select("*, shopify_product_mappings(shopify_product_id, shopify_variant_id, title, image_url, price)")
       .eq("user_id", user.id)
-      .in("status", ["fulfilled", "paid", "delivered"])
+      .in("status", ["processing", "fulfilled", "paid", "delivered"])
       .order("created_at", { ascending: false }),
   ]);
 
