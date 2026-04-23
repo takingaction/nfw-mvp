@@ -92,8 +92,8 @@ export async function POST(request: Request) {
 
           if (userId && membershipLevel) {
             // Fetch user email and name
-            const { data: { users } } = await supabaseAdmin.auth.admin.getUserById(userId);
-            const userEmail = users?.email;
+            const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
+            const userEmail = userData?.user?.email;
             const { data: profile } = await supabaseAdmin
               .from("profiles")
               .select("full_name")
