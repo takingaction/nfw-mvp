@@ -115,13 +115,27 @@ export default async function DashboardPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(10),
-    supabaseAdmin
+supabaseAdmin
       .from("zero_dollar_claims")
-      .select("*, shopify_product_mappings(shopify_product_id, shopify_variant_id, title, image_url, price)")
+      .select("*")
       .eq("user_id", user.id)
-      .in("status", ["processing", "fulfilled", "paid", "delivered"])
-      .order("created_at", { ascending: false }),
+      .limit(10),
   ]);
+
+  // Fetch shopify product mappings for enrichment
+  const { data: allMappings } = await supabaseAdmin
+    .from("shopify_product_mappings")
+    .select("shopify_product_id, shopify_variant_id, title, image_url, price");
+
+  const mappingMap = new Map(
+    (allMappings || []).map(m => [m.shopify_product_id, m])
+  );
+
+  // Join claims with mappings in JavaScript
+  const userClaims = (claimsResult?.data || []).map((claim: any) => ({
+    ...claim,
+    shopify_product_mappings: mappingMap.get(claim.shopify_product_id) || null
+  }));
 
   const profile = profileResult?.data;
 
@@ -135,7 +149,6 @@ export default async function DashboardPage() {
   const settings = dashboardSettingsResult?.data || {};
   const likedStores = likedStoresResult?.data || [];
   const userGrants = grantsResult?.data || [];
-  const userClaims = claimsResult?.data || [];
 
   // Start with featured items from settings
   let featuredItems = (settings.featured_items || []).slice(0, 5);
