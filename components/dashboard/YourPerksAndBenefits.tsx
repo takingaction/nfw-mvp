@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Heart, Gift, ChevronRight } from "lucide-react";
 
 interface LikedStore {
@@ -142,9 +143,17 @@ export default function YourPerksAndBenefits({
 }: YourPerksAndBenefitsProps) {
   return (
     <section className="bg-nfw-aubergine py-12 px-8">
-      <h2 className="text-2xl font-bold text-white font-serif mb-8">
-        Your Perks & Benefits
-      </h2>
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-2xl font-bold text-white font-serif">
+          Your Perks & Benefits
+        </h2>
+        <Link
+          href="/perks"
+          className="px-4 py-2 bg-nfw-lilac text-white font-ui text-sm font-medium rounded-lg hover:bg-nfw-lilac/90 transition-colors"
+        >
+          Explore Perks
+        </Link>
+      </div>
 
       <div className="grid md:grid-cols-2 gap-8">
           {/* Left Column: Saved Brands */}

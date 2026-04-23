@@ -8,6 +8,8 @@ import PopularAcrossNFW from "@/components/dashboard/PopularAcrossNFW";
 import BottomActions from "@/components/dashboard/BottomActions";
 import AccessPerksSync from "@/components/AccessPerksSync";
 import DashboardPerksSection from "@/components/dashboard/DashboardPerksSection";
+import YourMicrograntsSection from "@/components/dashboard/YourMicrograntsSection";
+import YourZeroDollarStoreSection from "@/components/dashboard/YourZeroDollarStoreSection";
 
 export const metadata = {
   title: "Dashboard",
@@ -91,7 +93,7 @@ export default async function DashboardPage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const [profileResult, dashboardSettingsResult, likedStoresResult] = await Promise.all([
+  const [profileResult, dashboardSettingsResult, likedStoresResult, grantsResult, claimsResult] = await Promise.all([
     supabase
       .from("profiles")
       .select("*, joined_at")
@@ -107,6 +109,18 @@ export default async function DashboardPage() {
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
+    supabaseAdmin
+      .from("grants")
+      .select("*, grant_cycles(cycle_name, amount_per_grant, end_date, featured_image)")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(10),
+    supabaseAdmin
+      .from("zero_dollar_claims")
+      .select("*, shopify_product_mappings(shopify_product_id, shopify_variant_id, title, image_url, price)")
+      .eq("user_id", user.id)
+      .in("status", ["fulfilled", "paid", "delivered"])
+      .order("created_at", { ascending: false }),
   ]);
 
   const profile = profileResult?.data;
@@ -120,6 +134,8 @@ export default async function DashboardPage() {
   const savings = await getSavings(user.id);
   const settings = dashboardSettingsResult?.data || {};
   const likedStores = likedStoresResult?.data || [];
+  const userGrants = grantsResult?.data || [];
+  const userClaims = claimsResult?.data || [];
 
   // Start with featured items from settings
   let featuredItems = (settings.featured_items || []).slice(0, 5);
@@ -200,7 +216,11 @@ export default async function DashboardPage() {
 
       <PopularAcrossNFW featuredItems={featuredItems} />
 
+      <YourMicrograntsSection grants={userGrants} />
+
       <DashboardPerksSection likedStores={likedStores} />
+
+      <YourZeroDollarStoreSection claims={userClaims} />
 
       <BottomActions
         squareImage1={settings.square_image1_url || ""}
