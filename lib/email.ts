@@ -595,23 +595,16 @@ export async function sendContactFormEmail({
     minute: "2-digit",
   });
 
-  const text = `New contact form submission\n\nName: ${name}\nEmail: ${email}\nSubject: ${subject}\nMessage: ${message}\n\nSubmitted: ${timestamp}`;
-
-  console.log("SEND CONTACT EMAIL: Starting send to", email);
-  console.log("SEND CONTACT EMAIL: Resend API key exists:", !!process.env.RESEND_API_KEY);
-
   try {
     const resend = getResend();
-    console.log("SEND CONTACT EMAIL: Calling Resend API...");
-    const result = await resend.emails.send({
+    await resend.emails.send({
       from: "NFW <hello@nationalfundforwomen.org>",
       to: "hello@nationalfundforwomen.org",
       subject: "NFW Contact Form Submission",
       text,
     });
-    console.log("SEND CONTACT EMAIL: Resend result:", JSON.stringify(result));
   } catch (err) {
-    console.error("SEND CONTACT EMAIL: Failed to send contact form email:", err);
+    console.error("Failed to send contact form email:", err);
     throw err;
   }
 }

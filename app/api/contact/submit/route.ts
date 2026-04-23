@@ -44,12 +44,10 @@ export async function POST(request: NextRequest) {
       console.error("Failed to insert contact submission:", insertError);
     }
 
-    console.log("CONTACT FORM: Preparing to send email to", email);
     try {
       await sendContactFormEmail({ name, email, subject: subjectLabel, message });
-      console.log("CONTACT FORM: Email send completed");
     } catch (err) {
-      console.error("CONTACT FORM: Email send failed:", err);
+      console.error("Failed to send contact form email:", err);
     }
 
     return NextResponse.json({ success: true });
