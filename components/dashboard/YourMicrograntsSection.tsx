@@ -139,12 +139,12 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
               </p>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="flex gap-4 overflow-x-auto pb-2">
               {availableCycles.map((cycle) => (
                 <Link
                   key={cycle.id}
                   href="/grants/apply"
-                  className="bg-white/10 hover:bg-white/15 rounded-xl p-4 transition-colors flex flex-col"
+                  className="bg-white/10 hover:bg-white/15 rounded-xl p-4 transition-colors flex-shrink-0 w-64 flex flex-col"
                 >
                   {cycle.featured_image && (
                     <div className="relative w-full h-32 rounded-lg overflow-hidden mb-3">
