@@ -6,6 +6,7 @@ import "./globals.css";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/landing/Footer";
 import BackToTop from "@/components/BackToTop";
+import TermlyCMP from "@/components/TermlyCMP";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -54,6 +55,7 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         {!isPublicRoute && <Navigation />}
+        <TermlyCMP />
         {children}
         {!isPublicRoute && <Footer />}
         {!isPublicRoute && <BackToTop />}
