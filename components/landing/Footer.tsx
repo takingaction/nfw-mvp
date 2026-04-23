@@ -322,6 +322,13 @@ export default function Footer() {
             >
               {data.footer_link3_text}
             </Link>
+            <a
+              href="#"
+              className="termly-display-preferences hover:opacity-80 transition-colors text-sm"
+              style={{ color: "#B7B6B9" }}
+            >
+              Consent Preferences
+            </a>
           </div>
         </div>
       </div>
