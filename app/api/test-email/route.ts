@@ -4,7 +4,7 @@ import { sendWelcomeEmail } from "@/lib/email";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, name, membershipType } = body;
+    const { email, name, membershipType, heroImage } = body;
 
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
       name: name || "Ron",
       membershipType: membershipType || "free",
       memberId: "TEST1234",
+      heroImage,
     });
 
     return NextResponse.json({ success: true, message: `Test email sent to ${email}` });

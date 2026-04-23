@@ -292,15 +292,17 @@ export async function sendWelcomeEmail({
   membershipType,
   memberId,
   renewalDate,
+  heroImage,
 }: {
   to: string;
   name: string;
   membershipType: "free" | "contributing" | "founding";
   memberId: string;
   renewalDate?: string;
+  heroImage?: string;
 }) {
   const siteUrl = "https://nationalfundforwomen.org";
-  const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+  const heroImageUrl = heroImage || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
   const heroText = 'A <em>community</em> of women showing up for each other';
 
   const tierMessages = {
@@ -399,7 +401,7 @@ export async function sendWelcomeEmail({
     to,
     subject: "Welcome to NFW! We're here to help",
     name,
-    heroImage,
+    heroImage: heroImageUrl,
     heroText,
     headline: "Welcome to NFW!",
     body: bodyHtml,
