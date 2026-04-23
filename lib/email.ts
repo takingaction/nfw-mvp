@@ -176,23 +176,23 @@ function buildEmailHtml({
 
           ${ctaButtons}
 
-          <!-- Footer -->
+<!-- Footer -->
           <tr>
-            <td style="background-color: ${footerBackground}; padding: 30px 40px; text-align: center; border-radius: 0 0 50px 50px; overflow: hidden;">
+            <td style="background-color: ${footerBackground}; padding: 30px 40px; text-align: center;">
               <p style="font-family: Georgia, 'Times New Roman', serif; font-size: 16px; font-style: italic; font-weight: 400; color: ${whiteColor}; line-height: 1.6; margin: 0 0 20px 0;">
                 Together, we're building support women need today and the collective power to share the future.
               </p>
-              
+
               <a href="${siteUrl}/auth/sign-up" style="display: inline-block; background-color: ${ctaBackgroundColor}; color: ${ctaTextColor}; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; text-decoration: none; padding: 12px 24px; border-radius: 0; margin-bottom: 20px;">
                 BECOME A MEMBER
               </a>
-              
+
               <p style="font-family: Georgia, 'Times New Roman', serif; font-size: 12px; font-style: italic; font-weight: 400; color: ${whiteColor}; margin: 0 0 15px 0;">
                 For women. For real life.
               </p>
-              
+
               ${socialIcons}
-              
+
               <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 11px; color: ${whiteColor}; opacity: 0.7; margin: 15px 0 0 0;">
                 &copy; 2026 National Fund for Women. All rights reserved.
               </p>
