@@ -61,17 +61,28 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const updates: Record<string, any> = {};
-    
+
     for (const key of Object.keys(body) as string[]) {
+      const value = body[key];
+      if (value === undefined || value === null) continue;
+
       if (ALLOWED_BOOLEANS.includes(key)) {
-        updates[key] = Boolean(body[key]);
+        updates[key] = Boolean(value);
       } else if (ALLOWED_ARRAYS.includes(key)) {
-        updates[key] = Array.isArray(body[key]) ? body[key] : [];
+        updates[key] = Array.isArray(value) ? value : [];
       } else if (ALLOWED_OBJECTS.includes(key)) {
-        updates[key] = typeof body[key] === 'object' ? body[key] : {};
+        updates[key] = typeof value === 'object' ? value : {};
       } else if (ALLOWED_FIELDS.includes(key as AllowedField)) {
-        updates[key] = String(body[key]);
+        updates[key] = String(value);
       }
+    }
+
+    if (!updates.full_name || updates.full_name.trim() === "") {
+      updates.full_name = "NFW Member";
+    }
+
+    if (!updates.date_of_birth) {
+      updates.date_of_birth = "1900-01-01";
     }
 
     if (Object.keys(updates).length === 0) {
@@ -89,6 +100,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("Profile update error:", error);
+      console.error("Updates attempted:", updates);
       return NextResponse.json(
         { error: "Failed to update profile", details: error.message },
         { status: 500 },
