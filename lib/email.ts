@@ -601,6 +601,8 @@ export async function sendContactFormEmail({
     minute: "2-digit",
   });
 
+  const text = `New contact form submission\n\nName: ${name}\nEmail: ${email}\nSubject: ${subject}\nMessage: ${message}\n\nSubmitted: ${timestamp}`;
+
   try {
     const resend = getResend();
     await resend.emails.send({
