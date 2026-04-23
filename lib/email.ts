@@ -49,22 +49,13 @@ function buildEmailHtml({
   const heroSection = heroImage
     ? `
     <tr>
-      <td style="padding: 0; margin: 0;">
+      <td style="padding: 0; margin: 0; background-image: url('${heroImage}'); background-size: cover; background-position: center; background-repeat: no-repeat; position: relative;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td style="padding: 0; margin: 0; position: relative;">
-              <img src="${heroImage}" alt="" width="600" style="display: block; width: 100%; max-width: 600px;" />
-              ${
-                heroText
-                  ? `
-                <td style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center;">
-                  <p style="font-family: Georgia, 'Times New Roman', serif; font-size: 28px; font-style: italic; font-weight: 400; color: ${whiteColor}; line-height: 1.4; margin: 0;">
-                    ${heroText}
-                  </p>
-                </td>
-              `
-                  : ""
-              }
+            <td style="padding: 80px 40px; text-align: center; vertical-align: middle;">
+              <p style="font-family: Georgia, 'Times New Roman', serif; font-size: 28px; font-style: italic; font-weight: 400; color: ${whiteColor}; line-height: 1.4; margin: 0;">
+                ${heroText}
+              </p>
             </td>
           </tr>
         </table>
