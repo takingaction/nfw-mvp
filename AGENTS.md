@@ -1595,3 +1595,119 @@ Updated hero text to match homepage headline size (`text-5xl lg:text-6xl xl:text
 
 **Files Modified:**
 - `components/dashboard/YourMicrograntsSection.tsx` - Removed View All button, horizontal scroll layout
+
+### Session 2026-04-24: Email System + Perks Filters
+
+#### Email System Implementation
+
+Built branded email template system using Resend API with inline HTML generation.
+
+**Architecture:**
+- `lib/email.ts` - Central email utilities
+  - `buildEmailHtml()` - Generates branded HTML emails
+  - `sendTemplateEmail()` - Wrapper for Resend API calls
+  - `sendWelcomeEmail()` - Tier-based welcome emails (free/contributing/founding)
+  - `sendNewsletterWelcomeEmail()` - Newsletter subscription welcome
+  - `sendContactFormEmail()` - Contact form submissions
+  - `sendGiftCodesEmail()` - Gift membership codes
+  - `sendGrantStatusEmail()` - Grant application status updates
+  - `sendBankInfoRequestEmail()` - Bank info request for grants
+
+**Email Template Design:**
+- Container: Dove background (#EBEBE8), 50px rounded corners
+- Header: Aubergine logo centered
+- Hero: Full-width background image with centered white italic Playfair text overlay
+- Body: Lilac background (#B693C0), white text, DM Sans font
+- CTA Buttons: Citrine background (#F8F19A), aubergine text (#3E145F)
+- Footer: Aubergine background (#3E145F), white Playfair italic quote, social icons
+
+**Files Created:**
+- `app/api/test-email/route.ts` - Debug endpoint for testing email rendering
+- `app/api/welcome-email/route.ts` - Welcome email trigger for free signups
+
+**Files Modified:**
+- `app/api/contact/submit/route.ts` - Fixed fire-and-forget pattern with proper await
+- `app/api/webhook/route.ts` - Added welcome email for paid memberships
+- `components/SignUpFlow.tsx` - Fixed welcome email fetch to properly await
+- `lib/email.ts` - Multiple updates:
+  - Hardcoded site URL to `https://nationalfundforwomen.org`
+  - Hero image uses background-image CSS for full coverage
+  - Hero padding increased for taller appearance (80px → 120px)
+  - Member ID field replaced with Email display
+  - Footer removed border-radius for seamless aubergine look
+
+**Key Fixes:**
+1. **Email URLs** - All email links and images now use hardcoded `https://nationalfundforwomen.org` instead of `NEXT_PUBLIC_SITE_URL` env var (which was pointing to Vercel preview URL)
+2. **Fire-and-forget** - Contact form and welcome email calls now properly awaited
+3. **Member ID → Email** - Welcome emails now show user's email instead of truncated ID
+4. **Hero Image** - Uses CSS background-image with cover sizing for full-width display
+5. **Email Footer** - Removed bottom border-radius to prevent dove-colored artifact
+
+**Resend Configuration:**
+- API Key: `RESEND_API_KEY` environment variable
+- From Address: `hello@nationalfundforwomen.org` (configured in Resend dashboard)
+- Domain verification required for nationalfundforwomen.org
+
+**Test Email Endpoint:**
+```bash
+curl -X POST https://nationalfundforwomen.org/api/test-email \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","name":"Test","membershipType":"free"}'
+```
+
+#### Perks Page Online Only Filter Fix
+
+Fixed "Online Only" checkbox filter that was incorrectly hiding online-only merchants.
+
+**Problem:**
+- When "Online Only" was unchecked, no `online` param was sent to Access Perks API
+- API defaulted to hiding pure online offers (like Norwegian Cruise Lines)
+
+**Root Cause:**
+```typescript
+// BEFORE - only sent online=only when checked, nothing when unchecked
+if (onlineParam === "only") {
+  params.online = "only";
+}
+```
+
+**Fix Applied:**
+```typescript
+// AFTER - explicitly include all offers when unchecked
+params.online = onlineParam === "only" ? "only" : "include";
+```
+
+**Files Modified:**
+- `app/api/access-perks/offers/search/route.ts` - Always send online param
+- `app/api/access-perks/rollup/route.ts` - Same fix for rollup queries
+
+**Filter Behavior:**
+| State | Behavior |
+|-------|----------|
+| Online Only OFF (default) | Show ALL offers (online + in-store + print) |
+| Online Only ON | Filter to show ONLY online-redeemable offers |
+
+**Note:** Online-only merchants (like Norwegian Cruise Lines) only appear in Nationwide searches because they have no physical locations. This is correct behavior - they're nationwide online offers.
+
+#### Google OAuth Redirect URI Fix
+
+Fixed Google OAuth consent screen showing Supabase project reference URL instead of brand domain.
+
+**Error:**
+```
+redirect_uri=https://lirsaxhujjgnibcwyzpl.supabase.co/auth/v1/callback
+```
+
+**Solution:**
+1. Added Supabase callback URL to Google Cloud Console authorized redirect URIs
+2. Added custom domain URL as additional redirect URI
+
+**URIs to register in Google Cloud Console:**
+- `https://lirsaxhujjgnibcwyzpl.supabase.co/auth/v1/callback` (Supabase reference)
+- `https://nationalfundforwomen.org/auth/callback` (custom domain)
+
+**To customize consent screen:**
+1. Go to Google Cloud Console → APIs & Services → OAuth consent screen
+2. Set App name to "National Fund for Women"
+3. Set support email to hello@nationalfundforwomen.org
+4. Add Privacy Policy and Terms of Service URLs
