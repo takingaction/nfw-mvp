@@ -8,7 +8,7 @@ const SHOPIFY_STORE_DOMAIN = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN || "na
 
 interface Claim {
   id: string;
-  created_at: string | Date;
+  created_at: string;
   order_status_url?: string | null;
   shopify_order_id?: string | null;
   shopify_product_mappings: {
@@ -43,16 +43,18 @@ function OnlineHistoryItem({ claim }: { claim: Claim }) {
   const product = claim.shopify_product_mappings;
   const shopifyOrderUrl = getShopifyOrderUrl(claim);
 
-  const formatDate = (dateValue: string | Date | null | undefined): string => {
-    if (!dateValue) return "Unknown date";
+  const displayDate = (() => {
+    if (!claim.created_at) return "Unknown date";
     try {
-      const date = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
-      if (isNaN(date.getTime())) return "Unknown date";
-      return date.toLocaleDateString();
+      const d = new Date(claim.created_at);
+      if (isNaN(d.getTime())) {
+        return "Unknown date";
+      }
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     } catch {
       return "Unknown date";
     }
-  };
+  })();
 
   return (
     <div className="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
@@ -72,7 +74,7 @@ function OnlineHistoryItem({ claim }: { claim: Claim }) {
           {product?.title || "Product"}
         </p>
         <p className="text-white/50 text-xs">
-          {formatDate(claim.created_at)}
+          {displayDate}
         </p>
         {shopifyOrderUrl && (
           <a
