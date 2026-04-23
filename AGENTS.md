@@ -1509,3 +1509,56 @@ New section with lilac (`#B693C0`) background showing user's zero dollar store o
 - Zero dollar claims query was failing because `shopify_product_mappings` table had no foreign key relationship with `zero_dollar_claims`
 - Fixed by fetching claims and mappings separately, then joining in JavaScript
 - Also fixed by including `order_status_url` and `shopify_order_id` fields for "View on Shopify" link
+
+### Session 2026-04-23: Dashboard Updates + Termly CMP
+
+#### Termly Consent Management Platform
+
+Installed Termly CMP for GDPR cookie consent compliance.
+
+**Files Created:**
+- `components/TermlyCMP.tsx` - Termly CMP component with website UUID `182a3bc4-4347-44b6-b918-ef8406dd41e1`
+
+**Files Modified:**
+- `app/layout.tsx` - Integrated TermlyCMP to load on all pages
+
+#### Consent Preferences Link
+
+Added "Consent Preferences" link in footer next to Accessibility using `termly-display-preferences` class.
+
+**Files Modified:**
+- `components/landing/Footer.tsx` - Added consent preferences link
+
+#### Your Microgrants Section Layout
+
+Updated "Your Microgrants" section to use 1/3 + 2/3 column layout.
+
+**Structure:**
+- Main section heading "Your Microgrants" with "New Application" button
+- Left column (1/3): "Your Applications" sub-heading showing user's grant applications with status badges
+- Right column (2/3): "Available Microgrants" sub-heading showing open grant cycles with images
+
+**Files Created:**
+- `components/TermlyCMP.tsx`
+
+**Files Modified:**
+- `app/dashboard/page.tsx` - Added query for available grant cycles
+- `components/dashboard/YourMicrograntsSection.tsx` - Restructured to 2-column layout with available cycles
+
+#### Counter Animation for Membership Impact Card
+
+Added animated counting effect to the 3 smaller numbers in "Your Membership at Work" section.
+
+**Files Modified:**
+- `components/dashboard/MembershipImpactCard.tsx` - Added AnimatedCurrency component for counter animation
+
+#### Latest Offerings Image and Draft Styling
+
+Updated "Latest Offerings" in Your Zero Dollar Store section.
+
+**Changes:**
+- Changed image style from `object-contain` to `object-cover` for full coverage
+- Draft products now show greyed out with "Dropping Soon" badge (matching /store page styling)
+
+**Files Modified:**
+- `components/dashboard/YourZeroDollarStoreSection.tsx` - Image styling and draft status handling
