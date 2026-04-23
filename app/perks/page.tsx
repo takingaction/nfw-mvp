@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertTriangle, SlidersHorizontal, X } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import PerksSearch from "@/components/perks/PerksSearch";
 import OfferCard from "@/components/perks/OfferCard";
 import FilterSidebar from "@/components/perks/FilterSidebar";
@@ -52,6 +53,7 @@ const EXCLUDED_STORES = [
 ];
 
 export default function PerksPage() {
+  const searchParams = useSearchParams();
   const [offers, setOffers] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [facets, setFacets] = useState<Facet[]>([]);
@@ -84,8 +86,7 @@ export default function PerksPage() {
   const [likedStoreKeys, setLikedStoreKeys] = useState<number[]>([]);
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const storeParam = urlParams.get("store");
+    const storeParam = searchParams.get("store");
     if (storeParam) {
       const storeKey = parseInt(storeParam);
       if (!isNaN(storeKey)) {
@@ -93,7 +94,7 @@ export default function PerksPage() {
         setCurrentView("offers");
       }
     }
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     const supabase = createClient();

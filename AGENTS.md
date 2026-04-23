@@ -1381,12 +1381,10 @@ Added `EXCLUDED_STORES` constant array to filter out gun/shooting related stores
 
 #### Store Likes View Offers Fix
 
-Fixed "View Offers" link in SavedBrandsPanel to filter offers by store.
+Fixed "View Offers" link in SavedBrandsPanel to open in new tab (`target="_blank"`) instead of client-side navigation. This avoids a bug where clicking the link would briefly show filtered results then revert to unfiltered results due to state synchronization issues during Next.js client-side navigation.
 
 **Files Modified:**
-- `app/perks/page.tsx`:
-  - Added `store` query param handler on mount to set `selectedStore` and switch to offers view
-  - Changed `likedStoreKeys.includes(storeKey)` to `likedStoreKeys.includes(Number(storeKey))` for proper type comparison
+- `components/dashboard/SavedBrandsPanel.tsx` - Changed Link to anchor with `target="_blank"` to open in new tab
 
 #### Coming Soon Page Login Button
 

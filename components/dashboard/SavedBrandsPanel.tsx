@@ -136,13 +136,14 @@ export default function SavedBrandsPanel({
                           __html: decodeHtml(store.store_name),
                         }}
                       />
-                      <Link
-                        href={`/perks?store=${store.store_key}`}
-                        onClick={onClose}
-                        className="text-sm text-nfw-aubergine hover:underline"
-                      >
-                        View Offers
-                      </Link>
+<a
+                          href={`/perks?store=${store.store_key}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-nfw-aubergine hover:underline"
+                        >
+                          View Offers
+                        </a>
                     </div>
                     <button
                       onClick={() => onUnlike(store.store_key)}
