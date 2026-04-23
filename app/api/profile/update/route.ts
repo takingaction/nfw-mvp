@@ -77,10 +77,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!updates.full_name || updates.full_name.trim() === "") {
-      updates.full_name = "NFW Member";
-    }
-
     if (!updates.date_of_birth) {
       updates.date_of_birth = "1900-01-01";
     }
