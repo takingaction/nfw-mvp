@@ -59,7 +59,7 @@ export default function MembershipImpactCard({
         Your Membership at Work
       </p>
 
-      <h1 className="text-8xl md:text-9xl font-normal text-white font-serif mb-8">
+      <h1 className="text-5xl lg:text-6xl xl:text-[63px] leading-[1.05] font-normal text-white font-serif mb-8">
         {new Intl.NumberFormat("en-US", {
           style: "currency",
           currency: "USD",

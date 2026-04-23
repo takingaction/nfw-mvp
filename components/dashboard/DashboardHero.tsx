@@ -23,7 +23,7 @@ export default function DashboardHero({ heroImage }: DashboardHeroProps) {
             <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-white/80 mb-3">
               Your Member Dashboard
             </p>
-            <h1 className="text-6xl md:text-8xl lg:text-9xl font-normal text-white mb-6 font-serif whitespace-nowrap">
+            <h1 className="text-5xl lg:text-6xl xl:text-[63px] leading-[1.05] font-normal text-white mb-6 font-serif whitespace-nowrap">
               Here to <em>help.</em>
             </h1>
             <div className="space-y-1 mb-8">
