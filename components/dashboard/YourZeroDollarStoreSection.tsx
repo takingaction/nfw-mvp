@@ -115,7 +115,7 @@ export default function YourZeroDollarStoreSection({ claims }: YourZeroDollarSto
           const products = await response.json();
           const visibleProducts = products
             .filter((p: any) => p.mvpVisibility)
-            .slice(0, 4);
+            .slice(0, 8);
           setLatestProducts(visibleProducts);
         }
       } catch (err) {
@@ -142,8 +142,8 @@ export default function YourZeroDollarStoreSection({ claims }: YourZeroDollarSto
         </Link>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8">
-        {/* Left Column: Online History */}
+      <div className="grid md:grid-cols-3 gap-8">
+        {/* Left Column: Online History - 1/3 width */}
         <div>
           <div className="bg-white/10 rounded-xl p-6">
             <div className="flex items-center gap-3 mb-4">
@@ -173,8 +173,8 @@ export default function YourZeroDollarStoreSection({ claims }: YourZeroDollarSto
           </div>
         </div>
 
-        {/* Right Column: Latest Offerings */}
-        <div>
+        {/* Right Column: Latest Offerings - 2/3 width */}
+        <div className="md:col-span-2">
           <div className="bg-white/10 rounded-xl p-6">
             <h3 className="text-lg font-bold text-white font-serif mb-4">
               Latest Offerings
