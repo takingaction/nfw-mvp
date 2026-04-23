@@ -81,12 +81,12 @@ function OnlineHistoryItem({ claim }: { claim: Claim }) {
 function LatestOfferingCard({ product }: { product: LatestProduct }) {
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-md w-48 flex-shrink-0">
-      <div className="aspect-[3/4] relative bg-white">
+      <div className="aspect-[3/4] relative bg-white overflow-hidden">
         {product.imageUrl ? (
           <img
             src={product.imageUrl}
             alt={product.title}
-            className="w-full h-full object-contain p-2"
+            className="w-full h-full object-cover"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-nfw-dove">
