@@ -8,7 +8,8 @@ const SHOPIFY_STORE_DOMAIN = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN || "na
 
 interface Claim {
   id: string;
-  created_at: string;
+  claimed_at: string;
+  created_at?: string;
   order_status_url?: string | null;
   shopify_order_id?: string | null;
   shopify_product_mappings: {
@@ -44,9 +45,9 @@ function OnlineHistoryItem({ claim }: { claim: Claim }) {
   const shopifyOrderUrl = getShopifyOrderUrl(claim);
 
   const displayDate = (() => {
-    if (!claim.created_at) return "Unknown date";
+    if (!claim.claimed_at) return "Unknown date";
     try {
-      const d = new Date(claim.created_at);
+      const d = new Date(claim.claimed_at);
       if (isNaN(d.getTime())) {
         return "Unknown date";
       }
