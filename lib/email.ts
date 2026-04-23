@@ -52,7 +52,7 @@ function buildEmailHtml({
       <td style="padding: 0; margin: 0; background-image: url('${heroImage}'); background-size: cover; background-position: center; background-repeat: no-repeat; position: relative;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td style="padding: 80px 40px; text-align: center; vertical-align: middle;">
+            <td style="padding: 120px 40px; text-align: center; vertical-align: middle;">
               <p style="font-family: Georgia, 'Times New Roman', serif; font-size: 28px; font-style: italic; font-weight: 400; color: ${whiteColor}; line-height: 1.4; margin: 0;">
                 ${heroText}
               </p>
@@ -331,7 +331,7 @@ export async function sendWelcomeEmail({
             Your membership snapshot
           </p>
           <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 5px 0;">
-            <strong>Member ID:</strong> ${memberId}
+            <strong>Email:</strong> ${memberId}
           </p>
           <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 5px 0;">
             <strong>Membership Tier:</strong> ${membershipType.charAt(0).toUpperCase() + membershipType.slice(1)}

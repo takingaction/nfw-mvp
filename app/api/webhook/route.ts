@@ -122,7 +122,7 @@ export async function POST(request: Request) {
                 to: userEmail,
                 name: firstName,
                 membershipType: membershipLevel as "contributing" | "founding",
-                memberId: userId.slice(0, 8).toUpperCase(),
+                memberId: userEmail,
               });
             }
           }

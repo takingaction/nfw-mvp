@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       to: email,
       name: name || "Ron",
       membershipType: membershipType || "free",
-      memberId: "TEST1234",
+      memberId: email,
       heroImage,
     });
 

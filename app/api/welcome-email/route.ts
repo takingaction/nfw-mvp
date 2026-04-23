@@ -32,7 +32,7 @@ export async function POST(_request: NextRequest) {
         to: user.email!,
         name: firstName,
         membershipType: membershipType || "free",
-        memberId: user.id.slice(0, 8).toUpperCase(),
+        memberId: user.email!,
       });
     } catch (err) {
       console.error("Welcome email failed:", err);
