@@ -147,6 +147,12 @@ export default function PerksPage() {
   }, [authChecked, user]);
 
   useEffect(() => {
+    if (user) {
+      fetchLikedStores();
+    }
+  }, [user]);
+
+  useEffect(() => {
     const fetchUserZip = async () => {
       try {
         const res = await fetch('/api/profile');

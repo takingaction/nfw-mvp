@@ -1386,6 +1386,22 @@ Fixed "View Offers" link in SavedBrandsPanel to open in new tab (`target="_blank
 **Files Modified:**
 - `components/dashboard/SavedBrandsPanel.tsx` - Changed Link to anchor with `target="_blank"` to open in new tab
 
+#### Store Likes Purple Hearts Fix
+
+Fixed liked store hearts showing yellow instead of purple on `/perks` page. The issue was that `fetchLikedStores()` was only called during initial auth check, but subsequent auth state changes (like `onAuthStateChange` firing) would reset the user state before `fetchLikedStores` could run.
+
+**Fix:** Added a dedicated `useEffect` that watches `user` and calls `fetchLikedStores()` whenever user changes:
+```typescript
+useEffect(() => {
+  if (user) {
+    fetchLikedStores();
+  }
+}, [user]);
+```
+
+**Files Modified:**
+- `app/perks/page.tsx` - Added useEffect to fetch liked stores when user state changes
+
 #### Coming Soon Page Login Button
 
 - `app/coming-soon/page.tsx` - Added "Login" button in top right corner that links to `/auth/login`
