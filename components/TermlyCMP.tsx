@@ -41,7 +41,9 @@ export default function TermlyCMP({ autoBlock, masterConsentsOrigin }: { autoBlo
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    window.Termly?.initialize()
+    if (window.Termly?.initialize) {
+      window.Termly.initialize()
+    }
   }, [pathname, searchParams])
 
   return null
