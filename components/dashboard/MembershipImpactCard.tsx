@@ -60,7 +60,12 @@ export default function MembershipImpactCard({
       </p>
 
       <h1 className="text-8xl md:text-9xl font-normal text-white font-serif mb-8">
-        <AnimatedCurrency value={totalSavings} /> saved
+        {new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(totalSavings)} saved
       </h1>
 
       <div className="w-full bg-nfw-lilac p-4">
