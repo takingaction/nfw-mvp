@@ -49,9 +49,7 @@ export async function GET(request: Request) {
       params.postal_code = postalCode;
       params.distance = distance;
       params.sort = "distance";
-      if (online === "only") {
-        params.online = "only";
-      }
+      params.online = online === "only" ? "only" : "include";
     }
 
     if (rollup) params.rollup = rollup;

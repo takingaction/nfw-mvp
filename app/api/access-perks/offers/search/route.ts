@@ -50,13 +50,9 @@ export async function GET(request: Request) {
       params.national = "include";
       params.online = onlineParam === "only" ? "only" : "include";
     } else if (postalCode && distance) {
-      // Normal geolocation search
       params.postal_code = postalCode;
       params.distance = distance;
-      // Only pass online if explicitly requested as "only"
-      if (onlineParam === "only") {
-        params.online = "only";
-      }
+      params.online = onlineParam === "only" ? "only" : "include";
     }
 
     const result = await searchOffers(params as unknown as Parameters<typeof searchOffers>[0]);
