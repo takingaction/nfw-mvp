@@ -24,10 +24,12 @@ export async function GET() {
       return NextResponse.json([]);
     }
 
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nationalfundforwomen.org";
+
     // Fetch product details
     try {
       const productsRes = await fetch(
-        `${process.env.NEXT_PUBLIC_SITE_URL || 'https://nfw-mvp-4n2i.vercel.app'}/api/shopify/products`,
+        `${siteUrl}/api/shopify/products`,
         { cache: 'no-store' }
       );
       

@@ -37,8 +37,8 @@ function buildEmailHtml({
   secondaryCtaText,
   secondaryCtaUrl,
 }: EmailHtmlOptions): string {
-  const logoUrl = "/images/nfw-aubergine.png";
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nationalfundforwomen.org";
+  const logoUrl = "https://nationalfundforwomen.org/images/nfw-aubergine.png";
+  const siteUrl = "https://nationalfundforwomen.org";
   const ctaBackgroundColor = "#F8F19A";
   const ctaTextColor = "#3E145F";
   const containerBackground = "#EBEBE8";
@@ -299,8 +299,8 @@ export async function sendWelcomeEmail({
   memberId: string;
   renewalDate?: string;
 }) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nationalfundforwomen.org";
-  const heroImage = `${siteUrl}/images/email-welcome-hero.jpg`;
+  const siteUrl = "https://nationalfundforwomen.org";
+  const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
   const heroText = 'A <em>community</em> of women showing up for each other';
 
   const tierMessages = {
@@ -421,8 +421,8 @@ export async function sendNewsletterWelcomeEmail({
   to: string;
   name: string;
 }) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nationalfundforwomen.org";
-  const heroImage = `${siteUrl}/images/email-welcome-hero.jpg`;
+  const siteUrl = "https://nationalfundforwomen.org";
+  const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
   const heroText = 'A <em>community</em> of women showing up for each other';
 
   const bodyHtml = `
@@ -533,7 +533,7 @@ export async function sendBankInfoRequestEmail({
   amountApproved?: number;
   isNominee: boolean;
 }) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nationalfundforwomen.org";
+  const siteUrl = "https://nationalfundforwomen.org";
 
   const nomineeIntro = isNominee
     ? `You've been nominated for the ${grantCycleName} and your nomination has been approved${amountApproved ? ` for $${amountApproved.toLocaleString()}` : ""}!`
@@ -563,7 +563,7 @@ export async function sendGiftCodesEmail({
   buyerName: string;
   codes: string[];
 }) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nationalfundforwomen.org";
+  const siteUrl = "https://nationalfundforwomen.org";
   const codesList = codes.map((code) => `  • ${code}`).join("\n");
 
   const text = `${buyerName},\n\nThank you for your gift membership purchase! Here are your gift code(s):\n\n${codesList}\n\nShare these codes with your friends. Each code redeems 1 year of Contributing membership ($15 value).\n\nHow to redeem:\n1. Friend creates a free NFW account at ${siteUrl}/auth/sign-up\n2. During signup, they enter their code on the membership step\n3. They enjoy a full year of Contributing membership!\n\nNote: Each code can only be used once. If your friend already has an account, they can enter the code in their dashboard.\n\nThank you for supporting National Fund for Women!\n\nWith love,\nThe NFW Team`;
@@ -592,7 +592,7 @@ export async function sendContactFormEmail({
   subject: string;
   message: string;
 }) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nationalfundforwomen.org";
+  const siteUrl = "https://nationalfundforwomen.org";
   const timestamp = new Date().toLocaleString("en-US", {
     year: "numeric",
     month: "short",
