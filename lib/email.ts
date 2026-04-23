@@ -233,6 +233,8 @@ interface SendTemplateEmailOptions {
   ctaUrl?: string;
   secondaryCtaText?: string;
   secondaryCtaUrl?: string;
+  footerCtaText?: string;
+  footerCtaUrl?: string;
 }
 
 async function sendTemplateEmail({
@@ -247,6 +249,8 @@ async function sendTemplateEmail({
   ctaUrl,
   secondaryCtaText,
   secondaryCtaUrl,
+  footerCtaText,
+  footerCtaUrl,
 }: SendTemplateEmailOptions): Promise<{ success: boolean; error?: any }> {
   const html = buildEmailHtml({
     name,
@@ -258,6 +262,8 @@ async function sendTemplateEmail({
     ctaUrl,
     secondaryCtaText,
     secondaryCtaUrl,
+    footerCtaText,
+    footerCtaUrl,
   });
 
   try {
