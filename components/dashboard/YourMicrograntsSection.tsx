@@ -51,19 +51,25 @@ const statusLabels: Record<string, string> = {
 export default function YourMicrograntsSection({ grants, availableCycles }: YourMicrograntsSectionProps) {
   return (
     <section className="bg-nfw-wisteria py-12 px-8">
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-2xl font-bold text-white font-serif">
+          Your Microgrants
+        </h2>
+        <Link
+          href="/grants/apply"
+          className="px-4 py-2 bg-nfw-citrine text-nfw-blackberry font-ui text-sm font-medium rounded-lg hover:bg-nfw-citrine/90 transition-colors"
+        >
+          New Application
+        </Link>
+      </div>
+
       <div className="grid md:grid-cols-3 gap-8">
         {/* Left Column - Your Applications (1/3) */}
         <div className="md:col-span-1">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-white font-serif">
               Your Applications
             </h3>
-            <Link
-              href="/grants/apply"
-              className="px-4 py-2 bg-nfw-citrine text-nfw-blackberry font-ui text-sm font-medium rounded-lg hover:bg-nfw-citrine/90 transition-colors"
-            >
-              New Application
-            </Link>
           </div>
 
           {grants.length === 0 ? (
@@ -117,7 +123,7 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
 
         {/* Right Column - Available Microgrants (2/3) */}
         <div className="md:col-span-2">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-white font-serif">
               Available Microgrants
             </h3>
