@@ -1463,3 +1463,49 @@ Fixed "Your Redeemed Perks" section not showing redeemed perks on dashboard.
 **Additional Fix:**
 - Fixed duplicate `RedeemedPerksList` function definition in YourPerksAndBenefits.tsx
 - Added console.log debugging to POST `/api/perks/liked-stores` route
+
+### Session 2026-04-22: Dashboard New Sections
+
+Added three new sections to the dashboard:
+
+#### Your Microgrants Section
+
+New section with wisteria (`#7786BE`) background showing user's grant applications.
+
+**Features:**
+- "New Application" button (citrine bg, black text) top-right
+- Horizontal scrollable row of grant cards showing: cycle name, amount, status badge, deadline
+- Status badges match `/grants/my-applications` styling (submitted, in_review, approved, not_approved, payment_pending, payment_sent)
+- Empty state with CTA if no grants
+- Click card → `/grants/view/[id]`
+
+**Files Created:**
+- `components/dashboard/YourMicrograntsSection.tsx`
+
+#### Your Zero Dollar Store Section
+
+New section with lilac (`#B693C0`) background showing user's zero dollar store orders.
+
+**Features:**
+- "Browse the Zero Dollar Store" button (wisteria bg, white text) top-right
+- 1/3 width left column "Your Order History" (renamed from "Your Online History") - stacked claimed items with image, name, date, "View on Shopify" link
+- 2/3 width right column "Latest Offerings" - horizontal scroll of up to 8 product cards (portrait image, yellow title bar)
+
+**Files Created:**
+- `components/dashboard/YourZeroDollarStoreSection.tsx`
+
+#### Your Perks & Benefits Updates
+
+- Added "Explore Perks" button (lilac bg, white text) to section header
+- Changed grid from 50/50 to 1/3 (Saved Brands) / 2/3 (Redeemed Perks)
+
+**Files Modified:**
+- `app/dashboard/page.tsx` - Added queries for grants and zero dollar claims
+- `components/dashboard/YourPerksAndBenefits.tsx` - Added button and adjusted column widths
+- `components/dashboard/YourZeroDollarStoreSection.tsx` - New component with Online History and Latest Offerings
+- `components/dashboard/YourMicrograntsSection.tsx` - New component for grant applications
+
+**Database Fix:**
+- Zero dollar claims query was failing because `shopify_product_mappings` table had no foreign key relationship with `zero_dollar_claims`
+- Fixed by fetching claims and mappings separately, then joining in JavaScript
+- Also fixed by including `order_status_url` and `shopify_order_id` fields for "View on Shopify" link
