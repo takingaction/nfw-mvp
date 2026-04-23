@@ -1562,3 +1562,36 @@ Updated "Latest Offerings" in Your Zero Dollar Store section.
 
 **Files Modified:**
 - `components/dashboard/YourZeroDollarStoreSection.tsx` - Image styling and draft status handling
+
+### Session 2026-04-24: Dashboard Styling Updates
+
+#### Order History Date Fix
+
+Fixed "Invalid Date" issue in "Your Order History" by using `claimed_at` field instead of `created_at`.
+
+**Files Modified:**
+- `components/dashboard/YourZeroDollarStoreSection.tsx` - Changed date field from `created_at` to `claimed_at`
+
+#### Eyebrow Text Styling
+
+Updated dashboard section headings to match homepage eyebrow style (`text-xs font-black tracking-[0.06em] uppercase`).
+
+**Files Modified:**
+- `components/dashboard/DashboardHero.tsx` - "Your Member Dashboard" eyebrow styling
+- `components/dashboard/MembershipImpactCard.tsx` - "Your Membership at Work" eyebrow styling
+
+#### Hero Text Size
+
+Updated hero text to match homepage headline size (`text-5xl lg:text-6xl xl:text-[63px]`).
+
+**Files Modified:**
+- `components/dashboard/DashboardHero.tsx` - "Here to help." headline
+- `components/dashboard/MembershipImpactCard.tsx` - "$[X] saved" headline
+
+#### Your Microgrants Section Updates
+
+- Removed "View All" button from Available Microgrants column
+- Changed available microgrants grid to horizontal scroll layout (matching Latest Offerings pattern)
+
+**Files Modified:**
+- `components/dashboard/YourMicrograntsSection.tsx` - Removed View All button, horizontal scroll layout
