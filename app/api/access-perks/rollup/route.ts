@@ -49,8 +49,7 @@ export async function GET(request: Request) {
       params.postal_code = postalCode;
       params.distance = distance;
       params.sort = "distance";
-      params.online = online === "only" ? "only" : "include";
-      console.log("[Rollup] Using postal code:", postalCode, "distance:", distance);
+      params.online = online === "only" ? "only" : "none";
     }
 
     if (rollup) params.rollup = rollup;
@@ -96,7 +95,6 @@ export async function GET(request: Request) {
         }
       }
       groups = Array.from(storeMap.values());
-      console.log("[Rollup] Raw groups before sort:", groups.map(g => ({ name: g.name, distance: g.distance })));
       groups.sort((a, b) => (a.distance || 0) - (b.distance || 0));
     } else if (rollup === "locations") {
       const locationMap = new Map<string, any>();

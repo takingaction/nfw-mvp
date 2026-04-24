@@ -157,9 +157,7 @@ export default function PerksPage() {
       try {
         const res = await fetch('/api/profile');
         const data = await res.json();
-        console.log("[Perks] Profile ZIP response:", data);
         if (data.zip) {
-          console.log("[Perks] Setting searchPostalCode to:", data.zip);
           setSearchPostalCode(data.zip);
         }
       } catch (err) {
