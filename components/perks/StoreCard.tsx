@@ -104,10 +104,15 @@ export default function StoreCard({
             {store.name}
           </h3>
           <div className="flex items-center gap-2 mt-1">
-            {!isNationwide && store.distance !== undefined && (
+            {!isNationwide && store.distance !== undefined && store.distance < 5000 && (
               <span className="flex items-center gap-0.5 text-nfw-blackberry/50 text-xs">
                 <Navigation className="w-3 h-3" />
                 {store.distance.toFixed(1)} mi
+              </span>
+            )}
+            {!isNationwide && (store.distance === undefined || store.distance >= 5000) && (
+              <span className="flex items-center gap-0.5 text-nfw-aubergine text-xs font-medium">
+                ONLINE
               </span>
             )}
             <span className="flex items-center gap-0.5 text-nfw-aubergine text-xs font-medium">
