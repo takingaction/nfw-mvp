@@ -95,6 +95,7 @@ export async function GET(request: Request) {
         }
       }
       groups = Array.from(storeMap.values());
+      groups.sort((a, b) => (a.distance || 0) - (b.distance || 0));
     } else if (rollup === "locations") {
       const locationMap = new Map<string, any>();
       for (const offer of result.offers) {
