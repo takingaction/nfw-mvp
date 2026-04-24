@@ -58,7 +58,7 @@ function buildEmailHtml({
       <td style="padding: 0; margin: 0; background-image: url('${heroImage}'); background-size: cover; background-position: center; background-repeat: no-repeat; position: relative;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td style="padding: 120px 40px; text-align: center; vertical-align: middle;">
+            <td style="padding: 120px 40px; text-align: center; vertical-align: middle;" class="hero-cell">
               <p style="font-family: Georgia, 'Times New Roman', serif; font-size: 28px; font-style: italic; font-weight: 400; color: ${whiteColor}; line-height: 1.4; margin: 0;">
                 ${heroText}
               </p>
@@ -143,16 +143,18 @@ function buildEmailHtml({
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     @media only screen and (max-width: 480px) {
-      .email-container { width: 100% !important; border-radius: 0 !important; }
+      .email-outer { padding: 0 !important; background-color: #3E145F !important; }
+      .email-container { width: 100% !important; border-radius: 30px !important; }
       .logo-img { width: 240px !important; }
       .snapshot-bg { background-color: #FFFFFF !important; }
       .snapshot-text { color: #3E145F !important; }
       .snapshot-label { color: #3E145F !important; }
+      .hero-cell { padding: 80px 30px !important; vertical-align: middle !important; }
     }
   </style>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: 'DM Sans', Arial, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 20px 0;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 20px 0;" class="email-outer">
     <tr>
       <td align="center">
         <!-- Email Container -->
