@@ -303,6 +303,8 @@ export default function Footer() {
               href={data.footer_link1_url}
               className="hover:opacity-80 transition-colors text-sm"
               style={{ color: "#B7B6B9" }}
+              target="_blank"
+              rel="noopener noreferrer"
             >
               {data.footer_link1_text}
             </Link>
@@ -311,6 +313,8 @@ export default function Footer() {
               href={data.footer_link2_url}
               className="hover:opacity-80 transition-colors text-sm"
               style={{ color: "#B7B6B9" }}
+              target="_blank"
+              rel="noopener noreferrer"
             >
               {data.footer_link2_text}
             </Link>
@@ -319,6 +323,8 @@ export default function Footer() {
               href={data.footer_link3_url}
               className="hover:opacity-80 transition-colors text-sm"
               style={{ color: "#B7B6B9" }}
+              target="_blank"
+              rel="noopener noreferrer"
             >
               {data.footer_link3_text}
             </Link>

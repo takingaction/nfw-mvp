@@ -1873,3 +1873,13 @@ const getLocationName = (loc: Location): string => {
 
 **Files Modified:**
 - `components/perks/OfferDetailPanel.tsx` - Updated getLocationName function
+
+### Session 2026-04-25: Footer Links Open in New Tab
+
+Updated all 3 footer links (Privacy Policy, Terms of Use, Accessibility) to open in new tab.
+
+**Changes:**
+- Added `target="_blank" rel="noopener noreferrer"` to footer_link1, footer_link2, and footer_link3
+
+**Files Modified:**
+- `components/landing/Footer.tsx` - Added target="_blank" and rel="noopener noreferrer" to Link components
