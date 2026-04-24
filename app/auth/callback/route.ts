@@ -24,24 +24,6 @@ export async function GET(request: NextRequest) {
         if (profile?.profile_completed) {
           redirect("/dashboard");
         } else {
-          const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture;
-          const fullName = user.user_metadata?.full_name || user.user_metadata?.name;
-          const googleEmail = user.email;
-
-          if (avatarUrl || fullName) {
-            const updates: Record<string, string> = {};
-            if (avatarUrl) updates.avatar_url = avatarUrl;
-            if (fullName) updates.full_name = fullName;
-
-            await supabase
-              .from("profiles")
-              .upsert({
-                id: user.id,
-                ...updates,
-                updated_at: new Date().toISOString(),
-              });
-          }
-
           redirect("/auth/sign-up?step=1");
         }
       }

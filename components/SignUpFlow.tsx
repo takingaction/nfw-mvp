@@ -209,39 +209,18 @@ export default function SignUpFlow() {
   // Check if user has confirmed email when on steps 1-3
   useEffect(() => {
     if (step === 0) return;
-
+    
     const checkConfirmation = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-
+      
       if (!user || !user.email_confirmed_at) {
+        // User hasn't confirmed email, redirect to success page
         window.location.href = "/auth/sign-up-success";
       }
     };
-
+    
     checkConfirmation();
-  }, [step]);
-
-  // Pre-fill email and name for Google OAuth users on step 1
-  useEffect(() => {
-    if (step !== 1) return;
-
-    const prefetchGoogleInfo = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (user) {
-        if (user.email && !email) {
-          setEmail(user.email);
-        }
-        const googleName = user.user_metadata?.full_name || user.user_metadata?.name;
-        if (googleName && !fullName) {
-          setFullName(googleName);
-        }
-      }
-    };
-
-    prefetchGoogleInfo();
   }, [step]);
 
   const inputClass =
