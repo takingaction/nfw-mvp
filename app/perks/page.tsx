@@ -344,6 +344,7 @@ export default function PerksPage() {
         } else if (searchPostalCode) {
           params.postal_code = searchPostalCode;
           params.distance = searchDistance;
+          params.online = isOnlineOnly ? "only" : "include";
         }
 
         if (selectedCategories.length > 0) {
@@ -587,7 +588,7 @@ export default function PerksPage() {
     setSelectedOfferTypes([]);
     setSelectedLocation(null);
     setSearchQuery("");
-    setSearchPostalCode("");
+    // Keep postal code and distance for proper API call
     setCurrentView("offers");
     setCurrentPage(1);
   };
