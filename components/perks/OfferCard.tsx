@@ -2,7 +2,6 @@
 
 import { MapPin, Clock } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
 
 interface OfferCardProps {
   offer: any;
@@ -10,9 +9,6 @@ interface OfferCardProps {
 }
 
 export default function OfferCard({ offer, onClick }: OfferCardProps) {
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const storeNameRef = useRef<HTMLDivElement>(null);
-
   const {
     offer_key,
     title,
@@ -26,20 +22,6 @@ export default function OfferCard({ offer, onClick }: OfferCardProps) {
     redemption_methods,
     categories,
   } = offer;
-
-  useEffect(() => {
-    if (titleRef.current && title) {
-      const textarea = document.createElement("textarea");
-      textarea.innerHTML = title;
-      titleRef.current.innerHTML = textarea.value;
-    }
-
-    if (storeNameRef.current && offer_store?.name) {
-      const textarea = document.createElement("textarea");
-      textarea.innerHTML = offer_store.name;
-      storeNameRef.current.innerHTML = textarea.value;
-    }
-  }, [title, offer_store?.name]);
 
   const formatDistance = (distance: number) => {
     if (!distance) return null;
@@ -86,19 +68,15 @@ export default function OfferCard({ offer, onClick }: OfferCardProps) {
         <div className="flex-1 min-w-0 flex flex-col">
           {offer_store?.name && (
             <div
-              ref={storeNameRef}
               className="text-sm font-semibold text-nfw-blackberry mb-1 break-words [&_sup]:text-[0.6em] [&_sup]:align-super"
-            >
-              {offer_store.name}
-            </div>
+              dangerouslySetInnerHTML={{ __html: offer_store.name }}
+            />
           )}
 
           <h3
-            ref={titleRef}
             className="text-nfw-blackberry/70 text-sm mb-2 line-clamp-2 leading-tight flex-1 [&_sup]:text-[0.6em] [&_sup]:align-super"
-          >
-            {title}
-          </h3>
+            dangerouslySetInnerHTML={{ __html: title }}
+          />
 
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
             {savings_amount && (

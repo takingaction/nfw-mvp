@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigation, ChevronRight, Heart } from "lucide-react";
 
 interface StoreCardProps {
@@ -38,19 +38,12 @@ export default function StoreCard({
   onToggleLike,
   showLikeButton = true,
 }: StoreCardProps) {
-  const nameRef = useRef<HTMLHeadingElement>(null);
   const [isLiked, setIsLiked] = useState(liked);
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     setIsLiked(liked);
   }, [liked]);
-
-  useEffect(() => {
-    if (nameRef.current && store.name) {
-      nameRef.current.innerHTML = decodeHTML(store.name);
-    }
-  }, [store.name]);
 
   const handleLikeClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -98,11 +91,9 @@ export default function StoreCard({
         </div>
         <div className="flex-1 min-w-0 pr-8">
           <h3
-            ref={nameRef}
             className="font-sans text-sm font-semibold text-nfw-blackberry truncate [&_sup]:text-[0.6em] [&_sup]:align-super"
-          >
-            {store.name}
-          </h3>
+            dangerouslySetInnerHTML={{ __html: store.name }}
+          />
           <div className="flex items-center gap-2 mt-1">
             {!isNationwide && store.distance !== undefined && store.distance < 5000 && (
               <span className="flex items-center gap-0.5 text-nfw-blackberry/50 text-xs">

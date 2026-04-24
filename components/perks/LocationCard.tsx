@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { MapPin, Navigation } from "lucide-react";
 
 interface LocationCardProps {
@@ -23,25 +22,7 @@ interface LocationCardProps {
   isNationwide?: boolean;
 }
 
-function decodeHTML(html: string): string {
-  const textarea = document.createElement("textarea");
-  textarea.innerHTML = html;
-  return textarea.value;
-}
-
 export default function LocationCard({ location, onClick, isNationwide }: LocationCardProps) {
-  const nameRef = useRef<HTMLHeadingElement>(null);
-  const storeNameRef = useRef<HTMLParagraphElement>(null);
-
-  useEffect(() => {
-    if (nameRef.current && location.name) {
-      nameRef.current.innerHTML = decodeHTML(location.name);
-    }
-    if (storeNameRef.current && location.store?.name) {
-      storeNameRef.current.innerHTML = decodeHTML(location.store.name);
-    }
-  }, [location.name, location.store?.name]);
-
   const fullAddress = [location.address, location.city, location.state]
     .filter(Boolean)
     .join(", ");
@@ -67,18 +48,14 @@ export default function LocationCard({ location, onClick, isNationwide }: Locati
         </div>
         <div className="flex-1 min-w-0">
           <h3
-            ref={nameRef}
             className="font-sans text-sm font-semibold text-nfw-blackberry truncate [&_sup]:text-[0.6em] [&_sup]:align-super"
-          >
-            {location.name}
-          </h3>
+            dangerouslySetInnerHTML={{ __html: location.name }}
+          />
           {location.store?.name && (
             <p
-              ref={storeNameRef}
               className="text-xs text-nfw-blackberry/50 truncate [&_sup]:text-[0.6em] [&_sup]:align-super"
-            >
-              {location.store.name}
-            </p>
+              dangerouslySetInnerHTML={{ __html: location.store.name }}
+            />
           )}
           {fullAddress && (
             <p className="text-xs text-nfw-blackberry/50 truncate">{fullAddress}</p>
