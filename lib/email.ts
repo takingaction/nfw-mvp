@@ -141,13 +141,22 @@ function buildEmailHtml({
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>National Fund for Women</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    @media only screen and (max-width: 480px) {
+      .email-container { width: 100% !important; border-radius: 0 !important; }
+      .logo-img { width: 240px !important; }
+      .snapshot-bg { background-color: #FFFFFF !important; }
+      .snapshot-text { color: #3E145F !important; }
+      .snapshot-label { color: #3E145F !important; }
+    }
+  </style>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: 'DM Sans', Arial, sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 20px 0;">
     <tr>
       <td align="center">
         <!-- Email Container -->
-        <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: ${footerBackground}; border-radius: 50px; overflow: hidden; max-width: 600px;">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: ${footerBackground}; border-radius: 50px; overflow: hidden; max-width: 600px;" class="email-container">
 
           <!-- Header with Logo -->
           <tr>
@@ -155,7 +164,7 @@ function buildEmailHtml({
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td align="center" style="padding: 30px 40px 20px 40px;">
-                    <img src="${logoUrl}" alt="National Fund for Women" width="200" style="display: block;" />
+                    <img src="${logoUrl}" alt="National Fund for Women" width="300" style="display: block; max-width: 100%; height: auto;" />
                   </td>
                 </tr>
               </table>
@@ -330,20 +339,20 @@ export async function sendWelcomeEmail({
   };
 
   const membershipSnapshot = `
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;" class="snapshot-bg">
       <tr>
         <td style="padding: 15px 20px; background-color: rgba(255,255,255,0.1); border-radius: 8px;">
-          <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; color: #FFFFFF; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.05em;">
+          <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; color: #FFFFFF; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.05em;" class="snapshot-label">
             Your membership snapshot
           </p>
-          <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 5px 0;">
+          <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 5px 0;" class="snapshot-text">
             <strong>Email:</strong> <span style="color: #FFFFFF; text-decoration: none;">${memberId.replace(/@/g, '&#64;')}</span>
           </p>
-          <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 5px 0;">
+          <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 5px 0;" class="snapshot-text">
             <strong>Membership Tier:</strong> ${membershipType.charAt(0).toUpperCase() + membershipType.slice(1)}
           </p>
           ${renewalDate ? `
-          <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0;">
+          <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0;" class="snapshot-text">
             <strong>Renewal Date:</strong> ${renewalDate}
           </p>
           ` : ""}
