@@ -143,25 +143,23 @@ function buildEmailHtml({
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     @media only screen and (max-width: 480px) {
-      .email-outer { padding: 0 !important; background-color: #FFFFFF !important; }
-      .email-container { width: 100% !important; background-color: #FFFFFF !important; border-radius: 0 !important; padding-bottom: 20px !important; }
+      .email-outer { padding: 0 !important; }
+      .email-container { width: 100% !important; border-radius: 0 !important; }
       .logo-img { width: 240px !important; }
       .snapshot-bg { background-color: #FFFFFF !important; }
       .snapshot-text { color: #3E145F !important; }
       .snapshot-label { color: #3E145F !important; }
       .hero-cell { padding: 80px 30px !important; vertical-align: middle !important; }
       .footer-cell { padding: 30px 20px 40px 20px !important; }
-      .body-cell { background-color: #FFFFFF !important; }
-      .header-cell { background-color: #FFFFFF !important; }
     }
   </style>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: 'DM Sans', Arial, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 20px 0;" class="email-outer">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding: 20px 0;" class="email-outer">
     <tr>
       <td align="center">
         <!-- Email Container -->
-        <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: ${footerBackground}; border-radius: 50px; overflow: hidden; max-width: 600px;" class="email-container">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="border-radius: 50px; overflow: hidden; max-width: 600px;" class="email-container">
 
           <!-- Header with Logo -->
           <tr>
