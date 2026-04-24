@@ -75,7 +75,11 @@ interface Location {
 }
 
 const getLocationName = (loc: Location): string => {
-  return loc.location_name || loc.name || loc.physical_location?.location_name || "Unknown Location";
+  const raw = loc.location_name || loc.name || loc.physical_location?.location_name || "Unknown Location";
+  if (typeof window === "undefined") return raw;
+  const div = document.createElement("div");
+  div.innerHTML = raw;
+  return div.textContent || raw;
 };
 
 const getLocationKey = (loc: Location): string | number => {

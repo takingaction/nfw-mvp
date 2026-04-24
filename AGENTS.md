@@ -1852,3 +1852,24 @@ Added sitemap.xml generation and editable robots.txt via admin.
   </url>
 </urlset>
 ```
+
+### Session 2026-04-25: OfferDetailPanel getLocationName HTML Fix
+
+Fixed `getLocationName` helper function to decode HTML entities in location names (e.g., stripping `<sup>®</sup>` tags).
+
+**Problem:** Nearby Locations section was displaying raw HTML like "McDonald's<sup>®</sup>" instead of "McDonald's".
+
+**Fix Applied:** Updated `getLocationName` to use `document.createElement('div').textContent` pattern (same as `decodeHtml`):
+
+```typescript
+const getLocationName = (loc: Location): string => {
+  const raw = loc.location_name || loc.name || loc.physical_location?.location_name || "Unknown Location";
+  if (typeof window === "undefined") return raw;
+  const div = document.createElement("div");
+  div.innerHTML = raw;
+  return div.textContent || raw;
+};
+```
+
+**Files Modified:**
+- `components/perks/OfferDetailPanel.tsx` - Updated getLocationName function
