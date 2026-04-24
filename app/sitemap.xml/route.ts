@@ -18,9 +18,13 @@ export async function GET() {
       ? new Date(page.updated_at).toISOString().split("T")[0]
       : new Date().toISOString().split("T")[0];
 
+    const loc = page.slug === "home" || page.slug === ""
+      ? baseUrl
+      : `${baseUrl}/${page.slug}`;
+
     return `
   <url>
-    <loc>${baseUrl}/${page.slug}</loc>
+    <loc>${loc}</loc>
     <lastmod>${lastmod}</lastmod>
   </url>`;
   }).join("") || "";
