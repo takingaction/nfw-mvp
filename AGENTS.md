@@ -1767,3 +1767,48 @@ const socialIcons = `
 
 **Files Modified:**
 - `lib/email.ts` - Updated socialIcons structure, removed opacity, updated mobile styles
+
+### Session 2026-04-25: Product Detail Panel for Zero Dollar Store
+
+Added "More Info" button and slideout panel for Zero Dollar Store products.
+
+#### Features
+
+**Image Carousel:**
+- Horizontal scroll with CSS scroll-snap
+- Previous/Next arrow buttons
+- Dot indicators - clicking jumps to that image
+- Shows all product images from Shopify (up to 20)
+
+**Product Details:**
+- Title with status badge (Dropping Soon, Out of Stock)
+- Full description
+- Available options grouped by type (Size, Color, etc.)
+- Product ID display
+- Full vertical scrolling
+
+**Files Created:**
+- `components/ProductDetailPanel.tsx` - Slide-out panel from left, image carousel, product details
+
+**Files Modified:**
+- `lib/shopify.ts` - Added `images` field to `ShopifyProduct` type and `PRODUCTS_QUERY`
+- `lib/mock-shopify.ts` - Added `images` field to `MockProduct` type and `transformShopifyProduct`
+- `components/StoreClient.tsx` - Added "More Info" button (wisteria bg), state management, and panel render
+
+#### Shopify GraphQL Update
+```graphql
+images(first: 20) {
+  edges {
+    node {
+      url
+      altText
+    }
+  }
+}
+```
+
+#### StoreClient Changes
+- Added `images: string[]` to `StoreProduct` type
+- Added `detailsProduct` state
+- Added `handleShowDetails` handler
+- Two-button layout: "Claim Item" (citrine) + "More Info" (wisteria)
