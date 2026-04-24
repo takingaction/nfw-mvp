@@ -88,11 +88,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { error } = await supabaseAdmin.from("profiles").upsert({
-      id: user.id,
-      ...updates,
-      updated_at: new Date().toISOString(),
-    });
+    // Check if profile exists first
+    const { data: existingProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("id", user.id)
+      .single();
+
+    let error;
+    if (existingProfile) {
+      // Profile exists - use UPDATE
+      const result = await supabaseAdmin
+        .from("profiles")
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+      error = result.error;
+    } else {
+      // Profile doesn't exist - INSERT with all required fields
+      const result = await supabaseAdmin
+        .from("profiles")
+        .insert({
+          id: user.id,
+          ...updates,
+          full_name: updates.full_name || "Member",
+          updated_at: new Date().toISOString(),
+        });
+      error = result.error;
+    }
 
     if (error) {
       console.error("Profile update error:", error);
