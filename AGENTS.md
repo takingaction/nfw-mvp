@@ -1812,3 +1812,43 @@ images(first: 20) {
 - Added `detailsProduct` state
 - Added `handleShowDetails` handler
 - Two-button layout: "Claim Item" (citrine) + "More Info" (wisteria)
+
+### Session 2026-04-25: Schema Markup Field for Pages
+
+Added ability to add JSON-LD schema markup to pages via the `/admin/pages` editor.
+
+**Database:**
+- `supabase/migrations/047_add_meta_schema_to_pages.sql` - Added `meta_schema TEXT` column to `pages` table
+
+**Files Modified:**
+- `app/api/admin/pages/update/route.ts` - Added `meta_schema` to allowed fields
+- `components/admin/pages/EditPageModal.tsx` - Added schema markup textarea with JSON validation
+- `components/admin/pages/AdminPagesClient.tsx` - Added `meta_schema` to Page interface
+- `app/[slug]/page.tsx` - Renders `<Script type="application/ld+json">` with schema in page head
+
+### Session 2026-04-25: Sitemap.xml, Robots.txt, and Site Settings
+
+Added sitemap.xml generation and editable robots.txt via admin.
+
+**Database:**
+- `supabase/migrations/048_create_site_settings.sql` - Creates `site_settings` table with `robots_txt` column
+- `supabase/migrations/049_add_sitemap_fields_to_pages.sql` - Added `include_in_sitemap BOOLEAN` to `pages` table
+
+**API Routes:**
+- `app/sitemap.xml/route.ts` - Generates XML sitemap from published pages with `include_in_sitemap=true` (uses root URL for homepage)
+- `app/robots.txt/route.ts` - Serves robots.txt from site_settings
+- `app/api/site/settings/route.ts` - GET/POST for site settings
+
+**Admin UI:**
+- `components/admin/SiteSettingsEditor.tsx` - Collapsible panel at bottom of `/admin/pages` for editing robots.txt
+- `components/admin/pages/EditPageModal.tsx` - Added "Include in sitemap" checkbox per page
+
+**Sitemap Output:**
+```xml
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://nationalfundforwomen.org/</loc>
+    <lastmod>2026-04-25</lastmod>
+  </url>
+</urlset>
+```
