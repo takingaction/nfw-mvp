@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import SectionRenderer from "@/components/sections/SectionRenderer";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
+import Script from "next/script";
 
 export async function generateMetadata({
   params,
@@ -37,7 +38,7 @@ export default async function DynamicPage({
 
   const { data: page } = await supabase
     .from("pages")
-    .select("id, status, slug, title, meta_title, meta_description")
+    .select("id, status, slug, title, meta_title, meta_description, meta_schema")
     .eq("slug", slug)
     .single();
 
@@ -61,5 +62,16 @@ export default async function DynamicPage({
     .eq("visible", true)
     .order("order_index");
 
-  return <SectionRenderer sections={sections ?? []} />;
+  return (
+    <>
+      {page.meta_schema && (
+        <Script
+          id="json-ld"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: page.meta_schema }}
+        />
+      )}
+      <SectionRenderer sections={sections ?? []} />
+    </>
+  );
 }

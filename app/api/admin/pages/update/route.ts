@@ -9,7 +9,7 @@ const supabaseAdmin = createClient(
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, title, slug, meta_title, meta_description } = body;
+    const { id, title, slug, meta_title, meta_description, meta_schema } = body;
 
     if (!id || !title || !slug) {
       return NextResponse.json(
@@ -33,6 +33,12 @@ export async function POST(request: Request) {
       updateData.meta_description = meta_description.trim();
     } else {
       updateData.meta_description = null;
+    }
+
+    if (meta_schema?.trim()) {
+      updateData.meta_schema = meta_schema.trim();
+    } else {
+      updateData.meta_schema = null;
     }
 
     const { error: updateError } = await supabaseAdmin

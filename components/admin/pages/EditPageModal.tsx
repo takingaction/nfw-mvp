@@ -12,6 +12,7 @@ interface EditPageModalProps {
     slug: string;
     meta_title?: string | null;
     meta_description?: string | null;
+    meta_schema?: string | null;
   };
   onSaved: () => void;
 }
@@ -21,12 +22,27 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
   const [slug, setSlug] = useState(page.slug);
   const [metaTitle, setMetaTitle] = useState(page.meta_title || "");
   const [metaDescription, setMetaDescription] = useState(page.meta_description || "");
+  const [metaSchema, setMetaSchema] = useState(page.meta_schema || "");
   const [seoExpanded, setSeoExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [schemaError, setSchemaError] = useState<string | null>(null);
 
   const MAX_TITLE = 60;
   const MAX_DESCRIPTION = 160;
+  const MAX_SCHEMA = 5000;
+
+  const validateSchema = (schema: string): boolean => {
+    if (!schema.trim()) return true;
+    try {
+      JSON.parse(schema);
+      setSchemaError(null);
+      return true;
+    } catch {
+      setSchemaError("Invalid JSON. Please check your schema markup.");
+      return false;
+    }
+  };
 
   const handleSave = async () => {
     if (!title.trim() || !slug.trim()) {
@@ -36,6 +52,11 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
 
     if (!/^[a-z0-9-]+$/.test(slug)) {
       setError("Slug can only contain lowercase letters, numbers, and hyphens");
+      return;
+    }
+
+    if (!validateSchema(metaSchema)) {
+      setError("Please fix the schema markup errors before saving.");
       return;
     }
 
@@ -55,6 +76,10 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
 
       if (metaDescription.trim()) {
         body.meta_description = metaDescription.trim();
+      }
+
+      if (metaSchema.trim()) {
+        body.meta_schema = metaSchema.trim();
       }
 
       const res = await fetch("/api/admin/pages/update", {
@@ -182,6 +207,36 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
                   {metaDescription.length > MAX_DESCRIPTION && (
                     <p className="text-xs text-red-500 mt-1">Recommended: 160 characters or less</p>
                   )}
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-black uppercase tracking-wider text-nfw-blackberry/50">
+                      Schema Markup
+                    </label>
+                    <span className={`text-xs ${metaSchema.length > MAX_SCHEMA ? "text-red-500" : "text-nfw-blackberry/40"}`}>
+                      {metaSchema.length}/{MAX_SCHEMA}
+                    </span>
+                  </div>
+                  <textarea
+                    value={metaSchema}
+                    onChange={(e) => {
+                      setMetaSchema(e.target.value);
+                      if (e.target.value.trim()) {
+                        validateSchema(e.target.value);
+                      } else {
+                        setSchemaError(null);
+                      }
+                    }}
+                    maxLength={MAX_SCHEMA + 100}
+                    rows={4}
+                    placeholder={'{"@context": "https://schema.org", "@type": "Organization", ...}'}
+                    className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm font-mono focus:outline-none focus:border-nfw-blackberry resize-none"
+                  />
+                  {schemaError && (
+                    <p className="text-xs text-red-500 mt-1">{schemaError}</p>
+                  )}
+                  <p className="text-xs text-nfw-blackberry/40 mt-1">Paste JSON-LD schema markup for search engines</p>
                 </div>
               </div>
             )}
