@@ -460,7 +460,7 @@ export default function OfferDetailPanel({
     if (typeof window === "undefined") return html;
     const textarea = document.createElement("textarea");
     textarea.innerHTML = html || "";
-    return textarea.value;
+    return textarea.value.replace(/<[^>]*>/g, "");
   };
 
   if (!isVisible) return null;
