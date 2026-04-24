@@ -180,7 +180,7 @@ function buildEmailHtml({
           <tr>
             <td style="background-color: ${footerBackground}; padding: 30px 40px; text-align: center;">
               <p style="font-family: Georgia, 'Times New Roman', serif; font-size: 16px; font-style: italic; font-weight: 400; color: ${whiteColor}; line-height: 1.6; margin: 0 0 20px 0;">
-                Together, we're building support women need today and the collective power to share the future.
+                Together, we're building support women need today and the collective power to shape the future.
               </p>
 
               <a href="${footerCtaButtonUrl}" style="display: inline-block; background-color: ${ctaBackgroundColor}; color: ${ctaTextColor}; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; text-decoration: none; padding: 12px 24px; border-radius: 0; margin-bottom: 20px;">
