@@ -7,6 +7,7 @@ import NewPageModal from "@/components/admin/pages/NewPageModal";
 import EditPageModal from "@/components/admin/pages/EditPageModal";
 import DuplicatePageModal from "@/components/admin/pages/DuplicatePageModal";
 import ConfirmModal from "@/components/admin/ConfirmModal";
+import SiteSettingsEditor from "@/components/admin/SiteSettingsEditor";
 
 interface Page {
   id: string;
@@ -17,6 +18,7 @@ interface Page {
   meta_title?: string | null;
   meta_description?: string | null;
   meta_schema?: string | null;
+  include_in_sitemap?: boolean;
 }
 
 export default function AdminPagesClient({ pages }: { pages: Page[] }) {
@@ -166,6 +168,10 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
               </div>
             ))
           )}
+        </div>
+
+        <div className="mt-8">
+          <SiteSettingsEditor />
         </div>
       </div>
 

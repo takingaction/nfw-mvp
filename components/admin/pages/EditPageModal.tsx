@@ -13,6 +13,7 @@ interface EditPageModalProps {
     meta_title?: string | null;
     meta_description?: string | null;
     meta_schema?: string | null;
+    include_in_sitemap?: boolean;
   };
   onSaved: () => void;
 }
@@ -23,6 +24,7 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
   const [metaTitle, setMetaTitle] = useState(page.meta_title || "");
   const [metaDescription, setMetaDescription] = useState(page.meta_description || "");
   const [metaSchema, setMetaSchema] = useState(page.meta_schema || "");
+  const [includeInSitemap, setIncludeInSitemap] = useState(page.include_in_sitemap ?? true);
   const [seoExpanded, setSeoExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +66,7 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
     setError(null);
 
     try {
-      const body: Record<string, string | null> = {
+      const body: Record<string, string | null | boolean> = {
         id: page.id,
         title: title.trim(),
         slug: slug.trim(),
@@ -81,6 +83,8 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
       if (metaSchema.trim()) {
         body.meta_schema = metaSchema.trim();
       }
+
+      body.include_in_sitemap = includeInSitemap;
 
       const res = await fetch("/api/admin/pages/update", {
         method: "POST",
@@ -145,6 +149,18 @@ export default function EditPageModal({ isOpen, onClose, page, onSaved }: EditPa
                 onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
                 className="flex-1 px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
               />
+            </div>
+            <div className="flex items-center gap-2 mt-3">
+              <input
+                type="checkbox"
+                id="includeInSitemap"
+                checked={includeInSitemap}
+                onChange={(e) => setIncludeInSitemap(e.target.checked)}
+                className="w-4 h-4 rounded border-nfw-blackberry/20 text-nfw-blackberry focus:ring-nfw-blackberry/20"
+              />
+              <label htmlFor="includeInSitemap" className="text-sm text-nfw-blackberry/70 cursor-pointer">
+                Include in sitemap
+              </label>
             </div>
           </div>
 

@@ -9,7 +9,7 @@ const supabaseAdmin = createClient(
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, title, slug, meta_title, meta_description, meta_schema } = body;
+    const { id, title, slug, meta_title, meta_description, meta_schema, include_in_sitemap } = body;
 
     if (!id || !title || !slug) {
       return NextResponse.json(
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const updateData: Record<string, string | null> = {
+    const updateData: Record<string, string | null | boolean> = {
       title: title.trim(),
       slug: slug.trim(),
     };
@@ -39,6 +39,10 @@ export async function POST(request: Request) {
       updateData.meta_schema = meta_schema.trim();
     } else {
       updateData.meta_schema = null;
+    }
+
+    if (typeof include_in_sitemap === "boolean") {
+      updateData.include_in_sitemap = include_in_sitemap;
     }
 
     const { error: updateError } = await supabaseAdmin
