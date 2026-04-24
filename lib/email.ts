@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 
 const FROM =
-  process.env.RESEND_FROM_EMAIL || "NFW <hello@nationalfundforwomen.org>";
+  process.env.RESEND_FROM_EMAIL || "National Fund for Women <hello@nationalfundforwomen.org>";
 
 function getResend() {
   if (!process.env.RESEND_API_KEY) {
