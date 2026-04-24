@@ -8,6 +8,12 @@ interface OfferCardProps {
   onClick?: () => void;
 }
 
+function decodeHTML(html: string): string {
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = html;
+  return textarea.value;
+}
+
 export default function OfferCard({ offer, onClick }: OfferCardProps) {
   const {
     offer_key,
@@ -22,6 +28,9 @@ export default function OfferCard({ offer, onClick }: OfferCardProps) {
     redemption_methods,
     categories,
   } = offer;
+
+  const displayTitle = title ? decodeHTML(title) : title;
+  const displayStoreName = offer_store?.name ? decodeHTML(offer_store.name) : offer_store?.name;
 
   const formatDistance = (distance: number) => {
     if (!distance) return null;
@@ -66,16 +75,16 @@ export default function OfferCard({ offer, onClick }: OfferCardProps) {
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col">
-          {offer_store?.name && (
+          {displayStoreName && (
             <div
               className="text-sm font-semibold text-nfw-blackberry mb-1 break-words [&_sup]:text-[0.6em] [&_sup]:align-super"
-              dangerouslySetInnerHTML={{ __html: offer_store.name }}
+              dangerouslySetInnerHTML={{ __html: displayStoreName }}
             />
           )}
 
           <h3
             className="text-nfw-blackberry/70 text-sm mb-2 line-clamp-2 leading-tight flex-1 [&_sup]:text-[0.6em] [&_sup]:align-super"
-            dangerouslySetInnerHTML={{ __html: title }}
+            dangerouslySetInnerHTML={{ __html: displayTitle }}
           />
 
           <div className="flex flex-wrap items-center gap-1.5 mb-2">

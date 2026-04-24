@@ -22,10 +22,19 @@ interface LocationCardProps {
   isNationwide?: boolean;
 }
 
+function decodeHTML(html: string): string {
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = html;
+  return textarea.value;
+}
+
 export default function LocationCard({ location, onClick, isNationwide }: LocationCardProps) {
   const fullAddress = [location.address, location.city, location.state]
     .filter(Boolean)
     .join(", ");
+
+  const displayName = location.name ? decodeHTML(location.name) : location.name;
+  const displayStoreName = location.store?.name ? decodeHTML(location.store.name) : location.store?.name;
 
   return (
     <div
@@ -49,12 +58,12 @@ export default function LocationCard({ location, onClick, isNationwide }: Locati
         <div className="flex-1 min-w-0">
           <h3
             className="font-sans text-sm font-semibold text-nfw-blackberry truncate [&_sup]:text-[0.6em] [&_sup]:align-super"
-            dangerouslySetInnerHTML={{ __html: location.name }}
+            dangerouslySetInnerHTML={{ __html: displayName }}
           />
-          {location.store?.name && (
+          {displayStoreName && (
             <p
               className="text-xs text-nfw-blackberry/50 truncate [&_sup]:text-[0.6em] [&_sup]:align-super"
-              dangerouslySetInnerHTML={{ __html: location.store.name }}
+              dangerouslySetInnerHTML={{ __html: displayStoreName }}
             />
           )}
           {fullAddress && (

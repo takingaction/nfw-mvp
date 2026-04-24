@@ -45,6 +45,8 @@ export default function StoreCard({
     setIsLiked(liked);
   }, [liked]);
 
+  const displayName = store.name ? decodeHTML(store.name) : store.name;
+
   const handleLikeClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsAnimating(true);
@@ -92,7 +94,7 @@ export default function StoreCard({
         <div className="flex-1 min-w-0 pr-8">
           <h3
             className="font-sans text-sm font-semibold text-nfw-blackberry truncate [&_sup]:text-[0.6em] [&_sup]:align-super"
-            dangerouslySetInnerHTML={{ __html: store.name }}
+            dangerouslySetInnerHTML={{ __html: displayName }}
           />
           <div className="flex items-center gap-2 mt-1">
             {!isNationwide && store.distance !== undefined && store.distance < 5000 && (
