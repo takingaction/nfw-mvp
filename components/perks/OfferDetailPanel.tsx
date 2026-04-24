@@ -458,9 +458,9 @@ export default function OfferDetailPanel({
 
   const decodeHtml = (html: string) => {
     if (typeof window === "undefined") return html;
-    const textarea = document.createElement("textarea");
-    textarea.innerHTML = html || "";
-    return textarea.value.replace(/<[^>]*>/g, "");
+    const div = document.createElement("div");
+    div.innerHTML = html || "";
+    return div.textContent || "";
   };
 
   if (!isVisible) return null;
