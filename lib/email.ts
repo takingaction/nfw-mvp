@@ -143,14 +143,16 @@ function buildEmailHtml({
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     @media only screen and (max-width: 480px) {
-      .email-outer { padding: 0 !important; background-color: transparent !important; }
-      .email-container { width: 100% !important; }
+      .email-outer { padding: 0 !important; background-color: #FFFFFF !important; }
+      .email-container { width: 100% !important; background-color: #FFFFFF !important; border-radius: 0 !important; padding-bottom: 20px !important; }
       .logo-img { width: 240px !important; }
       .snapshot-bg { background-color: #FFFFFF !important; }
       .snapshot-text { color: #3E145F !important; }
       .snapshot-label { color: #3E145F !important; }
       .hero-cell { padding: 80px 30px !important; vertical-align: middle !important; }
       .footer-cell { padding: 30px 20px 40px 20px !important; }
+      .body-cell { background-color: #FFFFFF !important; }
+      .header-cell { background-color: #FFFFFF !important; }
     }
   </style>
 </head>
@@ -163,7 +165,7 @@ function buildEmailHtml({
 
           <!-- Header with Logo -->
           <tr>
-            <td style="padding: 0; background-color: ${containerBackground};">
+            <td style="padding: 0; background-color: ${containerBackground};" class="header-cell">
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td align="center" style="padding: 30px 40px 20px 40px;">
@@ -179,7 +181,7 @@ function buildEmailHtml({
 
           <!-- Body Content -->
           <tr>
-            <td style="padding: 0 40px 20px 40px; background-color: ${bodyBackground};">
+            <td style="padding: 0 40px 20px 40px; background-color: ${bodyBackground};" class="body-cell">
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 ${body}
               </table>
