@@ -28,6 +28,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     title: "Ceramic Mug",
     description: "Beautiful handcrafted ceramic mug perfect for your morning coffee or tea. Features a classic design with comfortable grip.",
     imageUrl: "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=400&h=533&fit=crop&q=80",
+    images: [],
     availableForSale: true,
     variants: [
       {
@@ -49,6 +50,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     title: "Tote Bag",
     description: "Eco-friendly canvas tote bag with NFW branding. Perfect for shopping or everyday use. Made from sustainable materials.",
     imageUrl: "https://images.unsplash.com/photo-1544816155-12df9643f363?w=400&h=533&fit=crop&q=80",
+    images: [],
     availableForSale: true,
     variants: [
       {
@@ -70,6 +72,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     title: "Notebook Set",
     description: "Premium lined notebook with NFW cover design. Includes matching pen. Great for journaling or note-taking.",
     imageUrl: "https://images.unsplash.com/photo-1531346878377-a5be20888e57?w=400&h=533&fit=crop&q=80",
+    images: [],
     availableForSale: true,
     variants: [
       {
@@ -91,6 +94,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     title: "Water Bottle",
     description: "Insulated stainless steel water bottle. Keeps drinks cold for 24 hours or hot for 12 hours. BPA-free.",
     imageUrl: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&h=533&fit=crop&q=80",
+    images: [],
     availableForSale: false,
     variants: [
       {
@@ -112,6 +116,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     title: "Lip Balm Set",
     description: "Set of 3 organic lip balms in different flavors. Made with natural ingredients. Long-lasting moisture.",
     imageUrl: "https://images.unsplash.com/photo-1599305090598-fe179d501227?w=400&h=533&fit=crop&q=80",
+    images: [],
     availableForSale: true,
     variants: [
       {
@@ -133,6 +138,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     title: "Stickers Pack",
     description: "Fun NFW sticker pack with various designs. Waterproof and durable. Perfect for laptops or water bottles.",
     imageUrl: "https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?w=400&h=533&fit=crop&q=80",
+    images: [],
     availableForSale: true,
     variants: [
       {

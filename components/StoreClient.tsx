@@ -41,7 +41,7 @@ export default function StoreClient({
     productId: string;
     variantId: string;
     name: string;
-    variants: Array<{ name: string; options: string[] }>;
+    variants: Array<{ name: string; options: string[] }> | undefined;
   } | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [monthlyClaimed, setMonthlyClaimed] = useState(false);
