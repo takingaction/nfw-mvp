@@ -101,16 +101,29 @@ export default function StoreClient({
       router.push("/auth/login");
       return;
     }
+
+    const optionMap: Record<string, string[]> = {};
+    item.variants.forEach((variant) => {
+      variant.options.forEach((opt) => {
+        if (!optionMap[opt.name]) {
+          optionMap[opt.name] = [];
+        }
+        if (!optionMap[opt.name].includes(opt.value)) {
+          optionMap[opt.name].push(opt.value);
+        }
+      });
+    });
+
+    const variants = Object.entries(optionMap).map(([name, options]) => ({
+      name,
+      options,
+    }));
+
     setClaimingItem({
       productId: item.shopifyProductId,
       variantId: item.shopifyVariantId,
       name: item.title,
-      variants: item.variants
-        .filter((v) => v.options && v.options.length > 0)
-        .map((v) => ({
-          name: v.options.map((o) => o.name).join(" / ") || "Size",
-          options: v.options.map((o) => o.value),
-        })),
+      variants: variants.length > 0 ? variants : undefined,
     });
   };
 
