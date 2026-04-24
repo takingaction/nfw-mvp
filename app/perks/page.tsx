@@ -206,6 +206,10 @@ export default function PerksPage() {
   }, []);
 
   useEffect(() => {
+    // Skip if no postal code and not nationwide - wait for zip to be loaded
+    if (!searchPostalCode && searchDistance !== "2500mi") {
+      return;
+    }
     fetchAllCounts(onlineOnly);
     fetchRollup(onlineOnly);
   }, [onlineOnly, selectedCategories, selectedFacets, selectedStore, selectedLocation, selectedOfferTypes, searchQuery, searchPostalCode, searchDistance, currentView, currentPage]);
