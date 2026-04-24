@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
             title: "",
             description: "",
             imageUrl: "",
+            images: [],
             availableForSale: true,
             variants: [],
             mvpVisibility: rawMapping.mvp_visibility,
