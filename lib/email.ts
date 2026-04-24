@@ -119,15 +119,15 @@ function buildEmailHtml({
 
   const socialIcons = `
     <tr>
-      <td style="padding: 20px 0; text-align: center; font-size: 0;">
-        <a href="https://www.instagram.com/nationalfundforwomen" target="_blank" style="display: inline-block; margin: 0 15px; text-decoration: none;">
-          <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/instagram.svg" alt="Instagram" width="36" height="36" style="display: block; width: 36px; height: 36px;">
+      <td style="padding: 10px 0; text-align: center; font-size: 0;">
+        <a href="https://www.instagram.com/nationalfundforwomen" target="_blank" style="display: inline-block; margin: 0 12px; text-decoration: none;">
+          <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/instagram.svg" alt="Instagram" width="28" height="28" style="display: block; width: 28px; height: 28px; filter: brightness(0) invert(1);">
         </a>
-        <a href="https://www.tiktok.com/@nationalfundforwomen" target="_blank" style="display: inline-block; margin: 0 15px; text-decoration: none;">
-          <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/tiktok.svg" alt="TikTok" width="36" height="36" style="display: block; width: 36px; height: 36px;">
+        <a href="https://www.tiktok.com/@nationalfundforwomen" target="_blank" style="display: inline-block; margin: 0 12px; text-decoration: none;">
+          <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/tiktok.svg" alt="TikTok" width="28" height="28" style="display: block; width: 28px; height: 28px; filter: brightness(0) invert(1);">
         </a>
-        <a href="https://www.facebook.com/nationalfundforwomen" target="_blank" style="display: inline-block; margin: 0 15px; text-decoration: none;">
-          <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/facebook.svg" alt="Facebook" width="36" height="36" style="display: block; width: 36px; height: 36px;">
+        <a href="https://www.facebook.com/nationalfundforwomen" target="_blank" style="display: inline-block; margin: 0 12px; text-decoration: none;">
+          <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/facebook.svg" alt="Facebook" width="28" height="28" style="display: block; width: 28px; height: 28px; filter: brightness(0) invert(1);">
         </a>
       </td>
     </tr>
