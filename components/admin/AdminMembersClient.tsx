@@ -101,7 +101,10 @@ export default function AdminMembersClient({
     if ("subscription_status" in pendingChanges)
       updates.subscription_status = pendingChanges.subscription_status;
 
+    console.log("[AdminMembersClient] handleSave - selected.id:", selected.id, "updates:", updates);
+
     if (Object.keys(updates).length === 0) {
+      console.log("[AdminMembersClient] No updates to save");
       setSaving(false);
       return;
     }
@@ -113,6 +116,7 @@ export default function AdminMembersClient({
         body: JSON.stringify({ memberId: selected.id, updates }),
       });
       const result = await res.json();
+      console.log("[AdminMembersClient] Response:", res.status, result);
       if (!res.ok) throw new Error(result.error || "Failed to save");
 
       const updated = { ...selected, ...updates };

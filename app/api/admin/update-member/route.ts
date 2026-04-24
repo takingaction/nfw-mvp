@@ -41,6 +41,8 @@ export async function POST(request: NextRequest) {
 
     const { memberId, updates } = await request.json();
 
+    console.log("[update-member] Received request:", { memberId, updates });
+
     if (!memberId || !updates) {
       return NextResponse.json(
         { error: "Missing memberId or updates" },
@@ -48,15 +50,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log("[update-member] Updating profile:", memberId, "with:", updates);
     const { error } = await supabaseAdmin
       .from("profiles")
       .update(updates)
       .eq("id", memberId);
 
     if (error) {
+      console.error("[update-member] Update error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    console.log("[update-member] Update successful");
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
