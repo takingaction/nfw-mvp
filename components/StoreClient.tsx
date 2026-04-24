@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import ClaimItemModal from "./ClaimItemModal";
+import ProductDetailPanel from "./ProductDetailPanel";
 import Link from "next/link";
 
 type StoreProduct = {
@@ -12,6 +13,7 @@ type StoreProduct = {
   title: string;
   description: string;
   imageUrl: string;
+  images: string[];
   availableForSale: boolean;
   variants: Array<{
     id: string;
@@ -43,6 +45,7 @@ export default function StoreClient({
   } | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [monthlyClaimed, setMonthlyClaimed] = useState(false);
+  const [detailsProduct, setDetailsProduct] = useState<StoreProduct | null>(null);
   const [heroSettings, setHeroSettings] = useState<{
     hero_image_url: string | null;
     hero_heading: string;
@@ -129,6 +132,10 @@ export default function StoreClient({
 
   const toggleExpand = (productId: string) => {
     setExpandedId(expandedId === productId ? null : productId);
+  };
+
+  const handleShowDetails = (product: StoreProduct) => {
+    setDetailsProduct(product);
   };
 
   const canClaim = (product: StoreProduct) => {
@@ -279,17 +286,25 @@ export default function StoreClient({
                       </p>
                     )}
 
-                    <button
-                      onClick={() => handleClaim(product)}
-                      disabled={!claimStatus.eligible}
-                      className={`mt-4 w-full py-3 px-2 font-ui text-xs font-black tracking-[0.03em] uppercase transition-colors text-center ${
-                        claimStatus.eligible
-                          ? "bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/90"
-                          : "bg-nfw-stone/30 text-nfw-blackberry/50 cursor-not-allowed"
-                      }`}
-                    >
-                      {claimStatus.eligible ? "Claim Item" : claimStatus.reason}
-                    </button>
+                    <div className="flex gap-2 mt-4">
+                      <button
+                        onClick={() => handleClaim(product)}
+                        disabled={!claimStatus.eligible}
+                        className={`flex-1 py-3 px-2 font-ui text-xs font-black tracking-[0.03em] uppercase transition-colors text-center ${
+                          claimStatus.eligible
+                            ? "bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/90"
+                            : "bg-nfw-stone/30 text-nfw-blackberry/50 cursor-not-allowed"
+                        }`}
+                      >
+                        {claimStatus.eligible ? "Claim Item" : claimStatus.reason}
+                      </button>
+                      <button
+                        onClick={() => handleShowDetails(product)}
+                        className="flex-1 py-3 px-2 font-ui text-xs font-black tracking-[0.03em] uppercase transition-colors text-center bg-nfw-wisteria text-white hover:bg-nfw-wisteria/90"
+                      >
+                        More Info
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -314,6 +329,12 @@ export default function StoreClient({
           onClose={() => setClaimingItem(null)}
         />
       )}
+
+      <ProductDetailPanel
+        product={detailsProduct}
+        isOpen={!!detailsProduct}
+        onClose={() => setDetailsProduct(null)}
+      />
     </main>
   );
 }

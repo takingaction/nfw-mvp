@@ -6,6 +6,7 @@ export type MockProduct = {
   title: string;
   description: string;
   imageUrl: string;
+  images: string[];
   availableForSale: boolean;
   variants: Array<{
     id: string;
@@ -157,12 +158,15 @@ export function transformShopifyProduct(shopifyProduct: ShopifyProduct, mockMapp
       (opt) => !(opt.name === "Title" && opt.value === "Default Title")
     ) ?? false);
 
+  const allImages = shopifyProduct.images?.edges?.map(e => e.node.url) || [];
+
   return {
     shopifyProductId: shopifyProduct.id,
     shopifyVariantId: firstVariant?.id || "",
     title: shopifyProduct.title,
     description: shopifyProduct.description || "",
-    imageUrl: shopifyProduct.featuredImage?.url || "",
+    imageUrl: shopifyProduct.featuredImage?.url || allImages[0] || "",
+    images: allImages,
     availableForSale: firstVariant?.availableForSale || false,
     variants: hasRealVariants ? shopifyProduct.variants.edges.map(({ node }) => ({
       id: node.id,

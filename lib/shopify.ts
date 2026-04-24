@@ -74,6 +74,14 @@ export type ShopifyProduct = {
     url: string;
     altText: string | null;
   } | null;
+  images: {
+    edges: Array<{
+      node: {
+        url: string;
+        altText: string | null;
+      };
+    }>;
+  };
   variants: {
     edges: Array<{
       node: ShopifyVariant;
@@ -139,6 +147,14 @@ export const PRODUCTS_QUERY = `
           featuredImage {
             url
             altText
+          }
+          images(first: 20) {
+            edges {
+              node {
+                url
+                altText
+              }
+            }
           }
           variants(first: 10) {
             edges {
