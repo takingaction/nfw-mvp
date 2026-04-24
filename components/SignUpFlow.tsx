@@ -349,14 +349,21 @@ export default function SignUpFlow() {
   const handleSelectPlan = async (plan: (typeof PLANS)[0]) => {
     if (!plan.priceId) {
       // Free plan - mark profile as completed, set membership_level, and redirect to welcome
-      await saveProfile({ profile_completed: true, membership_level: "free" });
-      // Send welcome email
+      setLoading(true);
+      setError(null);
       try {
-        await fetch("/api/welcome-email", { method: "POST" });
-      } catch (err) {
-        console.error("Failed to send welcome email:", err);
+        await saveProfile({ profile_completed: true, membership_level: "free" });
+        // Send welcome email
+        try {
+          await fetch("/api/welcome-email", { method: "POST" });
+        } catch (err) {
+          console.error("Failed to send welcome email:", err);
+        }
+        window.location.href = "/auth/welcome";
+      } catch (err: any) {
+        setError(err.message || "Failed to complete signup. Please try again.");
+        setLoading(false);
       }
-      window.location.href = "/auth/welcome";
       return;
     }
     setLoading(true);
