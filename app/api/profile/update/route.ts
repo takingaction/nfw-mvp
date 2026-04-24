@@ -89,11 +89,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if profile exists first
+    console.log("[ProfileUpdate] User ID:", user.id);
     const { data: existingProfile } = await supabaseAdmin
       .from("profiles")
       .select("id")
       .eq("id", user.id)
       .single();
+    console.log("[ProfileUpdate] Existing profile:", existingProfile);
 
     let error;
     if (existingProfile) {

@@ -10,9 +10,6 @@ export default async function WelcomePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  console.log("[Welcome] User:", user?.id, "email:", user?.email);
-  console.log("[Welcome] email_confirmed_at:", user?.email_confirmed_at);
-
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -20,10 +17,7 @@ export default async function WelcomePage() {
       .eq("id", user.id)
       .single();
 
-    console.log("[Welcome] Profile:", profile);
-
     if (!profile?.profile_completed) {
-      console.log("[Welcome] profile_completed is false, redirecting to step 1");
       redirect("/auth/sign-up?step=1");
     }
   }

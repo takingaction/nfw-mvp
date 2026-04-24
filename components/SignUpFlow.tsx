@@ -228,16 +228,13 @@ export default function SignUpFlow() {
   const labelClass = "block text-sm font-semibold text-nfw-blackberry mb-1.5";
 
   const saveProfile = async (data: Record<string, any>) => {
-    console.log("[saveProfile] Calling API with:", data);
     const res = await fetch("/api/profile/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     const result = await res.json();
-    console.log("[saveProfile] API response:", res.status, result);
     if (!res.ok) throw new Error(result.error || "Failed to save");
-    return result;
   };
 
   // Step 0 — Create account
@@ -355,18 +352,15 @@ export default function SignUpFlow() {
       setLoading(true);
       setError(null);
       try {
-        const result = await saveProfile({ profile_completed: true, membership_level: "free" });
-        console.log("Free plan signup result:", result);
+        await saveProfile({ profile_completed: true, membership_level: "free" });
         // Send welcome email
         try {
           await fetch("/api/welcome-email", { method: "POST" });
         } catch (err) {
           console.error("Failed to send welcome email:", err);
         }
-        console.log("Redirecting to /auth/welcome...");
         window.location.assign("/auth/welcome");
       } catch (err: any) {
-        console.error("Free plan signup error:", err);
         setError(err.message || "Failed to complete signup. Please try again.");
         setLoading(false);
       }
