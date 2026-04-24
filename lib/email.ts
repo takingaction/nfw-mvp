@@ -118,19 +118,17 @@ function buildEmailHtml({
   })();
 
   const socialIcons = `
-    <tr>
-      <td style="padding: 10px 0; text-align: center; font-size: 0;">
-        <a href="https://www.instagram.com/nationalfundforwomen" target="_blank" style="display: inline-block; margin: 0 12px; text-decoration: none;">
-          <img src="https://img.icons8.com/ios-filled/50/ffffff/instagram-new.png" alt="Instagram" width="28" height="28" style="display: block; width: 28px; height: 28px;">
-        </a>
-        <a href="https://www.tiktok.com/@nationalfundforwomen" target="_blank" style="display: inline-block; margin: 0 12px; text-decoration: none;">
-          <img src="https://img.icons8.com/ios-filled/50/ffffff/tiktok--v1.png" alt="TikTok" width="28" height="28" style="display: block; width: 28px; height: 28px;">
-        </a>
-        <a href="https://www.facebook.com/nationalfundforwomen" target="_blank" style="display: inline-block; margin: 0 12px; text-decoration: none;">
-          <img src="https://img.icons8.com/ios-filled/50/ffffff/facebook-new.png" alt="Facebook" width="28" height="28" style="display: block; width: 28px; height: 28px;">
-        </a>
-      </td>
-    </tr>
+    <span style="display: inline-block; padding: 15px 0;">
+      <a href="https://www.instagram.com/nationalfundforwomen" target="_blank" style="display: inline-block; margin: 0 12px; text-decoration: none;">
+        <img src="https://img.icons8.com/ios-filled/50/ffffff/instagram-new.png" alt="Instagram" width="28" height="28" style="display: block; width: 28px; height: 28px;">
+      </a>
+      <a href="https://www.tiktok.com/@nationalfundforwomen" target="_blank" style="display: inline-block; margin: 0 12px; text-decoration: none;">
+        <img src="https://img.icons8.com/ios-filled/50/ffffff/tiktok--v1.png" alt="TikTok" width="28" height="28" style="display: block; width: 28px; height: 28px;">
+      </a>
+      <a href="https://www.facebook.com/nationalfundforwomen" target="_blank" style="display: inline-block; margin: 0 12px; text-decoration: none;">
+        <img src="https://img.icons8.com/ios-filled/50/ffffff/facebook-new.png" alt="Facebook" width="28" height="28" style="display: block; width: 28px; height: 28px;">
+      </a>
+    </span>
   `;
 
   const html = `
@@ -144,18 +142,20 @@ function buildEmailHtml({
   <style>
     @media only screen and (max-width: 480px) {
       .email-outer { padding: 0 !important; }
-      .email-container { width: 100% !important; border-radius: 0 !important; }
+      .email-container { width: 100% !important; background-color: #EBEBE8 !important; }
       .logo-img { width: 240px !important; }
-      .snapshot-bg { background-color: #FFFFFF !important; }
-      .snapshot-text { color: #3E145F !important; }
-      .snapshot-label { color: #3E145F !important; }
+      .header-cell { background-color: #EBEBE8 !important; }
+      .body-cell { background-color: #B693C0 !important; }
+      .footer-cell { background-color: #3E145F !important; padding: 30px 20px 50px 20px !important; }
+      .snapshot-bg { background-color: rgba(255,255,255,0.1) !important; }
+      .snapshot-text { color: #FFFFFF !important; }
+      .snapshot-label { color: #FFFFFF !important; }
       .hero-cell { padding: 80px 30px !important; vertical-align: middle !important; }
-      .footer-cell { padding: 30px 20px 40px 20px !important; }
     }
   </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: 'DM Sans', Arial, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding: 20px 0;" class="email-outer">
+<body style="margin: 0; padding: 0; background-color: #FFFFFF; font-family: 'DM Sans', Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" class="email-outer">
     <tr>
       <td align="center">
         <!-- Email Container -->
@@ -190,7 +190,7 @@ function buildEmailHtml({
 
 <!-- Footer -->
           <tr>
-            <td style="background-color: ${footerBackground}; padding: 30px 40px; text-align: center;" class="footer-cell">
+            <td style="background-color: #3E145F; padding: 30px 40px 40px 40px; text-align: center;" class="footer-cell">
               <p style="font-family: Georgia, 'Times New Roman', serif; font-size: 16px; font-style: italic; font-weight: 400; color: ${whiteColor}; line-height: 1.6; margin: 0 0 20px 0;">
                 Together, we're building support women need today and the collective power to shape the future.
               </p>
@@ -205,7 +205,7 @@ function buildEmailHtml({
 
               ${socialIcons}
 
-              <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 11px; color: ${whiteColor}; opacity: 0.7; margin: 20px 0 30px 0; text-align: center;">
+              <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 11px; color: #FFFFFF; margin: 20px 0 30px 0; text-align: center;">
                 &copy; 2026 National Fund for Women. All rights reserved.
               </p>
             </td>

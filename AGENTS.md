@@ -1711,3 +1711,59 @@ redirect_uri=https://lirsaxhujjgnibcwyzpl.supabase.co/auth/v1/callback
 2. Set App name to "National Fund for Women"
 3. Set support email to hello@nationalfundforwomen.org
 4. Add Privacy Policy and Terms of Service URLs
+
+### Session 2026-04-25: Email Template Fixes
+
+#### Social Icons Visibility Fix
+
+**Problem:** Social icons (Instagram, TikTok, Facebook) were invisible in email clients.
+
+**Root Cause:** The `socialIcons` variable used a nested table structure (`<tr><td>`). In email HTML, nested tables do NOT inherit or properly display the parent cell's background color behind them. The icons (white images) were being rendered on transparent/white background, making them nearly invisible against light backgrounds.
+
+**Fix:** Replaced nested table structure with inline `<span>` elements so icons render directly inside the footer cell against the aubergine background.
+
+**Before:**
+```html
+const socialIcons = `
+  <tr>
+    <td style="padding: 10px 0; text-align: center; font-size: 0;">
+      <a href="..."><img ...></a>
+      ...
+    </td>
+  </tr>
+`;
+```
+
+**After:**
+```html
+const socialIcons = `
+  <span style="display: inline-block; padding: 15px 0;">
+    <a href="..."><img ...></a>
+    ...
+  </span>
+`;
+```
+
+#### Copyright Text Opacity Fix
+
+**Problem:** Copyright text "© 2026 National Fund for Women. All rights reserved." was invisible in email clients.
+
+**Root Cause:** The copyright had `opacity: 0.7` applied. In some email clients, `opacity` on text combined with certain backgrounds renders as nearly invisible.
+
+**Fix:** Removed `opacity: 0.7`, using solid `#FFFFFF` color instead.
+
+#### Mobile Responsive Fixes
+
+**Problem:** On mobile, gray `#f5f5f5` background was showing behind the email content, and footer wasn't showing aubergine properly.
+
+**Fixes Applied:**
+1. Removed `background-color: #f5f5f5` from body and outer wrapper - now uses white
+2. Removed `background-color: ${footerBackground}` from email container (only footer section should be aubergine)
+3. Mobile media query sets proper section backgrounds:
+   - `.email-container` - dove (#EBEBE8)
+   - `.header-cell` - dove (#EBEBE8)
+   - `.body-cell` - lilac (#B693C0)
+   - `.footer-cell` - aubergine (#3E145F)
+
+**Files Modified:**
+- `lib/email.ts` - Updated socialIcons structure, removed opacity, updated mobile styles
