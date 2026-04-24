@@ -143,13 +143,14 @@ function buildEmailHtml({
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     @media only screen and (max-width: 480px) {
-      .email-outer { padding: 0 !important; background-color: #3E145F !important; }
-      .email-container { width: 100% !important; border-radius: 30px !important; }
+      .email-outer { padding: 0 !important; background-color: transparent !important; }
+      .email-container { width: 100% !important; }
       .logo-img { width: 240px !important; }
       .snapshot-bg { background-color: #FFFFFF !important; }
       .snapshot-text { color: #3E145F !important; }
       .snapshot-label { color: #3E145F !important; }
       .hero-cell { padding: 80px 30px !important; vertical-align: middle !important; }
+      .footer-cell { padding: 30px 20px 40px 20px !important; }
     }
   </style>
 </head>
@@ -189,7 +190,7 @@ function buildEmailHtml({
 
 <!-- Footer -->
           <tr>
-            <td style="background-color: ${footerBackground}; padding: 30px 40px; text-align: center;">
+            <td style="background-color: ${footerBackground}; padding: 30px 40px; text-align: center;" class="footer-cell">
               <p style="font-family: Georgia, 'Times New Roman', serif; font-size: 16px; font-style: italic; font-weight: 400; color: ${whiteColor}; line-height: 1.6; margin: 0 0 20px 0;">
                 Together, we're building support women need today and the collective power to shape the future.
               </p>
