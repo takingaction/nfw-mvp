@@ -98,19 +98,25 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: existing } = await supabaseAdmin
-      .from("grants")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("cycle_id", cycle_id)
-      .single();
+    // For self-applications, check if user already applied as themselves
+    // Allow unlimited nominations per cycle
+    if (!is_nominating) {
+      const { data: existing } = await supabaseAdmin
+        .from("grants")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("cycle_id", cycle_id)
+        .eq("is_nominating", false)
+        .single();
 
-    if (existing) {
-      return NextResponse.json(
-        { error: "You have already applied for this grant cycle." },
-        { status: 409 },
-      );
+      if (existing) {
+        return NextResponse.json(
+          { error: "You have already applied for this grant cycle." },
+          { status: 409 },
+        );
+      }
     }
+    // For nominations, allow unlimited - no duplicate check needed
 
     const { data: grant, error } = await supabaseAdmin
       .from("grants")

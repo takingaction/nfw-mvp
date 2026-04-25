@@ -1927,3 +1927,21 @@ Fixed login form to use direct `signInWithPassword` instead of custom API route 
 - `components/login-form.tsx` - Calls `supabase.auth.signInWithPassword` directly instead of custom `/api/auth/login` route
 
 **Note:** Custom login API route (`/api/auth/login/route.ts`) was deleted. Rate limiting via Supabase Dashboard planned for future.
+
+### Session 2026-04-25: Allow Unlimited Nominations
+
+Users can now nominate unlimited people for a grant cycle, but are limited to one self-application per cycle.
+
+**Database Changes:**
+- `supabase/migrations/055_allow_unlimited_nominations.sql` - Drops existing UNIQUE constraint on `(user_id, cycle_id)`, adds partial unique index only for self-applications (`WHERE is_nominating = false`)
+
+**API Changes:**
+- `app/api/grants/create/route.ts` - Updated duplicate check to only apply when `is_nominating = false`. Nominations now allow unlimited per cycle.
+
+**Behavior:**
+| Action | Result |
+|--------|--------|
+| Apply as "Myself" for a cycle | Allowed (once per cycle) |
+| Apply as "Myself" again for same cycle | Blocked |
+| Nominate someone for a cycle | Allowed |
+| Nominate another person for same cycle | Allowed (unlimited) |
