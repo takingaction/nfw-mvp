@@ -1,6 +1,7 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,8 +14,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
 export function LoginForm({
@@ -28,21 +27,33 @@ export function LoginForm({
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const supabase = createClient();
     setIsLoading(true);
     setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const supabase = createClient();
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      if (error) throw error;
+
+      if (signInError) {
+        throw signInError;
+      }
+
+      // Success - redirect to dashboard
       router.push("/dashboard");
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+    } catch (err: any) {
+      if (err.message?.includes("Email not confirmed")) {
+        setError("Please confirm your email address first. Check your inbox for a confirmation link.");
+      } else if (err.message?.includes("Invalid login credentials")) {
+        setError("Invalid email or password");
+      } else {
+        setError(err.message || "Login failed");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +78,7 @@ export function LoginForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
+    <div className={className} {...props}>
       <Card className="border-nfw-blackberry/10">
         <CardHeader>
           <CardTitle className="text-2xl font-serif text-nfw-blackberry">Login</CardTitle>
@@ -76,7 +87,7 @@ export function LoginForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handlePasswordLogin}>
             <div className="flex flex-col gap-6">
               <Button
                 type="button"
@@ -154,16 +165,6 @@ export function LoginForm({
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
             </div>
-            {/* Sign up link hidden temporarily */}
-            {/* <div className="mt-4 text-center text-sm text-nfw-blackberry/60">
-              Don&apos;t have an account?{" "}
-              <Link
-                href="/auth/sign-up"
-                className="underline underline-offset-4 text-nfw-blackberry"
-              >
-                Sign up
-              </Link>
-            </div> */}
           </form>
         </CardContent>
       </Card>

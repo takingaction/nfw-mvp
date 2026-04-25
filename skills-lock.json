@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "access-travel-integration": {
+      "source": "access-development/agents",
+      "sourceType": "github",
+      "computedHash": "500c3fb0ab9d7f0ba55315b558e912204956dc6b5e966606f213c0e6de93f36a"
+    }
+  }
+}

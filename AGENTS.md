@@ -1883,3 +1883,47 @@ Updated all 3 footer links (Privacy Policy, Terms of Use, Accessibility) to open
 
 **Files Modified:**
 - `components/landing/Footer.tsx` - Added target="_blank" and rel="noopener noreferrer" to Link components
+
+### Session 2026-04-25: MFA Implementation Attempted and Reverted
+
+Attempted to implement custom email OTP MFA but encountered fundamental Supabase limitation: `signInWithPassword` creates a full session immediately, making it impossible to prevent dashboard access until OTP verification.
+
+**Decision:** Abandoned custom MFA in favor of password-only security hardening.
+
+**Files Deleted:**
+- `components/auth/MfaChallenge.tsx` - MFA challenge UI component
+- `components/auth/OtpInput.tsx` - OTP input component
+- `lib/supabase/auth/mfa.ts` - MFA helper functions
+- `app/api/auth/otp/challenge/route.ts` - OTP challenge endpoint
+- `app/api/auth/otp/verify/route.ts` - OTP verify endpoint
+
+**Database Migrations Created:**
+- `supabase/migrations/053_drop_mfa_tables.sql` - Drops `otp_codes` and `pending_auth` tables
+- `supabase/migrations/054_add_login_attempts.sql` - Creates `login_attempts` table (rate limiting infrastructure)
+
+**Files Cleaned:**
+- `lib/email.ts` - Removed `sendOtpEmail` function
+- `proxy.ts` - Removed MFA cookie logic, kept pathname header
+
+**Files Modified:**
+- `components/login-form.tsx` - Simplified to password + Google OAuth only
+- `components/SignUpFlow.tsx` - Added strong password requirements:
+  - 8+ characters
+  - Uppercase letter
+  - Lowercase letter
+  - Number
+  - Special character
+  - Real-time validation with checkmarks
+
+**Future Plans:**
+- Rate limiting to be handled via Supabase Dashboard (not custom code)
+- No MFA required for membership site
+
+### Session 2026-04-25: Login Form Auth State Fix
+
+Fixed login form to use direct `signInWithPassword` instead of custom API route to ensure auth state properly updates navbar immediately after login.
+
+**Files Modified:**
+- `components/login-form.tsx` - Calls `supabase.auth.signInWithPassword` directly instead of custom `/api/auth/login` route
+
+**Note:** Custom login API route (`/api/auth/login/route.ts`) was deleted. Rate limiting via Supabase Dashboard planned for future.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, Check, ChevronRight, ArrowLeft, Gift, ChevronDown } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -15,6 +15,15 @@ const INCOME_RANGES = [
   "$150-200k",
   "$200-250k",
   "More than $250k",
+];
+
+// Password validation requirements
+const PASSWORD_REQUIREMENTS = [
+  { id: "length", label: "8+ characters", test: (p: string) => p.length >= 8 },
+  { id: "uppercase", label: "Uppercase letter", test: (p: string) => /[A-Z]/.test(p) },
+  { id: "lowercase", label: "Lowercase letter", test: (p: string) => /[a-z]/.test(p) },
+  { id: "number", label: "Number", test: (p: string) => /[0-9]/.test(p) },
+  { id: "special", label: "Special character (!@#$%^&*)", test: (p: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p) },
 ];
 
 const IDENTITY_OPTIONS = [
@@ -182,6 +191,16 @@ export default function SignUpFlow() {
   const [repeatPassword, setRepeatPassword] = useState("");
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
+  // Password validation
+  const passwordChecks = useMemo(() =>
+    PASSWORD_REQUIREMENTS.map(req => ({
+      ...req,
+      passed: req.test(password),
+    })),
+    [password]
+  );
+  const isPasswordValid = passwordChecks.every(c => c.passed);
+
   // Steps 1-2
   const [fullName, setFullName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
@@ -244,8 +263,8 @@ export default function SignUpFlow() {
       setError("Passwords do not match");
       return;
     }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (!isPasswordValid) {
+      setError("Password must meet all requirements below");
       return;
     }
     setLoading(true);
@@ -629,9 +648,25 @@ export default function SignUpFlow() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 6 characters"
+                  placeholder="Create a strong password"
                   className={inputClass}
                 />
+                {password.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {passwordChecks.map((check) => (
+                      <div key={check.id} className="flex items-center gap-2 text-xs">
+                        {check.passed ? (
+                          <Check className="w-3 h-3 text-green-600" />
+                        ) : (
+                          <div className="w-3 h-3 rounded-full border border-nfw-blackberry/20" />
+                        )}
+                        <span className={check.passed ? "text-green-600" : "text-nfw-blackberry/40"}>
+                          {check.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
                 <label className={labelClass}>Confirm password</label>
@@ -643,10 +678,13 @@ export default function SignUpFlow() {
                   placeholder="Repeat your password"
                   className={inputClass}
                 />
+                {repeatPassword.length > 0 && password !== repeatPassword && (
+                  <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+                )}
               </div>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !isPasswordValid || password !== repeatPassword}
                 className="w-full py-3.5 bg-nfw-blackberry text-white font-bold text-base hover:bg-nfw-blackberry/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
