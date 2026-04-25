@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { X, Package, Loader2 } from "lucide-react";
+import ReauthModal from "@/components/auth/ReauthModal";
 
 type Variant = {
   name: string;
@@ -27,6 +28,8 @@ export default function ClaimItemModal({
   const [claiming, setClaiming] = useState(false);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [showReauth, setShowReauth] = useState(false);
 
   const handleVariantChange = (variantName: string, option: string) => {
     setSelectedVariants((prev) => ({
@@ -35,7 +38,7 @@ export default function ClaimItemModal({
     }));
   };
 
-  const handleClaim = async () => {
+  const handleConfirmClaim = () => {
     if (item.variants && item.variants.length > 0) {
       const missingVariants = item.variants.filter(
         (v) => !selectedVariants[v.name],
@@ -45,7 +48,12 @@ export default function ClaimItemModal({
         return;
       }
     }
+    setError(null);
+    setShowConfirm(true);
+  };
 
+  const handleReauthSuccess = async () => {
+    setShowConfirm(false);
     setClaiming(true);
     setError(null);
 
@@ -71,6 +79,10 @@ export default function ClaimItemModal({
       setError(err instanceof Error ? err.message : "Error claiming item");
       setClaiming(false);
     }
+  };
+
+  const handleReauthClose = () => {
+    setShowReauth(false);
   };
 
   return (
@@ -138,7 +150,7 @@ export default function ClaimItemModal({
 
           <div className="flex items-center gap-3">
             <button
-              onClick={handleClaim}
+              onClick={handleConfirmClaim}
               disabled={claiming}
               className="flex-1 bg-nfw-citrine text-nfw-blackberry px-6 py-3 font-ui text-xs font-black tracking-[0.06em] uppercase hover:bg-nfw-citrine/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
@@ -165,6 +177,42 @@ export default function ClaimItemModal({
           </p>
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setShowConfirm(false)} />
+          <div className="relative bg-white w-full max-w-md rounded-xl shadow-2xl p-6">
+            <h3 className="font-serif text-xl text-nfw-blackberry mb-2">Confirm Your Claim</h3>
+            <p className="font-serif text-nfw-blackberry/70 mb-4">
+              You are about to claim <strong>{item.name}</strong>. You have one claim per month.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="px-4 py-2 border border-gray-300 text-nfw-blackberry text-sm font-medium rounded hover:bg-gray-50"
+              >
+                Go Back
+              </button>
+              <button
+                onClick={() => setShowReauth(true)}
+                className="px-4 py-2 bg-nfw-blackberry text-white text-sm font-medium rounded hover:bg-nfw-blackberry/90"
+              >
+                Confirm & Verify
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reauthentication Modal */}
+      <ReauthModal
+        isOpen={showReauth}
+        onClose={handleReauthClose}
+        onSuccess={handleReauthSuccess}
+        title="Verify Your Identity"
+        message="Enter the 6-digit code sent to your email to confirm your claim."
+      />
     </div>
   );
 }

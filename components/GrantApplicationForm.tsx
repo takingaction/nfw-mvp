@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, User, Users } from "lucide-react";
+import ReauthModal from "@/components/auth/ReauthModal";
 
 interface GrantCycle {
   id: string;
@@ -30,6 +31,16 @@ export default function GrantApplicationForm({
   const [nomineeName, setNomineeName] = useState("");
   const [nomineeEmail, setNomineeEmail] = useState("");
   const [consentChecked, setConsentChecked] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showReauthModal, setShowReauthModal] = useState(false);
+  const pendingFormData = useRef<{
+    formData: typeof formData;
+    isNominating: boolean;
+    nomineeName: string;
+    nomineeEmail: string;
+    consentChecked: boolean;
+    documents: File[];
+  } | null>(null);
 
   const [formData, setFormData] = useState({
     cycle_id: cycles.length === 1 ? cycles[0].id : "",
@@ -44,7 +55,6 @@ export default function GrantApplicationForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
 
     try {
@@ -57,7 +67,6 @@ export default function GrantApplicationForm({
         throw new Error("Please fill in all required fields");
       }
 
-      // Validate nominee fields when nominating
       if (isNominating) {
         if (!nomineeName.trim()) {
           throw new Error("Please enter the nominee's name");
@@ -65,7 +74,6 @@ export default function GrantApplicationForm({
         if (!nomineeEmail.trim()) {
           throw new Error("Please enter the nominee's email");
         }
-        // Simple email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(nomineeEmail.trim())) {
           throw new Error("Please enter a valid email address for the nominee");
@@ -75,14 +83,42 @@ export default function GrantApplicationForm({
         }
       }
 
+      setShowConfirmDialog(true);
+    } catch (err: any) {
+      setError(err.message || "Validation failed");
+    }
+  };
+
+  const handleConfirmSubmit = () => {
+    pendingFormData.current = {
+      formData,
+      isNominating,
+      nomineeName,
+      nomineeEmail,
+      consentChecked,
+      documents,
+    };
+    setShowConfirmDialog(false);
+    setShowReauthModal(true);
+  };
+
+  const handleReauthSuccess = async () => {
+    if (!pendingFormData.current) return;
+
+    const { formData: finalFormData, isNominating: finalIsNominating, nomineeName: finalNomineeName, nomineeEmail: finalNomineeEmail, documents: finalDocuments } = pendingFormData.current;
+
+    setLoading(true);
+    setError("");
+
+    try {
       const response = await fetch("/api/grants/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...formData,
-          is_nominating: isNominating,
-          nominee_name: isNominating ? nomineeName.trim() : null,
-          nominee_email: isNominating ? nomineeEmail.trim() : null,
+          ...finalFormData,
+          is_nominating: finalIsNominating,
+          nominee_name: finalIsNominating ? finalNomineeName.trim() : null,
+          nominee_email: finalIsNominating ? finalNomineeEmail.trim() : null,
         }),
       });
 
@@ -91,9 +127,9 @@ export default function GrantApplicationForm({
 
       const grantId = data.grantId;
 
-      if (documents.length > 0) {
+      if (finalDocuments.length > 0) {
         setUploadingDocs(true);
-        for (const file of documents) {
+        for (const file of finalDocuments) {
           const fd = new FormData();
           fd.append("file", file);
           fd.append("grantId", grantId);
@@ -111,12 +147,19 @@ export default function GrantApplicationForm({
         }
       }
 
+      pendingFormData.current = null;
       router.push(`/grants/application-success?id=${grantId}`);
     } catch (err: any) {
       setError(err.message || "Failed to submit application");
       setLoading(false);
       setUploadingDocs(false);
+      pendingFormData.current = null;
     }
+  };
+
+  const handleReauthClose = () => {
+    setShowReauthModal(false);
+    pendingFormData.current = null;
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,6 +179,7 @@ export default function GrantApplicationForm({
   const selectedCycle = cycles.find((c) => c.id === formData.cycle_id);
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* Grant Cycle Selection — multiple cycles */}
       {cycles.length > 1 && (
@@ -512,5 +556,52 @@ export default function GrantApplicationForm({
         submission.
       </p>
     </form>
+
+    {/* Confirmation Dialog */}
+    {showConfirmDialog && (
+      <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/30" onClick={() => setShowConfirmDialog(false)} />
+        <div className="relative bg-white w-full max-w-md rounded-xl shadow-2xl p-6">
+          <h3 className="font-serif text-xl text-nfw-blackberry mb-2">Ready to Submit?</h3>
+          <p className="font-serif text-nfw-blackberry/70 mb-4">
+            You are about to submit your grant application. This action cannot be undone.
+          </p>
+          {selectedCycle && (
+            <div className="bg-nfw-dove/50 border border-nfw-blackberry/10 p-4 mb-4">
+              <p className="font-ui text-sm text-nfw-blackberry/60">
+                Applying for: <span className="font-semibold">{selectedCycle.cycle_name}</span>
+              </p>
+              <p className="font-ui text-sm text-nfw-blackberry/60">
+                Amount: <span className="font-semibold">${selectedCycle.amount_per_grant?.toLocaleString()}</span>
+              </p>
+            </div>
+          )}
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => setShowConfirmDialog(false)}
+              className="px-4 py-2 border border-gray-300 text-nfw-blackberry text-sm font-medium rounded hover:bg-gray-50"
+            >
+              Go Back
+            </button>
+            <button
+              onClick={handleConfirmSubmit}
+              className="px-4 py-2 bg-nfw-blackberry text-white text-sm font-medium rounded hover:bg-nfw-blackberry/90"
+            >
+              Confirm & Submit
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Reauthentication Modal */}
+    <ReauthModal
+      isOpen={showReauthModal}
+      onClose={handleReauthClose}
+      onSuccess={handleReauthSuccess}
+      title="Verify Your Identity"
+      message="Enter the 6-digit code sent to your email to confirm your application."
+    />
+    </>
   );
 }

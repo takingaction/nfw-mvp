@@ -2008,3 +2008,77 @@ email_templates (
 - Variables in editor HTML are highlighted in yellow for visibility
 - Preview uses iframe with `srcDoc` for live rendering
 - Supabase templates show "Copy HTML" button - user copies HTML and pastes into Supabase Dashboard
+
+### Session 2026-04-25: Reauthentication for Grants and Zero Dollar Store
+
+Implemented Supabase's built-in reauthentication (OTP verification) for secure operations.
+
+#### How It Works
+
+1. User initiates sensitive action (grant application, zero dollar store claim)
+2. System shows confirmation dialog ("Are you sure?")
+3. User confirms → ReauthModal appears with 6-digit OTP input
+4. `supabase.auth.reauthenticate()` sends code to user's email
+5. User enters code → `supabase.auth.verifyOtp({ type: 'email' })`
+6. On success → action is completed
+
+#### Configuration
+| Setting | Value |
+|---------|-------|
+| OTP Expiry | 10 minutes |
+| Resend Cooldown | 60 seconds |
+| Max Failed Attempts | 3, then 15-minute lockout |
+
+#### Files Created
+
+**`lib/auth/reauthentication.ts`** - `useReauthentication` hook
+- Manages OTP sending, verification, attempt counting, lockout state
+- Configurable via options (lockoutDuration, maxAttempts, otpExpiry, resendCooldown)
+- Returns: state, attemptsRemaining, timeUntilResend, timeUntilExpiry, error, startReauthentication, verifyOtp, reset
+
+**`components/auth/OtpInput.tsx`** - Reusable 6-box OTP input
+- 6 separate input boxes with auto-focus management
+- Paste support for full code entry
+- Arrow key navigation between boxes
+- Backspace handling
+
+**`components/auth/ReauthModal.tsx`** - Identity verification modal
+- aubergine header with title
+- OTP input centered below message
+- Timer countdown with resend option
+- Attempts remaining indicator
+- Lockout state with error message
+- Cancel/Verify buttons
+
+#### Files Modified
+
+**`components/GrantApplicationForm.tsx`**
+- Added confirmation dialog before submit
+- On confirm → ReauthModal opens
+- On OTP success → grant application is submitted
+
+**`components/ClaimItemModal.tsx`**
+- Added confirmation dialog before claim
+- On confirm → ReauthModal opens
+- On OTP success → Shopify checkout is created
+
+#### Supabase Template
+
+The `supabase-reauthentication` template (added in migration 061) uses `{{ .Token }}` for the 6-digit code. Works for both password and Google OAuth users - code is sent to their email address on file.
+
+#### Integration Flow for Zero Dollar Store
+
+```
+User clicks "Claim Now" → Confirmation dialog → ReauthModal
+                                                    ↓
+                                            Enter OTP code
+                                                    ↓
+                                             verifyOtp()
+                                                    ↓
+                                    ┌─ Success → Create checkout
+                                    └─ Failure → Show error, retry
+```
+
+#### Note
+
+This uses Supabase's built-in `supabase.auth.reauthenticate()` and `supabase.auth.verifyOtp()`, NOT a custom OTP system. The reauthentication template must be configured in Supabase Dashboard under Authentication → Email Templates → Reauthenticate.
