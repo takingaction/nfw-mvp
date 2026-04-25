@@ -130,7 +130,7 @@ export function AuthButtonCombined() {
             </Link>
             {isAdmin && (
               <>
-                <div className="border-t border-nfw-aubergine/10 my-2" />
+                <div className="border-t border-nfw-aubergine/10 mt-1" />
                 <div className="px-4 py-1">
                   <p className="text-xs font-semibold text-nfw-aubergine/40 uppercase tracking-wider">
                     Admin
@@ -138,91 +138,98 @@ export function AuthButtonCombined() {
                 </div>
                 <Link
                   href="/admin/pages"
-                  className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Manage Pages
                 </Link>
                 <Link
                   href="/admin/header"
-                  className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Edit Header
                 </Link>
                 <Link
                   href="/admin/footer"
-                  className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Edit Footer
                 </Link>
                 <Link
                   href="/admin/faq"
-                  className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Edit FAQ
                 </Link>
                 <Link
                   href="/admin/contact"
-                  className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Edit Contact
                 </Link>
                 <Link
                   href="/admin/grants"
-                  className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Manage Grants
                 </Link>
                 <Link
                   href="/admin/articles"
-                  className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Manage Articles
                 </Link>
                 <Link
                   href="/admin/members"
-                  className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Manage Members
                 </Link>
                 <Link
                   href="/admin/shopify"
-                  className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Manage Zero Dollar Store
                 </Link>
                 <Link
-                  href="/admin/analytics"
-                  className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  href="/admin/emails"
+                  className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
-                  Analytics
-                </Link>
-                <Link
-                  href="/admin/coming-soon-emails"
-                  className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Coming Soon Emails
+                  Email Templates
                 </Link>
                 <Link
                   href="/admin/gift-codes"
-                  className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Gift Codes
                 </Link>
                 <Link
+                  href="/admin/coming-soon-emails"
+                  className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Coming Soon Emails
+                </Link>
+                <Link
+                  href="/admin/analytics"
+                  className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Analytics
+                </Link>
+                <Link
                   href="/admin/dashboard"
-                  className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
                   Manage Dashboard

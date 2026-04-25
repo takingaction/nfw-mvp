@@ -136,14 +136,29 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
+      console.error("[grants/create] Supabase error:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+      console.error("[grants/create] Insert payload:", {
+        user_id: user.id,
+        cycle_id,
+        is_nominating,
+        nominee_name: is_nominating ? nominee_name.trim() : null,
+        nominee_email: is_nominating ? nominee_email.trim() : null,
+        status: "submitted",
+      });
       return NextResponse.json(
-        { error: "Failed to submit grant application" },
+        { error: error.message || "Failed to submit grant application" },
         { status: 500 },
       );
     }
 
     return NextResponse.json({ success: true, grantId: grant.id });
-  } catch {
+  } catch (err) {
+    console.error("[grants/create] Unexpected error:", err);
     return NextResponse.json(
       { error: "An error occurred" },
       { status: 500 },

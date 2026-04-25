@@ -28,7 +28,7 @@ interface EmailHtmlOptions {
   footerCtaUrl?: string;
 }
 
-function buildEmailHtml({
+export function buildEmailHtml({
   name,
   heroImage,
   heroText,
@@ -243,7 +243,23 @@ interface SendTemplateEmailOptions {
   footerCtaUrl?: string;
 }
 
-async function sendTemplateEmail({
+interface SendBrandedEmailOptions {
+  to: string;
+  subject: string;
+  name: string;
+  heroImage?: string;
+  heroText?: string;
+  headline?: string;
+  body: string;
+  ctaText?: string;
+  ctaUrl?: string;
+  secondaryCtaText?: string;
+  secondaryCtaUrl?: string;
+  footerCtaText?: string;
+  footerCtaUrl?: string;
+}
+
+async function sendBrandedEmail({
   to,
   subject,
   name,
@@ -257,7 +273,7 @@ async function sendTemplateEmail({
   secondaryCtaUrl,
   footerCtaText,
   footerCtaUrl,
-}: SendTemplateEmailOptions): Promise<{ success: boolean; error?: any }> {
+}: SendBrandedEmailOptions): Promise<{ success: boolean; error?: any }> {
   const html = buildEmailHtml({
     name,
     heroImage,
@@ -272,6 +288,18 @@ async function sendTemplateEmail({
     footerCtaUrl,
   });
 
+  return sendTemplateEmail({ to, subject, html });
+}
+
+export async function sendTemplateEmail({
+  to,
+  subject,
+  html,
+}: {
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<{ success: boolean; error?: any }> {
   try {
     const resend = getResend();
     const result = await resend.emails.send({
@@ -406,7 +434,7 @@ export async function sendWelcomeEmail({
     </p>
   `;
 
-  await sendTemplateEmail({
+  await sendBrandedEmail({
     to,
     subject: "Welcome to NFW! We're here to help",
     name,
@@ -469,7 +497,7 @@ export async function sendNewsletterWelcomeEmail({
     </p>
   `;
 
-  await sendTemplateEmail({
+  await sendBrandedEmail({
     to,
     subject: "You're subscribed to NFW!",
     name,

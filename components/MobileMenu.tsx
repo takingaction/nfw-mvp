@@ -324,93 +324,107 @@ export default function MobileMenu() {
                     </Link>
                     {isAdmin && (
                       <>
-                        <div className="border-t border-white/10 my-2" />
+                        <div className="border-t border-white/10 mt-1" />
                         <p className="px-4 py-1 text-xs font-semibold text-white/40 uppercase tracking-wider">
                           Admin
                         </p>
                         <Link
                           href="/admin/pages"
                           onClick={closeMenu}
-                          className={linkClass}
+                          className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
                         >
                           Manage Pages
                         </Link>
                         <Link
                           href="/admin/header"
                           onClick={closeMenu}
-                          className={linkClass}
+                          className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
                         >
                           Edit Header
                         </Link>
                         <Link
                           href="/admin/footer"
                           onClick={closeMenu}
-                          className={linkClass}
+                          className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
                         >
                           Edit Footer
                         </Link>
                         <Link
                           href="/admin/faq"
                           onClick={closeMenu}
-                          className={linkClass}
+                          className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
                         >
                           Edit FAQ
                         </Link>
                         <Link
                           href="/admin/contact"
                           onClick={closeMenu}
-                          className={linkClass}
+                          className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
                         >
                           Edit Contact
                         </Link>
                         <Link
                           href="/admin/grants"
                           onClick={closeMenu}
-                          className={linkClass}
+                          className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
                         >
                           Manage Grants
                         </Link>
                         <Link
                           href="/admin/articles"
                           onClick={closeMenu}
-                          className={linkClass}
+                          className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
                         >
                           Manage Articles
                         </Link>
                         <Link
                           href="/admin/members"
                           onClick={closeMenu}
-                          className={linkClass}
+                          className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
                         >
                           Manage Members
                         </Link>
                         <Link
                           href="/admin/shopify"
                           onClick={closeMenu}
-                          className={linkClass}
+                          className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
                         >
                           Manage Zero Dollar Store
                         </Link>
                         <Link
+                          href="/admin/emails"
+                          onClick={closeMenu}
+                          className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
+                        >
+                          Email Templates
+                        </Link>
+                        <Link
                           href="/admin/gift-codes"
                           onClick={closeMenu}
-                          className={linkClass}
+                          className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
                         >
                           Gift Codes
                         </Link>
                         <Link
-                          href="/admin/dashboard"
+                          href="/admin/coming-soon-emails"
                           onClick={closeMenu}
-                          className={linkClass}
+                          className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
                         >
-                          Manage Dashboard
+                          Coming Soon Emails
                         </Link>
                         <Link
                           href="/admin/analytics"
                           onClick={closeMenu}
-                          className={linkClass}
+                          className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
                         >
                           Analytics
+                        </Link>
+                        <Link
+                          href="/admin/dashboard"
+                          onClick={closeMenu}
+                          className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
+                        >
+                          Manage Dashboard
                         </Link>
                       </>
                     )}

@@ -1945,3 +1945,66 @@ Users can now nominate unlimited people for a grant cycle, but are limited to on
 | Apply as "Myself" again for same cycle | Blocked |
 | Nominate someone for a cycle | Allowed |
 | Nominate another person for same cycle | Allowed (unlimited) |
+
+### Session 2026-04-25: Admin Email Templates
+
+Created `/admin/emails` page for viewing, editing, and testing email templates.
+
+**Database:**
+- `supabase/migrations/056_create_email_templates.sql` - Creates `email_templates` table with RLS
+  - Columns: id, name, slug, category, description, subject, html_content, is_editable, source_file, updated_at
+  - RLS policies allow admin read/write
+- `supabase/migrations/057_seed_email_templates.sql` - Seeds 10 templates (6 Resend + 4 Supabase)
+
+**Schema:**
+```sql
+email_templates (
+  id UUID PK,
+  name TEXT UNIQUE,
+  slug TEXT UNIQUE,
+  category TEXT CHECK (resend|supabase),
+  description TEXT,
+  subject TEXT,
+  html_content TEXT,
+  is_editable BOOLEAN DEFAULT true,
+  source_file TEXT,
+  updated_at TIMESTAMPTZ
+)
+```
+
+**Admin Page (`/admin/emails`):**
+- Tabbed interface: Resend Emails | Supabase Emails
+- Left panel: scrollable template list with status badges
+- Right panel: Preview (desktop/mobile toggle), subject, source file, last updated
+- Resend emails: Edit button opens modal editor
+- Supabase emails: Copy HTML button + instructions
+
+**Modal Editor (Resend templates):**
+- Subject line input
+- HTML textarea with syntax highlighting
+- Edit/Preview tabs
+- Cancel / Save / Save & Send Test buttons
+- Test email pre-filled with admin's auth email
+
+**Files Created:**
+- `app/admin/emails/page.tsx` - Server component with admin auth
+- `app/api/admin/emails/route.ts` - GET all templates
+- `app/api/admin/emails/[slug]/route.ts` - GET/PUT single template
+- `app/api/admin/emails/[slug]/send-test/route.ts` - Send test email
+- `app/api/admin/emails/seed/route.ts` - Seed templates (admin only)
+- `components/admin/AdminEmailsClient.tsx` - Main admin UI
+- `components/admin/EmailEditorModal.tsx` - Edit modal with preview
+
+**Files Modified:**
+- `lib/email.ts` - Refactored:
+  - `sendBrandedEmail()` - Internal helper using `buildEmailHtml()`
+  - `sendTemplateEmail()` - Export for sending raw HTML (used by API routes)
+  - `sendWelcomeEmail()` and `sendNewsletterWelcomeEmail()` now use `sendBrandedEmail()`
+  - Legacy functions (`sendGrantStatusEmail`, `sendBankInfoRequestEmail`, `sendGiftCodesEmail`, `sendContactFormEmail`) still use plain text but call `sendTemplateEmail()` internally for consistency
+
+**Key Implementation Details:**
+- Supabase templates are read-only (can't edit in our admin, must use Supabase Dashboard)
+- Test email default: admin's auth email from session
+- Variables in editor HTML are highlighted in yellow for visibility
+- Preview uses iframe with `srcDoc` for live rendering
+- Supabase templates show "Copy HTML" button - user copies HTML and pastes into Supabase Dashboard
