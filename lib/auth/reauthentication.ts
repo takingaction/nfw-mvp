@@ -139,6 +139,7 @@ export function useReauthentication(options: UseReauthenticationOptions = {}): U
 
     } catch (err) {
       console.error("[Reauth] Catch block error:", err);
+      clearTimeout(timeoutId);
       setState("idle");
       const message = err instanceof Error ? err.message : "Failed to send verification code";
       console.log("[Reauth] Setting error message:", message);
