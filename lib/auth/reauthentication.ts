@@ -100,9 +100,42 @@ export function useReauthentication(options: UseReauthenticationOptions = {}): U
     try {
       console.log("[Reauth] Creating Supabase client...");
       const supabase = createClient();
+
+      // Get the current session to check if we have a valid token
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      console.log("[Reauth] Session check - session:", sessionData?.session?.user?.email, "error:", sessionError);
+
       console.log("[Reauth] Client created, calling reauthenticate...");
+      console.log("[Reauth] Making direct fetch request to /auth/v1/reauthenticate");
+
+      // Get the access token from the session
+      const accessToken = sessionData?.session?.access_token;
+      console.log("[Reauth] Access token present:", !!accessToken);
+
+      if (!accessToken) {
+        clearTimeout(timeoutId);
+        console.error("[Reauth] No access token - user not authenticated");
+        setState("idle");
+        setError("You must be logged in to reauthenticate. Please log out and log back in.");
+        onError?.("No access token");
+        return;
+      }
+
+      // Make a direct fetch request to see the actual response
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/auth/v1/reauthenticate`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+        }
+      });
+      console.log("[Reauth] Direct fetch response status:", response.status);
+      console.log("[Reauth] Direct fetch response:", response);
+
+      // Now let the Supabase SDK handle it normally
       const { data, error: reauthError } = await supabase.auth.reauthenticate();
-      console.log("[Reauth] Result - data:", data, "error:", reauthError);
+      console.log("[Reauth] SDK Result - data:", data, "error:", reauthError);
 
       clearTimeout(timeoutId);
 
