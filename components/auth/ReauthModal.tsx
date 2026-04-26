@@ -40,7 +40,9 @@ export default function ReauthModal({
   });
 
   useEffect(() => {
+    console.log("[ReauthModal] isOpen:", isOpen, "state:", state);
     if (isOpen && state === "idle") {
+      console.log("[ReauthModal] Calling startReauthentication");
       startReauthentication();
     }
   }, [isOpen, state, startReauthentication]);
@@ -78,8 +80,9 @@ export default function ReauthModal({
   };
 
   const isLocked = state === "locked";
-  const canResend = timeUntilResend === 0 && state === "waiting";
+  const canResend = (timeUntilResend === 0 && state === "waiting") || state === "idle";
   const isVerifying = state === "verifying";
+  const isSending = state === "sending";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -116,33 +119,42 @@ export default function ReauthModal({
             <>
               <p className="text-gray-600 text-center mb-6">{message}</p>
 
-              <OtpInput
-                value={otpCode}
-                onChange={setOtpCode}
-                disabled={isVerifying}
-              />
-
-              {/* Error message */}
-              {error && (
-                <p className="mt-3 text-red-500 text-sm text-center">{error}</p>
-              )}
-
-              {/* Resend timer */}
-              <div className="mt-4 text-center">
-                {timeUntilResend > 0 ? (
-                  <p className="text-gray-400 text-sm">
-                    Resend code in: <span className="font-mono">{formatTime(timeUntilResend)}</span>
-                  </p>
-                ) : canResend ? (
-                  <button
-                    onClick={handleResend}
-                    className="text-nfw-wisteria hover:text-nfw-wisteria/80 text-sm font-medium"
+              {isSending ? (
+                <div className="text-center py-8">
+                  <div className="inline-block w-8 h-8 border-4 border-nfw-wisteria border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <p className="text-gray-500 text-sm">Sending verification code...</p>
+                </div>
+              ) : (
+                <>
+                  <OtpInput
+                    value={otpCode}
+                    onChange={setOtpCode}
                     disabled={isVerifying}
-                  >
-                    Resend code
-                  </button>
-                ) : null}
-              </div>
+                  />
+
+                  {/* Error message */}
+                  {error && (
+                    <p className="mt-3 text-red-500 text-sm text-center">{error}</p>
+                  )}
+
+                  {/* Resend timer */}
+                  <div className="mt-4 text-center">
+                    {timeUntilResend > 0 && state === "waiting" ? (
+                      <p className="text-gray-400 text-sm">
+                        Resend code in: <span className="font-mono">{formatTime(timeUntilResend)}</span>
+                      </p>
+                    ) : canResend ? (
+                      <button
+                        onClick={handleResend}
+                        className="text-nfw-wisteria hover:text-nfw-wisteria/80 text-sm font-medium"
+                        disabled={isVerifying || isSending}
+                      >
+                        Resend code
+                      </button>
+                    ) : null}
+                  </div>
+                </>
+              )}
 
               {/* Attempts remaining */}
               {state === "waiting" && attemptsRemaining < 3 && (

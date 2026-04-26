@@ -72,8 +72,13 @@ export function useReauthentication(options: UseReauthenticationOptions = {}): U
   }, [clearAllTimers, maxAttempts]);
 
   const startReauthentication = useCallback(async () => {
+    console.log("[Reauth] startReauthentication called, state:", state);
+    console.log("[Reauth] lockoutEndTime:", lockoutEndTime);
+    console.log("[Reauth] current time:", Date.now());
+
     if (state === "locked") {
       const remaining = lockoutEndTime ? lockoutEndTime - Date.now() : 0;
+      console.log("[Reauth] Currently locked, remaining:", remaining);
       if (remaining > 0) {
         setError("Too many failed attempts. Please try again later.");
         return;
@@ -82,19 +87,25 @@ export function useReauthentication(options: UseReauthenticationOptions = {}): U
     }
 
     setState("sending");
+    console.log("[Reauth] State set to sending");
     setError(null);
 
     try {
+      console.log("[Reauth] Creating Supabase client...");
       const supabase = createClient();
-      const { error: reauthError } = await supabase.auth.reauthenticate();
+      console.log("[Reauth] Calling supabase.auth.reauthenticate()...");
+      const { data, error: reauthError } = await supabase.auth.reauthenticate();
+      console.log("[Reauth] Result - data:", data, "error:", reauthError);
 
       if (reauthError) {
+        console.error("[Reauth] Error from reauthenticate:", reauthError);
         setState("idle");
         setError(reauthError.message);
         onError?.(reauthError.message);
         return;
       }
 
+      console.log("[Reauth] Success! Setting state to waiting");
       setState("waiting");
       setTimeUntilResend(resendCooldownMs / 1000);
       setTimeUntilExpiry(otpExpiryMs / 1000);
@@ -118,14 +129,17 @@ export function useReauthentication(options: UseReauthenticationOptions = {}): U
       }, otpExpiryMs);
 
     } catch (err) {
+      console.error("[Reauth] Catch block error:", err);
       setState("idle");
       const message = err instanceof Error ? err.message : "Failed to send verification code";
+      console.log("[Reauth] Setting error message:", message);
       setError(message);
       onError?.(message);
     }
   }, [state, lockoutEndTime, reset, resendCooldownMs, otpExpiryMs, maxAttempts, onError]);
 
   const verifyOtp = useCallback(async (code: string): Promise<boolean> => {
+    console.log("[Reauth] verifyOtp called, code length:", code.length, "state:", state);
     if (state !== "waiting") {
       setError("Please request a verification code first");
       return false;
