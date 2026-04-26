@@ -93,10 +93,9 @@ export function useReauthentication(options: UseReauthenticationOptions = {}): U
     // Set a timeout to handle cases where reauthenticate hangs
     const timeoutId = setTimeout(() => {
       console.log("[Reauth] TIMEOUT - reauthenticate took too long");
-      // Don't set state to "idle" - use "timeout" state to prevent infinite loop
-      setState("idle"); // Keeping idle for now but the useEffect should not auto-retry
+      setState("idle");
       setError("Request timed out. Please click 'Resend code' to try again.");
-    }, 15000); // 15 second timeout
+    }, 5000); // 5 second timeout for faster feedback
 
     try {
       console.log("[Reauth] Creating Supabase client...");
@@ -138,15 +137,9 @@ export function useReauthentication(options: UseReauthenticationOptions = {}): U
         return;
       }
 
-      // Check if reauthenticate actually sent an email (session should still be null since we're not changing user)
-      if (!data?.user && !data?.session) {
-        console.error("[Reauth] reauthenticate returned null - may not have sent email");
-        // This can happen if SMTP isn't configured or there's another issue
-        setState("idle");
-        setError("Could not send verification email. Please check your account and try again.");
-        onError?.("reauthenticate returned null");
-        return;
-      }
+      // NOTE: reauthenticate() returns {user: null, session: null} - this is NORMAL
+      // The function just SENDS the email, doesn't verify the code
+      // User will receive email with code and then verifyOtp() is called to complete
 
       console.log("[Reauth] Success! Setting state to waiting");
       setState("waiting");
@@ -173,7 +166,7 @@ export function useReauthentication(options: UseReauthenticationOptions = {}): U
 
     } catch (err) {
       console.error("[Reauth] Catch block error:", err);
-      clearTimeout(timeoutId);
+      if (timeoutId) clearTimeout(timeoutId);
       setState("idle");
       const message = err instanceof Error ? err.message : "Failed to send verification code";
       console.log("[Reauth] Setting error message:", message);
