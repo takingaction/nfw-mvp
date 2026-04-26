@@ -2038,3 +2038,6 @@ Added consent checkbox to grant application submission flow.
 3. Checks consent checkbox
 4. Optionally expands "View full consent text" to read full legal text
 5. Clicks "Confirm & Submit" to complete submission
+
+**Note on ReauthModal.tsx:**
+The `components/auth/ReauthModal.tsx` component still exists in the codebase but is no longer imported or used anywhere. It was removed from both `GrantApplicationForm.tsx` and `ClaimItemModal.tsx` due to Supabase SDK Web Locks API causing hangs on `reauthenticate()` and `verifyOtp()` calls. The component and related `lib/auth/reauthentication.ts` are preserved for potential future implementation if the Web Locks issue is resolved or a different OTP approach is needed.
