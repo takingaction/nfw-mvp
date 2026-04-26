@@ -69,7 +69,7 @@ export default function ReauthModal({
   };
 
   const handleVerify = async () => {
-    if (otpCode.length !== 6) {
+    if (otpCode.length !== 8) {
       return;
     }
     await verifyOtp(otpCode);
