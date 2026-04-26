@@ -600,7 +600,7 @@ export default function GrantApplicationForm({
       onClose={handleReauthClose}
       onSuccess={handleReauthSuccess}
       title="Verify Your Identity"
-      message="Enter the 6-digit code sent to your email to confirm your application."
+      message="Enter the 8-digit code sent to your email to confirm your application."
     />
     </>
   );

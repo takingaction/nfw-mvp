@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import OtpInput from "./OtpInput";
 import { useReauthentication } from "@/lib/auth/reauthentication";
 
@@ -17,7 +17,7 @@ export default function ReauthModal({
   onClose,
   onSuccess,
   title = "Verify Your Identity",
-  message = "Enter the 6-digit code sent to your email",
+  message = "Enter the 8-digit code sent to your email",
 }: ReauthModalProps) {
   const [otpCode, setOtpCode] = useState("");
 
@@ -41,11 +41,20 @@ export default function ReauthModal({
 
   useEffect(() => {
     console.log("[ReauthModal] isOpen:", isOpen, "state:", state);
+    // Only auto-start on initial modal open when state is idle
+    // Don't auto-start when state transitions to idle (e.g., after timeout)
     if (isOpen && state === "idle") {
       console.log("[ReauthModal] Calling startReauthentication");
       startReauthentication();
     }
   }, [isOpen, state, startReauthentication]);
+
+  // Track previous state to avoid infinite loops
+  const prevStateRef = useRef(state);
+  useEffect(() => {
+    console.log("[ReauthModal] State changed from", prevStateRef.current, "to", state);
+    prevStateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     if (state === "success") {

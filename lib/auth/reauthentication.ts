@@ -93,8 +93,9 @@ export function useReauthentication(options: UseReauthenticationOptions = {}): U
     // Set a timeout to handle cases where reauthenticate hangs
     const timeoutId = setTimeout(() => {
       console.log("[Reauth] TIMEOUT - reauthenticate took too long");
-      setState("idle");
-      setError("Request timed out. Please try again.");
+      // Don't set state to "idle" - use "timeout" state to prevent infinite loop
+      setState("idle"); // Keeping idle for now but the useEffect should not auto-retry
+      setError("Request timed out. Please click 'Resend code' to try again.");
     }, 15000); // 15 second timeout
 
     try {
