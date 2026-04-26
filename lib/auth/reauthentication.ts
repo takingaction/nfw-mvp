@@ -101,39 +101,29 @@ export function useReauthentication(options: UseReauthenticationOptions = {}): U
       console.log("[Reauth] Creating Supabase client...");
       const supabase = createClient();
 
-      // Get the current session to check if we have a valid token
+      // First check if we have a valid session
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       console.log("[Reauth] Session check - session:", sessionData?.session?.user?.email, "error:", sessionError);
 
-      console.log("[Reauth] Client created, calling reauthenticate...");
-      console.log("[Reauth] Making direct fetch request to /auth/v1/reauthenticate");
-
-      // Get the access token from the session
-      const accessToken = sessionData?.session?.access_token;
-      console.log("[Reauth] Access token present:", !!accessToken);
-
-      if (!accessToken) {
+      if (sessionError) {
+        console.error("[Reauth] Session error:", sessionError);
         clearTimeout(timeoutId);
-        console.error("[Reauth] No access token - user not authenticated");
         setState("idle");
-        setError("You must be logged in to reauthenticate. Please log out and log back in.");
-        onError?.("No access token");
+        setError("Session error. Please log out and log back in.");
+        onError?.(sessionError.message);
         return;
       }
 
-      // Make a direct fetch request to see the actual response
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const response = await fetch(`${supabaseUrl}/auth/v1/reauthenticate`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-        }
-      });
-      console.log("[Reauth] Direct fetch response status:", response.status);
-      console.log("[Reauth] Direct fetch response:", response);
+      if (!sessionData?.session) {
+        console.error("[Reauth] No session found - need to re-login");
+        clearTimeout(timeoutId);
+        setState("idle");
+        setError("Session expired. Please log out and log back in, then try again.");
+        onError?.("No session");
+        return;
+      }
 
-      // Now let the Supabase SDK handle it normally
+      console.log("[Reauth] Client created, calling reauthenticate...");
       const { data, error: reauthError } = await supabase.auth.reauthenticate();
       console.log("[Reauth] SDK Result - data:", data, "error:", reauthError);
 
@@ -144,6 +134,16 @@ export function useReauthentication(options: UseReauthenticationOptions = {}): U
         setState("idle");
         setError(reauthError.message);
         onError?.(reauthError.message);
+        return;
+      }
+
+      // Check if reauthenticate actually sent an email (session should still be null since we're not changing user)
+      if (!data?.user && !data?.session) {
+        console.error("[Reauth] reauthenticate returned null - may not have sent email");
+        // This can happen if SMTP isn't configured or there's another issue
+        setState("idle");
+        setError("Could not send verification email. Please check your account and try again.");
+        onError?.("reauthenticate returned null");
         return;
       }
 
