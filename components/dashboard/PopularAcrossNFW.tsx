@@ -49,7 +49,7 @@ export default function PopularAcrossNFW({ featuredItems }: PopularAcrossNFWProp
                 item.type === "article" ? "bg-nfw-aubergine" :
                 "bg-nfw-citrine"
               }`}>
-                <p className={`text-sm font-bold font-ui truncate ${item.type === "article" ? "text-white" : "text-nfw-blackberry"}`}>
+                <p className={`text-sm font-bold font-ui truncate ${item.type === "microgrant" ? "text-white" : item.type === "article" ? "text-white" : "text-nfw-blackberry"}`}>
                   {item.title}
                 </p>
               </div>
