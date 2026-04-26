@@ -90,12 +90,21 @@ export function useReauthentication(options: UseReauthenticationOptions = {}): U
     console.log("[Reauth] State set to sending");
     setError(null);
 
+    // Set a timeout to handle cases where reauthenticate hangs
+    const timeoutId = setTimeout(() => {
+      console.log("[Reauth] TIMEOUT - reauthenticate took too long");
+      setState("idle");
+      setError("Request timed out. Please try again.");
+    }, 15000); // 15 second timeout
+
     try {
       console.log("[Reauth] Creating Supabase client...");
       const supabase = createClient();
-      console.log("[Reauth] Calling supabase.auth.reauthenticate()...");
+      console.log("[Reauth] Client created, calling reauthenticate...");
       const { data, error: reauthError } = await supabase.auth.reauthenticate();
       console.log("[Reauth] Result - data:", data, "error:", reauthError);
+
+      clearTimeout(timeoutId);
 
       if (reauthError) {
         console.error("[Reauth] Error from reauthenticate:", reauthError);
