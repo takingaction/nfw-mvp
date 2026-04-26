@@ -131,6 +131,8 @@ export async function POST(request: Request) {
         nominee_email: is_nominating ? nominee_email.trim() : null,
         status: "submitted",
         submitted_at: new Date().toISOString(),
+        consent_version: "v1",
+        consent_given_at: new Date().toISOString(),
       })
       .select()
       .single();

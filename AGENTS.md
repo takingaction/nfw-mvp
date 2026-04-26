@@ -2009,76 +2009,32 @@ email_templates (
 - Preview uses iframe with `srcDoc` for live rendering
 - Supabase templates show "Copy HTML" button - user copies HTML and pastes into Supabase Dashboard
 
-### Session 2026-04-25: Reauthentication for Grants and Zero Dollar Store
+### Session 2026-04-26: Grant Application Consent
 
-Implemented Supabase's built-in reauthentication (OTP verification) for secure operations.
+Added consent checkbox to grant application submission flow.
 
-#### How It Works
+**Goal:** Users must read and consent to data collection before submitting grant applications.
 
-1. User initiates sensitive action (grant application, zero dollar store claim)
-2. System shows confirmation dialog ("Are you sure?")
-3. User confirms → ReauthModal appears with 6-digit OTP input
-4. `supabase.auth.reauthenticate()` sends code to user's email
-5. User enters code → `supabase.auth.verifyOtp({ type: 'email' })`
-6. On success → action is completed
-
-#### Configuration
-| Setting | Value |
-|---------|-------|
-| OTP Expiry | 10 minutes |
-| Resend Cooldown | 60 seconds |
-| Max Failed Attempts | 3, then 15-minute lockout |
-
-#### Files Created
-
-**`lib/auth/reauthentication.ts`** - `useReauthentication` hook
-- Manages OTP sending, verification, attempt counting, lockout state
-- Configurable via options (lockoutDuration, maxAttempts, otpExpiry, resendCooldown)
-- Returns: state, attemptsRemaining, timeUntilResend, timeUntilExpiry, error, startReauthentication, verifyOtp, reset
-
-**`components/auth/OtpInput.tsx`** - Reusable 6-box OTP input
-- 6 separate input boxes with auto-focus management
-- Paste support for full code entry
-- Arrow key navigation between boxes
-- Backspace handling
-
-**`components/auth/ReauthModal.tsx`** - Identity verification modal
-- aubergine header with title
-- OTP input centered below message
-- Timer countdown with resend option
-- Attempts remaining indicator
-- Lockout state with error message
-- Cancel/Verify buttons
-
-#### Files Modified
-
-**`components/GrantApplicationForm.tsx`**
-- Added confirmation dialog before submit
-- On confirm → ReauthModal opens
-- On OTP success → grant application is submitted
-
-**`components/ClaimItemModal.tsx`**
-- Added confirmation dialog before claim
-- On confirm → ReauthModal opens
-- On OTP success → Shopify checkout is created
-
-#### Supabase Template
-
-The `supabase-reauthentication` template (added in migration 061) uses `{{ .Token }}` for the 6-digit code. Works for both password and Google OAuth users - code is sent to their email address on file.
-
-#### Integration Flow for Zero Dollar Store
-
+**Consent Text:**
 ```
-User clicks "Claim Now" → Confirmation dialog → ReauthModal
-                                                    ↓
-                                            Enter OTP code
-                                                    ↓
-                                             verifyOtp()
-                                                    ↓
-                                    ┌─ Success → Create checkout
-                                    └─ Failure → Show error, retry
+"By submitting this application, I consent to National Fund for Women Foundation collecting, storing, and using the personal information I have provided, including any details I have voluntarily shared about my circumstances, for the purpose of reviewing and evaluating my grant application. My information will be accessed by National Fund for Women Foundation staff involved in the grant review process and will not be sold or shared with third parties. I may request deletion of my information by contacting National Fund for Women Foundation directly."
 ```
 
-#### Note
+**Database:**
+- `supabase/migrations/062_add_grant_consent.sql` - Added `consent_version TEXT DEFAULT 'v1'` and `consent_given_at TIMESTAMPTZ` columns to grants table
 
-This uses Supabase's built-in `supabase.auth.reauthenticate()` and `supabase.auth.verifyOtp()`, NOT a custom OTP system. The reauthentication template must be configured in Supabase Dashboard under Authentication → Email Templates → Reauthenticate.
+**Files Modified:**
+- `app/api/grants/create/route.ts` - Stores `consent_version` and `consent_given_at` on submission
+- `components/GrantApplicationForm.tsx`:
+  - Removed ReauthModal and reauthentication flow
+  - Added `showConfirm` and `submitConsentChecked` state
+  - Form submit opens confirmation modal instead of direct submission
+  - Modal has checkbox, collapsible `<details>` with full consent text (mobile-friendly)
+  - "Confirm & Submit" button disabled until checkbox checked
+
+**UI Flow:**
+1. User fills out application form
+2. Clicks "Continue →" to open confirmation modal
+3. Checks consent checkbox
+4. Optionally expands "View full consent text" to read full legal text
+5. Clicks "Confirm & Submit" to complete submission
