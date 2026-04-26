@@ -167,15 +167,20 @@ supabaseAdmin
     const grantIds = micrograntItems.map((item: any) => item.id.replace("grant_", ""));
     const { data: grantCycles } = await supabaseAdmin
       .from("grant_cycles")
-      .select("id, featured_image")
+      .select("id, cycle_name, featured_image")
       .in("id", grantIds);
 
     if (grantCycles && grantCycles.length > 0) {
-      const grantImageMap = new Map(grantCycles.map(g => [g.id, g.featured_image]));
+      const grantInfoMap = new Map(grantCycles.map(g => [g.id, g]));
       featuredItems = featuredItems.map((item: any) => {
         if (item.type === "microgrant") {
           const grantId = item.id.replace("grant_", "");
-          return { ...item, image: grantImageMap.get(grantId) || "" };
+          const grantInfo = grantInfoMap.get(grantId);
+          return {
+            ...item,
+            title: grantInfo?.cycle_name || item.title,
+            image: grantInfo?.featured_image || item.image,
+          };
         }
         return item;
       });
