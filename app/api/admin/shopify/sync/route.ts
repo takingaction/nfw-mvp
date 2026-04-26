@@ -29,6 +29,7 @@ export async function POST() {
             shopify_variant_id: firstVariant?.id || "",
             eligibility_tiers: ["free", "contributing", "founding"],
             display_order: syncedCount + 1,
+            mvp_visibility: false,
           },
           {
             onConflict: "shopify_product_id",

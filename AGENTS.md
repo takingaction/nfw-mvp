@@ -2041,3 +2041,15 @@ Added consent checkbox to grant application submission flow.
 
 **Note on ReauthModal.tsx:**
 The `components/auth/ReauthModal.tsx` component still exists in the codebase but is no longer imported or used anywhere. It was removed from both `GrantApplicationForm.tsx` and `ClaimItemModal.tsx` due to Supabase SDK Web Locks API causing hangs on `reauthenticate()` and `verifyOtp()` calls. The component and related `lib/auth/reauthentication.ts` are preserved for potential future implementation if the Web Locks issue is resolved or a different OTP approach is needed.
+
+### Session 2026-04-26: Shopify Sync Creates Hidden Products
+
+Changed `/api/admin/shopify/sync` to set `mvp_visibility: false` for newly synced products.
+
+**Files Modified:**
+- `app/api/admin/shopify/sync/route.ts` - Added `mvp_visibility: false` to upsert payload
+
+**Behavior:**
+- New products synced from Shopify are hidden by default (visibility = false)
+- Existing products unaffected (upsert only sets field on insert, not on update)
+- Admin must manually toggle visibility on `/admin/shopify` to make new products visible
