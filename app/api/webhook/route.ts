@@ -219,11 +219,22 @@ export async function POST(request: Request) {
         const customerId = subscription.customer as string;
         const priceId = subscription.items.data[0]?.price.id;
 
+        console.log("[webhook] Processing customer.subscription.updated for customer:", customerId);
+
         const customer = (await stripe.customers.retrieve(
           customerId,
         )) as Stripe.Customer;
 
         if (!customer.email) {
+          break;
+        }
+
+        // Look up user by email in auth.users
+        const { data: usersList } = await supabaseAdmin.auth.admin.listUsers();
+        const authUser = usersList?.users?.find(u => u.email === customer.email);
+
+        if (!authUser) {
+          console.error("[webhook] customer.subscription.updated: Auth user not found by email:", customer.email);
           break;
         }
 
@@ -237,7 +248,7 @@ export async function POST(request: Request) {
               subscription_ends_at: endsAt.toISOString(),
               updated_at: new Date().toISOString(),
             })
-            .eq("email", customer.email);
+            .eq("id", authUser.id);
         } else {
           const newMembershipLevel = PRICE_TO_MEMBERSHIP[priceId];
 
@@ -250,9 +261,10 @@ export async function POST(request: Request) {
                 subscription_ends_at: null,
                 updated_at: new Date().toISOString(),
               })
-              .eq("email", customer.email);
+              .eq("id", authUser.id);
           }
         }
+        console.log("[webhook] customer.subscription.updated completed for:", customer.email);
         break;
       }
 
@@ -269,17 +281,27 @@ export async function POST(request: Request) {
         if (customer.email) {
           console.log("[webhook] Subscription deleted for:", customer.email, "- downgrading to free");
 
-          await supabaseAdmin
-            .from("profiles")
-            .update({
-              membership_level: "free",
-              subscription_status: "cancelled",
-              subscription_ends_at: null,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("email", customer.email);
+          // Look up user by email in auth.users, then update their profile
+          const { data: usersList } = await supabaseAdmin.auth.admin.listUsers();
+          const authUser = usersList?.users?.find(u => u.email === customer.email);
 
-          console.log("[webhook] Profile downgraded to free for:", customer.email);
+          if (authUser) {
+            console.log("[webhook] Found auth user:", authUser.id, "- updating profile to free");
+
+            await supabaseAdmin
+              .from("profiles")
+              .update({
+                membership_level: "free",
+                subscription_status: "cancelled",
+                subscription_ends_at: null,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", authUser.id);
+
+            console.log("[webhook] Profile downgraded to free for:", customer.email);
+          } else {
+            console.error("[webhook] Auth user not found by email:", customer.email);
+          }
         } else {
           console.error("[webhook] customer.subscription.deleted: No email found for customer", customerId);
         }
