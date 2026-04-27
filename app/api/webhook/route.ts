@@ -121,7 +121,39 @@ export async function POST(request: Request) {
             console.log("[webhook] Profile check result:", { existingProfile, profileCheckError });
 
             if (profileCheckError || !existingProfile) {
-              console.error("[webhook] Profile not found for userId:", userId);
+              console.error("[webhook] Profile not found by ID, trying email lookup via auth.users");
+              // Fallback: find user by email in auth.users, then update their profile
+              const customerEmail = session.customer_details?.email;
+              if (customerEmail) {
+                console.log("[webhook] Looking up auth user by email:", customerEmail);
+                // List users to find by email - need to use admin API
+                const { data: usersList } = await supabaseAdmin.auth.admin.listUsers();
+                const authUser = usersList?.users?.find(u => u.email === customerEmail);
+
+                if (authUser) {
+                  console.log("[webhook] Found auth user:", authUser.id);
+                  // Update profile using the auth user's ID
+                  const { error: updateError } = await supabaseAdmin
+                    .from("profiles")
+                    .update({
+                      membership_level: membershipLevel,
+                      subscription_status: "active",
+                      subscription_ends_at: null,
+                      updated_at: new Date().toISOString(),
+                    })
+                    .eq("id", authUser.id);
+
+                  if (updateError) {
+                    console.error("[webhook] Failed to update membership via email lookup:", updateError);
+                  } else {
+                    console.log("[webhook] Profile updated successfully via email lookup to:", membershipLevel);
+                  }
+                } else {
+                  console.error("[webhook] Auth user not found by email:", customerEmail);
+                }
+              } else {
+                console.error("[webhook] No email in session.customer_details to fallback to");
+              }
             } else {
               console.log("[webhook] Current membership_level:", existingProfile.membership_level);
 
