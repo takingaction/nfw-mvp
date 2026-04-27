@@ -117,7 +117,7 @@ const PLANS = [
   {
     id: "contributing",
     name: "Contributing Member",
-    price: "$1",
+    price: "$15",
     period: "/year",
     description:
       "The most popular way to support NFW and build power for women across the country.",

@@ -2054,12 +2054,11 @@ Changed `/api/admin/shopify/sync` to set `mvp_visibility: false` for newly synce
 - Existing products unaffected (upsert only sets field on insert, not on update)
 - Admin must manually toggle visibility on `/admin/shopify` to make new products visible
 
-### Session 2026-04-27: Membership Badge Size Increase
+### Session 2026-04-27: Membership Price Update
 
-Increased founding badge size in MembershipCard component.
-
-**Files Modified:**
-- `components/dashboard/MembershipCard.tsx` - Badge now 2X original size (112px vs 56px) with more overlap (`-top-4 -right-12`)
+Updated contributing membership price from $1 to $15 in:
+- `components/SignUpFlow.tsx` - membership card price
+- `components/MembershipSelector.tsx` - membership selector price
 
 ### Session 2026-04-27: Grant Emails Branded Templates
 
