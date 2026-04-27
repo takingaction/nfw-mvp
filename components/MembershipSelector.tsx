@@ -15,7 +15,7 @@ const plans = [
   {
     id: "contributing",
     name: "Contributing Member",
-    price: "$15",
+    price: "$1",
     period: "/year",
     description: "Support NFW and unlock perks",
     features: [
