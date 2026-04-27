@@ -48,6 +48,7 @@ export async function POST(request: Request) {
   try {
     switch (event.type) {
       case "checkout.session.completed": {
+        console.log("[webhook] Processing checkout.session.completed event");
         const session = event.data.object as Stripe.Checkout.Session;
         const isGiftPurchase = session.metadata?.giftPurchase === "true";
 
@@ -144,6 +145,7 @@ export async function POST(request: Request) {
             console.log("[webhook] Skipping update - userId or membershipLevel is missing");
           }
         }
+        console.log("[webhook] checkout.session.completed handler complete");
         break;
       }
 
