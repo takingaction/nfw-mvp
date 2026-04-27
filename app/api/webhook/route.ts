@@ -3,6 +3,8 @@ import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { sendGiftCodesEmail, sendWelcomeEmail } from "@/lib/email";
 
+export const dynamic = "force-dynamic";
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
 });
@@ -39,6 +41,7 @@ export async function POST(request: Request) {
     console.log("[webhook] Signature verified, event type:", event.type);
   } catch (err: any) {
     console.error("[webhook] Signature verification failed:", err.message);
+    console.error("[webhook] This means the webhook secret may be wrong or the payload was modified");
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
