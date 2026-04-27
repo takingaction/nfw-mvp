@@ -260,11 +260,15 @@ export async function POST(request: Request) {
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
 
+        console.log("[webhook] Processing customer.subscription.deleted for customer:", customerId);
+
         const customer = (await stripe.customers.retrieve(
           customerId,
         )) as Stripe.Customer;
 
         if (customer.email) {
+          console.log("[webhook] Subscription deleted for:", customer.email, "- downgrading to free");
+
           await supabaseAdmin
             .from("profiles")
             .update({
@@ -274,6 +278,10 @@ export async function POST(request: Request) {
               updated_at: new Date().toISOString(),
             })
             .eq("email", customer.email);
+
+          console.log("[webhook] Profile downgraded to free for:", customer.email);
+        } else {
+          console.error("[webhook] customer.subscription.deleted: No email found for customer", customerId);
         }
         break;
       }
