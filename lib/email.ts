@@ -365,6 +365,11 @@ export async function sendWelcomeEmail({
   const heroImageUrl = heroImage || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
   const heroText = 'A <em>community</em> of women showing up for each other';
 
+  const formatDate = (isoString: string): string => {
+    const date = new Date(isoString);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
   const tierMessages = {
     free: `
       <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
@@ -407,7 +412,7 @@ export async function sendWelcomeEmail({
           </p>
           ${renewalDate ? `
           <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0;" class="snapshot-text">
-            <strong>Renewal Date:</strong> ${renewalDate}
+            <strong>Renewal Date:</strong> ${formatDate(renewalDate)}
           </p>
           ` : ""}
         </td>
