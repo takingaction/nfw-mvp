@@ -139,7 +139,8 @@ export async function POST(request: Request) {
               } else {
                 console.log("[webhook] Profile updated successfully to:", membershipLevel);
               }
-            } else {
+            }
+          } else {
             console.log("[webhook] Skipping update - userId or membershipLevel is missing");
           }
         }
