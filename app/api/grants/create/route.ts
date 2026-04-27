@@ -158,6 +158,34 @@ export async function POST(request: Request) {
       );
     }
 
+    // Fetch user email and profile for the confirmation email
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(user.id);
+
+    if (profile && userData?.user?.email) {
+      // Fetch grant cycle name
+      const { data: cycle } = await supabaseAdmin
+        .from("grant_cycles")
+        .select("name")
+        .eq("id", cycle_id)
+        .single();
+
+      // Fire-and-forget email - don't block the response
+      import("@/lib/email").then(({ sendGrantApplicationReceivedEmail }) => {
+        sendGrantApplicationReceivedEmail({
+          to: userData.user!.email!,
+          name: profile.full_name || "there",
+          grantCycleName: cycle?.name || "the grant",
+          applicationId: grant.id,
+        }).catch(console.error);
+      });
+    }
+
     return NextResponse.json({ success: true, grantId: grant.id });
   } catch (err) {
     console.error("[grants/create] Unexpected error:", err);

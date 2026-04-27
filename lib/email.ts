@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { createClient } from "@/lib/supabase/server";
 
 const FROM =
   process.env.RESEND_FROM_EMAIL || "National Fund for Women <hello@nationalfundforwomen.org>";
@@ -8,6 +9,28 @@ function getResend() {
     throw new Error("RESEND_API_KEY is not configured");
   }
   return new Resend(process.env.RESEND_API_KEY);
+}
+
+async function fetchEmailTemplate(slug: string): Promise<{ subject: string; html: string } | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("email_templates")
+    .select("subject, html_content")
+    .eq("slug", slug)
+    .single();
+  if (error || !data) {
+    console.error(`[email] Failed to fetch template "${slug}":`, error);
+    return null;
+  }
+  return { subject: data.subject, html: data.html_content };
+}
+
+function replaceTemplateVariables(html: string, variables: Record<string, string>): string {
+  let result = html;
+  for (const [key, value] of Object.entries(variables)) {
+    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
+  }
+  return result;
 }
 
 // =============================================================================
@@ -513,8 +536,33 @@ export async function sendNewsletterWelcomeEmail({
 }
 
 // =============================================================================
-// LEGACY EMAIL FUNCTIONS (plain text - to be updated later)
+// GRANT EMAILS
 // =============================================================================
+
+export async function sendGrantApplicationReceivedEmail({
+  to,
+  name,
+  grantCycleName,
+  applicationId,
+}: {
+  to: string;
+  name: string;
+  grantCycleName: string;
+  applicationId: string;
+}) {
+  const template = await fetchEmailTemplate("grant-application-received");
+  if (!template) return;
+
+  const variables: Record<string, string> = {
+    name,
+    grantCycleName,
+    applicationId,
+    siteUrl: "https://nationalfundforwomen.org",
+  };
+
+  const html = replaceTemplateVariables(template.html, variables);
+  await sendTemplateEmail({ to, subject: template.subject, html });
+}
 
 export async function sendGrantStatusEmail({
   to,
@@ -529,38 +577,28 @@ export async function sendGrantStatusEmail({
   grantCycleName: string;
   amountApproved?: number;
 }) {
-  const subjects: Record<string, string> = {
-    in_review: "Your NFW grant application is being reviewed",
-    approved: "Your NFW grant application has been approved!",
-    not_approved: "Update on your NFW grant application",
-    payment_pending: "Your NFW grant payment is being processed",
-    payment_sent: "Your NFW grant payment has been sent!",
+  const slugMap: Record<string, string> = {
+    in_review: "grant-under-review",
+    approved: "grant-approved",
+    not_approved: "grant-not-approved",
+    payment_pending: "grant-payment-pending",
+    payment_sent: "grant-payment-sent",
   };
 
-  const bodies: Record<string, string> = {
-    in_review: `Hi ${name},\n\nGreat news — your application for the ${grantCycleName} is now being reviewed by our team. We'll be in touch soon with a decision.\n\nThank you for applying.\n\nWith love,\nThe NFW Team`,
-    approved: `Hi ${name},\n\nWe're thrilled to let you know that your application for the ${grantCycleName} has been approved${amountApproved ? ` for $${amountApproved.toLocaleString()}` : ""}!\n\nPlease log in to your dashboard to connect your bank account so we can send your funds.\n\nWith love,\nThe NFW Team`,
-    not_approved: `Hi ${name},\n\nThank you for applying to the ${grantCycleName}. After careful review, we were unable to approve your application at this time.\n\nWe encourage you to apply again in a future cycle. We're rooting for you.\n\nWith love,\nThe NFW Team`,
-    payment_pending: `Hi ${name},\n\nYour grant payment of${amountApproved ? ` $${amountApproved.toLocaleString()}` : ""} is being processed and will arrive in your bank account within 1-3 business days.\n\nWith love,\nThe NFW Team`,
-    payment_sent: `Hi ${name},\n\nYour grant payment of${amountApproved ? ` $${amountApproved.toLocaleString()}` : ""} has been sent! Please allow 1-3 business days for it to appear in your account.\n\nThank you for being part of NFW.\n\nWith love,\nThe NFW Team`,
+  const slug = slugMap[status];
+  if (!slug) return;
+
+  const template = await fetchEmailTemplate(slug);
+  if (!template) return;
+
+  const variables: Record<string, string> = {
+    name,
+    grantCycleName,
+    amount: amountApproved ? amountApproved.toLocaleString() : "",
   };
 
-  const subject = subjects[status];
-  const text = bodies[status];
-
-  if (!subject || !text) return;
-
-  try {
-    const resend = getResend();
-    await resend.emails.send({
-      from: FROM,
-      to,
-      subject,
-      text,
-    });
-  } catch (err) {
-    console.error("Failed to send email:", err);
-  }
+  const html = replaceTemplateVariables(template.html, variables);
+  await sendTemplateEmail({ to, subject: template.subject, html });
 }
 
 export async function sendBankInfoRequestEmail({
@@ -576,25 +614,23 @@ export async function sendBankInfoRequestEmail({
   amountApproved?: number;
   isNominee: boolean;
 }) {
-  const siteUrl = "https://nationalfundforwomen.org";
+  const template = await fetchEmailTemplate("bank-info-request");
+  if (!template) return;
 
   const nomineeIntro = isNominee
-    ? `You've been nominated for the ${grantCycleName} and your nomination has been approved${amountApproved ? ` for $${amountApproved.toLocaleString()}` : ""}!`
-    : `Great news — your application for the ${grantCycleName} has been approved${amountApproved ? ` for $${amountApproved.toLocaleString()}` : ""}!`;
+    ? `You've been nominated for the ${grantCycleName}`
+    : `Your application for the ${grantCycleName} has been approved`;
 
-  const text = `${name},\n\n${nomineeIntro}\n\nTo receive your grant funds, please click the link below to securely connect your bank account. This only takes a few minutes.\n\nIf you don't already have an NFW account, you'll be prompted to create one before connecting your bank info.\n\nLink: ${siteUrl}/grants/my-applications\n\nIf you have any questions, please reply to this email.\n\nWith love,\nThe NFW Team`;
+  const variables: Record<string, string> = {
+    name,
+    grantCycleName,
+    amount: amountApproved ? amountApproved.toLocaleString() : "",
+    siteUrl: "https://nationalfundforwomen.org",
+    ctaUrl: "https://nationalfundforwomen.org/grants/my-applications",
+  };
 
-  try {
-    const resend = getResend();
-    await resend.emails.send({
-      from: FROM,
-      to,
-      subject: "Action Required: Connect Your Bank Account for Your NFW Grant",
-      text,
-    });
-  } catch (err) {
-    console.error("Failed to send bank info request email:", err);
-  }
+  const html = replaceTemplateVariables(template.html, variables);
+  await sendTemplateEmail({ to, subject: template.subject, html });
 }
 
 export async function sendGiftCodesEmail({

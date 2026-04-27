@@ -2060,3 +2060,40 @@ Increased founding badge size in MembershipCard component.
 
 **Files Modified:**
 - `components/dashboard/MembershipCard.tsx` - Badge now 2X original size (112px vs 56px) with more overlap (`-top-4 -right-12`)
+
+### Session 2026-04-27: Grant Emails Branded Templates
+
+Refactored grant email functions to use branded HTML templates from the `email_templates` database table.
+
+**Database:**
+- Updated `EMAIL_TEMPLATES` in `app/api/admin/emails/seed/route.ts` with 7 new grant email templates:
+  - `grant-application-received` - Auto-sent when application submitted
+  - `grant-under-review` - Sent when admin changes status to in_review
+  - `grant-approved` - Sent when admin approves
+  - `grant-not-approved` - Sent when admin marks not approved
+  - `grant-payment-pending` - Sent when admin changes status to payment_pending
+  - `grant-payment-sent` - Sent when admin changes status to payment_sent
+  - `bank-info-request` - Already existed, refactored to use branded template
+
+**Files Modified:**
+- `lib/email.ts`:
+  - Added `fetchEmailTemplate()` - Fetches template by slug from DB
+  - Added `replaceTemplateVariables()` - Replaces `{{name}}`, `{{grantCycleName}}`, etc.
+  - Created `sendGrantApplicationReceivedEmail()` - Uses `grant-application-received` template
+  - Updated `sendGrantStatusEmail()` - Now uses 5 separate templates (slugMap lookup)
+  - Updated `sendBankInfoRequestEmail()` - Now uses `bank-info-request` template from DB
+- `app/api/grants/create/route.ts` - Added call to `sendGrantApplicationReceivedEmail()` after successful submission (fire-and-forget)
+
+**How it works:**
+1. Admin creates/edits branded HTML templates at `/admin/emails` with `{{variable}}` placeholders
+2. On grant action, `fetchEmailTemplate()` loads the HTML from database
+3. `replaceTemplateVariables()` swaps `{{name}}`, `{{grantCycleName}}`, etc. with actual values
+4. `sendTemplateEmail()` sends the branded HTML via Resend
+
+**Variable placeholders used:**
+- `{{name}}` - Recipient's name
+- `{{grantCycleName}}` - Grant cycle name
+- `{{amount}}` - Grant amount (formatted with commas)
+- `{{applicationId}}` - Application ID
+- `{{siteUrl}}` - Site base URL
+- `{{ctaUrl}}` - CTA button link
