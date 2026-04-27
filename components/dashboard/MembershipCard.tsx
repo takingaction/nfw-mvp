@@ -67,7 +67,7 @@ export default function MembershipCard({
         </div>
         {badgeUrl && (
           <div
-            className="absolute -top-2 -right-8 w-21 h-21 rounded-full overflow-hidden border-2 border-white shadow-md"
+            className="absolute -top-1 -right-6 w-14 h-14 rounded-full overflow-hidden border-2 border-white shadow-md"
             style={{
               transform: "rotate(20deg)",
             }}
