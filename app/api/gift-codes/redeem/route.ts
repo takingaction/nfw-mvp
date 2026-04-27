@@ -54,6 +54,13 @@ export async function POST(request: Request) {
     const oneYearFromNow = new Date();
     oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
 
+    // Get user's name for the welcome email
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+
     // Update the user's profile
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
@@ -72,6 +79,18 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
+
+    // Send welcome email
+    const { sendWelcomeEmail } = await import("@/lib/email");
+    await sendWelcomeEmail({
+      to: user.email!,
+      name: profile?.full_name || "there",
+      membershipType: "contributing",
+      memberId: user.id,
+      renewalDate: oneYearFromNow.toISOString(),
+    }).catch((err) => {
+      console.error("Failed to send welcome email:", err);
+    });
 
     // Mark the code as redeemed
     const { error: redeemError } = await supabaseAdmin
