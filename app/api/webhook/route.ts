@@ -205,6 +205,14 @@ export async function POST(request: Request) {
               }).catch((err) => {
                 console.error("[webhook] Failed to send welcome email:", err);
               });
+
+              // Sync to Access Perks (idempotent - only syncs if access_perks_member_id is null)
+              try {
+                const { checkAndSyncAccessMember } = await import("@/lib/access-perks/member-sync");
+                await checkAndSyncAccessMember(supabaseAdmin, profileId, customerEmail);
+              } catch (err) {
+                console.error("[webhook] Failed to sync to Access Perks:", err);
+              }
             }
           } else {
             console.log("[webhook] Skipping update - userId or membershipLevel is missing");

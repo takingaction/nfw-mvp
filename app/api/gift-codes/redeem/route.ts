@@ -92,6 +92,14 @@ export async function POST(request: Request) {
       console.error("Failed to send welcome email:", err);
     });
 
+    // Sync to Access Perks (idempotent - only syncs if access_perks_member_id is null)
+    try {
+      const { checkAndSyncAccessMember } = await import("@/lib/access-perks/member-sync");
+      await checkAndSyncAccessMember(supabaseAdmin, user.id, user.email!);
+    } catch (err) {
+      console.error("Failed to sync to Access Perks:", err);
+    }
+
     // Mark the code as redeemed
     const { error: redeemError } = await supabaseAdmin
       .from("gift_membership_codes")

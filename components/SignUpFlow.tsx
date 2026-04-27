@@ -371,12 +371,26 @@ export default function SignUpFlow() {
       setLoading(true);
       setError(null);
       try {
+        // Get current user ID for Access Perks sync
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
         await saveProfile({ profile_completed: true, membership_level: "free" });
         // Send welcome email
         try {
           await fetch("/api/welcome-email", { method: "POST" });
         } catch (err) {
           console.error("Failed to send welcome email:", err);
+        }
+        // Sync to Access Perks
+        try {
+          await fetch("/api/access-perks/sync-member", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: user?.id }),
+          });
+        } catch (err) {
+          console.error("Failed to sync to Access Perks:", err);
         }
         window.location.assign("/auth/welcome");
       } catch (err: any) {
