@@ -48,7 +48,7 @@ export default async function WelcomePage() {
   const content = getWelcomeContent();
 
   return (
-    <main className="min-h-screen bg-nfw-blackberry flex items-center justify-center px-4 relative overflow-hidden">
+    <main className="min-h-screen bg-nfw-aubergine flex items-center justify-center px-4 relative overflow-hidden">
       <div className="relative max-w-lg w-full text-center">
         <img
             src="/images/nfw-symbol-brandmark-wisteria.png"
