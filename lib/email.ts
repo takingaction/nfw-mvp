@@ -400,7 +400,7 @@ export async function sendWelcomeEmail({
             Your membership snapshot
           </p>
           <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 5px 0;" class="snapshot-text">
-            <strong>Email:</strong> <span style="color: #FFFFFF; text-decoration: none;">${memberId.replace(/@/g, '&#64;')}</span>
+            <strong>Email:</strong> <span style="color: #FFFFFF; text-decoration: none;">${to}</span>
           </p>
           <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 5px 0;" class="snapshot-text">
             <strong>Membership Tier:</strong> ${membershipType.charAt(0).toUpperCase() + membershipType.slice(1)}
