@@ -1180,6 +1180,7 @@ Implemented security fixes identified in security audit.
 - `app/api/access-perks/offers/[offerKey]/redeem/route.ts` - Added 48-hour account age check before redeeming
 - `app/api/shopify/checkout/route.ts` - Added 48-hour account age check before claiming
 - `supabase/migrations/039_account_age_index.sql` - Added index on profiles.joined_at for query performance
+- **Toggle:** Set `ACCOUNT_AGE_CHECK_ENABLED=false` in Vercel env vars to disable (re-enable by setting to `true` or removing)
 
 **Shopify Admin Security:**
 - `app/api/admin/shopify/sync/route.ts` - Added `requireAdmin()` authentication
