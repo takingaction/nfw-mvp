@@ -2097,3 +2097,12 @@ Refactored grant email functions to use branded HTML templates from the `email_t
 - `{{applicationId}}` - Application ID
 - `{{siteUrl}}` - Site base URL
 - `{{ctaUrl}}` - CTA button link
+
+**Debug logging added** - Added console.log statements in `lib/email.ts` and `app/api/grants/create/route.ts` to debug email sending issues.
+
+**Featured image added** - `public/images/featured.jpg` for social sharing metadata in `app/layout.tsx`.
+
+**Social sharing metadata:**
+- Added OpenGraph and Twitter card metadata to `app/layout.tsx`
+- Points to `/images/featured.jpg` for social media previews
+- Used in Facebook, Twitter, LinkedIn, and text message link previews
