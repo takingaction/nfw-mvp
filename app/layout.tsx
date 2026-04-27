@@ -37,6 +37,18 @@ export const metadata: Metadata = {
   title: "National Fund for Women",
   description:
     "Empowering women through financial support, resources, and community",
+  openGraph: {
+    title: "National Fund for Women",
+    description: "Empowering women through financial support, resources, and community",
+    images: ["/images/featured.jpg"],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "National Fund for Women",
+    description: "Empowering women through financial support, resources, and community",
+    images: ["/images/featured.jpg"],
+  },
 };
 
 export default async function RootLayout({
