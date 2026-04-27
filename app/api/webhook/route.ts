@@ -109,43 +109,37 @@ export async function POST(request: Request) {
 
           if (userId && membershipLevel) {
             console.log("[webhook] Updating profile for user:", userId, "to level:", membershipLevel);
-            // Fetch user email and name
-            const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
-            const userEmail = userData?.user?.email;
-            const { data: profile } = await supabaseAdmin
+
+            // Check if profile exists
+            const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
               .from("profiles")
-              .select("full_name")
+              .select("id, membership_level")
               .eq("id", userId)
               .single();
 
-            const firstName = profile?.full_name?.split(" ")[0] || "Friend";
+            console.log("[webhook] Profile check result:", { existingProfile, profileCheckError });
 
-            const { error } = await supabaseAdmin
-              .from("profiles")
-              .update({
-                membership_level: membershipLevel,
-                subscription_status: "active",
-                subscription_ends_at: null,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", userId);
-
-            if (error) {
-              console.error("Failed to update membership:", error);
+            if (profileCheckError || !existingProfile) {
+              console.error("[webhook] Profile not found for userId:", userId);
             } else {
-              console.log("[webhook] Profile updated successfully");
-            }
+              console.log("[webhook] Current membership_level:", existingProfile.membership_level);
 
-            // Send welcome email for paid memberships
-            if (userEmail) {
-              await sendWelcomeEmail({
-                to: userEmail,
-                name: firstName,
-                membershipType: membershipLevel as "contributing" | "founding",
-                memberId: userEmail,
-              });
-            }
-          } else {
+              const { error } = await supabaseAdmin
+                .from("profiles")
+                .update({
+                  membership_level: membershipLevel,
+                  subscription_status: "active",
+                  subscription_ends_at: null,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", userId);
+
+              if (error) {
+                console.error("[webhook] Failed to update membership:", error);
+              } else {
+                console.log("[webhook] Profile updated successfully to:", membershipLevel);
+              }
+            } else {
             console.log("[webhook] Skipping update - userId or membershipLevel is missing");
           }
         }
