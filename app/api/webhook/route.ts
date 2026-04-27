@@ -90,7 +90,13 @@ export async function POST(request: Request) {
           const userId = session.metadata?.userId;
           const membershipLevel = session.metadata?.membershipLevel;
 
+          console.log("[webhook] checkout.session.completed received");
+          console.log("[webhook] userId from metadata:", userId);
+          console.log("[webhook] membershipLevel from metadata:", membershipLevel);
+          console.log("[webhook] full metadata:", JSON.stringify(session.metadata));
+
           if (userId && membershipLevel) {
+            console.log("[webhook] Updating profile for user:", userId, "to level:", membershipLevel);
             // Fetch user email and name
             const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
             const userEmail = userData?.user?.email;
@@ -114,6 +120,8 @@ export async function POST(request: Request) {
 
             if (error) {
               console.error("Failed to update membership:", error);
+            } else {
+              console.log("[webhook] Profile updated successfully");
             }
 
             // Send welcome email for paid memberships
@@ -125,6 +133,8 @@ export async function POST(request: Request) {
                 memberId: userEmail,
               });
             }
+          } else {
+            console.log("[webhook] Skipping update - userId or membershipLevel is missing");
           }
         }
         break;
