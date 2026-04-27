@@ -2053,3 +2053,10 @@ Changed `/api/admin/shopify/sync` to set `mvp_visibility: false` for newly synce
 - New products synced from Shopify are hidden by default (visibility = false)
 - Existing products unaffected (upsert only sets field on insert, not on update)
 - Admin must manually toggle visibility on `/admin/shopify` to make new products visible
+
+### Session 2026-04-27: Membership Badge Size Increase
+
+Increased founding badge size in MembershipCard component.
+
+**Files Modified:**
+- `components/dashboard/MembershipCard.tsx` - Badge now 2X original size (112px vs 56px) with more overlap (`-top-4 -right-12`)
