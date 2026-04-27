@@ -71,17 +71,21 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (grantData) {
+      // Get user's name from profiles and email from auth.users
       const { data: profile } = await supabaseAdmin
         .from("profiles")
-        .select("full_name, email")
+        .select("full_name")
         .eq("id", grantData.user_id)
         .single();
 
-      if (profile?.email) {
+      const { data: userData } = await supabaseAdmin.auth.admin.getUserById(grantData.user_id);
+      const userEmail = userData?.user?.email;
+
+      if (userEmail) {
         const { sendGrantStatusEmail } = await import("@/lib/email");
         await sendGrantStatusEmail({
-          to: profile.email,
-          name: profile.full_name || "Member",
+          to: userEmail,
+          name: profile?.full_name || "Member",
           status,
           grantCycleName:
             (grantData.grant_cycles as any)?.cycle_name || "NFW Microgrant",
