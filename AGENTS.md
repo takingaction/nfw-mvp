@@ -2060,6 +2060,21 @@ Updated contributing membership price from $1 to $15 in:
 - `components/SignUpFlow.tsx` - membership card price
 - `components/MembershipSelector.tsx` - membership selector price
 
+### Session 2026-04-27: Fix Welcome Email on Paid Membership Purchase
+
+Fixed bug where welcome email was NOT sent after paid membership (contributing/founding) purchases.
+
+**Problem:**
+- Free signup: `sendWelcomeEmail` called via `/api/welcome-email` in `SignUpFlow.tsx`
+- Gift membership: `sendGiftCodesEmail` called in webhook handler
+- Paid membership: **No email sent** - bug in `app/api/webhook/route.ts`
+
+**Fix:**
+- Added `sendWelcomeEmail` call in `app/api/webhook/route.ts` after successful profile update
+- Email sent with correct membership type, renewal date (1 year), and member ID
+- Uses `session.customer_details?.email` for recipient address
+- Falls back to profile name or "there" if name not available
+
 ### Session 2026-04-27: Grant Emails Branded Templates
 
 Refactored grant email functions to use branded HTML templates from the `email_templates` database table.

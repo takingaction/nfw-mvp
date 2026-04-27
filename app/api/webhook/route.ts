@@ -102,6 +102,7 @@ export async function POST(request: Request) {
           // Regular membership purchase
           const userId = session.metadata?.userId;
           const membershipLevel = session.metadata?.membershipLevel;
+          const customerEmail = session.customer_details?.email;
 
           console.log("[webhook] checkout.session.completed received");
           console.log("[webhook] userId from metadata:", userId);
@@ -114,16 +115,19 @@ export async function POST(request: Request) {
             // Check if profile exists
             const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
               .from("profiles")
-              .select("id, membership_level")
+              .select("id, full_name, membership_level")
               .eq("id", userId)
               .single();
 
             console.log("[webhook] Profile check result:", { existingProfile, profileCheckError });
 
+            let profileUpdated = false;
+            let profileId = userId;
+            let profileName = "";
+
             if (profileCheckError || !existingProfile) {
               console.error("[webhook] Profile not found by ID, trying email lookup via auth.users");
               // Fallback: find user by email in auth.users, then update their profile
-              const customerEmail = session.customer_details?.email;
               if (customerEmail) {
                 console.log("[webhook] Looking up auth user by email:", customerEmail);
                 // List users to find by email - need to use admin API
@@ -132,6 +136,16 @@ export async function POST(request: Request) {
 
                 if (authUser) {
                   console.log("[webhook] Found auth user:", authUser.id);
+                  // Get profile by auth user id
+                  const { data: authProfile } = await supabaseAdmin
+                    .from("profiles")
+                    .select("full_name")
+                    .eq("id", authUser.id)
+                    .single();
+
+                  profileName = authProfile?.full_name || "";
+                  profileId = authUser.id;
+
                   // Update profile using the auth user's ID
                   const { error: updateError } = await supabaseAdmin
                     .from("profiles")
@@ -147,6 +161,7 @@ export async function POST(request: Request) {
                     console.error("[webhook] Failed to update membership via email lookup:", updateError);
                   } else {
                     console.log("[webhook] Profile updated successfully via email lookup to:", membershipLevel);
+                    profileUpdated = true;
                   }
                 } else {
                   console.error("[webhook] Auth user not found by email:", customerEmail);
@@ -156,6 +171,7 @@ export async function POST(request: Request) {
               }
             } else {
               console.log("[webhook] Current membership_level:", existingProfile.membership_level);
+              profileName = existingProfile.full_name || "";
 
               const { error } = await supabaseAdmin
                 .from("profiles")
@@ -171,7 +187,24 @@ export async function POST(request: Request) {
                 console.error("[webhook] Failed to update membership:", error);
               } else {
                 console.log("[webhook] Profile updated successfully to:", membershipLevel);
+                profileUpdated = true;
               }
+            }
+
+            // Send welcome email if profile was updated
+            if (profileUpdated && customerEmail) {
+              const renewalDate = new Date();
+              renewalDate.setFullYear(renewalDate.getFullYear() + 1);
+
+              await sendWelcomeEmail({
+                to: customerEmail,
+                name: profileName || "there",
+                membershipType: membershipLevel as "contributing" | "founding",
+                memberId: profileId,
+                renewalDate: renewalDate.toISOString(),
+              }).catch((err) => {
+                console.error("[webhook] Failed to send welcome email:", err);
+              });
             }
           } else {
             console.log("[webhook] Skipping update - userId or membershipLevel is missing");
