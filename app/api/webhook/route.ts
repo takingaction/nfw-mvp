@@ -18,8 +18,15 @@ const PRICE_TO_MEMBERSHIP: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
+  console.log("[webhook] Received request");
+  console.log("[webhook] URL:", request.url);
+  console.log("[webhook] Headers:", JSON.stringify(Object.fromEntries(request.headers.entries())));
+  
   const body = await request.text();
+  console.log("[webhook] Body length:", body.length);
+  
   const signature = request.headers.get("stripe-signature")!;
+  console.log("[webhook] Signature header present:", !!signature);
 
   let event: Stripe.Event;
 
@@ -29,7 +36,9 @@ export async function POST(request: Request) {
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!,
     );
+    console.log("[webhook] Signature verified, event type:", event.type);
   } catch (err: any) {
+    console.error("[webhook] Signature verification failed:", err.message);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
