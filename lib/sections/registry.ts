@@ -11,6 +11,7 @@ export type EditorField =
   | { key: string; label: string; type: "image" }
   | { key: string; label: string; type: "video" }
   | { key: string; label: string; type: "boolean" }
+  | { key: string; label: string; type: "toggle" }
   | { key: string; label: string; type: "select"; options: string[] }
   | { key: string; label: string; type: "string-array"; itemLabel: string }
   | {
