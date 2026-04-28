@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import ContactClient from "@/components/contact/ContactClient";
 
 interface HelpCard {
