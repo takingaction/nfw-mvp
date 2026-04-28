@@ -6,7 +6,7 @@ export default function ApplicationSuccessPage() {
     <main className="min-h-screen bg-nfw-aubergine flex items-center justify-center px-4">
       <div className="max-w-lg w-full text-center">
         {/* Checkmark */}
-        <div className="w-20 h-20 bg-[#d4f1ad] flex items-center justify-center mx-auto mb-8">
+        <div className="w-20 h-20 bg-nfw-lilac flex items-center justify-center mx-auto mb-8">
           <Check className="w-10 h-10 text-nfw-blackberry" strokeWidth={3} />
         </div>
 
