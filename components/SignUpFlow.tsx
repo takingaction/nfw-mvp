@@ -1156,7 +1156,7 @@ export default function SignUpFlow() {
             JOIN WOMEN NATIONWIDE
           </p>
           <h2 className="font-serif text-4xl lg:text-6xl text-white mb-4 leading-tight">
-            Support women simply by belonging
+            Become a Member
           </h2>
           <p className="text-white text-sm mb-10 leading-relaxed">
             NFW membership helps you get relief for yourself while helping other women at the same time. Membership includes:

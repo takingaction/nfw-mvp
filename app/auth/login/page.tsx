@@ -3,7 +3,7 @@ import { LoginForm } from "@/components/login-form";
 export const metadata = {
   title: "Member Login | National Fund for Women",
   description:
-    "Access your National Fund for Women membership account to explore perks, resources, and community programs designed for members.",
+    "Access your member login to explore support tools, community benefits, exclusive resources, and everything included with your membership.",
 };
 
 export default function Page() {

@@ -1,4 +1,3 @@
-import { createClient } from "@supabase/supabase-js";
 import FaqClient from "@/components/faq/FaqClient";
 
 interface FaqQuestion {
@@ -35,7 +34,7 @@ interface FaqData {
 const defaultData: FaqData = {
   id: "",
   hero_eyebrow: "We've got answers",
-  hero_headline: "Questions? We've got answers.",
+  hero_headline: "Frequently Asked Questions",
   hero_subheadline: "Everything you need to know about NFW membership, microgrants, perks, and more.",
   hero_background: "aubergine",
   faq_sections: [],
@@ -45,28 +44,14 @@ const defaultData: FaqData = {
     { label: "Contact Us", url: "/contact", style: "solid", open_in_new_tab: false },
     { label: "Join for Free", url: "/auth/sign-up", style: "ghost", open_in_new_tab: false },
   ],
-  meta_title: null,
-  meta_description: null,
+  meta_title: "FAQs | National Fund for Women",
+  meta_description: "Find answers to common questions about membership, financial support, perks, resources, and how National Fund for Women works.",
 };
 
 export async function generateMetadata() {
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-
-  const { data } = await supabaseAdmin
-    .from("site_faq")
-    .select("meta_title, meta_description")
-    .limit(1)
-    .single();
-
-  const title = data?.meta_title || "Frequently Asked Questions | National Fund for Women";
-  const description = data?.meta_description || "Find answers to common questions about NFW membership, microgrants, perks, and more.";
-
   return {
-    title,
-    description,
+    title: "FAQs | National Fund for Women",
+    description: "Find answers to common questions about membership, financial support, perks, resources, and how National Fund for Women works.",
   };
 }
 

@@ -81,7 +81,7 @@ export function LoginForm({
     <div className={className} {...props}>
       <Card className="border-nfw-blackberry/10">
         <CardHeader>
-          <CardTitle className="text-2xl font-serif text-nfw-blackberry">Login</CardTitle>
+          <h1 className="text-2xl font-serif text-nfw-blackberry">Member Login</h1>
           <CardDescription className="text-nfw-blackberry/60">
             Enter your email below to login to your account
           </CardDescription>
