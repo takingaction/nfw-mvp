@@ -32,9 +32,17 @@ export function UpdatePasswordForm({
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setIsReady(true);
-      } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
+        return;
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setIsReady(true);
+        return;
+      }
+      const code = new URLSearchParams(window.location.search).get("code");
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!error) {
           setIsReady(true);
         }
       }
@@ -44,18 +52,21 @@ export function UpdatePasswordForm({
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isReady && password.length === 0) return;
 
     const supabase = createClient();
     setIsLoading(true);
     setError(null);
 
     try {
-      const { error: updateError } = await supabase.auth.updateUser({ password });
+      console.log("Attempting to update password...");
+      const { data, error: updateError } = await supabase.auth.updateUser({ password });
+      console.log("Update result:", data, updateError);
       if (updateError) throw updateError;
+      console.log("Password updated successfully, showing success...");
       setIsSuccess(true);
-      setTimeout(() => window.location.href = "/dashboard", 1500);
+      setTimeout(() => { window.location.href = "/dashboard"; }, 1500);
     } catch (err: unknown) {
+      console.error("Password update error:", err);
       setError(err instanceof Error ? err.message : "An error occurred");
       setIsLoading(false);
     }
