@@ -2204,6 +2204,22 @@ Refactored grant email functions to use branded HTML templates from the `email_t
 - `components/sections/HeroSection.tsx` - Applied conditional italic class and column swap via CSS order classes
 - `components/admin/pages/SectionEditorPanel.tsx` - Added "toggle" field type UI component + fixed toggle switch (OFF=LEFT, ON=RIGHT, proper sizing to keep circle visible)
 
+#### Hero Template Column Swap Fix
+
+Fixed column proportions when swapping hero image from right to left.
+
+**Problem:** Using CSS Grid with `order-last` on the text column when image_position=left caused the text to be in the narrower column (47%) and image in the wider column (53%), breaking visual proportions.
+
+**Solution:** Converted from CSS Grid to Flexbox with `flex-row-reverse` and explicit `flex-[53%]` / `flex-[47%]` widths on the columns. When image is on left, `flex-row-reverse` naturally places the text (53%) on the right and image (47%) on the left, preserving proportions.
+
+**Files Modified:**
+- `components/sections/HeroSection.tsx`:
+  - Changed `grid lg:grid-cols-[53%_47%]` to `flex flex-col lg:flex-row`
+  - Added `flex-row-reverse` on container when `image_position === "left"`
+  - Text column: `flex-[53%]` (always 53% width regardless of position)
+  - Image column: `flex-[47%]` (always 47% width regardless of position)
+  - Removed `lg:pl-12` left padding since flexbox handles layout
+
 #### Duplicate Trash Icon Fix
 
 **Problem:** `/admin/pages` showed two trash can icons on page cards.
