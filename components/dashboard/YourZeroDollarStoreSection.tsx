@@ -96,33 +96,35 @@ function OnlineHistoryItem({ claim }: { claim: Claim }) {
 function LatestOfferingCard({ product }: { product: LatestProduct }) {
   const isDraft = product.status === "DRAFT";
   return (
-    <div className="bg-white rounded-xl overflow-hidden shadow-md w-48 flex-shrink-0">
-      <div className="aspect-[3/4] relative bg-white overflow-hidden">
-        {product.imageUrl ? (
-          <img
-            src={product.imageUrl}
-            alt={product.title}
-            className={`w-full h-full object-cover ${isDraft ? "grayscale opacity-60" : ""}`}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-nfw-dove">
-            <Gift className="w-8 h-8 text-white/30" />
-          </div>
-        )}
-        {isDraft && (
-          <div className="absolute top-3 left-3">
-            <span className="bg-nfw-wisteria text-white px-3 py-1.5 font-ui text-xs font-black tracking-[0.06em] uppercase">
-              Dropping Soon
-            </span>
-          </div>
-        )}
+    <Link href="/store" className="block w-48 flex-shrink-0">
+      <div className="bg-white rounded-xl overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow">
+        <div className="aspect-[3/4] relative bg-white overflow-hidden">
+          {product.imageUrl ? (
+            <img
+              src={product.imageUrl}
+              alt={product.title}
+              className={`w-full h-full object-cover ${isDraft ? "grayscale opacity-60" : ""}`}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-nfw-dove">
+              <Gift className="w-8 h-8 text-white/30" />
+            </div>
+          )}
+          {isDraft && (
+            <div className="absolute top-3 left-3">
+              <span className="bg-nfw-wisteria text-white px-3 py-1.5 font-ui text-xs font-black tracking-[0.06em] uppercase">
+                Dropping Soon
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="bg-nfw-citrine p-3">
+          <p className="text-nfw-blackberry font-ui text-sm font-medium truncate">
+            {product.title}
+          </p>
+        </div>
       </div>
-      <div className="bg-nfw-citrine p-3">
-        <p className="text-nfw-blackberry font-ui text-sm font-medium truncate">
-          {product.title}
-        </p>
-      </div>
-    </div>
+    </Link>
   );
 }
 
