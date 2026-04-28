@@ -21,7 +21,7 @@ export default function HeroSection({ content }: Props) {
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 lg:pl-12">
         {" "}
         <div className="grid lg:grid-cols-[53%_47%] gap-8 lg:gap-8 items-center py-4 lg:py-8">
-          <div className="space-y-8">
+          <div className={`space-y-8 ${c.image_position === "left" ? "lg:order-last" : ""}`}>
             {c.eyebrow && (
               <p className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${eyebrowColor}`}>
                 {c.eyebrow}
@@ -32,7 +32,7 @@ export default function HeroSection({ content }: Props) {
               <em className="italic">{italicPhrase}</em>
               {parts[1]}
             </h1>
-            <p className={`font-serif italic text-xl lg:text-3xl ${textColor} leading-relaxed`}>
+            <p className={`font-serif text-xl lg:text-3xl ${c.subheadline_italic !== false ? "italic" : ""} ${textColor} leading-relaxed`}>
               {c?.subheadline || ""}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
@@ -51,7 +51,7 @@ export default function HeroSection({ content }: Props) {
             </div>
           </div>
 
-          <div className="relative w-full aspect-[3/4] lg:aspect-auto lg:h-[750px]">
+          <div className={`relative w-full aspect-[3/4] lg:aspect-auto lg:h-[750px] ${c.image_position === "left" ? "lg:order-first" : ""}`}>
             {(() => {
               const imageSrc = typeof c.images === "string"
                 ? c.images

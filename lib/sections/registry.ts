@@ -56,6 +56,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
         type: "text",
       },
       { key: "subheadline", label: "Subheadline", type: "text" },
+      { key: "subheadline_italic", label: "Subheadline italic", type: "toggle" },
       { key: "cta_primary_label", label: "Primary CTA label", type: "text" },
       { key: "cta_primary_url", label: "Primary CTA URL", type: "url" },
       {
@@ -64,6 +65,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
         type: "text",
       },
       { key: "cta_secondary_url", label: "Secondary CTA URL", type: "url" },
+      { key: "image_position", label: "Image position", type: "select", options: ["left", "right"] },
       { key: "images", label: "Hero image", type: "image" },
     ],
   },

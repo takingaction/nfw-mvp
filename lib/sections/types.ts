@@ -54,6 +54,8 @@ export interface HeroContent {
   headline: string;
   headline_italic_phrase: string;
   subheadline: string;
+  subheadline_italic?: boolean;
+  image_position?: "left" | "right";
   cta_primary_label: string;
   cta_primary_url: string;
   cta_secondary_label: string;

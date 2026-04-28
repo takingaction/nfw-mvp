@@ -190,6 +190,29 @@ function FieldEditor({
     );
   }
 
+  if (field.type === "toggle") {
+    return (
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-black uppercase tracking-wider text-nfw-blackberry/50">
+          {field.label}
+        </label>
+        <button
+          type="button"
+          onClick={() => onChange(!value)}
+          className={`relative w-12 h-6 rounded-full transition-colors ${
+            value ? "bg-nfw-wisteria" : "bg-nfw-blackberry/20"
+          }`}
+        >
+          <span
+            className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+              value ? "translate-x-7" : "translate-x-1"
+            }`}
+          />
+        </button>
+      </div>
+    );
+  }
+
   if (field.type === "select") {
     return (
       <div>
