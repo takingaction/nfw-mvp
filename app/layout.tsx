@@ -37,6 +37,12 @@ export const metadata: Metadata = {
   title: "National Fund for Women",
   description:
     "Empowering women through financial support, resources, and community",
+  icons: {
+    icon: [
+      { url: "/icon.png", type: "image/png" },
+      { url: "/favicon.ico", type: "image/x-icon" },
+    ],
+  },
   openGraph: {
     title: "National Fund for Women",
     description: "Empowering women through financial support, resources, and community",
