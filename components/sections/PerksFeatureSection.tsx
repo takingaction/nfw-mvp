@@ -66,7 +66,7 @@ export default function PerksFeatureSection({ content }: Props) {
             speed={50}
             pauseOnHover
             gradient={false}
-            gap={64}
+            gap={0}
           >
             <div className="flex gap-16 items-center">
               {logos.map((logo, i) => {
@@ -77,6 +77,25 @@ export default function PerksFeatureSection({ content }: Props) {
                 return (
                   <div
                     key={`${logo.name}-${i}`}
+                    className="flex-shrink-0 h-8 flex items-center"
+                  >
+                    <img
+                      src={logoSrc}
+                      alt={logo.name}
+                      className="h-full w-auto object-contain"
+                      style={shouldWhiteLogos ? { filter: 'brightness(0) invert(1)' } : undefined}
+                    />
+                  </div>
+                );
+              })}
+              {logos.map((logo, i) => {
+                const logoSrc = typeof logo.image_url === "string"
+                  ? logo.image_url
+                  : ((logo.image_url as { url?: string })?.url ?? "");
+                if (!logoSrc) return null;
+                return (
+                  <div
+                    key={`${logo.name}-dup-${i}`}
                     className="flex-shrink-0 h-8 flex items-center"
                   >
                     <img
