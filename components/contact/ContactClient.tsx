@@ -191,7 +191,7 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
               <div className="border-2 border-nfw-blackberry/10 p-8">
                 {submitted ? (
                   <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-[#d4f1ad] flex items-center justify-center mx-auto mb-6">
+                    <div className="w-16 h-16 bg-nfw-lilac flex items-center justify-center mx-auto mb-6">
                       <img
                         src="/images/nfw-symbol-brandmark-aubergine.png"
                         alt="NFW"
