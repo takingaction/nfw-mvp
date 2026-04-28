@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
 export function UpdatePasswordForm({
@@ -24,33 +23,27 @@ export function UpdatePasswordForm({
   const [isLoading, setIsLoading] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
-    const checkSession = async () => {
+    const initSession = async () => {
       const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setIsReady(true);
-        return;
-      }
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setIsReady(true);
-        return;
-      }
       const code = new URLSearchParams(window.location.search).get("code");
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (!error) {
           setIsReady(true);
+          return;
         }
       }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setIsReady(true);
+      }
     };
-    checkSession();
+    initSession();
   }, []);
 
-  const handleUpdatePassword = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const supabase = createClient();
@@ -58,16 +51,13 @@ export function UpdatePasswordForm({
     setError(null);
 
     try {
-      console.log("Attempting to update password...");
-      const { data, error: updateError } = await supabase.auth.updateUser({ password });
-      console.log("Update result:", data, updateError);
+      const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) throw updateError;
-      console.log("Password updated successfully, showing success...");
       setIsSuccess(true);
       setTimeout(() => { window.location.href = "/dashboard"; }, 1500);
     } catch (err: unknown) {
-      console.error("Password update error:", err);
       setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
       setIsLoading(false);
     }
   };
@@ -87,7 +77,7 @@ export function UpdatePasswordForm({
               <p className="text-nfw-aubergine font-serif text-lg">Redirecting to dashboard...</p>
             </div>
           ) : (
-            <form onSubmit={handleUpdatePassword}>
+            <form onSubmit={handleSubmit}>
               <div className="flex flex-col gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="password" className="text-nfw-blackberry">New password</Label>
