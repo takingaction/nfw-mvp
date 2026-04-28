@@ -29,23 +29,22 @@ export function UpdatePasswordForm({
   useEffect(() => {
     const checkSession = async () => {
       const supabase = createClient();
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        setError("Unable to verify your session. Please try resetting your password again.");
-        return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setIsReady(true);
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setIsReady(true);
+        }
       }
-      if (!session) {
-        setError("Your password reset link may have expired. Please request a new one.");
-        return;
-      }
-      setIsReady(true);
     };
     checkSession();
   }, []);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isReady) return;
+    if (!isReady && password.length === 0) return;
 
     const supabase = createClient();
     setIsLoading(true);
@@ -88,7 +87,7 @@ export function UpdatePasswordForm({
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    disabled={!isReady || isLoading}
+                    disabled={isLoading}
                     className="border-nfw-blackberry/20 focus:border-nfw-blackberry focus:ring-nfw-lilac"
                   />
                 </div>
@@ -96,7 +95,7 @@ export function UpdatePasswordForm({
                 <Button
                   type="submit"
                   className="w-full bg-nfw-blackberry hover:bg-nfw-blackberry/90"
-                  disabled={isLoading || !isReady}
+                  disabled={isLoading}
                 >
                   {isLoading ? "Saving..." : "Save new password"}
                 </Button>
