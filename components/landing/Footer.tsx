@@ -260,17 +260,17 @@ export default function Footer() {
                 {signupStatus === "loading" ? "Signing up..." : signupStatus === "success" ? "Signed up!" : "Submit"}
               </button>
             </form>
+            {signupStatus === "success" && (
+              <p className="mt-2 font-ui text-sm" style={{ color: "#B7B6B9" }}>
+                Thanks! You&apos;re on the list.
+              </p>
+            )}
+            {signupStatus === "error" && (
+              <p className="mt-2 font-ui text-sm text-red-300">
+                {errorMessage}
+              </p>
+            )}
           </div>
-          {signupStatus === "success" && (
-            <p className="mt-2 font-ui text-sm" style={{ color: "#B7B6B9" }}>
-              Thanks! You&apos;re on the list.
-            </p>
-          )}
-          {signupStatus === "error" && (
-            <p className="mt-2 font-ui text-sm text-red-300">
-              {errorMessage}
-            </p>
-          )}
         </div>
 
         {/* Bottom Bar */}
