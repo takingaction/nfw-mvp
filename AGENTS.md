@@ -2121,3 +2121,34 @@ Refactored grant email functions to use branded HTML templates from the `email_t
 - Added OpenGraph and Twitter card metadata to `app/layout.tsx`
 - Points to `/images/featured.jpg` for social media previews
 - Used in Facebook, Twitter, LinkedIn, and text message link previews
+
+### Session 2026-04-28: Marquee Gap Fix + UI Updates
+
+**Marquee Gap Fix:**
+- `components/sections/PerksFeatureSection.tsx` - Fixed gap between last logo and first in scrolling marquee
+- Problem: `react-fast-marquee` had visual gap when looping back to start
+- Solution: Duplicated logos array within Marquee for seamless infinite loop with no gap
+- Set `gap={0}` on Marquee since duplicates provide proper spacing via `gap-16`
+
+**UI Fixes:**
+- `components/contact/ContactClient.tsx` - Changed success checkmark background from green (`#d4f1ad`) to lilac (`bg-nfw-lilac`)
+- `components/landing/Footer.tsx` - Moved "Thanks! You're on the list." success message below form instead of beside it
+- `components/dashboard/YourZeroDollarStoreSection.tsx` - Made Latest Offerings cards clickable links to /store
+
+**SEO Updates:**
+- `/gift-membership` - H1: "Gift a Membership", SEO title/description added
+- `/faq` - H1: "Frequently Asked Questions", SEO title/description added
+- `/contact` - H1: "Contact Member Support", SEO title/description added
+- `/auth/sign-up` - "Become a Member" now H1 (was H2 in SignUpFlow)
+- `/auth/login` - "Member Login" now H1, SEO title/description updated
+- `app/gift-membership/page.tsx` - Refactored to server wrapper pattern for metadata export
+
+**Email System:**
+- Newsletter Welcome email triggers on footer newsletter signup and coming soon page for new subscribers
+- Duplicate detection: if email already subscribed, no welcome email sent
+- Greeting uses "Dear Friend," generic format
+
+**Favicon:**
+- Added `app/icon.png` (500x500) as primary favicon
+- Explicit icons configuration in `app/layout.tsx` metadata
+- Deleted old `app/favicon.ico` to avoid conflicts
