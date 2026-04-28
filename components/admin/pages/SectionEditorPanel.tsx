@@ -205,7 +205,7 @@ function FieldEditor({
         >
           <span
             className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-              value ? "translate-x-7" : "translate-x-1"
+              value ? "translate-x-1" : "translate-x-7"
             }`}
           />
         </button>
