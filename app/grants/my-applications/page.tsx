@@ -8,6 +8,19 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
+function decodeHtml(html: string): string {
+  return html
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, "/")
+    .replace(/&#92;/g, "\\");
+}
+
 export default async function MyApplicationsPage() {
   const supabase = await createServerClient();
   const {
@@ -146,9 +159,9 @@ export default async function MyApplicationsPage() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2 flex-wrap">
-                      <h3 className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry">
-                        {grant.grant_cycles?.cycle_name || "Grant Application"}
-                      </h3>
+                      <h3 className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry [&_sup]:text-[0.6em] [&_sup]:align-super"
+                        dangerouslySetInnerHTML={{ __html: decodeHtml(grant.grant_cycles?.cycle_name || "Grant Application") }}
+                      />
                       <span
                         className={`px-3 py-1 font-ui text-xs font-black tracking-[0.03em] uppercase ${statusColors[grant.status] || "bg-gray-100 text-gray-600"}`}
                       >
@@ -205,7 +218,7 @@ export default async function MyApplicationsPage() {
                 {/* Preview of application */}
                 {grant.who_are_you && (
                   <p className="font-serif text-sm text-nfw-blackberry/60 mb-4 line-clamp-2">
-                    {grant.who_are_you}
+                    {decodeHtml(grant.who_are_you)}
                   </p>
                 )}
 

@@ -10,6 +10,19 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
+function decodeHtml(html: string): string {
+  return html
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, "/")
+    .replace(/&#92;/g, "\\");
+}
+
 export default async function GrantDetailPage({
   params,
 }: {
@@ -148,10 +161,10 @@ export default async function GrantDetailPage({
                   Nominee Information
                 </h3>
                 <p className="font-serif text-nfw-blackberry/70">
-                  <span className="font-semibold">Name:</span> {grant.nominee_name}
+                  <span className="font-semibold">Name:</span> {decodeHtml(grant.nominee_name || "")}
                 </p>
                 <p className="font-serif text-nfw-blackberry/70">
-                  <span className="font-semibold">Email:</span> {grant.nominee_email}
+                  <span className="font-semibold">Email:</span> {decodeHtml(grant.nominee_email || "")}
                 </p>
               </div>
             )}
@@ -161,7 +174,7 @@ export default async function GrantDetailPage({
                   {grant.is_nominating ? "About the Nominee" : "Who are you?"}
                 </h3>
                 <p className="font-serif text-nfw-blackberry/70 whitespace-pre-wrap">
-                  {grant.who_are_you}
+                  {decodeHtml(grant.who_are_you || "")}
                 </p>
               </div>
             )}
@@ -171,7 +184,7 @@ export default async function GrantDetailPage({
                   Biggest Challenge
                 </h3>
                 <p className="font-serif text-nfw-blackberry/70 whitespace-pre-wrap">
-                  {grant.biggest_challenge}
+                  {decodeHtml(grant.biggest_challenge || "")}
                 </p>
               </div>
             )}
@@ -183,7 +196,7 @@ export default async function GrantDetailPage({
                     : "How You Would Use the Funds"}
                 </h3>
                 <p className="font-serif text-nfw-blackberry/70 whitespace-pre-wrap">
-                  {grant.fund_usage}
+                  {decodeHtml(grant.fund_usage || "")}
                 </p>
               </div>
             )}

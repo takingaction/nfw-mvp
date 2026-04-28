@@ -11,6 +11,12 @@ import {
   X,
 } from "lucide-react";
 
+const decodeHtml = (html: string): string => {
+  const div = document.createElement("div");
+  div.innerHTML = html || "";
+  return div.textContent || "";
+};
+
 const STATUS_OPTIONS = [
   {
     value: "submitted",
@@ -234,7 +240,7 @@ export default function AdminGrantReviewer({
                   </div>
                 </div>
                 <p className="text-sm text-nfw-blackberry/60 mt-3 line-clamp-2">
-                  {grant.who_are_you}
+                  {decodeHtml(grant.who_are_you)}
                 </p>
                 {grant.documents?.length > 0 && (
                   <p className="text-xs text-nfw-blackberry/50 mt-2 flex items-center gap-1">
@@ -319,10 +325,10 @@ export default function AdminGrantReviewer({
                       Nomination
                     </p>
                     <p className="text-xs text-nfw-blackberry/70">
-                      <span className="font-semibold">Nominee:</span> {selected.nominee_name}
+                      <span className="font-semibold">Nominee:</span> {decodeHtml(selected.nominee_name)}
                     </p>
                     <p className="text-xs text-nfw-blackberry/70">
-                      <span className="font-semibold">Email:</span> {selected.nominee_email}
+                      <span className="font-semibold">Email:</span> {decodeHtml(selected.nominee_email)}
                     </p>
                   </div>
                 )}
@@ -337,7 +343,7 @@ export default function AdminGrantReviewer({
                       : "Who are you?"}
                   </p>
                   <p className="text-sm text-nfw-blackberry leading-relaxed">
-                    {selected.who_are_you}
+                    {decodeHtml(selected.who_are_you)}
                   </p>
                 </div>
                 <div>
@@ -345,7 +351,7 @@ export default function AdminGrantReviewer({
                     Biggest Challenge
                   </p>
                   <p className="text-sm text-nfw-blackberry leading-relaxed">
-                    {selected.biggest_challenge}
+                    {decodeHtml(selected.biggest_challenge)}
                   </p>
                 </div>
                 <div>
@@ -353,7 +359,7 @@ export default function AdminGrantReviewer({
                     Fund Usage
                   </p>
                   <p className="text-sm text-nfw-blackberry leading-relaxed">
-                    {selected.fund_usage}
+                    {decodeHtml(selected.fund_usage)}
                   </p>
                 </div>
               </div>

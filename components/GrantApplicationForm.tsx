@@ -4,6 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, User, Users } from "lucide-react";
 
+const decodeHtml = (html: string): string => {
+  const div = document.createElement("div");
+  div.innerHTML = html || "";
+  return div.textContent || "";
+};
+
 interface GrantCycle {
   id: string;
   cycle_name: string;
@@ -180,9 +186,9 @@ export default function GrantApplicationForm({
                       )}
                     </div>
                     <div>
-                      <p className="font-serif text-lg text-nfw-blackberry">
-                        {cycle.cycle_name}
-                      </p>
+                      <p className="font-serif text-lg text-nfw-blackberry [&_sup]:text-[0.6em] [&_sup]:align-super"
+                         dangerouslySetInnerHTML={{ __html: decodeHtml(cycle.cycle_name) }}
+                       />
                       <p className="text-xs font-ui text-nfw-blackberry/50 mt-0.5">
                         Deadline:
                         {new Date(cycle.end_date).toLocaleDateString("en-US", {
@@ -193,7 +199,7 @@ export default function GrantApplicationForm({
                       </p>
                       {cycle.description && (
                         <p className="text-xs font-serif text-nfw-blackberry/60 mt-1">
-                          {cycle.description}
+                          {decodeHtml(cycle.description)}
                         </p>
                       )}
                     </div>
@@ -213,9 +219,9 @@ export default function GrantApplicationForm({
           <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] p-5">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="font-serif text-xl text-nfw-blackberry">
-                  {selectedCycle.cycle_name}
-                </h3>
+                <h3 className="font-serif text-xl text-nfw-blackberry [&_sup]:text-[0.6em] [&_sup]:align-super"
+                   dangerouslySetInnerHTML={{ __html: decodeHtml(selectedCycle.cycle_name) }}
+                 />
                 <p className="text-sm font-ui text-nfw-blackberry/60 mt-1">
                   Deadline:{" "}
                   {new Date(selectedCycle.end_date).toLocaleDateString("en-US", {

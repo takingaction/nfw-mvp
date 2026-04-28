@@ -5,6 +5,12 @@ import Link from "next/link";
 import { GripVertical, Check } from "lucide-react";
 import DeleteCycleButton from "./DeleteCycleButton";
 
+const decodeHtml = (html: string): string => {
+  const div = document.createElement("div");
+  div.innerHTML = html || "";
+  return div.textContent || "";
+};
+
 interface Cycle {
   id: string;
   cycle_name: string;
@@ -151,9 +157,9 @@ export default function SortableCycleList({ cycles, grants }: Props) {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <div className="flex items-center gap-3 mb-1">
-                      <h2 className="text-xl font-black text-nfw-blackberry font-serif">
-                        {cycle.cycle_name}
-                      </h2>
+                      <h2 className="text-xl font-black text-nfw-blackberry font-serif [&_sup]:text-[0.6em] [&_sup]:align-super"
+                         dangerouslySetInnerHTML={{ __html: decodeHtml(cycle.cycle_name) }}
+                       />
                       <span
                         className={`text-xs px-2.5 py-1 font-semibold ${statusColor[cycle.status] || "bg-gray-100 text-gray-600"}`}
                       >

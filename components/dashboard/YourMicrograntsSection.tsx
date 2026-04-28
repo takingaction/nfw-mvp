@@ -2,6 +2,12 @@
 
 import Link from "next/link";
 
+const decodeHtml = (html: string): string => {
+  const div = document.createElement("div");
+  div.innerHTML = html || "";
+  return div.textContent || "";
+};
+
 interface Grant {
   id: string;
   cycle_id: string;
@@ -96,9 +102,9 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
                   className="block bg-white/10 hover:bg-white/15 rounded-xl p-4 transition-colors"
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <h4 className="text-white font-serif font-semibold text-sm line-clamp-2 flex-1">
-                      {grant.grant_cycles?.cycle_name || "Grant Application"}
-                    </h4>
+                    <h4 className="text-white font-serif font-semibold text-sm line-clamp-2 flex-1 [&_sup]:text-[0.6em] [&_sup]:align-super"
+                      dangerouslySetInnerHTML={{ __html: decodeHtml(grant.grant_cycles?.cycle_name || "Grant Application") }}
+                    />
                     <span
                       className={`ml-2 px-2 py-0.5 font-ui text-xs font-black tracking-[0.03em] uppercase rounded ${statusColors[grant.status] || "bg-gray-100 text-gray-600"}`}
                     >
@@ -155,9 +161,9 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
                       />
                     </div>
                   )}
-                  <h4 className="text-white font-serif font-semibold text-sm line-clamp-2 mb-2">
-                    {cycle.cycle_name}
-                  </h4>
+                  <h4 className="text-white font-serif font-semibold text-sm line-clamp-2 mb-2 [&_sup]:text-[0.6em] [&_sup]:align-super"
+                    dangerouslySetInnerHTML={{ __html: decodeHtml(cycle.cycle_name) }}
+                  />
                   <p className="text-nfw-citrine font-ui text-xl font-bold mb-1">
                     ${cycle.amount_per_grant.toLocaleString()}
                   </p>

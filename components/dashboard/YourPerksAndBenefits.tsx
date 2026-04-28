@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { Heart, Gift, ChevronRight } from "lucide-react";
 
+const decodeHtml = (html: string): string => {
+  const div = document.createElement("div");
+  div.innerHTML = html || "";
+  return div.textContent || "";
+};
+
 interface LikedStore {
   id: string;
   store_key: string;
@@ -53,9 +59,13 @@ function RedeemedPerksList({ redemptions, onExplore }: RedeemedPerksListProps) {
             <Gift className="w-4 h-4 text-white/40" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-medium truncate">{redemption.offer_title}</p>
-            {redemption.store_name && (
-              <p className="text-white/50 text-xs truncate">{redemption.store_name}</p>
+<p className="text-white text-sm font-medium truncate [&_sup]:text-[0.6em] [&_sup]:align-super"
+                    dangerouslySetInnerHTML={{ __html: decodeHtml(redemption.offer_title) }}
+                  />
+                  {redemption.store_name && (
+                    <p className="text-white/50 text-xs truncate [&_sup]:text-[0.6em] [&_sup]:align-super"
+                       dangerouslySetInnerHTML={{ __html: decodeHtml(redemption.store_name) }}
+                    />
             )}
           </div>
         </div>
@@ -106,9 +116,9 @@ function SavedBrandsList({ stores, onExplore }: SavedBrandsListProps) {
               <Heart className="w-4 h-4 text-white/40" />
             )}
           </div>
-          <span className="text-white text-sm font-medium truncate flex-1">
-            {store.store_name}
-          </span>
+          <span className="text-white text-sm font-medium truncate flex-1 [&_sup]:text-[0.6em] [&_sup]:align-super"
+            dangerouslySetInnerHTML={{ __html: decodeHtml(store.store_name) }}
+          />
         </div>
       ))}
       {stores.length > 6 && (
