@@ -23,6 +23,7 @@ export function UpdatePasswordForm({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -53,10 +54,10 @@ export function UpdatePasswordForm({
     try {
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) throw updateError;
-      router.push("/dashboard");
+      setIsSuccess(true);
+      setTimeout(() => window.location.href = "/dashboard", 1500);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -67,35 +68,41 @@ export function UpdatePasswordForm({
         <CardHeader>
           <CardTitle className="text-2xl font-serif text-nfw-blackberry">Reset Your Password</CardTitle>
           <CardDescription className="text-nfw-blackberry/60">
-            Please enter your new password below.
+            {isSuccess ? "Your password has been updated!" : "Please enter your new password below."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleUpdatePassword}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="password" className="text-nfw-blackberry">New password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="New password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={!isReady || isLoading}
-                  className="border-nfw-blackberry/20 focus:border-nfw-blackberry focus:ring-nfw-lilac"
-                />
-              </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button
-                type="submit"
-                className="w-full bg-nfw-blackberry hover:bg-nfw-blackberry/90"
-                disabled={isLoading || !isReady}
-              >
-                {isLoading ? "Saving..." : "Save new password"}
-              </Button>
+          {isSuccess ? (
+            <div className="text-center py-4">
+              <p className="text-nfw-aubergine font-serif text-lg">Redirecting to dashboard...</p>
             </div>
-          </form>
+          ) : (
+            <form onSubmit={handleUpdatePassword}>
+              <div className="flex flex-col gap-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="password" className="text-nfw-blackberry">New password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="New password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={!isReady || isLoading}
+                    className="border-nfw-blackberry/20 focus:border-nfw-blackberry focus:ring-nfw-lilac"
+                  />
+                </div>
+                {error && <p className="text-sm text-red-500">{error}</p>}
+                <Button
+                  type="submit"
+                  className="w-full bg-nfw-blackberry hover:bg-nfw-blackberry/90"
+                  disabled={isLoading || !isReady}
+                >
+                  {isLoading ? "Saving..." : "Save new password"}
+                </Button>
+              </div>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>
