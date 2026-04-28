@@ -66,8 +66,9 @@ export default function PerksFeatureSection({ content }: Props) {
             speed={50}
             pauseOnHover
             gradient={false}
+            gap={64}
           >
-            <div className="flex gap-16 items-center mr-16">
+            <div className="flex gap-16 items-center">
               {logos.map((logo, i) => {
                 const logoSrc = typeof logo.image_url === "string"
                   ? logo.image_url
