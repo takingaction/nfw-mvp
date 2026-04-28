@@ -156,13 +156,6 @@ export default function AdminPagesClient({ pages }: { pages: Page[] }) {
                     >
                       <Copy className="w-5 h-5" />
                     </button>
-                    <button
-                      onClick={() => setDeleteModal({ isOpen: true, pageId: page.id, pageTitle: page.title })}
-                      className="p-2 text-red-500 hover:bg-red-50 transition-colors"
-                      title="Delete page"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
                   </div>
                 </div>
               </div>
