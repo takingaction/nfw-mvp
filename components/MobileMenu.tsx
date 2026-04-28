@@ -364,6 +364,13 @@ export default function MobileMenu() {
                           Edit Contact
                         </Link>
                         <Link
+                          href="/admin/legal"
+                          onClick={closeMenu}
+                          className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
+                        >
+                          Legal Pages
+                        </Link>
+                        <Link
                           href="/admin/grants"
                           onClick={closeMenu}
                           className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"

@@ -172,6 +172,13 @@ export function AuthButtonCombined() {
                   Edit Contact
                 </Link>
                 <Link
+                  href="/admin/legal"
+                  className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Legal Pages
+                </Link>
+                <Link
                   href="/admin/grants"
                   className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
