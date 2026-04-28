@@ -1,7 +1,7 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState, useEffect } from "react";
 
 export function UpdatePasswordForm({
   className,
@@ -21,38 +20,28 @@ export function UpdatePasswordForm({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isReady, setIsReady] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-
-  useEffect(() => {
-    const initSession = async () => {
-      const supabase = createClient();
-      const code = new URLSearchParams(window.location.search).get("code");
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (!error) {
-          setIsReady(true);
-          return;
-        }
-      }
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setIsReady(true);
-      }
-    };
-    initSession();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password.length === 0) return;
 
-    const supabase = createClient();
     setIsLoading(true);
     setError(null);
 
     try {
-      const { error: updateError } = await supabase.auth.updateUser({ password });
-      if (updateError) throw updateError;
+      const res = await fetch("/api/auth/update-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update password");
+      }
+
       setIsSuccess(true);
       setTimeout(() => { window.location.href = "/dashboard"; }, 1500);
     } catch (err: unknown) {
@@ -96,7 +85,7 @@ export function UpdatePasswordForm({
                 <Button
                   type="submit"
                   className="w-full bg-nfw-blackberry hover:bg-nfw-blackberry/90"
-                  disabled={isLoading}
+                  disabled={isLoading || password.length === 0}
                 >
                   {isLoading ? "Saving..." : "Save new password"}
                 </Button>
