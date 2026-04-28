@@ -267,7 +267,7 @@ export default function GrantApplicationForm({
               <div className="text-left">
                 <p className="font-ui text-nfw-blackberry text-sm">Myself</p>
                 <p className="text-xs font-serif text-nfw-blackberry/50">
-                  I&apos;m applying for me
+                  I'm applying for me
                 </p>
               </div>
             </button>
@@ -294,7 +294,7 @@ export default function GrantApplicationForm({
                   Someone else
                 </p>
                 <p className="text-xs font-serif text-nfw-blackberry/50">
-                  I&apos;m nominating someone
+                  I'm nominating someone
                 </p>
               </div>
             </button>
@@ -309,7 +309,7 @@ export default function GrantApplicationForm({
 
             <div>
               <label className={labelClass}>
-                Nominee&apos;s Name <span className="text-nfw-lilac">*</span>
+                Nominee's Name <span className="text-nfw-lilac">*</span>
               </label>
               <input
                 type="text"
@@ -323,7 +323,7 @@ export default function GrantApplicationForm({
 
             <div>
               <label className={labelClass}>
-                Nominee&apos;s Email <span className="text-nfw-lilac">*</span>
+                Nominee's Email <span className="text-nfw-lilac">*</span>
               </label>
               <input
                 type="email"
@@ -362,13 +362,13 @@ export default function GrantApplicationForm({
         <div>
           <label className={labelClass}>
             {isNominating
-              ? "Tell us about the person you&apos;re nominating."
+              ? "Tell us about the person you're nominating."
               : "Who are you?"}{" "}
             <span className="text-nfw-lilac">*</span>
           </label>
           <p className="text-xs font-serif text-nfw-blackberry/50 mb-2">
             {isNominating
-              ? "Share their name, background, and why you&apos;re nominating them."
+              ? "Share their name, background, and why you're nominating them."
               : "Tell us a little about yourself — your situation, your life, what matters to you."}
           </p>
           <textarea
@@ -380,8 +380,8 @@ export default function GrantApplicationForm({
             maxLength={500}
             placeholder={
               isNominating
-                ? "Her name is Maria. She&apos;s a single mom of three..."
-                : "I&apos;m a single mom living in Atlanta..."
+                ? "Her name is Maria. She's a single mom of three..."
+                : "I'm a single mom living in Atlanta..."
             }
             className={inputClass + " resize-none"}
             required
@@ -415,7 +415,7 @@ export default function GrantApplicationForm({
             placeholder={
               isNominating
                 ? "She lost her job last month and her car needs repairs to get to interviews..."
-                : "My car broke down last month and I can&apos;t get to work without it..."
+                : "My car broke down last month and I can't get to work without it..."
             }
             className={inputClass + " resize-none"}
             required
@@ -435,7 +435,7 @@ export default function GrantApplicationForm({
           <p className="text-xs font-serif text-nfw-blackberry/50 mb-2">
             {isNominating
               ? "Describe how you think the funds would make a difference for them."
-              : "Tell us exactly how you&apos;d use the money and what difference it would make."}
+              : "Tell us exactly how you'd use the money and what difference it would make."}
           </p>
           <textarea
             value={formData.fund_usage}
