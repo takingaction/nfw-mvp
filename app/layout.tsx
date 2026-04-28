@@ -39,8 +39,8 @@ export const metadata: Metadata = {
     "Empowering women through financial support, resources, and community",
   icons: {
     icon: [
-      { url: "/icon.png", type: "image/png" },
-      { url: "/favicon.ico", type: "image/x-icon" },
+      { url: "/icon.png?v=2", type: "image/png" },
+      { url: "/favicon.ico?v=2", type: "image/x-icon" },
     ],
   },
   openGraph: {
