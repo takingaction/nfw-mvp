@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { sendNewsletterWelcomeEmail } from "@/lib/email";
 
 export async function POST(request: Request) {
   try {
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createServerClient();
-    
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -56,6 +57,12 @@ export async function POST(request: Request) {
         { error: "Failed to subscribe. Please try again." },
         { status: 500 }
       );
+    }
+
+    try {
+      await sendNewsletterWelcomeEmail({ to: email, name: "Friend" });
+    } catch (emailError) {
+      console.error("Failed to send newsletter welcome email:", emailError);
     }
 
     return NextResponse.json({

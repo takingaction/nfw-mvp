@@ -16,7 +16,7 @@ const EMAIL_TEMPLATES = [
     name: "Newsletter Welcome",
     slug: "newsletter-welcome",
     category: "resend",
-    description: "Sent when someone subscribes to newsletter",
+    description: "Sent when someone subscribes via the footer newsletter signup or coming soon page",
     subject: "You're in! Welcome to the NFW community",
     source_file: "lib/email.ts:sendNewsletterWelcomeEmail",
     is_editable: true,
