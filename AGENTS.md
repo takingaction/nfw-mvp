@@ -2169,3 +2169,43 @@ Refactored grant email functions to use branded HTML templates from the `email_t
 
 **Files Modified:**
 - `components/update-password-form.tsx` - Refactored to call API route instead of direct Supabase
+
+### Session 2026-04-28: Legal Pages Admin + Hero Template Enhancements
+
+#### Legal Pages Admin
+
+**Problem:** No way to manage Termly embed codes for Privacy Policy, Terms of Service, and Accessibility pages.
+
+**Solution:**
+- Created `legal_pages` table in Supabase with slug, title, termly_embed_code columns
+- Created `/admin/legal` page with tabbed interface (3 tabs: Privacy, Terms of Service, Accessibility)
+- Each tab has textarea for Termly embed code + Save button
+- Created public pages at `/privacy`, `/terms-of-service`, `/accessibility` that render embed code via `dangerouslySetInnerHTML`
+
+**Files Created:**
+- `supabase/migrations/050_create_legal_pages.sql`
+- `app/api/legal/[slug]/route.ts` - GET/POST API for legal pages
+- `app/admin/legal/page.tsx` - Server wrapper with admin auth
+- `app/admin/legal/LegalAdminClient.tsx` - Tabbed admin UI
+- `app/privacy/page.tsx`, `app/terms-of-service/page.tsx`, `app/accessibility/page.tsx` - Public pages
+
+**Admin Dropdown Links Added:**
+- Added "Legal Pages" link to AuthButtonCombined, auth-button, and MobileMenu
+
+#### Hero Template Enhancements
+
+**Added two new editor fields:**
+1. `subheadline_italic` - Toggle to make subheadline italic or not (default: true)
+2. `image_position` - Select to swap image to left or right column (default: "right")
+
+**Files Modified:**
+- `lib/sections/types.ts` - Added `subheadline_italic?: boolean` and `image_position?: "left" | "right"` to `HeroContent`
+- `lib/sections/registry.ts` - Added both fields to hero `editorFields` with types "toggle" and "select"
+- `components/sections/HeroSection.tsx` - Applied conditional italic class and column swap via CSS order classes
+- `components/admin/pages/SectionEditorPanel.tsx` - Added "toggle" field type UI component + fixed toggle switch (OFF=LEFT, ON=RIGHT)
+
+#### Duplicate Trash Icon Fix
+
+**Problem:** `/admin/pages` showed two trash can icons on page cards.
+
+**Fix:** Removed duplicate Trash2 button from `AdminPagesClient.tsx`
