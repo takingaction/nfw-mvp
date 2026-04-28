@@ -2202,7 +2202,7 @@ Refactored grant email functions to use branded HTML templates from the `email_t
 - `lib/sections/types.ts` - Added `subheadline_italic?: boolean` and `image_position?: "left" | "right"` to `HeroContent`
 - `lib/sections/registry.ts` - Added both fields to hero `editorFields` with types "toggle" and "select"
 - `components/sections/HeroSection.tsx` - Applied conditional italic class and column swap via CSS order classes
-- `components/admin/pages/SectionEditorPanel.tsx` - Added "toggle" field type UI component + fixed toggle switch (OFF=LEFT, ON=RIGHT)
+- `components/admin/pages/SectionEditorPanel.tsx` - Added "toggle" field type UI component + fixed toggle switch (OFF=LEFT, ON=RIGHT, proper sizing to keep circle visible)
 
 #### Duplicate Trash Icon Fix
 
