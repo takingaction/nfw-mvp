@@ -2152,3 +2152,20 @@ Refactored grant email functions to use branded HTML templates from the `email_t
 - Added `app/icon.png` (500x500) as primary favicon
 - Explicit icons configuration in `app/layout.tsx` metadata
 - Deleted old `app/favicon.ico` to avoid conflicts
+
+### Session 2026-04-28: Password Update Fix
+
+**Problem:** Password reset form at `/auth/update-password` would hang on "Saving..." after submission.
+
+**Root Cause:** Direct client-side Supabase calls (`supabase.auth.updateUser`) don't properly exchange the password reset code from the URL into a session.
+
+**Solution:**
+- Created new API route `/api/auth/update-password` (POST) that uses server-side `createClient()` 
+- Server-side client properly exchanges the `?code=` parameter into a valid session
+- Component now calls the API route instead of direct Supabase call
+
+**Files Created:**
+- `app/api/auth/update-password/route.ts` - Server-side API route for password updates
+
+**Files Modified:**
+- `components/update-password-form.tsx` - Refactored to call API route instead of direct Supabase
