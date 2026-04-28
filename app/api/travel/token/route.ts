@@ -40,11 +40,20 @@ export async function POST(request: Request) {
       .trim();
 
     // Fetch session token from Access Travel Auth API
+    // Use the shared ACCESS_OFFERS_TOKEN (same token for both Travel SDK and main Perks API per Access)
     const authUrl = process.env.ACCESS_TRAVEL_AUTH_URL;
-    const apiKey = process.env.ACCESS_TRAVEL_API_KEY;
+    const apiKey = process.env.ACCESS_OFFERS_TOKEN;
 
-    if (!authUrl || !apiKey) {
-      console.error("[travel/token] Missing environment variables");
+    if (!authUrl) {
+      console.error("[travel/token] Missing ACCESS_TRAVEL_AUTH_URL");
+      return NextResponse.json(
+        { error: "Travel API not configured" },
+        { status: 500 }
+      );
+    }
+
+    if (!apiKey) {
+      console.error("[travel/token] Missing ACCESS_OFFERS_TOKEN");
       return NextResponse.json(
         { error: "Travel API not configured" },
         { status: 500 }
