@@ -6,6 +6,7 @@ import { GripVertical, Check } from "lucide-react";
 import DeleteCycleButton from "./DeleteCycleButton";
 
 const decodeHtml = (html: string): string => {
+  if (typeof document === "undefined") return html || "";
   const div = document.createElement("div");
   div.innerHTML = html || "";
   return div.textContent || "";
