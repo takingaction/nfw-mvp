@@ -395,7 +395,7 @@ export default function GrantApplicationForm({
           <label className={labelClass}>
             {isNominating
               ? "What is their biggest challenge right now?"
-              : "What&apos;s the biggest challenge you&apos;re facing right now?"}{" "}
+              : "What's the biggest challenge you're facing right now?"}{" "}
             <span className="text-nfw-lilac">*</span>
           </label>
           <p className="text-xs font-serif text-nfw-blackberry/50 mb-2">
