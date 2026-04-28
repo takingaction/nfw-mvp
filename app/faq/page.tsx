@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import FaqClient from "@/components/faq/FaqClient";
 
 interface FaqQuestion {
