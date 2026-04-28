@@ -2208,20 +2208,68 @@ Refactored grant email functions to use branded HTML templates from the `email_t
 
 Fixed column proportions when swapping hero image from right to left.
 
-**Problem:** Using CSS Grid with `order-last` on the text column when image_position=left caused the text to be in the narrower column (47%) and image in the wider column (53%), breaking visual proportions.
-
-**Solution:** Converted from CSS Grid to Flexbox with `flex-row-reverse` and explicit `flex-[53%]` / `flex-[47%]` widths on the columns. When image is on left, `flex-row-reverse` naturally places the text (53%) on the right and image (47%) on the left, preserving proportions.
+**Solution:** CSS Grid with explicit width swapping:
+- **Right (default):** `grid-cols-[53%_47%]` - text 53%, image 47%, image has `order-last`
+- **Left:** `grid-cols-[47%_53%]` - image 47% (order-first), text 53%
 
 **Files Modified:**
 - `components/sections/HeroSection.tsx`:
-  - Changed `grid lg:grid-cols-[53%_47%]` to `flex flex-col lg:flex-row`
-  - Added `flex-row-reverse` on container when `image_position === "left"`
-  - Text column: `flex-[53%]` (always 53% width regardless of position)
-  - Image column: `flex-[47%]` (always 47% width regardless of position)
-  - Removed `lg:pl-12` left padding since flexbox handles layout
+  - Grid columns: `grid-cols-[53%_47%]` when image on right, `grid-cols-[47%_53%]` when image on left
+  - Text column: always left column (no order class)
+  - Image column: `order-last` when right, `order-first` when left
+  - Removed flexbox approach in favor of explicit grid column swap
 
 #### Duplicate Trash Icon Fix
 
 **Problem:** `/admin/pages` showed two trash can icons on page cards.
 
 **Fix:** Removed duplicate Trash2 button from `AdminPagesClient.tsx`
+
+### Session 2026-04-28: Security Audit & Admin Route Protection
+
+Conducted comprehensive security audit and fixed critical vulnerabilities.
+
+#### Vulnerabilities Found
+
+**4 Unprotected Admin API Routes:**
+- `pages/create` - Anyone could create pages
+- `pages/update` - Anyone could update any page
+- `pages/delete` - Anyone could delete any page
+- `pages/duplicate` - Anyone could duplicate any page
+
+**No Edge Middleware Protection:**
+- No root middleware protecting `/admin/*` routes at the edge
+
+**Duplicate `requireAdmin` Implementations:**
+- `/middleware/adminCheck.ts` - Used by admin pages (with redirect)
+- `/lib/adminCheck.ts` - Used by some API routes (returns error object)
+
+#### Fixes Applied
+
+**1. Protected Page Management API Routes:**
+Added admin authentication checks to all 4 vulnerable routes:
+- `app/api/admin/pages/create/route.ts`
+- `app/api/admin/pages/update/route.ts`
+- `app/api/admin/pages/delete/route.ts`
+- `app/api/admin/pages/duplicate/route.ts`
+
+**2. Consolidated `requireAdmin`:**
+- Updated `/lib/adminCheck.ts` to support both modes:
+  - `redirectOnFailure: true` for pages (redirects to login/home)
+  - Default for API routes (returns `{ authorized: false, ... }`)
+- Updated `/middleware/adminCheck.ts` to re-export from lib with redirect enabled
+
+**3. Added Edge Protection in proxy.ts:**
+- Added `/admin/*` route protection at the edge
+- Checks user authentication and admin status before allowing access
+- Redirects to `/auth/login` if not authenticated
+- Redirects to `/` if authenticated but not admin
+
+**Files Modified:**
+- `app/api/admin/pages/create/route.ts` - Added admin auth check
+- `app/api/admin/pages/update/route.ts` - Added admin auth check
+- `app/api/admin/pages/delete/route.ts` - Added admin auth check
+- `app/api/admin/pages/duplicate/route.ts` - Added admin auth check
+- `lib/adminCheck.ts` - Added options parameter for redirect behavior
+- `middleware/adminCheck.ts` - Now re-exports from lib with redirect enabled
+- `proxy.ts` - Added edge-level `/admin/*` protection

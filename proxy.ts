@@ -26,7 +26,27 @@ export async function proxy(request: NextRequest) {
   );
 
   // Refresh session
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Protect /admin/* routes
+  if (request.nextUrl.pathname.startsWith("/admin")) {
+    if (!user) {
+      return NextResponse.redirect(new URL("/auth/login", request.url));
+    }
+
+    // Check if user is admin
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.is_admin) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  }
 
   // Set pathname header
   supabaseResponse.headers.set("x-pathname", request.nextUrl.pathname);
