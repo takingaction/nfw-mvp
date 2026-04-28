@@ -590,9 +590,9 @@ export default function SignUpFlow() {
           {step === 0 && (
             <form onSubmit={handleCreateAccount} className="space-y-5">
               <div>
-                <h1 className="text-3xl font-black text-nfw-blackberry mb-1 font-serif">
+                <h2 className="text-3xl font-black text-nfw-blackberry mb-1 font-serif">
                   Create your account
-                </h1>
+                </h2>
                 <p className="text-nfw-blackberry/60 text-sm">
                   Already a member?{" "}
                   <Link
@@ -1155,9 +1155,9 @@ export default function SignUpFlow() {
           <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-dove mb-6">
             JOIN WOMEN NATIONWIDE
           </p>
-          <h2 className="font-serif text-4xl lg:text-6xl text-white mb-4 leading-tight">
+          <h1 className="font-serif text-4xl lg:text-6xl text-white mb-4 leading-tight">
             Become a Member
-          </h2>
+          </h1>
           <p className="text-white text-sm mb-10 leading-relaxed">
             NFW membership helps you get relief for yourself while helping other women at the same time. Membership includes:
           </p>
