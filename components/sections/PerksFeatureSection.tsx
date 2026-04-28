@@ -66,7 +66,6 @@ export default function PerksFeatureSection({ content }: Props) {
             speed={50}
             pauseOnHover
             gradient={false}
-            gap={0}
           >
             <div className="flex gap-16 items-center">
               {logos.map((logo, i) => {
