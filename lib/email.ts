@@ -67,7 +67,8 @@ export function buildEmailHtml({
   console.log('[buildEmailHtml] Called with name:', name, 'headline:', headline);
   console.log('[buildEmailHtml] body length:', body?.length);
   console.log('[buildEmailHtml] ctaText:', ctaText, 'footerCtaText:', footerCtaText);
-  const logoUrl = "https://nationalfundforwomen.org/images/nfw-aubergine.png";
+  try {
+    const logoUrl = "https://nationalfundforwomen.org/images/nfw-aubergine.png";
   const siteUrl = "https://nationalfundforwomen.org";
   const ctaBackgroundColor = "#F8F19A";
   const ctaTextColor = "#3E145F";
@@ -305,21 +306,28 @@ export async function sendBrandedEmail({
 }: SendBrandedEmailOptions): Promise<{ success: boolean; error?: any }> {
   console.log('[sendBrandedEmail] Called with to:', to, 'subject:', subject);
   console.log('[sendBrandedEmail] body length:', body?.length);
-  const html = buildEmailHtml({
-    name,
-    heroImage,
-    heroText,
-    headline,
-    body,
-    ctaText,
-    ctaUrl,
-    secondaryCtaText,
-    secondaryCtaUrl,
-    footerCtaText,
-    footerCtaUrl,
-  });
-
-  return sendTemplateEmail({ to, subject, html });
+  try {
+    console.log('[sendBrandedEmail] Calling buildEmailHtml...');
+    const html = buildEmailHtml({
+      name,
+      heroImage,
+      heroText,
+      headline,
+      body,
+      ctaText,
+      ctaUrl,
+      secondaryCtaText,
+      secondaryCtaUrl,
+      footerCtaText,
+      footerCtaUrl,
+    });
+    console.log('[sendBrandedEmail] buildEmailHtml returned, html length:', html?.length);
+    console.log('[sendBrandedEmail] Calling sendTemplateEmail...');
+    return sendTemplateEmail({ to, subject, html });
+  } catch (err) {
+    console.error('[sendBrandedEmail] Error:', err);
+    throw err;
+  }
 }
 
 export async function sendTemplateEmail({
@@ -407,21 +415,27 @@ export async function sendWelcomeEmail({
     const body = replaceTemplateVariables(template.html, variables);
     console.log('[sendWelcomeEmail] Body after replace, length:', body.length);
     console.log('[sendWelcomeEmail] Calling sendBrandedEmail...');
-    await sendBrandedEmail({
-      to,
-      subject: "Welcome to NFW! We're here to help",
-      name,
-      heroImage: heroImageUrl,
-      heroText: 'A <em>community</em> of women showing up for each other',
-      headline: "Welcome to NFW!",
-      body,
-      ctaText: "GET STARTED",
-      ctaUrl: `${siteUrl}/dashboard`,
-      secondaryCtaText: "BROWSE PERKS",
-      secondaryCtaUrl: `${siteUrl}/perks`,
-      footerCtaText: "VISIT WEBSITE",
-      footerCtaUrl: siteUrl,
-    });
+    try {
+      await sendBrandedEmail({
+        to,
+        subject: "Welcome to NFW! We're here to help",
+        name,
+        heroImage: heroImageUrl,
+        heroText: 'A <em>community</em> of women showing up for each other',
+        headline: "Welcome to NFW!",
+        body,
+        ctaText: "GET STARTED",
+        ctaUrl: `${siteUrl}/dashboard`,
+        secondaryCtaText: "BROWSE PERKS",
+        secondaryCtaUrl: `${siteUrl}/perks`,
+        footerCtaText: "VISIT WEBSITE",
+        footerCtaUrl: siteUrl,
+      });
+      console.log('[sendWelcomeEmail] sendBrandedEmail completed successfully');
+    } catch (err) {
+      console.error('[sendWelcomeEmail] sendBrandedEmail error:', err);
+      throw err;
+    }
   } else {
     throw new Error(`Failed to load email template: ${slug}`);
   }
