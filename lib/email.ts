@@ -68,6 +68,7 @@ export function buildEmailHtml({
 }: EmailHtmlOptions): string {
   console.log('[buildEmailHtml] Called with name:', name, 'headline:', headline);
   console.log('[buildEmailHtml] body length:', body?.length);
+  console.log('[buildEmailHtml] membershipSnapshot length:', membershipSnapshot?.length);
   console.log('[buildEmailHtml] ctaText:', ctaText, 'footerCtaText:', footerCtaText);
   const logoUrl = "https://nationalfundforwomen.org/images/nfw-aubergine.png";
   const siteUrl = "https://nationalfundforwomen.org";
@@ -336,6 +337,7 @@ export async function sendBrandedEmail({
 }: SendBrandedEmailOptions): Promise<{ success: boolean; error?: any }> {
   console.log('[sendBrandedEmail] Called with to:', to, 'subject:', subject);
   console.log('[sendBrandedEmail] body length:', body?.length);
+  console.log('[sendBrandedEmail] membershipSnapshot length:', membershipSnapshot?.length);
   try {
     console.log('[sendBrandedEmail] Calling buildEmailHtml...');
     const html = buildEmailHtml({
