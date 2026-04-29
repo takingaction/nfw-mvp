@@ -55,13 +55,22 @@ export async function POST(
     const siteUrl = "https://nationalfundforwomen.org";
     const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
+    // Determine membership tier from slug for welcome templates
+    const isWelcomeTemplate = slug.startsWith('welcome-');
+    const membershipTier = isWelcomeTemplate
+      ? slug === 'welcome-free' ? 'Free'
+        : slug === 'welcome-contributing' ? 'Contributing'
+        : slug === 'welcome-founding' ? 'Founding'
+        : 'Free'
+      : 'Free';
+
     // Helper to replace template variables with test values
     function replaceVariables(html: string, email: string): string {
       return html
         .replace(/\{\{\s*name\s*\}\}/gi, "Test User")
         .replace(/\{\{\s*email\s*\}\}/gi, email)
         .replace(/\{\{\s*member_id\s*\}\}/g, "TEST-123456")
-        .replace(/\{\{\s*membership_tier\s*\}\}/gi, "Contributing")
+        .replace(/\{\{\s*membership_tier\s*\}\}/gi, membershipTier)
         .replace(/\{\{\s*renewal_date\s*\}\}/gi, "April 28, 2027")
         .replace(/\{\{\s*site_url\s*\}\}/g, siteUrl)
         .replace(/\{\{\s*dashboard_url\s*\}\}/g, `${siteUrl}/dashboard`)
@@ -89,13 +98,15 @@ export async function POST(
     const processedBody = replaceVariables(template.html_content || "", testEmail);
     const testSubject = `[TEST] ${template.subject}`;
 
+    // Headline for welcome templates (same for all tiers)
+    const headline = isWelcomeTemplate ? "Welcome to NFW!" : template.name;
+
     // Build membership snapshot for welcome-type templates
-    const isWelcomeTemplate = slug.startsWith('welcome-');
     const membershipSnapshot = isWelcomeTemplate ? `
       <div style="background-color: rgba(255,255,255,0.1); border-radius: 8px; padding: 15px 20px; margin-bottom: 20px;">
         <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 12px; font-weight: 700; color: #FFFFFF; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.05em;">Your membership snapshot</p>
         <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 4px 0;"><strong>Email:</strong> ${testEmail}</p>
-        <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0;"><strong>Membership Tier:</strong> Contributing</p>
+        <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0;"><strong>Membership Tier:</strong> ${membershipTier}</p>
       </div>
     ` : undefined;
 
@@ -106,7 +117,7 @@ export async function POST(
       name: "Test User",
       heroImage,
       heroText: 'A <em>community</em> of women showing up for each other',
-      headline: template.name,
+      headline,
       body: processedBody,
       membershipSnapshot,
       ctaText: "GET STARTED",
