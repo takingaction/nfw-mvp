@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { sendTemplateEmail } from "@/lib/email";
+import { sendBrandedEmail } from "@/lib/email";
 
 export async function POST(
   request: Request,
@@ -52,27 +52,56 @@ export async function POST(
       );
     }
 
-    // Send test email using the template's HTML content
-    // We need to replace variables with test values
-    const testHtml = template.html_content
-      .replace(/\{\{\s*\.Email\s*\}\}/g, testEmail)
-      .replace(/\{\{\s*\.ConfirmationURL\s*\}\}/g, "https://nationalfundforwomen.org/auth/confirm?token=test-token")
-      .replace(/\{\{\s*\.Token\s*\}\}/g, "123456")
-      .replace(/\{\{\s*\.TokenHash\s*\}\}/g, "test-token-hash")
-      .replace(/\{\{\s*\.SiteURL\s*\}\}/g, "https://nationalfundforwomen.org")
-      .replace(/\{\{\s*\.NewEmail\s*\}\}/g, testEmail)
-      .replace(/\{\{\s*\.OldEmail\s*\}\}/g, "old@example.com")
-      .replace(/\{\{\s*\.Phone\s*\}\}/g, "+1234567890")
-      .replace(/\{\{\s*\.OldPhone\s*\}\}/g, "+0987654321")
-      .replace(/\{\{\s*\.Provider\s*\}\}/g, "Google")
-      .replace(/\{\{\s*\.FactorType\s*\}\}/g, "totp");
+    const siteUrl = "https://nationalfundforwomen.org";
+    const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
-    const testSubject = `[TEST] ${template.subject}`.replace(/\{\{\s*\..*?\s*\}\}/g, testEmail);
+    // Helper to replace template variables with test values
+    function replaceVariables(html: string, email: string): string {
+      return html
+        .replace(/\{\{\s*name\s*\}\}/gi, "Test User")
+        .replace(/\{\{\s*email\s*\}\}/gi, email)
+        .replace(/\{\{\s*member_id\s*\}\}/g, "TEST-123456")
+        .replace(/\{\{\s*membership_tier\s*\}\}/gi, "Contributing")
+        .replace(/\{\{\s*renewal_date\s*\}\}/gi, "April 28, 2027")
+        .replace(/\{\{\s*site_url\s*\}\}/g, siteUrl)
+        .replace(/\{\{\s*dashboard_url\s*\}\}/g, `${siteUrl}/dashboard`)
+        .replace(/\{\{\s*perks_url\s*\}\}/g, `${siteUrl}/perks`)
+        .replace(/\{\{\s*store_url\s*\}\}/g, `${siteUrl}/store`)
+        .replace(/\{\{\s*grants_url\s*\}\}/g, `${siteUrl}/grants`)
+        .replace(/\{\{\s*signup_url\s*\}\}/g, `${siteUrl}/auth/sign-up`)
+        .replace(/\{\{\s*gift_url\s*\}\}/g, `${siteUrl}/gift-membership`)
+        .replace(/\{\{\s*faq_url\s*\}\}/g, `${siteUrl}/faq`)
+        .replace(/\{\{\s*grantCycleName\s*\}\}/g, "Spring 2026 Grant Cycle")
+        .replace(/\{\{\s*amount\s*\}\}/g, "5,000")
+        .replace(/\{\{\s*applicationId\s*\}\}/g, "TEST-APP-001")
+        .replace(/\{\{\s*status\s*\}\}/g, "under review")
+        .replace(/\{\{\s*siteUrl\s*\}\}/g, siteUrl)
+        .replace(/\{\{\s*ctaUrl\s*\}\}/g, `${siteUrl}/dashboard`)
+        // Handlebars-style conditionals - remove them for test
+        .replace(/\{\{\#if\s+\w+\s*\}\}/g, "")
+        .replace(/\{\{\s*\/if\s*\}\}/g, "")
+        // Grant-specific variable replacements
+        .replace(/\{\{\s*grant_cycle_name\s*\}\}/g, "Spring 2026 Grant Cycle")
+        .replace(/\{\{\s*message\s*\}\}/g, "Thank you for your patience.")
+        .replace(/\{\{\s*application_url\s*\}\}/g, `${siteUrl}/grants/my-applications`);
+    }
 
-    const { success, error: sendError } = await sendTemplateEmail({
+    const processedBody = replaceVariables(template.html_content || "");
+    const testSubject = `[TEST] ${template.subject}`;
+
+    // Wrap body in branded template via sendBrandedEmail
+    const { success, error: sendError } = await sendBrandedEmail({
       to: testEmail,
       subject: testSubject,
-      html: testHtml,
+      name: "Test User",
+      heroImage,
+      heroText: 'A <em>community</em> of women showing up for each other',
+      headline: template.name,
+      body: processedBody,
+      ctaText: "VISIT WEBSITE",
+      ctaUrl: siteUrl,
+      footerCtaText: "VISIT WEBSITE",
+      footerCtaUrl: siteUrl,
     });
 
     if (!success) {
