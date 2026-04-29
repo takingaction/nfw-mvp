@@ -2280,3 +2280,58 @@ Added admin authentication checks to all 4 vulnerable routes:
 - `lib/adminCheck.ts` - Added options parameter for redirect behavior
 - `middleware/adminCheck.ts` - Now re-exports from lib with redirect enabled
 - `proxy.ts` - Added edge-level `/admin/*` protection
+
+### Session 2026-04-29: Email System Fixes
+
+#### Signup Flow Hang Fix
+
+**Problem:** "Continue for free" button hung after clicking - `supabase.auth.getUser()` was causing a retry loop (multiple 2.25s requests).
+
+**Root Cause:** Session/auth issue causing Supabase client to retry `getUser()` continuously.
+
+**Solution:** Skip `getUser()` in step 3 - pass user ID through React state from step 1.
+
+**Changes:**
+- Added `userId` state to SignUpFlow
+- Added `useEffect` to fetch and store user ID when step >= 1
+- Modified `handleSelectPlan` to use stored `userId` instead of calling `getUser()`
+- Uncommented welcome email and Access Perks sync calls
+
+**Files Modified:**
+- `components/SignUpFlow.tsx` - Added userId state, useEffect, updated handleSelectPlan
+
+#### Email Template Structure Fix
+
+**Problem:** Welcome emails showed "VISIT WEBSITE" twice in body CTA section. Membership snapshot div nested in template body was breaking email HTML structure.
+
+**Root Cause:** Migration 065 simplified templates but placed membership snapshot (with nested `<div>`) in template body, breaking table layout in email clients.
+
+**Solution:** Move membership snapshot to email shell - `buildEmailHtml` now accepts `membershipSnapshot` parameter and renders it in a dedicated `<tr>` section after headline, before body.
+
+**Changes:**
+- Added `membershipSnapshot` parameter to `EmailHtmlOptions` interface
+- Added `membershipSection` variable in `buildEmailHtml` (renders after headline, before body)
+- Added `membershipSnapshot` to `SendBrandedEmailOptions` interface
+- Updated `sendBrandedEmail` to accept and pass `membershipSnapshot`
+- Updated `sendWelcomeEmail` to build membership snapshot HTML and pass as parameter
+- Templates remain simple body-only content (no nested tables/divs)
+
+**Files Modified:**
+- `lib/email.ts` - Added membershipSnapshot to shell, not template
+
+**Database Migrations:**
+- `068_fix_welcome_templates_remove_snapshot.sql` - Resets welcome templates to simple body content
+
+#### send-test Route Fix
+
+**Problem:** Test emails showed wrong headline ("Welcome Email - Free" instead of "Welcome to NFW!") and wrong membership tier ("Contributing" for all welcome templates).
+
+**Root Cause:** send-test route was using `template.name` as headline and hardcoding "Contributing" for all templates.
+
+**Fix:**
+- For welcome-* templates, use "Welcome to NFW!" as headline (same for all tiers)
+- Detect membership tier from slug: welcome-free=Free, welcome-contributing=Contributing, welcome-founding=Founding
+- Use correct tier in both variable replacement and membershipSnapshot
+
+**Files Modified:**
+- `app/api/admin/emails/[slug]/send-test/route.ts` - Fixed headline and membership tier detection
