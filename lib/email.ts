@@ -67,8 +67,7 @@ export function buildEmailHtml({
   console.log('[buildEmailHtml] Called with name:', name, 'headline:', headline);
   console.log('[buildEmailHtml] body length:', body?.length);
   console.log('[buildEmailHtml] ctaText:', ctaText, 'footerCtaText:', footerCtaText);
-  try {
-    const logoUrl = "https://nationalfundforwomen.org/images/nfw-aubergine.png";
+  const logoUrl = "https://nationalfundforwomen.org/images/nfw-aubergine.png";
   const siteUrl = "https://nationalfundforwomen.org";
   const ctaBackgroundColor = "#F8F19A";
   const ctaTextColor = "#3E145F";
