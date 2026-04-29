@@ -2,12 +2,30 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 const EMAIL_TEMPLATES = [
-  // Resend Templates
+  // Resend Templates (tier-specific for welcome emails)
   {
-    name: "Welcome Email",
-    slug: "welcome",
+    name: "Welcome Email - Free",
+    slug: "welcome-free",
     category: "resend",
-    description: "Sent to new members after completing signup",
+    description: "Sent to new free members after completing signup",
+    subject: "Welcome to National Fund for Women",
+    source_file: "lib/email.ts:sendWelcomeEmail",
+    is_editable: true,
+  },
+  {
+    name: "Welcome Email - Contributing",
+    slug: "welcome-contributing",
+    category: "resend",
+    description: "Sent to new contributing members after completing signup",
+    subject: "Welcome to National Fund for Women",
+    source_file: "lib/email.ts:sendWelcomeEmail",
+    is_editable: true,
+  },
+  {
+    name: "Welcome Email - Founding",
+    slug: "welcome-founding",
+    category: "resend",
+    description: "Sent to new founding members after completing signup",
     subject: "Welcome to National Fund for Women",
     source_file: "lib/email.ts:sendWelcomeEmail",
     is_editable: true,
