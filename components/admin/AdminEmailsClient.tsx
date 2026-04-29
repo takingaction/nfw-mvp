@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import EmailEditorModal from "./EmailEditorModal";
 
 type EmailTemplate = {
@@ -29,10 +29,43 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
   const [testEmail, setTestEmail] = useState(userEmail || "");
   const [sendingTest, setSendingTest] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   const resendTemplates = templates.filter((t) => t.category === "resend");
   const supabaseTemplates = templates.filter((t) => t.category === "supabase");
   const displayedTemplates = activeCategory === "resend" ? resendTemplates : supabaseTemplates;
+
+  // Fetch preview HTML when selected template changes
+  useEffect(() => {
+    if (!selectedTemplate?.html_content || selectedTemplate.category === "supabase") {
+      setPreviewHtml(null);
+      return;
+    }
+
+    setLoadingPreview(true);
+    fetch("/api/admin/emails/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        body: selectedTemplate.html_content,
+        name: "Preview User",
+        subject: selectedTemplate.subject,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.html) {
+          setPreviewHtml(data.html);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch preview:", err);
+      })
+      .finally(() => {
+        setLoadingPreview(false);
+      });
+  }, [selectedTemplate]);
 
   const handleSendTest = async () => {
     if (!selectedTemplate || !testEmail.includes("@")) return;
@@ -219,13 +252,21 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
               {/* Preview */}
               <div className="bg-gray-100 p-4 flex-shrink-0" style={{ height: '350px' }}>
                 <div className="h-full bg-white shadow-lg overflow-auto rounded-lg">
-                  {selectedTemplate.html_content ? (
+                  {loadingPreview ? (
+                    <div className="flex items-center justify-center h-full text-gray-400">
+                      Loading preview...
+                    </div>
+                  ) : previewHtml ? (
                     <iframe
-                      srcDoc={selectedTemplate.html_content}
+                      srcDoc={previewHtml}
                       className="w-full h-full"
                       title="Email Preview"
                       sandbox={undefined}
                     />
+                  ) : selectedTemplate?.category === "supabase" ? (
+                    <div className="flex items-center justify-center h-full text-gray-400">
+                      Supabase templates cannot be previewed here. Use the Supabase Dashboard.
+                    </div>
                   ) : (
                     <div className="flex items-center justify-center h-full text-gray-400">
                       No preview available

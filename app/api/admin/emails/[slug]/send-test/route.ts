@@ -86,7 +86,7 @@ export async function POST(
         .replace(/\{\{\s*application_url\s*\}\}/g, `${siteUrl}/grants/my-applications`);
     }
 
-    const processedBody = replaceVariables(template.html_content || "");
+    const processedBody = replaceVariables(template.html_content || "", testEmail);
     const testSubject = `[TEST] ${template.subject}`;
 
     // Wrap body in branded template via sendBrandedEmail

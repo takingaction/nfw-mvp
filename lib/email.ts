@@ -283,7 +283,7 @@ interface SendBrandedEmailOptions {
   footerCtaUrl?: string;
 }
 
-async function sendBrandedEmail({
+export async function sendBrandedEmail({
   to,
   subject,
   name,
