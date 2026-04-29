@@ -175,6 +175,19 @@ export default function SignUpFlow() {
   const [step, setStep] = useState(initialStep);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Fetch and store user ID when step >= 1 (after email confirmation)
+  useEffect(() => {
+    if (step >= 1 && !userId) {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data }) => {
+        if (data?.user) {
+          setUserId(data.user.id);
+        }
+      });
+    }
+  }, [step]);
 
   const [giftCode, setGiftCode] = useState<GiftCodeState>({
     code: "",
@@ -366,38 +379,26 @@ export default function SignUpFlow() {
 
   // Step 3 — Select membership
   const handleSelectPlan = async (plan: (typeof PLANS)[0]) => {
-    console.log("handleSelectPlan START");
     if (!plan.priceId) {
       // Free plan - mark profile as completed, set membership_level, and redirect to welcome
       setLoading(true);
       setError(null);
-      console.log("Getting supabase client...");
       try {
-        // Get current user ID for Access Perks sync
-        const supabase = createClient();
-        console.log("Calling getUser...");
-        const { data: { user } } = await supabase.auth.getUser();
-        console.log("User:", user?.id);
-
-        console.log("Calling saveProfile...");
         await saveProfile({ profile_completed: true, membership_level: "free" });
-        console.log("saveProfile DONE");
-        // TEMPORARILY DISABLED - testing hang
-        // fetch("/api/welcome-email", { method: "POST" }).catch(err => {
-        //   console.error("Failed to send welcome email:", err);
-        // });
-        // fetch("/api/access-perks/sync-member", {
-        //   method: "POST",
-        //   headers: { "Content-Type": "application/json" },
-        //   body: JSON.stringify({ userId: user?.id }),
-        // }).catch(err => {
-        //   console.error("Failed to sync to Access Perks:", err);
-        // });
-        console.log("About to redirect...");
+        // Send welcome email (fire-and-forget - don't block redirect)
+        fetch("/api/welcome-email", { method: "POST" }).catch(err => {
+          console.error("Failed to send welcome email:", err);
+        });
+        // Sync to Access Perks (fire-and-forget)
+        fetch("/api/access-perks/sync-member", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId }),
+        }).catch(err => {
+          console.error("Failed to sync to Access Perks:", err);
+        });
         window.location.assign("/auth/welcome");
-        console.log("Redirect called");
       } catch (err: any) {
-        console.error("handleSelectPlan ERROR:", err);
         setError(err.message || "Failed to complete signup. Please try again.");
         setLoading(false);
       }
