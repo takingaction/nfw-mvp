@@ -89,6 +89,16 @@ export async function POST(
     const processedBody = replaceVariables(template.html_content || "", testEmail);
     const testSubject = `[TEST] ${template.subject}`;
 
+    // Build membership snapshot for welcome-type templates
+    const isWelcomeTemplate = slug.startsWith('welcome-');
+    const membershipSnapshot = isWelcomeTemplate ? `
+      <div style="background-color: rgba(255,255,255,0.1); border-radius: 8px; padding: 15px 20px; margin-bottom: 20px;">
+        <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 12px; font-weight: 700; color: #FFFFFF; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.05em;">Your membership snapshot</p>
+        <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 4px 0;"><strong>Email:</strong> ${testEmail}</p>
+        <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0;"><strong>Membership Tier:</strong> Contributing</p>
+      </div>
+    ` : undefined;
+
     // Wrap body in branded template via sendBrandedEmail
     const { success, error: sendError } = await sendBrandedEmail({
       to: testEmail,
@@ -98,8 +108,11 @@ export async function POST(
       heroText: 'A <em>community</em> of women showing up for each other',
       headline: template.name,
       body: processedBody,
-      ctaText: "VISIT WEBSITE",
-      ctaUrl: siteUrl,
+      membershipSnapshot,
+      ctaText: "GET STARTED",
+      ctaUrl: `${siteUrl}/dashboard`,
+      secondaryCtaText: "BROWSE PERKS",
+      secondaryCtaUrl: `${siteUrl}/perks`,
       footerCtaText: "VISIT WEBSITE",
       footerCtaUrl: siteUrl,
     });
