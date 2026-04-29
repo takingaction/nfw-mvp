@@ -361,6 +361,13 @@ site_footer (
 - Created `SHOPIFY.md` with full documentation of the issue and learnings
 - Key files: `app/api/shopify/products/route.ts`, `app/api/admin/shopify/sync/route.ts`, `app/api/admin/shopify/update-product/route.ts`
 
+#### Gift Membership Codes RLS Decision
+- `gift_membership_codes` table intentionally left without RLS (like shopify_product_mappings)
+- All redemption happens via API routes using `supabaseAdmin` (service role key), which bypasses RLS
+- Codes are cryptographically random and unguessable - not a security risk
+- Redemption flow: User submits code → API route checks validity with service role → redeems if valid
+- Same rationale as shopify_product_mappings: data is not sensitive, service role bypasses RLS anyway
+
 ### Session 2026-04-03: Access Perks Category Filtering
 
 Disabled 34 unwanted categories from the Access Perks API integration.
