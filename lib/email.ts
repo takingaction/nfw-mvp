@@ -43,6 +43,7 @@ interface EmailHtmlOptions {
   heroText?: string;
   headline?: string;
   body: string;
+  membershipSnapshot?: string;
   ctaText?: string;
   ctaUrl?: string;
   secondaryCtaText?: string;
@@ -57,6 +58,7 @@ export function buildEmailHtml({
   heroText,
   headline,
   body,
+  membershipSnapshot,
   ctaText,
   ctaUrl,
   secondaryCtaText,
@@ -104,6 +106,16 @@ export function buildEmailHtml({
         <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: ${whiteColor}; margin: 0; text-align: center;">
           ${headline}
         </h1>
+      </td>
+    </tr>
+    `
+    : "";
+
+  const membershipSection = membershipSnapshot
+    ? `
+    <tr>
+      <td style="padding: 0 40px; background-color: ${bodyBackground};">
+        ${membershipSnapshot}
       </td>
     </tr>
     `
@@ -203,6 +215,7 @@ export function buildEmailHtml({
 
           ${heroSection}
           ${headlineSection}
+          ${membershipSection}
 
           <!-- Body Content -->
           <tr>
@@ -280,6 +293,7 @@ interface SendBrandedEmailOptions {
   heroText?: string;
   headline?: string;
   body: string;
+  membershipSnapshot?: string;
   ctaText?: string;
   ctaUrl?: string;
   secondaryCtaText?: string;
@@ -312,6 +326,7 @@ export async function sendBrandedEmail({
   heroText,
   headline,
   body,
+  membershipSnapshot,
   ctaText,
   ctaUrl,
   secondaryCtaText,
@@ -329,6 +344,7 @@ export async function sendBrandedEmail({
       heroText,
       headline,
       body,
+      membershipSnapshot,
       ctaText,
       ctaUrl,
       secondaryCtaText,
@@ -428,6 +444,16 @@ export async function sendWelcomeEmail({
   if (template) {
     console.log('[sendWelcomeEmail] Template found:', slug);
     const body = replaceTemplateVariables(template.html, variables);
+
+    const membershipSnapshot = `
+      <div style="background-color: rgba(255,255,255,0.1); border-radius: 8px; padding: 15px 20px; margin-bottom: 20px;">
+        <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 12px; font-weight: 700; color: #FFFFFF; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.05em;">Your membership snapshot</p>
+        <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 4px 0;"><strong>Email:</strong> ${to}</p>
+        <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 4px 0;"><strong>Membership Tier:</strong> ${tierLabel}</p>
+        ${renewalDate ? `<p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0;"><strong>Renewal Date:</strong> ${formatDate(renewalDate)}</p>` : ''}
+      </div>
+    `;
+
     console.log('[sendWelcomeEmail] Body after replace, length:', body.length);
     console.log('[sendWelcomeEmail] Calling sendBrandedEmail...');
     try {
@@ -439,6 +465,7 @@ export async function sendWelcomeEmail({
         heroText: 'A <em>community</em> of women showing up for each other',
         headline: "Welcome to NFW!",
         body,
+        membershipSnapshot,
         ctaText: "GET STARTED",
         ctaUrl: `${siteUrl}/dashboard`,
         secondaryCtaText: "BROWSE PERKS",
