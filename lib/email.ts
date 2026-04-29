@@ -288,6 +288,22 @@ interface SendBrandedEmailOptions {
   footerCtaUrl?: string;
 }
 
+// Timeout wrapper for email sending
+async function sendEmailWithTimeout(
+  options: { to: string; subject: string; html: string },
+  timeoutMs = 8000
+): Promise<{ success: boolean; error?: any }> {
+  return Promise.race([
+    sendTemplateEmail(options),
+    new Promise<{ success: boolean; error?: any }>((_, reject) =>
+      setTimeout(() => reject(new Error(`Email timeout after ${timeoutMs}ms`)), timeoutMs)
+    )
+  ]).catch(err => {
+    console.error("[sendEmailWithTimeout] Error:", err);
+    return { success: false, error: err };
+  }) as Promise<{ success: boolean; error?: any }>;
+}
+
 export async function sendBrandedEmail({
   to,
   subject,
@@ -321,8 +337,8 @@ export async function sendBrandedEmail({
       footerCtaUrl,
     });
     console.log('[sendBrandedEmail] buildEmailHtml returned, html length:', html?.length);
-    console.log('[sendBrandedEmail] Calling sendTemplateEmail...');
-    return sendTemplateEmail({ to, subject, html });
+    console.log('[sendBrandedEmail] Calling sendEmailWithTimeout...');
+    return sendEmailWithTimeout({ to, subject, html });
   } catch (err) {
     console.error('[sendBrandedEmail] Error:', err);
     throw err;
