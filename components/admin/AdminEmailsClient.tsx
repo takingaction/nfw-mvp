@@ -256,6 +256,19 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
                     <div className="flex items-center justify-center h-full text-gray-400">
                       Loading preview...
                     </div>
+                  ) : selectedTemplate?.category === "supabase" ? (
+                    selectedTemplate.html_content ? (
+                      <iframe
+                        srcDoc={selectedTemplate.html_content}
+                        className="w-full h-full"
+                        title="Email Preview"
+                        sandbox={undefined}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-400">
+                        No preview available
+                      </div>
+                    )
                   ) : previewHtml ? (
                     <iframe
                       srcDoc={previewHtml}
@@ -263,10 +276,6 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
                       title="Email Preview"
                       sandbox={undefined}
                     />
-                  ) : selectedTemplate?.category === "supabase" ? (
-                    <div className="flex items-center justify-center h-full text-gray-400">
-                      Supabase templates cannot be previewed here. Use the Supabase Dashboard.
-                    </div>
                   ) : (
                     <div className="flex items-center justify-center h-full text-gray-400">
                       No preview available
