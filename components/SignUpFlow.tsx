@@ -366,16 +366,22 @@ export default function SignUpFlow() {
 
   // Step 3 — Select membership
   const handleSelectPlan = async (plan: (typeof PLANS)[0]) => {
+    console.log("handleSelectPlan START");
     if (!plan.priceId) {
       // Free plan - mark profile as completed, set membership_level, and redirect to welcome
       setLoading(true);
       setError(null);
+      console.log("Getting supabase client...");
       try {
         // Get current user ID for Access Perks sync
         const supabase = createClient();
+        console.log("Calling getUser...");
         const { data: { user } } = await supabase.auth.getUser();
+        console.log("User:", user?.id);
 
+        console.log("Calling saveProfile...");
         await saveProfile({ profile_completed: true, membership_level: "free" });
+        console.log("saveProfile DONE");
         // TEMPORARILY DISABLED - testing hang
         // fetch("/api/welcome-email", { method: "POST" }).catch(err => {
         //   console.error("Failed to send welcome email:", err);
@@ -387,8 +393,11 @@ export default function SignUpFlow() {
         // }).catch(err => {
         //   console.error("Failed to sync to Access Perks:", err);
         // });
+        console.log("About to redirect...");
         window.location.assign("/auth/welcome");
+        console.log("Redirect called");
       } catch (err: any) {
+        console.error("handleSelectPlan ERROR:", err);
         setError(err.message || "Failed to complete signup. Please try again.");
         setLoading(false);
       }
