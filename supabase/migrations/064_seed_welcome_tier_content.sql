@@ -67,11 +67,9 @@ SET html_content = '
       <p style="font-family: ''DM Sans'', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 5px 0;">
         <strong>Membership Tier:</strong> {{membership_tier}}
       </p>
-      {{#if renewal_date}}
       <p style="font-family: ''DM Sans'', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0;">
         <strong>Renewal Date:</strong> {{renewal_date}}
       </p>
-      {{/if}}
     </td>
   </tr>
 </table>
@@ -122,11 +120,9 @@ SET html_content = '
       <p style="font-family: ''DM Sans'', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 5px 0;">
         <strong>Membership Tier:</strong> {{membership_tier}}
       </p>
-      {{#if renewal_date}}
       <p style="font-family: ''DM Sans'', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0;">
         <strong>Renewal Date:</strong> {{renewal_date}}
       </p>
-      {{/if}}
     </td>
   </tr>
 </table>

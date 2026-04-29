@@ -1,5 +1,5 @@
 -- Seed email_templates table with all email templates
--- 8 Resend templates (editable via /admin/emails)
+-- 7 Resend templates (editable via /admin/emails)
 -- 4 Supabase templates (read-only, configure in Supabase Dashboard)
 
 INSERT INTO email_templates (name, slug, category, description, subject, source_file, is_editable) VALUES

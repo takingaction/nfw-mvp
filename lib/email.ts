@@ -64,6 +64,7 @@ export function buildEmailHtml({
   footerCtaText,
   footerCtaUrl,
 }: EmailHtmlOptions): string {
+  console.log('[DEBUG] buildEmailHtml called, body length:', body?.length);
   const logoUrl = "https://nationalfundforwomen.org/images/nfw-aubergine.png";
   const siteUrl = "https://nationalfundforwomen.org";
   const ctaBackgroundColor = "#F8F19A";
@@ -297,6 +298,7 @@ async function sendBrandedEmail({
   footerCtaText,
   footerCtaUrl,
 }: SendBrandedEmailOptions): Promise<{ success: boolean; error?: any }> {
+  console.log('[DEBUG] sendBrandedEmail called, body length:', body?.length);
   const html = buildEmailHtml({
     name,
     heroImage,
@@ -393,11 +395,20 @@ export async function sendWelcomeEmail({
   };
 
   if (template) {
-    const html = replaceTemplateVariables(template.html, variables);
-    await sendTemplateEmail({
+    console.log('[DEBUG] sendWelcomeEmail - template found:', slug, 'html length:', template.html?.length);
+    const body = replaceTemplateVariables(template.html, variables);
+    await sendBrandedEmail({
       to,
       subject: template.subject,
-      html,
+      name,
+      heroImage: heroImageUrl,
+      heroText: 'A <em>community</em> of women showing up for each other',
+      headline: "Welcome to National Fund for Women",
+      body,
+      ctaText: "EXPLORE YOUR BENEFITS",
+      ctaUrl: `${siteUrl}/dashboard`,
+      footerCtaText: "VISIT WEBSITE",
+      footerCtaUrl: siteUrl,
     });
   } else {
     throw new Error(`Failed to load email template: ${slug}`);
@@ -483,15 +494,30 @@ export async function sendGrantApplicationReceivedEmail({
   const template = await fetchEmailTemplate("grant-application-received");
   if (!template) return;
 
+  const siteUrl = "https://nationalfundforwomen.org";
+  const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+
   const variables: Record<string, string> = {
     name,
     grantCycleName,
     applicationId,
-    siteUrl: "https://nationalfundforwomen.org",
+    siteUrl,
   };
 
-  const html = replaceTemplateVariables(template.html, variables);
-  await sendTemplateEmail({ to, subject: template.subject, html });
+  const body = replaceTemplateVariables(template.html, variables);
+  await sendBrandedEmail({
+    to,
+    subject: template.subject,
+    name,
+    heroImage,
+    heroText: 'Your application is <em>in review</em>',
+    headline: "Application Received",
+    body,
+    ctaText: "VIEW YOUR APPLICATION",
+    ctaUrl: `${siteUrl}/grants/my-applications`,
+    footerCtaText: "VISIT WEBSITE",
+    footerCtaUrl: siteUrl,
+  });
 }
 
 export async function sendGrantStatusEmail({
@@ -521,14 +547,45 @@ export async function sendGrantStatusEmail({
   const template = await fetchEmailTemplate(slug);
   if (!template) return;
 
+  const siteUrl = "https://nationalfundforwomen.org";
+  const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+
+  const statusHeadlines: Record<string, string> = {
+    in_review: "Application Under Review",
+    approved: "Congratulations!",
+    not_approved: "Update on Your Application",
+    payment_pending: "Payment Processing",
+    payment_sent: "Payment Sent!",
+  };
+
+  const statusHeroText: Record<string, string> = {
+    in_review: "We're <em>reviewing</em> your application",
+    approved: "You've been <em>approved</em>",
+    not_approved: "We've <em>updated</em> your application",
+    payment_pending: "Your payment is <em>on the way</em>",
+    payment_sent: "Your payment is <em>on the way</em>",
+  };
+
   const variables: Record<string, string> = {
     name,
     grantCycleName,
     amount: amountApproved ? amountApproved.toLocaleString() : "",
   };
 
-  const html = replaceTemplateVariables(template.html, variables);
-  await sendTemplateEmail({ to, subject: template.subject, html });
+  const body = replaceTemplateVariables(template.html, variables);
+  await sendBrandedEmail({
+    to,
+    subject: template.subject,
+    name,
+    heroImage,
+    heroText: statusHeroText[status] || 'Your application status has changed',
+    headline: statusHeadlines[status] || "Application Update",
+    body,
+    ctaText: "VIEW YOUR APPLICATION",
+    ctaUrl: `${siteUrl}/grants/my-applications`,
+    footerCtaText: "VISIT WEBSITE",
+    footerCtaUrl: siteUrl,
+  });
 }
 
 export async function sendBankInfoRequestEmail({
@@ -547,20 +604,29 @@ export async function sendBankInfoRequestEmail({
   const template = await fetchEmailTemplate("bank-info-request");
   if (!template) return;
 
-  const nomineeIntro = isNominee
-    ? `You've been nominated for the ${grantCycleName}`
-    : `Your application for the ${grantCycleName} has been approved`;
+  const siteUrl = "https://nationalfundforwomen.org";
+  const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const variables: Record<string, string> = {
     name,
     grantCycleName,
     amount: amountApproved ? amountApproved.toLocaleString() : "",
-    siteUrl: "https://nationalfundforwomen.org",
-    ctaUrl: "https://nationalfundforwomen.org/grants/my-applications",
   };
 
-  const html = replaceTemplateVariables(template.html, variables);
-  await sendTemplateEmail({ to, subject: template.subject, html });
+  const body = replaceTemplateVariables(template.html, variables);
+  await sendBrandedEmail({
+    to,
+    subject: template.subject,
+    name,
+    heroImage,
+    heroText: 'Action <em>required</em>',
+    headline: isNominee ? "You've Been Nominated" : "Congratulations!",
+    body,
+    ctaText: "CONNECT BANK ACCOUNT",
+    ctaUrl: `${siteUrl}/grants/my-applications`,
+    footerCtaText: "VISIT WEBSITE",
+    footerCtaUrl: siteUrl,
+  });
 }
 
 export async function sendGiftCodesEmail({
@@ -573,21 +639,46 @@ export async function sendGiftCodesEmail({
   codes: string[];
 }) {
   const siteUrl = "https://nationalfundforwomen.org";
-  const codesList = codes.map((code) => `  • ${code}`).join("\n");
+  const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+  const codesList = codes.map((code) => `<p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #F8F19A; margin: 10px 0;">${code}</p>`).join("");
 
-  const text = `${buyerName},\n\nThank you for your gift membership purchase! Here are your gift code(s):\n\n${codesList}\n\nShare these codes with your friends. Each code redeems 1 year of Contributing membership ($15 value).\n\nHow to redeem:\n1. Friend creates a free NFW account at ${siteUrl}/auth/sign-up\n2. During signup, they enter their code on the membership step\n3. They enjoy a full year of Contributing membership!\n\nNote: Each code can only be used once. If your friend already has an account, they can enter the code in their dashboard.\n\nThank you for supporting National Fund for Women!\n\nWith love,\nThe NFW Team`;
+  const body = `
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      Dear ${buyerName},
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      Thank you for your gift membership purchase! Here are your redemption code(s):
+    </p>
+    ${codesList}
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 20px 0 10px 0;">
+      To redeem, share these code(s) with your friends. Each code redeems 1 year of Contributing membership.
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; color: #FFFFFF; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.05em;">
+      How to redeem:
+    </p>
+    <ol style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 20px 0; padding-left: 20px;">
+      <li style="margin-bottom: 8px;">Friend creates a free NFW account at nationalfundforwomen.org/auth/sign-up</li>
+      <li style="margin-bottom: 8px;">During signup, they enter their code on the membership step</li>
+      <li style="margin-bottom: 8px;">They enjoy a full year of Contributing membership!</li>
+    </ol>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 20px 0 0 0;">
+      Questions? Email <a href="mailto:hello@nationalfundforwomen.org" style="color: #F8F19A;">hello@nationalfundforwomen.org</a>
+    </p>
+  `;
 
-  try {
-    const resend = getResend();
-    await resend.emails.send({
-      from: FROM,
-      to,
-      subject: "Your NFW Gift Membership Code(s)",
-      text,
-    });
-  } catch (err) {
-    console.error("Failed to send gift codes email:", err);
-  }
+  await sendBrandedEmail({
+    to,
+    subject: "Your National Fund for Women Gift Code(s)",
+    name: buyerName,
+    heroImage,
+    heroText: 'Gift a <em>year of community</em>',
+    headline: "Your Gift Codes",
+    body,
+    ctaText: "LEARN ABOUT MEMBERSHIP",
+    ctaUrl: `${siteUrl}/auth/sign-up`,
+    footerCtaText: "VISIT WEBSITE",
+    footerCtaUrl: siteUrl,
+  });
 }
 
 export async function sendContactFormEmail({
@@ -602,6 +693,7 @@ export async function sendContactFormEmail({
   message: string;
 }) {
   const siteUrl = "https://nationalfundforwomen.org";
+  const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
   const timestamp = new Date().toLocaleString("en-US", {
     year: "numeric",
     month: "short",
@@ -610,18 +702,35 @@ export async function sendContactFormEmail({
     minute: "2-digit",
   });
 
-  const text = `New contact form submission\n\nName: ${name}\nEmail: ${email}\nSubject: ${subject}\nMessage: ${message}\n\nSubmitted: ${timestamp}`;
+  const body = `
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      Dear ${name},
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      Thanks for reaching out! We've received your message and will get back to you within 1-2 business days.
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      In the meantime, feel free to explore our <a href="${siteUrl}" style="color: #F8F19A;">website</a> or check out our <a href="${siteUrl}/faq" style="color: #F8F19A;">FAQ</a> for quick answers.
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; font-style: italic; color: #FFFFFF; margin: 30px 0 0 0;">
+      Talk soon,
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; font-style: italic; color: #FFFFFF; margin: 5px 0 0 0;">
+      The NFW Team
+    </p>
+  `;
 
-  try {
-    const resend = getResend();
-    await resend.emails.send({
-      from: "NFW <hello@nationalfundforwomen.org>",
-      to: "hello@nationalfundforwomen.org",
-      subject: "NFW Contact Form Submission",
-      text,
-    });
-  } catch (err) {
-    console.error("Failed to send contact form email:", err);
-    throw err;
-  }
+  await sendBrandedEmail({
+    to: "hello@nationalfundforwomen.org",
+    subject: `NFW Contact Form: ${subject}`,
+    name,
+    heroImage,
+    heroText: 'We\'ve <em>received</em> your message',
+    headline: "Message Received",
+    body,
+    ctaText: "VISIT WEBSITE",
+    ctaUrl: siteUrl,
+    footerCtaText: "VISIT WEBSITE",
+    footerCtaUrl: siteUrl,
+  });
 }
