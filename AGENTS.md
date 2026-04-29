@@ -2335,3 +2335,18 @@ Added admin authentication checks to all 4 vulnerable routes:
 
 **Files Modified:**
 - `app/api/admin/emails/[slug]/send-test/route.ts` - Fixed headline and membership tier detection
+
+### Session 2026-04-29: Access Perks Travel SDK Stage Configuration
+
+**Problem:** Travel page at `/travel` was failing to authenticate with Access Perks SDK.
+
+**Root Cause:** SDK URL was hardcoded to production (`booking.accessdevelopment.com`) but only stage credentials were available.
+
+**Solution:** Updated SDK URL to stage endpoint for testing.
+
+**Changes:**
+- `app/travel/TravelClient.tsx` - Changed SDK URL from `https://booking.accessdevelopment.com/scripts/travel.client.v2.js` to `https://booking.accessdevelopment-stage.com/scripts/travel.client.v2.js`
+
+**Environment Variables Required (Stage):**
+- `ACCESS_TRAVEL_AUTH_URL`: `https://auth.adcrws-stage.com/api/v1/tokens`
+- `ACCESS_OFFERS_TOKEN`: Stage API key from Access Perks
