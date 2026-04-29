@@ -36,7 +36,7 @@ INSERT INTO email_templates (name, slug, category, description, subject, source_
   'newsletter-welcome',
   'resend',
   'Sent when someone subscribes to the newsletter via contact form.',
-  'You\'re in! Welcome to the NFW community',
+  'You''re in! Welcome to the NFW community',
   'lib/email.ts:sendNewsletterWelcomeEmail',
   true
 ),
@@ -110,7 +110,7 @@ INSERT INTO email_templates (name, slug, category, description, subject, source_
   'supabase-invite-user',
   'supabase',
   'Invitation to join the site. Configure in Supabase Dashboard → Authentication → Email Templates → Invite user.',
-  'You\'ve Been Invited to National Fund for Women',
+  'You''ve Been Invited to National Fund for Women',
   'Supabase Dashboard → Authentication → Email Templates',
   false
 )
