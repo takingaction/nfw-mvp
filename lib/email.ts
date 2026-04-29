@@ -353,6 +353,7 @@ export async function sendWelcomeEmail({
   memberId,
   renewalDate,
   heroImage,
+  templateSlug,
 }: {
   to: string;
   name: string;
@@ -360,123 +361,47 @@ export async function sendWelcomeEmail({
   memberId: string;
   renewalDate?: string;
   heroImage?: string;
+  templateSlug?: string;
 }) {
   const siteUrl = "https://nationalfundforwomen.org";
   const heroImageUrl = heroImage || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
-  const heroText = 'A <em>community</em> of women showing up for each other';
+
+  const slug = templateSlug || `welcome-${membershipType}`;
+  const template = await fetchEmailTemplate(slug);
 
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
-  const tierMessages = {
-    free: `
-      <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
-        Welcome to the National Fund for Women! We couldn't be more excited to have you join our community.
-      </p>
-      <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
-        At NFW, we believe that women deserve real support when they need it. Asking for help shouldn't come with added barriers or additional stress. Our goal is to provide immediate, practical support for women at every stage of their lives, while building collective power along the way. We hope you find plenty of support, connection, and joy here — we've got your back!
-      </p>
-    `,
-    contributing: `
-      <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
-        Welcome to the National Fund for Women! We couldn't be more excited to have you join our community.
-      </p>
-      <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
-        At NFW, we believe that women deserve real support when they need it. As a Contributing Member, your membership helps make that possible for you and for every woman who comes after you. You're supporting women simply by belonging, while building a future where women's needs are impossible to ignore. To that, we say: thank YOU!
-      </p>
-    `,
-    founding: `
-      <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
-        Welcome to the National Fund for Women! We couldn't be more excited to have you join our community.
-      </p>
-      <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
-        At NFW, we believe that women deserve real support when they need it. As a Founding Member, you're helping us power our programs and multiply our impact for women across the country. You're supporting women simply by belonging, while building a future where women's needs are impossible to ignore. To that, we say: thank YOU!
-      </p>
-    `,
+  const tierLabel = membershipType.charAt(0).toUpperCase() + membershipType.slice(1);
+
+  const variables: Record<string, string> = {
+    name,
+    email: to,
+    member_id: memberId,
+    membership_tier: tierLabel,
+    renewal_date: renewalDate ? formatDate(renewalDate) : "",
+    site_url: siteUrl,
+    dashboard_url: `${siteUrl}/dashboard`,
+    perks_url: `${siteUrl}/perks`,
+    store_url: `${siteUrl}/store`,
+    grants_url: `${siteUrl}/grants`,
+    signup_url: `${siteUrl}/auth/sign-up?step=3`,
+    gift_url: `${siteUrl}/gift-membership`,
+    faq_url: `${siteUrl}/faq`,
   };
 
-  const membershipSnapshot = `
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;" class="snapshot-bg">
-      <tr>
-        <td style="padding: 15px 20px; background-color: rgba(255,255,255,0.1); border-radius: 8px;">
-          <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; color: #FFFFFF; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.05em;" class="snapshot-label">
-            Your membership snapshot
-          </p>
-          <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 5px 0;" class="snapshot-text">
-            <strong>Email:</strong> <span style="color: #FFFFFF; text-decoration: none;">${to}</span>
-          </p>
-          <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 5px 0;" class="snapshot-text">
-            <strong>Membership Tier:</strong> ${membershipType.charAt(0).toUpperCase() + membershipType.slice(1)}
-          </p>
-          ${renewalDate ? `
-          <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0;" class="snapshot-text">
-            <strong>Renewal Date:</strong> ${formatDate(renewalDate)}
-          </p>
-          ` : ""}
-        </td>
-      </tr>
-    </table>
-  `;
-
-  const unlockedContent = `
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; color: #FFFFFF; margin: 20px 0 10px 0; text-transform: uppercase; letter-spacing: 0.05em;">
-      Check out what you just unlocked
-    </p>
-    <ul style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 20px 0; padding-left: 20px;">
-      <li style="margin-bottom: 8px;">Browse our current <a href="${siteUrl}/grants" style="color: #F8F19A;">microgrant offerings</a> and apply in just a few minutes.</li>
-      <li style="margin-bottom: 8px;">Explore thousands of <a href="${siteUrl}/perks" style="color: #F8F19A;">perks and discounts</a> and start saving on items you were already buying.</li>
-      <li style="margin-bottom: 8px;">Shop the <a href="${siteUrl}/store" style="color: #F8F19A;">Zero Dollar Store</a> where every item is — completely free. Items drop daily so check back often!</li>
-    </ul>
-  `;
-
-  const footerNote = membershipType === "free"
-    ? `
-      <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 20px 0;">
-        Ready to level up your impact? Consider becoming a <a href="${siteUrl}/auth/sign-up?step=3" style="color: #F8F19A;">Contributing Member</a> — 100% of membership dues go towards improving the lives of American women.
-      </p>
-    `
-    : `
-      <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 20px 0;">
-        Want to spread the love? <a href="${siteUrl}/gift-membership" style="color: #F8F19A;">Share a year of community, resources, and support</a> by gifting a membership to a woman in your life.
-      </p>
-    `;
-
-  const bodyHtml = `
-    ${tierMessages[membershipType]}
-    ${membershipSnapshot}
-    ${unlockedContent}
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 20px 0;">
-      Your membership dashboard is your home base. Here you can track your savings, find your favorite perks, and see what other NFW members are up to. <a href="${siteUrl}/dashboard" style="color: #F8F19A;">Log in and get started!</a>
-    </p>
-    ${footerNote}
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 20px 0 0 0;">
-      Need a hand? Visit our <a href="${siteUrl}/faq" style="color: #F8F19A;">FAQ page</a> for quick answers, or reach out to <a href="mailto:hello@nationalfundforwomen.org" style="color: #F8F19A;">hello@nationalfundforwomen.org</a> any time.
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; font-style: italic; color: #FFFFFF; margin: 30px 0 0 0;">
-      Thank you for showing up for women,
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; font-style: italic; color: #FFFFFF; margin: 5px 0 0 0;">
-      The NFW Team
-    </p>
-  `;
-
-  await sendBrandedEmail({
-    to,
-    subject: "Welcome to NFW! We're here to help",
-    name,
-    heroImage: heroImageUrl,
-    heroText,
-    headline: "Welcome to NFW!",
-    body: bodyHtml,
-    ctaText: "GET STARTED",
-    ctaUrl: `${siteUrl}/dashboard`,
-    secondaryCtaText: "BROWSE PERKS",
-    secondaryCtaUrl: `${siteUrl}/perks`,
-    footerCtaText: "VISIT WEBSITE",
-    footerCtaUrl: siteUrl,
-  });
+  if (template) {
+    const html = replaceTemplateVariables(template.html, variables);
+    await sendTemplateEmail({
+      to,
+      subject: template.subject,
+      html,
+    });
+  } else {
+    throw new Error(`Failed to load email template: ${slug}`);
+  }
 }
 
 // =============================================================================

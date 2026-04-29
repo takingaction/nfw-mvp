@@ -1,14 +1,32 @@
 -- Seed email_templates table with all email templates
--- 6 Resend templates (editable via /admin/emails)
+-- 8 Resend templates (editable via /admin/emails)
 -- 4 Supabase templates (read-only, configure in Supabase Dashboard)
 
 INSERT INTO email_templates (name, slug, category, description, subject, source_file, is_editable) VALUES
 -- Resend Templates
 (
-  'Welcome Email',
-  'welcome',
+  'Welcome Email - Free',
+  'welcome-free',
   'resend',
-  'Sent to new members after completing signup. Uses branded template with hero image and membership snapshot.',
+  'Sent to new free members after completing signup. Highlights free tier benefits and encourages upgrading.',
+  'Welcome to National Fund for Women',
+  'lib/email.ts:sendWelcomeEmail',
+  true
+),
+(
+  'Welcome Email - Contributing',
+  'welcome-contributing',
+  'resend',
+  'Sent to new Contributing Members after completing paid signup. Thanks them for supporting the community.',
+  'Welcome to National Fund for Women',
+  'lib/email.ts:sendWelcomeEmail',
+  true
+),
+(
+  'Welcome Email - Founding',
+  'welcome-founding',
+  'resend',
+  'Sent to new Founding Members after completing paid signup. Thanks them for powering programs and multiplying impact.',
   'Welcome to National Fund for Women',
   'lib/email.ts:sendWelcomeEmail',
   true
@@ -18,7 +36,7 @@ INSERT INTO email_templates (name, slug, category, description, subject, source_
   'newsletter-welcome',
   'resend',
   'Sent when someone subscribes to the newsletter via contact form.',
-  'You''re in! Welcome to the NFW community',
+  'You\'re in! Welcome to the NFW community',
   'lib/email.ts:sendNewsletterWelcomeEmail',
   true
 ),
@@ -92,7 +110,7 @@ INSERT INTO email_templates (name, slug, category, description, subject, source_
   'supabase-invite-user',
   'supabase',
   'Invitation to join the site. Configure in Supabase Dashboard → Authentication → Email Templates → Invite user.',
-  'You''ve Been Invited to National Fund for Women',
+  'You\'ve Been Invited to National Fund for Women',
   'Supabase Dashboard → Authentication → Email Templates',
   false
 )
