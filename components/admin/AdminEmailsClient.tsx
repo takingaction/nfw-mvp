@@ -51,6 +51,7 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
         body: selectedTemplate.html_content,
         name: "Preview User",
         subject: selectedTemplate.subject,
+        slug: selectedTemplate.slug,
       }),
     })
       .then((res) => res.json())

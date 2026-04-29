@@ -64,7 +64,6 @@ export function buildEmailHtml({
   footerCtaText,
   footerCtaUrl,
 }: EmailHtmlOptions): string {
-  console.log('[DEBUG] buildEmailHtml called, body length:', body?.length);
   const logoUrl = "https://nationalfundforwomen.org/images/nfw-aubergine.png";
   const siteUrl = "https://nationalfundforwomen.org";
   const ctaBackgroundColor = "#F8F19A";
@@ -73,8 +72,9 @@ export function buildEmailHtml({
   const bodyBackground = "#B693C0";
   const footerBackground = "#3E145F";
   const whiteColor = "#FFFFFF";
-  const footerCtaButtonText = footerCtaText || "VISIT WEBSITE";
+  const footerCtaButtonText = footerCtaText;
   const footerCtaButtonUrl = footerCtaUrl || "https://nationalfundforwomen.org";
+  const shouldRenderFooterCta = footerCtaText !== undefined && footerCtaText !== null;
 
   const heroSection = heroImage
     ? `
@@ -219,9 +219,11 @@ export function buildEmailHtml({
                 Together, we're building support women need today and the collective power to shape the future.
               </p>
 
+              ${shouldRenderFooterCta ? `
               <a href="${footerCtaButtonUrl}" style="display: inline-block; background-color: ${ctaBackgroundColor}; color: ${ctaTextColor}; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; text-decoration: none; padding: 12px 24px; border-radius: 0; margin-bottom: 20px;">
                 ${footerCtaButtonText}
               </a>
+              ` : ''}
 
               <p style="font-family: Georgia, 'Times New Roman', serif; font-size: 12px; font-style: italic; font-weight: 400; color: ${whiteColor}; margin: 0 0 15px 0;">
                 For women. For real life.
@@ -298,7 +300,6 @@ export async function sendBrandedEmail({
   footerCtaText,
   footerCtaUrl,
 }: SendBrandedEmailOptions): Promise<{ success: boolean; error?: any }> {
-  console.log('[DEBUG] sendBrandedEmail called, body length:', body?.length);
   const html = buildEmailHtml({
     name,
     heroImage,
@@ -395,18 +396,19 @@ export async function sendWelcomeEmail({
   };
 
   if (template) {
-    console.log('[DEBUG] sendWelcomeEmail - template found:', slug, 'html length:', template.html?.length);
     const body = replaceTemplateVariables(template.html, variables);
     await sendBrandedEmail({
       to,
-      subject: template.subject,
+      subject: "Welcome to NFW! We're here to help",
       name,
       heroImage: heroImageUrl,
       heroText: 'A <em>community</em> of women showing up for each other',
-      headline: "Welcome to National Fund for Women",
+      headline: "Welcome to NFW!",
       body,
-      ctaText: "EXPLORE YOUR BENEFITS",
+      ctaText: "GET STARTED",
       ctaUrl: `${siteUrl}/dashboard`,
+      secondaryCtaText: "BROWSE PERKS",
+      secondaryCtaUrl: `${siteUrl}/perks`,
       footerCtaText: "VISIT WEBSITE",
       footerCtaUrl: siteUrl,
     });
@@ -728,8 +730,6 @@ export async function sendContactFormEmail({
     heroText: 'We\'ve <em>received</em> your message',
     headline: "Message Received",
     body,
-    ctaText: "VISIT WEBSITE",
-    ctaUrl: siteUrl,
     footerCtaText: "VISIT WEBSITE",
     footerCtaUrl: siteUrl,
   });
