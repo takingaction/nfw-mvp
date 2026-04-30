@@ -429,6 +429,10 @@ export default function PerksPage() {
           params.facet = selectedFacets.join(",");
         }
 
+        if (selectedOfferTypes.length > 0) {
+          params.offer_types = selectedOfferTypes.join(",");
+        }
+
         if (isOnlineOnly && searchDistance !== "2500mi") {
           params.online = "only";
         }
