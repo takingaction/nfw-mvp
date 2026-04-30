@@ -217,7 +217,7 @@ supabaseAdmin
       <DashboardHero heroImage={settings.hero_image_url || "/images/landing.jpg"} />
 
       <div className="grid md:grid-cols-4 gap-0 mb-0">
-        <div className="col-span-1 bg-nfw-dove p-6">
+        <div className="col-span-1 bg-nfw-dove p-6 w-full">
           <MembershipCard
             memberName={profile?.full_name || "Member"}
             membershipLevel={profile?.membership_level || "free"}

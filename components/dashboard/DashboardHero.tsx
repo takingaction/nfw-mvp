@@ -30,7 +30,7 @@ export default function DashboardHero({ heroImage }: DashboardHeroProps) {
               <p className="text-4xl text-white/90 font-serif">Real support today.</p>
               <p className="text-4xl text-white/90 font-serif">Real power over time.</p>
             </div>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <Link
                 href="/grants/apply"
                 className="px-6 py-3 bg-[#7786BE] text-white hover:bg-[#7786BE]/90 transition-colors font-ui uppercase"

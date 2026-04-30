@@ -69,14 +69,14 @@ export default function MembershipImpactCard({
       </h1>
 
       <div className="w-full bg-nfw-lilac p-4">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4">
           <div className="text-center">
             <p className="text-6xl text-white font-serif">
               <AnimatedCurrency value={micrograntsSavings} />
             </p>
             <p className="text-lg text-white/60 font-ui uppercase mt-1">From Microgrants</p>
           </div>
-          <div className="text-center border-x border-white/10">
+          <div className="text-center sm:border-x sm:border-white/10">
             <p className="text-6xl text-white font-serif">
               <AnimatedCurrency value={perksSavings} />
             </p>
