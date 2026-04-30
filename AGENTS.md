@@ -2484,15 +2484,18 @@ Added navigation between /perks and /travel, plus a reset button for the travel 
 - Both buttons styled with white/10 background, rounded corners
 
 **Back to Travel Home Button:**
-- Calls `initTravel()` which reinitializes the SDK with `navigate_to: { view: "home" }`
-- Checks if SDK is loaded via `sdkLoadedRef` before proceeding
-- If SDK not ready, logs message and returns (button becomes no-op until SDK loads)
-- Sets status to "loading" during reinitialization
+- Uses `window.location.reload()` for a hard refresh to ensure full SDK reinitialization
+- Previous attempts to call `initTravel()` didn't properly reset iframe state after navigation
+
+**Travel SDK Loading Fix:**
+- Changed script strategy from `lazyOnload` to `afterInteractive`
+- This ensures SDK loads after page becomes interactive but before lazyOnload
+- Fixes issue where navigating from /perks to /travel would hang because SDK wasn't loaded in time
 
 **Bug Fixes:**
 - `OfferDetailPanel.tsx`: Fixed `disabled` prop type errors (boolean | null not assignable to boolean | undefined) by using `!!` to coerce to boolean
 
 **Files Modified:**
 - `components/perks/FilterSidebar.tsx` - Added Travel link with Plane icon
-- `app/travel/TravelClient.tsx` - Added responsive header with navigation buttons, SDK ready check
+- `app/travel/TravelClient.tsx` - Added responsive header with navigation buttons, Back to Travel Home uses window.location.reload(), SDK uses afterInteractive strategy
 - `components/perks/OfferDetailPanel.tsx` - Fixed disabled prop type errors
