@@ -2364,3 +2364,30 @@ Made `/dashboard` more mobile responsive starting from the top.
 - `components/dashboard/YourPerksAndBenefits.tsx` - "Explore Perks" button stacks under header on mobile
 - `components/dashboard/YourZeroDollarStoreSection.tsx` - Header button stacks on mobile; Latest Offerings in 1-column grid; card aspect-square mobile, aspect-[3/4] on sm+
 - `components/dashboard/BottomActions.tsx` - Cards aspect-[4/3] on mobile (75% of square), aspect-square on desktop; "Share Your Story" label changed to "Share Your Story (Coming Soon)"; disabled button background changed to neutral-500 (grey)
+
+### Session 2026-04-29: Supabase Custom Domain Setup
+
+Activated `auth.nationalfundforwomen.org` as custom domain for Supabase Auth.
+
+**Key Points from Supabase Docs:**
+- Both project URL (`lirsaxhujjgnibcwyzpl.supabase.co`) and custom domain (`auth.nationalfundforwomen.org`) work interchangeably after activation
+- No code changes strictly required - existing URLs continue to work
+- Custom domain used by Supabase Auth immediately once activated
+- OAuth flows will advertise custom domain as callback URL
+
+**Manual Steps Completed:**
+1. Google Cloud Console → Added redirect URI: `https://auth.nationalfundforwomen.org/auth/v1/callback` (kept existing project URL as backup)
+2. Supabase Dashboard → Authentication → URL Configuration → Added redirect URIs:
+   - `https://nationalfundforwomen.org/api/auth/callback`
+   - `https://auth.nationalfundforwomen.org/auth/v1/callback`
+3. Removed old Vercel preview URLs from Supabase redirect URIs (nfw-mvp-4n2i.vercel.app)
+4. Activated custom domain in Supabase Dashboard
+
+**Optional (not done - both URLs work):**
+- Update `NEXT_PUBLIC_SUPABASE_URL` to `https://auth.nationalfundforwomen.org` in `.env.local` and Vercel env vars for branding consistency
+
+**Documentation Updated:**
+- `MEMBERSHIP.md` - Updated Google OAuth setup with both redirect URIs
+
+**Files Modified:**
+- `MEMBERSHIP.md` - Added second redirect URI to Google Cloud Console OAuth setup instructions

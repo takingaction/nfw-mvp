@@ -192,7 +192,9 @@ STRIPE_PRICE_FOUNDING=price_xxx
 ### Google Cloud Console Setup
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create OAuth 2.0 Client ID (Web application)
-3. Add Authorized redirect URI: `https://lirsaxhujjgnibcwyzpl.supabase.co/auth/v1/callback`
+3. Add Authorized redirect URIs (both):
+   - `https://lirsaxhujjgnibcwyzpl.supabase.co/auth/v1/callback` (Supabase project URL)
+   - `https://auth.nationalfundforwomen.org/auth/v1/callback` (Supabase custom domain)
 4. Configure OAuth consent screen with app name ("National Fund for Women") and authorized domains
 
 ### Code Changes
