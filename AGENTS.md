@@ -2499,3 +2499,14 @@ Added navigation between /perks and /travel, plus a reset button for the travel 
 - `components/perks/FilterSidebar.tsx` - Added Travel link with Plane icon
 - `app/travel/TravelClient.tsx` - Added responsive header with navigation buttons, Back to Travel Home uses window.location.reload(), SDK uses afterInteractive strategy
 - `components/perks/OfferDetailPanel.tsx` - Fixed disabled prop type errors
+
+#### Footer Mobile Layout Updates
+
+**Email Signup Section:**
+- Container uses `items-start sm:items-end` so label and form stay stacked (not side-by-side)
+- On desktop (sm:), both label and form right-align together
+- On mobile, both left-align together
+- Input width increased to `sm:w-64` for better proportions
+
+**Files Modified:**
+- `components/landing/Footer.tsx` - Right-align email signup on desktop, keep full-width stacked layout on mobile
