@@ -154,7 +154,7 @@ export default function YourPerksAndBenefits({
 }: YourPerksAndBenefitsProps) {
   return (
     <section className="bg-nfw-aubergine py-12 px-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8">
         <h2 className="text-2xl font-bold text-white font-serif">
           Your Perks & Benefits
         </h2>
