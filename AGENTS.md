@@ -2535,3 +2535,37 @@ Added navigation between /perks and /travel, plus a reset button for the travel 
 - `components/auth-button.tsx` - Uses API for profile fetch
 - `components/AuthButtonCombined.tsx` - Uses API for profile fetch
 - `components/MobileMenu.tsx` - Uses API for profile fetch
+
+#### Free Members Access /perks Fix
+
+**Problem:** Free members with `membership_level = "free"` were being redirected to `/auth/sign-up?step=3` when visiting `/perks`.
+
+**Root Cause:** The auth check at `app/perks/page.tsx` only allowed `"contributing"` and `"founding"` membership levels, not `"free"`.
+
+**Bug in Original Logic:**
+```typescript
+// Original - redirects free members
+if (profile?.membership_level && !["contributing", "founding"].includes(profile.membership_level)) {
+  window.location.href = "/auth/sign-up?step=3";
+}
+```
+
+**Fix Applied:**
+```typescript
+// Fixed - allows free members
+if (profile?.membership_level && !["free", "contributing", "founding"].includes(profile.membership_level)) {
+  window.location.href = "/auth/sign-up?step=3";
+}
+```
+
+**Additional Fix - Null vs "free" Inconsistency:**
+
+Research found that some components fell back to `null` instead of `"free"` when `membership_level` was null in the database. Fixed at the API source:
+
+**`app/api/auth/profile/route.ts`:**
+- Normalized `null` membership_level to `"free"` for consistency
+- All components now receive `"free"` for free members regardless of database value
+
+**Files Modified:**
+- `app/perks/page.tsx` - Added "free" to allowed membership levels
+- `app/api/auth/profile/route.ts` - Normalize null → "free" in profile response
