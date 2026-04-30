@@ -18,18 +18,17 @@ export function AuthButtonCombined() {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
-
     const fetchProfile = async (userId: string) => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("full_name, is_admin")
-        .eq("id", userId)
-        .single();
-      if (data) {
-        setProfile(data);
-        setIsAdmin(data.is_admin === true);
-        localStorage.setItem("nfw_profile", JSON.stringify(data));
+      try {
+        const response = await fetch("/api/auth/profile");
+        if (response.ok) {
+          const data = await response.json();
+          setProfile(data);
+          setIsAdmin(data.is_admin === true);
+          localStorage.setItem("nfw_profile", JSON.stringify(data));
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
       }
     };
 
@@ -39,6 +38,8 @@ export function AuthButtonCombined() {
       setProfile(parsed);
       setIsAdmin(parsed?.is_admin === true);
     }
+
+    const supabase = createClient();
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const currentUser = session?.user ?? null;
