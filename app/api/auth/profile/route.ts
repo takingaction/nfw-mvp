@@ -32,7 +32,7 @@ export async function GET() {
 
     const { data: profile, error } = await supabase
       .from("profiles")
-      .select("id, full_name, is_admin, membership_level, profile_completed, email")
+      .select("id, full_name, is_admin, membership_level, profile_completed")
       .eq("id", user.id)
       .single();
 
