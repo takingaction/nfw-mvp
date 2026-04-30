@@ -2420,6 +2420,28 @@ Added "Terms of Use" section immediately above the redemption buttons with citri
 **Files Modified:**
 - `components/perks/OfferDetailPanel.tsx` - Added terms_of_use to interface, restyled terms section above redemption buttons
 
+#### Offer Type Filter Bug Fix
+
+**Bug:** "Unlimited Use" and "Limited Use" checkboxes in FilterSidebar weren't filtering results in Stores and Locations views.
+
+**Root Cause:** The stores/locations branch in `fetchRollup` was missing the `offer_types` parameter. It had `category_key` and `facet` handling but no `offer_types`.
+
+**Solution:** Added `offer_types` parameter handling to stores/locations branch:
+```javascript
+if (selectedOfferTypes.length > 0) {
+  params.offer_types = selectedOfferTypes.join(",");
+}
+```
+
+**Flow:**
+1. Frontend sends `offer_types=unlimited,limited` to `/api/access-perks/rollup`
+2. Rollup API reads `offer_types` (plural, line 14) and converts to `offer_type` (singular) for Access Perks API
+
+**Note:** Offers view already worked correctly - it sends `offer_type` directly to `/api/access-perks/offers/search`.
+
+**Files Modified:**
+- `app/perks/page.tsx` - Added offer_types handling to stores/locations branch in fetchRollup
+
 #### Allow Unlimited Redemptions + Uses Remaining Display
 
 Fixed issue where all offers were limited to one redemption, even unlimited-use offers.
