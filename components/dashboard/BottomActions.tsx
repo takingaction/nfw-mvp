@@ -22,14 +22,14 @@ export default function BottomActions({
   const items = [
     { image: squareImage1, link: squareImage1Link, label: "Contact Us" },
     { image: squareImage2, link: squareImage2Link, label: "Gift a Membership" },
-    { image: squareImage3, link: squareImage3Link, label: "Share Your Story", disabled: true },
+    { image: squareImage3, link: squareImage3Link, label: "Share Your Story (Coming Soon)", disabled: true },
   ];
 
   return (
     <div className="bg-nfw-aubergine py-12 px-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
         {items.map((item, index) => (
-          <div key={index} className="relative aspect-square rounded-lg overflow-hidden group">
+          <div key={index} className="relative aspect-[3/4] md:aspect-square rounded-lg overflow-hidden group">
             {item.image ? (
               <>
                 <img
@@ -41,7 +41,7 @@ export default function BottomActions({
                 <div className="absolute inset-0 flex items-end">
                   {item.disabled ? (
                     <div className="w-full">
-                      <div className="bg-nfw-lilac px-4 py-3">
+                      <div className="bg-neutral-500 px-4 py-3">
                         <p className="text-center font-bold text-white font-ui uppercase text-sm">
                           {item.label}
                         </p>
@@ -60,7 +60,7 @@ export default function BottomActions({
                     </Link>
                   ) : (
                     <div className="w-full">
-                      <div className="bg-nfw-lilac px-4 py-3">
+                      <div className="bg-neutral-500 px-4 py-3">
                         <p className="text-center font-bold text-white font-ui uppercase text-sm">
                           {item.label}
                         </p>
