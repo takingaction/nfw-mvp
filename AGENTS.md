@@ -2468,3 +2468,31 @@ Fixed issue where all offers were limited to one redemption, even unlimited-use 
 **Files Modified:**
 - `app/api/access-perks/offers/[offerKey]/redeem/route.ts` - Removed duplicate check, added limit-exceeded error handling
 - `components/perks/OfferDetailPanel.tsx` - Added usesRemaining state, API fetch, badge display, button disabling
+
+#### Travel Navigation & Reset
+
+Added navigation between /perks and /travel, plus a reset button for the travel iframe.
+
+**FilterSidebar Travel Link:**
+- Added aubergine "Travel Benefits" link at top of sidebar with Plane icon
+- Links to `/travel`
+- Subtitle: "Hotels, Cars, Flights & More"
+
+**Travel Page Header:**
+- Desktop: Horizontal layout with "Back to Perks" on left, title centered, "Back to Travel Home" button on right
+- Mobile: Stacked layout - navigation buttons on top row, centered title below
+- Both buttons styled with white/10 background, rounded corners
+
+**Back to Travel Home Button:**
+- Calls `initTravel()` which reinitializes the SDK with `navigate_to: { view: "home" }`
+- Checks if SDK is loaded via `sdkLoadedRef` before proceeding
+- If SDK not ready, logs message and returns (button becomes no-op until SDK loads)
+- Sets status to "loading" during reinitialization
+
+**Bug Fixes:**
+- `OfferDetailPanel.tsx`: Fixed `disabled` prop type errors (boolean | null not assignable to boolean | undefined) by using `!!` to coerce to boolean
+
+**Files Modified:**
+- `components/perks/FilterSidebar.tsx` - Added Travel link with Plane icon
+- `app/travel/TravelClient.tsx` - Added responsive header with navigation buttons, SDK ready check
+- `components/perks/OfferDetailPanel.tsx` - Fixed disabled prop type errors
