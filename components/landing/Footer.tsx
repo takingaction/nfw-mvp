@@ -229,49 +229,47 @@ export default function Footer() {
         </div>
 
 {/* Email Signup Section */}
-        <div className="mb-6 flex justify-end">
-          <div className="flex flex-col items-start">
-            <p className="font-ui mb-2 uppercase" style={{ color: "#B7B6B9", fontWeight: 900 }}>
-              Sign Up for Updates
-            </p>
-            <form onSubmit={handleSignup} className="flex flex-col sm:flex-row items-start gap-3">
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Your email"
-                className="w-48 px-2 py-2 bg-transparent border-b text-nfw-dove placeholder-nfw-dove/50 focus:outline-none font-ui text-sm"
-                style={{ color: "#B7B6B9", borderBottomColor: "#B7B6B9" }}
-              />
-              {/* Honeypot field - hidden from real users */}
-              <input
-                type="text"
-                name="website"
-                tabIndex={-1}
-                autoComplete="off"
-                className="absolute -left-[9999px]"
-              />
-              <button
-                type="submit"
-                disabled={signupStatus === "loading" || signupStatus === "success"}
-                className="px-4 py-2 bg-nfw-dove text-nfw-aubergine font-ui text-sm font-black uppercase tracking-[0.06em] hover:bg-white disabled:opacity-60 whitespace-nowrap"
-              >
-                {signupStatus === "loading" ? "Signing up..." : signupStatus === "success" ? "Signed up!" : "Submit"}
-              </button>
-            </form>
-            {signupStatus === "success" && (
-              <p className="mt-2 font-ui text-sm" style={{ color: "#B7B6B9" }}>
-                Thanks! You&apos;re on the list.
-              </p>
-            )}
-            {signupStatus === "error" && (
-              <p className="mt-2 font-ui text-sm text-red-300">
-                {errorMessage}
-              </p>
-            )}
-          </div>
+        <div className="mb-6 flex flex-col sm:flex-row justify-between items-start gap-4">
+          <p className="font-ui uppercase" style={{ color: "#B7B6B9", fontWeight: 900 }}>
+            Sign Up for Updates
+          </p>
+          <form onSubmit={handleSignup} className="flex flex-col sm:flex-row items-start gap-3 w-full sm:w-auto">
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Your email"
+              className="flex-1 sm:flex-none sm:w-48 px-3 py-2 bg-transparent border text-nfw-dove placeholder-nfw-dove/50 focus:outline-none font-ui text-sm w-full"
+              style={{ color: "#B7B6B9", borderColor: "#B7B6B9" }}
+            />
+            {/* Honeypot field - hidden from real users */}
+            <input
+              type="text"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              className="absolute -left-[9999px]"
+            />
+            <button
+              type="submit"
+              disabled={signupStatus === "loading" || signupStatus === "success"}
+              className="px-4 py-2 bg-nfw-dove text-nfw-aubergine font-ui text-sm font-black uppercase tracking-[0.06em] hover:bg-white disabled:opacity-60 whitespace-nowrap w-full sm:w-auto"
+            >
+              {signupStatus === "loading" ? "Signing up..." : signupStatus === "success" ? "Signed up!" : "Submit"}
+            </button>
+          </form>
         </div>
+        {signupStatus === "success" && (
+          <p className="mb-6 font-ui text-sm" style={{ color: "#B7B6B9" }}>
+            Thanks! You&apos;re on the list.
+          </p>
+        )}
+        {signupStatus === "error" && (
+          <p className="mb-6 font-ui text-sm text-red-300">
+            {errorMessage}
+          </p>
+        )}
 
         {/* Bottom Bar */}
         <div className="border-t pt-4 flex flex-col sm:flex-row justify-between items-center gap-4" style={{ borderColor: "#B7B6B9" }}>
