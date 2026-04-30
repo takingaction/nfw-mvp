@@ -28,11 +28,6 @@ export default function TravelClient({
   };
 
   const initTravel = async () => {
-    if (!sdkLoadedRef.current || !(window as any).travelClient) {
-      console.log("Travel SDK not ready yet, waiting...");
-      return;
-    }
-    setStatus("loading");
     try {
       const response = await fetch("/api/travel/token", {
         method: "POST",
@@ -52,15 +47,17 @@ export default function TravelClient({
 
       const { session_token } = await response.json();
 
-      (window as any).travelClient.start({
-        session_token,
-        container: "#travel-container",
-        height: "fit",
-        width: "100%",
-        navigate_to: { view: "home" },
-      });
+      if (typeof window !== "undefined" && (window as any).travelClient) {
+        (window as any).travelClient.start({
+          session_token,
+          container: "#travel-container",
+          height: "fit",
+          width: "100%",
+          navigate_to: { view: "home" },
+        });
 
-      setStatus("ready");
+        setStatus("ready");
+      }
     } catch (err: any) {
       console.error("Travel initialization error:", err);
       setStatus("error");
@@ -74,8 +71,6 @@ export default function TravelClient({
 
   const handleSDKLoad = () => {
     console.log("Travel SDK loaded");
-    sdkLoadedRef.current = true;
-    initTravel();
   };
 
   if (status === "error") {
@@ -176,7 +171,7 @@ export default function TravelClient({
       {/* Load Travel SDK script */}
       <Script
         src="https://booking.accessdevelopment-stage.com/scripts/travel.client.v2.js"
-        strategy="lazyOnload"
+        strategy="afterInteractive"
         onLoad={handleSDKLoad}
       />
     </div>
