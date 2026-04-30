@@ -96,9 +96,9 @@ function OnlineHistoryItem({ claim }: { claim: Claim }) {
 function LatestOfferingCard({ product }: { product: LatestProduct }) {
   const isDraft = product.status === "DRAFT";
   return (
-    <Link href="/store" className="block w-48 flex-shrink-0">
-      <div className="bg-white rounded-xl overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow">
-        <div className="aspect-[3/4] relative bg-white overflow-hidden">
+    <Link href="/store" className="block w-full h-full">
+      <div className="bg-white rounded-xl overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col">
+        <div className="aspect-square sm:aspect-[3/4] relative bg-white overflow-hidden flex-shrink-0">
           {product.imageUrl ? (
             <img
               src={product.imageUrl}
@@ -155,7 +155,7 @@ export default function YourZeroDollarStoreSection({ claims }: YourZeroDollarSto
 
   return (
     <section className="bg-nfw-lilac py-12 px-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8">
         <h2 className="text-2xl font-bold text-white font-serif">
           Your Zero Dollar Store
         </h2>
@@ -167,7 +167,7 @@ export default function YourZeroDollarStoreSection({ claims }: YourZeroDollarSto
         </Link>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Left Column: Online History - 1/3 width */}
         <div>
           <div className="bg-white/10 rounded-xl p-6">
@@ -214,7 +214,7 @@ export default function YourZeroDollarStoreSection({ claims }: YourZeroDollarSto
                 <p className="text-white/60 text-sm">No products available</p>
               </div>
             ) : (
-              <div className="flex gap-3 overflow-x-auto pb-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 {latestProducts.map((product) => (
                   <LatestOfferingCard key={product.shopifyProductId} product={product} />
                 ))}
