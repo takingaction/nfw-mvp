@@ -340,7 +340,7 @@ export default function OfferDetailPanel({
         if (displayContent) {
           setCustomRedemption({
             display: displayContent,
-            termsOfUse: data.terms || details.terms_of_use,
+            termsOfUse: data.terms || data.details?.terms_of_use || details.terms,
             promoCode: details.promotion_code || data.promotion_code,
             redemptionUrl: details.link || data.redemption_url,
             method: 'instore_print'
@@ -377,7 +377,7 @@ export default function OfferDetailPanel({
         if (displayContent) {
           setCustomRedemption({
             display: displayContent,
-            termsOfUse: data.terms || details.terms_of_use,
+            termsOfUse: data.terms || data.details?.terms_of_use || details.terms,
             promoCode: details.promotion_code || data.promotion_code,
             redemptionUrl: details.link || data.redemption_url,
             method: 'instore'
