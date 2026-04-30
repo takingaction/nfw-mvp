@@ -115,9 +115,9 @@ export default function PerksPage() {
           window.location.href = "/auth/sign-up?step=1";
           return;
         }
-        // membership_level can be null for free members - that's fine
-        // Only redirect if membership_level is explicitly set to a paid plan
-        if (profile?.membership_level && !["contributing", "founding"].includes(profile.membership_level)) {
+        // membership_level can be "free" for free members - allow them to access perks
+        // Only redirect if membership_level is explicitly set to a non-perk plan
+        if (profile?.membership_level && !["free", "contributing", "founding"].includes(profile.membership_level)) {
           window.location.href = "/auth/sign-up?step=3";
           return;
         }
