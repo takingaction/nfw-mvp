@@ -2419,3 +2419,30 @@ Added "Terms of Use" section immediately above the redemption buttons with citri
 
 **Files Modified:**
 - `components/perks/OfferDetailPanel.tsx` - Added terms_of_use to interface, restyled terms section above redemption buttons
+
+#### Allow Unlimited Redemptions + Uses Remaining Display
+
+Fixed issue where all offers were limited to one redemption, even unlimited-use offers.
+
+**Problem:** Local database check was blocking ALL redemptions if user had ANY active redemption, preventing unlimited offers from being redeemed multiple times.
+
+**Solution:**
+1. Removed hard block on duplicate redemptions in `/api/access-perks/offers/[offerKey]/redeem/route.ts`
+2. Access Perks API now handles usage limits
+3. Added better error handling for limit-exceeded responses (detects "limit", "use", "remaining" in error messages)
+
+**Uses Remaining Feature:**
+- Created `/api/access-perks/offers/[offerKey]/uses-remaining/route.ts` (uses existing `getOfferUsesRemaining()` from lib)
+- Updated `OfferDetailPanel.tsx` to fetch and display uses remaining
+- Shows citrine badge "X Uses Remaining" above redemption buttons
+- Shows warning text when 3 or fewer uses remaining
+- Disables all redemption buttons when `number_of_uses_remaining === 0`
+- Button text changes to "Offer Limit Reached" when disabled
+- Local tracking in database continues as before (for dashboard purposes)
+
+**Files Created:**
+- `app/api/access-perks/offers/[offerKey]/uses-remaining/route.ts`
+
+**Files Modified:**
+- `app/api/access-perks/offers/[offerKey]/redeem/route.ts` - Removed duplicate check, added limit-exceeded error handling
+- `components/perks/OfferDetailPanel.tsx` - Added usesRemaining state, API fetch, badge display, button disabling
