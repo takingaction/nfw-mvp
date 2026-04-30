@@ -1019,7 +1019,7 @@ export default function OfferDetailPanel({
                       {offer.redemption_methods.includes("link") && (
                         <button
                           onClick={() => handleRedeem("link")}
-                          disabled={redeemingLink || (usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
+                          disabled={!!redeemingLink || !!(usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
                           className="w-full px-4 py-2.5 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
                         >
                           {redeemingLink ? (
@@ -1041,7 +1041,7 @@ export default function OfferDetailPanel({
                       {offer.redemption_methods.includes("instore") && (
                         <button
                           onClick={() => handleRedeem("instore")}
-                          disabled={redeemingInstore || (usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
+                          disabled={!!redeemingInstore || !!(usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
                           className="w-full px-4 py-2.5 bg-nfw-lilac text-nfw-blackberry rounded-xl hover:bg-nfw-lilac/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
                         >
                           {redeemingInstore ? (
@@ -1063,7 +1063,7 @@ export default function OfferDetailPanel({
                       {offer.redemption_methods.includes("instore_print") && (
                         <button
                           onClick={() => handleRedeem("instore_print")}
-                          disabled={redeemingPrint || (usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
+                          disabled={!!redeemingPrint || !!(usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
                           className="w-full px-4 py-2.5 bg-[#b2d1ee] text-nfw-blackberry rounded-xl hover:bg-[#b2d1ee]/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
                         >
                           {redeemingPrint ? (
@@ -1085,7 +1085,7 @@ export default function OfferDetailPanel({
                       {offer.redemption_methods.includes("call") && (
                         <button
                           onClick={() => handleRedeem("call")}
-                          disabled={redeemingCall || (usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
+                          disabled={!!redeemingCall || !!(usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
                           className="w-full px-4 py-2.5 bg-nfw-citrine text-nfw-blackberry rounded-xl hover:bg-nfw-citrine/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
                         >
                           {redeemingCall ? (

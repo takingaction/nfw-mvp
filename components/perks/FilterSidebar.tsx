@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, X, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, ChevronRight, X, SlidersHorizontal, Plane } from "lucide-react";
+import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface Category {
@@ -147,7 +148,20 @@ export default function FilterSidebar({
         )}
       </div>
 
-      <div className="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+      <div className="p-4 border-b border-nfw-blackberry/10">
+        <Link
+          href="/travel"
+          className="flex items-center gap-3 px-4 py-3 bg-nfw-aubergine text-white rounded-lg hover:bg-nfw-aubergine/90 transition-colors"
+        >
+          <Plane className="w-5 h-5" />
+          <div>
+            <div className="font-ui font-medium text-sm">Travel Benefits</div>
+            <div className="text-xs text-nfw-lilac">Hotels, Cars, Flights & More</div>
+          </div>
+        </Link>
+      </div>
+
+      <div className="p-4 max-h-[calc(100vh-280px)] overflow-y-auto">
         {(selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0) && (
           <div className="mb-4 pb-4 border-b border-nfw-blackberry/10">
             <p className="text-xs text-nfw-blackberry/50 mb-2">Selected:</p>
