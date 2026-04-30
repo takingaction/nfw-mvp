@@ -2510,3 +2510,28 @@ Added navigation between /perks and /travel, plus a reset button for the travel 
 
 **Files Modified:**
 - `components/landing/Footer.tsx` - Right-align email signup on desktop, keep full-width stacked layout on mobile
+
+#### Google Auth Admin Menu Fix
+
+**Problem:** Google Auth users with admin access could not see the admin menu, despite being set as admins for weeks. Password auth worked fine.
+
+**Root Causes Identified:**
+1. **Supabase browser client not handling Google Auth sessions** - The custom domain auth sessions were stored in cookies but browser client couldn't read them properly
+2. **React error #418 (hydration mismatch)** - Caused components to fail rendering
+3. **Incorrect profile select** - Included `email` column that doesn't exist in profiles table (introduced during fix)
+
+**Solution:**
+1. Created `/api/auth/profile` server-side endpoint using `createServerClient` with cookie handling
+2. Updated auth components to use API instead of direct Supabase client queries:
+   - `components/auth-button.tsx`
+   - `components/AuthButtonCombined.tsx`
+   - `components/MobileMenu.tsx`
+3. Removed singleton pattern from `lib/supabase/client.ts`
+4. Removed `email` from profile select (doesn't exist in profiles table)
+
+**Key Files:**
+- `app/api/auth/profile/route.ts` - New server-side profile endpoint
+- `lib/supabase/client.ts` - Removed singleton pattern
+- `components/auth-button.tsx` - Uses API for profile fetch
+- `components/AuthButtonCombined.tsx` - Uses API for profile fetch
+- `components/MobileMenu.tsx` - Uses API for profile fetch
