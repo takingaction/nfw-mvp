@@ -30,7 +30,7 @@ export default function PopularAcrossNFW({ featuredItems }: PopularAcrossNFWProp
           <Link
             key={item.id}
             href={item.type === "microgrant" ? "/grants/apply" : item.type === "article" ? `/articles/${item.slug}` : "/store"}
-            className="relative group block aspect-[3/5] sm:aspect-[3/4]"
+            className="relative group block aspect-square sm:aspect-[3/4]"
           >
             {item.image ? (
               <img
