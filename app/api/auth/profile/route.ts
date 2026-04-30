@@ -41,7 +41,13 @@ export async function GET() {
       return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 });
     }
 
-    return NextResponse.json(profile);
+    // Normalize null membership_level to "free" for consistency
+    const normalizedProfile = {
+      ...profile,
+      membership_level: profile?.membership_level || "free",
+    };
+
+    return NextResponse.json(normalizedProfile);
   } catch (error) {
     console.error("Profile route error:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
