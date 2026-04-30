@@ -2402,3 +2402,5 @@ Fixed issue where custom redemption instructions were not showing for in-store a
 
 **Files Modified:**
 - `components/perks/OfferDetailPanel.tsx` - Updated `instore` and `instore_print` methods to check `data.display_message || details.display` for custom instructions
+
+**Also Fixed:** Terms of use fallback chain updated from `data.terms || details.terms_of_use` to `data.terms || data.details?.terms_of_use || details.terms` to ensure terms are displayed when available.
