@@ -91,29 +91,29 @@ export default function TravelClient({
 
   return (
     <div className="min-h-screen bg-nfw-dove">
-      {/* Header */}
-      <div className="bg-nfw-aubergine py-4 px-4">
-        <div className="max-w-6xl mx-auto">
+      {/* Header - matching /perks style */}
+      <div className="bg-white pt-8 pb-6 border-b border-nfw-blackberry/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Desktop: horizontal layout */}
-          <div className="hidden sm:flex items-center justify-between">
-            <Link
-              href="/perks"
-              className="flex items-center gap-2 text-white/80 hover:text-white transition-colors font-ui text-sm"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Perks
-            </Link>
-            <div className="text-center">
-              <h1 className="text-2xl font-serif text-white">
+          <div className="hidden sm:flex items-start justify-between">
+            <div>
+              <Link
+                href="/perks"
+                className="inline-flex items-center gap-2 text-nfw-aubergine hover:text-nfw-blackberry/70 transition-colors font-ui text-sm mb-3"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Perks
+              </Link>
+              <h1 className="font-serif text-4xl lg:text-6xl leading-[1.1] text-nfw-aubergine mb-2">
                 Travel Benefits
               </h1>
-              <p className="text-nfw-lilac font-ui text-sm">
+              <p className="font-serif text-nfw-blackberry/60">
                 Book hotels, cars, flights, parks, and activities
               </p>
             </div>
             <button
               onClick={handleBackToTravelHome}
-              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors font-ui text-sm"
+              className="flex items-center gap-2 bg-nfw-aubergine text-white px-4 py-2 rounded-lg hover:bg-nfw-blackberry transition-colors font-ui text-sm"
             >
               <Home className="w-4 h-4" />
               Back to Travel Home
@@ -122,30 +122,26 @@ export default function TravelClient({
 
           {/* Mobile: stacked layout */}
           <div className="sm:hidden">
-            <div className="flex items-center justify-between mb-3">
-              <Link
-                href="/perks"
-                className="flex items-center gap-2 text-white/80 hover:text-white transition-colors font-ui text-sm"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Perks
-              </Link>
-              <button
-                onClick={handleBackToTravelHome}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg transition-colors font-ui text-sm"
-              >
-                <Home className="w-4 h-4" />
-                Back to Travel Home
-              </button>
-            </div>
-            <div className="text-center">
-              <h1 className="text-xl font-serif text-white">
-                Travel Benefits
-              </h1>
-              <p className="text-nfw-lilac font-ui text-xs">
-                Book hotels, cars, flights, parks, and activities
-              </p>
-            </div>
+            <Link
+              href="/perks"
+              className="inline-flex items-center gap-2 text-nfw-aubergine hover:text-nfw-blackberry/70 transition-colors font-ui text-sm mb-3"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Perks
+            </Link>
+            <h1 className="font-serif text-3xl text-nfw-aubergine mb-1">
+              Travel Benefits
+            </h1>
+            <p className="font-serif text-nfw-blackberry/60 text-sm">
+              Book hotels, cars, flights, parks, and activities
+            </p>
+            <button
+              onClick={handleBackToTravelHome}
+              className="flex items-center gap-2 bg-nfw-aubergine text-white px-4 py-2 rounded-lg hover:bg-nfw-blackberry transition-colors font-ui text-sm mt-4 w-full justify-center"
+            >
+              <Home className="w-4 h-4" />
+              Back to Travel Home
+            </button>
           </div>
         </div>
       </div>
