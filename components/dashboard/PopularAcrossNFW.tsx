@@ -25,12 +25,12 @@ export default function PopularAcrossNFW({ featuredItems }: PopularAcrossNFWProp
         Popular across NFW
       </h2>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
         {featuredItems.slice(0, 5).map((item) => (
           <Link
             key={item.id}
             href={item.type === "microgrant" ? "/grants/apply" : item.type === "article" ? `/articles/${item.slug}` : "/store"}
-            className="relative group block aspect-[3/4]"
+            className="relative group block aspect-[3/5] sm:aspect-[3/4]"
           >
             {item.image ? (
               <img
