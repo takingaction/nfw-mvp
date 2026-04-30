@@ -2404,3 +2404,18 @@ Fixed issue where custom redemption instructions were not showing for in-store a
 - `components/perks/OfferDetailPanel.tsx` - Updated `instore` and `instore_print` methods to check `data.display_message || details.display` for custom instructions
 
 **Also Fixed:** Terms of use fallback chain updated from `data.terms || details.terms_of_use` to `data.terms || data.details?.terms_of_use || details.terms` to ensure terms are displayed when available.
+
+#### Display Terms Above Redemption Buttons
+
+Added "Terms of Use" section immediately above the redemption buttons with citrine styling to ensure users see terms before redeeming.
+
+**Changes:**
+- Added `terms_of_use` field to Offer interface
+- Replaced existing "Terms & Conditions" section with "Terms of Use" section
+- Shows: `terms_of_use || terms_and_conditions` (prefers redemption-specific terms)
+- Citrine background/border styling (`bg-nfw-citrine/20 border border-nfw-citrine`)
+- Includes explanatory note: "These terms apply when redeeming this offer"
+- Positioned immediately above "Redeem This Offer" buttons
+
+**Files Modified:**
+- `components/perks/OfferDetailPanel.tsx` - Added terms_of_use to interface, restyled terms section above redemption buttons
