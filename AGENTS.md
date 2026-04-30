@@ -2350,3 +2350,17 @@ Added admin authentication checks to all 4 vulnerable routes:
 **Environment Variables Required (Stage):**
 - `ACCESS_TRAVEL_AUTH_URL`: `https://auth.adcrws-stage.com/api/v1/tokens`
 - `ACCESS_OFFERS_TOKEN`: Stage API key from Access Perks
+
+### Session 2026-04-29: Dashboard Mobile Responsiveness
+
+Made `/dashboard` more mobile responsive starting from the top.
+
+**Files Modified:**
+- `components/dashboard/DashboardHero.tsx` - Hero buttons stack on mobile (`flex-col sm:flex-row`)
+- `app/dashboard/page.tsx` - Changed profile/impact layout from CSS grid to flex (`flex-col md:flex-row`)
+- `components/dashboard/MembershipImpactCard.tsx` - Stats columns stack on mobile (`grid-cols-1 sm:grid-cols-3`), border separators only on sm+
+- `components/dashboard/PopularAcrossNFW.tsx` - Items 1 column on mobile, 2 on tablet, 5 on desktop; aspect-square mobile, aspect-[3/4] on sm+
+- `components/dashboard/YourMicrograntsSection.tsx` - Header button stacks on mobile; Available Microgrants in 1-column grid (removed horizontal scroll); image height h-40 mobile, h-32 desktop
+- `components/dashboard/YourPerksAndBenefits.tsx` - "Explore Perks" button stacks under header on mobile
+- `components/dashboard/YourZeroDollarStoreSection.tsx` - Header button stacks on mobile; Latest Offerings in 1-column grid; card aspect-square mobile, aspect-[3/4] on sm+
+- `components/dashboard/BottomActions.tsx` - Cards aspect-[4/3] on mobile (75% of square), aspect-square on desktop; "Share Your Story" label changed to "Share Your Story (Coming Soon)"; disabled button background changed to neutral-500 (grey)
