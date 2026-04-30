@@ -23,6 +23,10 @@ export default function TravelClient({
   const containerRef = useRef<HTMLDivElement>(null);
   const sdkLoadedRef = useRef(false);
 
+  const handleBackToTravelHome = () => {
+    window.location.reload();
+  };
+
   const initTravel = async () => {
     if (!sdkLoadedRef.current || !(window as any).travelClient) {
       console.log("Travel SDK not ready yet, waiting...");
@@ -71,7 +75,6 @@ export default function TravelClient({
   const handleSDKLoad = () => {
     console.log("Travel SDK loaded");
     sdkLoadedRef.current = true;
-    initTravel();
   };
 
   if (status === "error") {
@@ -113,7 +116,7 @@ export default function TravelClient({
               </p>
             </div>
             <button
-              onClick={initTravel}
+              onClick={handleBackToTravelHome}
               className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors font-ui text-sm"
             >
               <Home className="w-4 h-4" />
@@ -132,7 +135,7 @@ export default function TravelClient({
                 Back to Perks
               </Link>
               <button
-                onClick={initTravel}
+                onClick={handleBackToTravelHome}
                 className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg transition-colors font-ui text-sm"
               >
                 <Home className="w-4 h-4" />
