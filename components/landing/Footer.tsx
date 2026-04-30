@@ -229,18 +229,18 @@ export default function Footer() {
         </div>
 
 {/* Email Signup Section */}
-        <div className="mb-6 flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="mb-6 flex flex-col items-start sm:items-end gap-3">
           <p className="font-ui uppercase" style={{ color: "#B7B6B9", fontWeight: 900 }}>
             Sign Up for Updates
           </p>
-          <form onSubmit={handleSignup} className="flex flex-col sm:flex-row items-start gap-3 w-full sm:w-auto">
+          <form onSubmit={handleSignup} className="flex flex-col sm:flex-row items-start sm:items-end gap-3 w-full sm:w-auto">
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Your email"
-              className="flex-1 sm:flex-none sm:w-48 px-3 py-2 bg-transparent border text-nfw-dove placeholder-nfw-dove/50 focus:outline-none font-ui text-sm w-full"
+              className="flex-1 sm:flex-none sm:w-64 px-3 py-2 bg-transparent border text-nfw-dove placeholder-nfw-dove/50 focus:outline-none font-ui text-sm w-full"
               style={{ color: "#B7B6B9", borderColor: "#B7B6B9" }}
             />
             {/* Honeypot field - hidden from real users */}
