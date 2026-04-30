@@ -75,6 +75,7 @@ export default function TravelClient({
   const handleSDKLoad = () => {
     console.log("Travel SDK loaded");
     sdkLoadedRef.current = true;
+    initTravel();
   };
 
   if (status === "error") {
