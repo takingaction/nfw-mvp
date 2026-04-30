@@ -41,6 +41,7 @@ interface Offer {
   redemption_methods?: string[];
   categories?: any[];
   terms_and_conditions?: string;
+  terms_of_use?: string;
   discount_percent?: number;
   offer_group_key?: string;
 }
@@ -832,13 +833,16 @@ export default function OfferDetailPanel({
                   </div>
                 )}
 
-                {offer.terms_and_conditions && (
-                  <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
-                    <h3 className="text-base font-semibold text-nfw-blackberry mb-3">
-                      Terms & Conditions
+                {(offer.terms_of_use || offer.terms_and_conditions) && (
+                  <div className="bg-nfw-citrine/20 border border-nfw-citrine rounded-xl p-5">
+                    <h3 className="text-base font-semibold text-nfw-blackberry mb-2">
+                      Terms of Use
                     </h3>
-                    <div className="text-xs text-nfw-blackberry/50 whitespace-pre-wrap">
-                      {offer.terms_and_conditions}
+                    <p className="text-xs text-nfw-blackberry/50 mb-3">
+                      These terms apply when redeeming this offer
+                    </p>
+                    <div className="text-xs text-nfw-blackberry/70 whitespace-pre-wrap">
+                      {offer.terms_of_use || offer.terms_and_conditions}
                     </div>
                   </div>
                 )}
