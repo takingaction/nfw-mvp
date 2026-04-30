@@ -58,7 +58,7 @@ const statusLabels: Record<string, string> = {
 export default function YourMicrograntsSection({ grants, availableCycles }: YourMicrograntsSectionProps) {
   return (
     <section className="bg-nfw-wisteria py-12 px-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8">
         <h2 className="text-2xl font-bold text-white font-serif">
           Your Microgrants
         </h2>
@@ -146,13 +146,13 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
               </p>
             </div>
           ) : (
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {availableCycles.map((cycle) => (
-                <Link
-                  key={cycle.id}
-                  href="/grants/apply"
-                  className="bg-white/10 hover:bg-white/15 rounded-xl p-4 transition-colors flex-shrink-0 w-64 flex flex-col"
-                >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {availableCycles.map((cycle) => (
+              <Link
+                key={cycle.id}
+                href="/grants/apply"
+                className="bg-white/10 hover:bg-white/15 rounded-xl p-4 transition-colors flex flex-col"
+              >
                   {cycle.featured_image && (
                     <div className="relative w-full h-32 rounded-lg overflow-hidden mb-3">
                       <img
