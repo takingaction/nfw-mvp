@@ -2391,3 +2391,14 @@ Activated `auth.nationalfundforwomen.org` as custom domain for Supabase Auth.
 
 **Files Modified:**
 - `MEMBERSHIP.md` - Added second redirect URI to Google Cloud Console OAuth setup instructions
+
+### Session 2026-04-30: Fix Custom Redemption Instructions for In-Store Methods
+
+Fixed issue where custom redemption instructions were not showing for in-store and print coupon methods.
+
+**Problem:** When clicking "Redeem In-Store" or "Print Coupon" on offers with custom redemption instructions, users were taken directly to the form instead of seeing the instructions first.
+
+**Root Cause:** The API (`/api/access-perks/offers/[offerKey]/redeem/route.ts`) returns display instructions at root level (`display_message`), but `OfferDetailPanel.tsx` was checking `data.details?.display` which doesn't exist.
+
+**Files Modified:**
+- `components/perks/OfferDetailPanel.tsx` - Updated `instore` and `instore_print` methods to check `data.display_message || details.display` for custom instructions
