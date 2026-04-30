@@ -53,21 +53,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       }
     }
 
-    // Check for duplicate active redemption of same offer
-    const { data: existingRedemption } = await supabase
-      .from("offer_redemptions")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("offer_key", offerKey)
-      .eq("status", "active")
-      .limit(1);
-
-    if (existingRedemption && existingRedemption.length > 0) {
-      return NextResponse.json(
-        { error: "You have already redeemed this offer" },
-        { status: 400 }
-      );
-    }
+    // Note: Duplicate redemption check removed - Access Perks API now handles usage limits
+    // We track redemptions locally for dashboard purposes regardless of offer limits
 
     const memberKey = user.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 
@@ -85,8 +72,18 @@ export async function POST(request: Request, { params }: RouteParams) {
     });
 
     if (!response.ok) {
+      let errorMessage = "Redemption failed";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+        if (errorMessage.includes("limit") || errorMessage.includes("use") || errorMessage.includes("remaining")) {
+          errorMessage = "This offer has reached its redemption limit. No uses remaining.";
+        }
+      } catch {
+        // Use default error message
+      }
       return NextResponse.json(
-        { error: "Redemption failed" },
+        { error: errorMessage },
         { status: response.status },
       );
     }

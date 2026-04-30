@@ -149,6 +149,11 @@ export default function OfferDetailPanel({
   const [searchDistance, setSearchDistance] = useState("100mi");
   const [searchZip, setSearchZip] = useState("");
   const [profileZip, setProfileZip] = useState<string | null>(null);
+  const [usesRemaining, setUsesRemaining] = useState<{
+    usable: boolean;
+    uses_remaining: string | number;
+    number_of_uses_remaining: number;
+  } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -184,6 +189,7 @@ export default function OfferDetailPanel({
   const fetchOffer = async (key: string) => {
     setLoading(true);
     setError(null);
+    setUsesRemaining(null);
     try {
       const response = await fetch(`/api/access-perks/offers/${key}`);
 
@@ -200,6 +206,17 @@ export default function OfferDetailPanel({
         setOffer(data.offers[0]);
       } else {
         throw new Error("Offer not found");
+      }
+
+      // Fetch uses remaining
+      try {
+        const usesRes = await fetch(`/api/access-perks/offers/${key}/uses-remaining`);
+        if (usesRes.ok) {
+          const usesData = await usesRes.json();
+          setUsesRemaining(usesData);
+        }
+      } catch {
+        // Silently fail - uses remaining is not critical
       }
     } catch (err: any) {
       setError(err.message || "Failed to load offer");
@@ -974,6 +991,25 @@ export default function OfferDetailPanel({
                   </div>
                 )}
 
+                {usesRemaining && usesRemaining.number_of_uses_remaining >= 0 && (
+                  <div className="bg-nfw-citrine/20 border border-nfw-citrine rounded-xl p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-nfw-blackberry">
+                          {usesRemaining.number_of_uses_remaining === 0
+                            ? "No Uses Remaining"
+                            : `${usesRemaining.number_of_uses_remaining} ${usesRemaining.number_of_uses_remaining === 1 ? "Use" : "Uses"} Remaining`}
+                        </p>
+                        {usesRemaining.number_of_uses_remaining > 0 && usesRemaining.number_of_uses_remaining <= 3 && (
+                          <p className="text-xs text-nfw-blackberry/60 mt-1">
+                            Using this offer will consume one of your available redemptions
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {offer.redemption_methods && offer.redemption_methods.length > 0 && (
                   <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
                     <h3 className="text-base font-semibold text-nfw-blackberry mb-4">
@@ -983,7 +1019,7 @@ export default function OfferDetailPanel({
                       {offer.redemption_methods.includes("link") && (
                         <button
                           onClick={() => handleRedeem("link")}
-                          disabled={redeemingLink}
+                          disabled={redeemingLink || (usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
                           className="w-full px-4 py-2.5 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
                         >
                           {redeemingLink ? (
@@ -991,6 +1027,8 @@ export default function OfferDetailPanel({
                               <Loader2 className="w-4 h-4 animate-spin" />
                               Redeeming...
                             </>
+                          ) : usesRemaining && usesRemaining.number_of_uses_remaining === 0 ? (
+                            "Offer Limit Reached"
                           ) : (
                             <>
                               <Globe className="w-4 h-4" />
@@ -1003,7 +1041,7 @@ export default function OfferDetailPanel({
                       {offer.redemption_methods.includes("instore") && (
                         <button
                           onClick={() => handleRedeem("instore")}
-                          disabled={redeemingInstore}
+                          disabled={redeemingInstore || (usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
                           className="w-full px-4 py-2.5 bg-nfw-lilac text-nfw-blackberry rounded-xl hover:bg-nfw-lilac/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
                         >
                           {redeemingInstore ? (
@@ -1011,6 +1049,8 @@ export default function OfferDetailPanel({
                               <Loader2 className="w-4 h-4 animate-spin" />
                               Redeeming...
                             </>
+                          ) : usesRemaining && usesRemaining.number_of_uses_remaining === 0 ? (
+                            "Offer Limit Reached"
                           ) : (
                             <>
                               <Store className="w-4 h-4" />
@@ -1023,7 +1063,7 @@ export default function OfferDetailPanel({
                       {offer.redemption_methods.includes("instore_print") && (
                         <button
                           onClick={() => handleRedeem("instore_print")}
-                          disabled={redeemingPrint}
+                          disabled={redeemingPrint || (usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
                           className="w-full px-4 py-2.5 bg-[#b2d1ee] text-nfw-blackberry rounded-xl hover:bg-[#b2d1ee]/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
                         >
                           {redeemingPrint ? (
@@ -1031,6 +1071,8 @@ export default function OfferDetailPanel({
                               <Loader2 className="w-4 h-4 animate-spin" />
                               Redeeming...
                             </>
+                          ) : usesRemaining && usesRemaining.number_of_uses_remaining === 0 ? (
+                            "Offer Limit Reached"
                           ) : (
                             <>
                               <Printer className="w-4 h-4" />
@@ -1043,7 +1085,7 @@ export default function OfferDetailPanel({
                       {offer.redemption_methods.includes("call") && (
                         <button
                           onClick={() => handleRedeem("call")}
-                          disabled={redeemingCall}
+                          disabled={redeemingCall || (usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
                           className="w-full px-4 py-2.5 bg-nfw-citrine text-nfw-blackberry rounded-xl hover:bg-nfw-citrine/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
                         >
                           {redeemingCall ? (
@@ -1051,6 +1093,8 @@ export default function OfferDetailPanel({
                               <Loader2 className="w-4 h-4 animate-spin" />
                               Redeeming...
                             </>
+                          ) : usesRemaining && usesRemaining.number_of_uses_remaining === 0 ? (
+                            "Offer Limit Reached"
                           ) : (
                             <>
                               <Phone className="w-4 h-4" />
