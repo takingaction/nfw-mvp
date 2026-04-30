@@ -151,10 +151,10 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
               <Link
                 key={cycle.id}
                 href="/grants/apply"
-                className="bg-white/10 hover:bg-white/15 rounded-xl p-4 transition-colors flex flex-col"
+                className="bg-white/10 hover:bg-white/15 rounded-xl p-4 transition-colors flex flex-col h-full"
               >
                   {cycle.featured_image && (
-                    <div className="relative w-full h-32 rounded-lg overflow-hidden mb-3">
+                    <div className="relative w-full h-40 sm:h-32 rounded-lg overflow-hidden mb-3">
                       <img
                         src={cycle.featured_image}
                         alt={cycle.cycle_name}
