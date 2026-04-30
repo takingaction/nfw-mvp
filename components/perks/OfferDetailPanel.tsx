@@ -335,13 +335,14 @@ export default function OfferDetailPanel({
         });
       } else if (method === "instore_print") {
         const details = data.details || {};
+        const displayContent = data.display_message || details.display;
 
-        if (details.display) {
+        if (displayContent) {
           setCustomRedemption({
-            display: details.display,
-            termsOfUse: details.terms_of_use,
-            promoCode: details.promotion_code,
-            redemptionUrl: details.link,
+            display: displayContent,
+            termsOfUse: data.terms || details.terms_of_use,
+            promoCode: details.promotion_code || data.promotion_code,
+            redemptionUrl: details.link || data.redemption_url,
             method: 'instore_print'
           });
           return;
@@ -371,12 +372,13 @@ export default function OfferDetailPanel({
         }
       } else if (method === "instore") {
         const details = data.details || {};
+        const displayContent = data.display_message || details.display;
 
-        if (details.display) {
+        if (displayContent) {
           setCustomRedemption({
-            display: details.display,
-            termsOfUse: details.terms_of_use,
-            promoCode: details.promotion_code,
+            display: displayContent,
+            termsOfUse: data.terms || details.terms_of_use,
+            promoCode: details.promotion_code || data.promotion_code,
             redemptionUrl: details.link || data.redemption_url,
             method: 'instore'
           });
