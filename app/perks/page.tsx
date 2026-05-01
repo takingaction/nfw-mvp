@@ -105,20 +105,27 @@ export default function PerksPage() {
       
       // Only check profile for logged-in users
       if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("profile_completed, membership_level")
-          .eq("id", user.id)
-          .single();
-        
-        if (!profile?.profile_completed) {
-          window.location.href = "/auth/sign-up?step=1";
-          return;
-        }
-        // membership_level can be "free" for free members - allow them to access perks
-        // Only redirect if membership_level is explicitly set to a non-perk plan
-        if (profile?.membership_level && !["free", "contributing", "founding"].includes(profile.membership_level)) {
-          window.location.href = "/auth/sign-up?step=3";
+        try {
+          const response = await fetch("/api/auth/profile");
+          if (!response.ok) {
+            window.location.href = "/auth/login";
+            return;
+          }
+          const profile = await response.json();
+
+          if (!profile?.profile_completed) {
+            window.location.href = "/auth/sign-up?step=1";
+            return;
+          }
+          // membership_level can be "free" for free members - allow them to access perks
+          // Only redirect if membership_level is explicitly set to a non-perk plan
+          if (profile?.membership_level && !["free", "contributing", "founding"].includes(profile.membership_level)) {
+            window.location.href = "/auth/sign-up?step=3";
+            return;
+          }
+        } catch (err) {
+          console.error("Profile fetch error:", err);
+          window.location.href = "/auth/login";
           return;
         }
 

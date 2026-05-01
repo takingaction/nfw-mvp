@@ -28,7 +28,7 @@ export default async function ApplyForGrantPage() {
 
   if (!profile?.profile_completed) {
     redirect("/auth/sign-up?step=1");
-  } else if (!profile?.membership_level) {
+  } else if (profile?.membership_level && !["free", "contributing", "founding"].includes(profile.membership_level)) {
     redirect("/auth/sign-up?step=3");
   }
 

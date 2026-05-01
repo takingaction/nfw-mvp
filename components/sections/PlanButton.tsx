@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Loader2 } from "lucide-react";
 import { PricingPlan } from "@/lib/sections/types";
 
@@ -20,22 +19,14 @@ export default function PlanButton({ plan }: PlanButtonProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  const supabase = createClient();
-
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user) {
-          setIsLoggedIn(true);
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("membership_level")
-            .eq("id", user.id)
-            .single();
-          
+        const response = await fetch("/api/auth/profile");
+        if (response.ok) {
+          const profile = await response.json();
           setUserMembership(profile?.membership_level || null);
+          setIsLoggedIn(true);
         }
       } catch (err) {
         console.error("Auth check error:", err);
