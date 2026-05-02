@@ -2630,3 +2630,52 @@ ON CONFLICT (id) DO NOTHING;
 - `app/perks/page.tsx` - Uses `/api/auth/profile` instead of direct Supabase query
 - `app/grants/apply/page.tsx` - Fixed membership_level check
 - `components/sections/PlanButton.tsx` - Uses `/api/auth/profile`, removed unused import
+
+### Session 2026-05-02: Date of Birth Bug Fix
+
+#### Problem: date_of_birth Always Shows 1900-01-01
+
+Investigation revealed that **18 out of 20 users** with `profile_completed: true` still had placeholder date `1900-01-01`. The database and API could save dates (proven by contributing members and profile page updates), but the signup flow was failing.
+
+**Root Cause Found via Terminal Debugging:**
+
+Step 3 (free plan selection) only sends `{profile_completed: true, membership_level: "free"}` without `date_of_birth`. The `/api/profile/update` route was adding the default `date_of_birth: "1900-01-01"` to ALL updates (not just new profiles), which **overwrote the correct date that was saved in step 2**.
+
+**Flow:**
+1. Step 1: No date sent → default `1900-01-01` set (correct for placeholder)
+2. Step 2: Real date sent (e.g., `2000-01-01`) → saved correctly
+3. Step 3: No date sent → API incorrectly adds default `1900-01-01` → **overwrites correct date!**
+
+**The Bug was in `/api/profile/update/route.ts`:**
+```typescript
+// BEFORE - always set default for any update without date_of_birth
+if (!updates.date_of_birth) {
+  updates.date_of_birth = "1900-01-01";
+}
+
+// AFTER - only set default for NEW profiles (INSERT), not updates
+if (!existingProfile && !updates.date_of_birth) {
+  updates.date_of_birth = "1900-01-01";
+}
+```
+
+**Fix Applied:**
+- Changed condition to check `!existingProfile` before setting default
+- This preserves existing `date_of_birth` values during UPDATE operations
+- Only new INSERT operations get the placeholder default
+
+**Additional Debug Findings:**
+- Contributing members were unaffected because they skip step 3 (go to Stripe checkout instead)
+- Free and founding members were affected because step 3 sends only membership_level update
+- Terminal logging revealed the issue: `[ProfileUpdate] Final updates object` showed date being added incorrectly
+
+**SQL to Fix Existing Users:**
+```sql
+-- Set 1900-01-01 placeholders to NULL so users will be prompted to enter real date
+UPDATE profiles 
+SET date_of_birth = NULL 
+WHERE date_of_birth = '1900-01-01';
+```
+
+**Files Modified:**
+- `app/api/profile/update/route.ts` - Only set placeholder for new profiles, not updates
