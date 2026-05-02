@@ -171,7 +171,7 @@ export async function POST(request: Request) {
       // Fetch grant cycle name
       const { data: cycle } = await supabaseAdmin
         .from("grant_cycles")
-        .select("name")
+        .select("cycle_name")
         .eq("id", cycle_id)
         .single();
 
