@@ -89,17 +89,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if profile exists first
-    console.log("[ProfileUpdate] User ID:", user.id);
+    console.log(`[ProfileUpdate] [${new Date().toISOString()}] User ID: ${user.id}, Email: ${user.email}`);
     const { data: existingProfile } = await supabaseAdmin
       .from("profiles")
       .select("id")
       .eq("id", user.id)
       .single();
-    console.log("[ProfileUpdate] Existing profile:", existingProfile);
+    console.log(`[ProfileUpdate] Existing profile: ${JSON.stringify(existingProfile)}`);
 
     let error;
+    let operation: string;
     if (existingProfile) {
       // Profile exists - use UPDATE
+      operation = "UPDATE";
+      console.log(`[ProfileUpdate] Performing UPDATE for user ${user.id}`);
       const result = await supabaseAdmin
         .from("profiles")
         .update({
@@ -108,8 +111,15 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", user.id);
       error = result.error;
+      if (error) {
+        console.error(`[ProfileUpdate] UPDATE failed for user ${user.id}:`, error);
+      } else {
+        console.log(`[ProfileUpdate] UPDATE succeeded for user ${user.id}`);
+      }
     } else {
       // Profile doesn't exist - INSERT with all required fields
+      operation = "INSERT";
+      console.log(`[ProfileUpdate] Performing INSERT for user ${user.id}`);
       const result = await supabaseAdmin
         .from("profiles")
         .insert({
@@ -119,17 +129,23 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         });
       error = result.error;
+      if (error) {
+        console.error(`[ProfileUpdate] INSERT failed for user ${user.id}:`, error);
+      } else {
+        console.log(`[ProfileUpdate] INSERT succeeded for user ${user.id}`);
+      }
     }
 
     if (error) {
-      console.error("Profile update error:", error);
-      console.error("Updates attempted:", updates);
+      console.error(`[ProfileUpdate] [${operation}] Error for user ${user.id}:`, error.message);
+      console.error(`[ProfileUpdate] [${operation}] Updates attempted:`, JSON.stringify(updates));
       return NextResponse.json(
         { error: "Failed to update profile", details: error.message },
         { status: 500 },
       );
     }
 
+    console.log(`[ProfileUpdate] [${operation}] Success for user ${user.id}`);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json(
