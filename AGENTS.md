@@ -2728,3 +2728,30 @@ const handleAction = () => {
 - `7e991f7` - Add DOB alert banner system for profile completion
 - `1b86062` - Make DOB banner use wisteria background on dashboard
 - `ccd1d11` - Remove dismiss option from DOB banner
+
+### Session 2026-05-02: Grant Email System Audit
+
+#### Audit Findings
+
+**Critical Bug Found:**
+- `app/api/grants/create/route.ts` was selecting `name` from `grant_cycles` but the column is `cycle_name`
+- Both `.select("name")` and `cycle?.name` were wrong
+- This caused confirmation emails to show "the grant" instead of actual grant cycle name
+
+**Debug Console.logs Found:**
+- Multiple `console.log` statements in `lib/email.ts` left in production code
+- Affected functions: `buildEmailHtml`, `sendBrandedEmail`, `sendTemplateEmail`, `sendWelcomeEmail`
+
+#### Fixes Applied
+
+1. Changed `.select("name")` to `.select("cycle_name")` in grants/create/route.ts
+2. Changed `cycle?.name` to `cycle?.cycle_name` in the email call
+3. Removed all debug `console.log` statements from `lib/email.ts`
+
+**Files Modified:**
+- `app/api/grants/create/route.ts` - Fixed cycle column reference
+- `lib/email.ts` - Removed debug logging
+
+**Commits:**
+- `bcf19b0` - Fix grant cycle name bug and remove debug console.logs
+- `85d7d65` - Fix TypeScript error - select cycle_name not name
