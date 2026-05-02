@@ -41,12 +41,14 @@ export default function HeroSection({ content }: Props) {
               >
                 {c.cta_primary_label}
               </Link>
-              <Link
-                href={c.cta_secondary_url}
-                className="inline-flex items-center justify-center px-8 py-4 border border-nfw-dove/40 text-nfw-dove font-ui font-black text-sm tracking-[0.06em] uppercase hover:border-nfw-dove/80 transition-colors"
-              >
-                {c.cta_secondary_label}
-              </Link>
+              {c.cta_secondary_label && c.cta_secondary_url && (
+                <Link
+                  href={c.cta_secondary_url}
+                  className="inline-flex items-center justify-center px-8 py-4 border border-nfw-dove/40 text-nfw-dove font-ui font-black text-sm tracking-[0.06em] uppercase hover:border-nfw-dove/80 transition-colors"
+                >
+                  {c.cta_secondary_label}
+                </Link>
+              )}
             </div>
           </div>
 
