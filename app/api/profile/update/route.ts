@@ -77,7 +77,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!updates.date_of_birth) {
+    // Only set default date_of_birth if it was genuinely not provided
+    // (null, undefined, or empty string - NOT if user entered 1900-01-01 as their actual birthday)
+    if (updates.date_of_birth === null || updates.date_of_birth === undefined || updates.date_of_birth === "") {
       updates.date_of_birth = "1900-01-01";
     }
 
