@@ -1,6 +1,5 @@
 "use client";
 
-import { X } from "lucide-react";
 import Link from "next/link";
 
 interface BannerProps {
@@ -8,11 +7,10 @@ interface BannerProps {
   actionText: string;
   href?: string;
   onAction?: () => void;
-  onDismiss?: () => void;
   bgColor?: string;
 }
 
-export function Banner({ message, actionText, href, onAction, onDismiss, bgColor = "bg-nfw-aubergine" }: BannerProps) {
+export function Banner({ message, actionText, href, onAction, bgColor = "bg-nfw-aubergine" }: BannerProps) {
   return (
     <div className={`${bgColor} text-white px-4 py-3 sm:px-6 sm:py-4`}>
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -35,15 +33,6 @@ export function Banner({ message, actionText, href, onAction, onDismiss, bgColor
               {actionText}
             </button>
           ) : null}
-          {onDismiss && (
-            <button
-              onClick={onDismiss}
-              className="p-2 text-white/70 hover:text-white transition-colors"
-              aria-label="Dismiss"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
         </div>
       </div>
     </div>
