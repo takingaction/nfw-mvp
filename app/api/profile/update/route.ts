@@ -84,12 +84,6 @@ export async function POST(request: NextRequest) {
     console.log(`[ProfileUpdate] Keys in body: ${JSON.stringify(Object.keys(body))}`);
     console.log(`[ProfileUpdate] ALLOWED_FIELDS includes date_of_birth: ${(ALLOWED_FIELDS as readonly string[]).includes("date_of_birth")}`);
 
-    // Only set default date_of_birth for NEW profiles (INSERT), not for updates
-    // This prevents overwriting an existing date_of_birth with the placeholder
-    if (!existingProfile && (updates.date_of_birth === null || updates.date_of_birth === undefined || updates.date_of_birth === "")) {
-      updates.date_of_birth = "1900-01-01";
-    }
-
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
         { error: "No valid fields to update" },
@@ -105,6 +99,12 @@ export async function POST(request: NextRequest) {
       .eq("id", user.id)
       .single();
     console.log(`[ProfileUpdate] Existing profile: ${JSON.stringify(existingProfile)}`);
+
+    // Only set default date_of_birth for NEW profiles (INSERT), not for updates
+    // This prevents overwriting an existing date_of_birth with the placeholder
+    if (!existingProfile && (updates.date_of_birth === null || updates.date_of_birth === undefined || updates.date_of_birth === "")) {
+      updates.date_of_birth = "1900-01-01";
+    }
 
     let error;
     let operation: string;
