@@ -126,14 +126,16 @@ export async function POST(request: NextRequest) {
       // Profile doesn't exist - INSERT with all required fields
       operation = "INSERT";
       console.log(`[ProfileUpdate] Performing INSERT for user ${user.id}`);
+      const insertValues = {
+        id: user.id,
+        ...updates,
+        full_name: updates.full_name || "Member",
+        updated_at: new Date().toISOString(),
+      };
+      console.log(`[ProfileUpdate] INSERT values: ${JSON.stringify(insertValues)}`);
       const result = await supabaseAdmin
         .from("profiles")
-        .insert({
-          id: user.id,
-          ...updates,
-          full_name: updates.full_name || "Member",
-          updated_at: new Date().toISOString(),
-        });
+        .insert(insertValues);
       error = result.error;
       if (error) {
         console.error(`[ProfileUpdate] INSERT failed for user ${user.id}:`, error);
