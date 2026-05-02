@@ -32,29 +32,15 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // Handle orphaned session (user deleted from auth.users but still has cookies)
-  // BUT allow auth pages through (login, signup, etc.) to prevent redirect loops
+  // Only redirect for protected routes, not general pages (they handle their own redirects)
+  const isProtectedRoute = request.nextUrl.pathname.startsWith("/admin");
   const isAuthPage = request.nextUrl.pathname.startsWith("/auth/");
-  if (!isAuthPage && (authError || !user)) {
-    if (authError) {
-      console.error("[Proxy] Auth error:", authError.message);
-    } else if (user === null) {
-      console.error("[Proxy] User not found in auth.users (possibly deleted) - clearing orphaned session");
-    }
-    // Clear all auth cookies and redirect to login
-    const response = NextResponse.redirect(new URL("/auth/login", request.url));
-    // Explicitly clear Supabase auth cookies
-    response.cookies.set("sb-access-token", "", { path: "/", expires: new Date(0) });
-    response.cookies.set("sb-refresh-token", "", { path: "/", expires: new Date(0) });
-    response.cookies.set("supabase-auth-token", "", { path: "/", expires: new Date(0) });
-    return response;
+
+  if (isProtectedRoute && !user) {
+    return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
-  // Protect /admin/* routes
-  if (request.nextUrl.pathname.startsWith("/admin")) {
-    if (!user) {
-      return NextResponse.redirect(new URL("/auth/login", request.url));
-    }
-
+  if (isProtectedRoute && !authError && user) {
     // Check if user is admin
     const { data: profile } = await supabase
       .from("profiles")
@@ -65,6 +51,18 @@ export async function proxy(request: NextRequest) {
     if (!profile?.is_admin) {
       return NextResponse.redirect(new URL("/", request.url));
     }
+  }
+
+  // Handle orphaned session for non-auth pages (clear cookies to prevent loops)
+  // Only do this if there's an actual auth error AND user is null (deleted user scenario)
+  if (!isAuthPage && authError) {
+    console.error("[Proxy] Auth error:", authError.message);
+    // Clear auth cookies and let the page handle its own redirect logic
+    const response = NextResponse.next({ request });
+    response.cookies.set("sb-access-token", "", { path: "/", expires: new Date(0) });
+    response.cookies.set("sb-refresh-token", "", { path: "/", expires: new Date(0) });
+    response.cookies.set("supabase-auth-token", "", { path: "/", expires: new Date(0) });
+    return response;
   }
 
   // Set pathname header
