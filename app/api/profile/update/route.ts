@@ -76,8 +76,13 @@ export async function POST(request: NextRequest) {
         updates[key] = typeof value === 'object' ? value : {};
       } else if (ALLOWED_FIELDS.includes(key as AllowedField)) {
         updates[key] = String(value);
+      } else {
+        console.log(`[ProfileUpdate] Key "${key}" NOT in ALLOWED_FIELDS, skipping`);
       }
     }
+
+    console.log(`[ProfileUpdate] Keys in body: ${JSON.stringify(Object.keys(body))}`);
+    console.log(`[ProfileUpdate] ALLOWED_FIELDS includes date_of_birth: ${(ALLOWED_FIELDS as readonly string[]).includes("date_of_birth")}`);
 
     // Only set default date_of_birth if it was genuinely not provided
     // (null, undefined, or empty string - NOT if user entered 1900-01-01 as their actual birthday)
