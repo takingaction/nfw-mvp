@@ -9,11 +9,12 @@ interface BannerProps {
   href?: string;
   onAction?: () => void;
   onDismiss?: () => void;
+  bgColor?: string;
 }
 
-export function Banner({ message, actionText, href, onAction, onDismiss }: BannerProps) {
+export function Banner({ message, actionText, href, onAction, onDismiss, bgColor = "bg-nfw-aubergine" }: BannerProps) {
   return (
-    <div className="bg-nfw-aubergine text-white px-4 py-3 sm:px-6 sm:py-4">
+    <div className={`${bgColor} text-white px-4 py-3 sm:px-6 sm:py-4`}>
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <p className="text-sm sm:text-base font-medium flex-1">
           {message}

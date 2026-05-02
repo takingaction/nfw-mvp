@@ -50,6 +50,7 @@ export function ProfileBanner({ profile }: ProfileBannerProps) {
       actionText="Add Date of Birth"
       onAction={handleScrollToDOB}
       onDismiss={handleDismiss}
+      bgColor="bg-nfw-wisteria"
     />
   );
 }
