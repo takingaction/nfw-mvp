@@ -103,6 +103,8 @@ export async function POST(request: NextRequest) {
 
     let error;
     let operation: string;
+    console.log(`[ProfileUpdate] Final updates object: ${JSON.stringify(updates)}`);
+
     if (existingProfile) {
       // Profile exists - use UPDATE
       operation = "UPDATE";
