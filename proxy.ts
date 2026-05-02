@@ -28,7 +28,24 @@ export async function proxy(request: NextRequest) {
   // Refresh session
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
+
+  // Handle orphaned session (user deleted from auth.users but still has cookies)
+  if (authError || !user) {
+    if (authError) {
+      console.error("[Proxy] Auth error:", authError.message);
+    } else if (user === null) {
+      console.error("[Proxy] User not found in auth.users (possibly deleted) - clearing orphaned session");
+    }
+    // Clear all auth cookies and redirect to login
+    const response = NextResponse.redirect(new URL("/auth/login", request.url));
+    // Explicitly clear Supabase auth cookies
+    response.cookies.set("sb-access-token", "", { path: "/", expires: new Date(0) });
+    response.cookies.set("sb-refresh-token", "", { path: "/", expires: new Date(0) });
+    response.cookies.set("supabase-auth-token", "", { path: "/", expires: new Date(0) });
+    return response;
+  }
 
   // Protect /admin/* routes
   if (request.nextUrl.pathname.startsWith("/admin")) {
