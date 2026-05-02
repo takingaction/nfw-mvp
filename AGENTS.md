@@ -2679,3 +2679,52 @@ WHERE date_of_birth = '1900-01-01';
 
 **Files Modified:**
 - `app/api/profile/update/route.ts` - Only set placeholder for new profiles, not updates
+
+### Session 2026-05-02: DOB Alert Banner System
+
+#### Problem: Missing DOB Alert System
+
+Users with placeholder `1900-01-01` date weren't being prompted to add their real date of birth. The alert was needed to ensure users update their DOB before applying for grants.
+
+#### Solution: Non-Dismissible DOB Alert Banner
+
+Created an alert banner system that persists on dashboard and profile pages until user adds a real DOB.
+
+**Files Created:**
+- `lib/profile-utils.ts` - `needsDateOfBirth(profile)` helper function
+- `components/ui/banner.tsx` - Reusable banner component with aubergine/wisteria background, citrine action button
+- `components/profile/ProfileBanner.tsx` - Client component that shows banner when `needsDateOfBirth` returns true
+
+**Files Modified:**
+- `components/ProfileCompletionForm.tsx` - Added `id="date_of_birth"` to input for scroll-to anchor
+- `app/profile/page.tsx` - Added `<ProfileBanner profile={profile} />`
+- `app/dashboard/page.tsx` - Added `<ProfileBanner profile={profile} />` with wisteria background
+
+**Banner Behavior (Final):**
+- Shows on every page load (dashboard + profile) until real DOB is saved
+- No dismiss option - only disappears when real DOB is added
+- Dashboard button → navigates to `/profile`
+- Profile button → scrolls to and focuses `#date_of_birth` field
+- Uses `needsDateOfBirth()` helper to check if `date_of_birth === "1900-01-01"`
+
+**Key Code:**
+```typescript
+// ProfileBanner.tsx
+const handleAction = () => {
+  const pathname = window.location.pathname;
+  if (pathname === "/dashboard") {
+    window.location.href = "/profile";
+  } else {
+    const element = document.getElementById("date_of_birth");
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      element.focus();
+    }
+  }
+};
+```
+
+**Commits:**
+- `7e991f7` - Add DOB alert banner system for profile completion
+- `1b86062` - Make DOB banner use wisteria background on dashboard
+- `ccd1d11` - Remove dismiss option from DOB banner
