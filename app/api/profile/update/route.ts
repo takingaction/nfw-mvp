@@ -60,6 +60,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    console.log(`[ProfileUpdate] Raw body received: ${JSON.stringify(body)}`);
+
     const updates: Record<string, any> = {};
 
     for (const key of Object.keys(body) as string[]) {
