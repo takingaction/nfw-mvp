@@ -66,10 +66,6 @@ export function buildEmailHtml({
   footerCtaText,
   footerCtaUrl,
 }: EmailHtmlOptions): string {
-  console.log('[buildEmailHtml] Called with name:', name, 'headline:', headline);
-  console.log('[buildEmailHtml] body length:', body?.length);
-  console.log('[buildEmailHtml] membershipSnapshot length:', membershipSnapshot?.length);
-  console.log('[buildEmailHtml] ctaText:', ctaText, 'footerCtaText:', footerCtaText);
   const logoUrl = "https://nationalfundforwomen.org/images/nfw-aubergine.png";
   const siteUrl = "https://nationalfundforwomen.org";
   const ctaBackgroundColor = "#F8F19A";
@@ -335,11 +331,7 @@ export async function sendBrandedEmail({
   footerCtaText,
   footerCtaUrl,
 }: SendBrandedEmailOptions): Promise<{ success: boolean; error?: any }> {
-  console.log('[sendBrandedEmail] Called with to:', to, 'subject:', subject);
-  console.log('[sendBrandedEmail] body length:', body?.length);
-  console.log('[sendBrandedEmail] membershipSnapshot length:', membershipSnapshot?.length);
   try {
-    console.log('[sendBrandedEmail] Calling buildEmailHtml...');
     const html = buildEmailHtml({
       name,
       heroImage,
@@ -354,8 +346,6 @@ export async function sendBrandedEmail({
       footerCtaText,
       footerCtaUrl,
     });
-    console.log('[sendBrandedEmail] buildEmailHtml returned, html length:', html?.length);
-    console.log('[sendBrandedEmail] Calling sendEmailWithTimeout...');
     return sendEmailWithTimeout({ to, subject, html });
   } catch (err) {
     console.error('[sendBrandedEmail] Error:', err);
@@ -372,10 +362,8 @@ export async function sendTemplateEmail({
   subject: string;
   html: string;
 }): Promise<{ success: boolean; error?: any }> {
-  console.log('[sendTemplateEmail] Called with to:', to, 'html length:', html?.length);
   try {
     const resend = getResend();
-    console.log('[sendTemplateEmail] Calling Resend API...');
     const result = await resend.emails.send({
       from: FROM,
       to,
@@ -444,7 +432,6 @@ export async function sendWelcomeEmail({
   };
 
   if (template) {
-    console.log('[sendWelcomeEmail] Template found:', slug);
     const body = replaceTemplateVariables(template.html, variables);
 
     const membershipSnapshot = `
@@ -456,8 +443,6 @@ export async function sendWelcomeEmail({
       </div>
     `;
 
-    console.log('[sendWelcomeEmail] Body after replace, length:', body.length);
-    console.log('[sendWelcomeEmail] Calling sendBrandedEmail...');
     try {
       await sendBrandedEmail({
         to,
@@ -475,7 +460,6 @@ export async function sendWelcomeEmail({
         footerCtaText: "VISIT WEBSITE",
         footerCtaUrl: siteUrl,
       });
-      console.log('[sendWelcomeEmail] sendBrandedEmail completed successfully');
     } catch (err) {
       console.error('[sendWelcomeEmail] sendBrandedEmail error:', err);
       throw err;

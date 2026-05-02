@@ -180,7 +180,7 @@ export async function POST(request: Request) {
         sendGrantApplicationReceivedEmail({
           to: userData.user!.email!,
           name: profile.full_name || "there",
-          grantCycleName: cycle?.name || "the grant",
+          grantCycleName: cycle?.cycle_name || "the grant",
           applicationId: grant.id,
         }).catch(console.error);
       });
