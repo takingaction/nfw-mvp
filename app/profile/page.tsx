@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import ManageSubscription from "../../components/ManageSubscription";
 import ProfileCompletionForm from "../../components/ProfileCompletionForm";
 import AvatarUpload from "../../components/profile/AvatarUpload";
+import { ProfileBanner } from "@/components/profile/ProfileBanner";
 
 export const metadata = {
   title: "My Profile",
@@ -50,6 +51,7 @@ export default async function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-white">
+      <ProfileBanner profile={profile} />
       <div className="bg-white pt-8 pb-6 border-b border-nfw-blackberry/10">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="font-serif text-4xl lg:text-6xl leading-[1.1] text-nfw-blackberry mb-2">

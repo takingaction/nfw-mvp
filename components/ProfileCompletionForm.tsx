@@ -224,6 +224,7 @@ export default function ProfileCompletionForm({
           Date of birth <span className="text-nfw-lilac">*</span>
         </label>
         <input
+          id="date_of_birth"
           type="date"
           required
           value={formData.date_of_birth}
