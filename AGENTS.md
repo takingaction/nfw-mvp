@@ -2569,3 +2569,64 @@ Research found that some components fell back to `null` instead of `"free"` when
 **Files Modified:**
 - `app/perks/page.tsx` - Added "free" to allowed membership levels
 - `app/api/auth/profile/route.ts` - Normalize null → "free" in profile response
+
+### Session 2026-05-01: Orphaned Auth Users + Auth Consistency
+
+#### Problem: Auth Users Without Profiles
+
+Investigation revealed 2 orphaned auth users (colemanishi@gmail.com, lorickc@gmail.com) who had confirmed emails but no matching profile records.
+
+**Root Causes Identified:**
+1. Profile created LATE in signup flow (step 1 form submission), but auth user created EARLY (step 0)
+2. Users who abandoned signup before submitting step 1 left orphaned auth users
+3. `/api/profile/update` did INSERT if profile missing, but only worked if API was called with valid data
+
+**Schema Findings:**
+- `profiles.id` → FK with `ON DELETE CASCADE` to `auth.users.id` ✅
+- `profiles.full_name` is NOT NULL - needs placeholder value
+- `profiles.date_of_birth` is NOT NULL - uses "1900-01-01" as placeholder
+- No `created_at` column - uses `joined_at` instead
+
+#### Solution: Defensive Profile Creation in Auth Callback
+
+**`app/auth/callback/route.ts`:**
+- Added defensive profile creation when user confirms email
+- If profile doesn't exist after email confirmation, creates minimal profile:
+  - `id`: matching auth.users.id
+  - `full_name`: "Member" (placeholder)
+  - `date_of_birth`: "1900-01-01" (placeholder)
+  - `membership_level`: "free"
+  - `profile_completed`: false
+
+#### Consistent `/api/auth/profile` Usage
+
+Updated all components to use `/api/auth/profile` for consistency:
+- `app/perks/page.tsx` - Replaced direct Supabase profile query with API call
+- `app/grants/apply/page.tsx` - Fixed membership_level check to allow "free"
+- `components/sections/PlanButton.tsx` - Uses API call, removed unused import
+
+#### Enhanced Logging for Profile Operations
+
+**`app/api/profile/update/route.ts`:**
+- Added timestamp to all log entries
+- Logs operation type (INSERT vs UPDATE)
+- Logs user email alongside user ID
+- Logs success/failure with full error details
+- JSON stringifies updates for debugging
+
+#### SQL for Creating Orphaned Profiles
+
+```sql
+INSERT INTO profiles (id, full_name, date_of_birth, membership_level, profile_completed, joined_at, updated_at)
+VALUES
+  ('c81bda60-4b16-47d5-a95b-4502fc9b1643', 'Member', '1900-01-01', 'free', false, '2026-05-01 22:21:26+00', NOW()),
+  ('96dfdc62-4cba-49a2-837d-e54357142efc', 'Member', '1900-01-01', 'free', false, '2026-05-01 17:00:50+00', NOW())
+ON CONFLICT (id) DO NOTHING;
+```
+
+**Files Modified:**
+- `app/auth/callback/route.ts` - Defensive profile creation on email confirmation
+- `app/api/profile/update/route.ts` - Enhanced logging with timestamps and operation type
+- `app/perks/page.tsx` - Uses `/api/auth/profile` instead of direct Supabase query
+- `app/grants/apply/page.tsx` - Fixed membership_level check
+- `components/sections/PlanButton.tsx` - Uses `/api/auth/profile`, removed unused import
