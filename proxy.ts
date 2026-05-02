@@ -32,7 +32,9 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // Handle orphaned session (user deleted from auth.users but still has cookies)
-  if (authError || !user) {
+  // BUT allow auth pages through (login, signup, etc.) to prevent redirect loops
+  const isAuthPage = request.nextUrl.pathname.startsWith("/auth/");
+  if (!isAuthPage && (authError || !user)) {
     if (authError) {
       console.error("[Proxy] Auth error:", authError.message);
     } else if (user === null) {
