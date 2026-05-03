@@ -53,9 +53,9 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Handle orphaned session for non-auth pages (clear cookies to prevent loops)
-  // Only do this if there's an actual auth error AND user is null (deleted user scenario)
-  if (!isAuthPage && authError) {
+  // Handle orphaned session for protected routes only
+  // Only log auth errors for /admin/* routes - not for public pages
+  if (isProtectedRoute && !user && authError) {
     console.error("[Proxy] Auth error:", authError.message);
     // Clear auth cookies and let the page handle its own redirect logic
     const response = NextResponse.next({ request });

@@ -2781,3 +2781,50 @@ Removed all debug console.log statements from 14 files, preserving only webhook 
 
 **Commit:**
 - `6500d68` - Remove all debug console.log statements
+
+### Session 2026-05-03: Vercel Error Investigation + Proxy Auth Logging Fix
+
+#### Vercel Error Analysis
+
+Investigated reported Vercel errors including 406 responses and proxy auth errors.
+
+**Errors Reviewed:**
+- `site_settings` → 406 (consistent) - Missing RLS policies
+- `pages` → 200/406 (intermittent) - PostgREST schema cache issues
+- `[Proxy] Auth error: Auth session missing!` - 541 errors in 12 hours
+- Bot scanners hitting random paths (keys.json, appsettings.json, etc.) - noise, not an issue
+
+#### site_settings RLS Fix
+
+**Migration:** `069_add_rls_to_site_settings.sql`
+
+Applied RLS policies to `site_settings` table for consistency with other tables:
+- Enable row-level security
+- SELECT policy for public read access
+- ALL policy for admin write access only
+- NOTIFY pgrst to reload schema cache
+
+**Applied in Supabase SQL Editor.**
+
+#### Proxy Auth Error Logging Fix (Option A)
+
+Reduced noise from `[Proxy] Auth error: Auth session missing!` by only logging for protected routes.
+
+**Before:**
+```typescript
+if (!isAuthPage && authError) {
+  console.error("[Proxy] Auth error:", authError.message);
+```
+
+**After:**
+```typescript
+if (isProtectedRoute && !user && authError) {
+  console.error("[Proxy] Auth error:", authError.message);
+```
+
+**Files Modified:**
+- `proxy.ts` - Only log auth errors for /admin/* routes
+
+**Commit:**
+- `fce4729` - Add RLS policies to site_settings table
+- Next commit will be proxy auth logging fix
