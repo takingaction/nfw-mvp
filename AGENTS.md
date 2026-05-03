@@ -2755,3 +2755,29 @@ const handleAction = () => {
 **Commits:**
 - `bcf19b0` - Fix grant cycle name bug and remove debug console.logs
 - `85d7d65` - Fix TypeScript error - select cycle_name not name
+
+### Session 2026-05-02: Debug Console.log Cleanup
+
+Removed all debug console.log statements from 14 files, preserving only webhook logging for Stripe event debugging.
+
+**Files Cleaned (156 total debug logs removed):**
+- `app/api/profile/update/route.ts` - 13 logs removed
+- `app/api/welcome-email/route.ts` - 8 logs removed
+- `app/auth/callback/route.ts` - 2 logs removed
+- `lib/auth/reauthentication.ts` - 12 logs removed
+- `components/auth/ReauthModal.tsx` - 4 logs removed
+- `components/admin/pages/SectionEditorPanel.tsx` - 8 logs removed
+- `components/admin/edit/SectionWrapper.tsx` - 1 log removed
+- `components/admin/edit/EditableSections.tsx` - 8 logs removed
+- `components/admin/MediaLibraryModal.tsx` - 3 logs removed
+- `components/ArticleForm.tsx` - 3 logs removed
+- `app/api/admin/grants/send-bank-info-email/route.ts` - 2 logs removed
+- `app/api/admin/users/route.ts` - 1 log removed
+- `app/admin/pages/[pageId]/actions.ts` - 2 logs removed
+- `app/api/access-perks/sync-member/route.ts` - 1 log removed
+
+**Preserved:**
+- `app/api/webhook/route.ts` - kept webhook logging for Stripe event debugging
+
+**Commit:**
+- `6500d68` - Remove all debug console.log statements
