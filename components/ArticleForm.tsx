@@ -114,13 +114,11 @@ export default function ArticleForm({
 
       if (article) {
         // Update existing article
-        console.log("[ArticleForm] Updating article:", article.id, { ...articleData, content: "[CONTENT]" });
         const { error: updateError } = await supabase
           .from("articles")
           .update(articleData)
           .eq("id", article.id);
 
-        console.log("[ArticleForm] Update result:", { error: updateError });
         if (updateError) {
           console.error("[ArticleForm] Update error:", updateError);
           throw updateError;
@@ -135,7 +133,6 @@ export default function ArticleForm({
       }
 
       clearTimeout(timeoutId);
-      console.log("[ArticleForm] Success, redirecting to /admin/articles");
       router.push("/admin/articles");
       router.refresh();
     } catch (err: any) {

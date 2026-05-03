@@ -543,13 +543,7 @@ export default function SectionEditorPanel({
   }, [section.id]);
 
   const triggerAutoSave = useCallback((contentToSave: Record<string, unknown>) => {
-    console.log("[triggerAutoSave] Content to save", {
-      contentKeys: contentToSave ? Object.keys(contentToSave) : null,
-      contentNull: contentToSave === null,
-      contentUndefined: contentToSave === undefined,
-    });
     if (!contentToSave || typeof contentToSave !== 'object') {
-      console.log("[triggerAutoSave] Skipping save - invalid content");
       return;
     }
     if (saveTimerRef.current) {
@@ -570,15 +564,11 @@ export default function SectionEditorPanel({
   }, [onSave]);
 
   const updateField = (key: string, value: unknown) => {
-    console.log("[updateField] Field update", { key, value });
     setContent((prev) => {
       const updatedContent = { ...prev, [key]: value };
       if (key === "autoplay" && value === true && prev.muted !== true) {
         updatedContent.muted = true;
       }
-      console.log("[updateField] New content", {
-        contentKeys: Object.keys(updatedContent),
-      });
       triggerAutoSave(updatedContent);
       return updatedContent;
     });
@@ -618,7 +608,6 @@ export default function SectionEditorPanel({
 
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
         {def.editorFields.map((field) => {
-          console.log("[DEBUG] Field check:", field.key, "type:", field.type);
           if (field.type === "image") {
             return (
               <div key={field.key}>
@@ -645,7 +634,7 @@ export default function SectionEditorPanel({
 
                 <button
                   type="button"
-                  onClick={() => { console.log("[DEBUG] Image button clicked, field:", field.key, "setMediaLibrary:", typeof setMediaLibrary); setMediaLibrary({ isOpen: true, fieldKey: field.key, bucket: "page-builder" }); }}
+                  onClick={() => setMediaLibrary({ isOpen: true, fieldKey: field.key, bucket: "page-builder" })}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-nfw-blackberry/20 hover:border-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
                 >
                   <Upload className="w-4 h-4 text-nfw-blackberry/40" />
@@ -678,15 +667,12 @@ export default function SectionEditorPanel({
 
       <MediaLibraryModal
         isOpen={mediaLibrary.isOpen}
-        onClose={() => { console.log("[DEBUG] Modal closing"); setMediaLibrary({ isOpen: false, fieldKey: null, bucket: "page-builder" }); }}
+        onClose={() => setMediaLibrary({ isOpen: false, fieldKey: null, bucket: "page-builder" })}
         bucket={mediaLibrary.bucket}
         onSelect={(url) => {
-          console.log("[DEBUG] Image selected, fieldKey:", mediaLibrary.fieldKey, "url:", url);
           if (mediaLibrary.fieldKey) {
-            // Handle nested array field keys like "columns.0.image_url"
             const parts = mediaLibrary.fieldKey.split(".");
             if (parts.length === 3) {
-              // Array item field: columns.0.image_url
               const arrayFieldKey = parts[0];
               const index = parseInt(parts[1], 10);
               const subFieldKey = parts[2];
@@ -698,7 +684,6 @@ export default function SectionEditorPanel({
                 updateField(arrayFieldKey, updatedArray);
               }
             } else {
-              // Direct field
               updateField(mediaLibrary.fieldKey, url);
             }
           }

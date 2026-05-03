@@ -60,47 +60,28 @@ export default function EditableSections({ page, initialSections, templates }: P
   const handleSaveSection = useCallback(
     async (content: Record<string, unknown>) => {
       if (!selectedId) {
-        console.log("[handleSaveSection] Skipped - no selectedId");
         return;
       }
       if (!content || typeof content !== 'object') {
-        console.log("[handleSaveSection] Skipped - invalid content", { content });
         return;
       }
-      console.log("[handleSaveSection] Called", {
-        selectedId,
-        contentKeys: Object.keys(content),
-        contentNull: content === null,
-        contentUndefined: content === undefined,
-      });
       setSaving(true);
       try {
         const sectionToUpdate = sections.find((s) => s.id === selectedId);
         if (!sectionToUpdate) {
-          console.log("[handleSaveSection] Section not found", { selectedId });
           return;
         }
         const updatedContent = { ...content };
         const updated = sections.map((s) =>
           s.id === selectedId ? { ...s, content: updatedContent } : s,
         );
-        console.log("[handleSaveSection] Updated sections", {
-          updatedSectionContentKeys: Object.keys(updatedContent),
-        });
         setSections(updated);
-        console.log("[handleSaveSection] Saving section", {
-          sectionId: selectedId,
-          contentKeys: Object.keys(updatedContent),
-          visible: sectionToUpdate.visible,
-        });
         await saveDraftSection(
           selectedId,
           updatedContent,
           sectionToUpdate.visible,
         );
-        console.log("[handleSaveSection] Save successful");
       } catch (e) {
-        console.log("[handleSaveSection] Save failed", { error: e });
         showToast("Failed to save");
       } finally {
         setSaving(false);

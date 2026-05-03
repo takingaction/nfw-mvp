@@ -55,8 +55,6 @@ export async function POST(request: Request) {
       .single();
 
     if (profileError || !profile) {
-      // Either profile doesn't exist or already synced
-      console.log("[sync-member] Profile not found or already synced:", { profileError, profile });
       return NextResponse.json({ 
         success: false, 
         message: profileError ? "Profile not found" : "Already synced" 

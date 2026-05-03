@@ -40,19 +40,13 @@ export default function ReauthModal({
   });
 
   useEffect(() => {
-    console.log("[ReauthModal] isOpen:", isOpen, "state:", state);
-    // Only auto-start on initial modal open when state is idle
-    // Don't auto-start when state transitions to idle (e.g., after timeout)
     if (isOpen && state === "idle") {
-      console.log("[ReauthModal] Calling startReauthentication");
       startReauthentication();
     }
   }, [isOpen, state, startReauthentication]);
 
-  // Track previous state to avoid infinite loops
   const prevStateRef = useRef(state);
   useEffect(() => {
-    console.log("[ReauthModal] State changed from", prevStateRef.current, "to", state);
     prevStateRef.current = state;
   }, [state]);
 
@@ -97,12 +91,10 @@ export default function ReauthModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
       <div className="relative bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden">
-        {/* Header */}
         <div className="bg-nfw-aubergine px-6 py-5 text-center">
           <h2 className="text-xl font-bold font-serif text-white">{title}</h2>
         </div>
 
-        {/* Body */}
         <div className="px-6 py-6">
           {isLocked ? (
             <div className="text-center">
@@ -141,12 +133,10 @@ export default function ReauthModal({
                     disabled={isVerifying}
                   />
 
-                  {/* Error message */}
                   {error && (
                     <p className="mt-3 text-red-500 text-sm text-center">{error}</p>
                   )}
 
-                  {/* Resend timer */}
                   <div className="mt-4 text-center">
                     {timeUntilResend > 0 && state === "waiting" ? (
                       <p className="text-gray-400 text-sm">
@@ -165,7 +155,6 @@ export default function ReauthModal({
                 </>
               )}
 
-              {/* Attempts remaining */}
               {state === "waiting" && attemptsRemaining < 3 && (
                 <p className="mt-2 text-gray-400 text-xs text-center">
                   {attemptsRemaining} attempt{attemptsRemaining !== 1 ? "s" : ""} remaining
@@ -175,7 +164,6 @@ export default function ReauthModal({
           )}
         </div>
 
-        {/* Footer */}
         <div className="px-6 py-4 bg-nfw-dove/20 flex gap-3 justify-end">
           <button
             onClick={handleClose}

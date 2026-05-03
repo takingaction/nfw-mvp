@@ -41,14 +41,6 @@ export default function SectionWrapper({
   const [isHovered, setIsHovered] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
 
-  console.log("[SectionWrapper] Rendering section", {
-    id: section.id,
-    sectionType: section.section_type,
-    contentKeys: section.content ? Object.keys(section.content) : null,
-    contentNull: section.content === null,
-    contentUndefined: section.content === undefined,
-  });
-
   if (!section.content || typeof section.content !== 'object') {
     return (
       <div className="relative group">

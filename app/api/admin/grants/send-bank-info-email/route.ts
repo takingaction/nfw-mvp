@@ -33,9 +33,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Grant ID required" }, { status: 400 });
     }
 
-    // DEBUG: Log the grantId
-    console.log("[send-bank-info-email] Received grantId:", grantId);
-
     // Get grant data with nominee info
     // Note: profiles has two FK relationships (user_id and reviewed_by), so we use the explicit one
     const { data: grant, error: grantError } = await supabaseAdmin
@@ -43,9 +40,6 @@ export async function POST(request: NextRequest) {
       .select("*, grant_cycles(cycle_name), profiles!grants_user_id_fkey(full_name)")
       .eq("id", grantId)
       .single();
-
-    // DEBUG: Log query result
-    console.log("[send-bank-info-email] Query result:", { grant, grantError });
 
     if (!grant) {
       if (grantError) {

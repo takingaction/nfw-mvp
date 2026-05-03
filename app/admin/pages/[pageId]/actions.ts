@@ -18,17 +18,6 @@ export async function saveDraftSections(
     visible: boolean;
   }[],
 ) {
-  console.log("[DEBUG] saveDraftSections called", {
-    pageId,
-    sectionsCount: sections.length,
-    sections: sections.map((s) => ({
-      id: s.id,
-      section_type: s.section_type,
-      contentNull: s.content === null,
-      contentUndefined: s.content === undefined,
-      contentType: typeof s.content,
-    })),
-  });
   const { error } = await supabaseAdmin.from("page_sections").upsert(
     sections.map((s) => ({
       ...s,
@@ -44,12 +33,6 @@ export async function saveDraftSection(
   content: Record<string, unknown>,
   visible: boolean,
 ) {
-  console.log("[DEBUG] saveDraftSection called", {
-    sectionId,
-    contentNull: content === null,
-    contentUndefined: content === undefined,
-    contentType: typeof content,
-  });
   const { error } = await supabaseAdmin
     .from("page_sections")
     .update({ content, visible })

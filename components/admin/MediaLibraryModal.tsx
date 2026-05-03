@@ -45,16 +45,13 @@ export default function MediaLibraryModal({
 
   const fetchFiles = useCallback(async () => {
     setLoading(true);
-    console.log("[MediaLibrary] Fetching files from bucket:", bucket);
     try {
       const res = await fetch("/api/storage/list", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bucket, search, limit: PAGE_SIZE, offset }),
       });
-      console.log("[MediaLibrary] Response status:", res.status);
       const data = await res.json();
-      console.log("[MediaLibrary] Response data:", data);
       if (data.files) {
         setFiles(data.files);
         setTotal(data.total);

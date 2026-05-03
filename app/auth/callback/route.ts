@@ -26,9 +26,7 @@ export async function GET(request: NextRequest) {
           .eq("id", user.id)
           .single();
 
-        // Defensive: create profile if it doesn't exist
         if (!profile) {
-          console.log("[AuthCallback] Profile not found, creating minimal profile for user:", user.id);
           const { error: insertError } = await supabaseAdmin
             .from("profiles")
             .insert({
@@ -41,8 +39,6 @@ export async function GET(request: NextRequest) {
 
           if (insertError) {
             console.error("[AuthCallback] Failed to create profile:", insertError);
-          } else {
-            console.log("[AuthCallback] Profile created successfully for user:", user.id);
           }
         }
 

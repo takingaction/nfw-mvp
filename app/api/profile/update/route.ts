@@ -60,8 +60,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    console.log(`[ProfileUpdate] Raw body received: ${JSON.stringify(body)}`);
-
     const updates: Record<string, any> = {};
 
     for (const key of Object.keys(body) as string[]) {
@@ -76,13 +74,8 @@ export async function POST(request: NextRequest) {
         updates[key] = typeof value === 'object' ? value : {};
       } else if (ALLOWED_FIELDS.includes(key as AllowedField)) {
         updates[key] = String(value);
-      } else {
-        console.log(`[ProfileUpdate] Key "${key}" NOT in ALLOWED_FIELDS, skipping`);
       }
     }
-
-    console.log(`[ProfileUpdate] Keys in body: ${JSON.stringify(Object.keys(body))}`);
-    console.log(`[ProfileUpdate] ALLOWED_FIELDS includes date_of_birth: ${(ALLOWED_FIELDS as readonly string[]).includes("date_of_birth")}`);
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
@@ -91,29 +84,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if profile exists first
-    console.log(`[ProfileUpdate] [${new Date().toISOString()}] User ID: ${user.id}, Email: ${user.email}`);
     const { data: existingProfile } = await supabaseAdmin
       .from("profiles")
       .select("id")
       .eq("id", user.id)
       .single();
-    console.log(`[ProfileUpdate] Existing profile: ${JSON.stringify(existingProfile)}`);
 
-    // Only set default date_of_birth for NEW profiles (INSERT), not for updates
-    // This prevents overwriting an existing date_of_birth with the placeholder
     if (!existingProfile && (updates.date_of_birth === null || updates.date_of_birth === undefined || updates.date_of_birth === "")) {
       updates.date_of_birth = "1900-01-01";
     }
 
     let error;
     let operation: string;
-    console.log(`[ProfileUpdate] Final updates object: ${JSON.stringify(updates)}`);
 
     if (existingProfile) {
-      // Profile exists - use UPDATE
       operation = "UPDATE";
-      console.log(`[ProfileUpdate] Performing UPDATE for user ${user.id}`);
       const result = await supabaseAdmin
         .from("profiles")
         .update({
@@ -124,28 +109,21 @@ export async function POST(request: NextRequest) {
       error = result.error;
       if (error) {
         console.error(`[ProfileUpdate] UPDATE failed for user ${user.id}:`, error);
-      } else {
-        console.log(`[ProfileUpdate] UPDATE succeeded for user ${user.id}`);
       }
     } else {
-      // Profile doesn't exist - INSERT with all required fields
       operation = "INSERT";
-      console.log(`[ProfileUpdate] Performing INSERT for user ${user.id}`);
       const insertValues = {
         id: user.id,
         ...updates,
         full_name: updates.full_name || "Member",
         updated_at: new Date().toISOString(),
       };
-      console.log(`[ProfileUpdate] INSERT values: ${JSON.stringify(insertValues)}`);
       const result = await supabaseAdmin
         .from("profiles")
         .insert(insertValues);
       error = result.error;
       if (error) {
         console.error(`[ProfileUpdate] INSERT failed for user ${user.id}:`, error);
-      } else {
-        console.log(`[ProfileUpdate] INSERT succeeded for user ${user.id}`);
       }
     }
 
@@ -158,7 +136,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[ProfileUpdate] [${operation}] Success for user ${user.id}`);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json(

@@ -32,7 +32,6 @@ export async function GET() {
       .eq("is_admin", true)
       .order("full_name", { ascending: true });
 
-    console.log("[Admin Users API] Users found:", users?.length, "Error:", error);
     if (error) throw error;
 
     // If no admin users found, return empty array
