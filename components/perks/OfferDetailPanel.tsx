@@ -144,6 +144,9 @@ export default function OfferDetailPanel({
   const [selectedLocation, setSelectedLocation] = useState<{
     key: string;
     name: string;
+    street?: string;
+    cityStateZip?: string;
+    distance?: string;
   } | null>(null);
   const [locationRequiredError, setLocationRequiredError] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -707,8 +710,8 @@ export default function OfferDetailPanel({
                 {(offer.offer_group_key || locations.length > 0) && (
                   <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
                     <h3 className="text-base font-semibold text-nfw-blackberry mb-3 flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-nfw-lilac" />
-                      {loadingLocations ? "Finding nearby locations..." : "Nearby Locations"}
+                      <MapPin className={`w-4 h-4 ${selectedLocation ? "text-nfw-citrine" : "text-nfw-lilac"}`} />
+                      {selectedLocation ? "Location Selected" : loadingLocations ? "Finding nearby locations..." : "Nearby Locations"}
                     </h3>
                     
                     {offer.offer_group_key && !loadingLocations && (
@@ -765,7 +768,13 @@ export default function OfferDetailPanel({
                           return (
                             <li
                               key={key}
-                              onClick={() => setSelectedLocation({ key: String(key), name: String(name) })}
+                              onClick={() => setSelectedLocation({
+                                key: String(key),
+                                name: String(name),
+                                street: street ? `${street}${extended ? `, ${extended}` : ""}` : undefined,
+                                cityStateZip,
+                                distance
+                              })}
                               className={`flex items-start gap-2 text-sm cursor-pointer rounded-lg p-2 transition-colors ${
                                 isSelected ? "bg-nfw-citrine/20" : "hover:bg-nfw-blackberry/5"
                               }`}
@@ -812,14 +821,26 @@ export default function OfferDetailPanel({
                   <div className="bg-nfw-citrine/20 border border-nfw-citrine rounded-xl p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-2 flex-1">
-                        <MapPin className="w-4 h-4 text-nfw-blackberry flex-shrink-0 mt-0.5" />
+                        <Check className="w-4 h-4 text-nfw-blackberry flex-shrink-0 mt-0.5" />
                         <div>
-                          <p className="text-sm font-medium text-nfw-blackberry">
-                            Selected Location:
-                          </p>
-                          <p className="text-sm text-nfw-blackberry/70">
+                          <p className="text-sm font-semibold text-nfw-blackberry">
                             {selectedLocation.name}
                           </p>
+                          {selectedLocation.street && (
+                            <p className="text-xs text-nfw-blackberry/70">
+                              {selectedLocation.street}
+                            </p>
+                          )}
+                          {selectedLocation.cityStateZip && (
+                            <p className="text-xs text-nfw-blackberry/70">
+                              {selectedLocation.cityStateZip}
+                              {selectedLocation.distance && (
+                                <span className="ml-2 text-nfw-lilac">
+                                  ({selectedLocation.distance})
+                                </span>
+                              )}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <button
