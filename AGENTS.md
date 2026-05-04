@@ -2894,3 +2894,58 @@ Performed comprehensive security audit of all API routes.
 - `0add414` - Fix app/travel/page.tsx: remove non-existent email column
 - `cacd7fc` - Fix TypeScript error: profile.email no longer exists
 - `ca41104` - Reduce proxy auth error logging to protected routes only
+
+### Session 2026-05-04: Location Selection for In-Store Coupons + Gift Membership Fix
+
+#### Access Perks Location Limitation
+
+**Problem:** When redeeming in-store or print coupons, the coupon showed wrong/default address.
+
+**Root Cause:** Access Perks API endpoints (`/v1/redeem/:offer_key/instore` and `/v1/redeem/:offer_key/instore_print`) do NOT accept a `location_key` parameter. The API ignores any location data sent and always returns a generic coupon with a default location.
+
+**Solution:** Accept the platform limitation, keep location selection as visual confirmation only.
+
+**Files Modified:**
+- `components/perks/OfferDetailPanel.tsx`:
+  - Removed location requirement block (API ignores `location_key` for instore/instore_print)
+  - Keep location selection as visual confirmation
+  - Added disclaimer: "Please confirm with your store that coupon is valid before redeeming."
+  - Location list items now selectable with aubergine border highlight
+  - Header shows "Please Select a Location" or "Location Selected" with check icon
+
+#### Location Selection UX Improvements
+
+**Changes:**
+- Header shows "Please Select a Location" until selection, then "Location Selected"
+- Clicked location has grey background (`bg-nfw-blackberry/10`) and aubergine left border
+- Selected location shows "Location Selected" text inline with checkmark
+- Removed redundant location display below the store listings
+- Fixed `isSelected` comparison to use `String(key)` for proper comparison
+
+**Files Modified:**
+- `components/perks/OfferDetailPanel.tsx` - Multiple UX improvements for location selection
+
+**Commits:**
+- Multiple commits for location selection UX improvements
+- `29000ba` - Accept Access Perks platform limitation for location-specific coupons
+- `1c85e37` - Simplify coupon disclaimer message
+
+#### Gift Membership Success Page Fix
+
+**Problem:** Server-side exception "Event handlers cannot be passed to Client Component props" on gift membership success page.
+
+**Root Cause:** Success page was a Server Component with `onClick` event handler on the copy button.
+
+**Solution:**
+- Created `components/gift/CopyableCode.tsx` - Client component with `useState` for copy confirmation (shows Check icon with green color for 2 seconds after copying)
+- Added try-catch around `getGiftCodes` database query for error resilience
+- Changed `.single()` to `.maybeSingle()` to avoid throwing on multiple records
+
+**Files Created:**
+- `components/gift/CopyableCode.tsx` - Client component for clipboard copy with confirmation
+
+**Files Modified:**
+- `app/gift-membership/success/page.tsx` - Use `CopyableCode` component, error handling
+
+**Commit:**
+- `ddae9d6` - Fix gift membership success page - extract copy button to client component
