@@ -294,11 +294,6 @@ export default function OfferDetailPanel({
       setRedemptionResult(null);
       setLocationRequiredError(false);
 
-      if ((method === "instore" || method === "instore_print") && !effectiveLocationKey) {
-        setLocationRequiredError(true);
-        return;
-      }
-
       if (method === "link") setRedeemingLink(true);
       else if (method === "instore") setRedeemingInstore(true);
       else if (method === "call") setRedeemingCall(true);
@@ -1020,10 +1015,10 @@ export default function OfferDetailPanel({
                     <h3 className="text-base font-semibold text-nfw-blackberry mb-4">
                       Redeem This Offer
                     </h3>
-                    {locationRequiredError && (
-                      <div className="mb-4 p-3 bg-nfw-citrine/20 border border-nfw-citrine text-nfw-blackberry text-sm rounded-lg">
-                        Please select a nearby location before redeeming in-store or print coupons.
-                      </div>
+                    {(offer.redemption_methods.includes("instore") || offer.redemption_methods.includes("instore_print")) && (
+                      <p className="text-xs text-nfw-blackberry/60 mb-4">
+                        Your coupon will display a default store location. Please confirm with the store that your selected location matches before redeeming.
+                      </p>
                     )}
                     <div className="space-y-3">
                       {offer.redemption_methods.includes("link") && (
