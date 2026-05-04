@@ -16,6 +16,7 @@ import {
   Globe,
   User,
   Heart,
+  Check,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -759,15 +760,19 @@ export default function OfferDetailPanel({
                           const extended = getExtendedAddress(location);
                           const cityStateZip = getCityStateZip(location);
                           const distance = getDistance(location);
-                          
+                          const isSelected = selectedLocation?.key === key;
+
                           return (
                             <li
                               key={key}
-                              className="flex items-start gap-2 text-sm"
+                              onClick={() => setSelectedLocation({ key: String(key), name: String(name) })}
+                              className={`flex items-start gap-2 text-sm cursor-pointer rounded-lg p-2 transition-colors ${
+                                isSelected ? "bg-nfw-citrine/20" : "hover:bg-nfw-blackberry/5"
+                              }`}
                             >
-                              <MapPin className="w-3 h-3 text-nfw-blackberry/40 flex-shrink-0 mt-1" />
+                              <MapPin className={`w-3 h-3 flex-shrink-0 mt-1 ${isSelected ? "text-nfw-blackberry" : "text-nfw-blackberry/40"}`} />
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-nfw-blackberry">
+                                <p className={`font-medium ${isSelected ? "text-nfw-blackberry" : "text-nfw-blackberry"}`}>
                                   {name}
                                 </p>
                                 {street && (
@@ -787,6 +792,9 @@ export default function OfferDetailPanel({
                                   </p>
                                 )}
                               </div>
+                              {isSelected && (
+                                <Check className="w-4 h-4 text-nfw-blackberry flex-shrink-0" />
+                              )}
                             </li>
                           );
                         })}
