@@ -26,7 +26,7 @@ export default async function TravelPage() {
   const supabase = await createClient();
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, email")
+    .select("full_name")
     .eq("id", user.id)
     .single();
 
