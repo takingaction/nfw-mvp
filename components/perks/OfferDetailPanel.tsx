@@ -391,7 +391,7 @@ export default function OfferDetailPanel({
           setRedemptionResult({
             success: true,
             message: selectedLocation
-              ? `Print coupon opened for ${selectedLocation.name}.`
+              ? `Print coupon opened for ${selectedLocation.name}${selectedLocation.street ? ` at ${selectedLocation.street}` : ''}.`
               : "Print coupon opened in a new tab.",
             redemptionUrl: printUrl,
             couponCode: couponCode,
@@ -423,7 +423,7 @@ export default function OfferDetailPanel({
           setRedemptionResult({
             success: true,
             message: selectedLocation
-              ? `Your in-store coupon for ${selectedLocation.name} has been opened in a new tab.`
+              ? `Your in-store coupon for ${selectedLocation.name}${selectedLocation.street ? ` at ${selectedLocation.street}` : ''} has been opened in a new tab.`
               : "Your in-store coupon has been opened in a new tab.",
             redemptionUrl: couponUrl,
             instructions:
