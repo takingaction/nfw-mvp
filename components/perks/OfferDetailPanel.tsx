@@ -776,7 +776,7 @@ export default function OfferDetailPanel({
                                 distance
                               })}
                               className={`flex items-start gap-2 text-sm cursor-pointer rounded-lg p-2 transition-colors ${
-                                isSelected ? "bg-nfw-citrine/20" : "hover:bg-nfw-blackberry/5"
+                                isSelected ? "bg-nfw-citrine border border-nfw-citrine" : "hover:bg-nfw-blackberry/5"
                               }`}
                             >
                               <MapPin className={`w-3 h-3 flex-shrink-0 mt-1 ${isSelected ? "text-nfw-citrine" : "text-nfw-blackberry/40"}`} />
