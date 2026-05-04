@@ -144,6 +144,7 @@ export default function OfferDetailPanel({
     key: string;
     name: string;
   } | null>(null);
+  const [locationRequiredError, setLocationRequiredError] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [searchDistance, setSearchDistance] = useState("100mi");
@@ -287,6 +288,12 @@ export default function OfferDetailPanel({
 
     try {
       setRedemptionResult(null);
+      setLocationRequiredError(false);
+
+      if ((method === "instore" || method === "instore_print") && !effectiveLocationKey) {
+        setLocationRequiredError(true);
+        return;
+      }
 
       if (method === "link") setRedeemingLink(true);
       else if (method === "instore") setRedeemingInstore(true);
@@ -1015,6 +1022,11 @@ export default function OfferDetailPanel({
                     <h3 className="text-base font-semibold text-nfw-blackberry mb-4">
                       Redeem This Offer
                     </h3>
+                    {locationRequiredError && (
+                      <div className="mb-4 p-3 bg-nfw-citrine/20 border border-nfw-citrine text-nfw-blackberry text-sm rounded-lg">
+                        Please select a nearby location before redeeming in-store or print coupons.
+                      </div>
+                    )}
                     <div className="space-y-3">
                       {offer.redemption_methods.includes("link") && (
                         <button
@@ -1040,7 +1052,7 @@ export default function OfferDetailPanel({
 
                       {offer.redemption_methods.includes("instore") && (
                         <button
-                          onClick={() => handleRedeem("instore")}
+                          onClick={() => handleRedeem("instore", selectedLocation?.key)}
                           disabled={!!redeemingInstore || !!(usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
                           className="w-full px-4 py-2.5 bg-nfw-lilac text-nfw-blackberry rounded-xl hover:bg-nfw-lilac/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
                         >
@@ -1062,7 +1074,7 @@ export default function OfferDetailPanel({
 
                       {offer.redemption_methods.includes("instore_print") && (
                         <button
-                          onClick={() => handleRedeem("instore_print")}
+                          onClick={() => handleRedeem("instore_print", selectedLocation?.key)}
                           disabled={!!redeemingPrint || !!(usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
                           className="w-full px-4 py-2.5 bg-[#b2d1ee] text-nfw-blackberry rounded-xl hover:bg-[#b2d1ee]/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
                         >
