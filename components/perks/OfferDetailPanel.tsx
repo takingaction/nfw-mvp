@@ -711,7 +711,7 @@ export default function OfferDetailPanel({
                   <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
                     <h3 className="text-base font-semibold text-nfw-blackberry mb-3 flex items-center gap-2">
                       <MapPin className={`w-4 h-4 ${selectedLocation ? "text-nfw-citrine" : "text-nfw-lilac"}`} />
-                      {selectedLocation ? "Location Selected" : loadingLocations ? "Finding nearby locations..." : "Nearby Locations"}
+                      {loadingLocations ? "Finding nearby locations..." : selectedLocation ? "Location Selected" : "Please Select a Location"}
                     </h3>
                     
                     {offer.offer_group_key && !loadingLocations && (
@@ -779,9 +779,9 @@ export default function OfferDetailPanel({
                                 isSelected ? "bg-nfw-citrine/20" : "hover:bg-nfw-blackberry/5"
                               }`}
                             >
-                              <MapPin className={`w-3 h-3 flex-shrink-0 mt-1 ${isSelected ? "text-nfw-blackberry" : "text-nfw-blackberry/40"}`} />
+                              <MapPin className={`w-3 h-3 flex-shrink-0 mt-1 ${isSelected ? "text-nfw-citrine" : "text-nfw-blackberry/40"}`} />
                               <div className="flex-1 min-w-0">
-                                <p className={`font-medium ${isSelected ? "text-nfw-blackberry" : "text-nfw-blackberry"}`}>
+                                <p className="font-medium text-nfw-blackberry">
                                   {name}
                                 </p>
                                 {street && (
@@ -800,9 +800,14 @@ export default function OfferDetailPanel({
                                     )}
                                   </p>
                                 )}
+                                {isSelected && (
+                                  <p className="text-xs font-semibold text-nfw-citrine mt-1">
+                                    Location Selected
+                                  </p>
+                                )}
                               </div>
                               {isSelected && (
-                                <Check className="w-4 h-4 text-nfw-blackberry flex-shrink-0" />
+                                <Check className="w-4 h-4 text-nfw-citrine flex-shrink-0 mt-1" />
                               )}
                             </li>
                           );
@@ -814,42 +819,6 @@ export default function OfferDetailPanel({
                         Try a larger distance.
                       </p>
                     ) : null}
-                  </div>
-                )}
-
-                {selectedLocation && (
-                  <div className="bg-nfw-citrine/20 border border-nfw-citrine rounded-xl p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-2 flex-1">
-                        <Check className="w-4 h-4 text-nfw-blackberry flex-shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-semibold text-nfw-blackberry">
-                            {selectedLocation.name}
-                          </p>
-                          {selectedLocation.street && (
-                            <p className="text-xs text-nfw-blackberry/70">
-                              {selectedLocation.street}
-                            </p>
-                          )}
-                          {selectedLocation.cityStateZip && (
-                            <p className="text-xs text-nfw-blackberry/70">
-                              {selectedLocation.cityStateZip}
-                              {selectedLocation.distance && (
-                                <span className="ml-2 text-nfw-lilac">
-                                  ({selectedLocation.distance})
-                                </span>
-                              )}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setSelectedLocation(null)}
-                        className="text-xs text-nfw-blackberry/60 hover:text-nfw-blackberry underline"
-                      >
-                        Change
-                      </button>
-                    </div>
                   </div>
                 )}
 
