@@ -2852,4 +2852,45 @@ Performed comprehensive security audit of all API routes.
 - `app/api/stripe/connect/route.ts` - Removed `email` from profile select
 
 **Commit:**
-- Next commit will include security audit fixes
+- `b002a55` - Security audit: delete exposed debug route, fix minor issues
+
+### Session 2026-05-04: MobileMenu Database Fix + Grant Deadline Fix
+
+#### MobileMenu Inconsistency Fix
+
+**Problem:** Desktop navigation used `site_header.nav_links` from database, but MobileMenu was completely hardcoded with "Member Portal" label.
+
+**Root Cause:** MobileMenu.tsx had hardcoded menu structure at lines 134-265 instead of reading from navLinks prop.
+
+**Solution:**
+- MobileMenu now accepts `navLinks` prop (NavLink interface with label, url, indent)
+- Navigation.tsx passes navLinks from site_header to MobileMenu
+- MobileMenu groups navLinks into sections dynamically
+- Mobile now shows same admin-configurable labels as desktop
+
+**Files Modified:**
+- `components/MobileMenu.tsx` - Added navLinks prop, removed hardcoded sections, renders dynamically
+- `components/Navigation.tsx` - Passes navLinks to MobileMenu
+
+**Commit:**
+- `e68087d` - Make MobileMenu read from site_header database
+
+#### Grant Application Deadline Spacing Fix
+
+**Problem:** "Deadline:" and the date appeared without a space between them on grant application cards.
+
+**Root Cause:** Missing space character in JSX: `Deadline:` instead of `Deadline:{" "}`
+
+**Files Modified:**
+- `components/GrantApplicationForm.tsx` - Added `{" "}` after both "Deadline:" occurrences (lines 194, 227)
+
+#### Additional Fixes Applied This Session
+
+- `app/travel/page.tsx` - Removed non-existent `email` column from profiles select
+- `app/api/stripe/connect/route.ts` - Changed to use `user.email` directly (TypeScript fix)
+- `proxy.ts` - Reduced auth error logging to protected routes only
+
+**Commits:**
+- `0add414` - Fix app/travel/page.tsx: remove non-existent email column
+- `cacd7fc` - Fix TypeScript error: profile.email no longer exists
+- `ca41104` - Reduce proxy auth error logging to protected routes only

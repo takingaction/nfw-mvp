@@ -191,7 +191,7 @@ export default function GrantApplicationForm({
                          dangerouslySetInnerHTML={{ __html: decodeHtml(cycle.cycle_name) }}
                        />
                       <p className="text-xs font-ui text-nfw-blackberry/50 mt-0.5">
-                        Deadline:
+                        Deadline:{" "}
                         {new Date(cycle.end_date).toLocaleDateString("en-US", {
                           month: "long",
                           day: "numeric",
@@ -224,7 +224,7 @@ export default function GrantApplicationForm({
                    dangerouslySetInnerHTML={{ __html: decodeHtml(selectedCycle.cycle_name) }}
                  />
                 <p className="text-sm font-ui text-nfw-blackberry/60 mt-1">
-                  Deadline:{" "}
+                  Deadline:{" "}{" "}
                   {new Date(selectedCycle.end_date).toLocaleDateString("en-US", {
                     month: "long",
                     day: "numeric",
