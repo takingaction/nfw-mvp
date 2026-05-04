@@ -28,10 +28,6 @@ export async function POST(request: Request) {
 
     const supabase = await createServerClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
     let ipAddress = request.headers.get("x-forwarded-for") || "unknown";
     if (ipAddress === "unknown") {
       ipAddress = request.headers.get("x-real-ip") || "unknown";

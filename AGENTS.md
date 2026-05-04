@@ -2826,5 +2826,30 @@ if (isProtectedRoute && !user && authError) {
 - `proxy.ts` - Only log auth errors for /admin/* routes
 
 **Commit:**
-- `fce4729` - Add RLS policies to site_settings table
-- Next commit will be proxy auth logging fix
+- `ca41104` - Reduce proxy auth error logging to protected routes only
+
+### Session 2026-05-03: Security Audit - API Routes
+
+Performed comprehensive security audit of all API routes.
+
+**Audit Results:**
+
+| Route | Issue | Status |
+|-------|-------|--------|
+| `auth/debug` | Exposed sensitive debugging info to ANY authenticated user | **DELETED** |
+| `coming-soon/subscribe` | Unused `getUser()` call - wasteful for public endpoint | Fixed |
+| `stripe/connect` | Queried `email` column from profiles table (doesn't exist) | Fixed |
+
+**No Issues Found:**
+- No SQL injection vulnerabilities
+- No `supabaseAdmin` privilege escalation
+- All admin routes properly protected with `is_admin` checks
+- User data properly scoped to `user.id`
+
+**Files Modified:**
+- `app/api/auth/debug/route.ts` - **DELETED** (exposed userMetadata, Supabase URL, cookie names)
+- `app/api/coming-soon/subscribe/route.ts` - Removed unused `getUser()` call
+- `app/api/stripe/connect/route.ts` - Removed `email` from profile select
+
+**Commit:**
+- Next commit will include security audit fixes

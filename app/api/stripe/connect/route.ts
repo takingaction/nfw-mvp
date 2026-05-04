@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     // Get user profile
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("full_name, email, stripe_connect_account_id")
+      .select("full_name, stripe_connect_account_id")
       .eq("id", user.id)
       .single();
 
