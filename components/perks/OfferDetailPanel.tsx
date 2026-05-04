@@ -775,8 +775,8 @@ export default function OfferDetailPanel({
                                 cityStateZip,
                                 distance
                               })}
-                              className={`flex items-start gap-2 text-sm cursor-pointer rounded-lg p-2 transition-colors ${
-                                isSelected ? "bg-nfw-blackberry/10" : "hover:bg-nfw-blackberry/5"
+                              className={`flex items-start gap-2 text-sm cursor-pointer rounded-lg p-2 transition-colors border-l-4 ${
+                                isSelected ? "bg-nfw-blackberry/10 border-l-nfw-lilac" : "hover:bg-nfw-blackberry/5 border-l-transparent"
                               }`}
                             >
                               <MapPin className={`w-3 h-3 flex-shrink-0 mt-1 ${isSelected ? "text-nfw-citrine" : "text-nfw-blackberry/40"}`} />
