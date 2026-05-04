@@ -1017,7 +1017,7 @@ export default function OfferDetailPanel({
                     </h3>
                     {(offer.redemption_methods.includes("instore") || offer.redemption_methods.includes("instore_print")) && (
                       <p className="text-xs text-nfw-blackberry/60 mb-4">
-                        Your coupon will display a default store location. Please confirm with the store that your selected location matches before redeeming.
+                        Please confirm with your store that coupon is valid before redeeming.
                       </p>
                     )}
                     <div className="space-y-3">
