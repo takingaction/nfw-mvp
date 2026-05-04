@@ -78,7 +78,7 @@ export default async function Navigation() {
                 navLinks={navLinks}
               />
               <div className="ml-auto">
-                <MobileMenu />
+                <MobileMenu navLinks={navLinks} />
               </div>
             </div>
 

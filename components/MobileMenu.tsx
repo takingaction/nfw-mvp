@@ -11,24 +11,51 @@ interface Profile {
   is_admin: boolean | null;
 }
 
-export default function MobileMenu() {
+interface NavLink {
+  label: string;
+  url: string;
+  indent?: number;
+}
+
+interface MobileMenuProps {
+  navLinks?: NavLink[];
+}
+
+export default function MobileMenu({ navLinks = [] }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [aboutOpen, setAboutOpen] = useState(false);
-  const [membershipOpen, setMembershipOpen] = useState(false);
-  const [programsOpen, setProgramsOpen] = useState(false);
-  const [supportOpen, setSupportOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+
+  // Group navLinks into sections (parent items with indent=0 and their children)
+  const sections = [];
+  let i = 0;
+  while (i < navLinks.length) {
+    const link = navLinks[i];
+    if (!link.indent || link.indent === 0) {
+      const children = [];
+      let j = i + 1;
+      while (j < navLinks.length && (navLinks[j].indent ?? 0) > 0) {
+        children.push(navLinks[j]);
+        j++;
+      }
+      sections.push({ parent: link, children });
+      i = j;
+    } else {
+      i++;
+    }
+  }
 
   const closeMenu = () => {
     setIsOpen(false);
-    setAboutOpen(false);
-    setMembershipOpen(false);
-    setProgramsOpen(false);
-    setSupportOpen(false);
     setAuthOpen(false);
+    setOpenSections({});
+  };
+
+  const toggleSection = (label: string) => {
+    setOpenSections(prev => ({ ...prev, [label]: !prev[label] }));
   };
 
   useEffect(() => {
@@ -131,139 +158,34 @@ export default function MobileMenu() {
           {/* Menu Items */}
           <div className="flex-1 overflow-y-auto p-4">
             <nav className="space-y-2">
-              {/* About */}
-              <div>
-                <button
-                  onClick={() => setAboutOpen(!aboutOpen)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-white font-semibold hover:bg-white/10 transition-colors"
-                >
-                  About
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform ${aboutOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
-                {aboutOpen && (
-                  <div className="ml-4 mt-1 space-y-1">
-                    <Link
-                      href="/about"
-                      onClick={closeMenu}
-                      className={linkClass}
-                    >
-                      About Us
-                    </Link>
-                  </div>
-                )}
-              </div>
-
-              {/* Membership */}
-              <div>
-                <button
-                  onClick={() => setMembershipOpen(!membershipOpen)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-white font-semibold hover:bg-white/10 transition-colors"
-                >
-                  Membership
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform ${membershipOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
-                {membershipOpen && (
-                  <div className="ml-4 mt-1 space-y-1">
-                    <Link
-                      href="/pricing"
-                      onClick={closeMenu}
-                      className={linkClass}
-                    >
-                      Membership
-                    </Link>
-                    <Link
-                      href="/auth/sign-up"
-                      onClick={closeMenu}
-                      className={linkClass}
-                    >
-                      Become a Member
-                    </Link>
-                    <Link
-                      href="/dashboard"
-                      onClick={closeMenu}
-                      className={linkClass}
-                    >
-                      Member Portal
-                    </Link>
-                  </div>
-                )}
-              </div>
-
-              {/* Our Programs */}
-              <div>
-                <button
-                  onClick={() => setProgramsOpen(!programsOpen)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-white font-semibold hover:bg-white/10 transition-colors"
-                >
-                  Our Programs
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform ${programsOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
-                {programsOpen && (
-                  <div className="ml-4 mt-1 space-y-1">
-                    <Link
-                      href="/grants"
-                      onClick={closeMenu}
-                      className={linkClass}
-                    >
-                      Microgrants
-                    </Link>
-                    <Link
-                      href="/perks/info"
-                      onClick={closeMenu}
-                      className={linkClass}
-                    >
-                      Perks
-                    </Link>
-                    <Link
-                      href="/store/info"
-                      onClick={closeMenu}
-                      className={linkClass}
-                    >
-                      Zero Dollar Store
-                    </Link>
-                    <Link
-                      href="/articles"
-                      onClick={closeMenu}
-                      className={linkClass}
-                    >
-                      Articles
-                    </Link>
-                  </div>
-                )}
-              </div>
-
-              {/* Support */}
-              <div>
-                <button
-                  onClick={() => setSupportOpen(!supportOpen)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-white font-semibold hover:bg-white/10 transition-colors"
-                >
-                  Support
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform ${supportOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
-                {supportOpen && (
-                  <div className="ml-4 mt-1 space-y-1">
-                    <Link
-                      href="/contact"
-                      onClick={closeMenu}
-                      className={linkClass}
-                    >
-                      Contact Support
-                    </Link>
-                    <Link href="/faq" onClick={closeMenu} className={linkClass}>
-                      FAQs
-                    </Link>
-                  </div>
-                )}
-              </div>
+              {/* Dynamic sections from navLinks */}
+              {sections.map(({ parent, children }) => (
+                <div key={parent.label}>
+                  <button
+                    onClick={() => toggleSection(parent.label)}
+                    className="w-full flex items-center justify-between px-4 py-3 text-white font-semibold hover:bg-white/10 transition-colors"
+                  >
+                    {parent.label}
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform ${openSections[parent.label] ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {openSections[parent.label] && (
+                    <div className="ml-4 mt-1 space-y-1">
+                      {children.map((child, idx) => (
+                        <Link
+                          key={idx}
+                          href={child.url}
+                          onClick={closeMenu}
+                          className={linkClass}
+                        >
+                          {child.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
 
               {/* Donate Button */}
               <div className="pt-2">
