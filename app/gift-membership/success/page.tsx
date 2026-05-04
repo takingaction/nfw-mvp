@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
-import { Check, Copy, Mail, Gift } from "lucide-react";
+import { Check, Mail, Gift } from "lucide-react";
 import Link from "next/link";
+import { CopyableCode } from "@/components/gift/CopyableCode";
 
 export const metadata = {
   title: "Gift Membership Purchased",
@@ -13,23 +14,28 @@ async function getGiftCodes(sessionId: string) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
-  const { data: purchase } = await supabaseAdmin
-    .from("gift_membership_purchases")
-    .select(`
-      id,
-      buyer_name,
-      buyer_email,
-      quantity,
-      created_at,
-      gift_membership_codes (
-        code,
-        redeemed_at
-      )
-    `)
-    .eq("stripe_session_id", sessionId)
-    .single();
+  try {
+    const { data: purchase } = await supabaseAdmin
+      .from("gift_membership_purchases")
+      .select(`
+        id,
+        buyer_name,
+        buyer_email,
+        quantity,
+        created_at,
+        gift_membership_codes (
+          code,
+          redeemed_at
+        )
+      `)
+      .eq("stripe_session_id", sessionId)
+      .maybeSingle();
 
-  return purchase;
+    return purchase;
+  } catch (error) {
+    console.error("Error fetching gift codes:", error);
+    return null;
+  }
 }
 
 export default async function GiftMembershipSuccessPage({
@@ -101,21 +107,7 @@ export default async function GiftMembershipSuccessPage({
 
           <div className="space-y-3">
             {codes.map((code: string) => (
-              <div
-                key={code}
-                className="flex items-center justify-between bg-nfw-lilac/10 border border-nfw-lilac/20 rounded-lg px-4 py-3"
-              >
-                <code className="text-xl font-mono font-bold text-nfw-aubergine tracking-wider">
-                  {code}
-                </code>
-                <button
-                  onClick={() => navigator.clipboard.writeText(code)}
-                  className="p-2 text-nfw-blackberry/40 hover:text-nfw-blackberry transition-colors"
-                  title="Copy code"
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-              </div>
+              <CopyableCode key={code} code={code} />
             ))}
           </div>
 
