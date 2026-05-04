@@ -763,7 +763,7 @@ export default function OfferDetailPanel({
                           const extended = getExtendedAddress(location);
                           const cityStateZip = getCityStateZip(location);
                           const distance = getDistance(location);
-                          const isSelected = selectedLocation?.key === key;
+                          const isSelected = selectedLocation?.key === String(key);
 
                           return (
                             <li
