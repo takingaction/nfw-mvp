@@ -2949,3 +2949,15 @@ Performed comprehensive security audit of all API routes.
 
 **Commit:**
 - `ddae9d6` - Fix gift membership success page - extract copy button to client component
+
+### Session 2026-05-05: Remove "My Grants" from Member Dropdown
+
+Removed "My Grants" link from all three member dropdown menus since users can still access via direct URL `/grants/my-applications`.
+
+**Files Modified:**
+- `components/AuthButtonCombined.tsx` - Removed My Grants link
+- `components/auth-button.tsx` - Removed My Grants link
+- `components/MobileMenu.tsx` - Removed My Grants link
+
+**Commit:**
+- `4cc5a13` - Remove My Grants link from member dropdown menus
