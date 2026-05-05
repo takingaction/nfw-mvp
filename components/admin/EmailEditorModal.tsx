@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import MediaLibraryModal from "./MediaLibraryModal";
 
 type EmailTemplate = {
   id: string;
@@ -26,6 +27,7 @@ export default function EmailEditorModal({ template, onClose, userEmail }: Props
   const [subject, setSubject] = useState(template.subject || "");
   const [htmlContent, setHtmlContent] = useState(template.html_content || "");
   const [heroImageUrl, setHeroImageUrl] = useState(template.hero_image_url || "");
+  const [heroImageModalOpen, setHeroImageModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"source" | "preview">("source");
   const [saving, setSaving] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
@@ -156,14 +158,12 @@ export default function EmailEditorModal({ template, onClose, userEmail }: Props
                 placeholder="https://nationalfundforwomen.org/images/..."
                 className="flex-1 px-3 py-2 border border-gray-300 rounded focus:border-nfw-blackberry focus:outline-none text-sm"
               />
-              <a
-                href="/admin/media"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => setHeroImageModalOpen(true)}
                 className="px-3 py-2 bg-nfw-lilac text-white text-sm font-medium rounded hover:bg-nfw-lilac/90 flex items-center gap-1"
               >
-                Media Library
-              </a>
+                Browse
+              </button>
             </div>
             <p className="text-xs text-nfw-blackberry/40 mt-1">
               Leave blank to use the default hero image
@@ -206,11 +206,7 @@ export default function EmailEditorModal({ template, onClose, userEmail }: Props
             />
           ) : (
             <div className="h-full bg-gray-100 rounded-lg overflow-hidden">
-              <iframe
-                srcDoc={htmlContent}
-                className="w-full h-full"
-                title="Email Preview"
-              />
+              <PreviewFrame body={htmlContent} slug={template.slug} subject={subject} />
             </div>
           )}
         </div>
@@ -272,6 +268,65 @@ export default function EmailEditorModal({ template, onClose, userEmail }: Props
           </div>
         </div>
       </div>
+
+      {/* Media Library Modal for Hero Image */}
+      {heroImageModalOpen && (
+        <MediaLibraryModal
+          isOpen={heroImageModalOpen}
+          onClose={() => setHeroImageModalOpen(false)}
+          onSelect={(imageUrl) => {
+            setHeroImageUrl(imageUrl);
+            setHeroImageModalOpen(false);
+          }}
+          bucket="page-builder"
+        />
+      )}
     </div>
+  );
+}
+
+function PreviewFrame({ body, slug, subject }: { body: string; slug: string; subject: string }) {
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch("/api/admin/emails/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body, slug, subject }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.html) {
+          setPreviewHtml(data.html);
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [body, slug, subject]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-400">
+        Loading preview...
+      </div>
+    );
+  }
+
+  if (!previewHtml) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-400">
+        No preview available
+      </div>
+    );
+  }
+
+  return (
+    <iframe
+      srcDoc={previewHtml}
+      className="w-full h-full"
+      title="Email Preview"
+    />
   );
 }
