@@ -3009,3 +3009,27 @@ This returns the offer specific to that location with its own `offer_key`.
 
 **Commit:**
 - `982d161` - Fetch location-specific offer_key for accurate redemption
+
+### Session 2026-05-05: Per-Template Hero Images for Email Templates
+
+Added ability to customize hero image per email template via `hero_image_url` column.
+
+**Database:**
+- `supabase/migrations/070_add_hero_image_url_to_email_templates.sql` - Adds `hero_image_url TEXT` column to `email_templates` table
+
+**API Updates:**
+- `app/api/admin/emails/[slug]/route.ts` - Accepts and saves `hero_image_url`
+- `app/api/admin/emails/preview/route.ts` - Fetches template's `hero_image_url` from DB for preview generation
+- `app/api/admin/emails/[slug]/send-test/route.ts` - Uses template's `hero_image_url` for test emails
+
+**Admin UI Updates:**
+- `components/admin/EmailEditorModal.tsx` - Added Hero Image URL text input + Media Library link (resend templates only)
+- `components/admin/AdminEmailsClient.tsx` - Updated type to include `hero_image_url`
+
+**Flow:**
+- Admin enters hero image URL in template editor (or leaves blank for default)
+- Preview and test emails use custom image if set, otherwise fallback to default (`email-welcome-hero.jpg`)
+- Supabase templates excluded (they paste full HTML anyway)
+
+**Commit:**
+- `da26855` - Add hero_image_url field to email templates for custom per-template hero images
