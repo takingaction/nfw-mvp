@@ -2984,7 +2984,7 @@ Fixed issue where testimonials section displayed "— , ," when no attribution f
 **Commit:**
 - `06b7e86` - Update income label and fix testimonials attribution display
 
-### Session 2026-05-05: Location-Specific Offer Key for Redemption
+### Session 2026-05-05: Location-Specific Offer Key for Redemption (WORKING)
 
 #### Problem
 When redeeming in-store or print coupons, the API was using the original offer's `offer_key` which is the same for all locations. Each location within an `offer_group` has its own unique `offer_key`.
@@ -3004,6 +3004,8 @@ This returns the offer specific to that location with its own `offer_key`.
 
 #### Files Modified
 - `components/perks/OfferDetailPanel.tsx` - Added location-specific offer_key fetching and redemption
+
+**Verified working:** Coupon now shows correct address for selected location.
 
 **Commit:**
 - `982d161` - Fetch location-specific offer_key for accurate redemption
