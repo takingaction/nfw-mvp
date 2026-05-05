@@ -154,6 +154,7 @@ export default function OfferDetailPanel({
   const [searchDistance, setSearchDistance] = useState("100mi");
   const [searchZip, setSearchZip] = useState("");
   const [profileZip, setProfileZip] = useState<string | null>(null);
+  const [locationSpecificOfferKey, setLocationSpecificOfferKey] = useState<string | null>(null);
   const [usesRemaining, setUsesRemaining] = useState<{
     usable: boolean;
     uses_remaining: string | number;
@@ -252,12 +253,32 @@ export default function OfferDetailPanel({
     }
   };
 
+  const fetchLocationOfferKey = async (offerGroupKey: string, locationKey: string) => {
+    try {
+      const params = new URLSearchParams({
+        offer_group_key: offerGroupKey,
+        location_key: locationKey,
+      });
+      const response = await fetch(`/api/access-perks/offers/search?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.offers?.[0]?.offer_key) {
+          setLocationSpecificOfferKey(data.offers[0].offer_key);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch location-specific offer:", err);
+    }
+  };
+
   useEffect(() => {
     if (offer?.offer_group_key) {
       fetchLocations(offer.offer_group_key, undefined, searchDistance);
     } else {
       setLocations([]);
     }
+    setSelectedLocation(null);
+    setLocationSpecificOfferKey(null);
   }, [offer?.offer_group_key, searchDistance]);
 
   useEffect(() => {
@@ -289,6 +310,7 @@ export default function OfferDetailPanel({
     if (!offer) return;
 
     const effectiveLocationKey = forcedLocationKey || selectedLocation?.key;
+    const redeemOfferKey = locationSpecificOfferKey || offerKey;
 
     try {
       setRedemptionResult(null);
@@ -305,7 +327,7 @@ export default function OfferDetailPanel({
       }
 
       const response = await fetch(
-        `/api/access-perks/offers/${offerKey}/redeem`,
+        `/api/access-perks/offers/${redeemOfferKey}/redeem`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -763,13 +785,19 @@ export default function OfferDetailPanel({
                           return (
                             <li
                               key={key}
-                              onClick={() => setSelectedLocation({
-                                key: String(key),
-                                name: String(name),
-                                street: street ? `${street}${extended ? `, ${extended}` : ""}` : undefined,
-                                cityStateZip,
-                                distance
-                              })}
+                              onClick={() => {
+                                setSelectedLocation({
+                                  key: String(key),
+                                  name: String(name),
+                                  street: street ? `${street}${extended ? `, ${extended}` : ""}` : undefined,
+                                  cityStateZip,
+                                  distance
+                                });
+                                setLocationSpecificOfferKey(null);
+                                if (offer?.offer_group_key) {
+                                  fetchLocationOfferKey(offer.offer_group_key, String(key));
+                                }
+                              }}
                               className={`flex items-start gap-2 text-sm cursor-pointer rounded-lg p-2 transition-colors border-l-4 ${
                                 isSelected ? "bg-nfw-blackberry/10 border-l-nfw-aubergine" : "hover:bg-nfw-blackberry/5 border-l-transparent"
                               }`}
