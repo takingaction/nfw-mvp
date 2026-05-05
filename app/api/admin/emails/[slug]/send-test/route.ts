@@ -36,7 +36,7 @@ export async function POST(
     // Get template
     const { data: template, error: templateError } = await supabase
       .from("email_templates")
-      .select("slug, name, subject, html_content, category")
+      .select("slug, name, subject, html_content, category, hero_image_url")
       .eq("slug", slug)
       .single();
 
@@ -53,7 +53,8 @@ export async function POST(
     }
 
     const siteUrl = "https://nationalfundforwomen.org";
-    const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+    const defaultHeroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+    const heroImage = template.hero_image_url || defaultHeroImage;
 
     // Determine membership tier from slug for welcome templates
     const isWelcomeTemplate = slug.startsWith('welcome-');

@@ -49,7 +49,7 @@ export async function PUT(
   try {
     const { slug } = await params;
     const body = await request.json();
-    const { subject, html_content } = body;
+    const { subject, html_content, hero_image_url } = body;
 
     const supabase = await createClient();
 
@@ -100,6 +100,7 @@ export async function PUT(
       .update({
         subject,
         html_content,
+        hero_image_url: hero_image_url || null,
         updated_at: new Date().toISOString(),
       })
       .eq("slug", slug)

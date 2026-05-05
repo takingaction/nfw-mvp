@@ -10,6 +10,7 @@ type EmailTemplate = {
   description: string | null;
   subject: string | null;
   html_content: string | null;
+  hero_image_url: string | null;
   is_editable: boolean;
   source_file: string | null;
   updated_at: string;
@@ -24,6 +25,7 @@ type Props = {
 export default function EmailEditorModal({ template, onClose, userEmail }: Props) {
   const [subject, setSubject] = useState(template.subject || "");
   const [htmlContent, setHtmlContent] = useState(template.html_content || "");
+  const [heroImageUrl, setHeroImageUrl] = useState(template.hero_image_url || "");
   const [activeTab, setActiveTab] = useState<"source" | "preview">("source");
   const [saving, setSaving] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
@@ -39,7 +41,11 @@ export default function EmailEditorModal({ template, onClose, userEmail }: Props
       const res = await fetch(`/api/admin/emails/${template.slug}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, html_content: htmlContent }),
+        body: JSON.stringify({
+          subject,
+          html_content: htmlContent,
+          hero_image_url: heroImageUrl || null
+        }),
       });
 
       const data = await res.json();
@@ -135,6 +141,35 @@ export default function EmailEditorModal({ template, onClose, userEmail }: Props
             className="w-full px-3 py-2 border border-gray-300 rounded focus:border-nfw-blackberry focus:outline-none text-sm"
           />
         </div>
+
+        {/* Hero Image URL - only for resend templates */}
+        {template.category === "resend" && (
+          <div className="px-4 py-3 border-b bg-nfw-dove/30">
+            <label className="block text-xs font-medium text-nfw-blackberry/50 uppercase mb-1">
+              Hero Image URL
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={heroImageUrl}
+                onChange={(e) => setHeroImageUrl(e.target.value)}
+                placeholder="https://nationalfundforwomen.org/images/..."
+                className="flex-1 px-3 py-2 border border-gray-300 rounded focus:border-nfw-blackberry focus:outline-none text-sm"
+              />
+              <a
+                href="/admin/media"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-2 bg-nfw-lilac text-white text-sm font-medium rounded hover:bg-nfw-lilac/90 flex items-center gap-1"
+              >
+                Media Library
+              </a>
+            </div>
+            <p className="text-xs text-nfw-blackberry/40 mt-1">
+              Leave blank to use the default hero image
+            </p>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-1 px-4 pt-3">

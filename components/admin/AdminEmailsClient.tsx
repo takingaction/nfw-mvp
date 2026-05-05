@@ -11,6 +11,7 @@ type EmailTemplate = {
   description: string | null;
   subject: string | null;
   html_content: string | null;
+  hero_image_url: string | null;
   is_editable: boolean;
   source_file: string | null;
   updated_at: string;
