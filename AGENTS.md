@@ -2961,3 +2961,25 @@ Removed "My Grants" link from all three member dropdown menus since users can st
 
 **Commit:**
 - `4cc5a13` - Remove My Grants link from member dropdown menus
+
+### Session 2026-05-05: Income Label Fix + Testimonials Attribution
+
+#### Income Label Fix
+
+Changed "Which best describes your current annual income?" to "Which best describes your current annual household income?" to match household income field.
+
+**Files Modified:**
+- `components/SignUpFlow.tsx` - Updated label text
+
+#### Testimonials Attribution Fix
+
+Fixed issue where testimonials section displayed "— , ," when no attribution fields were filled in.
+
+**Before:** Always showed em dash + first_name, age, state (even if empty)
+**After:** Only shows attribution if first_name exists; no em dash; empty fields hidden
+
+**Files Modified:**
+- `components/sections/TestimonialsSection.tsx` - Conditional rendering of attribution
+
+**Commit:**
+- `06b7e86` - Update income label and fix testimonials attribution display
