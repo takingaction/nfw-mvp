@@ -123,13 +123,6 @@ export function AuthButton() {
             >
               My Profile
             </Link>
-            <Link
-              href="/grants/my-applications"
-              className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
-              onClick={() => setIsOpen(false)}
-            >
-              My Grants
-            </Link>
             {isAdmin && (
               <>
                 <div className="border-t border-nfw-blackberry/10 mt-1" />

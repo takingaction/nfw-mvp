@@ -238,13 +238,6 @@ export default function MobileMenu({ navLinks = [] }: MobileMenuProps) {
                     >
                       My Profile
                     </Link>
-                    <Link
-                      href="/grants/my-applications"
-                      onClick={closeMenu}
-                      className={linkClass}
-                    >
-                      My Grants
-                    </Link>
                     {isAdmin && (
                       <>
                         <div className="border-t border-white/10 mt-1" />
