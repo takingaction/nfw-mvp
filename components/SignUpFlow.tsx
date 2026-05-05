@@ -880,7 +880,7 @@ export default function SignUpFlow() {
               {/* Household Income */}
               <div>
                 <label className={labelClass}>
-                  Which best describes your current annual income?{" "}
+                  Which best describes your current annual household income?{" "}
 <span className="text-nfw-lilac">* </span>
                 </label>
                 <div className="space-y-2 mt-2">

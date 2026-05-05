@@ -146,11 +146,13 @@ export default function TestimonialsSection({ content }: Props) {
 
             <div className={`w-12 h-px ${RULE_CLASSES[bg]} mb-6`} />
 
-            <p
-              className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${mutedColor}`}
-            >
-              — {t.first_name}, {t.age}, {t.state}
-            </p>
+            {t.first_name ? (
+              <p
+                className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${mutedColor}`}
+              >
+                {[t.first_name, t.age, t.state].filter(Boolean).join(", ")}
+              </p>
+            ) : null}
           </div>
         </div>
 
