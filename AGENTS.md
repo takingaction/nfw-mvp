@@ -3070,5 +3070,27 @@ Added ability to customize hero image per email template via `hero_image_url` co
 **Commit:**
 - `1b2ca1d` - Remove Coming Soon page gate - homepage serves to all visitors
 
+### Session 2026-05-06: Rename Newsletter Signups + Restore Login Text
+
+**Task 1: Renamed `/admin/coming-soon-emails` → `/admin/newsletter-signups`**
+
+Files renamed:
+- `app/admin/coming-soon-emails/page.tsx` → `app/admin/newsletter-signups/page.tsx`
+- `app/admin/coming-soon-emails/AdminComingSoonEmails.tsx` → `app/admin/newsletter-signups/AdminNewsletterSignups.tsx`
+- `app/api/admin/coming-soon-emails/route.ts` → `app/api/admin/newsletter-signups/route.ts`
+
+Navigation link updates:
+- `components/AuthButtonCombined.tsx` - href and label updated
+- `components/auth-button.tsx` - href and label updated
+- `components/MobileMenu.tsx` - href and label updated
+
+**Task 2: Restored "Don't have an account? Sign up" to Login Page**
+
+- `components/login-form.tsx` - Added back the signup link after login form
+- Original text: "Don't have an account? Sign up" linking to `/auth/sign-up`
+
+**Commit:**
+- `a7281a0` - Rename coming-soon-emails to newsletter-signups, restore login signup link
+
 ## Next Steps
 - (none)
