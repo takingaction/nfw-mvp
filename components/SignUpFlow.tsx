@@ -711,7 +711,7 @@ export default function SignUpFlow() {
               </button>
               <p className="text-xs text-nfw-blackberry/40 text-center">
                 By signing up you agree to our{" "}
-                <Link href="/terms" className="underline">
+                <Link href="/terms-of-service" className="underline">
                   Terms
                 </Link>{" "}
                 and{" "}
