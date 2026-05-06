@@ -3141,5 +3141,17 @@ Navigation link updates:
 **Commit:**
 - `f515028` - fix: preserve visibility/starred during Shopify sync, delete removed products
 
+### Session 2026-05-06: Shopify Checkout Opens in New Tab
+
+**Problem:** When claiming a Zero Dollar Store item, the Shopify checkout opened in the same browser tab, losing the user's place on NFW site.
+
+**Solution:** Changed checkout redirect from `router.push()` to `window.open()` to open Shopify in a new tab.
+
+**Files Modified:**
+- `components/ClaimItemModal.tsx` - Changed `router.push(data.checkoutUrl)` to `window.open(data.checkoutUrl, "_blank")`
+
+**Commit:**
+- `f750db7` - fix: open Shopify checkout in new tab instead of same tab
+
 ## Next Steps
 - (none)
