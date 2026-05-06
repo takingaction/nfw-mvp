@@ -62,7 +62,7 @@ export async function GET(request: Request) {
       return new Response(csvHeader + csvRows, {
         headers: {
           "Content-Type": "text/csv",
-          "Content-Disposition": "attachment; filename=coming-soon-emails.csv",
+          "Content-Disposition": "attachment; filename=newsletter-signups.csv",
         },
       });
     }

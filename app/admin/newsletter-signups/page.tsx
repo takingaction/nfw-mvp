@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
-import AdminComingSoonEmails from "./AdminComingSoonEmails";
+import AdminNewsletterSignups from "./AdminNewsletterSignups";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ async function getEmails() {
   return emails || [];
 }
 
-export default async function AdminComingSoonEmailsPage() {
+export default async function AdminNewsletterSignupsPage() {
   const supabase = await createClient();
 
   const {
@@ -47,5 +47,5 @@ export default async function AdminComingSoonEmailsPage() {
 
   const emails = await getEmails();
 
-  return <AdminComingSoonEmails initialEmails={emails} />;
+  return <AdminNewsletterSignups initialEmails={emails} />;
 }

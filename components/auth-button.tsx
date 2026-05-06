@@ -216,11 +216,11 @@ export function AuthButton() {
                   Gift Codes
                 </Link>
                 <Link
-                  href="/admin/coming-soon-emails"
+                  href="/admin/newsletter-signups"
                   className="block px-4 py-1 text-sm text-nfw-blackberry hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
                 >
-                  Coming Soon Emails
+                  Newsletter Signups
                 </Link>
                 <Link
                   href="/admin/analytics"

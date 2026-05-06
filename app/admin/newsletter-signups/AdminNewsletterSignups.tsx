@@ -7,20 +7,20 @@ interface EmailRecord {
   created_at: string;
 }
 
-interface AdminComingSoonEmailsProps {
+interface AdminNewsletterSignupsProps {
   initialEmails: EmailRecord[];
 }
 
-export default function AdminComingSoonEmails({
+export default function AdminNewsletterSignups({
   initialEmails,
-}: AdminComingSoonEmailsProps) {
+}: AdminNewsletterSignupsProps) {
   const [emails] = useState<EmailRecord[]>(initialEmails);
   const [downloading, setDownloading] = useState(false);
 
   const handleDownloadCsv = async () => {
     setDownloading(true);
     try {
-      const response = await fetch("/api/admin/coming-soon-emails", {
+      const response = await fetch("/api/admin/newsletter-signups", {
         headers: {
           Accept: "text/csv",
         },
@@ -34,7 +34,7 @@ export default function AdminComingSoonEmails({
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "coming-soon-emails.csv";
+      a.download = "newsletter-signups.csv";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -63,7 +63,7 @@ export default function AdminComingSoonEmails({
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-serif text-nfw-blackberry">
-              Coming Soon Emails
+              Newsletter Signups
             </h1>
             <p className="text-nfw-aubergine font-ui mt-2">
               Total Subscribers: {emails.length}

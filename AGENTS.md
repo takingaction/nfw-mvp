@@ -3048,3 +3048,27 @@ Added ability to customize hero image per email template via `hero_image_url` co
 
 **Commit:**
 - `4d416a3` - All email functions now use template's hero_image_url for custom hero images
+
+### Session 2026-05-06: Remove Coming Soon Page Gate
+
+**Problem:** Non-authenticated users were being redirected to `/coming-soon` instead of seeing the homepage.
+
+**Solution:** Removed the redirect from `app/page.tsx`. Homepage now serves to all visitors (authenticated or not).
+
+**Files Modified (5):**
+- `app/page.tsx` - Removed `if (!user) { redirect("/coming-soon"); }`
+- `app/layout.tsx` - Changed `isPublicRoute` to `false` (was `pathname === "/coming-soon"`)
+- `components/NavigationContent.tsx` - Removed `if (pathname === "/coming-soon") return null;`
+- `components/landing/Footer.tsx` - Removed `pathname` check and unused `usePathname` import
+- `components/BackToTop.tsx` - Removed `pathname` check and unused `usePathname` import
+
+**What Stays:**
+- `/coming-soon` page remains for direct visits (newsletter signups)
+- Related API routes and admin pages remain
+- Navigation "Coming Soon Emails" link remains
+
+**Commit:**
+- `1b2ca1d` - Remove Coming Soon page gate - homepage serves to all visitors
+
+## Next Steps
+- (none)

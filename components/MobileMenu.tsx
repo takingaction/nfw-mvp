@@ -329,11 +329,11 @@ export default function MobileMenu({ navLinks = [] }: MobileMenuProps) {
                           Gift Codes
                         </Link>
                         <Link
-                          href="/admin/coming-soon-emails"
+                          href="/admin/newsletter-signups"
                           onClick={closeMenu}
                           className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
                         >
-                          Coming Soon Emails
+                          Newsletter Signups
                         </Link>
                         <Link
                           href="/admin/analytics"
