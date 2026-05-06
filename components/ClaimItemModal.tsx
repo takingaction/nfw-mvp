@@ -72,7 +72,7 @@ export default function ClaimItemModal({
         throw new Error(data.error || "Failed to create checkout");
       }
 
-      router.push(data.checkoutUrl);
+      window.open(data.checkoutUrl, "_blank");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error claiming item");
       setClaiming(false);
