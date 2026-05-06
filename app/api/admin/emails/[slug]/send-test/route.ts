@@ -9,7 +9,7 @@ export async function POST(
   try {
     const { slug } = await params;
     const body = await request.json();
-    const { testEmail } = body;
+    const { testEmail, hero_image_url } = body;
 
     if (!testEmail || !testEmail.includes("@")) {
       return NextResponse.json({ error: "Valid email address required" }, { status: 400 });
@@ -54,7 +54,7 @@ export async function POST(
 
     const siteUrl = "https://nationalfundforwomen.org";
     const defaultHeroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
-    const heroImage = template.hero_image_url || defaultHeroImage;
+    const heroImage = hero_image_url || template.hero_image_url || defaultHeroImage;
 
     // Determine membership tier from slug for welcome templates
     const isWelcomeTemplate = slug.startsWith('welcome-');

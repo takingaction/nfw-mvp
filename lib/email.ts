@@ -11,18 +11,18 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
 }
 
-async function fetchEmailTemplate(slug: string): Promise<{ subject: string; html: string } | null> {
+async function fetchEmailTemplate(slug: string): Promise<{ subject: string; html: string; hero_image_url?: string } | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("email_templates")
-    .select("subject, html_content")
+    .select("subject, html_content, hero_image_url")
     .eq("slug", slug)
     .single();
   if (error || !data) {
     console.error(`[email] Failed to fetch template "${slug}":`, error);
     return null;
   }
-  return { subject: data.subject, html: data.html_content };
+  return { subject: data.subject, html: data.html_content, hero_image_url: data.hero_image_url };
 }
 
 function replaceTemplateVariables(html: string, variables: Record<string, string>): string {
@@ -403,10 +403,11 @@ export async function sendWelcomeEmail({
   templateSlug?: string;
 }) {
   const siteUrl = "https://nationalfundforwomen.org";
-  const heroImageUrl = heroImage || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const slug = templateSlug || `welcome-${membershipType}`;
   const template = await fetchEmailTemplate(slug);
+
+  const heroImageUrl = heroImage || template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
@@ -481,7 +482,8 @@ export async function sendNewsletterWelcomeEmail({
   name: string;
 }) {
   const siteUrl = "https://nationalfundforwomen.org";
-  const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+  const template = await fetchEmailTemplate("newsletter-welcome");
+  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
   const heroText = 'A <em>community</em> of women showing up for each other';
 
   const bodyHtml = `
@@ -519,7 +521,7 @@ export async function sendNewsletterWelcomeEmail({
     to,
     subject: "You're subscribed to NFW!",
     name,
-    heroImage,
+    heroImage: heroImageUrl,
     heroText,
     headline: "You're subscribed!",
     body: bodyHtml,
@@ -549,7 +551,7 @@ export async function sendGrantApplicationReceivedEmail({
   if (!template) return;
 
   const siteUrl = "https://nationalfundforwomen.org";
-  const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const variables: Record<string, string> = {
     name,
@@ -563,7 +565,7 @@ export async function sendGrantApplicationReceivedEmail({
     to,
     subject: template.subject,
     name,
-    heroImage,
+    heroImage: heroImageUrl,
     heroText: 'Your application is <em>in review</em>',
     headline: "Application Received",
     body,
@@ -602,7 +604,7 @@ export async function sendGrantStatusEmail({
   if (!template) return;
 
   const siteUrl = "https://nationalfundforwomen.org";
-  const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const statusHeadlines: Record<string, string> = {
     in_review: "Application Under Review",
@@ -631,7 +633,7 @@ export async function sendGrantStatusEmail({
     to,
     subject: template.subject,
     name,
-    heroImage,
+    heroImage: heroImageUrl,
     heroText: statusHeroText[status] || 'Your application status has changed',
     headline: statusHeadlines[status] || "Application Update",
     body,
@@ -659,7 +661,7 @@ export async function sendBankInfoRequestEmail({
   if (!template) return;
 
   const siteUrl = "https://nationalfundforwomen.org";
-  const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const variables: Record<string, string> = {
     name,
@@ -672,7 +674,7 @@ export async function sendBankInfoRequestEmail({
     to,
     subject: template.subject,
     name,
-    heroImage,
+    heroImage: heroImageUrl,
     heroText: 'Action <em>required</em>',
     headline: isNominee ? "You've Been Nominated" : "Congratulations!",
     body,
@@ -693,7 +695,8 @@ export async function sendGiftCodesEmail({
   codes: string[];
 }) {
   const siteUrl = "https://nationalfundforwomen.org";
-  const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+  const template = await fetchEmailTemplate("gift-codes");
+  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
   const codesList = codes.map((code) => `<p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #F8F19A; margin: 10px 0;">${code}</p>`).join("");
 
   const body = `
@@ -724,7 +727,7 @@ export async function sendGiftCodesEmail({
     to,
     subject: "Your National Fund for Women Gift Code(s)",
     name: buyerName,
-    heroImage,
+    heroImage: heroImageUrl,
     heroText: 'Gift a <em>year of community</em>',
     headline: "Your Gift Codes",
     body,
@@ -747,7 +750,8 @@ export async function sendContactFormEmail({
   message: string;
 }) {
   const siteUrl = "https://nationalfundforwomen.org";
-  const heroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+  const template = await fetchEmailTemplate("contact-form");
+  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
   const timestamp = new Date().toLocaleString("en-US", {
     year: "numeric",
     month: "short",
@@ -778,7 +782,7 @@ export async function sendContactFormEmail({
     to: "hello@nationalfundforwomen.org",
     subject: `NFW Contact Form: ${subject}`,
     name,
-    heroImage,
+    heroImage: heroImageUrl,
     heroText: 'We\'ve <em>received</em> your message',
     headline: "Message Received",
     body,

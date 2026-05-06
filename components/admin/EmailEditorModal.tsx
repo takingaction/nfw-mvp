@@ -86,7 +86,7 @@ export default function EmailEditorModal({ template, onClose, userEmail }: Props
       const res = await fetch(`/api/admin/emails/${template.slug}/send-test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ testEmail }),
+        body: JSON.stringify({ testEmail, hero_image_url: heroImageUrl }),
       });
 
       const data = await res.json();
