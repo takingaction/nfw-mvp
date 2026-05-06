@@ -3023,8 +3023,23 @@ Added ability to customize hero image per email template via `hero_image_url` co
 - `app/api/admin/emails/[slug]/send-test/route.ts` - Uses template's `hero_image_url` for test emails
 
 **Admin UI Updates:**
-- `components/admin/EmailEditorModal.tsx` - Added Hero Image URL text input + Media Library link (resend templates only)
+- `components/admin/EmailEditorModal.tsx` - Added Hero Image URL text input + Browse button opens MediaLibraryModal inline (resend templates only)
 - `components/admin/AdminEmailsClient.tsx` - Updated type to include `hero_image_url`
+
+**Email Library Updates:**
+- `lib/email.ts` - Updated `fetchEmailTemplate` to select and return `hero_image_url`
+- All 7 email functions now use `template?.hero_image_url` as fallback:
+  - `sendWelcomeEmail`
+  - `sendNewsletterWelcomeEmail`
+  - `sendGrantApplicationReceivedEmail`
+  - `sendGrantStatusEmail`
+  - `sendBankInfoRequestEmail`
+  - `sendGiftCodesEmail`
+  - `sendContactFormEmail`
+
+**Save & Send Test Fix:**
+- `app/api/admin/emails/[slug]/send-test/route.ts` - Accepts `hero_image_url` from request body to fix race condition
+- `components/admin/EmailEditorModal.tsx` - Passes `hero_image_url` directly to send-test API
 
 **Flow:**
 - Admin enters hero image URL in template editor (or leaves blank for default)
@@ -3032,4 +3047,4 @@ Added ability to customize hero image per email template via `hero_image_url` co
 - Supabase templates excluded (they paste full HTML anyway)
 
 **Commit:**
-- `da26855` - Add hero_image_url field to email templates for custom per-template hero images
+- `4d416a3` - All email functions now use template's hero_image_url for custom hero images
