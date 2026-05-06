@@ -17,10 +17,20 @@ export async function POST() {
     });
 
     let syncedCount = 0;
+    const shopifyProductIds: string[] = [];
 
     for (const { node } of data.products.edges) {
       const firstVariant = node.variants.edges[0]?.node;
+      shopifyProductIds.push(node.id);
 
+      // Check if product already exists to preserve visibility/starred status
+      const { data: existing } = await supabaseAdmin
+        .from("shopify_product_mappings")
+        .select("mvp_visibility")
+        .eq("shopify_product_id", node.id)
+        .maybeSingle();
+
+      // Only set mvp_visibility: false for NEW products; preserve existing visibility
       const { error } = await supabaseAdmin
         .from("shopify_product_mappings")
         .upsert(
@@ -29,7 +39,8 @@ export async function POST() {
             shopify_variant_id: firstVariant?.id || "",
             eligibility_tiers: ["free", "contributing", "founding"],
             display_order: syncedCount + 1,
-            mvp_visibility: false,
+            // Only set visibility for new products; preserve existing for updates
+            ...(existing ? {} : { mvp_visibility: false }),
           },
           {
             onConflict: "shopify_product_id",
@@ -38,6 +49,18 @@ export async function POST() {
 
       if (!error) {
         syncedCount++;
+      }
+    }
+
+    // Delete products that no longer exist in Shopify
+    if (shopifyProductIds.length > 0) {
+      const { error: deleteError } = await supabaseAdmin
+        .from("shopify_product_mappings")
+        .delete()
+        .not("shopify_product_id", "in", shopifyProductIds);
+
+      if (deleteError) {
+        console.error("Error deleting removed products:", deleteError);
       }
     }
 
