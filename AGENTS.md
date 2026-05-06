@@ -3118,5 +3118,28 @@ Navigation link updates:
 
 **Note:** Tokens stay the same; only URLs changed from `-stage` to production endpoints.
 
+### Session 2026-05-06: Shopify Sync Visibility/Starred Preservation
+
+**Problem:** Clicking "Sync from Shopify" on `/admin/shopify` was overwriting `mvp_visibility` to `false` for ALL products (existing and new), hiding everything. Also, products deleted from Shopify were not being cleaned up from the database.
+
+**Root Cause:** Supabase `upsert()` with `onConflict` applies all values to both INSERT and UPDATE operations. Line 32 had `mvp_visibility: false` hardcoded, so every sync reset visibility.
+
+**Fix Applied (`app/api/admin/shopify/sync/route.ts`):**
+1. **Preserve visibility:** Check if product exists before upsert; only set `mvp_visibility: false` for NEW products
+2. **Preserve starred status:** Existing `display_order` and `featured_order` values are preserved during updates (only new products get default values)
+3. **Delete removed products:** After sync, delete any rows where `shopify_product_id` not in Shopify response
+
+**Behavior after fix:**
+
+| Scenario | Result |
+|----------|--------|
+| New product in Shopify | Added (hidden by default) |
+| Existing visible product | Stays visible (preserved) |
+| Existing starred product | Stays starred (preserved) |
+| Product deleted from Shopify | Removed from database (claims/likes kept as historical records) |
+
+**Commit:**
+- `f515028` - fix: preserve visibility/starred during Shopify sync, delete removed products
+
 ## Next Steps
 - (none)
