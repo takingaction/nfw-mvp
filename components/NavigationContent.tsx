@@ -7,11 +7,6 @@ interface NavigationContentProps {
 }
 
 export default function NavigationContent({ children }: NavigationContentProps) {
-  const pathname = usePathname();
-
-  if (pathname === "/coming-soon") {
-    return null;
-  }
-
+  // /coming-soon is no longer a gate - navigation shows on all pages
   return <>{children}</>;
 }

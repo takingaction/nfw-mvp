@@ -64,7 +64,7 @@ export default async function RootLayout({
 }>) {
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") || "/";
-  const isPublicRoute = pathname === "/coming-soon";
+  const isPublicRoute = false; // /coming-soon is no longer a gate - homepage serves to all
 
   return (
     <html lang="en" suppressHydrationWarning>

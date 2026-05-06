@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
 
 interface FooterLink {
   label: string;
@@ -76,7 +75,6 @@ const defaultData: FooterData = {
 };
 
 export default function Footer() {
-  const pathname = usePathname();
   const [footerData, setFooterData] = useState<FooterData | null>(null);
   const [email, setEmail] = useState("");
   const [signupStatus, setSignupStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -129,9 +127,7 @@ export default function Footer() {
     column4_links: footerData.column4_links || defaultData.column4_links,
   } : defaultData;
 
-  if (pathname === "/coming-soon") {
-    return null;
-  }
+  // /coming-soon is no longer a gate - footer shows on all pages
 
   return (
     <footer className="bg-nfw-aubergine text-nfw-dove">

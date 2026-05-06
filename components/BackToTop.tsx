@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { ArrowUp } from "lucide-react";
-import { usePathname } from "next/navigation";
 
 export default function BackToTop() {
-  const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(false);
 
   // Show button when page is scrolled down
@@ -22,9 +20,7 @@ export default function BackToTop() {
     return () => window.removeEventListener("scroll", toggleVisibility);
   }, []);
 
-  if (pathname === "/coming-soon") {
-    return null;
-  }
+  // /coming-soon is no longer a gate - button shows on all pages
 
   const scrollToTop = () => {
     window.scrollTo({
