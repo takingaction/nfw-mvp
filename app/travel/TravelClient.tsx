@@ -166,7 +166,7 @@ export default function TravelClient({
 
       {/* Load Travel SDK script */}
       <Script
-        src="https://booking.accessdevelopment-stage.com/scripts/travel.client.v2.js"
+        src="https://booking.accessdevelopment.com/scripts/travel.client.v2.js"
         strategy="afterInteractive"
         onLoad={handleSDKLoad}
       />

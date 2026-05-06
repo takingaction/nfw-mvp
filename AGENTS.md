@@ -3092,5 +3092,31 @@ Navigation link updates:
 **Commit:**
 - `a7281a0` - Rename coming-soon-emails to newsletter-signups, restore login signup link
 
+### Session 2026-05-06: Access Perks Production Migration
+
+**Problem:** Access Perks integration was using staging URLs, need to migrate to production.
+
+**Hardcoded URL Changes (3 files):**
+
+| File | Change |
+|------|--------|
+| `app/api/access-perks/offers/[offerKey]/redeem/route.ts` | Changed `https://redeem.adcrws-stage.com` → `https://redeem.adcrws.com`, now uses `ACCESS_REDEEM_TOKEN` env var |
+| `app/api/access-perks/locations/route.ts` | Changed fallback default `https://offer.adcrws-stage.com` → `https://offer.adcrws.com` |
+| `app/travel/TravelClient.tsx` | Changed `https://booking.accessdevelopment-stage.com` → `https://booking.accessdevelopment.com` |
+
+**Environment Variables (Vercel + .env.local):**
+
+| Variable | Production URL |
+|----------|----------------|
+| `ACCESS_OFFERS_API_URL` | `https://offer.adcrws.com` |
+| `ACCESS_REDEEM_API_URL` | `https://redeem.adcrws.com` |
+| `ACCESS_REPORTS_API_URL` | `https://report.adcrws.com` |
+| `ACCESS_AMT_API_URL` | `https://amt.accessdevelopment.com/api/v1` |
+| `ACCESS_TRAVEL_AUTH_URL` | `https://auth.adcrws.com/api/v1/tokens` |
+
+**New Production Token:** Separate production token was provided by Access Perks (different from staging token).
+
+**Note:** Tokens stay the same; only URLs changed from `-stage` to production endpoints.
+
 ## Next Steps
 - (none)

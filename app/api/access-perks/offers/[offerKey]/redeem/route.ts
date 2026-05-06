@@ -58,7 +58,8 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const memberKey = user.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 
-    let apiUrl = `https://redeem.adcrws-stage.com/v1/redeem/${offerKey}/${method}?access_token=${process.env.ACCESS_OFFERS_TOKEN}&member_key=${memberKey}`;
+    const redeemApiUrl = process.env.ACCESS_REDEEM_API_URL || "https://redeem.adcrws.com";
+    let apiUrl = `https://redeem.adcrws.com/v1/redeem/${offerKey}/${method}?access_token=${process.env.ACCESS_REDEEM_TOKEN}&member_key=${memberKey}`;
 
     if (location_key) {
       apiUrl += `&location_key=${location_key}`;

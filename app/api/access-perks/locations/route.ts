@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     }
 
     const accessApiUrl =
-      process.env.ACCESS_OFFERS_API_URL || "https://offer.adcrws-stage.com";
+      process.env.ACCESS_OFFERS_API_URL || "https://offer.adcrws.com";
     const accessToken = process.env.ACCESS_OFFERS_TOKEN;
 
     if (!accessToken) {
