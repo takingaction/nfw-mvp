@@ -95,6 +95,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check monthly claim limit (1 per month per user)
+    const now = new Date();
+    const claimMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+    const { data: existingMonthlyClaim } = await supabaseAdmin
+      .from("monthly_claims")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("claim_month", claimMonth)
+      .limit(1);
+
+    if (existingMonthlyClaim && existingMonthlyClaim.length > 0) {
+      return NextResponse.json(
+        { error: "Monthly claim limit reached. You can only claim one item per month." },
+        { status: 400 }
+      );
+    }
+
     const checkoutUrl = `https://${shopDomain}/cart/${numericVariantId}:1`;
 
     // Create claim record
