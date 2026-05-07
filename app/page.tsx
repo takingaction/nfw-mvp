@@ -14,10 +14,13 @@ export async function generateMetadata() {
     .single();
 
   return {
-    title: page?.meta_title || "National Fund for Women",
+    title: {
+      absolute: page?.meta_title || "National Fund for Women | Nonprofit for Women",
+    },
     description: page?.meta_description || "Uplifting American women through microgrants, perks, discounts, and more. Join today!",
     openGraph: {
-      title: page?.meta_title || "National Fund for Women",
+      siteName: "National Fund for Women",
+      title: "Nonprofit for Women",
       description: page?.meta_description || "Uplifting American women through microgrants, perks, discounts, and more. Join today!",
       url: "https://nationalfundforwomen.org",
       images: [{ url: "/images/og-default.jpg", width: 1200, height: 630 }],
