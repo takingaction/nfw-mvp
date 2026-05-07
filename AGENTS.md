@@ -3195,5 +3195,29 @@ Navigation link updates:
 **Commit:**
 - `635394f` - fix: add nfw_user_id attribute to checkout URL and validate in webhook
 
+### Session 2026-05-07: SMS Link Preview Title Fix
+
+**Problem:** When sharing the homepage link via SMS/iMessage, only "Nonprofit for Women" showed instead of "National Fund for Women". iOS SMS treats text after pipe (`|`) as a delimiter and truncates the title.
+
+**Root Cause:** The database `meta_title` was "National Fund for Women | Nonprofit for Women". SMS apps use `og:title` but treat text after `|` as a suffix, showing only "Nonprofit for Women".
+
+**Solution:** Separated `<title>` tag (using database `meta_title` with pipe for browser tabs) from `og:title` (using short brand name for SMS/social):
+
+- `<title>`: Uses database `meta_title` = "National Fund for Women | Nonprofit for Women"
+- `og:title`: Hardcoded to "National Fund for Women" (no pipe, full brand)
+- `og:siteName`: "National Fund for Women"
+
+**Files Modified:**
+- `app/page.tsx` - Updated `generateMetadata()` to use `absolute` title for `<title>` tag, short brand name for `og:title`
+
+**Result:**
+| Platform | Before | After |
+|----------|--------|-------|
+| Browser tab | Full title | Full title (unchanged) |
+| SMS/iMessage | "Nonprofit for Women" | "National Fund for Women" |
+
+**Commit:**
+- `f24785b` - fix: use full brand name for og:title to show correctly in SMS previews
+
 ## Next Steps
 - (none)
