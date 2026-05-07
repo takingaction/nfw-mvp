@@ -63,6 +63,11 @@ export async function POST(request: Request) {
       const claimMonth = new Date(orderCreatedAt.getFullYear(), orderCreatedAt.getMonth(), 1).toISOString().split('T')[0];
 
       if (variantId) {
+        // Extract nfw_user_id from order attributes (passed during checkout)
+        const orderAttributes = order.attributes || [];
+        const nfwUserIdAttr = orderAttributes.find((attr: { name: string; value: string }) => attr.name === "nfw_user_id");
+        const nfwUserId = nfwUserIdAttr?.value || null;
+
         const { data: existingClaims } = await supabaseAdmin
           .from("zero_dollar_claims")
           .select("*")
@@ -73,6 +78,18 @@ export async function POST(request: Request) {
 
         if (existingClaims && existingClaims.length > 0) {
           const claim = existingClaims[0];
+
+          // Validate nfw_user_id matches the claim's user_id (prevents direct Shopify checkout fraud)
+          if (!nfwUserId || nfwUserId !== claim.user_id) {
+            console.log(`Rejecting order ${orderId} - invalid or missing nfw_user_id attribute. Expected: ${claim.user_id}, Got: ${nfwUserId}`);
+
+            await supabaseAdmin
+              .from("zero_dollar_claims")
+              .update({ status: "rejected_invalid_user" })
+              .eq("id", claim.id);
+
+            return NextResponse.json({ received: true, reason: "Invalid user" });
+          }
 
           // Check if user already has a monthly claim this month
           const { data: existingMonthlyClaim } = await supabaseAdmin
