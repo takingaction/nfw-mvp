@@ -3169,5 +3169,31 @@ Navigation link updates:
 **Commit:**
 - `65320c6` - fix: add monthly claim limit check to Shopify checkout API
 
+### Session 2026-05-07: Shopify Checkout URL Signing (Cart Attributes)
+
+**Problem:** Users could bypass NFW authentication and go directly to Shopify checkout URL to fraudulently claim items without a NFW account. The checkout URL was public and Shopify doesn't require login for checkout.
+
+**Root Cause:** No user identity validation in webhook - only matched variant_id, not user.
+
+**Solution:** Implemented cart attribute validation:
+1. Checkout API passes `nfw_user_id` as Shopify cart attribute when generating checkout URL
+2. Webhook extracts `nfw_user_id` from order attributes
+3. Webhook validates `nfw_user_id` matches claim's user_id before fulfilling
+4. Direct Shopify checkouts (without NFW flow) are rejected
+
+**Files Modified:**
+- `app/api/shopify/checkout/route.ts` - Added `attributes[nfw_user_id]=userId` to checkout URL
+- `app/api/shopify/webhook/route.ts` - Added extraction and validation of nfw_user_id from order attributes
+
+**Behavior:**
+| Scenario | Result |
+|----------|--------|
+| Normal claim (through NFW) | ✓ Fulfilled |
+| Direct Shopify checkout (no NFW) | ✗ Rejected - no nfw_user_id attribute |
+| Claim with wrong user ID | ✗ Rejected - user mismatch |
+
+**Commit:**
+- `635394f` - fix: add nfw_user_id attribute to checkout URL and validate in webhook
+
 ## Next Steps
 - (none)
