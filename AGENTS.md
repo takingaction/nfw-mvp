@@ -3153,5 +3153,21 @@ Navigation link updates:
 **Commit:**
 - `f750db7` - fix: open Shopify checkout in new tab instead of same tab
 
+### Session 2026-05-07: Shopify Checkout Monthly Limit Check
+
+**Problem:** The checkout API (`app/api/shopify/checkout/route.ts`) did not check the monthly claim limit. Users could get checkout URLs for multiple products in the same month, complete Shopify checkout, but then have their order rejected at webhook time (wasted checkout).
+
+**Root Cause:** The checkout API only checked lifetime duplicate (same product per user) but not the monthly limit (`monthly_claims` table).
+
+**Solution:** Added monthly claim limit check to checkout API:
+- Query `monthly_claims` table for user's existing claim this month
+- Return immediate error if already claimed this month
+
+**Files Modified:**
+- `app/api/shopify/checkout/route.ts` - Added monthly claim limit check before generating checkout URL
+
+**Commit:**
+- `65320c6` - fix: add monthly claim limit check to Shopify checkout API
+
 ## Next Steps
 - (none)
