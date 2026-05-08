@@ -3219,5 +3219,26 @@ Navigation link updates:
 **Commit:**
 - `f24785b` - fix: use full brand name for og:title to show correctly in SMS previews
 
+### Session 2026-05-08: Shopify Checkout URL Expiration
+
+**Problem:** Shopify checkout URLs can be reused after completion and shared with other users. Attackers could complete checkout multiple times or share URLs with others to fraudulently claim items. Each rejected order would require manual review.
+
+**Solution:** Added 2-hour expiration timestamp to checkout URLs:
+1. Checkout API includes `nfw_checkout_time` attribute (Unix timestamp) in checkout URL
+2. Webhook checks timestamp against current time
+3. If checkout is older than 2 hours, order is rejected
+
+**Files Modified:**
+- `app/api/shopify/checkout/route.ts` - Added `nfw_checkout_time` attribute to checkout URL
+- `app/api/shopify/webhook/route.ts` - Added timestamp validation, rejects if expired
+
+**Behavior:**
+- Checkout URLs expire after 2 hours
+- Shared URLs become invalid before friends can use them
+- Brute force attacks become impractical (timestamps expire)
+
+**Commit:**
+- `b11e9ae` - fix: add 2-hour expiration to Shopify checkout URLs to prevent URL sharing
+
 ## Next Steps
 - (none)
