@@ -63,10 +63,19 @@ export async function POST(request: Request) {
       const claimMonth = new Date(orderCreatedAt.getFullYear(), orderCreatedAt.getMonth(), 1).toISOString().split('T')[0];
 
       if (variantId) {
-        // Extract nfw_user_id from order attributes (passed during checkout)
+        // Extract nfw_user_id and nfw_checkout_time from order attributes (passed during checkout)
         const orderAttributes = order.attributes || [];
         const nfwUserIdAttr = orderAttributes.find((attr: { name: string; value: string }) => attr.name === "nfw_user_id");
+        const nfwCheckoutTimeAttr = orderAttributes.find((attr: { name: string; value: string }) => attr.name === "nfw_checkout_time");
         const nfwUserId = nfwUserIdAttr?.value || null;
+        const nfwCheckoutTime = nfwCheckoutTimeAttr ? parseInt(nfwCheckoutTimeAttr.value, 10) : null;
+
+        // Check if checkout URL has expired (2 hour limit)
+        const checkoutExpirationMs = 2 * 60 * 60 * 1000; // 2 hours
+        if (!nfwCheckoutTime || (Date.now() - nfwCheckoutTime > checkoutExpirationMs)) {
+          console.log(`Rejecting order ${orderId} - checkout URL expired or missing timestamp. Timestamp: ${nfwCheckoutTime}, Age: ${nfwCheckoutTime ? Date.now() - nfwCheckoutTime : 'N/A'}ms`);
+          return NextResponse.json({ received: true, reason: "Checkout URL expired" });
+        }
 
         const { data: existingClaims } = await supabaseAdmin
           .from("zero_dollar_claims")

@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const checkoutUrl = `https://${shopDomain}/cart/${numericVariantId}:1?attributes[nfw_user_id]=${userId}`;
+    const checkoutUrl = `https://${shopDomain}/cart/${numericVariantId}:1?attributes[nfw_user_id]=${userId}&attributes[nfw_checkout_time]=${Date.now()}`;
 
     // Create claim record
     const { error: claimError } = await supabaseAdmin
