@@ -3240,5 +3240,17 @@ Navigation link updates:
 **Commit:**
 - `b11e9ae` - fix: add 2-hour expiration to Shopify checkout URLs to prevent URL sharing
 
+### Session 2026-05-08: Hero Section Text Padding Fix
+
+**Problem:** When the Hero section template has image on the left, the text column on the right ran right to the edge of the page on desktop with no padding.
+
+**Solution:** Added conditional right padding (`lg:pr-8`) to the text column when image position is "left".
+
+**Files Modified:**
+- `components/sections/HeroSection.tsx` - Added `pr-8` padding when image is on left
+
+**Commit:**
+- `631a03e` - fix: add right padding to Hero text column when image is on left
+
 ## Next Steps
 - (none)
