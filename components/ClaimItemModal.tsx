@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { X, Package, Loader2 } from "lucide-react";
 
 type Variant = {
@@ -23,7 +22,6 @@ export default function ClaimItemModal({
   userId: string;
   onClose: () => void;
 }) {
-  const router = useRouter();
   const [claiming, setClaiming] = useState(false);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +71,7 @@ export default function ClaimItemModal({
       }
 
       window.open(data.checkoutUrl, "_blank");
+      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error claiming item");
       setClaiming(false);

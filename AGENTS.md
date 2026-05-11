@@ -3279,3 +3279,16 @@ Navigation link updates:
 
 ## Next Steps
 - (none)
+
+### Session 2026-05-11: ClaimItemModal Auto-Close on Shopify Redirect
+
+**Problem:** After claiming a Zero Dollar Store item, the modal would stay open with a "Redirecting..." spinner and disabled X/Cancel buttons. Users couldn't close the modal while Shopify was open in another tab.
+
+**Solution:** Auto-close the modal immediately after `window.open()` opens Shopify in a new tab.
+
+**Files Modified:**
+- `components/ClaimItemModal.tsx` - Added `onClose()` call after `window.open()` (line 76)
+- `components/ClaimItemModal.tsx` - Removed unused `useRouter` import (clean up)
+
+**Commit:**
+- Auto-close modal when Shopify opens in new tab
