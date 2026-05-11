@@ -778,14 +778,53 @@ export async function sendContactFormEmail({
     </p>
   `;
 
+  // Send acknowledgement to the sender
   await sendBrandedEmail({
-    to: "hello@nationalfundforwomen.org",
+    to: email,
     subject: `NFW Contact Form: ${subject}`,
     name,
     heroImage: heroImageUrl,
     heroText: 'We\'ve <em>received</em> your message',
     headline: "Message Received",
     body,
+    footerCtaText: "VISIT WEBSITE",
+    footerCtaUrl: siteUrl,
+  });
+
+  // Also send notification to the organization with submission details
+  const notificationBody = `
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      <strong>New Contact Form Submission</strong>
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 10px 0;">
+      <strong>Name:</strong> ${name}
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 10px 0;">
+      <strong>Email:</strong> ${email}
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 10px 0;">
+      <strong>Category:</strong> ${subject}
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 10px 0;">
+      <strong>Submitted:</strong> ${timestamp}
+    </p>
+    <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 20px 0;">
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 20px 0;">
+      <strong>Message:</strong>
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0;">
+      ${message}
+    </p>
+  `;
+
+  await sendBrandedEmail({
+    to: "hello@nationalfundforwomen.org",
+    subject: `New Contact: ${name} - ${subject}`,
+    name: "NFW Team",
+    heroImage: heroImageUrl,
+    heroText: 'New <em>contact form</em> submission',
+    headline: "Contact Form Submission",
+    body: notificationBody,
     footerCtaText: "VISIT WEBSITE",
     footerCtaUrl: siteUrl,
   });
