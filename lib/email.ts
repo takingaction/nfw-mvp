@@ -297,11 +297,12 @@ interface SendBrandedEmailOptions {
   secondaryCtaUrl?: string;
   footerCtaText?: string;
   footerCtaUrl?: string;
+  reply_to?: string;
 }
 
 // Timeout wrapper for email sending
 async function sendEmailWithTimeout(
-  options: { to: string; subject: string; html: string },
+  options: { to: string; subject: string; html: string; reply_to?: string },
   timeoutMs = 8000
 ): Promise<{ success: boolean; error?: any }> {
   return Promise.race([
@@ -330,6 +331,7 @@ export async function sendBrandedEmail({
   secondaryCtaUrl,
   footerCtaText,
   footerCtaUrl,
+  reply_to,
 }: SendBrandedEmailOptions): Promise<{ success: boolean; error?: any }> {
   try {
     const html = buildEmailHtml({
@@ -346,7 +348,7 @@ export async function sendBrandedEmail({
       footerCtaText,
       footerCtaUrl,
     });
-    return sendEmailWithTimeout({ to, subject, html });
+    return sendEmailWithTimeout({ to, subject, html, reply_to });
   } catch (err) {
     console.error('[sendBrandedEmail] Error:', err);
     throw err;
@@ -357,10 +359,12 @@ export async function sendTemplateEmail({
   to,
   subject,
   html,
+  reply_to,
 }: {
   to: string;
   subject: string;
   html: string;
+  reply_to?: string;
 }): Promise<{ success: boolean; error?: any }> {
   try {
     const resend = getResend();
@@ -369,6 +373,7 @@ export async function sendTemplateEmail({
       to,
       subject,
       html,
+      ...(reply_to && { reply_to }),
     });
     if (result.error) {
       console.error("Resend API error:", result.error);
@@ -827,5 +832,6 @@ export async function sendContactFormEmail({
     body: notificationBody,
     footerCtaText: "VISIT WEBSITE",
     footerCtaUrl: siteUrl,
+    reply_to: email,
   });
 }

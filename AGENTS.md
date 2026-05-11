@@ -3292,3 +3292,23 @@ Navigation link updates:
 
 **Commit:**
 - Auto-close modal when Shopify opens in new tab
+
+### Session 2026-05-11: Contact Form Email Reply-To
+
+**Problem:** When NFW staff received contact form notifications and clicked "Reply", their email client would compose to hello@nationalfundforwomen.org instead of the form submitter's email.
+
+**Solution:** Added `reply_to` parameter to the contact form notification email sent to hello@nationalfundforwomen.org, so staff can directly reply to the person who submitted the form.
+
+**Files Modified:**
+- `lib/email.ts`:
+  - Added `reply_to?: string` parameter to `sendTemplateEmail()` function
+  - Added `reply_to?: string` to `SendBrandedEmailOptions` interface
+  - Added `reply_to` to `sendEmailWithTimeout()` options type
+  - Added `reply_to: email` when sending notification to hello@nationalfundforwomen.org in `sendContactFormEmail()`
+
+**Effect:**
+- Only the notification email to hello@ gets reply-to (acknowledgement email to sender unchanged)
+- All other emails (welcome, grants, gift codes) unaffected
+
+**Commit:**
+- Add reply-to to contact form notification email
