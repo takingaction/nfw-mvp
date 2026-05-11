@@ -3254,3 +3254,28 @@ Navigation link updates:
 
 ## Next Steps
 - (none)
+
+### Session 2026-05-08: Contact Form Email Fix
+
+**Problem:** The contact form acknowledgement email was being sent to hello@nationalfundforwomen.org instead of the sender. This meant the "thank you for your submission" message went to the wrong place.
+
+**Root Cause:** In `lib/email.ts`, the `sendContactFormEmail` function was hardcoded to send the acknowledgement to hello@nationalfundforwomen.org, ignoring the sender's email from the form submission.
+
+**Solution:** Implemented two-email flow:
+1. **Acknowledgement email** - Sent to the sender (person who filled out the form) saying "We've received your message"
+2. **Notification email** - Sent to hello@nationalfundforwomen.org with full submission details (name, email, category, timestamp, message)
+
+**Files Modified:**
+- `lib/email.ts` - Updated `sendContactFormEmail` to send acknowledgement to sender and notification with details to organization
+
+**Email Flow:**
+| Email | Recipient | Content |
+|-------|-----------|---------|
+| Acknowledgement | Sender (form email) | "We've received your message" |
+| Notification | hello@nationalfundforwomen.org | Name, email, category, timestamp, message |
+
+**Commit:**
+- `5b8f0c6` - fix: send contact form acknowledgement to sender, notification to org
+
+## Next Steps
+- (none)
