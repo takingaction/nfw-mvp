@@ -372,8 +372,9 @@ export async function sendTemplateEmail({
 }): Promise<{ success: boolean; error?: any }> {
   try {
     const resend = getResend();
+    const fromAddress = from ? `${from} <hello@nationalfundforwomen.org>` : FROM;
     const result = await resend.emails.send({
-      from: from || FROM,
+      from: fromAddress,
       to,
       subject,
       html,
