@@ -373,7 +373,7 @@ export async function sendTemplateEmail({
       to,
       subject,
       html,
-      ...(reply_to && { reply_to }),
+      ...(reply_to && { replyTo: reply_to }),
     });
     if (result.error) {
       console.error("Resend API error:", result.error);
