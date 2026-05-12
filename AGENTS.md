@@ -3313,3 +3313,47 @@ Navigation link updates:
 
 **Commit:**
 - `f84219f` - fix: correct replyTo field name for Resend API
+
+### Session 2026-05-11: Freshdesk API Integration for Contact Form
+
+**Problem:** Contact form tickets in Freshdesk were being associated with a generic NFW contact because emails were sent FROM hello@nationalfundforwomen.org, not from the form submitter's email. This caused Freshdesk to use the stored contact name (e.g., "Ronpassaro") instead of the actual name entered in the form.
+
+**Solution:** Replace email notification to hello@ with Freshdesk API ticket creation, keeping the acknowledgement email to sender. Manual emails to hello@ still auto-create tickets in Freshdesk.
+
+**Files Created:**
+- `lib/email.ts` - Added `sendFreshdeskTicket()` and `sendContactAcknowledgement()` functions
+
+**Files Modified:**
+- `lib/email.ts`:
+  - Added `sendFreshdeskTicket()` - Creates ticket via Freshdesk API with correct requester name and email
+  - Added `sendContactAcknowledgement()` - Sends acknowledgement email only to sender
+  - Removed notification email to hello@ from contact form flow
+- `app/api/contact/submit/route.ts` - Calls both Freshdesk API and acknowledgement email in parallel
+
+**Environment Variables Required:**
+- `FRESHDESK_API_KEY` - API key from Freshdesk settings
+- `FRESHDESK_DOMAIN` - `nationalfundforwomen.freshdesk.com`
+
+**Freshdesk API Call:**
+```typescript
+POST /api/v2/tickets
+{
+  email,           // Form submitter's email
+  subject: `Contact Form: ${subject}`,
+  description,     // Form message
+  status: 2,       // Open
+  priority: 1,     // Low
+  requester: { name }  // Form submitter's name
+}
+```
+
+**Contact Form Flow:**
+1. User submits form at `/contact`
+2. Data saved to `contact_submissions` table
+3. Acknowledgement email sent to sender (via Resend)
+4. Freshdesk ticket created via API (with sender's name and email as requester)
+5. Manual emails to hello@ still auto-create tickets (no change)
+
+**Commits:**
+- `d1ac5f3` - feat: add Freshdesk API integration for contact form tickets
+- `bde6daa` - fix: pass name in requester object for Freshdesk
