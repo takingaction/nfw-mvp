@@ -748,6 +748,101 @@ export async function sendGiftCodesEmail({
   });
 }
 
+export async function sendFreshdeskTicket({
+  name,
+  email,
+  subject,
+  message,
+}: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}): Promise<{ success: boolean; error?: any }> {
+  const domain = process.env.FRESHDESK_DOMAIN;
+  const apiKey = process.env.FRESHDESK_API_KEY;
+
+  if (!domain || !apiKey) {
+    console.error("[Freshdesk] Not configured - missing FRESHDESK_DOMAIN or FRESHDESK_API_KEY");
+    return { success: false, error: "Freshdesk not configured" };
+  }
+
+  const credentials = Buffer.from(`${apiKey}:X`).toString("base64");
+
+  try {
+    const response = await fetch(`https://${domain}/api/v2/tickets`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Basic ${credentials}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        name,
+        subject: `Contact Form: ${subject}`,
+        description: message,
+        status: 2,
+        priority: 1,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("[Freshdesk] API error:", error);
+      return { success: false, error };
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error("[Freshdesk] Failed to create ticket:", err);
+    return { success: false, error: err };
+  }
+}
+
+export async function sendContactAcknowledgement({
+  name,
+  email,
+  subject,
+}: {
+  name: string;
+  email: string;
+  subject: string;
+}) {
+  const siteUrl = "https://nationalfundforwomen.org";
+  const template = await fetchEmailTemplate("contact-form");
+  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+
+  const body = `
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      Dear ${name},
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      Thanks for reaching out! We've received your message and will get back to you within 1-2 business days.
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      In the meantime, feel free to explore our <a href="${siteUrl}" style="color: #F8F19A;">website</a> or check out our <a href="${siteUrl}/faq" style="color: #F8F19A;">FAQ</a> for quick answers.
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; font-style: italic; color: #FFFFFF; margin: 30px 0 0 0;">
+      Talk soon,
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; font-style: italic; color: #FFFFFF; margin: 5px 0 0 0;">
+      The NFW Team
+    </p>
+  `;
+
+  await sendBrandedEmail({
+    to: email,
+    subject: `NFW Contact Form: ${subject}`,
+    name,
+    heroImage: heroImageUrl,
+    heroText: 'We\'ve <em>received</em> your message',
+    headline: "Message Received",
+    body,
+    footerCtaText: "VISIT WEBSITE",
+    footerCtaUrl: siteUrl,
+  });
+}
+
 export async function sendContactFormEmail({
   name,
   email,

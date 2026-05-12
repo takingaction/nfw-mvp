@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendContactFormEmail } from "@/lib/email";
+import { sendContactAcknowledgement, sendFreshdeskTicket } from "@/lib/email";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -45,9 +45,19 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      await sendContactFormEmail({ name, email, subject: subjectLabel, message });
+      const [emailResult, freshdeskResult] = await Promise.allSettled([
+        sendContactAcknowledgement({ name, email, subject: subjectLabel }),
+        sendFreshdeskTicket({ name, email, subject: subjectLabel, message }),
+      ]);
+
+      if (emailResult.status === "rejected") {
+        console.error("Failed to send acknowledgement email:", emailResult.reason);
+      }
+      if (freshdeskResult.status === "rejected" || !freshdeskResult.value?.success) {
+        console.error("Failed to create Freshdesk ticket:", freshdeskResult);
+      }
     } catch (err) {
-      console.error("Failed to send contact form email:", err);
+      console.error("Failed to process contact form:", err);
     }
 
     return NextResponse.json({ success: true });
