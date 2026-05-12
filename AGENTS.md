@@ -3301,15 +3301,15 @@ Navigation link updates:
 
 **Files Modified:**
 - `lib/email.ts`:
-  - Added `reply_to?: string` parameter to `sendTemplateEmail()` function
-  - Added `reply_to?: string` to `SendBrandedEmailOptions` interface
-  - Added `reply_to` to `sendEmailWithTimeout()` options type
-  - Added `reply_to: email` when sending notification to hello@nationalfundforwomen.org in `sendContactFormEmail()`
+  - Added `reply_to?: string` and `from?: string` parameters to `sendTemplateEmail()` function
+  - Added `reply_to?: string` and `from?: string` to `SendBrandedEmailOptions` interface
+  - Added `reply_to` and `from` to `sendEmailWithTimeout()` options type
+  - Contact form notification now passes `reply_to: email` and `from: name`
 
 **Effect:**
-- Only the notification email to hello@ gets reply-to (acknowledgement email to sender unchanged)
+- Only the notification email to hello@ gets reply-to and from name (acknowledgement email to sender unchanged)
 - All other emails (welcome, grants, gift codes) unaffected
-- **Note:** reply_to uses `replyTo` (camelCase) for Resend API - was initially typed incorrectly as `reply_to`
+- **Note:** Resend API expects `replyTo` (camelCase) not `reply_to` (snake_case)
 
 **Commit:**
 - `f84219f` - fix: correct replyTo field name for Resend API

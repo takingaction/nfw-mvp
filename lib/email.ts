@@ -298,11 +298,12 @@ interface SendBrandedEmailOptions {
   footerCtaText?: string;
   footerCtaUrl?: string;
   reply_to?: string;
+  from?: string;
 }
 
 // Timeout wrapper for email sending
 async function sendEmailWithTimeout(
-  options: { to: string; subject: string; html: string; reply_to?: string },
+  options: { to: string; subject: string; html: string; reply_to?: string; from?: string },
   timeoutMs = 8000
 ): Promise<{ success: boolean; error?: any }> {
   return Promise.race([
@@ -332,6 +333,7 @@ export async function sendBrandedEmail({
   footerCtaText,
   footerCtaUrl,
   reply_to,
+  from,
 }: SendBrandedEmailOptions): Promise<{ success: boolean; error?: any }> {
   try {
     const html = buildEmailHtml({
@@ -348,7 +350,7 @@ export async function sendBrandedEmail({
       footerCtaText,
       footerCtaUrl,
     });
-    return sendEmailWithTimeout({ to, subject, html, reply_to });
+    return sendEmailWithTimeout({ to, subject, html, reply_to, from });
   } catch (err) {
     console.error('[sendBrandedEmail] Error:', err);
     throw err;
@@ -360,16 +362,18 @@ export async function sendTemplateEmail({
   subject,
   html,
   reply_to,
+  from,
 }: {
   to: string;
   subject: string;
   html: string;
   reply_to?: string;
+  from?: string;
 }): Promise<{ success: boolean; error?: any }> {
   try {
     const resend = getResend();
     const result = await resend.emails.send({
-      from: FROM,
+      from: from || FROM,
       to,
       subject,
       html,
@@ -833,5 +837,6 @@ export async function sendContactFormEmail({
     footerCtaText: "VISIT WEBSITE",
     footerCtaUrl: siteUrl,
     reply_to: email,
+    from: name,
   });
 }
