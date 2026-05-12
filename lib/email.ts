@@ -759,8 +759,12 @@ export async function sendFreshdeskTicket({
   subject: string;
   message: string;
 }): Promise<{ success: boolean; error?: any }> {
+  console.log("[Freshdesk] Function called with:", { name, email, subject });
+  
   const domain = process.env.FRESHDESK_DOMAIN;
   const apiKey = process.env.FRESHDESK_API_KEY;
+
+  console.log("[Freshdesk] Domain:", domain, "Has API Key:", !!apiKey);
 
   if (!domain || !apiKey) {
     console.error("[Freshdesk] Not configured - missing FRESHDESK_DOMAIN or FRESHDESK_API_KEY");
@@ -768,6 +772,7 @@ export async function sendFreshdeskTicket({
   }
 
   const credentials = Buffer.from(`${apiKey}:X`).toString("base64");
+  console.log("[Freshdesk] Making API call to:", `https://${domain}/api/v2/tickets`);
 
   try {
     const response = await fetch(`https://${domain}/api/v2/tickets`, {
@@ -786,12 +791,15 @@ export async function sendFreshdeskTicket({
       }),
     });
 
+    console.log("[Freshdesk] Response status:", response.status);
+
     if (!response.ok) {
       const error = await response.text();
       console.error("[Freshdesk] API error:", error);
       return { success: false, error };
     }
 
+    console.log("[Freshdesk] Ticket created successfully!");
     return { success: true };
   } catch (err) {
     console.error("[Freshdesk] Failed to create ticket:", err);
