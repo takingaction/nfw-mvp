@@ -3339,13 +3339,16 @@ Navigation link updates:
 POST /api/v2/tickets
 {
   email,           // Form submitter's email
+  name,            // Form submitter's name (at top level, not in requester object)
   subject: `Contact Form: ${subject}`,
   description,     // Form message
   status: 2,       // Open
   priority: 1,     // Low
-  requester: { name }  // Form submitter's name
 }
 ```
+
+**Freshdesk Behavior Note:**
+Freshdesk matches tickets to existing contacts by email. For new contacts, the API-passed name is used correctly. For existing contacts (including admin accounts), Freshdesk prioritizes the stored contact name over what we pass via API. This is expected Freshdesk behavior.
 
 **Contact Form Flow:**
 1. User submits form at `/contact`
@@ -3356,4 +3359,4 @@ POST /api/v2/tickets
 
 **Commits:**
 - `d1ac5f3` - feat: add Freshdesk API integration for contact form tickets
-- `bde6daa` - fix: pass name in requester object for Freshdesk
+- `d48d3c5` - fix: remove invalid requester field from Freshdesk ticket payload
