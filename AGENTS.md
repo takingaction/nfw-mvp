@@ -3309,6 +3309,7 @@ Navigation link updates:
 **Effect:**
 - Only the notification email to hello@ gets reply-to (acknowledgement email to sender unchanged)
 - All other emails (welcome, grants, gift codes) unaffected
+- **Note:** reply_to uses `replyTo` (camelCase) for Resend API - was initially typed incorrectly as `reply_to`
 
 **Commit:**
-- Add reply-to to contact form notification email
+- `f84219f` - fix: correct replyTo field name for Resend API
