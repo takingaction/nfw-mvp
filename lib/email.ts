@@ -783,11 +783,13 @@ export async function sendFreshdeskTicket({
       },
       body: JSON.stringify({
         email,
-        name,
         subject: `Contact Form: ${subject}`,
         description: message,
         status: 2,
         priority: 1,
+        requester: {
+          name,
+        },
       }),
     });
 
