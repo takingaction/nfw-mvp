@@ -794,11 +794,12 @@ export async function sendFreshdeskTicket({
     });
 
     console.log("[Freshdesk] Response status:", response.status);
+    const responseBody = await response.text();
+    console.log("[Freshdesk] Response body:", responseBody);
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error("[Freshdesk] API error:", error);
-      return { success: false, error };
+      console.error("[Freshdesk] API error:", responseBody);
+      return { success: false, error: responseBody };
     }
 
     console.log("[Freshdesk] Ticket created successfully!");
