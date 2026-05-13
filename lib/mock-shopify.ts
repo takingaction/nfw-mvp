@@ -180,7 +180,7 @@ export function transformShopifyProduct(shopifyProduct: ShopifyProduct, mockMapp
       availableForSale: node.availableForSale,
       options: node.selectedOptions,
     })) : [],
-    mvpVisibility: mockMapping?.mvpVisibility ?? true,
+    mvpVisibility: mockMapping?.mvpVisibility ?? false,
     eligibilityTiers: mockMapping?.eligibilityTiers ?? ["free", "contributing", "founding"],
     displayOrder: mockMapping?.displayOrder ?? 999,
     featuredOrder: mockMapping?.featuredOrder ?? 999,
