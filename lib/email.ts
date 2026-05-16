@@ -748,6 +748,71 @@ export async function sendGiftCodesEmail({
   });
 }
 
+export async function sendFreshdeskTicketRejectionEmail({
+  name,
+  email,
+  subject,
+  message,
+  rejectionReason,
+}: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  rejectionReason: string;
+}): Promise<{ success: boolean; error?: any }> {
+  const siteUrl = "https://nationalfundforwomen.org";
+  const heroImageUrl = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+  const timestamp = new Date().toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  const body = `
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      <strong style="color: #F8F19A;">⚠️ Freshdesk rejected a contact form submission.</strong>
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      <strong>Rejection reason:</strong> ${rejectionReason}
+    </p>
+    <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 20px 0;">
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 10px 0;">
+      <strong>Name:</strong> ${name}
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 10px 0;">
+      <strong>Email:</strong> ${email}
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 10px 0;">
+      <strong>Category:</strong> ${subject}
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 10px 0;">
+      <strong>Submitted:</strong> ${timestamp}
+    </p>
+    <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 20px 0;">
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 20px 0;">
+      <strong>Message:</strong>
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0;">
+      ${message}
+    </p>
+  `;
+
+  return sendBrandedEmail({
+    to: "ron@myherocreative.com",
+    subject: `⚠️ Contact Form Rejected: ${name} - ${subject}`,
+    name: "NFW Admin",
+    heroImage: heroImageUrl,
+    heroText: 'Freshdesk <em>rejected</em> a submission',
+    headline: "Contact Form Submission Rejected",
+    body,
+    footerCtaText: "VISIT ADMIN",
+    footerCtaUrl: `${siteUrl}/admin/contact-submissions`,
+  });
+}
+
 export async function sendFreshdeskTicket({
   name,
   email,
@@ -758,7 +823,7 @@ export async function sendFreshdeskTicket({
   email: string;
   subject: string;
   message: string;
-}): Promise<{ success: boolean; error?: any }> {
+}): Promise<{ success: boolean; error?: any; ticketId?: string | null }> {
   console.log("[Freshdesk] Function called with:", { name, email, subject });
   
   const domain = process.env.FRESHDESK_DOMAIN;
@@ -797,14 +862,19 @@ export async function sendFreshdeskTicket({
 
     if (!response.ok) {
       console.error("[Freshdesk] API error:", responseBody);
-      return { success: false, error: responseBody };
+      return { success: false, error: responseBody, ticketId: null };
     }
 
     console.log("[Freshdesk] Ticket created successfully!");
-    return { success: true };
+    try {
+      const responseData = JSON.parse(responseBody);
+      return { success: true, ticketId: responseData.id, error: null };
+    } catch {
+      return { success: true, ticketId: null, error: null };
+    }
   } catch (err) {
     console.error("[Freshdesk] Failed to create ticket:", err);
-    return { success: false, error: err };
+    return { success: false, error: err, ticketId: null };
   }
 }
 

@@ -336,6 +336,13 @@ export default function MobileMenu({ navLinks = [] }: MobileMenuProps) {
                           Newsletter Signups
                         </Link>
                         <Link
+                          href="/admin/contact-submissions"
+                          onClick={closeMenu}
+                          className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"
+                        >
+                          Contact Submissions
+                        </Link>
+                        <Link
                           href="/admin/analytics"
                           onClick={closeMenu}
                           className="block px-4 py-1 text-white/80 hover:bg-white/10 transition-colors"

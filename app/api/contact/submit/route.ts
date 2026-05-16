@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendContactAcknowledgement, sendFreshdeskTicket } from "@/lib/email";
+import { sendContactAcknowledgement, sendFreshdeskTicket, sendFreshdeskTicketRejectionEmail } from "@/lib/email";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,7 +29,8 @@ export async function POST(request: NextRequest) {
 
     const subjectLabel = subjectLabels[subject] || subject;
 
-    const { error: insertError } = await supabaseAdmin
+    // Insert submission and get ID back
+    const { data: insertData, error: insertError } = await supabaseAdmin
       .from("contact_submissions")
       .insert([
         {
@@ -37,27 +38,62 @@ export async function POST(request: NextRequest) {
           email,
           subject_label: subjectLabel,
           message,
+          freshdesk_status: "pending",
         },
-      ]);
+      ])
+      .select("id")
+      .single();
 
     if (insertError) {
       console.error("Failed to insert contact submission:", insertError);
     }
 
-    try {
-      const [emailResult, freshdeskResult] = await Promise.allSettled([
-        sendContactAcknowledgement({ name, email, subject: subjectLabel }),
-        sendFreshdeskTicket({ name, email, subject: subjectLabel, message }),
-      ]);
+    const submissionId = insertData?.id;
 
-      if (emailResult.status === "rejected") {
-        console.error("Failed to send acknowledgement email:", emailResult.reason);
+    // Send acknowledgement email (fire and forget)
+    sendContactAcknowledgement({ name, email, subject: subjectLabel }).catch((err) => {
+      console.error("Failed to send acknowledgement email:", err);
+    });
+
+    // Create Freshdesk ticket
+    const freshdeskResult = await sendFreshdeskTicket({ name, email, subject: subjectLabel, message });
+    let rejectionReason = null;
+
+    if (freshdeskResult.success && submissionId) {
+      // Success - update with ticket ID and status
+      await supabaseAdmin
+        .from("contact_submissions")
+        .update({
+          freshdesk_ticket_id: freshdeskResult.ticketId?.toString() || null,
+          freshdesk_status: "created",
+        })
+        .eq("id", submissionId);
+    } else if (!freshdeskResult.success && submissionId) {
+      // Freshdesk rejected or errored - capture details
+      rejectionReason = typeof freshdeskResult.error === "string"
+        ? freshdeskResult.error
+        : JSON.stringify(freshdeskResult.error);
+
+      await supabaseAdmin
+        .from("contact_submissions")
+        .update({
+          freshdesk_status: "rejected",
+          freshdesk_response: rejectionReason,
+        })
+        .eq("id", submissionId);
+
+      // Send rejection notification to admin
+      try {
+        await sendFreshdeskTicketRejectionEmail({
+          name,
+          email,
+          subject: subjectLabel,
+          message,
+          rejectionReason,
+        });
+      } catch (emailErr) {
+        console.error("Failed to send Freshdesk rejection email:", emailErr);
       }
-      if (freshdeskResult.status === "rejected" || !freshdeskResult.value?.success) {
-        console.error("Failed to create Freshdesk ticket:", freshdeskResult);
-      }
-    } catch (err) {
-      console.error("Failed to process contact form:", err);
     }
 
     return NextResponse.json({ success: true });

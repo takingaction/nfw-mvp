@@ -222,6 +222,13 @@ export function AuthButtonCombined() {
                   Newsletter Signups
                 </Link>
                 <Link
+                  href="/admin/contact-submissions"
+                  className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Contact Submissions
+                </Link>
+                <Link
                   href="/admin/analytics"
                   className="block px-4 py-1 text-sm text-nfw-aubergine hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}
