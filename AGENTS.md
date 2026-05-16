@@ -3360,3 +3360,48 @@ Freshdesk matches tickets to existing contacts by email. For new contacts, the A
 **Commits:**
 - `d1ac5f3` - feat: add Freshdesk API integration for contact form tickets
 - `d48d3c5` - fix: remove invalid requester field from Freshdesk ticket payload
+
+### Session 2026-05-15: Contact Form Freshdesk Status Tracking
+
+**Problem:** When Freshdesk ticket creation failed (rejected content, API errors), there was no visibility into what happened. Admins had to check Vercel logs to see which submissions failed, and had no way to track pending vs completed vs rejected submissions.
+
+**Solution:** Added database tracking for Freshdesk ticket status with admin visibility page.
+
+**Database:**
+- `supabase/migrations/071_add_freshdesk_status_to_contact_submissions.sql`
+- Added columns: `freshdesk_ticket_id TEXT`, `freshdesk_status TEXT`, `freshdesk_response TEXT`
+- Status values: `pending`, `created`, `rejected`, `error`
+- Indexes for efficient status and date queries
+
+**Files Created:**
+- `app/api/admin/contact-submissions/route.ts` - GET endpoint with filtering, search, pagination
+- `app/admin/contact-submissions/page.tsx` - Server wrapper with admin auth
+- `app/admin/contact-submissions/AdminContactSubmissions.tsx` - Client component with table UI
+
+**Files Modified:**
+- `lib/email.ts`:
+  - `sendFreshdeskTicket()` now returns `ticketId` on success
+  - Added `sendFreshdeskTicketRejectionEmail()` - sends rejection notification to ron@myherocreative.com
+- `app/api/contact/submit/route.ts` - Updated to:
+  - Insert with `freshdesk_status: "pending"` initially
+  - Update with ticket ID and "created" status on success
+  - Update with "rejected" status and response on failure
+  - Send rejection email to admin on Freshdesk rejection
+- `components/AuthButtonCombined.tsx` - Added "Contact Submissions" link
+- `components/auth-button.tsx` - Added "Contact Submissions" link
+- `components/MobileMenu.tsx` - Added "Contact Submissions" link
+
+**Admin Page Features:**
+- Filter tabs: All / Created / Rejected / Error / Pending
+- Search by name, email, or message
+- CSV export of filtered results
+- Detail modal showing full submission with Freshdesk response
+- Pagination (20 per page)
+
+**Rejection Email:**
+- Sent to ron@myherocreative.com when Freshdesk rejects content
+- Includes: rejection reason, name, email, subject, timestamp, message
+- Admin can review and manually create ticket if legitimate
+
+**Commits:**
+- `9ec7660` - feat: add contact submissions admin page with Freshdesk status tracking
