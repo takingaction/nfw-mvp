@@ -416,7 +416,9 @@ export interface PricingCardsContent {
   cta_body: string;
   cta_label: string;
   cta_url: string;
+  cta_secondary_prefix?: string;
   cta_secondary_text: string;
+  cta_secondary_link_label?: string;
   cta_secondary_url: string;
   background?: BackgroundColor;
   show_free_plan?: boolean;

@@ -3457,3 +3457,43 @@ Added toggle to hide free plan from Pricing Cards section template.
 - `components/sections/PricingCardsSection.tsx` - Filter free plan unless `show_free_plan === true`
 
 **Build:** Verified with `npm run build` - passes successfully
+
+### Session 2026-05-20: Pricing Cards Section Enhancements
+
+#### Free Plan Toggle + 2-Column Grid
+- Added `show_free_plan?: boolean` field to `PricingCardsContent` interface
+- Default to `false` (free plan hidden by default)
+- Grid dynamically switches from 3-column to 2-column when free plan is hidden
+- Added `show_free_plan` toggle in page builder admin
+
+#### Secondary CTA Section
+- Added `cta_secondary_prefix?: string` for optional text above "Already a member?"
+- Added `cta_secondary_link_label?: string` to customize the "Sign in" link text
+- Auth check: hides secondary CTA section when logged in on public pages
+- Admin bypass: always shows secondary CTA in section editor (`/admin/` path detection)
+- Reordered admin fields: prefix → text → link label → URL
+
+**Spacing:**
+- Prefix text: `mt-4` (more space above the button)
+- Secondary text: `mt-0.5` (less space below, tighter to prefix)
+
+**Files Modified:**
+- `lib/sections/types.ts` - Added `show_free_plan`, `cta_secondary_prefix`, `cta_secondary_link_label`
+- `lib/sections/registry.ts` - Removed free from default cards, added all new fields and toggle
+- `components/sections/PricingCardsSection.tsx` - Grid logic, auth check, spacing, dynamic link label
+
+### Session 2026-05-20: Auth Page Redirects
+
+Added server-side redirects for logged-in users on auth entry pages.
+
+**Behavior:**
+| Route | Logged In | Not Logged In |
+|-------|-----------|---------------|
+| `/auth/login` | Redirects to `/dashboard` | Shows login form |
+| `/auth/sign-up` | Redirects to `/dashboard` | Shows signup form |
+
+**Files Modified:**
+- `app/auth/login/page.tsx` - Added `createClient()` auth check, redirects if user exists
+- `app/auth/sign-up/page.tsx` - Added `createClient()` auth check, redirects if user exists
+
+**Build:** Verified with `npm run build` - passes successfully
