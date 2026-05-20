@@ -3469,8 +3469,8 @@ Added toggle to hide free plan from Pricing Cards section template.
 #### Secondary CTA Section
 - Added `cta_secondary_prefix?: string` for optional text above "Already a member?"
 - Added `cta_secondary_link_label?: string` to customize the "Sign in" link text
-- Auth check: hides secondary CTA section when logged in on public pages
-- Admin bypass: always shows secondary CTA in section editor (`/admin/` path detection)
+- Auth check: prefix always shown; "Already a member? Sign in" hidden when logged in on public pages
+- Admin bypass: always shows full secondary CTA in section editor (`/admin/` path detection)
 - Reordered admin fields: prefix → text → link label → URL
 
 **Spacing:**
