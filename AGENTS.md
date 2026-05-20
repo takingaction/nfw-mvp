@@ -3405,3 +3405,36 @@ Freshdesk matches tickets to existing contacts by email. For new contacts, the A
 
 **Commits:**
 - `9ec7660` - feat: add contact submissions admin page with Freshdesk status tracking
+
+### Session 2026-05-20: Signup Flow Free Membership Modal
+
+Added inline modal for free membership option on step 3 of signup flow.
+
+**Problem:** Free tier card was displayed prominently on step 3 alongside paid options, but the intent was to make free a secondary option only visible after clicking a link.
+
+**Solution:**
+- Removed free tier card from step 3 display (now shows only $15 Contributing and $100 Founding)
+- Added "here" text link below cards: "If contributing financially isn't possible, you can apply for free membership here."
+- Clicking "here" opens a modal with confirmation copy
+- Modal offers two choices: proceed as free, or stay on step 3 and consider $15
+
+**Files Modified:**
+- `components/SignUpFlow.tsx`:
+  - Added `showFreeModal` state for modal visibility
+  - Filtered `PLANS.filter(p => p.id !== "free")` to exclude free from cards
+  - Simplified button logic (removed free-specific button text/style since free is filtered)
+  - Added "here" link below plan cards
+  - Added modal JSX with overlay, confirmation copy, and two buttons:
+    - "FREE MEMBERSHIP IS RIGHT FOR ME" → citrine bg → calls `handleSelectPlan(freePlan)`
+    - "I CAN CONTRIBUTE $15/YEAR" → closes modal, stays on step 3
+
+**Modal Copy:**
+"If contributing financially isn't possible, this tier is for you. A simple gut check: if you have stable housing, regular income, and financial breathing room, a higher tier is probably a better fit for you. The National Fund for Women doesn't exist without membership dues."
+
+**Flow:**
+1. User on step 3 → sees $15 and $100 cards only
+2. Clicks "here" link → modal opens
+3. "FREE MEMBERSHIP IS RIGHT FOR ME" → completes signup as free → redirect to welcome
+4. "I CAN CONTRIBUTE $15/YEAR" → modal closes, user stays on step 3 to choose paid plan
+
+**Build:** Verified with `npm run build` - passes successfully

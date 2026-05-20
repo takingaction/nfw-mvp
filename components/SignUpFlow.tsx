@@ -197,6 +197,7 @@ export default function SignUpFlow() {
     success: false,
   });
   const [showGiftCodeInput, setShowGiftCodeInput] = useState(false);
+  const [showFreeModal, setShowFreeModal] = useState(false);
 
   // Step 0
   const [email, setEmail] = useState("");
@@ -1077,7 +1078,7 @@ export default function SignUpFlow() {
               )}
 
               <div className="space-y-3">
-                {PLANS.map((plan) => (
+                {PLANS.filter(p => p.id !== "free").map((plan) => (
                   <div
                     key={plan.id}
                     className={`border-2 p-5 transition-all ${plan.highlighted ? "border-nfw-blackberry bg-nfw-blackberry" : "border-nfw-blackberry/10 bg-white hover:border-nfw-blackberry/30"}`}
@@ -1135,20 +1136,60 @@ export default function SignUpFlow() {
                       className={`w-full py-2.5 font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
                         plan.highlighted
                           ? "bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/90"
-                          : plan.id === "free"
-                            ? "bg-nfw-blackberry/5 text-nfw-blackberry hover:bg-nfw-blackberry/10 border border-nfw-blackberry/10"
-                            : "bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90"
+                          : "bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90"
                       }`}
                     >
                       {loading && (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       )}
-                      {plan.id === "free"
-                        ? "Continue for free"
-                        : `Join as ${plan.name}`}
+                      {`Join as ${plan.name}`}
                     </button>
                   </div>
                 ))}
+              </div>
+
+              <p className="text-sm text-nfw-blackberry/60 text-center">
+                If contributing financially isn't possible, you can apply for free membership{" "}
+                <button
+                  type="button"
+                  onClick={() => setShowFreeModal(true)}
+                  className="text-nfw-wisteria underline hover:text-nfw-wisteria/80"
+                >
+                  here
+                </button>
+                .
+              </p>
+            </div>
+          )}
+
+          {showFreeModal && (
+            <div className="fixed inset-0 bg-nfw-blackberry/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl p-8 max-w-md w-full">
+                <h2 className="text-2xl font-black text-nfw-blackberry mb-4 font-serif text-center">
+                  Free Membership
+                </h2>
+                <p className="text-nfw-blackberry/80 text-sm leading-relaxed mb-6">
+                  If contributing financially isn't possible, this tier is for you. A simple gut check: if you have stable housing, regular income, and financial breathing room, a higher tier is probably a better fit for you. The National Fund for Women doesn't exist without membership dues.
+                </p>
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const freePlan = PLANS.find(p => p.id === "free");
+                      if (freePlan) handleSelectPlan(freePlan);
+                    }}
+                    className="w-full py-3 bg-nfw-citrine text-nfw-blackberry font-bold text-sm hover:bg-nfw-citrine/90 transition-colors"
+                  >
+                    FREE MEMBERSHIP IS RIGHT FOR ME
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowFreeModal(false)}
+                    className="w-full py-3 bg-white text-nfw-blackberry font-semibold text-sm border border-nfw-blackberry/20 hover:bg-nfw-dove transition-colors"
+                  >
+                    I CAN CONTRIBUTE $15/YEAR
+                  </button>
+                </div>
               </div>
             </div>
           )}
