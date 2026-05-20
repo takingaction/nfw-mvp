@@ -171,24 +171,22 @@ export default function PricingCardsSection({ content }: Props) {
           >
             {c.cta_label || "Join Now"}
           </Link>
-          {(!isLoggedIn || window.location.pathname.includes("/admin/")) && (
-            <>
-              {c.cta_secondary_prefix && (
+          {c.cta_secondary_prefix && (
                 <p className={`font-serif text-sm ${mutedTextColor} mt-4`}>
                   {c.cta_secondary_prefix}
                 </p>
               )}
-              <p className={`font-serif text-sm ${mutedTextColor} mt-0.5`}>
-                {c.cta_secondary_text || "Already a member?"}{" "}
-                <Link
-                  href={c.cta_secondary_url || "/auth/login"}
-                  className={`underline hover:${textColor} transition-colors`}
-                >
-                  {c.cta_secondary_link_label || "Sign in"}
-                </Link>
-              </p>
-            </>
-          )}
+              {(!isLoggedIn || window.location.pathname.includes("/admin/")) && (
+                <p className={`font-serif text-sm ${mutedTextColor} mt-0.5`}>
+                  {c.cta_secondary_text || "Already a member?"}{" "}
+                  <Link
+                    href={c.cta_secondary_url || "/auth/login"}
+                    className={`underline hover:${textColor} transition-colors`}
+                  >
+                    {c.cta_secondary_link_label || "Sign in"}
+                  </Link>
+                </p>
+              )}
         </div>
         )}
       </div>
