@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Check } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { PricingCardsContent, CheckboxColor } from "@/lib/sections/types";
 import {
   getBackgroundClass,
@@ -46,20 +44,6 @@ export default function PricingCardsSection({ content }: Props) {
   const cardHighlightedBg = c.background === "dove" ? "bg-nfw-aubergine" : "bg-nfw-aubergine/80";
   const ctaClass = getPrimaryButtonClass(c.background);
   const innerCardBorder = c.background === "dove" ? "border-nfw-blackberry/10" : "border-white/20";
-
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    const inAdmin = window.location.pathname.includes("/admin/");
-    if (!inAdmin) {
-      const checkAuth = async () => {
-        const supabase = createClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        setIsLoggedIn(!!session);
-      };
-      checkAuth();
-    }
-  }, []);
 
   return (
     <section className={`py-16 lg:py-24 ${bgClass}`}>
@@ -176,17 +160,15 @@ export default function PricingCardsSection({ content }: Props) {
                   {c.cta_secondary_prefix}
                 </p>
               )}
-              {(!isLoggedIn || window.location.pathname.includes("/admin/")) && (
-                <p className={`font-serif text-sm ${mutedTextColor} mt-0.5`}>
-                  {c.cta_secondary_text || "Already a member?"}{" "}
-                  <Link
-                    href={c.cta_secondary_url || "/auth/login"}
-                    className={`underline hover:${textColor} transition-colors`}
-                  >
-                    {c.cta_secondary_link_label || "Sign in"}
-                  </Link>
-                </p>
-              )}
+              <p className={`font-serif text-sm ${mutedTextColor} mt-0.5`}>
+                {c.cta_secondary_text || "Already a member?"}{" "}
+                <Link
+                  href={c.cta_secondary_url || "/auth/login"}
+                  className={`underline hover:${textColor} transition-colors`}
+                >
+                  {c.cta_secondary_link_label || "Sign in"}
+                </Link>
+              </p>
         </div>
         )}
       </div>
