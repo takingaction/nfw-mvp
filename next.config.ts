@@ -52,6 +52,12 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "auth.nationalfundforwomen.org",
+        port: "",
+        pathname: "/storage/v1/object/public/**",
+      },
     ],
   },
 };
