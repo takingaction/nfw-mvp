@@ -419,6 +419,7 @@ export interface PricingCardsContent {
   cta_secondary_text: string;
   cta_secondary_url: string;
   background?: BackgroundColor;
+  show_free_plan?: boolean;
 }
 
 // ── pricing_cta_box ──────────────────────────────────────────

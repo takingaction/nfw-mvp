@@ -741,23 +741,12 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       subheadline: "Every tier supports the mission. Upgrade anytime as your needs grow.",
       cards: [
         {
-          id: "free",
-          name: "Free Member",
-          price: "$0",
-          period: "forever",
-          description: "A warm welcome to the NFW community.",
-          features: ["Access to NFW community", "Monthly newsletter", "Event notifications", "Read member articles and resources"],
-          highlighted: false,
-          badge: null,
-          stripe_price_id: "",
-        },
-        {
           id: "contributing",
           name: "Contributing Member",
           price: "$15",
           period: "/year",
           description: "The most popular way to support NFW and unlock real benefits.",
-          features: ["Everything in Free", "Apply for microgrants up to $1,000", "Member perks and discounts platform", "Access to Zero Dollar Store", "Voting rights on NFW initiatives", "Member badge and recognition"],
+          features: ["Apply for microgrants up to $1,000", "Member perks and discounts platform", "Access to Zero Dollar Store", "Voting rights on NFW initiatives", "Member badge and recognition"],
           highlighted: false,
           badge: "Most Popular",
           stripe_price_id: "",
@@ -784,6 +773,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       cta_secondary_text: "Already a member?",
       cta_secondary_url: "/auth/login",
       background: "dove",
+      show_free_plan: false,
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
@@ -791,6 +781,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "subheadline", label: "Subheadline", type: "textarea" },
       { key: "background", label: "Background", type: "select", options: ["dove", "aubergine", "wisteria", "lilac", "blackberry"] },
       { key: "show_buttons", label: "Show Plan Buttons", type: "boolean" },
+      { key: "show_free_plan", label: "Show Free Plan", type: "boolean" },
       {
         key: "cards",
         label: "Plans",

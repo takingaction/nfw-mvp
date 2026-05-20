@@ -3438,3 +3438,22 @@ Added inline modal for free membership option on step 3 of signup flow.
 4. "I CAN CONTRIBUTE $15/YEAR" → modal closes, user stays on step 3 to choose paid plan
 
 **Build:** Verified with `npm run build` - passes successfully
+
+### Session 2026-05-20: Pricing Cards Template - Omit Free Plan
+
+Added toggle to hide free plan from Pricing Cards section template.
+
+**Problem:** Free plan card was showing on /plans page and pricing cards template alongside paid options.
+
+**Solution:**
+- Added `show_free_plan?: boolean` field to `PricingCardsContent` interface
+- Default to `false` (free plan hidden by default)
+- Added toggle editor field in page builder admin
+- Filtered free plan from rendering unless toggle is enabled
+
+**Files Modified:**
+- `lib/sections/types.ts` - Added `show_free_plan?: boolean` to `PricingCardsContent`
+- `lib/sections/registry.ts` - Removed free plan from default cards, added `show_free_plan: false` default, added `show_free_plan` editor field
+- `components/sections/PricingCardsSection.tsx` - Filter free plan unless `show_free_plan === true`
+
+**Build:** Verified with `npm run build` - passes successfully
