@@ -3482,18 +3482,27 @@ Added toggle to hide free plan from Pricing Cards section template.
 - `lib/sections/registry.ts` - Removed free from default cards, added all new fields and toggle
 - `components/sections/PricingCardsSection.tsx` - Grid logic, auth check, spacing, dynamic link label
 
-### Session 2026-05-20: Auth Page Redirects
+### Session 2026-05-20: Auth Page Redirects (Reverted)
 
-Added server-side redirects for logged-in users on auth entry pages.
+Added server-side redirects for logged-in users on auth entry pages, but reverted after causing email confirmation redirect loops.
 
-**Behavior:**
+**Problem:**
+After confirming email, users got "too many redirects" or "email link is invalid/expired" errors.
+
+**Root Cause:**
+Server-side auth check in `/auth/sign-up` conflicted with Supabase's post-confirmation redirect flow from `/auth/confirm`.
+
+**Behavior (before revert):**
 | Route | Logged In | Not Logged In |
 |-------|-----------|---------------|
 | `/auth/login` | Redirects to `/dashboard` | Shows login form |
 | `/auth/sign-up` | Redirects to `/dashboard` | Shows signup form |
 
-**Files Modified:**
+**Files Modified (then reverted):**
 - `app/auth/login/page.tsx` - Added `createClient()` auth check, redirects if user exists
 - `app/auth/sign-up/page.tsx` - Added `createClient()` auth check, redirects if user exists
+
+**Final Decision:**
+Removed server-side auth redirects from auth entry pages. Pages now show forms unconditionally.
 
 **Build:** Verified with `npm run build` - passes successfully
