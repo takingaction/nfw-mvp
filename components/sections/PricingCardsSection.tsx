@@ -62,7 +62,7 @@ export default function PricingCardsSection({ content }: Props) {
           )}
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
+        <div className={`grid gap-6 mb-12 ${(c.show_free_plan ? c.cards : c.cards?.filter(p => p.id !== "free"))?.length === 2 ? "md:grid-cols-2" : "md:grid-cols-3"}`}>
           {(c.show_free_plan ? c.cards : c.cards?.filter(p => p.id !== "free"))?.map((plan) => (
             <div
               key={plan.id}
