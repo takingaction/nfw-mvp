@@ -143,33 +143,33 @@ export default function PricingCardsSection({ content }: Props) {
 
         {c.show_cta !== false && (
           <div className={`text-center p-10 border ${innerCardBorder} ${c.background === "dove" ? "bg-white" : "bg-white/10"}`}>
-          <h3 className={`font-serif text-2xl ${textColor} mb-3`}>
-            {c.cta_headline || "Ready to join?"}
-          </h3>
-          <p className={`font-serif ${mutedTextColor} mb-6 max-w-md mx-auto`}>
-            {c.cta_body || "Create your free account to get started."}
-          </p>
-          <Link
-            href={c.cta_url || "/auth/sign-up"}
-            className={`inline-flex items-center justify-center px-10 py-4 ${ctaClass} font-ui font-black text-sm tracking-[0.06em] uppercase hover:opacity-90 transition-opacity`}
-          >
-            {c.cta_label || "Join Now"}
-          </Link>
-          {c.cta_secondary_prefix && (
-                <p className={`font-serif text-sm ${mutedTextColor} mt-4`}>
-                  {c.cta_secondary_prefix}
-                </p>
-              )}
-              <p className={`font-serif text-sm ${mutedTextColor} mt-0.5`}>
-                {c.cta_secondary_text || "Already a member?"}{" "}
-                <Link
-                  href={c.cta_secondary_url || "/auth/login"}
-                  className={`underline hover:${textColor} transition-colors`}
-                >
-                  {c.cta_secondary_link_label || "Sign in"}
-                </Link>
+            <h3 className={`font-serif text-2xl ${textColor} mb-3`}>
+              {c.cta_headline || "Ready to join?"}
+            </h3>
+            <p className={`font-serif ${mutedTextColor} mb-6 max-w-md mx-auto`}>
+              {c.cta_body || "Create your free account to get started."}
+            </p>
+            <Link
+              href={c.cta_url || "/auth/sign-up"}
+              className={`inline-flex items-center justify-center px-10 py-4 ${ctaClass} font-ui font-black text-sm tracking-[0.06em] uppercase hover:opacity-90 transition-opacity`}
+            >
+              {c.cta_label || "Join Now"}
+            </Link>
+            {c.cta_secondary_prefix && (
+              <p className={`font-serif text-sm ${mutedTextColor} mt-4`}>
+                {c.cta_secondary_prefix}
               </p>
-        </div>
+            )}
+            <p className={`font-serif text-sm ${mutedTextColor} mt-0.5`}>
+              {c.cta_secondary_text || "Already a member?"}{" "}
+              <Link
+                href={c.cta_secondary_url || "/auth/login"}
+                className={`underline hover:${textColor} transition-colors`}
+              >
+                {c.cta_secondary_link_label || "Sign in"}
+              </Link>
+            </p>
+          </div>
         )}
       </div>
     </section>
