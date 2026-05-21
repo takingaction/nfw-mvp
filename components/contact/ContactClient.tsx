@@ -79,10 +79,17 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
     e.preventDefault();
     setLoading(true);
     try {
+      const formData = new FormData(e.target as HTMLFormElement);
       await fetch("/api/contact/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          name: formData.get("name"),
+          email: formData.get("email"),
+          subject: formData.get("subject"),
+          message: formData.get("message"),
+          website: formData.get("website"),
+        }),
       });
     } catch {
     }
@@ -289,6 +296,16 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
                           className="w-full px-4 py-3 border border-nfw-blackberry/20 font-sans text-sm text-nfw-blackberry placeholder-nfw-blackberry/30 focus:outline-none focus:border-nfw-aubergine transition-colors resize-none"
                         />
                       </div>
+
+                      {/* Honeypot field - hidden from users, catches bots */}
+                      <input
+                        type="text"
+                        name="website"
+                        tabIndex={-1}
+                        autoComplete="off"
+                        className="absolute -left-[9999px] w-1 h-1 opacity-0 pointer-events-none"
+                        placeholder="Leave this blank if you're human"
+                      />
 
                       <button
                         type="submit"

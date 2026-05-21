@@ -21,7 +21,13 @@ const subjectLabels: Record<string, string> = {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, subject, message } = body;
+    const { name, email, subject, message, website } = body;
+
+    // Honeypot check - if website field has value, it's a bot
+    if (website) {
+      // Silent reject - return success to avoid revealing spam detection
+      return NextResponse.json({ success: true });
+    }
 
     if (!name || !email || !subject || !message) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });

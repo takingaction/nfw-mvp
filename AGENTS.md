@@ -3506,3 +3506,18 @@ Server-side auth check in `/auth/sign-up` conflicted with Supabase's post-confir
 Removed server-side auth redirects from auth entry pages. Pages now show forms unconditionally.
 
 **Build:** Verified with `npm run build` - passes successfully
+
+### Session 2026-05-21: Contact Form Honeypot Spam Prevention
+
+Added hidden honeypot field to contact form to catch bots.
+
+**Implementation:**
+- Added `website` field to contact form (`ContactClient.tsx`) with CSS positioning off-screen
+- Hidden from real users, but bots auto-fill all visible/hidden fields with common names
+- API route (`/api/contact/submit`) checks if honeypot field has value → silent reject if bot detected
+
+**Files Modified:**
+- `components/contact/ContactClient.tsx` - Added hidden honeypot input field
+- `app/api/contact/submit/route.ts` - Added honeypot check, returns success silently if bot detected
+
+**Build:** Verified with `npm run build` - passes successfully
