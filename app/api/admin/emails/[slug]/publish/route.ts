@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import supabaseAdmin from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/adminCheck";
 import { renderAllBlocks } from "@/lib/email-blocks/renderer";
 import { buildEmailShell } from "@/lib/email-blocks/shell";
@@ -25,15 +26,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .eq("slug", slug)
     .single();
 
-  console.log("[publish] template fetch result:", { templateId: template?.id, templateError });
+  console.log("[publish] template fetch result:", { templateId: template?.id, templateSlug: template?.slug, templateError });
 
   if (templateError || !template) {
     console.log("[publish] template not found");
     return NextResponse.json({ error: "Template not found" }, { status: 404 });
   }
 
-  // Get sections
-  const { data: sections, error: sectionsError } = await supabase
+  // Get sections using admin client to bypass RLS
+  const { data: sections, error: sectionsError } = await supabaseAdmin()
     .from("email_sections")
     .select("*")
     .eq("email_template_id", template.id)
