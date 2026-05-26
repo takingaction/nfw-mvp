@@ -42,13 +42,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   console.log("[publish] sections content:", JSON.stringify(sections));
 
   // Render all blocks
+  console.log("[publish] about to call renderAllBlocks with", sections?.length, "sections");
   const sectionsHtml = renderAllBlocks(sections as EmailSection[]);
-  console.log("[publish] sectionsHtml length:", sectionsHtml.length, "preview:", sectionsHtml.substring(0, 500));
+  console.log("[publish] sectionsHtml result length:", sectionsHtml.length, "preview:", sectionsHtml.substring(0, 1000));
 
   // Build full HTML with shell
   const fullHtml = buildEmailShell({
     sectionsHtml,
   });
+  console.log("[publish] fullHtml length:", fullHtml.length);
 
   // Update template with full HTML and set status to published
   const { error: updateError } = await supabase
