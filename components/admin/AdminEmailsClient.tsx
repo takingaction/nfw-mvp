@@ -335,8 +335,6 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
                         </button>
                         <a
                           href={`/admin/emails/${selectedTemplate.slug}/builder`}
-                          target="_blank"
-                          rel="noopener noreferrer"
                           className="bg-nfw-aubergine text-white px-6 py-2 font-medium hover:bg-nfw-aubergine/90"
                         >
                           Edit with Builder
