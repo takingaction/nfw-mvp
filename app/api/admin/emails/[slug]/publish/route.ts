@@ -38,8 +38,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Failed to fetch sections" }, { status: 500 });
   }
 
+  console.log("[publish] sections fetched:", sections?.length, "error:", sectionsError);
+  console.log("[publish] sections content:", JSON.stringify(sections));
+
   // Render all blocks
   const sectionsHtml = renderAllBlocks(sections as EmailSection[]);
+  console.log("[publish] sectionsHtml length:", sectionsHtml.length, "preview:", sectionsHtml.substring(0, 500));
 
   // Build full HTML with shell
   const fullHtml = buildEmailShell({
