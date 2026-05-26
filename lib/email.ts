@@ -301,6 +301,7 @@ interface SendBrandedEmailOptions {
   reply_to?: string;
   from?: string;
   preRenderedHtml?: string;
+  useShell?: boolean;
 }
 
 // Timeout wrapper for email sending
@@ -337,10 +338,11 @@ export async function sendBrandedEmail({
   reply_to,
   from,
   preRenderedHtml,
+  useShell,
 }: SendBrandedEmailOptions): Promise<{ success: boolean; error?: any }> {
   try {
     let html: string;
-    if (preRenderedHtml) {
+    if (preRenderedHtml && useShell === false) {
       html = preRenderedHtml;
     } else if (body) {
       html = buildEmailHtml({
@@ -358,7 +360,7 @@ export async function sendBrandedEmail({
         footerCtaUrl,
       });
     } else {
-      throw new Error("sendBrandedEmail requires either preRenderedHtml or body");
+      throw new Error("sendBrandedEmail requires either preRenderedHtml with useShell=false, or body");
     }
     return sendEmailWithTimeout({ to, subject, html, reply_to, from });
   } catch (err) {
@@ -457,6 +459,7 @@ export async function sendWelcomeEmail({
       subject: preRenderedResult.subject || "Welcome to NFW!",
       name,
       preRenderedHtml: preRenderedResult.html,
+      useShell: false,
     });
     return;
   }
@@ -525,6 +528,7 @@ export async function sendNewsletterWelcomeEmail({
       subject: preRenderedResult.subject || "You're subscribed to NFW!",
       name,
       preRenderedHtml: preRenderedResult.html,
+      useShell: false,
     });
     return;
   }
@@ -612,6 +616,7 @@ export async function sendGrantApplicationReceivedEmail({
       subject: preRenderedResult.subject,
       name,
       preRenderedHtml: preRenderedResult.html,
+      useShell: false,
     });
     return;
   }
@@ -677,6 +682,7 @@ export async function sendGrantStatusEmail({
       subject: preRenderedResult.subject,
       name,
       preRenderedHtml: preRenderedResult.html,
+      useShell: false,
     });
     return;
   }
@@ -748,6 +754,7 @@ export async function sendBankInfoRequestEmail({
       subject: preRenderedResult.subject,
       name,
       preRenderedHtml: preRenderedResult.html,
+      useShell: false,
     });
     return;
   }
@@ -802,6 +809,7 @@ export async function sendGiftCodesEmail({
       subject: preRenderedResult.subject || "Your National Fund for Women Gift Code(s)",
       name: buyerName,
       preRenderedHtml: preRenderedResult.html,
+      useShell: false,
     });
     return;
   }
@@ -888,6 +896,7 @@ export async function sendFreshdeskTicketRejectionEmail({
       subject: preRenderedResult.subject || `⚠️ Contact Form Rejected: ${name} - ${subject}`,
       name: "NFW Admin",
       preRenderedHtml: preRenderedResult.html,
+      useShell: false,
     });
   }
 
@@ -1026,6 +1035,7 @@ export async function sendContactAcknowledgement({
       subject: preRenderedResult.subject || `NFW Contact Form: ${subject}`,
       name,
       preRenderedHtml: preRenderedResult.html,
+      useShell: false,
     });
     return;
   }
@@ -1101,6 +1111,7 @@ export async function sendContactFormEmail({
       subject: preRenderedResult.subject || `NFW Contact Form: ${subject}`,
       name,
       preRenderedHtml: preRenderedResult.html,
+      useShell: false,
     });
     return;
   }

@@ -68,6 +68,30 @@ export async function getPreRenderedHtml(
   templateSlug: string,
   variables: Record<string, string> = {}
 ): Promise<PreRenderedEmailResult | null> {
+  const supabase = await createClient();
+
+  const { data: template, error: templateError } = await supabase
+    .from("email_templates")
+    .select("id, slug, subject, full_email_html, status")
+    .eq("slug", templateSlug)
+    .single();
+
+  if (templateError || !template) {
+    return null;
+  }
+
+  if (template.full_email_html && template.status === "published") {
+    let html = template.full_email_html;
+    for (const [key, value] of Object.entries(variables)) {
+      html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
+    }
+    return {
+      html,
+      useShell: false,
+      subject: template.subject || "",
+    };
+  }
+
   return null;
 }
 
