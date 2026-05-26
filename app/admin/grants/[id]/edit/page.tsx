@@ -234,7 +234,6 @@ export default function EditGrantCyclePage() {
               <option value="closed">
                 Closed — no longer accepting applications
               </option>
-              <option value="draft">Draft — not yet visible to members</option>
             </select>
           </div>
 
