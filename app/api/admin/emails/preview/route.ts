@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     const finalHeroImage = hero_image_url || template.hero_image_url || DEFAULT_HERO_IMAGE;
 
     // Fetch sections using admin client (bypasses RLS)
-    const { data: sections, error: sectionsError } = await supabaseAdmin
+    const { data: sections, error: sectionsError } = await supabaseAdmin()
       .from("email_sections")
       .select("*")
       .eq("email_template_id", template.id)

@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
         const blocks = parseHtmlToBlocks(template.html_content, template.id);
 
         // Delete existing sections for this template
-        await supabaseAdmin
+        await supabaseAdmin()
           .from("email_sections")
           .delete()
           .eq("email_template_id", template.id);
@@ -235,7 +235,7 @@ export async function POST(request: NextRequest) {
             visible: true,
           }));
 
-          const { error: insertError } = await supabaseAdmin
+          const { error: insertError } = await supabaseAdmin()
             .from("email_sections")
             .insert(sectionsToInsert);
 

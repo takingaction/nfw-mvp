@@ -57,7 +57,7 @@ export async function POST(
     }
 
     // Fetch sections using admin client (bypasses RLS)
-    const { data: sections, error: sectionsError } = await supabaseAdmin
+    const { data: sections, error: sectionsError } = await supabaseAdmin()
       .from("email_sections")
       .select("*")
       .eq("email_template_id", template.id)

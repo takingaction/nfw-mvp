@@ -66,7 +66,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   // Delete existing sections
-  const { error: deleteError } = await supabaseAdmin
+  const { error: deleteError } = await supabaseAdmin()
     .from("email_sections")
     .delete()
     .eq("email_template_id", template.id);
@@ -87,7 +87,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       background_color: s.background_color || null,
     }));
 
-    const { error: insertError } = await supabaseAdmin
+    const { error: insertError } = await supabaseAdmin()
       .from("email_sections")
       .insert(sectionsToInsert);
 

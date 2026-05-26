@@ -42,7 +42,7 @@ export default async function EmailBuilderPage({ params }: Props) {
 
   // Fetch sections using admin client to bypass RLS
   console.log("[builder] Fetching sections for template:", template.id, "slug:", slug);
-  const { data: sections } = await supabaseAdmin
+  const { data: sections } = await supabaseAdmin()
     .from("email_sections")
     .select("*")
     .eq("email_template_id", template.id)

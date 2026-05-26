@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import supabaseAdmin from "@/lib/supabase/admin";
+import { default as supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function PUT(
   request: Request,
@@ -11,7 +11,7 @@ export async function PUT(
     const { html_content } = body;
 
     // Update the template directly using admin client
-    const { data: template, error } = await supabaseAdmin
+    const { data: template, error } = await supabaseAdmin()
       .from("email_templates")
       .update({
         html_content,
