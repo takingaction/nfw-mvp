@@ -3521,3 +3521,108 @@ Added hidden honeypot field to contact form to catch bots.
 - `app/api/contact/submit/route.ts` - Added honeypot check, returns success silently if bot detected
 
 **Build:** Verified with `npm run build` - passes successfully
+
+### Session 2026-05-24: Email Builder - Phase 1 Complete
+
+**Phase 1: Database & Foundation**
+
+Completed database migrations and type definitions for the email builder:
+
+**Migrations created:**
+- `supabase/migrations/072_add_email_sections.sql` - Creates `email_sections` table with id, template_id, section_type, order_index, content (JSONB), visible, timestamps
+- `supabase/migrations/073_add_email_template_columns.sql` - Adds `full_email_html`, `preview_data` (JSONB), `status` columns to `email_templates` table
+
+**Types created:**
+- `lib/email-blocks/types.ts` - TypeScript interfaces for all email block types
+- `EMAIL_VARIABLES` constant with 12 preset variables for dropdown insertion
+
+**Registry created:**
+- `lib/email-blocks/registry.ts` - `EMAIL_BLOCK_REGISTRY` with definitions for all 9 block types
+
+**Email Block Types (9):**
+| Type | Description |
+|------|-------------|
+| email_hero | Full-width image + text overlay |
+| email_text | Body text with richtext support |
+| email_image | Standalone image |
+| email_cta | Button with color options |
+| email_divider | Horizontal rule |
+| email_spacer | Vertical spacing |
+| email_social | Social icons row |
+| email_columns | 2-column layout |
+| email_variable | Dynamic variable placeholder |
+
+**Next:** Phase 2 - Block components (email-safe HTML rendering)
+
+### Session 2026-05-24: Email Builder - Phases 2-4 Complete
+
+**Phase 2: Block Components**
+
+Created 9 email block components that render email-safe HTML (tables, inline styles):
+
+| Block | File | Output |
+|-------|------|--------|
+| email_hero | `lib/email-blocks/EmailHeroBlock.ts` | Full-width image + overlay |
+| email_text | `lib/email-blocks/EmailTextBlock.ts` | Body text with alignment |
+| email_image | `lib/email-blocks/EmailImageBlock.ts` | Image with optional link |
+| email_cta | `lib/email-blocks/EmailCtaBlock.ts` | CTA button |
+| email_divider | `lib/email-blocks/EmailDividerBlock.ts` | HR line |
+| email_spacer | `lib/email-blocks/EmailSpacerBlock.ts` | Vertical spacing |
+| email_social | `lib/email-blocks/EmailSocialBlock.ts` | Social icons row |
+| email_columns | `lib/email-blocks/EmailColumnsBlock.ts` | 2-column layout |
+| email_variable | `lib/email-blocks/EmailVariableBlock.ts` | `{{variable}}` placeholder |
+
+Additional files:
+- `lib/email-blocks/renderer.ts` - Switch statement + renderAllBlocks
+- `lib/email-blocks/utils.ts` - Button color helpers
+- `lib/email-blocks/shell.ts` - Fixed NFW shell (header, footer, colors)
+- `lib/email-blocks/publish.ts` - Generate + save full_email_html
+
+**Phase 3: Shell & Publish Logic**
+- Fixed NFW branded shell with aubergine header/footer, lilac body
+- Preview API: `/api/admin/emails/[slug]/preview` renders from sections
+- Publish API: `/api/admin/emails/[slug]/publish` generates full_email_html snapshot
+
+**Phase 4: Admin UI with DnD Builder**
+
+Created full email builder at `/admin/emails/[slug]/builder`:
+
+| Component | Purpose |
+|-----------|---------|
+| `components/admin/email/EmailBuilder.tsx` | Main builder layout (section list + preview) |
+| `components/admin/email/EmailSectionList.tsx` | Drag-and-drop section list (@dnd-kit) |
+| `components/admin/email/EmailBlockEditor.tsx` | Edit section content with VariableInserter |
+| `components/admin/email/VariableInserter.tsx` | Dropdown to insert `{{variables}}` |
+| `components/admin/email/EmailBuilderClient.tsx` | Client wrapper for API calls |
+| `app/admin/emails/[slug]/builder/page.tsx` | Builder page route |
+
+API routes created:
+- `app/api/admin/emails/[slug]/sections/route.ts` - GET/PUT sections
+- `app/api/admin/emails/[slug]/publish/route.ts` - Publish to snapshot
+- `app/api/admin/emails/[slug]/preview/route.ts` - Preview from sections
+
+**Phase 5: Convert Existing Templates**
+
+Created conversion API to parse existing `html_content` into `email_sections`:
+
+- `app/api/admin/emails/convert/route.ts` - POST endpoint
+- Parses HTML by tag (p, img, hr) into text/image/divider blocks
+- "Convert to Sections" button added to `/admin/emails` for editable templates
+
+**Build:** Verified with `npm run build` - passes successfully
+
+### Session 2026-05-26: Disable Contact Form Acknowledgement Email
+
+**Problem:** The contact form was sending a Resend acknowledgement email to form submitters even though Freshdesk now handles ticket creation and likely sends its own confirmation.
+
+**Solution:** Removed the `sendContactAcknowledgement()` call from the contact form submit flow. Freshdesk handles ticket confirmation emails directly.
+
+**Files Modified:**
+- `app/api/contact/submit/route.ts` - Removed acknowledgement email call
+
+**Contact Form Flow (Updated):**
+1. User submits form at `/contact`
+2. Data saved to `contact_submissions` table
+3. Freshdesk ticket created via API (with sender's name and email as requester)
+4. Freshdesk sends its own confirmation email to sender (if configured)
+5. No separate Resend acknowledgement email

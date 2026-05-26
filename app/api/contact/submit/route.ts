@@ -56,11 +56,6 @@ export async function POST(request: NextRequest) {
 
     const submissionId = insertData?.id;
 
-    // Send acknowledgement email (fire and forget)
-    sendContactAcknowledgement({ name, email, subject: subjectLabel }).catch((err) => {
-      console.error("Failed to send acknowledgement email:", err);
-    });
-
     // Create Freshdesk ticket
     const freshdeskResult = await sendFreshdeskTicket({ name, email, subject: subjectLabel, message });
     let rejectionReason = null;

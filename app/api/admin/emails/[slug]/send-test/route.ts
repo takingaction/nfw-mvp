@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { sendBrandedEmail } from "@/lib/email";
+import supabaseAdmin from "@/lib/supabase/admin";
+import { renderAllBlocks } from "@/lib/email-blocks/renderer";
+import { buildEmailShell } from "@/lib/email-blocks/shell";
+import { sendTemplateEmail } from "@/lib/email";
+import type { EmailSection } from "@/lib/email-blocks/types";
 
 export async function POST(
   request: Request,
@@ -9,7 +13,7 @@ export async function POST(
   try {
     const { slug } = await params;
     const body = await request.json();
-    const { testEmail, hero_image_url } = body;
+    const { testEmail } = body;
 
     if (!testEmail || !testEmail.includes("@")) {
       return NextResponse.json({ error: "Valid email address required" }, { status: 400 });
@@ -36,7 +40,7 @@ export async function POST(
     // Get template
     const { data: template, error: templateError } = await supabase
       .from("email_templates")
-      .select("slug, name, subject, html_content, category, hero_image_url")
+      .select("id, slug, name, subject, hero_image_url, category")
       .eq("slug", slug)
       .single();
 
@@ -44,7 +48,7 @@ export async function POST(
       return NextResponse.json({ error: "Template not found" }, { status: 404 });
     }
 
-    // For Supabase templates, we can't send them directly - return instruction
+    // For Supabase templates, we can't send them directly
     if (template.category === "supabase") {
       return NextResponse.json(
         { error: "Cannot send test for Supabase templates. Copy HTML and test in Supabase Dashboard." },
@@ -52,81 +56,63 @@ export async function POST(
       );
     }
 
-    const siteUrl = "https://nationalfundforwomen.org";
-    const defaultHeroImage = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
-    const heroImage = hero_image_url || template.hero_image_url || defaultHeroImage;
+    // Fetch sections using admin client (bypasses RLS)
+    const { data: sections, error: sectionsError } = await supabaseAdmin
+      .from("email_sections")
+      .select("*")
+      .eq("email_template_id", template.id)
+      .eq("visible", true)
+      .order("order_index", { ascending: true });
 
-    // Determine membership tier from slug for welcome templates
-    const isWelcomeTemplate = slug.startsWith('welcome-');
-    const membershipTier = isWelcomeTemplate
-      ? slug === 'welcome-free' ? 'Free'
-        : slug === 'welcome-contributing' ? 'Contributing'
-        : slug === 'welcome-founding' ? 'Founding'
-        : 'Free'
-      : 'Free';
-
-    // Helper to replace template variables with test values
-    function replaceVariables(html: string, email: string): string {
-      return html
-        .replace(/\{\{\s*name\s*\}\}/gi, "Test User")
-        .replace(/\{\{\s*email\s*\}\}/gi, email)
-        .replace(/\{\{\s*member_id\s*\}\}/g, "TEST-123456")
-        .replace(/\{\{\s*membership_tier\s*\}\}/gi, membershipTier)
-        .replace(/\{\{\s*renewal_date\s*\}\}/gi, "April 28, 2027")
-        .replace(/\{\{\s*site_url\s*\}\}/g, siteUrl)
-        .replace(/\{\{\s*dashboard_url\s*\}\}/g, `${siteUrl}/dashboard`)
-        .replace(/\{\{\s*perks_url\s*\}\}/g, `${siteUrl}/perks`)
-        .replace(/\{\{\s*store_url\s*\}\}/g, `${siteUrl}/store`)
-        .replace(/\{\{\s*grants_url\s*\}\}/g, `${siteUrl}/grants`)
-        .replace(/\{\{\s*signup_url\s*\}\}/g, `${siteUrl}/auth/sign-up`)
-        .replace(/\{\{\s*gift_url\s*\}\}/g, `${siteUrl}/gift-membership`)
-        .replace(/\{\{\s*faq_url\s*\}\}/g, `${siteUrl}/faq`)
-        .replace(/\{\{\s*grantCycleName\s*\}\}/g, "Spring 2026 Grant Cycle")
-        .replace(/\{\{\s*amount\s*\}\}/g, "5,000")
-        .replace(/\{\{\s*applicationId\s*\}\}/g, "TEST-APP-001")
-        .replace(/\{\{\s*status\s*\}\}/g, "under review")
-        .replace(/\{\{\s*siteUrl\s*\}\}/g, siteUrl)
-        .replace(/\{\{\s*ctaUrl\s*\}\}/g, `${siteUrl}/dashboard`)
-        // Handlebars-style conditionals - remove them for test
-        .replace(/\{\{\#if\s+\w+\s*\}\}/g, "")
-        .replace(/\{\{\s*\/if\s*\}\}/g, "")
-        // Grant-specific variable replacements
-        .replace(/\{\{\s*grant_cycle_name\s*\}\}/g, "Spring 2026 Grant Cycle")
-        .replace(/\{\{\s*message\s*\}\}/g, "Thank you for your patience.")
-        .replace(/\{\{\s*application_url\s*\}\}/g, `${siteUrl}/grants/my-applications`);
+    if (sectionsError) {
+      return NextResponse.json({ error: "Failed to fetch sections" }, { status: 500 });
     }
 
-    const processedBody = replaceVariables(template.html_content || "", testEmail);
-    const testSubject = `[TEST] ${template.subject}`;
+    // Render all blocks
+    const sectionsHtml = renderAllBlocks(sections as EmailSection[]);
 
-    // Headline for welcome templates (same for all tiers)
-    const headline = isWelcomeTemplate ? "Welcome to NFW!" : template.name;
+    // Build full HTML with shell (same as preview route)
+    const fullHtml = buildEmailShell({
+      sectionsHtml,
+    });
 
-    // Build membership snapshot for welcome-type templates
-    const membershipSnapshot = isWelcomeTemplate ? `
-      <div style="background-color: rgba(255,255,255,0.1); border-radius: 8px; padding: 15px 20px; margin-bottom: 20px;">
-        <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 12px; font-weight: 700; color: #FFFFFF; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.05em;">Your membership snapshot</p>
-        <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 4px 0;"><strong>Email:</strong> ${testEmail}</p>
-        <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0;"><strong>Membership Tier:</strong> ${membershipTier}</p>
-      </div>
-    ` : undefined;
+    // Replace variables with test values
+    const siteUrl = "https://nationalfundforwomen.org";
+    const testHtml = fullHtml
+      .replace(/\{\{\s*name\s*\}\}/gi, "Test User")
+      .replace(/\{\{\s*email\s*\}\}/gi, testEmail)
+      .replace(/\{\{\s*member_id\s*\}\}/g, "TEST-123456")
+      .replace(/\{\{\s*membership_tier\s*\}\}/gi, "Contributing")
+      .replace(/\{\{\s*renewal_date\s*\}\}/gi, "April 28, 2027")
+      .replace(/\{\{\s*site_url\s*\}\}/g, siteUrl)
+      .replace(/\{\{\s*dashboard_url\s*\}\}/g, `${siteUrl}/dashboard`)
+      .replace(/\{\{\s*perks_url\s*\}\}/g, `${siteUrl}/perks`)
+      .replace(/\{\{\s*store_url\s*\}\}/g, `${siteUrl}/store`)
+      .replace(/\{\{\s*grants_url\s*\}\}/g, `${siteUrl}/grants`)
+      .replace(/\{\{\s*grantCycleName\s*\}\}/g, "Spring 2026 Grant Cycle")
+      .replace(/\{\{\s*amount\s*\}\}/g, "5,000")
+      .replace(/\{\{\s*applicationId\s*\}\}/g, "TEST-APP-001")
+      .replace(/\{\{\s*grant_cycle_name\s*\}\}/g, "Spring 2026 Grant Cycle")
+      .replace(/\{\{\s*message\s*\}\}/g, "Thank you for your patience.")
+      .replace(/\{\{\s*application_url\s*\}\}/g, `${siteUrl}/grants/my-applications`)
+      .replace(/\{\{\s*ctaUrl\s*\}\}/g, `${siteUrl}/dashboard`)
+      .replace(/\{\{\s*signup_url\s*\}\}/g, `${siteUrl}/auth/sign-up`)
+      .replace(/\{\{\s*gift_url\s*\}\}/g, `${siteUrl}/gift-membership`)
+      .replace(/\{\{\s*faq_url\s*\}\}/g, `${siteUrl}/faq`)
+      .replace(/\{\{\s*store_url\s*\}\}/g, `${siteUrl}/store`)
+      .replace(/\{\{\s*siteUrl\s*\}\}/g, siteUrl)
+      // Remove Handlebars conditionals
+      .replace(/\{\{\#if\s+\w+\s*\}\}/g, "")
+      .replace(/\{\{\s*\/if\s*\}\}/g, "")
+      .replace(/\{\{\s*else\s*\}\}/g, "");
 
-    // Wrap body in branded template via sendBrandedEmail
-    const { success, error: sendError } = await sendBrandedEmail({
+    const testSubject = `[TEST] ${template.subject || template.name}`;
+
+    // Send using sendTemplateEmail (raw HTML, not branded wrapper)
+    const { success, error: sendError } = await sendTemplateEmail({
       to: testEmail,
       subject: testSubject,
-      name: "Test User",
-      heroImage,
-      heroText: 'A <em>community</em> of women showing up for each other',
-      headline,
-      body: processedBody,
-      membershipSnapshot,
-      ctaText: "GET STARTED",
-      ctaUrl: `${siteUrl}/dashboard`,
-      secondaryCtaText: "BROWSE PERKS",
-      secondaryCtaUrl: `${siteUrl}/perks`,
-      footerCtaText: "VISIT WEBSITE",
-      footerCtaUrl: siteUrl,
+      html: testHtml,
     });
 
     if (!success) {

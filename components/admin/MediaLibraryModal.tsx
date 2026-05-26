@@ -43,13 +43,13 @@ export default function MediaLibraryModal({
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchFiles = useCallback(async () => {
+  const fetchFiles = useCallback(async (fetchOffset: number) => {
     setLoading(true);
     try {
       const res = await fetch("/api/storage/list", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bucket, search, limit: PAGE_SIZE, offset }),
+        body: JSON.stringify({ bucket, search, limit: PAGE_SIZE, offset: fetchOffset }),
       });
       const data = await res.json();
       if (data.files) {
@@ -64,7 +64,7 @@ export default function MediaLibraryModal({
       setLoading(false);
       setImagesReady(true);
     }
-  }, [bucket, search, offset]);
+  }, [bucket, search]);
 
   const fetchFilesRef = useRef(fetchFiles);
   useEffect(() => {
@@ -73,13 +73,13 @@ export default function MediaLibraryModal({
 
   useEffect(() => {
     if (!isOpen || activeTab !== "browse") return;
-    if (imagesReady && files.length > 0) return;
-    fetchFilesRef.current();
-  }, [isOpen, activeTab]);
+    fetchFilesRef.current(offset);
+  }, [isOpen, activeTab, offset]);
 
   useEffect(() => {
     if (isOpen && activeTab === "browse") {
       setOffset(0);
+      setImagesReady(false);
     }
   }, [search, isOpen, activeTab]);
 
@@ -102,7 +102,7 @@ export default function MediaLibraryModal({
         }),
       });
       setDeleteModal({ isOpen: false, file: null });
-      fetchFiles();
+      fetchFilesRef.current(offset);
     } catch (error) {
       console.error("Error deleting file:", error);
     }
@@ -125,12 +125,10 @@ export default function MediaLibraryModal({
     setUploading(true);
     try {
       const url = await uploadImage(file, "sections");
-      // Reset and refresh the list to show uploaded image
       setImagesReady(false);
       setFiles([]);
       setOffset(0);
-      await fetchFiles();
-      // Auto-select the uploaded image
+      fetchFilesRef.current(0);
       onSelect(url);
       onClose();
     } catch (error) {
@@ -168,7 +166,6 @@ export default function MediaLibraryModal({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
-
   if (activeTab === "browse" && !imagesReady) return null;
 
   return (
