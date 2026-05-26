@@ -83,6 +83,7 @@ export async function getPreRenderedHtml(
     status: template?.status,
     hasFullEmailHtml: !!template?.full_email_html,
     fullEmailHtmlLength: template?.full_email_html?.length,
+    fullEmailHtmlPreview: template?.full_email_html?.substring(0, 500),
   });
 
   if (templateError || !template) {
@@ -96,6 +97,7 @@ export async function getPreRenderedHtml(
     for (const [key, value] of Object.entries(variables)) {
       html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
     }
+    console.log(`[getPreRenderedHtml] final html length=`, html.length, "preview=", html.substring(0, 200));
     return {
       html,
       useShell: false,

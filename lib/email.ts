@@ -342,9 +342,17 @@ export async function sendBrandedEmail({
 }: SendBrandedEmailOptions): Promise<{ success: boolean; error?: any }> {
   try {
     let html: string;
+    console.log("[sendBrandedEmail] called with:", {
+      hasPreRenderedHtml: !!preRenderedHtml,
+      useShell,
+      hasBody: !!body,
+      htmlLength: preRenderedHtml?.length
+    });
     if (preRenderedHtml && useShell === false) {
+      console.log("[sendBrandedEmail] using preRenderedHtml path, length=", preRenderedHtml.length);
       html = preRenderedHtml;
     } else if (body) {
+      console.log("[sendBrandedEmail] using buildEmailHtml path");
       html = buildEmailHtml({
         name,
         heroImage,
@@ -362,6 +370,7 @@ export async function sendBrandedEmail({
     } else {
       throw new Error("sendBrandedEmail requires either preRenderedHtml with useShell=false, or body");
     }
+    console.log("[sendBrandedEmail] final html length=", html.length, "preview=", html.substring(0, 200));
     return sendEmailWithTimeout({ to, subject, html, reply_to, from });
   } catch (err) {
     console.error('[sendBrandedEmail] Error:', err);
