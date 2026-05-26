@@ -3626,3 +3626,18 @@ Created conversion API to parse existing `html_content` into `email_sections`:
 3. Freshdesk ticket created via API (with sender's name and email as requester)
 4. Freshdesk sends its own confirmation email to sender (if configured)
 5. No separate Resend acknowledgement email
+
+### Session 2026-05-26: Debug Logging Cleanup + Email Builder Fixes
+
+**Removed debug console.log statements from email system:**
+
+Files cleaned:
+- `app/api/admin/emails/[slug]/publish/route.ts` - Removed all console.log statements
+- `lib/email.ts` - Removed debug logging from `sendBrandedEmail` function
+- `lib/email-blocks/publish.ts` - Removed debug logging from `getPreRenderedHtml` function
+- `components/admin/email/EmailBuilderClient.tsx` - Removed publish debug logging
+- `components/admin/email/EmailBuilder.tsx` - Removed publish debug logging
+
+**Previous Fix (documented):**
+- Publish route (`app/api/admin/emails/[slug]/publish/route.ts`) uses `supabaseAdmin()` instead of regular `supabase` client to bypass RLS when fetching sections
+- This fixed empty body bug where 0 sections were returned due to RLS policies blocking access

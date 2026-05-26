@@ -9,13 +9,10 @@ import type { EmailSection } from "@/lib/email-blocks/types";
 export async function POST(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
-  console.log("[publish] POST called with slug:", slug);
-
   const supabase = await createClient();
   const admin = await requireAdmin();
 
   if (!admin.authorized) {
-    console.log("[publish] unauthorized");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -26,10 +23,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .eq("slug", slug)
     .single();
 
-  console.log("[publish] template fetch result:", { templateId: template?.id, templateSlug: template?.slug, templateError });
-
   if (templateError || !template) {
-    console.log("[publish] template not found");
     return NextResponse.json({ error: "Template not found" }, { status: 404 });
   }
 
@@ -41,35 +35,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .eq("visible", true)
     .order("order_index", { ascending: true });
 
-  console.log("[publish] sections fetch result:", { count: sections?.length, sectionsError, sectionIds: sections?.map(s => s.id) });
-
   if (sectionsError) {
-    console.log("[publish] sections fetch error:", sectionsError);
     return NextResponse.json({ error: "Failed to fetch sections" }, { status: 500 });
   }
 
-  console.log("[publish] sections fetched:", sections?.length, "error:", sectionsError);
-  if (sections && sections.length > 0) {
-    console.log("[publish] first section:", JSON.stringify(sections[0]));
-    console.log("[publish] section types:", sections.map(s => s.section_type).join(", "));
-  } else {
-    console.log("[publish] NO SECTIONS FOUND - this is likely the problem!");
-  }
-
   // Render all blocks
-  console.log("[publish] about to call renderAllBlocks with", sections?.length, "sections");
   const sectionsHtml = renderAllBlocks(sections as EmailSection[]);
-  console.log("[publish] sectionsHtml result:", {
-    length: sectionsHtml.length,
-    isEmpty: sectionsHtml.length === 0,
-    first500: sectionsHtml.substring(0, 500)
-  });
 
   // Build full HTML with shell
   const fullHtml = buildEmailShell({
     sectionsHtml,
   });
-  console.log("[publish] fullHtml length:", fullHtml.length);
 
   // Update template with full HTML and set status to published
   const { error: updateError } = await supabase
@@ -82,10 +58,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .eq("id", template.id);
 
   if (updateError) {
-    console.log("[publish] update error:", updateError);
     return NextResponse.json({ error: "Failed to save HTML" }, { status: 500 });
   }
 
-  console.log("[publish] SUCCESS - fullHtml length:", fullHtml.length, "sectionsCount:", sections?.length);
-  return NextResponse.json({ success: true, full_html: fullHtml, debug_sectionsCount: sections?.length });
+  return NextResponse.json({ success: true });
 }

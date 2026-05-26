@@ -324,3 +324,18 @@ Unlike React web components, email HTML must be:
 | `email_variable` | Variable placeholder | variable_name |
 | `email_double_image_cta` | Two images with buttons below | image1_url, image2_url, button1_text, button2_text, button1_color, button2_color |
 | `email_single_image_cta` | Single image with button below | image_url, button_text, button_color |
+
+---
+
+### 2026-05-26: Debug Logging Cleanup + Publish Route Fix
+
+**Debug Logging Removed:**
+- `app/api/admin/emails/[slug]/publish/route.ts` - Removed all console.log statements
+- `lib/email.ts` - Removed debug logging from `sendBrandedEmail`
+- `lib/email-blocks/publish.ts` - Removed debug logging from `getPreRenderedHtml`
+- `components/admin/email/EmailBuilderClient.tsx` - Removed publish debug logging
+- `components/admin/email/EmailBuilder.tsx` - Removed publish debug logging
+
+**Publish Route Fix (Previously Done):**
+- `app/api/admin/emails/[slug]/publish/route.ts` uses `supabaseAdmin()` to bypass RLS when fetching sections
+- This fixed empty body bug where 0 sections were being returned with regular `supabase` client

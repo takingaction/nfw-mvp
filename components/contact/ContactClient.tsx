@@ -225,6 +225,7 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
                           </label>
                           <input
                             type="text"
+                            name="name"
                             required
                             value={form.name}
                             onChange={(e) =>
@@ -240,6 +241,7 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
                           </label>
                           <input
                             type="email"
+                            name="email"
                             required
                             value={form.email}
                             onChange={(e) =>
@@ -256,6 +258,7 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
                           What&apos;s this about?
                         </label>
                         <select
+                          name="subject"
                           required
                           value={form.subject}
                           onChange={(e) =>
@@ -286,6 +289,7 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
                           Your message
                         </label>
                         <textarea
+                          name="message"
                           required
                           rows={5}
                           value={form.message}
