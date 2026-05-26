@@ -76,11 +76,22 @@ export async function getPreRenderedHtml(
     .eq("slug", templateSlug)
     .single();
 
+  console.log(`[getPreRenderedHtml] slug="${templateSlug}" templateError=`, templateError);
+  console.log(`[getPreRenderedHtml] template=`, {
+    id: template?.id,
+    slug: template?.slug,
+    status: template?.status,
+    hasFullEmailHtml: !!template?.full_email_html,
+    fullEmailHtmlLength: template?.full_email_html?.length,
+  });
+
   if (templateError || !template) {
+    console.log("[getPreRenderedHtml] returning null - no template");
     return null;
   }
 
   if (template.full_email_html && template.status === "published") {
+    console.log("[getPreRenderedHtml] returning pre-rendered HTML");
     let html = template.full_email_html;
     for (const [key, value] of Object.entries(variables)) {
       html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
@@ -92,6 +103,10 @@ export async function getPreRenderedHtml(
     };
   }
 
+  console.log("[getPreRenderedHtml] returning null - conditions not met", {
+    hasFullEmailHtml: !!template.full_email_html,
+    status: template.status
+  });
   return null;
 }
 
