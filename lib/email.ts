@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
+import { getPreRenderedHtml } from "./email-blocks/publish";
 
 const FROM =
   process.env.RESEND_FROM_EMAIL || "National Fund for Women <hello@nationalfundforwomen.org>";
@@ -289,7 +290,7 @@ interface SendBrandedEmailOptions {
   heroImage?: string;
   heroText?: string;
   headline?: string;
-  body: string;
+  body?: string;
   membershipSnapshot?: string;
   ctaText?: string;
   ctaUrl?: string;
@@ -299,6 +300,7 @@ interface SendBrandedEmailOptions {
   footerCtaUrl?: string;
   reply_to?: string;
   from?: string;
+  preRenderedHtml?: string;
 }
 
 // Timeout wrapper for email sending
@@ -334,22 +336,30 @@ export async function sendBrandedEmail({
   footerCtaUrl,
   reply_to,
   from,
+  preRenderedHtml,
 }: SendBrandedEmailOptions): Promise<{ success: boolean; error?: any }> {
   try {
-    const html = buildEmailHtml({
-      name,
-      heroImage,
-      heroText,
-      headline,
-      body,
-      membershipSnapshot,
-      ctaText,
-      ctaUrl,
-      secondaryCtaText,
-      secondaryCtaUrl,
-      footerCtaText,
-      footerCtaUrl,
-    });
+    let html: string;
+    if (preRenderedHtml) {
+      html = preRenderedHtml;
+    } else if (body) {
+      html = buildEmailHtml({
+        name,
+        heroImage,
+        heroText,
+        headline,
+        body,
+        membershipSnapshot,
+        ctaText,
+        ctaUrl,
+        secondaryCtaText,
+        secondaryCtaUrl,
+        footerCtaText,
+        footerCtaUrl,
+      });
+    } else {
+      throw new Error("sendBrandedEmail requires either preRenderedHtml or body");
+    }
     return sendEmailWithTimeout({ to, subject, html, reply_to, from });
   } catch (err) {
     console.error('[sendBrandedEmail] Error:', err);
@@ -415,9 +425,6 @@ export async function sendWelcomeEmail({
   const siteUrl = "https://nationalfundforwomen.org";
 
   const slug = templateSlug || `welcome-${membershipType}`;
-  const template = await fetchEmailTemplate(slug);
-
-  const heroImageUrl = heroImage || template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
@@ -441,6 +448,21 @@ export async function sendWelcomeEmail({
     gift_url: `${siteUrl}/gift-membership`,
     faq_url: `${siteUrl}/faq`,
   };
+
+  const preRenderedResult = await getPreRenderedHtml(slug, variables);
+
+  if (preRenderedResult) {
+    await sendBrandedEmail({
+      to,
+      subject: preRenderedResult.subject || "Welcome to NFW!",
+      name,
+      preRenderedHtml: preRenderedResult.html,
+    });
+    return;
+  }
+
+  const template = await fetchEmailTemplate(slug);
+  const heroImageUrl = heroImage || template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   if (template) {
     const body = replaceTemplateVariables(template.html, variables);
@@ -492,7 +514,22 @@ export async function sendNewsletterWelcomeEmail({
   name: string;
 }) {
   const siteUrl = "https://nationalfundforwomen.org";
-  const template = await fetchEmailTemplate("newsletter-welcome");
+  const slug = "newsletter-welcome";
+  const variables: Record<string, string> = { name };
+
+  const preRenderedResult = await getPreRenderedHtml(slug, variables);
+
+  if (preRenderedResult) {
+    await sendBrandedEmail({
+      to,
+      subject: preRenderedResult.subject || "You're subscribed to NFW!",
+      name,
+      preRenderedHtml: preRenderedResult.html,
+    });
+    return;
+  }
+
+  const template = await fetchEmailTemplate(slug);
   const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
   const heroText = 'A <em>community</em> of women showing up for each other';
 
@@ -557,11 +594,8 @@ export async function sendGrantApplicationReceivedEmail({
   grantCycleName: string;
   applicationId: string;
 }) {
-  const template = await fetchEmailTemplate("grant-application-received");
-  if (!template) return;
-
+  const slug = "grant-application-received";
   const siteUrl = "https://nationalfundforwomen.org";
-  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const variables: Record<string, string> = {
     name,
@@ -569,6 +603,23 @@ export async function sendGrantApplicationReceivedEmail({
     applicationId,
     siteUrl,
   };
+
+  const preRenderedResult = await getPreRenderedHtml(slug, variables);
+
+  if (preRenderedResult) {
+    await sendBrandedEmail({
+      to,
+      subject: preRenderedResult.subject,
+      name,
+      preRenderedHtml: preRenderedResult.html,
+    });
+    return;
+  }
+
+  const template = await fetchEmailTemplate(slug);
+  if (!template) return;
+
+  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const body = replaceTemplateVariables(template.html, variables);
   await sendBrandedEmail({
@@ -610,10 +661,29 @@ export async function sendGrantStatusEmail({
   const slug = slugMap[status];
   if (!slug) return;
 
+  const siteUrl = "https://nationalfundforwomen.org";
+
+  const variables: Record<string, string> = {
+    name,
+    grantCycleName,
+    amount: amountApproved ? amountApproved.toLocaleString() : "",
+  };
+
+  const preRenderedResult = await getPreRenderedHtml(slug, variables);
+
+  if (preRenderedResult) {
+    await sendBrandedEmail({
+      to,
+      subject: preRenderedResult.subject,
+      name,
+      preRenderedHtml: preRenderedResult.html,
+    });
+    return;
+  }
+
   const template = await fetchEmailTemplate(slug);
   if (!template) return;
 
-  const siteUrl = "https://nationalfundforwomen.org";
   const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const statusHeadlines: Record<string, string> = {
@@ -630,12 +700,6 @@ export async function sendGrantStatusEmail({
     not_approved: "We've <em>updated</em> your application",
     payment_pending: "Your payment is <em>on the way</em>",
     payment_sent: "Your payment is <em>on the way</em>",
-  };
-
-  const variables: Record<string, string> = {
-    name,
-    grantCycleName,
-    amount: amountApproved ? amountApproved.toLocaleString() : "",
   };
 
   const body = replaceTemplateVariables(template.html, variables);
@@ -667,17 +731,31 @@ export async function sendBankInfoRequestEmail({
   amountApproved?: number;
   isNominee: boolean;
 }) {
-  const template = await fetchEmailTemplate("bank-info-request");
-  if (!template) return;
-
+  const slug = "bank-info-request";
   const siteUrl = "https://nationalfundforwomen.org";
-  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const variables: Record<string, string> = {
     name,
     grantCycleName,
     amount: amountApproved ? amountApproved.toLocaleString() : "",
   };
+
+  const preRenderedResult = await getPreRenderedHtml(slug, variables);
+
+  if (preRenderedResult) {
+    await sendBrandedEmail({
+      to,
+      subject: preRenderedResult.subject,
+      name,
+      preRenderedHtml: preRenderedResult.html,
+    });
+    return;
+  }
+
+  const template = await fetchEmailTemplate(slug);
+  if (!template) return;
+
+  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const body = replaceTemplateVariables(template.html, variables);
   await sendBrandedEmail({
@@ -705,9 +783,31 @@ export async function sendGiftCodesEmail({
   codes: string[];
 }) {
   const siteUrl = "https://nationalfundforwomen.org";
-  const template = await fetchEmailTemplate("gift-codes");
-  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+  const slug = "gift-codes";
+
   const codesList = codes.map((code) => `<p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #F8F19A; margin: 10px 0;">${code}</p>`).join("");
+  const codesText = codes.join(", ");
+
+  const variables: Record<string, string> = {
+    name: buyerName,
+    codes: codesText,
+    codes_list: codesList,
+  };
+
+  const preRenderedResult = await getPreRenderedHtml(slug, variables);
+
+  if (preRenderedResult) {
+    await sendBrandedEmail({
+      to,
+      subject: preRenderedResult.subject || "Your National Fund for Women Gift Code(s)",
+      name: buyerName,
+      preRenderedHtml: preRenderedResult.html,
+    });
+    return;
+  }
+
+  const template = await fetchEmailTemplate(slug);
+  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const body = `
     <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
@@ -762,7 +862,7 @@ export async function sendFreshdeskTicketRejectionEmail({
   rejectionReason: string;
 }): Promise<{ success: boolean; error?: any }> {
   const siteUrl = "https://nationalfundforwomen.org";
-  const heroImageUrl = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+  const slug = "freshdesk-rejection";
   const timestamp = new Date().toLocaleString("en-US", {
     year: "numeric",
     month: "short",
@@ -770,6 +870,28 @@ export async function sendFreshdeskTicketRejectionEmail({
     hour: "numeric",
     minute: "2-digit",
   });
+
+  const variables: Record<string, string> = {
+    name,
+    email,
+    subject,
+    message,
+    rejectionReason,
+    timestamp,
+  };
+
+  const preRenderedResult = await getPreRenderedHtml(slug, variables);
+
+  if (preRenderedResult) {
+    return sendBrandedEmail({
+      to: "ron@myherocreative.com",
+      subject: preRenderedResult.subject || `⚠️ Contact Form Rejected: ${name} - ${subject}`,
+      name: "NFW Admin",
+      preRenderedHtml: preRenderedResult.html,
+    });
+  }
+
+  const heroImageUrl = "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const body = `
     <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
@@ -888,7 +1010,27 @@ export async function sendContactAcknowledgement({
   subject: string;
 }) {
   const siteUrl = "https://nationalfundforwomen.org";
-  const template = await fetchEmailTemplate("contact-form");
+  const slug = "contact-form";
+
+  const variables: Record<string, string> = {
+    name,
+    email,
+    subject,
+  };
+
+  const preRenderedResult = await getPreRenderedHtml(slug, variables);
+
+  if (preRenderedResult) {
+    await sendBrandedEmail({
+      to: email,
+      subject: preRenderedResult.subject || `NFW Contact Form: ${subject}`,
+      name,
+      preRenderedHtml: preRenderedResult.html,
+    });
+    return;
+  }
+
+  const template = await fetchEmailTemplate(slug);
   const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const body = `
@@ -934,8 +1076,7 @@ export async function sendContactFormEmail({
   message: string;
 }) {
   const siteUrl = "https://nationalfundforwomen.org";
-  const template = await fetchEmailTemplate("contact-form");
-  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
+  const slug = "contact-form";
   const timestamp = new Date().toLocaleString("en-US", {
     year: "numeric",
     month: "short",
@@ -943,6 +1084,29 @@ export async function sendContactFormEmail({
     hour: "numeric",
     minute: "2-digit",
   });
+
+  const variables: Record<string, string> = {
+    name,
+    email,
+    subject,
+    message,
+    timestamp,
+  };
+
+  const preRenderedResult = await getPreRenderedHtml(slug, variables);
+
+  if (preRenderedResult) {
+    await sendBrandedEmail({
+      to: email,
+      subject: preRenderedResult.subject || `NFW Contact Form: ${subject}`,
+      name,
+      preRenderedHtml: preRenderedResult.html,
+    });
+    return;
+  }
+
+  const template = await fetchEmailTemplate(slug);
+  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const body = `
     <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
@@ -962,7 +1126,6 @@ export async function sendContactFormEmail({
     </p>
   `;
 
-  // Send acknowledgement to the sender
   await sendBrandedEmail({
     to: email,
     subject: `NFW Contact Form: ${subject}`,
@@ -973,45 +1136,5 @@ export async function sendContactFormEmail({
     body,
     footerCtaText: "VISIT WEBSITE",
     footerCtaUrl: siteUrl,
-  });
-
-  // Also send notification to the organization with submission details
-  const notificationBody = `
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
-      <strong>New Contact Form Submission</strong>
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 10px 0;">
-      <strong>Name:</strong> ${name}
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 10px 0;">
-      <strong>Email:</strong> ${email}
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 10px 0;">
-      <strong>Category:</strong> ${subject}
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 10px 0;">
-      <strong>Submitted:</strong> ${timestamp}
-    </p>
-    <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 20px 0;">
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 20px 0;">
-      <strong>Message:</strong>
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0;">
-      ${message}
-    </p>
-  `;
-
-  await sendBrandedEmail({
-    to: "hello@nationalfundforwomen.org",
-    subject: `New Contact: ${name} - ${subject}`,
-    name: "NFW Team",
-    heroImage: heroImageUrl,
-    heroText: 'New <em>contact form</em> submission',
-    headline: "Contact Form Submission",
-    body: notificationBody,
-    footerCtaText: "VISIT WEBSITE",
-    footerCtaUrl: siteUrl,
-    reply_to: email,
-    from: name,
   });
 }
