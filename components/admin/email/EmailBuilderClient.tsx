@@ -25,11 +25,14 @@ export default function EmailBuilderClient({ template, initialSections }: Props)
   };
 
   const handlePublish = async () => {
+    console.log("[EmailBuilderClient] handlePublish called for slug:", template.slug);
     const response = await fetch(`/api/admin/emails/${template.slug}/publish`, {
       method: "POST",
     });
 
+    console.log("[EmailBuilderClient] publish response status:", response.status);
     const data = await response.json();
+    console.log("[EmailBuilderClient] publish response data:", data);
 
     if (!response.ok) {
       return { success: false, error: data.error || "Failed to publish" };

@@ -76,11 +76,15 @@ export function EmailBuilder({
   };
 
   const handlePublish = async () => {
+    console.log("[EmailBuilder] handlePublish called");
     setIsPublishing(true);
     try {
       const result = await onPublish();
+      console.log("[EmailBuilder] publish result:", result);
       if (!result.success) {
         alert(result.error || "Failed to publish");
+      } else {
+        alert("Published successfully!");
       }
     } finally {
       setIsPublishing(false);
