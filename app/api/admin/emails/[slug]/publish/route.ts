@@ -40,7 +40,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .eq("visible", true)
     .order("order_index", { ascending: true });
 
-  console.log("[publish] sections fetch result:", { count: sections?.length, sectionsError });
+  console.log("[publish] sections fetch result:", { count: sections?.length, sectionsError, sectionIds: sections?.map(s => s.id) });
 
   if (sectionsError) {
     console.log("[publish] sections fetch error:", sectionsError);
@@ -48,12 +48,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   console.log("[publish] sections fetched:", sections?.length, "error:", sectionsError);
-  console.log("[publish] sections content:", JSON.stringify(sections));
+  if (sections && sections.length > 0) {
+    console.log("[publish] first section:", JSON.stringify(sections[0]));
+    console.log("[publish] section types:", sections.map(s => s.section_type).join(", "));
+  } else {
+    console.log("[publish] NO SECTIONS FOUND - this is likely the problem!");
+  }
 
   // Render all blocks
   console.log("[publish] about to call renderAllBlocks with", sections?.length, "sections");
   const sectionsHtml = renderAllBlocks(sections as EmailSection[]);
-  console.log("[publish] sectionsHtml result length:", sectionsHtml.length, "preview:", sectionsHtml.substring(0, 1000));
+  console.log("[publish] sectionsHtml result:", {
+    length: sectionsHtml.length,
+    isEmpty: sectionsHtml.length === 0,
+    first500: sectionsHtml.substring(0, 500)
+  });
 
   // Build full HTML with shell
   const fullHtml = buildEmailShell({
