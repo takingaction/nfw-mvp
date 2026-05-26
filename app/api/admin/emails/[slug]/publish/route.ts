@@ -85,6 +85,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Failed to save HTML" }, { status: 500 });
   }
 
-  console.log("[publish] SUCCESS - fullHtml length:", fullHtml.length);
-  return NextResponse.json({ success: true, full_html: fullHtml });
+  console.log("[publish] SUCCESS - fullHtml length:", fullHtml.length, "sectionsCount:", sections?.length);
+  return NextResponse.json({ success: true, full_html: fullHtml, debug_sectionsCount: sections?.length });
 }
