@@ -8,10 +8,13 @@ import type { EmailSection } from "@/lib/email-blocks/types";
 export async function POST(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
+  console.log("[publish] POST called with slug:", slug);
+
   const supabase = await createClient();
   const admin = await requireAdmin();
 
   if (!admin.authorized) {
+    console.log("[publish] unauthorized");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -22,7 +25,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .eq("slug", slug)
     .single();
 
+  console.log("[publish] template fetch result:", { templateId: template?.id, templateError });
+
   if (templateError || !template) {
+    console.log("[publish] template not found");
     return NextResponse.json({ error: "Template not found" }, { status: 404 });
   }
 
@@ -34,7 +40,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .eq("visible", true)
     .order("order_index", { ascending: true });
 
+  console.log("[publish] sections fetch result:", { count: sections?.length, sectionsError });
+
   if (sectionsError) {
+    console.log("[publish] sections fetch error:", sectionsError);
     return NextResponse.json({ error: "Failed to fetch sections" }, { status: 500 });
   }
 
@@ -63,8 +72,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .eq("id", template.id);
 
   if (updateError) {
+    console.log("[publish] update error:", updateError);
     return NextResponse.json({ error: "Failed to save HTML" }, { status: 500 });
   }
 
+  console.log("[publish] SUCCESS - fullHtml length:", fullHtml.length);
   return NextResponse.json({ success: true, full_html: fullHtml });
 }
