@@ -81,20 +81,8 @@ export async function GET(request: NextRequest) {
 
     if (usersPage?.users) {
       for (const u of usersPage.users) {
-        // Try all possible email sources
-        const email = u.email 
-          || u.user_metadata?.email 
-          || u.identities?.[0]?.identity_data?.email 
-          || null;
-        
-        // Debug: find users with emails in user_metadata but not at root
-        if (!u.email && u.user_metadata?.email) {
-          console.log("[members export] User", u.id, "has email in user_metadata:", u.user_metadata.email);
-        }
-        if (!u.email && u.identities?.[0]?.identity_data?.email) {
-          console.log("[members export] User", u.id, "has email in identities:", u.identities[0].identity_data.email);
-        }
-        
+        // OAuth users store email in identities
+        const email = u.email || u.identities?.[0]?.identity_data?.email || null;
         if (u.id && email) {
           userMap.set(u.id, email);
         }
@@ -106,7 +94,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  console.log("[members export] profiles count:", profiles?.length, "userMap size:", userMap.size);
+  console.log("[members export] profiles count:", profiles?.length, "userMap size:", userMap.size, "pages fetched:", page);
 
   const headers = CSV_COLUMNS.map((col) => {
     const labels: Record<string, string> = {
