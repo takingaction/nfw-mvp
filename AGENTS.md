@@ -3641,3 +3641,38 @@ Files cleaned:
 **Previous Fix (documented):**
 - Publish route (`app/api/admin/emails/[slug]/publish/route.ts`) uses `supabaseAdmin()` instead of regular `supabase` client to bypass RLS when fetching sections
 - This fixed empty body bug where 0 sections were returned due to RLS policies blocking access
+
+### Session 2026-05-26: Contact Form Bug Fix
+
+**Problem:** Contact form returning 400 "Missing required fields" error. User submitted form but nothing happened.
+
+**Root Cause:** The honeypot feature (added May 21) changed form submission from `JSON.stringify(form)` to `FormData(e.target)`, but the form inputs were missing `name` attributes. `formData.get("name")`, `formData.get("email")`, etc. all returned `null`.
+
+**Files Modified:**
+- `components/contact/ContactClient.tsx` - Added missing `name` attributes to all form inputs (name, email, subject, message)
+
+### Session 2026-05-26: Grant Cycle Status Check Constraint Fix
+
+**Problem:** Admin trying to close a grant cycle got "new row for relation 'grant_cycles' violates check constraint 'grant_cycles_status_check'" error.
+
+**Root Cause:** The admin grant edit form dropdown included "draft" as an option, but the database only allows `'open'` or `'closed'` status values.
+
+**Files Modified:**
+- `app/admin/grants/[id]/edit/page.tsx` - Removed "draft" from status dropdown
+
+**Database Migration Created:**
+- `supabase/migrations/074_auto_close_expired_grants.sql` - Creates trigger `trg_auto_close_expired_grants` that automatically sets `status='closed'` when `end_date` passes
+
+### Session 2026-05-26: Members CSV Export
+
+**Added CSV export functionality to `/admin/members` page.**
+
+**Files Created:**
+- `app/api/admin/members/export/route.ts` - GET endpoint returning CSV with all member fields
+
+**Files Modified:**
+- `app/admin/members/page.tsx` - Added "Download CSV" button to header
+
+**CSV columns:** ID, Full Name, Email, Membership Level, Subscription Status, Date of Birth, State, City, Household Income, Identities, Subscription Ends At, Joined At, Is Admin, Access Perks Synced At
+
+**Bug Fix:** Google OAuth users have `auth.users.email = null`. Email is stored in `auth.users.identities[0].identity_data.email`. Updated userMap building to check both locations.
