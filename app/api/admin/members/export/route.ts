@@ -34,8 +34,9 @@ function escapeCsvField(value: unknown): string {
 }
 
 export async function GET(request: NextRequest) {
-  const admin = await requireAdmin();
-  if (!admin.authorized) {
+  try {
+    await requireAdmin();
+  } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -49,7 +50,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch members" }, { status: 500 });
   }
 
-  const { data: users } = await supabaseAdmin.auth.admin.listUsers();
+  const { data: users, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
+
+  if (usersError) {
+    console.error("Failed to fetch users:", usersError);
+  }
+
+  console.log("[members export] profiles count:", profiles?.length, "users count:", users?.users?.length);
 
   const headers = COLUMNS.map((col) => {
     const labels: Record<string, string> = {
