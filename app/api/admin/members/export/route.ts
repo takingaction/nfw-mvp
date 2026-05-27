@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch members" }, { status: 500 });
   }
 
-  const { data: users, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
+  const { data: users, error: usersError } = await supabaseAdmin.auth.admin.listUsers({ limit: 1000 });
 
   if (usersError) {
     console.error("Failed to fetch users:", usersError);
@@ -81,8 +81,6 @@ export async function GET(request: NextRequest) {
         email: firstUser.email,
         hasIdentities: !!firstUser.identities,
         identitiesLength: firstUser.identities?.length,
-        firstIdentityKeys: firstUser.identities?.[0] ? Object.keys(firstUser.identities[0]) : null,
-        firstIdentityData: firstUser.identities?.[0]?.identity_data,
       });
     }
     
