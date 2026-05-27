@@ -65,33 +65,27 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch members" }, { status: 500 });
   }
 
-  const { data: users, error: usersError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+  // Fetch all users from auth.users directly
+  const { data: authUsers, error: authError } = await supabaseAdmin
+    .from("auth.users")
+    .select("id, email");
 
-  if (usersError) {
-    console.error("Failed to fetch users:", usersError);
+  if (authError) {
+    console.error("Failed to fetch auth users:", authError);
   }
 
-  // Log to see what we're getting
-  console.log("[members export] listUsers result:", {
-    usersLength: users?.users?.length,
-    error: usersError,
-    hasMore: (users as any)?.hasMore,
-    lastId: (users as any)?.lastId,
-  });
-
   const userMap = new Map<string, string>();
-  if (users?.users) {
-    for (const u of users.users) {
-      const email = u.email || u.identities?.[0]?.identity_data?.email || null;
-      if (u.id && email) {
-        userMap.set(u.id, email);
+  if (authUsers) {
+    for (const u of authUsers) {
+      if (u.id && u.email) {
+        userMap.set(u.id, u.email);
       }
     }
   }
 
-  console.log("[members export] profiles count:", profiles?.length, "userMap size:", userMap.size);
+  console.log("[members export] profiles count:", profiles?.length, "userMap size:", userMap.size, "authUsers count:", authUsers?.length);
 
-  console.log("[members export] profiles count:", profiles?.length, "userMap size:", userMap.size);
+console.log("[members export] profiles count:", profiles?.length, "userMap size:", userMap.size, "authUsers count:", authUsers?.length);
 
   const headers = CSV_COLUMNS.map((col) => {
     const labels: Record<string, string> = {
