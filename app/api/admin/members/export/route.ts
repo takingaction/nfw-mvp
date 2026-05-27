@@ -71,6 +71,14 @@ export async function GET(request: NextRequest) {
     console.error("Failed to fetch users:", usersError);
   }
 
+  // Log to see what we're getting
+  console.log("[members export] listUsers result:", {
+    usersLength: users?.users?.length,
+    error: usersError,
+    hasMore: (users as any)?.hasMore,
+    lastId: (users as any)?.lastId,
+  });
+
   const userMap = new Map<string, string>();
   if (users?.users) {
     for (const u of users.users) {
@@ -81,7 +89,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  console.log("[members export] profiles count:", profiles?.length, "userMap size:", userMap.size, "total users returned:", users?.users?.length);
+  console.log("[members export] profiles count:", profiles?.length, "userMap size:", userMap.size);
 
   console.log("[members export] profiles count:", profiles?.length, "userMap size:", userMap.size);
 
