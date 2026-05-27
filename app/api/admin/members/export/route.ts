@@ -7,7 +7,23 @@ const supabaseAdmin = createAdminClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-const COLUMNS = [
+const PROFILE_COLUMNS = [
+  "id",
+  "full_name",
+  "membership_level",
+  "subscription_status",
+  "date_of_birth",
+  "state",
+  "city",
+  "household_income",
+  "identities",
+  "subscription_ends_at",
+  "joined_at",
+  "is_admin",
+  "access_perks_synced_at",
+];
+
+const CSV_COLUMNS = [
   "id",
   "full_name",
   "email",
@@ -42,7 +58,7 @@ export async function GET(request: NextRequest) {
 
   const { data: profiles, error } = await supabaseAdmin
     .from("profiles")
-    .select(COLUMNS.join(","))
+    .select(PROFILE_COLUMNS.join(","))
     .order("joined_at", { ascending: false });
 
   if (error) {
@@ -56,9 +72,18 @@ export async function GET(request: NextRequest) {
     console.error("Failed to fetch users:", usersError);
   }
 
-  console.log("[members export] profiles count:", profiles?.length, "users count:", users?.users?.length);
+  const userMap = new Map<string, string>();
+  if (users?.users) {
+    for (const u of users.users) {
+      if (u.id && u.email) {
+        userMap.set(u.id, u.email);
+      }
+    }
+  }
 
-  const headers = COLUMNS.map((col) => {
+  console.log("[members export] profiles count:", profiles?.length, "userMap size:", userMap.size);
+
+  const headers = CSV_COLUMNS.map((col) => {
     const labels: Record<string, string> = {
       id: "ID",
       full_name: "Full Name",
@@ -79,8 +104,8 @@ export async function GET(request: NextRequest) {
   });
 
   const rows = (profiles as any[])?.map((profile) => {
-    const email = users?.users.find((u: any) => u.id === profile.id)?.email || "N/A";
-    return COLUMNS.map((col) => {
+    const email = userMap.get(profile.id) || "N/A";
+    return CSV_COLUMNS.map((col) => {
       if (col === "email") return escapeCsvField(email);
       if (col === "is_admin") return profile[col] ? "Yes" : "No";
       if (col === "identities") return profile[col] ? JSON.stringify(profile[col]) : "";
