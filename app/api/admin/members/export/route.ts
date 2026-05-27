@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch members" }, { status: 500 });
   }
 
-  const { data: users, error: usersError } = await supabaseAdmin.auth.admin.listUsers({ limit: 1000 });
+  const { data: users, error: usersError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
 
   if (usersError) {
     console.error("Failed to fetch users:", usersError);
@@ -73,17 +73,6 @@ export async function GET(request: NextRequest) {
 
   const userMap = new Map<string, string>();
   if (users?.users) {
-    // Log first user to see structure
-    if (users.users.length > 0) {
-      const firstUser = users.users[0];
-      console.log("[members export] First user structure:", {
-        id: firstUser.id,
-        email: firstUser.email,
-        hasIdentities: !!firstUser.identities,
-        identitiesLength: firstUser.identities?.length,
-      });
-    }
-    
     for (const u of users.users) {
       const email = u.email || u.identities?.[0]?.identity_data?.email || null;
       if (u.id && email) {
