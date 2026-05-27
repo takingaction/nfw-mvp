@@ -75,9 +75,18 @@ export async function GET(request: NextRequest) {
   const userMap = new Map<string, string>();
   if (users?.users) {
     for (const u of users.users) {
+      // Try multiple sources for email
       const email = u.email || u.identities?.[0]?.identity_data?.email || null;
       if (u.id && email) {
         userMap.set(u.id, email);
+      } else if (u.id) {
+        // Debug: log users without email found
+        console.log(`[members export] No email found for user ${u.id}:`, JSON.stringify({ 
+          hasEmail: !!u.email, 
+          hasIdentities: !!u.identities,
+          identitiesLength: u.identities?.length,
+          firstIdentity: u.identities?.[0] ? Object.keys(u.identities[0]) : null
+        }));
       }
     }
   }
