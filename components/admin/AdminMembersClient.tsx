@@ -9,6 +9,8 @@ import {
   Clock,
   X,
   AlertTriangle,
+  Copy,
+  Check,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -45,6 +47,17 @@ export default function AdminMembersClient({
   const [saveError, setSaveError] = useState("");
   const [selfDemoteWarning, setSelfDemoteWarning] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Partial<Member>>({});
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+
+  const copyEmail = async (email: string) => {
+    try {
+      await navigator.clipboard.writeText(email);
+      setCopiedEmail(email);
+      setTimeout(() => setCopiedEmail(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy email:", err);
+    }
+  };
 
   const filtered = members.filter((m) => {
     const matchesSearch =
@@ -276,9 +289,31 @@ export default function AdminMembersClient({
                           <p className="font-semibold text-nfw-blackberry">
                             {member.full_name || "—"}
                           </p>
-                          <p className="text-xs text-nfw-blackberry/40">
-                            {member.email}
-                          </p>
+                          {member.email ? (
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={`mailto:${member.email}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-nfw-aubergine hover:underline truncate max-w-[180px]"
+                              >
+                                {member.email}
+                              </a>
+                              <button
+                                onClick={() => copyEmail(member.email!)}
+                                className="p-1 hover:bg-nfw-blackberry/5 rounded flex-shrink-0"
+                                title="Copy email"
+                              >
+                                {copiedEmail === member.email ? (
+                                  <Check className="w-3 h-3 text-green-600" />
+                                ) : (
+                                  <Copy className="w-3 h-3 text-nfw-blackberry/40" />
+                                )}
+                              </button>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-nfw-blackberry/40">No email</p>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -340,7 +375,33 @@ export default function AdminMembersClient({
                 >
                   Edit Member
                 </h2>
-                <p className="text-xs text-nfw-blackberry/40 mt-0.5">{selected.email}</p>
+                <div className="flex items-center gap-2">
+                    {selected.email ? (
+                      <>
+                        <a
+                          href={`mailto:${selected.email}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-nfw-aubergine hover:underline"
+                        >
+                          {selected.email}
+                        </a>
+                        <button
+                          onClick={() => copyEmail(selected.email!)}
+                          className="p-1 hover:bg-nfw-blackberry/5 rounded"
+                          title="Copy email"
+                        >
+                          {copiedEmail === selected.email ? (
+                            <Check className="w-3 h-3 text-green-600" />
+                          ) : (
+                            <Copy className="w-3 h-3 text-nfw-blackberry/40" />
+                          )}
+                        </button>
+                      </>
+                    ) : (
+                      <p className="text-xs text-nfw-blackberry/40">No email</p>
+                    )}
+                  </div>
               </div>
               <button
                 onClick={closeEdit}
