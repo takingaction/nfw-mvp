@@ -32,7 +32,6 @@ const CSV_COLUMNS = [
   "state",
   "city",
   "household_income",
-  "identities",
   "subscription_ends_at",
   "joined_at",
   "is_admin",
@@ -81,8 +80,11 @@ export async function GET(request: NextRequest) {
 
     if (usersPage?.users) {
       for (const u of usersPage.users) {
-        // OAuth users store email in identities
-        const email = u.email || u.identities?.[0]?.identity_data?.email || null;
+        // Try all possible email sources
+        const email = u.email 
+          || u.user_metadata?.email 
+          || u.identities?.[0]?.identity_data?.email 
+          || null;
         if (u.id && email) {
           userMap.set(u.id, email);
         }
@@ -93,8 +95,6 @@ export async function GET(request: NextRequest) {
       hasMore = false;
     }
   }
-
-  console.log("[members export] profiles count:", profiles?.length, "userMap size:", userMap.size, "pages fetched:", page);
 
   const headers = CSV_COLUMNS.map((col) => {
     const labels: Record<string, string> = {
@@ -107,7 +107,6 @@ export async function GET(request: NextRequest) {
       state: "State",
       city: "City",
       household_income: "Household Income",
-      identities: "Identities",
       subscription_ends_at: "Subscription Ends At",
       joined_at: "Joined At",
       is_admin: "Is Admin",
@@ -121,7 +120,6 @@ export async function GET(request: NextRequest) {
     return CSV_COLUMNS.map((col) => {
       if (col === "email") return escapeCsvField(email);
       if (col === "is_admin") return profile[col] ? "Yes" : "No";
-      if (col === "identities") return profile[col] ? JSON.stringify(profile[col]) : "";
       return escapeCsvField(profile[col]);
     });
   });
