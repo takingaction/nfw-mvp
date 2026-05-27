@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { requireAdmin } from "@/middleware/adminCheck";
+import { requireAdmin } from "@/lib/adminCheck";
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,7 +34,10 @@ function escapeCsvField(value: unknown): string {
 }
 
 export async function GET(request: NextRequest) {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  if (!admin.authorized) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { data: profiles, error } = await supabaseAdmin
     .from("profiles")
@@ -42,6 +45,7 @@ export async function GET(request: NextRequest) {
     .order("joined_at", { ascending: false });
 
   if (error) {
+    console.error("Failed to fetch profiles:", error);
     return NextResponse.json({ error: "Failed to fetch members" }, { status: 500 });
   }
 
