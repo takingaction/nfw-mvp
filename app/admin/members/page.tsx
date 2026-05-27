@@ -21,7 +21,7 @@ async function AdminMembersContent() {
   const { data: profiles, error } = await supabaseAdmin
     .from("profiles")
     .select(
-      "id, full_name, membership_level, subscription_status, date_of_birth, state, city, household_income, identities, subscription_ends_at, joined_at, is_admin, access_perks_synced_at",
+      "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, access_perks_synced_at",
     )
     .order("joined_at", { ascending: false });
 
@@ -30,23 +30,14 @@ async function AdminMembersContent() {
     return <div className="text-red-600 p-8">Error loading members</div>;
   }
 
-  const { data: users, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
-
-  const membersWithEmails = profiles?.map((profile) => ({
-    ...profile,
-    email:
-      users?.users.find((u) => u.id === profile.id)?.email ||
-      "N/A",
-  }));
-
-  const total = membersWithEmails?.length || 0;
+  const total = profiles?.length || 0;
   const paid =
-    membersWithEmails?.filter((m) => m.membership_level === "contributing" || m.membership_level === "founding")
+    profiles?.filter((m) => m.membership_level === "contributing" || m.membership_level === "founding")
       .length || 0;
   const free =
-    membersWithEmails?.filter((m) => m.membership_level === "free" || m.membership_level === null)
+    profiles?.filter((m) => m.membership_level === "free" || m.membership_level === null)
       .length || 0;
-  const admins = membersWithEmails?.filter((m) => m.is_admin).length || 0;
+  const admins = profiles?.filter((m) => m.is_admin).length || 0;
 
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">
@@ -108,7 +99,7 @@ async function AdminMembersContent() {
         </div>
 
         <AdminMembersClient
-          members={membersWithEmails || []}
+          members={profiles || []}
           currentUserId={user?.id || ""}
         />
       </div>

@@ -10,6 +10,7 @@ const supabaseAdmin = createAdminClient(
 const PROFILE_COLUMNS = [
   "id",
   "full_name",
+  "email",
   "membership_level",
   "subscription_status",
   "date_of_birth",
@@ -64,38 +65,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch members" }, { status: 500 });
   }
 
-  // Fetch all users via paginated listUsers
-  const userMap = new Map<string, string>();
-  let page = 0;
-  const perPage = 50;
-  let hasMore = true;
-
-  while (hasMore) {
-    const { data: usersPage, error: usersError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
-
-    if (usersError) {
-      console.error("Failed to fetch users page", page, usersError);
-      break;
-    }
-
-    if (usersPage?.users) {
-      for (const u of usersPage.users) {
-        // Try all possible email sources
-        const email = u.email 
-          || u.user_metadata?.email 
-          || u.identities?.[0]?.identity_data?.email 
-          || null;
-        if (u.id && email) {
-          userMap.set(u.id, email);
-        }
-      }
-      hasMore = usersPage.users.length === perPage;
-      page++;
-    } else {
-      hasMore = false;
-    }
-  }
-
   const headers = CSV_COLUMNS.map((col) => {
     const labels: Record<string, string> = {
       id: "ID",
@@ -116,9 +85,8 @@ export async function GET(request: NextRequest) {
   });
 
   const rows = (profiles as any[])?.map((profile) => {
-    const email = userMap.get(profile.id) || "N/A";
     return CSV_COLUMNS.map((col) => {
-      if (col === "email") return escapeCsvField(email);
+      if (col === "email") return escapeCsvField(profile.email || "");
       if (col === "is_admin") return profile[col] ? "Yes" : "No";
       return escapeCsvField(profile[col]);
     });

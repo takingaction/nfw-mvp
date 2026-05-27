@@ -15,12 +15,11 @@ import { createClient } from "@/lib/supabase/client";
 type Member = {
   id: string;
   full_name: string | null;
-  email: string;
+  email: string | null;
   date_of_birth: string | null;
   state: string | null;
   city: string | null;
   household_income: string | null;
-  identities: string[] | null;
   subscription_status: string | null;
   subscription_ends_at: string | null;
   joined_at: string | null;
@@ -386,12 +385,6 @@ export default function AdminMembersClient({
                   <p className="text-nfw-blackberry/40 mb-1">Household Income</p>
                   <p className="font-semibold text-nfw-blackberry">
                     {selected.household_income || "—"}
-                  </p>
-                </div>
-                <div className="bg-white p-3 border border-nfw-blackberry/5 col-span-2">
-                  <p className="text-nfw-blackberry/40 mb-1">Identities</p>
-                  <p className="font-semibold text-nfw-blackberry">
-                    {selected.identities?.join(", ") || "—"}
                   </p>
                 </div>
                 <div className="bg-white p-3 border border-nfw-blackberry/5 col-span-2">

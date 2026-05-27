@@ -197,7 +197,7 @@ export default function AdminGrantReviewer({
                 }`}
               >
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-start gap-3">
                     <div className="w-10 h-10 bg-nfw-lilac/30 flex items-center justify-center text-sm font-black text-nfw-blackberry flex-shrink-0">
                       {(
                         grant.profiles?.full_name ||
@@ -210,6 +210,18 @@ export default function AdminGrantReviewer({
                       <p className="font-bold text-nfw-blackberry">
                         {grant.profiles?.full_name || "Unknown"}
                       </p>
+                      {grant.profiles?.email ? (
+                        <a
+                          href={`mailto:${grant.profiles.email}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-nfw-aubergine hover:underline block truncate max-w-[200px]"
+                        >
+                          {grant.profiles.email}
+                        </a>
+                      ) : (
+                        <p className="text-xs text-nfw-blackberry/40">No email</p>
+                      )}
                       {grant.profiles?.city && (
                         <p className="text-xs text-nfw-blackberry/40">
                           {grant.profiles.city}, {grant.profiles.state}
@@ -277,7 +289,7 @@ export default function AdminGrantReviewer({
             <div className="p-5 space-y-5">
               {/* Applicant Info */}
               <div className="bg-nfw-dove p-4">
-                <div className="flex items-center gap-3 mb-3">
+                <div className="flex items-start gap-3 mb-3">
                   <div className="w-12 h-12 bg-nfw-lilac/30 flex items-center justify-center text-lg font-black text-nfw-blackberry">
                     {(selected.profiles?.full_name || "U")
                       .charAt(0)
@@ -287,6 +299,18 @@ export default function AdminGrantReviewer({
                     <p className="font-black text-nfw-blackberry">
                       {selected.profiles?.full_name || "Unknown"}
                     </p>
+                    {selected.profiles?.email ? (
+                      <a
+                        href={`mailto:${selected.profiles.email}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-nfw-aubergine hover:underline"
+                      >
+                        {selected.profiles.email}
+                      </a>
+                    ) : (
+                      <p className="text-xs text-nfw-blackberry/40">No email</p>
+                    )}
                     {selected.profiles?.city && (
                       <p className="text-xs text-nfw-blackberry/50">
                         {selected.profiles.city}, {selected.profiles.state}
