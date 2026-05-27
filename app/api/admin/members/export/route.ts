@@ -16,7 +16,6 @@ const PROFILE_COLUMNS = [
   "state",
   "city",
   "household_income",
-  "identities",
   "subscription_ends_at",
   "joined_at",
   "is_admin",
@@ -74,22 +73,28 @@ export async function GET(request: NextRequest) {
 
   const userMap = new Map<string, string>();
   if (users?.users) {
+    // Log first user to see structure
+    if (users.users.length > 0) {
+      const firstUser = users.users[0];
+      console.log("[members export] First user structure:", {
+        id: firstUser.id,
+        email: firstUser.email,
+        hasIdentities: !!firstUser.identities,
+        identitiesLength: firstUser.identities?.length,
+        firstIdentityKeys: firstUser.identities?.[0] ? Object.keys(firstUser.identities[0]) : null,
+        firstIdentityData: firstUser.identities?.[0]?.identity_data,
+      });
+    }
+    
     for (const u of users.users) {
-      // Try multiple sources for email
       const email = u.email || u.identities?.[0]?.identity_data?.email || null;
       if (u.id && email) {
         userMap.set(u.id, email);
-      } else if (u.id) {
-        // Debug: log users without email found
-        console.log(`[members export] No email found for user ${u.id}:`, JSON.stringify({ 
-          hasEmail: !!u.email, 
-          hasIdentities: !!u.identities,
-          identitiesLength: u.identities?.length,
-          firstIdentity: u.identities?.[0] ? Object.keys(u.identities[0]) : null
-        }));
       }
     }
   }
+
+  console.log("[members export] profiles count:", profiles?.length, "userMap size:", userMap.size, "total users returned:", users?.users?.length);
 
   console.log("[members export] profiles count:", profiles?.length, "userMap size:", userMap.size);
 
