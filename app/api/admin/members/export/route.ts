@@ -75,8 +75,9 @@ export async function GET(request: NextRequest) {
   const userMap = new Map<string, string>();
   if (users?.users) {
     for (const u of users.users) {
-      if (u.id && u.email) {
-        userMap.set(u.id, u.email);
+      const email = u.email || u.identities?.[0]?.identity_data?.email || null;
+      if (u.id && email) {
+        userMap.set(u.id, email);
       }
     }
   }
