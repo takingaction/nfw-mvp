@@ -65,49 +65,36 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch members" }, { status: 500 });
   }
 
-  // Fetch all users from auth.users directly
-  const { data: authUsers, error: authError } = await supabaseAdmin
-    .from("auth.users")
-    .select("id, email, identities");
-
-  if (authError) {
-    console.error("Failed to fetch auth users:", authError);
-  }
-
-  // Debug: log first few auth users to see structure
-  if (authUsers && authUsers.length > 0) {
-    const firstGoogleUser = authUsers.find(u => !u.email && u.identities);
-    if (firstGoogleUser) {
-      console.log("[members export] Google user structure:", {
-        id: firstGoogleUser.id,
-        email: firstGoogleUser.email,
-        hasIdentities: !!firstGoogleUser.identities,
-        identitiesLength: firstGoogleUser.identities?.length,
-        firstIdentity: firstGoogleUser.identities?.[0],
-      });
-    } else {
-      console.log("[members export] No Google users (OAuth) found, first user:", {
-        id: authUsers[0]?.id,
-        email: authUsers[0]?.email,
-        hasIdentities: !!authUsers[0]?.identities,
-      });
-    }
-  }
-
+  // Fetch all users via paginated listUsers
   const userMap = new Map<string, string>();
-  if (authUsers) {
-    for (const u of authUsers) {
-      // OAuth users may have email in identities
-      const email = u.email || u.identities?.[0]?.identity_data?.email || null;
-      if (u.id && email) {
-        userMap.set(u.id, email);
+  let page = 0;
+  const perPage = 50;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data: usersPage, error: usersError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+
+    if (usersError) {
+      console.error("Failed to fetch users page", page, usersError);
+      break;
+    }
+
+    if (usersPage?.users) {
+      for (const u of usersPage.users) {
+        // OAuth users store email in identities
+        const email = u.email || u.identities?.[0]?.identity_data?.email || null;
+        if (u.id && email) {
+          userMap.set(u.id, email);
+        }
       }
+      hasMore = usersPage.users.length === perPage;
+      page++;
+    } else {
+      hasMore = false;
     }
   }
 
-  console.log("[members export] profiles count:", profiles?.length, "userMap size:", userMap.size, "authUsers count:", authUsers?.length);
-
-console.log("[members export] profiles count:", profiles?.length, "userMap size:", userMap.size, "authUsers count:", authUsers?.length);
+  console.log("[members export] profiles count:", profiles?.length, "userMap size:", userMap.size, "pages fetched:", page);
 
   const headers = CSV_COLUMNS.map((col) => {
     const labels: Record<string, string> = {
