@@ -5,6 +5,7 @@
 ALTER TABLE profiles ADD COLUMN email TEXT;
 
 -- 2. Create trigger function to auto-sync email from auth.users on INSERT/UPDATE
+-- SECURITY DEFINER is required because the trigger needs to read from auth.users
 CREATE OR REPLACE FUNCTION sync_profile_email()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -13,7 +14,7 @@ BEGIN
   WHERE u.id = NEW.id;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 3. Create trigger on profiles table
 DROP TRIGGER IF EXISTS trg_sync_profile_email ON profiles;

@@ -3676,3 +3676,46 @@ Files cleaned:
 **CSV columns:** ID, Full Name, Email, Membership Level, Subscription Status, Date of Birth, State, City, Household Income, Identities, Subscription Ends At, Joined At, Is Admin, Access Perks Synced At
 
 **Bug Fix:** Google OAuth users have `auth.users.email = null`. Email is stored in `auth.users.identities[0].identity_data.email`. Updated userMap building to check both locations.
+
+### Session 2026-05-27: Add Email to Profiles Table + Fix Signup Flow
+
+**Added email column to profiles table with auto-sync trigger.**
+
+**Database Migration (075):**
+- `supabase/migrations/075_add_email_to_profiles.sql` - Adds email column, trigger, and backfills existing emails
+- Trigger `trg_sync_profile_email` automatically syncs email from `auth.users` on INSERT/UPDATE
+- **Important:** Trigger function must use `SECURITY DEFINER` because it reads from `auth.users`
+
+**Bug Fixed - Signup Flow Failing:**
+- After deploying migration 075, signup failed at step 2 with "Failed to update profile"
+- **Root Cause:** The trigger function couldn't read from `auth.users` due to permission issues
+- **Fix:** Added `SECURITY DEFINER` to the trigger function so it runs with elevated privileges
+- **SQL Applied in Supabase SQL Editor:**
+```sql
+DROP TRIGGER IF EXISTS trg_sync_profile_email ON profiles;
+CREATE OR REPLACE FUNCTION sync_profile_email()
+RETURNS TRIGGER AS $$
+BEGIN
+  SELECT u.email INTO NEW.email
+  FROM auth.users u
+  WHERE u.id = NEW.id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+CREATE TRIGGER trg_sync_profile_email
+  BEFORE INSERT OR UPDATE ON profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION sync_profile_email();
+```
+
+**Files Modified:**
+- `app/admin/grants/[id]/page.tsx` - Added email to profiles select
+- `components/admin/AdminGrantReviewer.tsx` - Show email in list view (below name) and detail panel
+- `app/admin/members/page.tsx` - Use profiles.email directly (no more listUsers lookup)
+- `app/api/admin/members/export/route.ts` - Simplified to use profiles.email
+- `components/admin/AdminMembersClient.tsx` - Removed identities from Member type, added mailto links + copy buttons
+- `supabase/migrations/075_add_email_to_profiles.sql` - Added SECURITY DEFINER to trigger
+
+**Features Added:**
+- `/admin/members` - Email column now has clickable mailto links and copy-to-clipboard buttons
+- `/admin/grants/[id]` - Applicant list and detail panel show clickable email addresses
