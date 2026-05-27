@@ -68,17 +68,39 @@ export async function GET(request: NextRequest) {
   // Fetch all users from auth.users directly
   const { data: authUsers, error: authError } = await supabaseAdmin
     .from("auth.users")
-    .select("id, email");
+    .select("id, email, identities");
 
   if (authError) {
     console.error("Failed to fetch auth users:", authError);
   }
 
+  // Debug: log first few auth users to see structure
+  if (authUsers && authUsers.length > 0) {
+    const firstGoogleUser = authUsers.find(u => !u.email && u.identities);
+    if (firstGoogleUser) {
+      console.log("[members export] Google user structure:", {
+        id: firstGoogleUser.id,
+        email: firstGoogleUser.email,
+        hasIdentities: !!firstGoogleUser.identities,
+        identitiesLength: firstGoogleUser.identities?.length,
+        firstIdentity: firstGoogleUser.identities?.[0],
+      });
+    } else {
+      console.log("[members export] No Google users (OAuth) found, first user:", {
+        id: authUsers[0]?.id,
+        email: authUsers[0]?.email,
+        hasIdentities: !!authUsers[0]?.identities,
+      });
+    }
+  }
+
   const userMap = new Map<string, string>();
   if (authUsers) {
     for (const u of authUsers) {
-      if (u.id && u.email) {
-        userMap.set(u.id, u.email);
+      // OAuth users may have email in identities
+      const email = u.email || u.identities?.[0]?.identity_data?.email || null;
+      if (u.id && email) {
+        userMap.set(u.id, email);
       }
     }
   }
