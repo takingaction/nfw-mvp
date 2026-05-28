@@ -3753,3 +3753,33 @@ onChange({ ...content, [fieldKey]: replacement });
 ```
 
 **Build:** Verified with `npm run build` - passes successfully
+
+### Session 2026-05-28: Auth Profile Cache Fix
+
+**Problem:** `/api/auth/profile` was being called 3+ times per page load across multiple admin pages, generating excessive Vercel logs. Each call hit Supabase (auth.user + profiles query).
+
+**Root Cause:** 5 client components independently called `/api/auth/profile`:
+- `AuthButtonCombined.tsx`
+- `auth-button.tsx`
+- `MobileMenu.tsx`
+- `PlanButton.tsx`
+- `app/perks/page.tsx`
+
+Each component called the API on mount and on auth state changes, with no shared state or caching.
+
+**Solution A (Implemented):** In-memory cache on API route
+- Added 30-second TTL cache in `/api/auth/profile/route.ts`
+- Module-level cache object stores `{ userId: { data, timestamp } }`
+- Subsequent calls within 30s return cached response instead of hitting Supabase
+- ~25 lines of code, minimal maintenance
+
+**Future Option B (Auth Context):** If more sophisticated auth state sharing is needed:
+- Create `contexts/AuthContext.tsx` with shared React context
+- Wrap app in `AuthProvider` in layout
+- Replace all `fetch("/api/auth/profile")` calls with `useAuth()` hook
+- Benefits: Single source of truth, real-time sync, centralized permissions
+- Complexity: ~100+ lines across new file + layout + component updates
+
+**Why Option A is sufficient for now:** Only 5 client components affected. Server-side RSC pages are already efficient (direct Supabase calls, run once). Option B adds complexity without proportional benefit unless you need real-time auth sync across components.
+
+**Build:** Verified with `npm run build` - passes successfully
