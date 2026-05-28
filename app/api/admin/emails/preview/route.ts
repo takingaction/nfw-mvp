@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     // Get template
     const { data: template, error: templateError } = await supabase
       .from("email_templates")
-      .select("id, name, slug, subject, hero_image_url, category")
+      .select("id, name, slug, subject, hero_image_url, category, full_email_html")
       .eq("slug", slug)
       .single();
 
@@ -61,13 +61,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ html: finalHtml });
     }
 
-    // No sections - check if we have html_content to generate preview
-    // For now, return a placeholder if no content
+    // No sections - check if we have full_email_html from a previous publish
+    if (template.full_email_html) {
+      // Replace variables in the stored HTML
+      const previewData = {
+        name: name || "Preview User",
+        email: "preview@example.com",
+      };
+
+      let finalHtml = template.full_email_html;
+      for (const [key, value] of Object.entries(previewData)) {
+        finalHtml = finalHtml.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), String(value));
+      }
+
+      return NextResponse.json({ html: finalHtml });
+    }
+
+    // No sections and no full_email_html - return placeholder
     return NextResponse.json({
       html: `<html><body style="font-family: sans-serif; padding: 40px; text-align: center; color: #666;">
         <h2>${template.name}</h2>
         <p>No sections or content to preview.</p>
-        <p>Convert this template to sections to see a preview.</p>
+        <p>Build sections in the email builder to see a preview.</p>
       </body></html>`,
     });
   } catch (error) {
