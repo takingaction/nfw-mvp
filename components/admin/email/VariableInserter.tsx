@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { EMAIL_VARIABLES } from "@/lib/email-blocks/types";
 
 interface Props {
@@ -9,51 +9,52 @@ interface Props {
 
 export function VariableInserter({ onInsert }: Props) {
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const handleInsert = (name: string) => {
+    onInsert(`{{${name}}}`);
+    setIsOpen(false);
+  };
 
   return (
-    <div className="relative inline-block" ref={dropdownRef}>
+    <>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="px-3 py-1.5 text-xs font-medium bg-nfw-wisteria/20 text-nfw-aubergine border border-nfw-wisteria/30 rounded hover:bg-nfw-wisteria/30 transition-colors"
+        onClick={() => setIsOpen(true)}
+        className="px-3 py-2 text-sm font-medium bg-nfw-wisteria/20 text-nfw-aubergine border border-nfw-wisteria/30 rounded hover:bg-nfw-wisteria/30 transition-colors"
       >
-        Insert Variable
+        ✕ Variable
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-48 bg-white border border-nfw-blackberry/20 rounded shadow-lg">
-          <div className="py-1">
-            <div className="px-3 py-1.5 text-xs font-semibold text-nfw-blackberry/50 uppercase tracking-wider">
-              Variables
-            </div>
-            {EMAIL_VARIABLES.map((v) => (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setIsOpen(false)} />
+          <div className="relative bg-white rounded-lg shadow-xl p-4 w-80 max-w-[90vw]">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-nfw-blackberry">Insert Variable</h3>
               <button
-                key={v.name}
                 type="button"
-                onClick={() => {
-                  onInsert(`{{${v.name}}}`);
-                  setIsOpen(false);
-                }}
-                className="w-full px-3 py-2 text-left text-sm text-nfw-blackberry hover:bg-nfw-citrine/20 transition-colors"
+                onClick={() => setIsOpen(false)}
+                className="text-nfw-blackberry/50 hover:text-nfw-blackberry text-xl leading-none"
               >
-                <span className="font-medium">{v.label}</span>
-                <span className="ml-2 text-nfw-blackberry/40 font-mono text-xs">{`{{${v.name}}}`}</span>
+                ×
               </button>
-            ))}
+            </div>
+            <div className="max-h-64 overflow-y-auto">
+              {EMAIL_VARIABLES.map((v) => (
+                <button
+                  key={v.name}
+                  type="button"
+                  onClick={() => handleInsert(v.name)}
+                  className="w-full px-3 py-2 text-left text-sm text-nfw-blackberry hover:bg-nfw-citrine/20 rounded transition-colors"
+                >
+                  <span className="font-medium">{v.label}</span>
+                  <span className="ml-2 text-nfw-blackberry/40 font-mono text-xs">{`{{${v.name}}}`}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

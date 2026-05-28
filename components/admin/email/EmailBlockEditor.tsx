@@ -105,41 +105,38 @@ export function EmailBlockEditor({ blockType, content, onChange }: Props) {
 
           {field.type === "richtext" && (
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center border border-nfw-blackberry/20 rounded overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => wrapSelection("**", "**", field.key)}
-                    className="px-3 py-2 text-sm font-bold text-nfw-blackberry hover:bg-nfw-blackberry/10 transition-colors"
-                    title="Bold"
-                  >
-                    B
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => wrapSelection("*", "*", field.key)}
-                    className="px-3 py-2 text-sm italic text-nfw-blackberry hover:bg-nfw-blackberry/10 transition-colors border-l border-nfw-blackberry/20"
-                    title="Italic"
-                  >
-                    I
-                  </button>
-                </div>
-                <textarea
-                  ref={textareaRef}
-                  value={(content[field.key] as string) || ""}
-                  onChange={(e) => onChange({ ...content, [field.key]: e.target.value })}
-                  rows={5}
-                  className="flex-1 px-3 py-2 border border-nfw-blackberry/20 text-sm text-nfw-blackberry focus:outline-none focus:border-nfw-aubergine resize-none"
+              <div className="flex items-center gap-1 border border-nfw-blackberry/20 rounded overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => wrapSelection("**", "**", field.key)}
+                  className="px-3 py-2 text-sm font-bold text-nfw-blackberry hover:bg-nfw-blackberry/10 transition-colors"
+                  title="Bold"
+                >
+                  B
+                </button>
+                <button
+                  type="button"
+                  onClick={() => wrapSelection("*", "*", field.key)}
+                  className="px-3 py-2 text-sm italic text-nfw-blackberry hover:bg-nfw-blackberry/10 transition-colors border-l border-nfw-blackberry/20"
+                  title="Italic"
+                >
+                  I
+                </button>
+                <div className="w-px h-6 bg-nfw-blackberry/20 mx-1" />
+                <LinkInserter
+                  onInsert={(html) => insertAtCursor(html, field.key)}
                 />
-                <div className="flex flex-col gap-1">
-                  <VariableInserter
-                    onInsert={(variable) => insertAtCursor(variable, field.key)}
-                  />
-                  <LinkInserter
-                    onInsert={(html) => insertAtCursor(html, field.key)}
-                  />
-                </div>
+                <VariableInserter
+                  onInsert={(variable) => insertAtCursor(variable, field.key)}
+                />
               </div>
+              <textarea
+                ref={textareaRef}
+                value={(content[field.key] as string) || ""}
+                onChange={(e) => onChange({ ...content, [field.key]: e.target.value })}
+                rows={5}
+                className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm text-nfw-blackberry focus:outline-none focus:border-nfw-aubergine resize-none"
+              />
             </div>
           )}
 
