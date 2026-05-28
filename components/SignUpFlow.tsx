@@ -164,7 +164,7 @@ const BENEFITS = [
   "Zero Dollar Store giveaways",
   "Feel-good support that is simple, fast and low stress",
   "A community that gets it",
-  "Part of something bigger — helping shape the future for women",
+  "A mission-driven community supporting women",
 ];
 
 const STEPS = ["Account", "Personal Info", "Identity", "Membership"];
@@ -1224,8 +1224,12 @@ export default function SignUpFlow() {
               </div>
               <div>
                 <p className="text-nfw-dove text-sm leading-relaxed italic">
-                  &ldquo;The perks alone saved me more than my membership cost
-                  in the first month. I wish I had found NFW sooner.&rdquo;
+                  &ldquo;NFW is a safe space where we can trust that the women
+                  here have one another&rsquo;s back. We support one
+                  another&rsquo;s growth, hopes, and dreams even though they
+                  aren&rsquo;t our own. We know that when one of us rises, the
+                  rest of us are right there supporting her. NFW is the space
+                  all women have been looking for.&rdquo;
                 </p>
                 <p className="text-nfw-lilac text-xs mt-2 font-semibold">
                   Tiana, 29 — Retail Manager
