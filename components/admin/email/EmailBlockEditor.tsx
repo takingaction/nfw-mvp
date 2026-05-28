@@ -19,26 +19,52 @@ export function EmailBlockEditor({ blockType, content, onChange }: Props) {
   const definition = EMAIL_BLOCK_REGISTRY[blockType];
   const [mediaField, setMediaField] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const insertAtCursor = useCallback((replacement: string, fieldKey: string) => {
+    const el = (textareaRef.current ?? inputRef.current) as HTMLInputElement | HTMLTextAreaElement | null;
+    if (!el) return;
+
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    const text = el.value;
+    const selectedText = text.substring(start, end);
+
+    let newText: string;
+    let newCursorPos: number;
+
+    if (selectedText) {
+      newText = text.substring(0, start) + replacement + text.substring(end);
+      newCursorPos = start + replacement.length;
+    } else {
+      newText = text.substring(0, start) + replacement + text.substring(end);
+      newCursorPos = start + replacement.length;
+    }
+
+    onChange({ ...content, [fieldKey]: newText });
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  }, [content, onChange]);
 
   const wrapSelection = useCallback((prefix: string, suffix: string, fieldKey: string) => {
-    const textarea = textareaRef.current;
+    const textarea = textareaRef.current as HTMLInputElement | HTMLTextAreaElement | null;
     if (!textarea) return;
 
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
+    const start = textarea.selectionStart ?? 0;
+    const end = textarea.selectionEnd ?? 0;
     const text = textarea.value;
     const selectedText = text.substring(start, end);
 
     if (selectedText) {
       const newText = text.substring(0, start) + prefix + selectedText + suffix + text.substring(end);
       onChange({ ...content, [fieldKey]: newText });
-      // Restore cursor position after state update
       setTimeout(() => {
         textarea.focus();
         textarea.setSelectionRange(start + prefix.length, end + prefix.length);
       }, 0);
     } else {
-      // No selection - insert placeholder and place cursor in middle
       const placeholder = `${prefix}text${suffix}`;
       const newText = text.substring(0, start) + placeholder + text.substring(end);
       const newCursorPos = start + prefix.length;
@@ -66,15 +92,13 @@ export function EmailBlockEditor({ blockType, content, onChange }: Props) {
             <div className="flex gap-2">
               <input
                 type="text"
+                ref={field.key === "text" ? inputRef : undefined}
                 value={(content[field.key] as string) || ""}
                 onChange={(e) => onChange({ ...content, [field.key]: e.target.value })}
                 className="flex-1 px-3 py-2 border border-nfw-blackberry/20 text-sm text-nfw-blackberry focus:outline-none focus:border-nfw-aubergine"
               />
               <VariableInserter
-                onInsert={(variable) => {
-                  const current = (content[field.key] as string) || "";
-                  onChange({ ...content, [field.key]: current + variable });
-                }}
+                onInsert={(variable) => insertAtCursor(variable, field.key)}
               />
             </div>
           )}
@@ -109,16 +133,10 @@ export function EmailBlockEditor({ blockType, content, onChange }: Props) {
                 />
                 <div className="flex flex-col gap-1">
                   <VariableInserter
-                    onInsert={(variable) => {
-                      const current = (content[field.key] as string) || "";
-                      onChange({ ...content, [field.key]: current + variable });
-                    }}
+                    onInsert={(variable) => insertAtCursor(variable, field.key)}
                   />
                   <LinkInserter
-                    onInsert={(html) => {
-                      const current = (content[field.key] as string) || "";
-                      onChange({ ...content, [field.key]: current + html });
-                    }}
+                    onInsert={(html) => insertAtCursor(html, field.key)}
                   />
                 </div>
               </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import EmailEditorModal from "./EmailEditorModal";
 
 type EmailTemplate = {
   id: string;
@@ -28,14 +27,11 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
   const [templates] = useState(initialTemplates);
   const [activeCategory, setActiveCategory] = useState<"resend" | "supabase">("resend");
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
-  const [showEditor, setShowEditor] = useState(false);
   const [testEmail, setTestEmail] = useState(userEmail || "");
   const [sendingTest, setSendingTest] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
-  const [converting, setConverting] = useState(false);
-  const [convertResult, setConvertResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const resendTemplates = templates.filter((t) => t.category === "resend");
   const supabaseTemplates = templates.filter((t) => t.category === "supabase");
@@ -305,47 +301,12 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
               <div className="p-4 border-t bg-nfw-dove/30 flex-shrink-0">
                 <div className="flex items-center gap-4">
 {selectedTemplate.is_editable && (
-                      <>
-                        <button
-                          onClick={async () => {
-                            if (!confirm("Convert this template's HTML to builder sections? This will replace any existing sections.")) return;
-                            setConverting(true);
-                            setConvertResult(null);
-                            try {
-                              const res = await fetch("/api/admin/emails/convert", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ templateSlug: selectedTemplate.slug }),
-                              });
-                              const data = await res.json();
-                              setConvertResult({
-                                success: res.ok,
-                                message: data.error || `Converted ${data.converted} of ${data.total} templates`,
-                              });
-                            } catch {
-                              setConvertResult({ success: false, message: "Conversion failed" });
-                            } finally {
-                              setConverting(false);
-                            }
-                          }}
-                          disabled={converting}
-                          className="px-4 py-2 text-sm font-medium bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/90 disabled:opacity-50"
-                        >
-                          {converting ? "Converting..." : "Convert to Sections"}
-                        </button>
-                        <a
-                          href={`/admin/emails/${selectedTemplate.slug}/builder`}
-                          className="bg-nfw-aubergine text-white px-6 py-2 font-medium hover:bg-nfw-aubergine/90"
-                        >
-                          Edit with Builder
-                        </a>
-                        <button
-                          onClick={() => setShowEditor(true)}
-                          className="bg-nfw-blackberry text-white px-6 py-2 font-medium hover:bg-nfw-blackberry/90"
-                        >
-                          Edit HTML
-                        </button>
-                      </>
+                      <a
+                        href={`/admin/emails/${selectedTemplate.slug}/builder`}
+                        className="bg-nfw-aubergine text-white px-6 py-2 font-medium hover:bg-nfw-aubergine/90"
+                      >
+                        Edit with Builder
+                      </a>
                     )}
 
                   {selectedTemplate.category === "supabase" && (
@@ -404,17 +365,7 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
                   </div>
                 )}
 
-                {convertResult && (
-                  <div
-                    className={`mt-3 px-4 py-2 text-sm ${
-                      convertResult.success
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {convertResult.message}
-                  </div>
-                )}
+                
               </div>
             </>
           ) : (
@@ -425,14 +376,7 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
         </div>
       </div>
 
-      {/* Edit Modal */}
-      {showEditor && selectedTemplate && (
-        <EmailEditorModal
-          template={selectedTemplate}
-          onClose={() => setShowEditor(false)}
-          userEmail={userEmail}
-        />
-      )}
+      
     </>
   );
 }

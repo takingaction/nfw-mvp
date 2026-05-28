@@ -3719,3 +3719,37 @@ CREATE TRIGGER trg_sync_profile_email
 **Features Added:**
 - `/admin/members` - Email column now has clickable mailto links and copy-to-clipboard buttons
 - `/admin/grants/[id]` - Applicant list and detail panel show clickable email addresses
+
+### Session 2026-05-28: Email Builder - Cursor-Aware Insertion + UI Cleanup
+
+**Problem:** Variable and Link inserters in the email builder appended content to the END of text fields instead of inserting at cursor position.
+
+**Solution:** Made insertion cursor-aware, mirroring the page builder's approach in SectionEditorPanel.tsx.
+
+**Changes Made:**
+
+**EmailBlockEditor.tsx:**
+- Added `inputRef` alongside existing `textareaRef`
+- Created `insertAtCursor(replacement, fieldKey)` function that:
+  - Gets current cursor position (`selectionStart`, `selectionEnd`)
+  - Replaces selected text or inserts at cursor point
+  - Restores cursor position after state update
+- Updated VariableInserter and LinkInserter to use `insertAtCursor` instead of appending
+- Both functions now work on both `text` (input) and `richtext` (textarea) field types
+
+**AdminEmailsClient.tsx:**
+- Removed "Convert to Sections" button (deprecated feature)
+- Removed "Edit HTML" button and associated EmailEditorModal
+- Removed `converting`, `convertResult`, and `showEditor` state
+- Removed EmailEditorModal import
+- Now only shows "Edit with Builder" button for editable templates
+
+**Key Pattern Used (from page builder):**
+```typescript
+const start = textarea.selectionStart ?? 0;
+const end = textarea.selectionEnd ?? 0;
+const replacement = text.substring(0, start) + newContent + text.substring(end);
+onChange({ ...content, [fieldKey]: replacement });
+```
+
+**Build:** Verified with `npm run build` - passes successfully
