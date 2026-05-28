@@ -39,7 +39,14 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
 
   // Fetch preview HTML when selected template changes
   useEffect(() => {
-    if (!selectedTemplate?.html_content || selectedTemplate.category === "supabase") {
+    // Supabase templates are handled differently - show html_content in iframe
+    if (selectedTemplate?.category === "supabase") {
+      setPreviewHtml(null);
+      return;
+    }
+
+    // For resend templates, preview API handles both html_content and full_email_html
+    if (!selectedTemplate?.html_content && !selectedTemplate?.full_email_html) {
       setPreviewHtml(null);
       return;
     }

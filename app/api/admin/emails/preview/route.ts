@@ -11,7 +11,6 @@ const SITE_URL = "https://nationalfundforwomen.org";
 export async function POST(request: NextRequest) {
   try {
     const { slug, name, subject, hero_image_url } = await request.json();
-    console.log("[preview] Request received for slug:", slug);
 
     if (!slug) {
       return NextResponse.json({ error: "Slug required" }, { status: 400 });
@@ -25,8 +24,6 @@ export async function POST(request: NextRequest) {
       .select("id, name, slug, subject, hero_image_url, category, full_email_html")
       .eq("slug", slug)
       .single();
-
-    console.log("[preview] Template query result:", { template, error: templateError });
 
     if (templateError || !template) {
       return NextResponse.json({ error: "Template not found" }, { status: 404 });
@@ -43,11 +40,8 @@ export async function POST(request: NextRequest) {
       .eq("visible", true)
       .order("order_index", { ascending: true });
 
-    console.log("[preview] Sections query result:", { sectionsCount: sections?.length, error: sectionsError });
-
     // If we have sections, use the builder's rendering system
     if (sections && sections.length > 0 && !sectionsError) {
-      console.log("[preview] Rendering from sections");
       const sectionsHtml = renderAllBlocks(sections as EmailSection[]);
       const fullHtml = buildEmailShell({
         sectionsHtml,
@@ -69,7 +63,6 @@ export async function POST(request: NextRequest) {
 
     // No sections - check if we have full_email_html from a previous publish
     if (template.full_email_html) {
-      console.log("[preview] Rendering from full_email_html, length:", template.full_email_html.length);
       // Replace variables in the stored HTML
       const previewData = {
         name: name || "Preview User",
