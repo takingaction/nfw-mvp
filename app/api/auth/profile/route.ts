@@ -2,6 +2,23 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+// In-memory cache to reduce redundant profile fetches
+// Key: userId, Value: { data, timestamp }
+let profileCache: { [userId: string]: { data: any; timestamp: number } } = {};
+const CACHE_TTL_MS = 30000; // 30 seconds
+
+function getCachedProfile(userId: string) {
+  const cached = profileCache[userId];
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCachedProfile(userId: string, data: any) {
+  profileCache[userId] = { data, timestamp: Date.now() };
+}
+
 export async function GET() {
   try {
     const cookieStore = await cookies();
@@ -30,6 +47,12 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check cache first
+    const cachedData = getCachedProfile(user.id);
+    if (cachedData) {
+      return NextResponse.json(cachedData);
+    }
+
     const { data: profile, error } = await supabase
       .from("profiles")
       .select("id, full_name, is_admin, membership_level, profile_completed")
@@ -46,6 +69,9 @@ export async function GET() {
       ...profile,
       membership_level: profile?.membership_level || "free",
     };
+
+    // Cache the result
+    setCachedProfile(user.id, normalizedProfile);
 
     return NextResponse.json(normalizedProfile);
   } catch (error) {
