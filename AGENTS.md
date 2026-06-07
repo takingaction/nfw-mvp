@@ -3837,6 +3837,7 @@ update_updated_at_column
 - Created `supabase/migrations/076_fix_search_path_for_functions.sql`
 - Recreates all trigger functions with `SET search_path = pg_catalog`
 - Runs `NOTIFY pgrst, 'reload'` to clear schema cache
+- **Status:** Applied successfully 2026-06-07
 
 **Security Posture Assessment:**
 - All warnings are either intentional design or low-risk
