@@ -77,6 +77,7 @@ CREATE TRIGGER update_email_section_timestamp
 -- ============================================
 
 -- auto_close_expired_grant_cycles (runs on schedule, not trigger)
+DROP TRIGGER IF EXISTS trg_auto_close_expired_grants ON grant_cycles;
 DROP FUNCTION IF EXISTS auto_close_expired_grant_cycles();
 
 CREATE OR REPLACE FUNCTION auto_close_expired_grant_cycles()
