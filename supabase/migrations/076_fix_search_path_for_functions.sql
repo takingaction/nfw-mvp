@@ -202,7 +202,7 @@ $$;
 
 
 -- set_gift_code_if_empty
-DROP TRIGGER IF EXISTS set_gift_code_if_empty ON gift_membership_purchases;
+DROP TRIGGER IF EXISTS trigger_set_gift_code ON gift_membership_codes;
 DROP FUNCTION IF EXISTS set_gift_code_if_empty();
 
 CREATE OR REPLACE FUNCTION set_gift_code_if_empty()
