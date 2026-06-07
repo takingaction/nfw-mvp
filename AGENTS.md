@@ -3783,3 +3783,64 @@ Each component called the API on mount and on auth state changes, with no shared
 **Why Option A is sufficient for now:** Only 5 client components affected. Server-side RSC pages are already efficient (direct Supabase calls, run once). Option B adds complexity without proportional benefit unless you need real-time auth sync across components.
 
 **Build:** Verified with `npm run build` - passes successfully
+
+### Session 2026-06-07: Supabase Linter Security Audit + Search Path Fix
+
+**Problem:** Supabase database linter flagged multiple warnings:
+- 13 `function_search_path_mutable` warnings (functions without `SET search_path = pg_catalog`)
+- 6 `rls_policy_always_true` warnings (intentional public insert policies)
+- 3 `public_bucket_allows_listing` warnings (intentional public image buckets)
+- 4 `SECURITY DEFINER` function warnings (intentional for auth triggers)
+
+**Root Cause:** All our database functions were missing `SET search_path = pg_catalog` which is Supabase's recommended best practice to prevent schema poisoning attacks.
+
+**Analysis of Warnings:**
+
+| Warning Type | Count | Risk | Action |
+|--------------|-------|------|--------|
+| function_search_path_mutable | 13 | Low | Fix - add search_path |
+| rls_policy_always_true | 6 | None | Intentional - public insert tables |
+| public_bucket_allows_listing | 3 | None | Intentional - public image buckets |
+| anon_security_definer_function_executable | 2 | None | Intentional - get_store_settings, sync_profile_email |
+| authenticated_security_definer_function_executable | 2 | None | Intentional - same functions |
+
+**RLS Policies That Are Correct (No Action):**
+- `coming_soon_emails` - Public newsletter signup
+- `contact_submissions` - Public contact form
+- `email_templates` - Admin template management (uses API routes, not direct)
+
+**Public Buckets That Are Correct (No Action):**
+- `article-images` - Article hero/featured images
+- `page-builder` - Template editor images (needed for media library)
+- `store-items` - Zero dollar store product images
+
+**Functions Updated (Migration 076):**
+```sql
+-- All functions now include SET search_path = pg_catalog
+touch_updated_at
+get_store_settings
+publish_page
+revert_page
+update_shopify_mappings_updated_at_column
+auto_close_expired_grant_cycles
+unpublish_page
+sync_profile_email
+set_gift_code_if_empty
+generate_gift_code
+expire_abandoned_claims
+cleanup_monthly_claims_for_expired
+update_email_section_timestamp
+update_updated_at_column
+```
+
+**Database Migration:**
+- Created `supabase/migrations/076_fix_search_path_for_functions.sql`
+- Recreates all trigger functions with `SET search_path = pg_catalog`
+- Runs `NOTIFY pgrst, 'reload'` to clear schema cache
+
+**Security Posture Assessment:**
+- All warnings are either intentional design or low-risk
+- No actual security vulnerabilities found
+- Functions use SECURITY DEFINER correctly where needed (accessing auth.users)
+- Public insert policies are appropriate for newsletter/contact forms
+- Public buckets are needed for serving website images
