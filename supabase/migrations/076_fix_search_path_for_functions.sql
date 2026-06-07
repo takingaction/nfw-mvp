@@ -3,11 +3,14 @@
 -- Date: 2026-06-07
 
 -- ============================================
--- TRIGGER FUNCTIONS
+-- TRIGGER FUNCTIONS (drop triggers first, then functions)
 -- ============================================
 
--- touch_updated_at
-DROP TRIGGER IF EXISTS touch_updated_at ON profiles;
+-- touch_updated_at - used by multiple triggers
+DROP TRIGGER IF EXISTS pages_updated_at ON pages;
+DROP TRIGGER IF EXISTS sections_updated_at ON page_sections;
+DROP TRIGGER IF EXISTS header_updated_at ON site_header;
+DROP TRIGGER IF EXISTS footer_updated_at ON site_footer;
 DROP FUNCTION IF EXISTS touch_updated_at();
 
 CREATE OR REPLACE FUNCTION touch_updated_at()
@@ -21,10 +24,10 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER touch_updated_at
-  BEFORE UPDATE ON profiles
-  FOR EACH ROW
-  EXECUTE FUNCTION touch_updated_at();
+CREATE TRIGGER pages_updated_at BEFORE UPDATE ON pages FOR EACH ROW EXECUTE FUNCTION touch_updated_at();
+CREATE TRIGGER sections_updated_at BEFORE UPDATE ON page_sections FOR EACH ROW EXECUTE FUNCTION touch_updated_at();
+CREATE TRIGGER header_updated_at BEFORE UPDATE ON site_header FOR EACH ROW EXECUTE FUNCTION touch_updated_at();
+CREATE TRIGGER footer_updated_at BEFORE UPDATE ON site_footer FOR EACH ROW EXECUTE FUNCTION touch_updated_at();
 
 
 -- update_shopify_mappings_updated_at_column
