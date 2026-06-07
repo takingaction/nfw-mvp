@@ -52,7 +52,7 @@ CREATE TRIGGER update_shopify_mappings_updated_at_column
 
 
 -- update_email_section_timestamp
-DROP TRIGGER IF EXISTS update_email_section_timestamp ON email_sections;
+DROP TRIGGER IF EXISTS email_sections_updated_at ON email_sections;
 DROP FUNCTION IF EXISTS update_email_section_timestamp();
 
 CREATE OR REPLACE FUNCTION update_email_section_timestamp()
