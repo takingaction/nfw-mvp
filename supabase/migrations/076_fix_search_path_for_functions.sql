@@ -31,7 +31,7 @@ CREATE TRIGGER footer_updated_at BEFORE UPDATE ON site_footer FOR EACH ROW EXECU
 
 
 -- update_shopify_mappings_updated_at_column
-DROP TRIGGER IF EXISTS update_shopify_mappings_updated_at_column ON shopify_product_mappings;
+DROP TRIGGER IF EXISTS update_shopify_product_mappings_updated_at ON shopify_product_mappings;
 DROP FUNCTION IF EXISTS update_shopify_mappings_updated_at_column();
 
 CREATE OR REPLACE FUNCTION update_shopify_mappings_updated_at_column()
