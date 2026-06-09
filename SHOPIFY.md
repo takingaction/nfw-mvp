@@ -156,3 +156,87 @@ If `shopify_product_mappings` ever contains sensitive data (e.g., pricing, inven
 ### Database
 - `supabase/migrations/002_zero_dollar_shopify.sql` - Table schema
 - `supabase/migrations/023_revert_shopify_table_to_public.sql` - Current state
+
+## Theme Redirect Configuration
+
+### Purpose
+
+The Shopify store (`nfw-checkout.myshopify.com`) is configured to redirect visitors to the NFW website (`nationalfundforwomen.org/store`) to prevent direct access to the Shopify store while allowing the Zero Dollar Store functionality through the NFW app.
+
+### Implementation Location
+
+**Shopify Admin → Online Store → Themes → Edit Code → theme.liquid**
+
+The redirect is implemented as an inline JavaScript snippet in the `<head>` section:
+
+```javascript
+(function() {
+  var path = window.location.pathname;
+
+  var allowedPaths = [
+    '/cart',
+    '/checkout',
+    '/checkouts',   // important for checkout steps
+    '/orders',      // order status page
+    '/account',     // optional (remove if not using accounts)
+    '/apps'         // needed for some payment/app flows
+  ];
+
+  var isAllowed = allowedPaths.some(function(p) {
+    return path.startsWith(p);
+  });
+
+  if (!isAllowed) {
+    window.location.replace("https://www.nationalfundforwomen.org/store");
+  }
+})();
+```
+
+### Allowed Paths
+
+The following paths are excluded from redirect (Shopify keeps them native):
+
+| Path | Purpose |
+|------|---------|
+| `/cart` | Shopping cart |
+| `/checkout` | Checkout flow |
+| `/checkouts` | Multi-step checkout |
+| `/orders` | Order status page |
+| `/account` | Customer accounts |
+| `/apps` | Payment apps and flows |
+
+### Adding Download Paths for Digital Delivery Apps
+
+Digital download apps (like "Digital Downloads" by StarApps) generate links like:
+```
+https://nfw-checkout.myshopify.com/a/downloads/-/c9328417738d40d0/6c518d1232ae21d0
+```
+
+To allow these links to work without redirecting to NFW, add `/a/downloads` to the `allowedPaths` array:
+
+```javascript
+var allowedPaths = [
+  '/cart',
+  '/checkout',
+  '/checkouts',
+  '/orders',
+  '/account',
+  '/apps',
+  '/a/downloads'    // allow digital download links
+];
+```
+
+### Modifying the Redirect
+
+1. Go to **Shopify Admin** → **Online Store** → **Themes**
+2. Click **Actions** → **Edit code**
+3. Find `theme.liquid` in the Layout folder
+4. Locate the redirect script in the `<head>` section
+5. Add or remove paths from the `allowedPaths` array as needed
+6. Save the changes
+
+### Notes
+
+- The redirect uses `window.location.replace()` which replaces the current history entry
+- Changes to theme code apply immediately (no deploy needed)
+- If the theme is updated/replaced, the redirect code must be re-added
