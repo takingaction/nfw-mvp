@@ -237,14 +237,14 @@ export default function StoreClient({
                     )}
                     {!product.availableForSale && (
                       <div className="absolute top-3 left-3">
-                        <span className="bg-nfw-wisteria text-white px-3 py-1.5 font-ui text-xs font-black tracking-[0.06em] uppercase">
+                        <span className="bg-nfw-aubergine text-white px-3 py-1.5 font-ui text-xs font-black tracking-[0.06em] uppercase">
                           Out of Stock
                         </span>
                       </div>
                     )}
                     {product.status === "DRAFT" && (
                       <div className="absolute top-3 left-3">
-                        <span className="bg-nfw-wisteria text-white px-3 py-1.5 font-ui text-xs font-black tracking-[0.06em] uppercase">
+                        <span className="bg-nfw-lilac text-white px-3 py-1.5 font-ui text-xs font-black tracking-[0.06em] uppercase">
                           Dropping Soon
                         </span>
                       </div>

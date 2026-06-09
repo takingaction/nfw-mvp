@@ -188,12 +188,12 @@ export default function ProductDetailPanel({
                     {product?.title}
                   </h3>
                   {product?.status === "DRAFT" && (
-                    <span className="bg-nfw-wisteria text-white px-2 py-1 font-ui text-xs font-black tracking-[0.06em] uppercase shrink-0">
+                    <span className="bg-nfw-lilac text-white px-2 py-1 font-ui text-xs font-black tracking-[0.06em] uppercase shrink-0">
                       Dropping Soon
                     </span>
                   )}
                   {!product?.availableForSale && product?.status !== "DRAFT" && (
-                    <span className="bg-nfw-wisteria text-white px-2 py-1 font-ui text-xs font-black tracking-[0.06em] uppercase shrink-0">
+                    <span className="bg-nfw-aubergine text-white px-2 py-1 font-ui text-xs font-black tracking-[0.06em] uppercase shrink-0">
                       Out of Stock
                     </span>
                   )}
