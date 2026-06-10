@@ -35,7 +35,6 @@ export default function RecentRedemptions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [openingId, setOpeningId] = useState<string | null>(null);
   const [showExpiredModal, setShowExpiredModal] = useState(false);
 
   useEffect(() => {
@@ -72,30 +71,13 @@ export default function RecentRedemptions() {
     }
   };
 
-  const handleOpenFreshUrl = async (redemptionId: string, storedUrl: string | null) => {
-    try {
-      const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
-      const data = await response.json();
-
-      if (!data.url) {
-        setShowExpiredModal(true);
-        return;
-      }
-
-      try {
-        const urlResponse = await fetch(data.url, { signal: AbortSignal.timeout(10000) });
-        const urlText = await urlResponse.text();
-
-        if (urlText.includes("<Code>AccessDenied</Code>")) {
-          setShowExpiredModal(true);
-        } else {
-          window.open(data.url, "_blank");
-        }
-      } catch {
-        window.open(data.url, "_blank");
-      }
-    } catch {
+  const handleOpenFreshUrl = (redemption: any) => {
+    if (isExpired(redemption.expires_at)) {
       setShowExpiredModal(true);
+      return;
+    }
+    if (redemption.redemption_url) {
+      window.open(redemption.redemption_url, "_blank");
     }
   };
 
@@ -340,21 +322,11 @@ export default function RecentRedemptions() {
                     {/* Redemption URL */}
                     {redemption.redemption_url && (
                       <button
-                        onClick={() => handleOpenFreshUrl(redemption.id, redemption.redemption_url)}
-                        disabled={openingId === redemption.id}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-lilac/20 text-nfw-blackberry hover:bg-nfw-lilac/30 transition-colors text-xs font-medium disabled:opacity-50"
+                        onClick={() => handleOpenFreshUrl(redemption)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-lilac/20 text-nfw-blackberry hover:bg-nfw-lilac/30 transition-colors text-xs font-medium"
                       >
-                        {openingId === redemption.id ? (
-                          <>
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            Loading...
-                          </>
-                        ) : (
-                          <>
-                            <ExternalLink className="w-3 h-3" />
-                            Open Offer
-                          </>
-                        )}
+                        <ExternalLink className="w-3 h-3" />
+                        Open Offer
                       </button>
                     )}
 

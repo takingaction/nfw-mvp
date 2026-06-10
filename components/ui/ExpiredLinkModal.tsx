@@ -54,11 +54,10 @@ export default function ExpiredLinkModal({
         </div>
         <div className="px-6 pb-6">
           <h3 className="text-xl font-bold text-nfw-aubergine mb-3">
-            Link Expired
+            Offer Expired
           </h3>
           <p className="text-nfw-blackberry/70 mb-6">
-            If the offer is still valid, simply click the <strong>Details</strong> button 
-            and redeem the offer again to generate a new link.
+            Try clicking the <strong>Details</strong> button to see if a new version of the offer is available for redemption.
           </p>
           <button
             onClick={onClose}
