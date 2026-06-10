@@ -156,10 +156,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Get all profiles with all columns using *
+  // Select only the columns we need, explicitly named
+  const selectColumns = CSV_COLUMNS.join(",");
+
   const { data: profiles, error } = await supabaseAdmin
     .from("profiles")
-    .select("*")
+    .select(selectColumns)
     .order("joined_at", { ascending: false });
 
   if (error) {
@@ -167,25 +169,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch members", details: error.message }, { status: 500 });
   }
 
-  // Get actual columns from the first profile
-  const firstProfile = profiles && profiles.length > 0 ? profiles[0] : null;
-  const actualColumns = firstProfile ? Object.keys(firstProfile) : [];
-  console.log("Available profile columns:", actualColumns);
-
-  // Only include columns that exist in the database
-  const validColumns = CSV_COLUMNS.filter(col => actualColumns.includes(col));
-  const missingColumns = CSV_COLUMNS.filter(col => !actualColumns.includes(col));
-
-  if (missingColumns.length > 0) {
-    console.log("Columns not in DB (will be skipped):", missingColumns);
-  }
-
+  // Use CSV_COLUMNS as our canonical column list
+  const validColumns = [...CSV_COLUMNS];
   const headers = validColumns.map((col) => COLUMN_LABELS[col] || col);
 
-  // Debug: log first profile raw values
+  // Debug: log first profile raw values and keys
   if (profiles && profiles.length > 0) {
     const first = profiles[0] as Record<string, unknown>;
-    console.log("First profile sample - id:", first.id, "email:", first.email, "identities:", first.identities);
+    console.log("First profile keys:", Object.keys(first));
+    console.log("First profile sample - id:", first.id, "email:", first.email);
+    console.log("First profile - identities:", first.identities, "type:", typeof first.identities);
+    console.log("First profile - social_handles:", first.social_handles, "type:", typeof first.social_handles);
+    console.log("First profile - stripe_connect_account_id:", first.stripe_connect_account_id);
   }
 
   const rows = profiles?.map((profile: unknown) => {
