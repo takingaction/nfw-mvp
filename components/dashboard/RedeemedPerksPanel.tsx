@@ -92,6 +92,7 @@ export default function RedeemedPerksPanel({
   };
 
   const handleOpenFreshUrl = async (redemptionId: string, storedUrl: string | null) => {
+    alert("RedeemedPerksPanel handleOpenFreshUrl called! id: " + redemptionId);
     // Static URLs don't expire - open directly
     if (storedUrl && (storedUrl.includes('static-stage.accessdevelopment.com') || storedUrl.includes('static.accessdevelopment.com'))) {
       window.open(storedUrl, "_blank");
@@ -104,7 +105,10 @@ export default function RedeemedPerksPanel({
       const data = await response.json();
       setOpeningId(null);
 
+      console.log("Fresh URL API response:", response.status, data);
+
       if (response.ok && data.url) {
+        console.log("Opening URL:", data.url);
         window.open(data.url, "_blank");
       } else {
         window.alert("This link has expired. Please go to Details to redeem again and get a new link.");

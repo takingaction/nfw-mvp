@@ -147,6 +147,7 @@ export default function RedemptionHistoryPage() {
   };
 
   const handleOpenFreshUrl = async (redemptionId: string, storedUrl: string | null) => {
+    alert("handleOpenFreshUrl called! redemptionId: " + redemptionId);
     // Static URLs don't expire - open directly
     if (storedUrl && (storedUrl.includes('static-stage.accessdevelopment.com') || storedUrl.includes('static.accessdevelopment.com'))) {
       window.open(storedUrl, "_blank");
