@@ -88,32 +88,33 @@ export default function RedeemedPerksPanel({
     }
   };
 
-  const handleOpenFreshUrl = async (redemptionId: string, currentUrl: string | null) => {
-    console.log("[handleOpenFreshUrl] called with:", { redemptionId, currentUrl });
-
-    // If URL is from static.accessdevelopment.com (staging or production), it's a static HTML page that doesn't expire
-    if (currentUrl && (currentUrl.includes('static-stage.accessdevelopment.com') || currentUrl.includes('static.accessdevelopment.com'))) {
-      console.log("[handleOpenFreshUrl] Opening static URL directly:", currentUrl);
-      window.open(currentUrl, "_blank");
+  const handleOpenFreshUrl = async (redemptionId: string, storedUrl: string | null) => {
+    // If stored URL is from static.accessdevelopment.com (coupon page), it doesn't expire - open directly
+    if (storedUrl && (storedUrl.includes('static-stage.accessdevelopment.com') || storedUrl.includes('static.accessdevelopment.com'))) {
+      window.open(storedUrl, "_blank");
       return;
     }
 
-    console.log("[handleOpenFreshUrl] Not a static URL, calling fresh-url API");
-
-    // For other URLs (likely S3 signed URLs), fetch a fresh URL
+    // For other URLs (S3 signed URLs that can expire), try fresh-url API first
     setOpeningId(redemptionId);
     try {
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
       const data = await response.json();
-      console.log("[handleOpenFreshUrl] fresh-url API response:", data);
       if (data.url) {
         window.open(data.url, "_blank");
+      } else if (storedUrl) {
+        // Fallback to stored URL if API fails
+        window.open(storedUrl, "_blank");
       } else {
         alert("Link expired or offer no longer available");
       }
-    } catch (err) {
-      console.error("[handleOpenFreshUrl] Error:", err);
-      alert("Link expired or offer no longer available");
+    } catch {
+      // Fallback to stored URL if API fails completely
+      if (storedUrl) {
+        window.open(storedUrl, "_blank");
+      } else {
+        alert("Link expired or offer no longer available");
+      }
     } finally {
       setOpeningId(null);
     }
