@@ -153,19 +153,13 @@ export default function RedemptionHistoryPage() {
       return;
     }
 
-    try {
-      const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
-      const data = await response.json();
+    const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
+    const data = await response.json();
 
-      if (!response.ok || data.error) {
-        window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
-      } else if (data.url) {
-        window.open(data.url, "_blank");
-      } else {
-        window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
-      }
-    } catch {
-      window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
+    if (!response.ok || data.error || !data.url) {
+      setShowExpiredModal(true);
+    } else {
+      window.open(data.url, "_blank");
     }
   };
 
@@ -625,6 +619,12 @@ export default function RedemptionHistoryPage() {
           </>
         )}
       </div>
+      <button
+        onClick={() => setShowExpiredModal(true)}
+        className="fixed bottom-4 right-4 px-4 py-2 bg-red-500 text-white text-sm z-50"
+      >
+        TEST MODAL
+      </button>
       <ExpiredLinkModal
         isOpen={showExpiredModal}
         onClose={() => setShowExpiredModal(false)}
