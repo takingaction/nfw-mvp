@@ -315,20 +315,10 @@ export default function RedeemedPerksPanel({
                           {redemption.redemption_url && (
                             <button
                               onClick={() => handleOpenFreshUrl(redemption.id, redemption.redemption_url)}
-                              disabled={openingId === redemption.id}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-lilac/20 text-nfw-blackberry hover:bg-nfw-lilac/30 transition-colors text-xs font-medium disabled:opacity-50"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-lilac/20 text-nfw-blackberry hover:bg-nfw-lilac/30 transition-colors text-xs font-medium"
                             >
-                              {openingId === redemption.id ? (
-                                <>
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                  Loading...
-                                </>
-                              ) : (
-                                <>
-                                  <ExternalLink className="w-3 h-3" />
-                                  Open
-                                </>
-                              )}
+                              <ExternalLink className="w-3 h-3" />
+                              Open
                             </button>
                           )}
                           <Link
