@@ -101,7 +101,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     let offerDetails: {
       title?: string;
       offer_value?: string | number;
-      offer_store?: { name?: string };
+      offer_store?: { name?: string; logo_url?: string };
       physical_location?: { location_name?: string; city_locality?: string };
       expires_on?: string;
     } = {};
@@ -173,6 +173,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       redeem_type: method,
       offer_title: offerDetails.title || "Unknown Offer",
       store_name: offerDetails.offer_store?.name || null,
+      store_logo_url: offerDetails.offer_store?.logo_url || null,
       location_name:
         offerDetails.physical_location?.location_name ||
         offerDetails.physical_location?.city_locality ||

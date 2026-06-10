@@ -18,12 +18,14 @@ import {
   ArchiveRestore,
 } from "lucide-react";
 import Link from "next/link";
+import ExpiredLinkModal from "@/components/ui/ExpiredLinkModal";
 
 interface Redemption {
   id: string;
   offer_key: string;
   offer_title: string;
   store_name: string | null;
+  store_logo_url: string | null;
   location_name: string | null;
   redeem_type: string;
   coupon_code: string | null;
@@ -48,6 +50,7 @@ export default function RedemptionHistoryPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [showExpiredModal, setShowExpiredModal] = useState(false);
 
   useEffect(() => {
     fetchRedemptions();
@@ -160,17 +163,28 @@ export default function RedemptionHistoryPage() {
       } else if (storedUrl) {
         window.open(storedUrl, "_blank");
       } else {
-        alert("Link expired or offer no longer available");
+        setShowExpiredModal(true);
       }
     } catch {
       if (storedUrl) {
         window.open(storedUrl, "_blank");
       } else {
-        alert("Link expired or offer no longer available");
+        setShowExpiredModal(true);
       }
     } finally {
       setOpeningId(null);
     }
+  };
+
+  const isExpired = (expiresAt: string | null) => {
+    if (!expiresAt) return false;
+    return new Date(expiresAt) < new Date();
+  };
+
+  const formatExpiryDate = (expiresAt: string | null) => {
+    if (!expiresAt) return null;
+    const date = new Date(expiresAt);
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
   const formatDate = (dateString: string) => {
@@ -372,9 +386,17 @@ export default function RedemptionHistoryPage() {
                 >
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-nfw-dove border border-nfw-blackberry/10 flex items-center justify-center">
-                        <Gift className="w-6 h-6 text-nfw-blackberry" />
-                      </div>
+                      {redemption.store_logo_url ? (
+                        <img
+                          src={redemption.store_logo_url}
+                          alt={redemption.store_name || "Store logo"}
+                          className="w-12 h-12 rounded-lg object-contain bg-white border border-nfw-blackberry/10"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-nfw-dove border border-nfw-blackberry/10 flex items-center justify-center">
+                          <Gift className="w-6 h-6 text-nfw-blackberry" />
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -413,8 +435,10 @@ export default function RedemptionHistoryPage() {
                           Redeemed {formatDate(redemption.redeemed_at)}
                         </span>
                         {redemption.expires_at && (
-                          <span className="text-xs text-nfw-blackberry/40">
-                            • Expires {formatDate(redemption.expires_at)}
+                          <span className={`text-xs font-medium ${
+                            isExpired(redemption.expires_at) ? "text-red-600" : "text-nfw-blackberry/40"
+                          }`}>
+                            {isExpired(redemption.expires_at) ? "• Expired" : `• Expires ${formatExpiryDate(redemption.expires_at)}`}
                           </span>
                         )}
                       </div>
@@ -598,6 +622,10 @@ export default function RedemptionHistoryPage() {
           </>
         )}
       </div>
+      <ExpiredLinkModal
+        isOpen={showExpiredModal}
+        onClose={() => setShowExpiredModal(false)}
+      />
     </div>
   );
 }

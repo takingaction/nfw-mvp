@@ -11,12 +11,14 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import ExpiredLinkModal from "@/components/ui/ExpiredLinkModal";
 
 interface Redemption {
   id: string;
   offer_key: string;
   offer_title: string;
   store_name: string | null;
+  store_logo_url: string | null;
   redeem_type: string;
   coupon_code: string | null;
   phone_number: string | null;
@@ -43,6 +45,7 @@ export default function RedeemedPerksPanel({
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [showExpiredModal, setShowExpiredModal] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -103,21 +106,30 @@ export default function RedeemedPerksPanel({
       if (data.url) {
         window.open(data.url, "_blank");
       } else if (storedUrl) {
-        // Fallback to stored URL if API fails
         window.open(storedUrl, "_blank");
       } else {
-        alert("Link expired or offer no longer available");
+        setShowExpiredModal(true);
       }
     } catch {
-      // Fallback to stored URL if API fails completely
       if (storedUrl) {
         window.open(storedUrl, "_blank");
       } else {
-        alert("Link expired or offer no longer available");
+        setShowExpiredModal(true);
       }
     } finally {
       setOpeningId(null);
     }
+  };
+
+  const isExpired = (expiresAt: string | null) => {
+    if (!expiresAt) return false;
+    return new Date(expiresAt) < new Date();
+  };
+
+  const formatExpiryDate = (expiresAt: string | null) => {
+    if (!expiresAt) return null;
+    const date = new Date(expiresAt);
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
   const formatDate = (dateString: string) => {
@@ -239,9 +251,17 @@ export default function RedeemedPerksPanel({
                 {redemptions.map((redemption) => (
                   <div key={redemption.id} className="p-4">
                     <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 bg-nfw-dove border border-nfw-blackberry/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Gift className="w-5 h-5 text-nfw-blackberry" />
-                      </div>
+                      {redemption.store_logo_url ? (
+                        <img
+                          src={redemption.store_logo_url}
+                          alt={redemption.store_name || "Store logo"}
+                          className="w-12 h-12 rounded-lg object-contain bg-white border border-nfw-blackberry/10"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-nfw-dove border border-nfw-blackberry/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Gift className="w-5 h-5 text-nfw-blackberry" />
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         {redemption.store_name && (
                           <p
@@ -268,6 +288,13 @@ export default function RedeemedPerksPanel({
                           <span className="text-xs text-nfw-blackberry/40">
                             {formatDate(redemption.redeemed_at)}
                           </span>
+                          {redemption.expires_at && (
+                            <span className={`text-xs font-medium ${
+                              isExpired(redemption.expires_at) ? "text-red-600" : "text-nfw-blackberry/60"
+                            }`}>
+                              {isExpired(redemption.expires_at) ? "Expired" : `Expires ${formatExpiryDate(redemption.expires_at)}`}
+                            </span>
+                          )}
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {redemption.coupon_code && (
@@ -349,6 +376,10 @@ export default function RedeemedPerksPanel({
           )}
         </div>
       </div>
+      <ExpiredLinkModal
+        isOpen={showExpiredModal}
+        onClose={() => setShowExpiredModal(false)}
+      />
     </>
   );
 }

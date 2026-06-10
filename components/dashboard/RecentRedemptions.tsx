@@ -12,12 +12,14 @@ import {
   AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
+import ExpiredLinkModal from "@/components/ui/ExpiredLinkModal";
 
 interface Redemption {
   id: string;
   offer_key: string;
   offer_title: string;
   store_name: string | null;
+  store_logo_url: string | null;
   redeem_type: string;
   coupon_code: string | null;
   phone_number: string | null;
@@ -34,6 +36,7 @@ export default function RecentRedemptions() {
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [showExpiredModal, setShowExpiredModal] = useState(false);
 
   useEffect(() => {
     fetchRedemptions();
@@ -86,17 +89,28 @@ export default function RecentRedemptions() {
       } else if (storedUrl) {
         window.open(storedUrl, "_blank");
       } else {
-        alert("Link expired or offer no longer available");
+        setShowExpiredModal(true);
       }
     } catch {
       if (storedUrl) {
         window.open(storedUrl, "_blank");
       } else {
-        alert("Link expired or offer no longer available");
+        setShowExpiredModal(true);
       }
     } finally {
       setOpeningId(null);
     }
+  };
+
+  const isExpired = (expiresAt: string | null) => {
+    if (!expiresAt) return false;
+    return new Date(expiresAt) < new Date();
+  };
+
+  const formatExpiryDate = (expiresAt: string | null) => {
+    if (!expiresAt) return null;
+    const date = new Date(expiresAt);
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
   const formatDate = (dateString: string) => {
@@ -244,9 +258,17 @@ export default function RecentRedemptions() {
               <div className="flex items-start gap-3">
                 {/* Icon */}
                 <div className="flex-shrink-0 mt-1">
-                  <div className="w-10 h-10 bg-nfw-dove border border-nfw-blackberry/10 flex items-center justify-center">
-                    <Gift className="w-5 h-5 text-nfw-blackberry" />
-                  </div>
+                  {redemption.store_logo_url ? (
+                    <img
+                      src={redemption.store_logo_url}
+                      alt={redemption.store_name || "Store logo"}
+                      className="w-10 h-10 rounded-lg object-contain bg-white border border-nfw-blackberry/10"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 bg-nfw-dove border border-nfw-blackberry/10 flex items-center justify-center">
+                      <Gift className="w-5 h-5 text-nfw-blackberry" />
+                    </div>
+                  )}
                 </div>
 
                 {/* Content */}
@@ -265,7 +287,7 @@ export default function RecentRedemptions() {
                     />
                   </div>
 
-                  {/* Type & Date */}
+                  {/* Type & Date & Expiry */}
                   <div className="flex items-center gap-2 mb-3">
                     <span
                       className={`text-xs px-2 py-0.5 font-medium ${getRedemptionTypeColor(redemption.redeem_type)}`}
@@ -275,6 +297,13 @@ export default function RecentRedemptions() {
                     <span className="text-xs text-nfw-blackberry/40">
                       {formatDate(redemption.redeemed_at)}
                     </span>
+                    {redemption.expires_at && (
+                      <span className={`text-xs font-medium ${
+                        isExpired(redemption.expires_at) ? "text-red-600" : "text-nfw-blackberry/60"
+                      }`}>
+                        {isExpired(redemption.expires_at) ? "Expired" : `Expires ${formatExpiryDate(redemption.expires_at)}`}
+                      </span>
+                    )}
                   </div>
 
                   {/* Action Buttons */}
@@ -350,6 +379,10 @@ export default function RecentRedemptions() {
           ))
         )}
       </div>
+      <ExpiredLinkModal
+        isOpen={showExpiredModal}
+        onClose={() => setShowExpiredModal(false)}
+      />
     </div>
   );
 }
