@@ -18,6 +18,12 @@ export default function ClaimItemModal({
     variantId: string;
     name: string;
     variants?: Variant[];
+    fullVariants?: Array<{
+      id: string;
+      title: string;
+      availableForSale: boolean;
+      options: Array<{ name: string; value: string }>;
+    }>;
   };
   userId: string;
   onClose: () => void;
@@ -53,12 +59,25 @@ export default function ClaimItemModal({
     setClaiming(true);
     setError(null);
 
+    // Resolve selected options to the actual Shopify variant ID
+    let resolvedVariantId = item.variantId;
+    if (item.fullVariants && Object.keys(selectedVariants).length > 0) {
+      const matchingVariant = item.fullVariants.find((variant) => {
+        return variant.options.every(
+          (opt) => selectedVariants[opt.name] === opt.value
+        );
+      });
+      if (matchingVariant) {
+        resolvedVariantId = matchingVariant.id;
+      }
+    }
+
     try {
       const res = await fetch("/api/shopify/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          variantId: item.variantId,
+          variantId: resolvedVariantId,
           productId: item.productId,
           userId,
         }),

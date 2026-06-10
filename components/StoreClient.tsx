@@ -43,6 +43,12 @@ export default function StoreClient({
     variantId: string;
     name: string;
     variants: Array<{ name: string; options: string[] }> | undefined;
+    fullVariants: Array<{
+      id: string;
+      title: string;
+      availableForSale: boolean;
+      options: Array<{ name: string; value: string }>;
+    }>;
   } | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [monthlyClaimed, setMonthlyClaimed] = useState(false);
@@ -128,6 +134,8 @@ export default function StoreClient({
       variantId: item.shopifyVariantId,
       name: item.title,
       variants: variants.length > 0 ? variants : undefined,
+      // Pass full variant info for resolving selected options to actual variant ID
+      fullVariants: item.variants,
     });
   };
 

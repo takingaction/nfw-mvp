@@ -77,13 +77,31 @@ export async function POST(request: Request) {
           return NextResponse.json({ received: true, reason: "Checkout URL expired" });
         }
 
-        const { data: existingClaims } = await supabaseAdmin
+        // First try to find claim by variant_id (correct path)
+        let { data: existingClaims } = await supabaseAdmin
           .from("zero_dollar_claims")
           .select("*")
           .eq("shopify_variant_id", variantId)
           .eq("status", "created")
           .order("claimed_at", { ascending: true })
           .limit(1);
+
+        // If no claim found by variant_id, try by user_id + product_id (handles case where wrong variant was recorded)
+        if ((!existingClaims || existingClaims.length === 0) && nfwUserId) {
+          const productId = `gid://shopify/Product/${lineItems[0].product_id}`;
+          const { data: claimsByUser } = await supabaseAdmin
+            .from("zero_dollar_claims")
+            .select("*")
+            .eq("user_id", nfwUserId)
+            .eq("shopify_product_id", productId)
+            .eq("status", "created")
+            .order("claimed_at", { ascending: true })
+            .limit(1);
+          
+          if (claimsByUser && claimsByUser.length > 0) {
+            existingClaims = claimsByUser;
+          }
+        }
 
         if (existingClaims && existingClaims.length > 0) {
           const claim = existingClaims[0];
