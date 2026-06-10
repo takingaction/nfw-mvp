@@ -177,8 +177,6 @@ export async function POST(request: Request) {
 
     if (topic === "orders/updated") {
       const order = event;
-      const orderId = `gid://shopify/Order/${order.id}`;
-
       const cancelReason = order.cancel_reason;
 
       // Only process if order was cancelled
@@ -197,7 +195,7 @@ export async function POST(request: Request) {
             1
           ).toISOString().split("T")[0];
 
-          // Delete monthly_claims record for this user/month
+          // 1. Delete monthly_claims record
           const { error: deleteMonthlyError } = await supabaseAdmin
             .from("monthly_claims")
             .delete()
@@ -208,25 +206,21 @@ export async function POST(request: Request) {
             console.error("Failed to delete monthly claim on cancellation:", deleteMonthlyError);
           }
 
-          // Update zero_dollar_claims status to "cancelled"
-          // Try by shopify_order_id first (if order was completed before cancellation)
-          await supabaseAdmin
+          // 2. Find and cancel user's claim for this month (match by user_id + same month)
+          const monthStart = `${claimMonth}T00:00:00`;
+          const { error: updateClaimError } = await supabaseAdmin
             .from("zero_dollar_claims")
             .update({ status: "cancelled" })
             .eq("user_id", nfwUserId)
-            .eq("shopify_order_id", orderId);
+            .in("status", ["created", "completed"])
+            .gte("claimed_at", monthStart);
 
-          // Also try by user_id with recent created claims (handles cancelled before checkout completed)
-          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-          await supabaseAdmin
-            .from("zero_dollar_claims")
-            .update({ status: "cancelled" })
-            .eq("user_id", nfwUserId)
-            .eq("status", "created")
-            .gte("claimed_at", oneHourAgo);
+          if (updateClaimError) {
+            console.error("Failed to cancel claim on order cancellation:", updateClaimError);
+          }
 
           console.log(
-            `Order ${orderId} cancelled. User ${nfwUserId} monthly limit reset for ${claimMonth}. Reason: ${cancelReason}`
+            `Order cancelled. User ${nfwUserId} monthly limit reset for ${claimMonth}. Reason: ${cancelReason}`
           );
         }
       }
