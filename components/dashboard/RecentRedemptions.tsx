@@ -72,15 +72,6 @@ export default function RecentRedemptions() {
     }
   };
 
-  const validateUrl = async (url: string): Promise<boolean> => {
-    try {
-      const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
-      return response.ok;
-    } catch {
-      return false;
-    }
-  };
-
   const handleOpenFreshUrl = async (redemptionId: string, storedUrl: string | null) => {
     // Static URLs don't expire - open directly
     if (storedUrl && (storedUrl.includes('static-stage.accessdevelopment.com') || storedUrl.includes('static.accessdevelopment.com'))) {
@@ -88,19 +79,30 @@ export default function RecentRedemptions() {
       return;
     }
 
-    const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
-    const data = await response.json();
+    try {
+      const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
+      const data = await response.json();
+      
+      if (!data.url) {
+        setShowExpiredModal(true);
+        return;
+      }
 
-    if (!data.url) {
-      setShowExpiredModal(true);
-      return;
-    }
+      // Try HEAD request to check if URL is valid
+      let urlValid = false;
+      try {
+        const headResponse = await fetch(data.url, { method: 'HEAD' });
+        urlValid = headResponse.ok;
+      } catch (headErr) {
+        urlValid = false;
+      }
 
-    // Validate URL before opening
-    const isValid = await validateUrl(data.url);
-    if (isValid) {
-      window.open(data.url, "_blank");
-    } else {
+      if (urlValid) {
+        window.open(data.url, "_blank");
+      } else {
+        setShowExpiredModal(true);
+      }
+    } catch (e) {
       setShowExpiredModal(true);
     }
   };
