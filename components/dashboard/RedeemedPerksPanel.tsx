@@ -98,13 +98,26 @@ export default function RedeemedPerksPanel({
       return;
     }
 
-    const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
-    const data = await response.json();
+    try {
+      const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
+      const data = await response.json();
 
-    if (!response.ok || data.error || !data.url) {
+      if (!data.url) {
+        setShowExpiredModal(true);
+        return;
+      }
+
+      // Fetch the actual URL content and check for AccessDenied
+      const urlResponse = await fetch(data.url, { signal: AbortSignal.timeout(10000) });
+      const urlText = await urlResponse.text();
+
+      if (!urlResponse.ok || urlText.includes("<Code>AccessDenied</Code>")) {
+        setShowExpiredModal(true);
+      } else {
+        window.open(data.url, "_blank");
+      }
+    } catch {
       setShowExpiredModal(true);
-    } else {
-      window.open(data.url, "_blank");
     }
   };
 
@@ -340,15 +353,15 @@ export default function RedeemedPerksPanel({
 
           {/* Footer */}
           {redemptions.length > 0 && (
-<div className="p-4 border-t border-nfw-blackberry/10">
-            <Link
-              href="/perks"
-              onClick={onClose}
-              className="block w-full text-center px-6 py-3 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 font-medium transition-colors"
-            >
-              Browse More Perks
-            </Link>
-          </div>
+            <div className="p-4 border-t border-nfw-blackberry/10">
+              <Link
+                href="/perks/history"
+                onClick={onClose}
+                className="block w-full text-center px-6 py-3 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 font-medium transition-colors"
+              >
+                View All History
+              </Link>
+            </div>
           )}
         </div>
       </div>

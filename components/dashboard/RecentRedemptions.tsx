@@ -82,27 +82,22 @@ export default function RecentRedemptions() {
     try {
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
       const data = await response.json();
-      
+
       if (!data.url) {
         setShowExpiredModal(true);
         return;
       }
 
-      // Try HEAD request to check if URL is valid
-      let urlValid = false;
-      try {
-        const headResponse = await fetch(data.url, { method: 'HEAD' });
-        urlValid = headResponse.ok;
-      } catch (headErr) {
-        urlValid = false;
-      }
+      // Fetch the actual URL content and check for AccessDenied
+      const urlResponse = await fetch(data.url, { signal: AbortSignal.timeout(10000) });
+      const urlText = await urlResponse.text();
 
-      if (urlValid) {
-        window.open(data.url, "_blank");
-      } else {
+      if (!urlResponse.ok || urlText.includes("<Code>AccessDenied</Code>")) {
         setShowExpiredModal(true);
+      } else {
+        window.open(data.url, "_blank");
       }
-    } catch (e) {
+    } catch {
       setShowExpiredModal(true);
     }
   };

@@ -153,13 +153,26 @@ export default function RedemptionHistoryPage() {
       return;
     }
 
-    const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
-    const data = await response.json();
+    try {
+      const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
+      const data = await response.json();
 
-    if (!response.ok || data.error || !data.url) {
+      if (!data.url) {
+        setShowExpiredModal(true);
+        return;
+      }
+
+      // Fetch the actual URL content and check for AccessDenied
+      const urlResponse = await fetch(data.url, { signal: AbortSignal.timeout(10000) });
+      const urlText = await urlResponse.text();
+
+      if (!urlResponse.ok || urlText.includes("<Code>AccessDenied</Code>")) {
+        setShowExpiredModal(true);
+      } else {
+        window.open(data.url, "_blank");
+      }
+    } catch {
       setShowExpiredModal(true);
-    } else {
-      window.open(data.url, "_blank");
     }
   };
 
