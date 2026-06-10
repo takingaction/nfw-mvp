@@ -166,8 +166,12 @@ export default function RedemptionHistoryPage() {
       if (response.ok && data.url) {
         window.open(data.url, "_blank");
       } else {
-        console.log("[history] Showing expired modal, response.ok:", response.ok, "data.url:", data.url);
+        console.log("[history] ELSE branch hit - showing modal");
+        alert("Modal should appear now!");
         setShowExpiredModal(true);
+        setTimeout(() => {
+          console.log("[history] After setShowExpiredModal, showExpiredModal state should be true");
+        }, 100);
       }
     } catch (err) {
       setOpeningId(null);
