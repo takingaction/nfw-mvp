@@ -180,7 +180,7 @@ export function transformShopifyProduct(shopifyProduct: ShopifyProduct, mockMapp
     cardDescription: mockMapping?.cardDescription || stripHtml(fullDescription),
     imageUrl: shopifyProduct.featuredImage?.url || allImages[0] || "",
     images: allImages,
-    availableForSale: firstVariant?.availableForSale || false,
+    availableForSale: shopifyProduct.variants.edges.some(({ node }) => node.availableForSale) || false,
     variants: hasRealVariants ? shopifyProduct.variants.edges.map(({ node }) => ({
       id: node.id,
       title: node.title,
