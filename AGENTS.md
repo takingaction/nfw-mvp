@@ -3875,3 +3875,38 @@ id, email, full_name, membership_level, subscription_status, subscription_ends_a
 
 **Files Modified:**
 - `app/api/admin/members/export/route.ts` - Multiple fixes for column selection and field escaping
+
+### Session 2026-06-10: Fresh Redemption URLs for Redeemed Perks
+
+**Problem:** When users clicked "Open" on a redeemed perk in `/dashboard` slideout, they got "Access Denied" error from S3. The stored `redemption_url` was a time-limited signed URL that had expired.
+
+**Root Cause:** The `redemption_url` from Access Perks API is a signed S3 URL with expiration. We store it permanently in `offer_redemptions` table, but it becomes invalid after time.
+
+**Solution:** Re-fetch fresh URL from Access Perks when user clicks "Open", using stored `usage_redeem_key` and `redeem_type`.
+
+**Files Created:**
+- `app/api/access-perks/redemptions/[redemptionId]/fresh-url/route.ts` - API route that:
+  - Authenticates user and verifies ownership of redemption
+  - Rate limits (10/minute/IP)
+  - Uses 5-minute in-memory cache to reduce API calls
+  - Fetches fresh URL from Access Perks using stored `usage_redeem_key`
+  - Returns `{ url }` or `{ error: "Link expired or offer no longer available" }`
+
+**Files Modified (3):**
+- `components/dashboard/RedeemedPerksPanel.tsx` - "Open" button now calls fresh-url API, "Details" opens in new tab
+- `components/dashboard/RecentRedemptions.tsx` - "Open" button now calls fresh-url API, "View Details" opens in new tab
+- `app/perks/history/page.tsx` - "Open" button now calls fresh-url API, "View Offer Details" opens in new tab
+
+**Behavior:**
+1. User clicks "Open" → button shows "Loading..." spinner
+2. API fetches fresh URL (or serves from 5-min cache)
+3. Fresh URL opens in new tab
+4. If fetch fails → alert "Link expired or offer no longer available"
+
+**Cache Strategy:**
+- 5-minute TTL cache per redemptionId
+- Key: `redemptionId`
+- Estimated 80% cache hit rate (users rarely click same link multiple times)
+- Rate limit: 10 requests/minute/IP (already implemented via existing `rateLimit` function)
+
+**Commit:** `8ee31d3` - fix: re-fetch fresh redemption URLs when user clicks Open button
