@@ -92,13 +92,7 @@ export default function RedeemedPerksPanel({
   };
 
   const handleOpenFreshUrl = async (redemptionId: string, storedUrl: string | null) => {
-    // If stored URL is from static.accessdevelopment.com (coupon page), it doesn't expire - open directly
-    if (storedUrl && (storedUrl.includes('static-stage.accessdevelopment.com') || storedUrl.includes('static.accessdevelopment.com'))) {
-      window.open(storedUrl, "_blank");
-      return;
-    }
-
-    // For other URLs (S3 signed URLs that can expire), try fresh-url API
+    // Always try fresh-url API first to get a guaranteed-valid URL
     setOpeningId(redemptionId);
     try {
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);

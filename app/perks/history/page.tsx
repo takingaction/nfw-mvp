@@ -233,7 +233,18 @@ export default function RedemptionHistoryPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, expiresAt: string | null) => {
+    // Check if actually expired based on status AND expires_at
+    const isActuallyExpired = status === "active" && expiresAt && new Date(expiresAt) < new Date();
+
+    if (isActuallyExpired) {
+      return (
+        <span className="text-xs px-2 py-0.5 bg-nfw-dove text-nfw-blackberry/60 font-medium border border-nfw-blackberry/10">
+          Expired
+        </span>
+      );
+    }
+
     switch (status) {
       case "active":
         return (
@@ -245,12 +256,6 @@ export default function RedemptionHistoryPage() {
         return (
           <span className="text-xs px-2 py-0.5 bg-nfw-lilac/20 text-nfw-blackberry font-medium border border-nfw-lilac">
             Used
-          </span>
-        );
-      case "expired":
-        return (
-          <span className="text-xs px-2 py-0.5 bg-nfw-dove text-nfw-blackberry/60 font-medium border border-nfw-blackberry/10">
-            Expired
           </span>
         );
       case "archived":
@@ -421,7 +426,7 @@ export default function RedemptionHistoryPage() {
                             </p>
                           )}
                         </div>
-                        {getStatusBadge(redemption.status)}
+                        {getStatusBadge(redemption.status, redemption.expires_at)}
                       </div>
 
                       <div className="flex items-center gap-2 mb-3">
