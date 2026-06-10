@@ -3845,3 +3845,33 @@ update_updated_at_column
 - Functions use SECURITY DEFINER correctly where needed (accessing auth.users)
 - Public insert policies are appropriate for newsletter/contact forms
 - Public buckets are needed for serving website images
+
+### Session 2026-06-10: Members CSV Export Fix
+
+**Problem:** The CSV export at `/api/admin/members/export` was failing because some columns in the code didn't exist in the database. Also, multi-value fields (arrays like `identities`, JSON like `social_handles`) were causing column misalignment because the comma separator wasn't being properly escaped.
+
+**Issues Encountered:**
+1. `select("*")` returned array instead of object, causing column detection to fail
+2. Multiple columns didn't exist in the database: `occupation`, `industry`, `company_name`, `company_website`, `linkedin_url`, `twitter_handle`, `bio`, `created_at`
+3. Array fields like `identities` had commas inside the values, which broke CSV column alignment
+
+**Columns Removed (not in database):**
+- occupation
+- industry
+- company_name
+- company_website
+- linkedin_url
+- twitter_handle
+- bio
+- created_at
+
+**Final CSV Columns (24 total):**
+id, email, full_name, membership_level, subscription_status, subscription_ends_at, profile_completed, is_admin, date_of_birth, state, city, zip, phone_number, household_income, avatar_url, address_line1, address_line2, identities, social_handles, stripe_connect_account_id, access_perks_member_id, access_perks_synced_at, joined_at, updated_at
+
+**Fixes Applied:**
+1. Switched from `select("*")` to explicit column list to avoid fetching non-existent columns
+2. Changed array separator from comma to semicolon (`;`) to avoid CSV conflicts
+3. Added proper CSV escaping to `formatArray()` and `formatJson()` functions using `escapeCsvField()`
+
+**Files Modified:**
+- `app/api/admin/members/export/route.ts` - Multiple fixes for column selection and field escaping
