@@ -12,6 +12,7 @@ type StoreProduct = {
   shopifyVariantId: string;
   title: string;
   description: string;
+  cardDescription: string;
   imageUrl: string;
   images: string[];
   availableForSale: boolean;
@@ -216,7 +217,7 @@ export default function StoreClient({
             {products.map((product) => {
               const claimStatus = canClaim(product);
               const isExpanded = expandedId === product.shopifyProductId;
-              const needsExpand = product.description && product.description.length > 100;
+              const needsExpand = product.cardDescription && product.cardDescription.length > 100;
 
               return (
                 <div
@@ -256,10 +257,10 @@ export default function StoreClient({
                       {product.title}
                     </h3>
 
-                    {product.description && (
+                    {product.cardDescription && (
                       <div>
                         <p className={`font-sans text-sm text-nfw-blackberry/70 ${isExpanded || !needsExpand ? "" : "line-clamp-2"}`}>
-                          {product.description}
+                          {product.cardDescription}
                         </p>
                         {needsExpand && (
                           <button

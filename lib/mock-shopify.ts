@@ -5,6 +5,7 @@ export type MockProduct = {
   shopifyVariantId: string;
   title: string;
   description: string;
+  cardDescription: string;
   imageUrl: string;
   images: string[];
   availableForSale: boolean;
@@ -159,18 +160,24 @@ export const MOCK_PRODUCTS: MockProduct[] = [
 export function transformShopifyProduct(shopifyProduct: ShopifyProduct, mockMapping?: MockProduct): MockProduct {
   const firstVariant = shopifyProduct.variants.edges[0]?.node;
 
-  const hasRealVariants = shopifyProduct.variants.edges.length > 1 || 
+  const hasRealVariants = shopifyProduct.variants.edges.length > 1 ||
     (shopifyProduct.variants.edges[0]?.node.selectedOptions?.some(
       (opt) => !(opt.name === "Title" && opt.value === "Default Title")
     ) ?? false);
 
   const allImages = shopifyProduct.images?.edges?.map(e => e.node.url) || [];
 
+  const fullDescription = shopifyProduct.descriptionHtml || shopifyProduct.description || "";
+  const stripHtml = (html: string): string => {
+    return html.replace(/<[^>]*>/g, '').substring(0, 150).trim();
+  };
+
   return {
     shopifyProductId: shopifyProduct.id,
     shopifyVariantId: firstVariant?.id || "",
     title: shopifyProduct.title,
-    description: shopifyProduct.descriptionHtml || shopifyProduct.description || "",
+    description: fullDescription,
+    cardDescription: mockMapping?.cardDescription || stripHtml(fullDescription),
     imageUrl: shopifyProduct.featuredImage?.url || allImages[0] || "",
     images: allImages,
     availableForSale: firstVariant?.availableForSale || false,

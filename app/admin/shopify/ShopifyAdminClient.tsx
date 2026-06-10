@@ -30,6 +30,7 @@ type ProductWithMapping = {
   eligibilityTiers: string[];
   displayOrder: number;
   featuredOrder: number;
+  cardDescription?: string;
 };
 
 const TIERS = ["free", "contributing", "founding"];

@@ -4040,7 +4040,42 @@ const handleOpenFreshUrl = async (redemption: Redemption) => {
 
 **Commit:** `09a3bf7` - fix: isExpired returns boolean, add formatExpiryDate for display
 
+### Session 2026-06-10: Shopify Product Description HTML Rendering
+
+**Problem:** The `/store` page "More Info" slideout was not rendering HTML formatting (paragraphs, lists, links) from Shopify product descriptions. HTML tags were being stripped before reaching the component.
+
+**Root Cause:** The API was fetching `description` (plain text) instead of `descriptionHtml` (full HTML with formatting) from Shopify.
+
+**Solution:** Updated to use `descriptionHtml` field from Shopify GraphQL API.
+
+**Files Modified:**
+- `lib/shopify.ts`:
+  - Added `descriptionHtml` field to `PRODUCTS_QUERY` GraphQL query
+  - Added `descriptionHtml: string | null` to `ShopifyProduct` type
+- `lib/mock-shopify.ts`:
+  - Updated `transformShopifyProduct()` to use `descriptionHtml || description` (prefers HTML, falls back to plain text)
+- `components/ProductDetailPanel.tsx`:
+  - Changed description rendering from plain text to `dangerouslySetInnerHTML`
+  - Added `decodeHTMLEntities()` helper for HTML entity decoding
+  - Added Tailwind arbitrary variants for nested HTML styling (`[&_p]`, `[&_ul]`, `[&_li]`, `[&_a]`)
+
+**Styling for nested HTML elements:**
+- `<p>` tags: `mb-3` (margin-bottom between paragraphs)
+- `<ul>`: `ml-4 list-disc` (left margin, disc bullets)
+- `<ol>`: `ml-4 list-decimal` (left margin, numbered)
+- `<li>`: `mb-1` (spacing between list items)
+- `<a>` links: `text-nfw-aubergine underline` (brand color + underline)
+
+**Note:** Shopify has two description fields:
+- `description` - plain text
+- `descriptionHtml` - full HTML with formatting
+
+The fix uses `descriptionHtml` if available, falling back to `description` for products without HTML formatting.
+
+**Commits:**
+- `0d48702` - fix: use descriptionHtml field for HTML product descriptions
+- `0603bf2` - fix: decode HTML entities before rendering product description
+- `4bddbb2` - fix: ProductDetailPanel renders Shopify HTML correctly with dangerouslySetInnerHTML
+
 ## Next Steps
-- Test the Open button - expired offers should show modal, active offers should open in new tab
-- Verify slideout animation comes from left side (not right)
-- Verify dates are normal color (not all red)
+- (none)
