@@ -180,10 +180,9 @@ export async function POST(request: Request) {
       const orderId = `gid://shopify/Order/${order.id}`;
 
       const cancelReason = order.cancel_reason;
-      const fulfillmentStatus = order.fulfillment_status;
 
-      // Only process if order was cancelled before fulfillment
-      if (cancelReason && fulfillmentStatus !== "fulfilled") {
+      // Only process if order was cancelled
+      if (cancelReason) {
         const orderAttributes = order.attributes || [];
         const nfwUserIdAttr = orderAttributes.find(
           (attr: { name: string; value: string }) => attr.name === "nfw_user_id"
@@ -210,15 +209,21 @@ export async function POST(request: Request) {
           }
 
           // Update zero_dollar_claims status to "cancelled"
-          const { error: updateClaimError } = await supabaseAdmin
+          // Try by shopify_order_id first (if order was completed before cancellation)
+          await supabaseAdmin
             .from("zero_dollar_claims")
             .update({ status: "cancelled" })
             .eq("user_id", nfwUserId)
             .eq("shopify_order_id", orderId);
 
-          if (updateClaimError) {
-            console.error("Failed to update claim status on cancellation:", updateClaimError);
-          }
+          // Also try by user_id with recent created claims (handles cancelled before checkout completed)
+          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+          await supabaseAdmin
+            .from("zero_dollar_claims")
+            .update({ status: "cancelled" })
+            .eq("user_id", nfwUserId)
+            .eq("status", "created")
+            .gte("claimed_at", oneHourAgo);
 
           console.log(
             `Order ${orderId} cancelled. User ${nfwUserId} monthly limit reset for ${claimMonth}. Reason: ${cancelReason}`
