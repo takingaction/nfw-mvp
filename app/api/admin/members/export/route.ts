@@ -100,13 +100,13 @@ function formatBoolean(value: boolean | null): string {
 
 function formatArray(value: string[] | null): string {
   if (!value || !Array.isArray(value)) return "";
-  return value.join(", ");
+  return escapeCsvField(value.join("; "));
 }
 
 function formatJson(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "object") {
-    return JSON.stringify(value);
+    return escapeCsvField(JSON.stringify(value));
   }
   return String(value);
 }
