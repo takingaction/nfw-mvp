@@ -155,6 +155,7 @@ export default function RedemptionHistoryPage() {
     }
 
     setOpeningId(redemptionId);
+    alert("About to fetch fresh-url API");
     try {
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
       const data = await response.json();
