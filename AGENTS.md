@@ -3910,3 +3910,137 @@ id, email, full_name, membership_level, subscription_status, subscription_ends_a
 - Rate limit: 10 requests/minute/IP (already implemented via existing `rateLimit` function)
 
 **Commit:** `8ee31d3` - fix: re-fetch fresh redemption URLs when user clicks Open button
+
+### Session 2026-06-10: Expired Offer Modal + Dashboard UI Fixes
+
+#### ExpiredLinkModal Component
+
+**Problem:** When clicking "Open" on expired offers, users got "Access Denied" error from S3 (expired signed URLs). No feedback was provided to explain what happened.
+
+**Solution:** Created `ExpiredLinkModal` component that shows when an offer has expired.
+
+**Files Created:**
+- `components/ui/ExpiredLinkModal.tsx` - Modal with:
+  - Title: "Offer Expired"
+  - Message: "Try clicking the 'Details' button to see if a new version of the offer is available for redemption."
+  - Single "Got It" button to dismiss
+
+**Modal Behavior:**
+- Opens when user tries to open an expired offer (expired_at in the past)
+- Active offers open directly in new tab (no modal)
+- Uses `isExpired(expires_at)` boolean check to determine if modal should show
+
+#### isExpired() Boolean Fix
+
+**Bug:** `isExpired()` was returning string values like "Expired May 5" or "Expires May 5" which are BOTH truthy. This caused the modal to always show, even for active offers.
+
+**Root Cause:** The function returned a string for display purposes, but this string was also used in boolean checks. Since any non-empty string is truthy, `isExpired()` always returned true.
+
+**Fix Applied:**
+```typescript
+// Before (bug):
+const isExpired = (expiresAt: string | null): boolean => {
+  if (!expiresAt) return false;
+  const date = new Date(expiresAt);
+  return date < new Date();  // This was returning STRING not boolean!
+};
+// Function was later changed to return string for display:
+// return `Expired ${format}` or `Expires ${format}`
+
+// After (fixed):
+const isExpired = (expiresAt: string | null): boolean => {
+  if (!expiresAt) return false;
+  const date = new Date(expiresAt);
+  return date < new Date();  // Returns actual boolean
+};
+
+const formatExpiryDate = (expiresAt: string | null): string => {
+  if (!expiresAt) return "";
+  const date = new Date(expiresAt);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
+```
+
+**Files Fixed (4):**
+- `components/dashboard/RedeemedPerksPanel.tsx`
+- `components/dashboard/RecentRedemptions.tsx`
+- `app/perks/history/page.tsx`
+- `components/ui/ExpiredLinkModal.tsx`
+
+#### Dashboard Border-Radius Removal
+
+**Constraint:** No border-radius on /dashboard cards and buttons.
+
+**Files Modified:**
+- `components/dashboard/MembershipCard.tsx` - Removed rounded corners
+- `components/dashboard/MembershipImpactCard.tsx` - Removed rounded corners
+- `components/dashboard/PopularAcrossNFW.tsx` - Removed rounded corners
+- `components/dashboard/YourMicrograntsSection.tsx` - Removed rounded corners
+- `components/dashboard/YourPerksAndBenefits.tsx` - Removed rounded corners
+- `components/dashboard/YourZeroDollarStoreSection.tsx` - Removed rounded corners
+- `components/dashboard/BottomActions.tsx` - Removed rounded corners
+
+#### Slideout Button Changes
+
+**Changes:**
+- "Browse More Perks" → "View All History" (links to `/perks/history`)
+- "Open" button logic: Simplified - check `isExpired(expires_at)` → boolean, show modal if true, otherwise open URL
+- Removed async content validation - no longer calling API to check URL validity before opening
+
+#### Open Button Logic (Simplified)
+
+**Before:** Complex flow with API calls, content validation, CORS handling
+**After:** Simple boolean check
+
+```typescript
+const handleOpenFreshUrl = async (redemption: Redemption) => {
+  if (isExpired(redemption.expires_at)) {
+    setExpiredOfferId(redemption.id);
+    return;
+  }
+  // Direct URL open - no async validation
+  window.open(redemption.redemption_url, "_blank");
+};
+```
+
+**Why this works:**
+- `isExpired()` now returns `boolean` (true = expired, false = active)
+- Expired offers show modal with guidance to use "Details" button
+- Active offers open directly via `window.open()`
+
+#### Store Page Product Detail HTML Rendering
+
+**Problem:** The `/store` page "More Info" slideout was not rendering HTML formatting (paragraphs, lists, links) from Shopify descriptions. HTML tags were displayed as plain text.
+
+**Root Cause:** Description was rendered as `{product.description}` in a plain `<p>` tag, which escapes HTML entities.
+
+**Solution:** Changed from plain text rendering to `dangerouslySetInnerHTML`:
+
+**Files Modified:**
+- `components/ProductDetailPanel.tsx` - Changed description rendering from:
+  ```tsx
+  <p className="font-sans text-sm text-nfw-blackberry/70 leading-relaxed">
+    {product.description}
+  </p>
+  ```
+  To:
+  ```tsx
+  <div
+    className="font-sans text-sm text-nfw-blackberry/70 leading-relaxed [&_p]:mb-3 [&_ul]:ml-4 [&_ul]:list-disc [&_ol]:ml-4 [&_ol]:list-decimal [&_li]:mb-1 [&_a]:text-nfw-aubergine [&_a]:underline"
+    dangerouslySetInnerHTML={{ __html: product.description }}
+  />
+  ```
+
+**Styling for nested HTML elements:**
+- `<p>` tags: `mb-3` (margin-bottom between paragraphs)
+- `<ul>`: `ml-4 list-disc` (left margin, disc bullets)
+- `<ol>`: `ml-4 list-decimal` (left margin, numbered)
+- `<li>`: `mb-1` (spacing between list items)
+- `<a>` links: `text-nfw-aubergine underline` (brand color + underline)
+
+**Commit:** `09a3bf7` - fix: isExpired returns boolean, add formatExpiryDate for display
+
+## Next Steps
+- Test the Open button - expired offers should show modal, active offers should open in new tab
+- Verify slideout animation comes from left side (not right)
+- Verify dates are normal color (not all red)

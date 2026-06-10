@@ -200,9 +200,10 @@ export default function ProductDetailPanel({
                 </div>
 
                 {product?.description && (
-                  <p className="font-sans text-sm text-nfw-blackberry/70 leading-relaxed">
-                    {product.description}
-                  </p>
+                  <div
+                    className="font-sans text-sm text-nfw-blackberry/70 leading-relaxed [&_p]:mb-3 [&_ul]:ml-4 [&_ul]:list-disc [&_ol]:ml-4 [&_ol]:list-decimal [&_li]:mb-1 [&_a]:text-nfw-aubergine [&_a]:underline"
+                    dangerouslySetInnerHTML={{ __html: product.description }}
+                  />
                 )}
               </div>
 
