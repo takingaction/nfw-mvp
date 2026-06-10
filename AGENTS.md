@@ -4113,5 +4113,70 @@ The fix uses `descriptionHtml` if available, falling back to `description` for p
 **Commits:**
 - `d11e0ee` - feat: add cardDescription field for store product cards
 
+### Session 2026-06-10: Store Variant Selection Fix + Webhook Lookup Improvement
+
+#### Bug 1: System Defaults to XS Instead of User's Selected Variant
+
+**Problem:** When a user selected a size like M or L in the claim modal, the system always sent XS (the first variant) to Shopify, causing out-of-stock errors even when other sizes were available.
+
+**Root Cause:** In `StoreClient.tsx` `handleClaim()` function, the `variantId` was always set to `item.shopifyVariantId` (the first variant's ID). The modal's `selectedVariants` state correctly captured the user's selection, but this was never used to resolve the actual Shopify variant ID before sending to checkout API.
+
+**Files Modified:**
+- `components/StoreClient.tsx`:
+  - Added `fullVariants` to `claimingItem` state type
+  - `handleClaim()` now passes full variant info (with IDs) to modal
+- `components/ClaimItemModal.tsx`:
+  - Added `fullVariants` prop type
+  - `handleConfirmSubmit()` now resolves selected options to actual variant ID before sending to checkout API
+
+**Fix Logic:**
+```typescript
+// Resolve selected options to the actual Shopify variant ID
+let resolvedVariantId = item.variantId;
+if (item.fullVariants && Object.keys(selectedVariants).length > 0) {
+  const matchingVariant = item.fullVariants.find((variant) => {
+    return variant.options.every(
+      (opt) => selectedVariants[opt.name] === opt.value
+    );
+  });
+  if (matchingVariant) {
+    resolvedVariantId = matchingVariant.id;
+  }
+}
+```
+
+#### Bug 2: Monthly Claim on Failed Claims
+
+**Problem:** If a claim was created with the wrong variant ID (XS instead of user's selected M), the webhook couldn't find the claim by variant ID and didn't properly track monthly usage.
+
+**Root Cause:** Webhook only looked up claims by `shopify_variant_id`. If the claim was created with XS but the order was placed with M variant, webhook lookup failed.
+
+**Files Modified:**
+- `app/api/shopify/webhook/route.ts`:
+  - Added fallback lookup by `user_id` + `shopify_product_id` when variant_id lookup fails
+
+**Fix Logic:**
+```typescript
+// If no claim found by variant_id, try by user_id + product_id
+if ((!existingClaims || existingClaims.length === 0) && nfwUserId) {
+  const productId = `gid://shopify/Product/${lineItems[0].product_id}`;
+  const { data: claimsByUser } = await supabaseAdmin
+    .from("zero_dollar_claims")
+    .select("*")
+    .eq("user_id", nfwUserId)
+    .eq("shopify_product_id", productId)
+    .eq("status", "created")
+    .order("claimed_at", { ascending: true })
+    .limit(1);
+  
+  if (claimsByUser && claimsByUser.length > 0) {
+    existingClaims = claimsByUser;
+  }
+}
+```
+
+**Commits:**
+- `79a0d7d` - fix: resolve selected variant to actual ID, fix webhook lookup by user_id+product_id
+
 ## Next Steps
 - (none)

@@ -175,6 +175,58 @@ export async function POST(request: Request) {
       }
     }
 
+    if (topic === "orders/updated") {
+      const order = event;
+      const orderId = `gid://shopify/Order/${order.id}`;
+
+      const cancelReason = order.cancel_reason;
+      const fulfillmentStatus = order.fulfillment_status;
+
+      // Only process if order was cancelled before fulfillment
+      if (cancelReason && fulfillmentStatus !== "fulfilled") {
+        const orderAttributes = order.attributes || [];
+        const nfwUserIdAttr = orderAttributes.find(
+          (attr: { name: string; value: string }) => attr.name === "nfw_user_id"
+        );
+        const nfwUserId = nfwUserIdAttr?.value || null;
+
+        if (nfwUserId) {
+          const orderCreatedAt = order.created_at ? new Date(order.created_at) : new Date();
+          const claimMonth = new Date(
+            orderCreatedAt.getFullYear(),
+            orderCreatedAt.getMonth(),
+            1
+          ).toISOString().split("T")[0];
+
+          // Delete monthly_claims record for this user/month
+          const { error: deleteMonthlyError } = await supabaseAdmin
+            .from("monthly_claims")
+            .delete()
+            .eq("user_id", nfwUserId)
+            .eq("claim_month", claimMonth);
+
+          if (deleteMonthlyError) {
+            console.error("Failed to delete monthly claim on cancellation:", deleteMonthlyError);
+          }
+
+          // Update zero_dollar_claims status to "cancelled"
+          const { error: updateClaimError } = await supabaseAdmin
+            .from("zero_dollar_claims")
+            .update({ status: "cancelled" })
+            .eq("user_id", nfwUserId)
+            .eq("shopify_order_id", orderId);
+
+          if (updateClaimError) {
+            console.error("Failed to update claim status on cancellation:", updateClaimError);
+          }
+
+          console.log(
+            `Order ${orderId} cancelled. User ${nfwUserId} monthly limit reset for ${claimMonth}. Reason: ${cancelReason}`
+          );
+        }
+      }
+    }
+
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error("Shopify webhook error:", error);
