@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   X,
   Gift,
@@ -44,8 +44,8 @@ export default function RedeemedPerksPanel({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [openingId, setOpeningId] = useState<string | null>(null);
   const [showExpiredModal, setShowExpiredModal] = useState(false);
+  const expiredModalRef = useRef<{ show: () => void } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -98,19 +98,13 @@ export default function RedeemedPerksPanel({
       return;
     }
 
-    try {
-      const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
-      const data = await response.json();
+    const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
+    const data = await response.json();
 
-      if (!response.ok || data.error) {
-        window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
-      } else if (data.url) {
-        window.open(data.url, "_blank");
-      } else {
-        window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
-      }
-    } catch {
-      window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
+    if (!response.ok || data.error || !data.url) {
+      setShowExpiredModal(true);
+    } else {
+      window.open(data.url, "_blank");
     }
   };
 
@@ -356,15 +350,21 @@ export default function RedeemedPerksPanel({
 
           {/* Footer */}
           {redemptions.length > 0 && (
-            <div className="p-4 border-t border-nfw-blackberry/10">
-              <Link
-                href="/perks/history"
-                onClick={onClose}
-                className="block w-full text-center px-6 py-3 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 font-medium transition-colors"
-              >
-                View All History
-              </Link>
-            </div>
+<div className="p-4 border-t border-nfw-blackberry/10">
+            <button
+              onClick={() => setShowExpiredModal(true)}
+              className="mb-2 px-4 py-2 bg-red-500 text-white text-sm"
+            >
+              TEST MODAL
+            </button>
+            <Link
+              href="/perks"
+              onClick={onClose}
+              className="block w-full text-center px-6 py-3 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 font-medium transition-colors"
+            >
+              Browse More Perks
+            </Link>
+          </div>
           )}
         </div>
       </div>
