@@ -4,7 +4,7 @@
 
 -- Fix 1: Set claim_month based on claimed_at date (these are all June 2026 claims)
 UPDATE zero_dollar_claims 
-SET claim_month = DATE_TRUNC('month', claimed_at)::text
+SET claim_month = DATE_TRUNC('month', claimed_at)::date
 WHERE shopify_order_id IS NULL 
 AND claim_month IS NULL;
 
