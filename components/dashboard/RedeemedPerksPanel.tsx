@@ -105,14 +105,18 @@ export default function RedeemedPerksPanel({
       const data = await response.json();
       setOpeningId(null);
 
+      console.log("[RedeemedPerksPanel] Fresh URL response:", response.status, data);
+
       // Open URL if we got one, otherwise show modal
       if (response.ok && data.url) {
         window.open(data.url, "_blank");
       } else {
+        console.log("[RedeemedPerksPanel] Showing expired modal, response.ok:", response.ok, "data.url:", data.url);
         setShowExpiredModal(true);
       }
-    } catch {
+    } catch (err) {
       setOpeningId(null);
+      console.log("[RedeemedPerksPanel] Catch error:", err);
       setShowExpiredModal(true);
     }
   };
