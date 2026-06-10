@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
 
   // Debug: log first profile raw values and keys
   if (profiles && profiles.length > 0) {
-    const first = profiles[0] as Record<string, unknown>;
+    const first = profiles[0] as unknown as Record<string, unknown>;
     console.log("First profile keys:", Object.keys(first));
     console.log("First profile sample - id:", first.id, "email:", first.email);
     console.log("First profile - identities:", first.identities, "type:", typeof first.identities);
