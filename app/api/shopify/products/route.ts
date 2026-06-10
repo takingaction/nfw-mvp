@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
             shopifyVariantId: rawMapping.shopify_variant_id,
             title: "",
             description: "",
+            cardDescription: "",
             imageUrl: "",
             images: [],
             availableForSale: true,
