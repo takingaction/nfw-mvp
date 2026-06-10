@@ -85,7 +85,7 @@ export default function SavedBrandsPanel({
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/10 transition-colors"
             >
               <X className="w-5 h-5 text-white/80" />
             </button>
@@ -106,7 +106,7 @@ export default function SavedBrandsPanel({
                 <Link
                   href="/perks"
                   onClick={onClose}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 font-medium transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 font-medium transition-colors"
                 >
                   Browse Perks
                 </Link>
@@ -116,9 +116,9 @@ export default function SavedBrandsPanel({
                 {stores.map((store) => (
                   <div
                     key={store.id}
-                    className="flex items-center gap-3 p-3 bg-nfw-dove/50 rounded-xl"
+                    className="flex items-center gap-3 p-3 bg-nfw-dove/50"
                   >
-                    <div className="w-14 h-14 bg-white rounded-lg border border-nfw-blackberry/10 flex items-center justify-center flex-shrink-0">
+                    <div className="w-14 h-14 bg-white border border-nfw-blackberry/10 flex items-center justify-center flex-shrink-0">
                       {store.logo_url ? (
                         <img
                           src={store.logo_url}
@@ -147,7 +147,7 @@ export default function SavedBrandsPanel({
                     </div>
                     <button
                       onClick={() => onUnlike(store.store_key)}
-                      className="p-2 hover:bg-nfw-blackberry/5 rounded-lg transition-colors"
+                      className="p-2 hover:bg-nfw-blackberry/5 transition-colors"
                       aria-label="Remove from saved"
                     >
                       <Heart className="w-5 h-5 fill-[#B693C0] text-[#B693C0]" />
@@ -164,7 +164,7 @@ export default function SavedBrandsPanel({
               <Link
                 href="/perks"
                 onClick={onClose}
-                className="block w-full text-center px-6 py-3 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 font-medium transition-colors"
+                className="block w-full text-center px-6 py-3 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 font-medium transition-colors"
               >
                 Browse More Perks
               </Link>

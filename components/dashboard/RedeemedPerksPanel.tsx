@@ -103,17 +103,17 @@ export default function RedeemedPerksPanel({
     try {
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
       const data = await response.json();
+      setOpeningId(null);
 
+      // Open URL if we got one, otherwise show modal
       if (response.ok && data.url) {
         window.open(data.url, "_blank");
       } else {
-        // API returned error or no URL
         setShowExpiredModal(true);
       }
     } catch {
-      setShowExpiredModal(true);
-    } finally {
       setOpeningId(null);
+      setShowExpiredModal(true);
     }
   };
 
@@ -208,7 +208,7 @@ export default function RedeemedPerksPanel({
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/10 transition-colors"
             >
               <X className="w-5 h-5 text-white/80" />
             </button>
@@ -236,7 +236,7 @@ export default function RedeemedPerksPanel({
                 <Link
                   href="/perks"
                   onClick={onClose}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 font-medium transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 font-medium transition-colors"
                 >
                   Browse Perks
                 </Link>
@@ -250,10 +250,10 @@ export default function RedeemedPerksPanel({
                         <img
                           src={redemption.store_logo_url}
                           alt={redemption.store_name || "Store logo"}
-                          className="w-12 h-12 rounded-lg object-contain bg-white border border-nfw-blackberry/10"
+                          className="w-12 h-12 object-contain bg-white border border-nfw-blackberry/10"
                         />
                       ) : (
-                        <div className="w-12 h-12 bg-nfw-dove border border-nfw-blackberry/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <div className="w-12 h-12 bg-nfw-dove border border-nfw-blackberry/10 flex items-center justify-center flex-shrink-0">
                           <Gift className="w-5 h-5 text-nfw-blackberry" />
                         </div>
                       )}
@@ -297,7 +297,7 @@ export default function RedeemedPerksPanel({
                               onClick={() =>
                                 copyCode(redemption.coupon_code!, redemption.id)
                               }
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 transition-colors text-xs font-medium rounded"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 transition-colors text-xs font-medium"
                             >
                               {copiedId === redemption.id ? (
                                 <>
@@ -315,7 +315,7 @@ export default function RedeemedPerksPanel({
                           {redemption.phone_number && (
                             <a
                               href={`tel:${redemption.phone_number}`}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/80 transition-colors text-xs font-medium rounded"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/80 transition-colors text-xs font-medium"
                             >
                               <Phone className="w-3 h-3" />
                               Call
@@ -325,7 +325,7 @@ export default function RedeemedPerksPanel({
                             <button
                               onClick={() => handleOpenFreshUrl(redemption.id, redemption.redemption_url)}
                               disabled={openingId === redemption.id}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-lilac/20 text-nfw-blackberry hover:bg-nfw-lilac/30 transition-colors text-xs font-medium rounded disabled:opacity-50"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-lilac/20 text-nfw-blackberry hover:bg-nfw-lilac/30 transition-colors text-xs font-medium disabled:opacity-50"
                             >
                               {openingId === redemption.id ? (
                                 <>
@@ -344,7 +344,7 @@ export default function RedeemedPerksPanel({
                             href={`/perks/${redemption.offer_key}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-nfw-blackberry hover:bg-gray-200 transition-colors text-xs font-medium rounded"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-nfw-blackberry hover:bg-gray-200 transition-colors text-xs font-medium"
                           >
                             Details
                           </Link>
@@ -363,7 +363,7 @@ export default function RedeemedPerksPanel({
               <Link
                 href="/perks/history"
                 onClick={onClose}
-                className="block w-full text-center px-6 py-3 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 font-medium transition-colors"
+                className="block w-full text-center px-6 py-3 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 font-medium transition-colors"
               >
                 View All History
               </Link>

@@ -158,15 +158,17 @@ export default function RedemptionHistoryPage() {
     try {
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
       const data = await response.json();
-      if (data.url) {
+      setOpeningId(null);
+
+      // Open URL if we got one, otherwise show modal
+      if (response.ok && data.url) {
         window.open(data.url, "_blank");
       } else {
         setShowExpiredModal(true);
       }
     } catch {
-      setShowExpiredModal(true);
-    } finally {
       setOpeningId(null);
+      setShowExpiredModal(true);
     }
   };
 
