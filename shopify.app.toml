@@ -2,7 +2,7 @@
 
 client_id = "f49eb5cfc37a77f54ab057d157ade89a"
 name = "NFW Storefront"
-application_url = "https://nfw-mvp-4n2i.vercel.app/"
+application_url = "https://nationalfundforwomen.org/"
 embedded = false
 
 [webhooks]
@@ -10,6 +10,10 @@ api_version = "2026-01"
 
 [[webhooks.subscriptions]]
 topics = ["orders/create"]
+uri = "/api/shopify/webhook"
+
+[[webhooks.subscriptions]]
+topics = ["orders/updated"]
 uri = "/api/shopify/webhook"
 
 [access_scopes]
@@ -20,6 +24,7 @@ use_legacy_install_flow = false
 
 [auth]
 redirect_urls = [
+  "https://nationalfundforwomen.org/api/shopify-callback",
   "https://nfw-mvp-4n2i.vercel.app/api/shopify-callback",
   "http://localhost:3000/api/shopify-callback"
 ]
