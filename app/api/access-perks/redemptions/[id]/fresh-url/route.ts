@@ -57,7 +57,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     // Fetch the redemption record
     const { data: redemption, error: redemptionError } = await supabase
       .from("offer_redemptions")
-      .select("id, offer_key, usage_redeem_key, redeem_type, status")
+      .select("id, offer_key, usage_redeem_key, redeem_type, status, redemption_url")
       .eq("id", id)
       .eq("user_id", user.id)
       .single();
