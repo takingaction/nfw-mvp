@@ -7,37 +7,75 @@ const supabaseAdmin = createAdminClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-const PROFILE_COLUMNS = [
-  "id",
-  "full_name",
-  "email",
-  "membership_level",
-  "subscription_status",
-  "date_of_birth",
-  "state",
-  "city",
-  "household_income",
-  "subscription_ends_at",
-  "joined_at",
-  "is_admin",
-  "access_perks_synced_at",
-];
-
 const CSV_COLUMNS = [
   "id",
-  "full_name",
   "email",
+  "full_name",
   "membership_level",
   "subscription_status",
+  "subscription_ends_at",
+  "profile_completed",
+  "is_admin",
   "date_of_birth",
   "state",
   "city",
+  "zip",
+  "phone_number",
   "household_income",
-  "subscription_ends_at",
-  "joined_at",
-  "is_admin",
+  "occupation",
+  "industry",
+  "company_name",
+  "company_website",
+  "linkedin_url",
+  "twitter_handle",
+  "avatar_url",
+  "bio",
+  "address_line1",
+  "address_line2",
+  "identities",
+  "social_handles",
+  "stripe_connect_account_id",
+  "access_perks_member_id",
   "access_perks_synced_at",
+  "joined_at",
+  "created_at",
+  "updated_at",
 ];
+
+const COLUMN_LABELS: Record<string, string> = {
+  id: "ID",
+  email: "Email",
+  full_name: "Full Name",
+  membership_level: "Membership Level",
+  subscription_status: "Subscription Status",
+  subscription_ends_at: "Subscription Ends At",
+  profile_completed: "Profile Completed",
+  is_admin: "Is Admin",
+  date_of_birth: "Date of Birth",
+  state: "State",
+  city: "City",
+  zip: "ZIP Code",
+  phone_number: "Phone Number",
+  household_income: "Household Income",
+  occupation: "Occupation",
+  industry: "Industry",
+  company_name: "Company Name",
+  company_website: "Company Website",
+  linkedin_url: "LinkedIn",
+  twitter_handle: "Twitter",
+  avatar_url: "Avatar URL",
+  bio: "Bio",
+  address_line1: "Address Line 1",
+  address_line2: "Address Line 2",
+  identities: "Identities",
+  social_handles: "Social Handles",
+  stripe_connect_account_id: "Stripe Connect ID",
+  access_perks_member_id: "Access Perks Member ID",
+  access_perks_synced_at: "Access Perks Synced At",
+  joined_at: "Joined At",
+  created_at: "Created At",
+  updated_at: "Updated At",
+};
 
 function escapeCsvField(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -46,6 +84,69 @@ function escapeCsvField(value: unknown): string {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;
+}
+
+function formatDate(value: string | null): string {
+  if (!value) return "";
+  try {
+    const date = new Date(value);
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
+  } catch {
+    return "";
+  }
+}
+
+function formatDateTime(value: string | null): string {
+  if (!value) return "";
+  try {
+    const date = new Date(value);
+    return date.toISOString().replace("T", " ").substring(0, 19);
+  } catch {
+    return "";
+  }
+}
+
+function formatBoolean(value: boolean | null): string {
+  if (value === null || value === undefined) return "";
+  return value ? "Yes" : "No";
+}
+
+function formatArray(value: string[] | null): string {
+  if (!value || !Array.isArray(value)) return "";
+  return value.join(", ");
+}
+
+function formatJson(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+function formatCell(col: string, value: unknown): string {
+  switch (col) {
+    case "is_admin":
+    case "profile_completed":
+      return formatBoolean(value as boolean | null);
+    case "date_of_birth":
+      return formatDate(value as string | null);
+    case "subscription_ends_at":
+    case "access_perks_synced_at":
+    case "joined_at":
+    case "created_at":
+    case "updated_at":
+      return formatDateTime(value as string | null);
+    case "identities":
+      return formatArray(value as string[] | null);
+    case "social_handles":
+      return formatJson(value);
+    default:
+      return escapeCsvField(value);
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -57,7 +158,7 @@ export async function GET(request: NextRequest) {
 
   const { data: profiles, error } = await supabaseAdmin
     .from("profiles")
-    .select(PROFILE_COLUMNS.join(","))
+    .select(CSV_COLUMNS.join(","))
     .order("joined_at", { ascending: false });
 
   if (error) {
@@ -65,34 +166,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch members" }, { status: 500 });
   }
 
-  const headers = CSV_COLUMNS.map((col) => {
-    const labels: Record<string, string> = {
-      id: "ID",
-      full_name: "Full Name",
-      email: "Email",
-      membership_level: "Membership Level",
-      subscription_status: "Subscription Status",
-      date_of_birth: "Date of Birth",
-      state: "State",
-      city: "City",
-      household_income: "Household Income",
-      subscription_ends_at: "Subscription Ends At",
-      joined_at: "Joined At",
-      is_admin: "Is Admin",
-      access_perks_synced_at: "Access Perks Synced At",
-    };
-    return labels[col] || col;
+  const headers = CSV_COLUMNS.map((col) => COLUMN_LABELS[col] || col);
+
+  const rows = (profiles as Record<string, unknown>[])?.map((profile) => {
+    return CSV_COLUMNS.map((col) => formatCell(col, profile[col]));
   });
 
-  const rows = (profiles as any[])?.map((profile) => {
-    return CSV_COLUMNS.map((col) => {
-      if (col === "email") return escapeCsvField(profile.email || "");
-      if (col === "is_admin") return profile[col] ? "Yes" : "No";
-      return escapeCsvField(profile[col]);
-    });
-  });
-
-  const csv = [headers.join(","), ...(rows || []).map((r: string[]) => r.join(","))].join("\n");
+  const csv = [
+    headers.join(","),
+    ...(rows || []).map((r: string[]) => r.join(","))
+  ].join("\n");
 
   const today = new Date().toISOString().split("T")[0];
   const filename = `nfw-members-${today}.csv`;
