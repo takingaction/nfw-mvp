@@ -154,27 +154,20 @@ export default function RedemptionHistoryPage() {
       return;
     }
 
-    setOpeningId(redemptionId);
-    alert("setOpeningId done, about to fetch");
+    // Skip setOpeningId for now to isolate the issue
     try {
       alert("About to fetch");
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
-      alert("Fetch done, parsing JSON");
+      alert("Fetch completed, status: " + response.status);
       const data = await response.json();
-      alert("JSON parsed, setting openingId to null");
-      setOpeningId(null);
-
-      alert("API response: status=" + response.status + " hasUrl=" + !!data.url + " url=" + (data.url || "none") + " error=" + (data.error || "none"));
-      console.log("Fresh URL API response:", response.status, data);
+      alert("JSON parsed, hasUrl: " + !!data.url);
 
       if (response.ok && data.url) {
-        console.log("Opening URL:", data.url);
         window.open(data.url, "_blank");
       } else {
         window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
       }
     } catch (err) {
-      setOpeningId(null);
       alert("Catch error: " + err);
       window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
     }
