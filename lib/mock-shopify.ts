@@ -170,7 +170,7 @@ export function transformShopifyProduct(shopifyProduct: ShopifyProduct, mockMapp
     shopifyProductId: shopifyProduct.id,
     shopifyVariantId: firstVariant?.id || "",
     title: shopifyProduct.title,
-    description: shopifyProduct.bodyHtml || shopifyProduct.description || "",
+    description: shopifyProduct.descriptionHtml || shopifyProduct.description || "",
     imageUrl: shopifyProduct.featuredImage?.url || allImages[0] || "",
     images: allImages,
     availableForSale: firstVariant?.availableForSale || false,
