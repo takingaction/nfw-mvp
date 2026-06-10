@@ -155,10 +155,13 @@ export default function RedemptionHistoryPage() {
     }
 
     setOpeningId(redemptionId);
-    alert("About to fetch fresh-url API");
+    alert("setOpeningId done, about to fetch");
     try {
+      alert("About to fetch");
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
+      alert("Fetch done, parsing JSON");
       const data = await response.json();
+      alert("JSON parsed, setting openingId to null");
       setOpeningId(null);
 
       alert("API response: status=" + response.status + " hasUrl=" + !!data.url + " url=" + (data.url || "none") + " error=" + (data.error || "none"));
