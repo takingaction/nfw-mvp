@@ -92,6 +92,7 @@ export default function RedeemedPerksPanel({
   };
 
   const handleOpenFreshUrl = async (redemptionId: string, storedUrl: string | null) => {
+    // Static URLs don't expire - open directly
     if (storedUrl && (storedUrl.includes('static-stage.accessdevelopment.com') || storedUrl.includes('static.accessdevelopment.com'))) {
       window.open(storedUrl, "_blank");
       return;
@@ -106,11 +107,11 @@ export default function RedeemedPerksPanel({
       if (response.ok && data.url) {
         window.open(data.url, "_blank");
       } else {
-        setShowExpiredModal(true);
+        window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
       }
     } catch {
       setOpeningId(null);
-      setShowExpiredModal(true);
+      window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
     }
   };
 
