@@ -103,14 +103,13 @@ export default function RecentRedemptions() {
   };
 
   const isExpired = (expiresAt: string | null) => {
-    if (!expiresAt) return false;
-    return new Date(expiresAt) < new Date();
-  };
-
-  const formatExpiryDate = (expiresAt: string | null) => {
     if (!expiresAt) return null;
     const date = new Date(expiresAt);
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const formatted = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    if (date < new Date()) {
+      return `Expired ${formatted}`;
+    }
+    return `Expires ${formatted}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -299,9 +298,9 @@ export default function RecentRedemptions() {
                     </span>
                     {redemption.expires_at && (
                       <span className={`text-xs font-medium ${
-                        isExpired(redemption.expires_at) ? "text-red-600" : "text-nfw-blackberry/60"
+                        isExpired(redemption.expires_at)?.startsWith("Expired") ? "text-red-600" : "text-nfw-blackberry/60"
                       }`}>
-                        {isExpired(redemption.expires_at) ? "Expired" : `Expires ${formatExpiryDate(redemption.expires_at)}`}
+                        {isExpired(redemption.expires_at)}
                       </span>
                     )}
                   </div>

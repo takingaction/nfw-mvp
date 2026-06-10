@@ -98,38 +98,31 @@ export default function RedeemedPerksPanel({
       return;
     }
 
-    // For other URLs (S3 signed URLs that can expire), try fresh-url API first
+    // For other URLs (S3 signed URLs that can expire), try fresh-url API
     setOpeningId(redemptionId);
     try {
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
       const data = await response.json();
       if (data.url) {
         window.open(data.url, "_blank");
-      } else if (storedUrl) {
-        window.open(storedUrl, "_blank");
       } else {
         setShowExpiredModal(true);
       }
     } catch {
-      if (storedUrl) {
-        window.open(storedUrl, "_blank");
-      } else {
-        setShowExpiredModal(true);
-      }
+      setShowExpiredModal(true);
     } finally {
       setOpeningId(null);
     }
   };
 
   const isExpired = (expiresAt: string | null) => {
-    if (!expiresAt) return false;
-    return new Date(expiresAt) < new Date();
-  };
-
-  const formatExpiryDate = (expiresAt: string | null) => {
     if (!expiresAt) return null;
     const date = new Date(expiresAt);
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const formatted = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    if (date < new Date()) {
+      return `Expired ${formatted}`;
+    }
+    return `Expires ${formatted}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -290,9 +283,9 @@ export default function RedeemedPerksPanel({
                           </span>
                           {redemption.expires_at && (
                             <span className={`text-xs font-medium ${
-                              isExpired(redemption.expires_at) ? "text-red-600" : "text-nfw-blackberry/60"
+                              isExpired(redemption.expires_at)?.startsWith("Expired") ? "text-red-600" : "text-nfw-blackberry/60"
                             }`}>
-                              {isExpired(redemption.expires_at) ? "Expired" : `Expires ${formatExpiryDate(redemption.expires_at)}`}
+                              {isExpired(redemption.expires_at)}
                             </span>
                           )}
                         </div>
