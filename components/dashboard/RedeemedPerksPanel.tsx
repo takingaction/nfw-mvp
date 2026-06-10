@@ -88,7 +88,14 @@ export default function RedeemedPerksPanel({
     }
   };
 
-  const handleOpenFreshUrl = async (redemptionId: string) => {
+  const handleOpenFreshUrl = async (redemptionId: string, currentUrl: string | null) => {
+    // If URL is from static.accessdevelopment.com (staging or production), it's a static HTML page that doesn't expire
+    if (currentUrl && (currentUrl.includes('static-stage.accessdevelopment.com') || currentUrl.includes('static.accessdevelopment.com'))) {
+      window.open(currentUrl, "_blank");
+      return;
+    }
+
+    // For other URLs (likely S3 signed URLs), fetch a fresh URL
     setOpeningId(redemptionId);
     try {
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
@@ -286,7 +293,7 @@ export default function RedeemedPerksPanel({
                           )}
                           {redemption.redemption_url && (
                             <button
-                              onClick={() => handleOpenFreshUrl(redemption.id)}
+                              onClick={() => handleOpenFreshUrl(redemption.id, redemption.redemption_url)}
                               disabled={openingId === redemption.id}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-lilac/20 text-nfw-blackberry hover:bg-nfw-lilac/30 transition-colors text-xs font-medium rounded disabled:opacity-50"
                             >

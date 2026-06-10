@@ -29,7 +29,12 @@ export async function GET(request: Request) {
 
     // Filter by status if provided
     if (status) {
-      query = query.eq("status", status);
+      if (status === "expired") {
+        // Expired means: status is "active" AND expires_at is in the past
+        query = query.eq("status", "active").lt("expires_at", new Date().toISOString());
+      } else {
+        query = query.eq("status", status);
+      }
     } else if (excludeArchived) {
       query = query.neq("status", "archived");
     }
