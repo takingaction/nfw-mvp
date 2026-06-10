@@ -168,8 +168,9 @@ export async function GET(request: NextRequest) {
 
   const headers = CSV_COLUMNS.map((col) => COLUMN_LABELS[col] || col);
 
-  const rows = (profiles as unknown[])?.map((profile: Record<string, unknown>) => {
-    return CSV_COLUMNS.map((col) => formatCell(col, profile[col]));
+  const rows = profiles?.map((profile: unknown) => {
+    const p = profile as Record<string, unknown>;
+    return CSV_COLUMNS.map((col) => formatCell(col, p[col]));
   });
 
   const csv = [
