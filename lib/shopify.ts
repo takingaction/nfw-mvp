@@ -69,6 +69,7 @@ export type ShopifyProduct = {
   id: string;
   title: string;
   description: string;
+  bodyHtml: string | null;
   handle: string;
   featuredImage: {
     url: string;
@@ -142,6 +143,7 @@ export const PRODUCTS_QUERY = `
           id
           title
           description
+          bodyHtml
           handle
           status
           featuredImage {
