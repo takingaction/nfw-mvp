@@ -89,23 +89,30 @@ export default function RedeemedPerksPanel({
   };
 
   const handleOpenFreshUrl = async (redemptionId: string, currentUrl: string | null) => {
+    console.log("[handleOpenFreshUrl] called with:", { redemptionId, currentUrl });
+
     // If URL is from static.accessdevelopment.com (staging or production), it's a static HTML page that doesn't expire
     if (currentUrl && (currentUrl.includes('static-stage.accessdevelopment.com') || currentUrl.includes('static.accessdevelopment.com'))) {
+      console.log("[handleOpenFreshUrl] Opening static URL directly:", currentUrl);
       window.open(currentUrl, "_blank");
       return;
     }
+
+    console.log("[handleOpenFreshUrl] Not a static URL, calling fresh-url API");
 
     // For other URLs (likely S3 signed URLs), fetch a fresh URL
     setOpeningId(redemptionId);
     try {
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
       const data = await response.json();
+      console.log("[handleOpenFreshUrl] fresh-url API response:", data);
       if (data.url) {
         window.open(data.url, "_blank");
       } else {
         alert("Link expired or offer no longer available");
       }
-    } catch {
+    } catch (err) {
+      console.error("[handleOpenFreshUrl] Error:", err);
       alert("Link expired or offer no longer available");
     } finally {
       setOpeningId(null);

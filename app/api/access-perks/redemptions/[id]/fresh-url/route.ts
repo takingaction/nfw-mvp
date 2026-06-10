@@ -97,6 +97,12 @@ export async function GET(request: Request, { params }: RouteParams) {
       },
     });
 
+    // Debug: log what Access Perks returns
+    const responseText = await response.text();
+    console.log("[fresh-url] Access Perks response status:", response.status);
+    console.log("[fresh-url] Access Perks response body:", responseText.substring(0, 500));
+    console.log("[fresh-url] original redemption_url:", redemption.redemption_url);
+
     if (!response.ok) {
       return NextResponse.json(
         { error: "Link expired or offer no longer available" },
@@ -104,7 +110,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       );
     }
 
-    const redemptionData = await response.json();
+    const redemptionData = JSON.parse(responseText);
 
     // Extract fresh URL from response
     const freshUrl =
@@ -113,6 +119,8 @@ export async function GET(request: Request, { params }: RouteParams) {
       redemptionData.redemption_url ||
       redemptionData.link ||
       null;
+
+    console.log("[fresh-url] freshUrl extracted:", freshUrl);
 
     if (!freshUrl) {
       return NextResponse.json(
