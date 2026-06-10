@@ -172,6 +172,7 @@ export default function RedemptionHistoryPage() {
 
     // Validate URL before opening
     const isValid = await validateUrl(data.url);
+    alert("URL validation result: " + isValid);
     if (isValid) {
       window.open(data.url, "_blank");
     } else {

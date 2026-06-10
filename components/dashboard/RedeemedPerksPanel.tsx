@@ -111,12 +111,14 @@ export default function RedeemedPerksPanel({
     const data = await response.json();
 
     if (!data.url) {
+      alert("No URL from API, showing modal");
       setShowExpiredModal(true);
       return;
     }
 
     // Validate URL before opening
     const isValid = await validateUrl(data.url);
+    alert("URL validation result: " + isValid + " for URL: " + data.url);
     if (isValid) {
       window.open(data.url, "_blank");
     } else {
@@ -354,17 +356,17 @@ export default function RedeemedPerksPanel({
             )}
           </div>
 
-          {/* Footer */}
+{/* Footer */}
           {redemptions.length > 0 && (
-<div className="p-4 border-t border-nfw-blackberry/10">
-            <Link
-              href="/perks"
-              onClick={onClose}
-              className="block w-full text-center px-6 py-3 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 font-medium transition-colors"
-            >
-              Browse More Perks
-            </Link>
-          </div>
+            <div className="p-4 border-t border-nfw-blackberry/10">
+              <Link
+                href="/perks/history"
+                onClick={onClose}
+                className="block w-full text-center px-6 py-3 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 font-medium transition-colors"
+              >
+                View All History
+              </Link>
+            </div>
           )}
         </div>
       </div>
