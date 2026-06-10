@@ -34,6 +34,12 @@ export default function ProductDetailPanel({
 
   const allImages = product?.images?.length ? product.images : product?.imageUrl ? [product.imageUrl] : [];
 
+  const decodeHTMLEntities = (text: string): string => {
+    const textarea = document.createElement("textarea");
+    textarea.innerHTML = text;
+    return textarea.value;
+  };
+
   useEffect(() => {
     setCurrentImageIndex(0);
     if (scrollContainerRef.current) {
@@ -202,7 +208,7 @@ export default function ProductDetailPanel({
                 {product?.description && (
                   <div
                     className="font-sans text-sm text-nfw-blackberry/70 leading-relaxed [&_p]:mb-3 [&_ul]:ml-4 [&_ul]:list-disc [&_ol]:ml-4 [&_ol]:list-decimal [&_li]:mb-1 [&_a]:text-nfw-aubergine [&_a]:underline"
-                    dangerouslySetInnerHTML={{ __html: product.description }}
+                    dangerouslySetInnerHTML={{ __html: decodeHTMLEntities(product.description) }}
                   />
                 )}
               </div>
