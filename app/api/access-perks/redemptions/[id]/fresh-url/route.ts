@@ -4,7 +4,7 @@ import { rateLimit } from "@/lib/rate-limit";
 
 interface RouteParams {
   params: Promise<{
-    redemptionId: string;
+    id: string;
   }>;
 }
 
@@ -22,7 +22,6 @@ function getCachedUrl(key: string): string | null {
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return cached.url;
   }
-  // Clean up expired entry
   if (cached) {
     freshUrlCache.delete(key);
   }
@@ -45,7 +44,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 
   try {
     const resolvedParams = await params;
-    const { redemptionId } = resolvedParams;
+    const { id } = resolvedParams;
 
     const supabase = await createClient();
     const {
@@ -59,7 +58,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     const { data: redemption, error: redemptionError } = await supabase
       .from("offer_redemptions")
       .select("id, offer_key, usage_redeem_key, redeem_type, status")
-      .eq("id", redemptionId)
+      .eq("id", id)
       .eq("user_id", user.id)
       .single();
 
@@ -71,7 +70,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 
     // Check cache
-    const cacheKey = `${redemptionId}`;
+    const cacheKey = `${id}`;
     const cachedUrl = getCachedUrl(cacheKey);
     if (cachedUrl) {
       return NextResponse.json({ url: cachedUrl, cached: true });
