@@ -31,7 +31,6 @@ const CSV_COLUMNS = [
   "access_perks_member_id",
   "access_perks_synced_at",
   "joined_at",
-  "created_at",
   "updated_at",
 ];
 
@@ -59,7 +58,6 @@ const COLUMN_LABELS: Record<string, string> = {
   access_perks_member_id: "Access Perks Member ID",
   access_perks_synced_at: "Access Perks Synced At",
   joined_at: "Joined At",
-  created_at: "Created At",
   updated_at: "Updated At",
 };
 
