@@ -160,6 +160,7 @@ export default function RedemptionHistoryPage() {
       const data = await response.json();
       setOpeningId(null);
 
+      alert("API response: status=" + response.status + " hasUrl=" + !!data.url + " url=" + (data.url || "none") + " error=" + (data.error || "none"));
       console.log("Fresh URL API response:", response.status, data);
 
       if (response.ok && data.url) {
@@ -168,8 +169,9 @@ export default function RedemptionHistoryPage() {
       } else {
         window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
       }
-    } catch {
+    } catch (err) {
       setOpeningId(null);
+      alert("Catch error: " + err);
       window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
     }
   };
