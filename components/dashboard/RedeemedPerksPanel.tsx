@@ -1,20 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import {
   X,
   Gift,
   ExternalLink,
+  Phone,
   Copy,
   Check,
-  Phone,
   Loader2,
-  Clock,
-  ChevronRight,
-  ChevronLeft,
-  Archive,
 } from "lucide-react";
+import Link from "next/link";
 import ExpiredLinkModal from "@/components/ui/ExpiredLinkModal";
 
 interface Redemption {
@@ -23,13 +19,14 @@ interface Redemption {
   offer_title: string;
   store_name: string | null;
   store_logo_url: string | null;
-  redeemed_at: string;
-  status: string;
+  redeem_type: string;
   coupon_code: string | null;
   phone_number: string | null;
   redemption_url: string | null;
+  instructions: string | null;
+  status: "active" | "used" | "expired";
+  redeemed_at: string;
   expires_at: string | null;
-  redeem_type: string | null;
 }
 
 interface RedeemedPerksPanelProps {
@@ -37,13 +34,18 @@ interface RedeemedPerksPanelProps {
   onClose: () => void;
 }
 
-export default function RedeemedPerksPanel({ isOpen, onClose }: RedeemedPerksPanelProps) {
+export default function RedeemedPerksPanel({
+  isOpen,
+  onClose,
+}: RedeemedPerksPanelProps) {
   const [redemptions, setRedemptions] = useState<Redemption[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [showExpiredModal, setShowExpiredModal] = useState(false);
+  const expiredModalRef = useRef<{ show: () => void } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -73,27 +75,17 @@ export default function RedeemedPerksPanel({ isOpen, onClose }: RedeemedPerksPan
       const data = await response.json();
       setRedemptions(data.redemptions || []);
     } catch (err: any) {
-      setError(err.message || "Failed to load");
+      setError(err.message || "Failed to load redemptions");
     } finally {
       setLoading(false);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffDays = Math.round(
-      Math.abs((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
-    );
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  };
-
   const copyCode = async (code: string, id: string) => {
     try {
       await navigator.clipboard.writeText(code);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
     } catch (err) {
       console.error("Failed to copy:", err);
     }
@@ -106,31 +98,13 @@ export default function RedeemedPerksPanel({ isOpen, onClose }: RedeemedPerksPan
       return;
     }
 
-    try {
-      const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
-      const data = await response.json();
-      
-      if (!data.url) {
-        setShowExpiredModal(true);
-        return;
-      }
+    const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
+    const data = await response.json();
 
-      // Try HEAD request to check if URL is valid
-      let urlValid = false;
-      try {
-        const headResponse = await fetch(data.url, { method: 'HEAD' });
-        urlValid = headResponse.ok;
-      } catch (headErr) {
-        urlValid = false;
-      }
-
-      if (urlValid) {
-        window.open(data.url, "_blank");
-      } else {
-        setShowExpiredModal(true);
-      }
-    } catch (e) {
+    if (!response.ok || data.error || !data.url) {
       setShowExpiredModal(true);
+    } else {
+      window.open(data.url, "_blank");
     }
   };
 
@@ -142,6 +116,18 @@ export default function RedeemedPerksPanel({ isOpen, onClose }: RedeemedPerksPan
       return `Expired ${formatted}`;
     }
     return `Expires ${formatted}`;
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.round(
+      Math.abs((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+    );
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
   const getRedemptionTypeLabel = (type: string) => {
@@ -186,21 +172,27 @@ export default function RedeemedPerksPanel({ isOpen, onClose }: RedeemedPerksPan
   return (
     <>
       <div
-        className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 ${
-          isAnimating ? "opacity-0" : "opacity-100"
+        className={`fixed inset-0 z-40 bg-nfw-blackberry/50 transition-opacity duration-300 ease-out ${
+          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         onClick={onClose}
       />
       <div
-        className={`fixed right-0 top-0 h-full w-full sm:w-[500px] bg-white z-50 shadow-2xl transform transition-transform duration-300 ease-out ${
-          isAnimating ? "translate-x-full" : "translate-x-0"
-        }`}
+        style={{
+          transform: isOpen
+            ? isAnimating
+              ? "translateX(-100%)"
+              : "translateX(0)"
+            : "translateX(-100%)",
+          transition: "transform 300ms ease-out",
+        }}
+        className="fixed inset-y-0 left-0 z-50 w-full max-w-md bg-white shadow-2xl overflow-hidden"
       >
-        <div className="flex flex-col h-full">
+        <div className="h-full flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-nfw-blackberry/10">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-nfw-blackberry/10 bg-nfw-aubergine">
             <div className="flex items-center gap-3">
-              <Gift className="w-6 h-6 text-nfw-aubergine" />
+              <Gift className="w-5 h-5 text-nfw-citrine" />
               <h2 className="text-lg font-bold text-white font-serif">
                 Your Redeemed Perks
               </h2>
@@ -248,46 +240,67 @@ export default function RedeemedPerksPanel({ isOpen, onClose }: RedeemedPerksPan
                       {redemption.store_logo_url ? (
                         <img
                           src={redemption.store_logo_url}
-                          alt=""
+                          alt={redemption.store_name || "Store logo"}
                           className="w-12 h-12 object-contain bg-white border border-nfw-blackberry/10"
                         />
                       ) : (
                         <div className="w-12 h-12 bg-nfw-dove border border-nfw-blackberry/10 flex items-center justify-center flex-shrink-0">
-                          <Gift className="w-5 h-5 text-nfw-blackberry/30" />
+                          <Gift className="w-5 h-5 text-nfw-blackberry" />
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <h3 className="font-semibold text-nfw-blackberry truncate [&_sup]:text-[0.6em] [&_sup]:align-super"
-                            dangerouslySetInnerHTML={{ __html: decodeHtml(redemption.offer_title) }}
-                          />
-                          {redemption.redeem_type && (
-                            <span className={`px-2 py-0.5 text-xs font-medium shrink-0 ${getRedemptionTypeColor(redemption.redeem_type)}`}>
-                              {getRedemptionTypeLabel(redemption.redeem_type)}
-                            </span>
-                          )}
-                        </div>
                         {redemption.store_name && (
-                          <p className="text-sm text-nfw-blackberry/60 truncate [&_sup]:text-[0.6em] [&_sup]:align-super"
-                            dangerouslySetInnerHTML={{ __html: decodeHtml(redemption.store_name) }}
+                          <p
+                            className="text-xs font-semibold text-nfw-blackberry mb-0.5 truncate"
+                            dangerouslySetInnerHTML={{
+                              __html: decodeHtml(redemption.store_name),
+                            }}
                           />
                         )}
-                        <p className="text-xs text-nfw-blackberry/50 mt-1">
-                          {formatDate(redemption.redeemed_at)}
-                          {isExpired(redemption.expires_at) && (
-                            <span className="ml-2 text-red-600">
+                        <h3
+                          className="text-sm font-medium text-nfw-blackberry/80 line-clamp-1"
+                          dangerouslySetInnerHTML={{
+                            __html: decodeHtml(redemption.offer_title),
+                          }}
+                        />
+                        <div className="flex items-center gap-2 mt-1.5 mb-2">
+                          <span
+                            className={`text-xs px-2 py-0.5 font-medium ${getRedemptionTypeColor(
+                              redemption.redeem_type
+                            )}`}
+                          >
+                            {getRedemptionTypeLabel(redemption.redeem_type)}
+                          </span>
+                          <span className="text-xs text-nfw-blackberry/40">
+                            {formatDate(redemption.redeemed_at)}
+                          </span>
+                          {redemption.expires_at && (
+                            <span className={`text-xs font-medium ${
+                              isExpired(redemption.expires_at)?.startsWith("Expired") ? "text-red-600" : "text-nfw-blackberry/60"
+                            }`}>
                               {isExpired(redemption.expires_at)}
                             </span>
                           )}
-                        </p>
-                        <div className="flex flex-wrap gap-2 mt-2">
+                        </div>
+                        <div className="flex flex-wrap gap-2">
                           {redemption.coupon_code && (
                             <button
-                              onClick={() => copyCode(redemption.coupon_code!, redemption.id)}
+                              onClick={() =>
+                                copyCode(redemption.coupon_code!, redemption.id)
+                              }
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 transition-colors text-xs font-medium"
                             >
-                              <Copy className="w-3 h-3" />
-                              {redemption.coupon_code}
+                              {copiedId === redemption.id ? (
+                                <>
+                                  <Check className="w-3 h-3" />
+                                  Copied!
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3 h-3" />
+                                  {redemption.coupon_code}
+                                </>
+                              )}
                             </button>
                           )}
                           {redemption.phone_number && (
@@ -327,15 +340,15 @@ export default function RedeemedPerksPanel({ isOpen, onClose }: RedeemedPerksPan
 
           {/* Footer */}
           {redemptions.length > 0 && (
-            <div className="p-4 border-t border-nfw-blackberry/10">
-              <Link
-                href="/perks/history"
-                onClick={onClose}
-                className="block w-full text-center px-6 py-3 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 font-medium transition-colors"
-              >
-                View All History
-              </Link>
-            </div>
+<div className="p-4 border-t border-nfw-blackberry/10">
+            <Link
+              href="/perks"
+              onClick={onClose}
+              className="block w-full text-center px-6 py-3 bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90 font-medium transition-colors"
+            >
+              Browse More Perks
+            </Link>
+          </div>
           )}
         </div>
       </div>

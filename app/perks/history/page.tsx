@@ -153,31 +153,13 @@ export default function RedemptionHistoryPage() {
       return;
     }
 
-    try {
-      const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
-      const data = await response.json();
-      
-      if (!data.url) {
-        setShowExpiredModal(true);
-        return;
-      }
+    const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
+    const data = await response.json();
 
-      // Try HEAD request to check if URL is valid
-      let urlValid = false;
-      try {
-        const headResponse = await fetch(data.url, { method: 'HEAD' });
-        urlValid = headResponse.ok;
-      } catch (headErr) {
-        urlValid = false;
-      }
-
-      if (urlValid) {
-        window.open(data.url, "_blank");
-      } else {
-        setShowExpiredModal(true);
-      }
-    } catch (e) {
+    if (!response.ok || data.error || !data.url) {
       setShowExpiredModal(true);
+    } else {
+      window.open(data.url, "_blank");
     }
   };
 
