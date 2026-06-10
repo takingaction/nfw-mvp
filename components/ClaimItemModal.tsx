@@ -1,12 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { X, Package, Loader2 } from "lucide-react";
 
 type Variant = {
   name: string;
   options: string[];
 };
+
+type FullVariant = {
+  id: string;
+  title: string;
+  availableForSale: boolean;
+  options: Array<{ name: string; value: string }>;
+};
+
+function getUnavailableOptions(fullVariants: FullVariant[]): Map<string, Set<string>> {
+  const allOptions = new Map<string, Set<string>>();
+  const availableOptions = new Map<string, Set<string>>();
+  
+  // Initialize with all option values and collect available ones
+  fullVariants.forEach(variant => {
+    variant.options.forEach(opt => {
+      if (!allOptions.has(opt.name)) {
+        allOptions.set(opt.name, new Set());
+        availableOptions.set(opt.name, new Set());
+      }
+      allOptions.get(opt.name)!.add(opt.value);
+      
+      if (variant.availableForSale) {
+        availableOptions.get(opt.name)!.add(opt.value);
+      }
+    });
+  });
+  
+  // Calculate unavailable = all - available
+  const unavailable = new Map<string, Set<string>>();
+  allOptions.forEach((options, variantName) => {
+    const available = availableOptions.get(variantName) || new Set();
+    const unavailableSet = new Set<string>();
+    options.forEach(opt => {
+      if (!available.has(opt)) {
+        unavailableSet.add(opt);
+      }
+    });
+    unavailable.set(variantName, unavailableSet);
+  });
+  
+  return unavailable;
+}
 
 export default function ClaimItemModal({
   item,
@@ -18,12 +60,7 @@ export default function ClaimItemModal({
     variantId: string;
     name: string;
     variants?: Variant[];
-    fullVariants?: Array<{
-      id: string;
-      title: string;
-      availableForSale: boolean;
-      options: Array<{ name: string; value: string }>;
-    }>;
+    fullVariants?: FullVariant[];
   };
   userId: string;
   onClose: () => void;
@@ -32,6 +69,10 @@ export default function ClaimItemModal({
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const unavailableOptions = useMemo(() => {
+    return item.fullVariants ? getUnavailableOptions(item.fullVariants) : new Map<string, Set<string>>();
+  }, [item.fullVariants]);
 
   const handleVariantChange = (variantName: string, option: string) => {
     setSelectedVariants((prev) => ({
@@ -48,6 +89,14 @@ export default function ClaimItemModal({
       if (missingVariants.length > 0) {
         setError(`Please select: ${missingVariants.map((v) => v.name).join(", ")}`);
         return;
+      }
+      
+      for (const variant of item.variants) {
+        const selected = selectedVariants[variant.name];
+        if (selected && unavailableOptions.get(variant.name)?.has(selected)) {
+          setError(`Selected ${variant.name} "${selected}" is out of stock. Please choose another.`);
+          return;
+        }
       }
     }
     setError(null);
@@ -143,11 +192,14 @@ export default function ClaimItemModal({
                     className="w-full px-4 py-3 border border-nfw-blackberry/20 font-sans text-sm text-nfw-blackberry bg-white focus:outline-none focus:border-nfw-aubergine transition-colors"
                   >
                     <option value="">Select {variant.name}</option>
-                    {variant.options.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
+                    {variant.options.map((option) => {
+                      const isUnavailable = unavailableOptions.get(variant.name)?.has(option);
+                      return (
+                        <option key={option} value={option} disabled={isUnavailable}>
+                          {option}{isUnavailable ? " (Out of Stock)" : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               ))}

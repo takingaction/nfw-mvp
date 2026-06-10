@@ -103,6 +103,21 @@ export async function POST(request: Request) {
           }
         }
 
+        // Third fallback: try by shopify_checkout_id (checkout ID stored when claim created)
+        if ((!existingClaims || existingClaims.length === 0) && checkoutId) {
+          const { data: claimsByCheckout } = await supabaseAdmin
+            .from("zero_dollar_claims")
+            .select("*")
+            .eq("shopify_checkout_id", checkoutId)
+            .eq("status", "created")
+            .limit(1);
+          
+          if (claimsByCheckout && claimsByCheckout.length > 0) {
+            existingClaims = claimsByCheckout;
+            console.log(`Found claim ${existingClaims[0].id} via checkout_id fallback`);
+          }
+        }
+
         if (existingClaims && existingClaims.length > 0) {
           const claim = existingClaims[0];
 
@@ -179,22 +194,64 @@ export async function POST(request: Request) {
       const order = event;
       const cancelReason = order.cancel_reason;
 
-      // Only process if order was cancelled
+      // Only process if order was cancelled (any cancellation - including fulfilled orders)
       if (cancelReason) {
         const orderAttributes = order.attributes || [];
         const nfwUserIdAttr = orderAttributes.find(
           (attr: { name: string; value: string }) => attr.name === "nfw_user_id"
         );
-        const nfwUserId = nfwUserIdAttr?.value || null;
+        let nfwUserId = nfwUserIdAttr?.value || null;
+        let claimMonth: string | null = null;
 
-        if (nfwUserId) {
+        // Fallback: if nfw_user_id not in attributes, look up by shopify_order_id
+        if (!nfwUserId) {
+          const orderId = `gid://shopify/Order/${order.id}`;
+          console.log(`[orders/updated] nfw_user_id not in attributes, looking up by shopify_order_id: ${orderId}`);
+
+          const { data: claimByOrderId } = await supabaseAdmin
+            .from("zero_dollar_claims")
+            .select("user_id, claim_month")
+            .eq("shopify_order_id", orderId)
+            .limit(1);
+
+          if (claimByOrderId && claimByOrderId.length > 0) {
+            nfwUserId = claimByOrderId[0].user_id;
+            claimMonth = claimByOrderId[0].claim_month;
+            console.log(`[orders/updated] Fallback lookup found user ${nfwUserId} with claim_month ${claimMonth}`);
+          } else {
+            console.log(`[orders/updated] No claim found for order ${orderId}`);
+            
+            // Second fallback: try by checkout_id from the order
+            const orderCheckoutId = order.checkout_id ? `gid://shopify/Checkout/${order.checkout_id}` : null;
+            if (orderCheckoutId) {
+              const { data: claimByCheckoutId } = await supabaseAdmin
+                .from("zero_dollar_claims")
+                .select("user_id, claim_month")
+                .eq("shopify_checkout_id", orderCheckoutId)
+                .limit(1);
+              
+              if (claimByCheckoutId && claimByCheckoutId.length > 0) {
+                nfwUserId = claimByCheckoutId[0].user_id;
+                claimMonth = claimByCheckoutId[0].claim_month;
+                console.log(`[orders/updated] Checkout fallback found user ${nfwUserId} with claim_month ${claimMonth}`);
+              } else {
+                console.log(`[orders/updated] No claim found for checkout_id ${orderCheckoutId}`);
+              }
+            }
+          }
+        }
+
+        // Also compute claimMonth from order date as fallback
+        if (!claimMonth) {
           const orderCreatedAt = order.created_at ? new Date(order.created_at) : new Date();
-          const claimMonth = new Date(
+          claimMonth = new Date(
             orderCreatedAt.getFullYear(),
             orderCreatedAt.getMonth(),
             1
           ).toISOString().split("T")[0];
+        }
 
+        if (nfwUserId) {
           // 1. Delete monthly_claims record
           const { error: deleteMonthlyError } = await supabaseAdmin
             .from("monthly_claims")
@@ -212,7 +269,7 @@ export async function POST(request: Request) {
             .from("zero_dollar_claims")
             .update({ status: "cancelled" })
             .eq("user_id", nfwUserId)
-            .in("status", ["created", "completed"])
+            .in("status", ["created", "completed", "fulfilled"])
             .gte("claimed_at", monthStart);
 
           if (updateClaimError) {
