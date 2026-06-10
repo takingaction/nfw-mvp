@@ -48,6 +48,7 @@ export default function RedemptionHistoryPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [showExpiredModal, setShowExpiredModal] = useState(false);
 
   useEffect(() => {
