@@ -156,21 +156,43 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // First, try to get a single profile to see what columns exist
+  const { data: sampleProfile, error: sampleError } = await supabaseAdmin
+    .from("profiles")
+    .select("*")
+    .limit(1);
+
+  if (sampleError) {
+    console.error("Failed to fetch sample profile:", sampleError);
+    return NextResponse.json({ error: "Failed to fetch members", details: sampleError.message }, { status: 500 });
+  }
+
+  const actualColumns = sampleProfile ? Object.keys(sampleProfile) : [];
+  console.log("Available profile columns:", actualColumns);
+
+  // Only select columns that exist
+  const validColumns = CSV_COLUMNS.filter(col => actualColumns.includes(col));
+  const missingColumns = CSV_COLUMNS.filter(col => !actualColumns.includes(col));
+
+  if (missingColumns.length > 0) {
+    console.log("Columns not in DB (will be skipped):", missingColumns);
+  }
+
   const { data: profiles, error } = await supabaseAdmin
     .from("profiles")
-    .select(CSV_COLUMNS.join(","))
+    .select(validColumns.join(","))
     .order("joined_at", { ascending: false });
 
   if (error) {
     console.error("Failed to fetch profiles:", error);
-    return NextResponse.json({ error: "Failed to fetch members" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch members", details: error.message }, { status: 500 });
   }
 
-  const headers = CSV_COLUMNS.map((col) => COLUMN_LABELS[col] || col);
+  const headers = validColumns.map((col) => COLUMN_LABELS[col] || col);
 
   const rows = profiles?.map((profile: unknown) => {
     const p = profile as Record<string, unknown>;
-    return CSV_COLUMNS.map((col) => formatCell(col, p[col]));
+    return validColumns.map((col) => formatCell(col, p[col]));
   });
 
   const csv = [
