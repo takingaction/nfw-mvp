@@ -156,12 +156,16 @@ export default function RedemptionHistoryPage() {
         return;
       }
 
-      const urlResponse = await fetch(data.url, { signal: AbortSignal.timeout(10000) });
-      const urlText = await urlResponse.text();
+      try {
+        const urlResponse = await fetch(data.url, { signal: AbortSignal.timeout(10000) });
+        const urlText = await urlResponse.text();
 
-      if (urlText.includes("<Code>AccessDenied</Code>")) {
-        setShowExpiredModal(true);
-      } else {
+        if (urlText.includes("<Code>AccessDenied</Code>")) {
+          setShowExpiredModal(true);
+        } else {
+          window.open(data.url, "_blank");
+        }
+      } catch {
         window.open(data.url, "_blank");
       }
     } catch {
