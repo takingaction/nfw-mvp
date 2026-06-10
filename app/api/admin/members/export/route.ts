@@ -156,36 +156,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // First, try to get a single profile to see what columns exist
-  const { data: sampleProfile, error: sampleError } = await supabaseAdmin
-    .from("profiles")
-    .select("*")
-    .limit(1);
-
-  if (sampleError) {
-    console.error("Failed to fetch sample profile:", sampleError);
-    return NextResponse.json({ error: "Failed to fetch members", details: sampleError.message }, { status: 500 });
-  }
-
-  const actualColumns = sampleProfile ? Object.keys(sampleProfile) : [];
-  console.log("Available profile columns:", actualColumns);
-
-  // Only select columns that exist
-  const validColumns = CSV_COLUMNS.filter(col => actualColumns.includes(col));
-  const missingColumns = CSV_COLUMNS.filter(col => !actualColumns.includes(col));
-
-  if (missingColumns.length > 0) {
-    console.log("Columns not in DB (will be skipped):", missingColumns);
-  }
-
+  // Get all profiles with all columns using *
   const { data: profiles, error } = await supabaseAdmin
     .from("profiles")
-    .select(validColumns.join(","))
+    .select("*")
     .order("joined_at", { ascending: false });
 
   if (error) {
     console.error("Failed to fetch profiles:", error);
     return NextResponse.json({ error: "Failed to fetch members", details: error.message }, { status: 500 });
+  }
+
+  // Get actual columns from the first profile
+  const firstProfile = profiles && profiles.length > 0 ? profiles[0] : null;
+  const actualColumns = firstProfile ? Object.keys(firstProfile) : [];
+  console.log("Available profile columns:", actualColumns);
+
+  // Only include columns that exist in the database
+  const validColumns = CSV_COLUMNS.filter(col => actualColumns.includes(col));
+  const missingColumns = CSV_COLUMNS.filter(col => !actualColumns.includes(col));
+
+  if (missingColumns.length > 0) {
+    console.log("Columns not in DB (will be skipped):", missingColumns);
   }
 
   const headers = validColumns.map((col) => COLUMN_LABELS[col] || col);
