@@ -115,6 +115,13 @@ export async function POST(request: Request) {
           if (claimsByCheckout && claimsByCheckout.length > 0) {
             existingClaims = claimsByCheckout;
             console.log(`Found claim ${existingClaims[0].id} via checkout_id fallback`);
+            
+            // Update shopify_checkout_id to the real Shopify GID format
+            await supabaseAdmin
+              .from("zero_dollar_claims")
+              .update({ shopify_checkout_id: checkoutId })
+              .eq("id", existingClaims[0].id);
+            console.log(`Updated shopify_checkout_id to ${checkoutId}`);
           }
         }
 
