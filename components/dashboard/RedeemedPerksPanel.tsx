@@ -92,12 +92,6 @@ export default function RedeemedPerksPanel({
   };
 
   const handleOpenFreshUrl = async (redemptionId: string, storedUrl: string | null) => {
-    // Static URLs don't expire - open directly
-    if (storedUrl && (storedUrl.includes('static-stage.accessdevelopment.com') || storedUrl.includes('static.accessdevelopment.com'))) {
-      window.open(storedUrl, "_blank");
-      return;
-    }
-
     try {
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
       const data = await response.json();
@@ -107,11 +101,10 @@ export default function RedeemedPerksPanel({
         return;
       }
 
-      // Fetch the actual URL content and check for AccessDenied
       const urlResponse = await fetch(data.url, { signal: AbortSignal.timeout(10000) });
       const urlText = await urlResponse.text();
 
-      if (!urlResponse.ok || urlText.includes("<Code>AccessDenied</Code>")) {
+      if (urlText.includes("<Code>AccessDenied</Code>")) {
         setShowExpiredModal(true);
       } else {
         window.open(data.url, "_blank");
