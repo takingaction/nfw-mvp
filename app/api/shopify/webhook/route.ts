@@ -70,12 +70,9 @@ export async function POST(request: Request) {
         const nfwUserId = nfwUserIdAttr?.value || null;
         const nfwCheckoutTime = nfwCheckoutTimeAttr ? parseInt(nfwCheckoutTimeAttr.value, 10) : null;
 
-        // Check if checkout URL has expired (2 hour limit)
-        const checkoutExpirationMs = 2 * 60 * 60 * 1000; // 2 hours
-        if (!nfwCheckoutTime || (Date.now() - nfwCheckoutTime > checkoutExpirationMs)) {
-          console.log(`Rejecting order ${orderId} - checkout URL expired or missing timestamp. Timestamp: ${nfwCheckoutTime}, Age: ${nfwCheckoutTime ? Date.now() - nfwCheckoutTime : 'N/A'}ms`);
-          return NextResponse.json({ received: true, reason: "Checkout URL expired" });
-        }
+        // Debug: Log all order attributes to see what Shopify is sending
+        console.log(`[orders/create] Order ${orderId} attributes:`, JSON.stringify(orderAttributes));
+        console.log(`[orders/create] nfw_user_id: ${nfwUserId}, nfw_checkout_time: ${nfwCheckoutTime}`);
 
         // First try to find claim by variant_id (correct path)
         let { data: existingClaims } = await supabaseAdmin
