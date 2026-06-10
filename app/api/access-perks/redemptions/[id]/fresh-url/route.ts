@@ -97,14 +97,45 @@ export async function GET(request: Request, { params }: RouteParams) {
       },
     });
 
+    const responseText = await response.text();
+    const responseStatus = response.status;
+
+    // Check for Access Denied or other errors
     if (!response.ok) {
+      let errorMessage = "Link expired or offer no longer available";
+
+      // Check if it's an Access Denied error (S3 signed URL expired)
+      if (responseText.includes("AccessDenied") || responseText.includes("<Error>")) {
+        errorMessage = "Link expired or offer no longer available";
+      }
+
+      // Try to parse JSON error from Access Perks
+      try {
+        const errorData = JSON.parse(responseText);
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+      } catch {
+        // Not JSON, use default message
+      }
+
       return NextResponse.json(
-        { error: "Link expired or offer no longer available" },
+        { error: errorMessage },
         { status: 410 },
       );
     }
 
-    const redemptionData = await response.json();
+    let redemptionData;
+    try {
+      redemptionData = JSON.parse(responseText);
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid response from server" },
+        { status: 500 },
+      );
+    }
 
     // Extract fresh URL from response
     const freshUrl =
@@ -125,7 +156,8 @@ export async function GET(request: Request, { params }: RouteParams) {
     setCachedUrl(cacheKey, freshUrl);
 
     return NextResponse.json({ url: freshUrl, cached: false });
-  } catch {
+  } catch (err) {
+    console.error("[fresh-url] Unexpected error:", err);
     return NextResponse.json(
       { error: "Link expired or offer no longer available" },
       { status: 500 },

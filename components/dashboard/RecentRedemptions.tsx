@@ -79,24 +79,20 @@ export default function RecentRedemptions() {
       return;
     }
 
-    // For other URLs (S3 signed URLs that can expire), try fresh-url API first
+    // For other URLs (S3 signed URLs that can expire), try fresh-url API
     setOpeningId(redemptionId);
     try {
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
       const data = await response.json();
-      if (data.url) {
+
+      if (response.ok && data.url) {
         window.open(data.url, "_blank");
-      } else if (storedUrl) {
-        window.open(storedUrl, "_blank");
       } else {
+        // API returned error or no URL
         setShowExpiredModal(true);
       }
     } catch {
-      if (storedUrl) {
-        window.open(storedUrl, "_blank");
-      } else {
-        setShowExpiredModal(true);
-      }
+      setShowExpiredModal(true);
     } finally {
       setOpeningId(null);
     }
