@@ -33,6 +33,7 @@ function setCachedUrl(key: string, url: string): void {
 }
 
 export async function GET(request: Request, { params }: RouteParams) {
+  console.log("[fresh-url] API called with params:", params);
   const ip = request.headers.get("x-forwarded-for") ?? "unknown";
   const { success } = rateLimit(`fresh-url:${ip}`, 10, 60_000);
   if (!success) {
@@ -73,11 +74,13 @@ export async function GET(request: Request, { params }: RouteParams) {
     const cacheKey = `${id}`;
     const cachedUrl = getCachedUrl(cacheKey);
     if (cachedUrl) {
+      console.log("[fresh-url] Returning cached URL");
       return NextResponse.json({ url: cachedUrl, cached: true });
     }
 
     // If no usage_redeem_key, return error
     if (!redemption.usage_redeem_key) {
+      console.log("[fresh-url] No usage_redeem_key, returning 410");
       return NextResponse.json(
         { error: "Link expired or offer no longer available" },
         { status: 410 },
@@ -99,6 +102,8 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     const responseText = await response.text();
     const responseStatus = response.status;
+
+    console.log("[fresh-url] Access Perks API response status:", responseStatus, "body preview:", responseText.substring(0, 100));
 
     // Check for Access Denied or other errors
     if (!response.ok) {
@@ -145,7 +150,10 @@ export async function GET(request: Request, { params }: RouteParams) {
       redemptionData.link ||
       null;
 
+    console.log("[fresh-url] Extracted freshUrl:", freshUrl, "from redemptionData:", JSON.stringify(redemptionData).substring(0, 200));
+
     if (!freshUrl) {
+      console.log("[fresh-url] No fresh URL, returning 410 error");
       return NextResponse.json(
         { error: "Link expired or offer no longer available" },
         { status: 410 },
@@ -154,6 +162,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     // Cache the fresh URL
     setCachedUrl(cacheKey, freshUrl);
+    console.log("[fresh-url] Returning success with URL");
 
     return NextResponse.json({ url: freshUrl, cached: false });
   } catch (err) {
