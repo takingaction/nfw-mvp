@@ -182,6 +182,12 @@ export async function GET(request: NextRequest) {
 
   const headers = validColumns.map((col) => COLUMN_LABELS[col] || col);
 
+  // Debug: log first profile raw values
+  if (profiles && profiles.length > 0) {
+    const first = profiles[0] as Record<string, unknown>;
+    console.log("First profile sample - id:", first.id, "email:", first.email, "identities:", first.identities);
+  }
+
   const rows = profiles?.map((profile: unknown) => {
     const p = profile as Record<string, unknown>;
     return validColumns.map((col) => formatCell(col, p[col]));
