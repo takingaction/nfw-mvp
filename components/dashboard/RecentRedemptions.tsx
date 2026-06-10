@@ -33,6 +33,7 @@ export default function RecentRedemptions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRedemptions();
@@ -65,6 +66,23 @@ export default function RecentRedemptions() {
       setTimeout(() => setCopiedId(null), 2000);
     } catch (err) {
       console.error("Failed to copy:", err);
+    }
+  };
+
+  const handleOpenFreshUrl = async (redemptionId: string) => {
+    setOpeningId(redemptionId);
+    try {
+      const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
+      const data = await response.json();
+      if (data.url) {
+        window.open(data.url, "_blank");
+      } else {
+        alert("Link expired or offer no longer available");
+      }
+    } catch {
+      alert("Link expired or offer no longer available");
+    } finally {
+      setOpeningId(null);
     }
   };
 
@@ -283,20 +301,30 @@ export default function RecentRedemptions() {
 
                     {/* Redemption URL */}
                     {redemption.redemption_url && (
-                      <a
-                        href={redemption.redemption_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-lilac/20 text-nfw-blackberry hover:bg-nfw-lilac/30 transition-colors text-xs font-medium"
+                      <button
+                        onClick={() => handleOpenFreshUrl(redemption.id)}
+                        disabled={openingId === redemption.id}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-lilac/20 text-nfw-blackberry hover:bg-nfw-lilac/30 transition-colors text-xs font-medium disabled:opacity-50"
                       >
-                        <ExternalLink className="w-3 h-3" />
-                        Open Offer
-                      </a>
+                        {openingId === redemption.id ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Loading...
+                          </>
+                        ) : (
+                          <>
+                            <ExternalLink className="w-3 h-3" />
+                            Open Offer
+                          </>
+                        )}
+                      </button>
                     )}
 
                     {/* View Details */}
                     <Link
                       href={`/perks/${redemption.offer_key}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-nfw-blackberry hover:bg-gray-200 transition-colors text-xs font-medium"
                     >
                       View Details
