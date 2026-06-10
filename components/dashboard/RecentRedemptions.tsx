@@ -79,22 +79,18 @@ export default function RecentRedemptions() {
       return;
     }
 
-    setOpeningId(redemptionId);
     try {
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
       const data = await response.json();
-      setOpeningId(null);
 
-      console.log("Fresh URL API response:", response.status, data);
-
-      if (response.ok && data.url) {
-        console.log("Opening URL:", data.url);
+      if (!response.ok || data.error) {
+        window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
+      } else if (data.url) {
         window.open(data.url, "_blank");
       } else {
         window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
       }
     } catch {
-      setOpeningId(null);
       window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
     }
   };

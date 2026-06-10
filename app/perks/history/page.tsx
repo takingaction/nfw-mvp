@@ -147,28 +147,24 @@ export default function RedemptionHistoryPage() {
   };
 
   const handleOpenFreshUrl = async (redemptionId: string, storedUrl: string | null) => {
-    alert("handleOpenFreshUrl called! redemptionId: " + redemptionId);
     // Static URLs don't expire - open directly
     if (storedUrl && (storedUrl.includes('static-stage.accessdevelopment.com') || storedUrl.includes('static.accessdevelopment.com'))) {
       window.open(storedUrl, "_blank");
       return;
     }
 
-    // Skip setOpeningId for now to isolate the issue
     try {
-      alert("About to fetch");
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
-      alert("Fetch completed, status: " + response.status);
       const data = await response.json();
-      alert("JSON parsed, hasUrl: " + !!data.url);
 
-      if (response.ok && data.url) {
+      if (!response.ok || data.error) {
+        window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
+      } else if (data.url) {
         window.open(data.url, "_blank");
       } else {
         window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
       }
-    } catch (err) {
-      alert("Catch error: " + err);
+    } catch {
       window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
     }
   };
