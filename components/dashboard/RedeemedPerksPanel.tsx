@@ -91,6 +91,15 @@ export default function RedeemedPerksPanel({
     }
   };
 
+  const validateUrl = async (url: string): Promise<boolean> => {
+    try {
+      const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  };
+
   const handleOpenFreshUrl = async (redemptionId: string, storedUrl: string | null) => {
     // Static URLs don't expire - open directly
     if (storedUrl && (storedUrl.includes('static-stage.accessdevelopment.com') || storedUrl.includes('static.accessdevelopment.com'))) {
@@ -101,10 +110,17 @@ export default function RedeemedPerksPanel({
     const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
     const data = await response.json();
 
-    if (!response.ok || data.error || !data.url) {
+    if (!data.url) {
       setShowExpiredModal(true);
-    } else {
+      return;
+    }
+
+    // Validate URL before opening
+    const isValid = await validateUrl(data.url);
+    if (isValid) {
       window.open(data.url, "_blank");
+    } else {
+      setShowExpiredModal(true);
     }
   };
 

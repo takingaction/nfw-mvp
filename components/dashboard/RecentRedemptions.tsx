@@ -72,6 +72,15 @@ export default function RecentRedemptions() {
     }
   };
 
+  const validateUrl = async (url: string): Promise<boolean> => {
+    try {
+      const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  };
+
   const handleOpenFreshUrl = async (redemptionId: string, storedUrl: string | null) => {
     // Static URLs don't expire - open directly
     if (storedUrl && (storedUrl.includes('static-stage.accessdevelopment.com') || storedUrl.includes('static.accessdevelopment.com'))) {
@@ -79,19 +88,20 @@ export default function RecentRedemptions() {
       return;
     }
 
-    try {
-      const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
-      const data = await response.json();
+    const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
+    const data = await response.json();
 
-      if (!response.ok || data.error) {
-        window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
-      } else if (data.url) {
-        window.open(data.url, "_blank");
-      } else {
-        window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
-      }
-    } catch {
-      window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
+    if (!data.url) {
+      setShowExpiredModal(true);
+      return;
+    }
+
+    // Validate URL before opening
+    const isValid = await validateUrl(data.url);
+    if (isValid) {
+      window.open(data.url, "_blank");
+    } else {
+      setShowExpiredModal(true);
     }
   };
 
