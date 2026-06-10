@@ -58,8 +58,8 @@ function OnlineHistoryItem({ claim }: { claim: Claim }) {
   })();
 
   return (
-    <div className="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
-      <div className="w-12 h-12 bg-white/10 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
+    <div className="flex items-center gap-3 p-2 bg-white/5">
+      <div className="w-12 h-12 bg-white/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
         {product?.image_url ? (
           <img
             src={product.image_url}
@@ -97,7 +97,7 @@ function LatestOfferingCard({ product }: { product: LatestProduct }) {
   const isDraft = product.status === "DRAFT";
   return (
     <Link href="/store" className="block w-full h-full">
-      <div className="bg-white rounded-xl overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col">
+      <div className="bg-white overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col">
         <div className="aspect-square sm:aspect-[3/4] relative bg-white overflow-hidden flex-shrink-0">
           {product.imageUrl ? (
             <img
@@ -161,7 +161,7 @@ export default function YourZeroDollarStoreSection({ claims }: YourZeroDollarSto
         </h2>
         <Link
           href="/store"
-          className="px-4 py-2 bg-nfw-wisteria text-white font-ui text-sm font-medium rounded-lg hover:bg-nfw-wisteria/90 transition-colors"
+          className="px-4 py-2 bg-nfw-wisteria text-white font-ui text-sm font-medium hover:bg-nfw-wisteria/90 transition-colors"
         >
           Browse the Zero Dollar Store
         </Link>
@@ -170,7 +170,7 @@ export default function YourZeroDollarStoreSection({ claims }: YourZeroDollarSto
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Left Column: Online History - 1/3 width */}
         <div>
-          <div className="bg-white/10 rounded-xl p-6">
+          <div className="bg-white/10 p-6">
             <div className="flex items-center gap-3 mb-4">
               <Clock className="w-5 h-5 text-white/70" />
               <h3 className="text-lg font-bold text-white font-serif">
@@ -200,13 +200,13 @@ export default function YourZeroDollarStoreSection({ claims }: YourZeroDollarSto
 
         {/* Right Column: Latest Offerings - 2/3 width */}
         <div className="md:col-span-2">
-          <div className="bg-white/10 rounded-xl p-6">
+          <div className="bg-white/10 p-6">
             <h3 className="text-lg font-bold text-white font-serif mb-4">
               Latest Offerings
             </h3>
             {loading ? (
               <div className="flex items-center justify-center py-8">
-                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-white border-t-transparent animate-spin" />
               </div>
             ) : latestProducts.length === 0 ? (
               <div className="text-center py-6">

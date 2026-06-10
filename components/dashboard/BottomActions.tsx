@@ -29,7 +29,7 @@ export default function BottomActions({
     <div className="bg-nfw-aubergine py-12 px-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
         {items.map((item, index) => (
-          <div key={index} className="relative aspect-[4/3] md:aspect-square rounded-lg overflow-hidden group">
+          <div key={index} className="relative aspect-[4/3] md:aspect-square overflow-hidden group">
             {item.image ? (
               <>
                 <img

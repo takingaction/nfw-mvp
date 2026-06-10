@@ -54,9 +54,9 @@ function RedeemedPerksList({ redemptions, onExplore }: RedeemedPerksListProps) {
       {redemptions.slice(0, 6).map((redemption) => (
         <div
           key={redemption.id}
-          className="flex items-center gap-3 p-2 bg-white/5 rounded-lg"
+          className="flex items-center gap-3 p-2 bg-white/5"
         >
-          <div className="w-10 h-10 bg-white/10 rounded flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 bg-white/10 flex items-center justify-center flex-shrink-0">
             <Gift className="w-4 h-4 text-white/40" />
           </div>
           <div className="flex-1 min-w-0">
@@ -104,9 +104,9 @@ function SavedBrandsList({ stores, onExplore }: SavedBrandsListProps) {
       {stores.slice(0, 6).map((store) => (
         <div
           key={store.id}
-          className="flex items-center gap-3 p-2 bg-white/5 rounded-lg"
+          className="flex items-center gap-3 p-2 bg-white/5"
         >
-          <div className="w-10 h-10 bg-white/10 rounded flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 bg-white/10 flex items-center justify-center flex-shrink-0">
             {store.logo_url ? (
               <img
                 src={store.logo_url}
@@ -160,7 +160,7 @@ export default function YourPerksAndBenefits({
         </h2>
         <Link
           href="/perks"
-          className="px-4 py-2 bg-nfw-lilac text-white font-ui text-sm font-medium rounded-lg hover:bg-nfw-lilac/90 transition-colors"
+          className="px-4 py-2 bg-nfw-lilac text-white font-ui text-sm font-medium hover:bg-nfw-lilac/90 transition-colors"
         >
           Explore Perks
         </Link>
@@ -169,7 +169,7 @@ export default function YourPerksAndBenefits({
       <div className="grid md:grid-cols-3 gap-8">
           {/* Left Column: Saved Brands - 1/3 width */}
           <div>
-            <div className="bg-white/5 rounded-xl p-6">
+            <div className="bg-white/5 p-6">
               <div className="flex items-center gap-3 mb-4">
                 <Heart className="w-5 h-5 text-nfw-citrine" />
                 <h3 className="text-lg font-bold text-white font-serif">
@@ -180,7 +180,7 @@ export default function YourPerksAndBenefits({
               {likedStores.length > 0 && (
                 <button
                   onClick={onExploreSavedBrands}
-                  className="mt-4 w-full text-center text-sm text-nfw-citrine hover:text-nfw-citrine/80 py-2 border border-nfw-citrine/20 rounded-lg transition-colors"
+                  className="mt-4 w-full text-center text-sm text-nfw-citrine hover:text-nfw-citrine/80 py-2 border border-nfw-citrine/20 transition-colors"
                 >
                   Explore Your Saved Brands
                 </button>
@@ -190,7 +190,7 @@ export default function YourPerksAndBenefits({
 
           {/* Right Column: Redeemed Perks - 2/3 width */}
           <div className="md:col-span-2">
-            <div className="bg-white/5 rounded-xl p-6">
+            <div className="bg-white/5 p-6">
               <div className="flex items-center gap-3 mb-4">
                 <Gift className="w-5 h-5 text-nfw-citrine" />
                 <h3 className="text-lg font-bold text-white font-serif">
@@ -200,7 +200,7 @@ export default function YourPerksAndBenefits({
               <RedeemedPerksList redemptions={recentRedemptions} onExplore={onExploreRedeemedPerks} />
               <button
                 onClick={onExploreRedeemedPerks}
-                className="mt-4 w-full text-center text-sm text-nfw-citrine hover:text-nfw-citrine/80 py-2 border border-nfw-citrine/20 rounded-lg transition-colors"
+                className="mt-4 w-full text-center text-sm text-nfw-citrine hover:text-nfw-citrine/80 py-2 border border-nfw-citrine/20 transition-colors"
               >
                 Explore Your Redeemed Perks
               </button>

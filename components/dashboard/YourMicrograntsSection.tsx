@@ -64,7 +64,7 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
         </h2>
         <Link
           href="/grants/apply"
-          className="px-4 py-2 bg-nfw-citrine text-nfw-blackberry font-ui text-sm font-medium rounded-lg hover:bg-nfw-citrine/90 transition-colors"
+          className="px-4 py-2 bg-nfw-citrine text-nfw-blackberry font-ui text-sm font-medium hover:bg-nfw-citrine/90 transition-colors"
         >
           New Application
         </Link>
@@ -80,7 +80,7 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
           </div>
 
           {grants.length === 0 ? (
-            <div className="bg-white/10 rounded-xl p-6 text-center">
+            <div className="bg-white/10 p-6 text-center">
               <p className="text-white/70 font-serif mb-3">
                 No grant applications yet
               </p>
@@ -89,7 +89,7 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
               </p>
               <Link
                 href="/grants/apply"
-                className="inline-block px-6 py-2 bg-nfw-citrine text-nfw-blackberry font-ui text-sm font-medium rounded-lg hover:bg-nfw-citrine/90 transition-colors"
+                className="inline-block px-6 py-2 bg-nfw-citrine text-nfw-blackberry font-ui text-sm font-medium hover:bg-nfw-citrine/90 transition-colors"
               >
                 Start Your First Application
               </Link>
@@ -100,14 +100,14 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
                 <Link
                   key={grant.id}
                   href={`/grants/view/${grant.id}`}
-                  className="block bg-white/10 hover:bg-white/15 rounded-xl p-4 transition-colors"
+                  className="block bg-white/10 hover:bg-white/15 p-4 transition-colors"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="text-white font-serif font-semibold text-sm line-clamp-2 flex-1 [&_sup]:text-[0.6em] [&_sup]:align-super"
                       dangerouslySetInnerHTML={{ __html: decodeHtml(grant.grant_cycles?.cycle_name || "Grant Application") }}
                     />
                     <span
-                      className={`ml-2 px-2 py-0.5 font-ui text-xs font-black tracking-[0.03em] uppercase rounded ${statusColors[grant.status] || "bg-gray-100 text-gray-600"}`}
+                      className={`ml-2 px-2 py-0.5 font-ui text-xs font-black tracking-[0.03em] uppercase ${statusColors[grant.status] || "bg-gray-100 text-gray-600"}`}
                     >
                       {statusLabels[grant.status] || grant.status}
                     </span>
@@ -137,7 +137,7 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
           </div>
 
           {availableCycles.length === 0 ? (
-            <div className="bg-white/10 rounded-xl p-6 text-center">
+            <div className="bg-white/10 p-6 text-center">
               <p className="text-white/70 font-serif">
                 No open grant cycles at this time
               </p>
@@ -151,10 +151,10 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
               <Link
                 key={cycle.id}
                 href="/grants/apply"
-                className="bg-white/10 hover:bg-white/15 rounded-xl p-4 transition-colors flex flex-col h-full"
+                className="bg-white/10 hover:bg-white/15 p-4 transition-colors flex flex-col h-full"
               >
                   {cycle.featured_image && (
-                    <div className="relative w-full h-40 sm:h-32 rounded-lg overflow-hidden mb-3">
+                    <div className="relative w-full h-40 sm:h-32 mb-3">
                       <img
                         src={cycle.featured_image}
                         alt={cycle.cycle_name}
