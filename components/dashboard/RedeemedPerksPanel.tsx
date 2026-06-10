@@ -92,31 +92,24 @@ export default function RedeemedPerksPanel({
   };
 
   const handleOpenFreshUrl = async (redemptionId: string, storedUrl: string | null) => {
-    // If stored URL is from static.accessdevelopment.com (coupon page), it doesn't expire - open directly
     if (storedUrl && (storedUrl.includes('static-stage.accessdevelopment.com') || storedUrl.includes('static.accessdevelopment.com'))) {
       window.open(storedUrl, "_blank");
       return;
     }
 
-    // For other URLs (S3 signed URLs that can expire), try fresh-url API
     setOpeningId(redemptionId);
     try {
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
       const data = await response.json();
       setOpeningId(null);
 
-      console.log("[RedeemedPerksPanel] Fresh URL response:", response.status, data);
-
-      // Open URL if we got one, otherwise show modal
       if (response.ok && data.url) {
         window.open(data.url, "_blank");
       } else {
-        console.log("[RedeemedPerksPanel] Showing expired modal, response.ok:", response.ok, "data.url:", data.url);
         setShowExpiredModal(true);
       }
-    } catch (err) {
+    } catch {
       setOpeningId(null);
-      console.log("[RedeemedPerksPanel] Catch error:", err);
       setShowExpiredModal(true);
     }
   };
