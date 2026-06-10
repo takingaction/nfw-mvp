@@ -73,28 +73,29 @@ export default function RecentRedemptions() {
   };
 
   const handleOpenFreshUrl = async (redemptionId: string, storedUrl: string | null) => {
-    // If stored URL is from static.accessdevelopment.com (coupon page), it doesn't expire - open directly
+    // Static URLs don't expire - open directly
     if (storedUrl && (storedUrl.includes('static-stage.accessdevelopment.com') || storedUrl.includes('static.accessdevelopment.com'))) {
       window.open(storedUrl, "_blank");
       return;
     }
 
-    // For other URLs (S3 signed URLs that can expire), try fresh-url API
     setOpeningId(redemptionId);
     try {
       const response = await fetch(`/api/access-perks/redemptions/${redemptionId}/fresh-url`);
       const data = await response.json();
+      setOpeningId(null);
+
+      console.log("Fresh URL API response:", response.status, data);
 
       if (response.ok && data.url) {
+        console.log("Opening URL:", data.url);
         window.open(data.url, "_blank");
       } else {
-        // API returned error or no URL
-        setShowExpiredModal(true);
+        window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
       }
     } catch {
-      setShowExpiredModal(true);
-    } finally {
       setOpeningId(null);
+      window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
     }
   };
 

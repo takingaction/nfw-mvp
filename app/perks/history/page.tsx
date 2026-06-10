@@ -159,7 +159,10 @@ export default function RedemptionHistoryPage() {
       const data = await response.json();
       setOpeningId(null);
 
+      console.log("Fresh URL API response:", response.status, data);
+
       if (response.ok && data.url) {
+        console.log("Opening URL:", data.url);
         window.open(data.url, "_blank");
       } else {
         window.alert("This link has expired. Please go to Details to redeem again and get a new link.");
