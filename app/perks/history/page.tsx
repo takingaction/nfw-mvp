@@ -619,12 +619,6 @@ export default function RedemptionHistoryPage() {
           </>
         )}
       </div>
-      <button
-        onClick={() => setShowExpiredModal(true)}
-        className="fixed bottom-4 right-4 px-4 py-2 bg-red-500 text-white text-sm z-50"
-      >
-        TEST MODAL
-      </button>
       <ExpiredLinkModal
         isOpen={showExpiredModal}
         onClose={() => setShowExpiredModal(false)}

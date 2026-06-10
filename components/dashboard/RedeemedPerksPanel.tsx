@@ -341,12 +341,6 @@ export default function RedeemedPerksPanel({
           {/* Footer */}
           {redemptions.length > 0 && (
 <div className="p-4 border-t border-nfw-blackberry/10">
-            <button
-              onClick={() => setShowExpiredModal(true)}
-              className="mb-2 px-4 py-2 bg-red-500 text-white text-sm"
-            >
-              TEST MODAL
-            </button>
             <Link
               href="/perks"
               onClick={onClose}
