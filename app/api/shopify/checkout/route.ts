@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
+import { shopifyFetch, CHECKOUT_CREATE_MUTATION } from "@/lib/shopify";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -69,17 +70,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN || "nfw-checkout.myshopify.com";
-
-    const variantIdMatch = variantId.match(/gid:\/\/shopify\/ProductVariant\/(\d+)/);
-    if (!variantIdMatch) {
-      return NextResponse.json(
-        { error: "Invalid variant ID format" },
-        { status: 400 }
-      );
-    }
-    const numericVariantId = variantIdMatch[1];
-
     // Check lifetime claim limit (1 per product per user)
     const { data: existingClaim } = await supabaseAdmin
       .from("zero_dollar_claims")
@@ -112,7 +102,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const checkoutUrl = `https://${shopDomain}/cart/${numericVariantId}:1?attributes[nfw_user_id]=${userId}&attributes[nfw_checkout_time]=${Date.now()}`;
+    // Create Shopify checkout via GraphQL with proper attributes
+    const checkoutTime = Date.now();
+    
+    let checkoutUrl: string;
+    let shopifyCheckoutId: string;
+    
+    try {
+      const checkoutData = await shopifyFetch<{
+        checkoutCreate: {
+          checkout: { id: string; webUrl: string };
+          checkoutUserErrors: Array<{ code: string; field: string; message: string }>;
+        };
+      }>({
+        query: CHECKOUT_CREATE_MUTATION,
+        variables: {
+          input: {
+            lineItems: [
+              {
+                variantId: variantId,
+                quantity: 1,
+              },
+            ],
+            attributes: [
+              { key: "nfw_user_id", value: userId },
+              { key: "nfw_checkout_time", value: String(checkoutTime) },
+            ],
+          },
+        },
+      });
+
+      // Check for user errors from Shopify
+      if (checkoutData.checkoutCreate.checkoutUserErrors?.length > 0) {
+        const errorMsg = checkoutData.checkoutCreate.checkoutUserErrors[0].message;
+        console.error("Shopify checkout error:", errorMsg);
+        return NextResponse.json(
+          { error: `Shopify checkout failed: ${errorMsg}` },
+          { status: 500 }
+        );
+      }
+
+      checkoutUrl = checkoutData.checkoutCreate.checkout.webUrl;
+      shopifyCheckoutId = checkoutData.checkoutCreate.checkout.id;
+      
+      console.log(`Created Shopify checkout: ${shopifyCheckoutId} for user ${userId}`);
+    } catch (error) {
+      console.error("Failed to create Shopify checkout:", error);
+      return NextResponse.json(
+        { error: "Failed to create Shopify checkout" },
+        { status: 500 }
+      );
+    }
 
     // Create claim record
     const { error: claimError } = await supabaseAdmin
@@ -121,7 +161,7 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         shopify_product_id: productId,
         shopify_variant_id: variantId,
-        shopify_checkout_id: `checkout_${Date.now()}`,
+        shopify_checkout_id: shopifyCheckoutId,
         status: "created",
         shipping_address: { placeholder: true },
         claimed_at: new Date().toISOString(),
@@ -137,7 +177,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       checkoutUrl,
-      checkoutId: `checkout_${Date.now()}`,
+      checkoutId: shopifyCheckoutId,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
