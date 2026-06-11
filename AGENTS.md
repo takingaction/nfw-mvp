@@ -4178,5 +4178,80 @@ if ((!existingClaims || existingClaims.length === 0) && nfwUserId) {
 **Commits:**
 - `79a0d7d` - fix: resolve selected variant to actual ID, fix webhook lookup by user_id+product_id
 
+### Session 2026-06-11: Shopify Webhook nfw_user_id Fix
+
+**Problem:** Shopify webhook `orders/create` was not finding `nfw_user_id` from `order.attributes`. Claims were being created with `rejected_invalid_user` status because the webhook couldn't validate the user.
+
+**Root Cause:** The webhook handler was looking in `order.note_attributes` (Cart API format), but Draft Orders pass custom attributes via `order.attributes` with `name`/`value` format instead of `key`/`value`.
+
+**Shopify Order Attribute Formats:**
+| Order Type | Field | Format |
+|------------|-------|--------|
+| Draft Orders | `order.attributes` | `attr.name` + `attr.value` |
+| Cart API | `order.note_attributes` | `attr.key` + `attr.value` |
+
+**Solution:** Merge both arrays and check both field names:
+
+```typescript
+const orderAttributes = [
+  ...(order.attributes || []),
+  ...(order.note_attributes || [])
+];
+
+const nfwUserIdAttr = orderAttributes.find(
+  (attr) => attr.key === "nfw_user_id" || attr.name === "nfw_user_id"
+);
+```
+
+**Files Modified:**
+- `app/api/shopify/webhook/route.ts`:
+  - Updated `orders/create` handler to check both `order.attributes` and `order.note_attributes`
+  - Updated `orders/updated` handler with same fix
+  - Added explanatory comments about why both fields exist
+
+**Verification:**
+- After deploy, claimed a product and completed checkout
+- Webhook logs showed: `[orders/create] nfw_user_id: <user-id> (found)`
+- Claim status properly updated to `completed`
+- Order cancellation also properly updated claim status
+
+**Commits:**
+- `f0561d9` - fix: handle both order.attributes and note_attributes for nfw_user_id
+
+### Session 2026-06-11: Admin Shopify Card Description Editing UI
+
+**Problem:** No UI existed to edit the `card_description` field (150 char max for store card display) in `/admin/shopify`. The API and database column existed, but there was no interface for admins to set/manually override card descriptions.
+
+**Solution:** Added edit modal to the Shopify admin product table.
+
+**UI Implementation:**
+- Added **Actions column** to product table with pencil icon button
+- Clicking opens a **modal** with:
+  - Product title (read-only display)
+  - Textarea for editing card_description (max 150 chars)
+  - Live character counter showing `X/150`
+  - Save / Cancel buttons
+- Save calls `/api/admin/shopify/update-product` with `card_description`
+- UI updates immediately on success
+
+**Files Modified:**
+- `app/admin/shopify/ShopifyAdminClient.tsx`:
+  - Added `Pencil`, `X` icon imports
+  - Added `editingProduct`, `cardDescriptionInput`, `savingCardDescription` state
+  - Added `handleEditCardDescription()`, `handleSaveCardDescription()`, `handleCloseCardDescriptionModal()` functions
+  - Added `onEdit` prop to `SortableProductRow` component
+  - Added Actions column header to table
+  - Added edit modal with textarea and character counter
+
+**Behavior:**
+- Admin clicks pencil icon → modal opens with current card_description (or empty)
+- Edit text (max 150 chars) → click Save
+- API called with `shopify_product_id` + `card_description`
+- Product list updates immediately
+- Cancel or click outside closes modal without saving
+
+**Commits:**
+- `f0ab248` - feat: add card description editing to /admin/shopify
+
 ## Next Steps
 - (none)
