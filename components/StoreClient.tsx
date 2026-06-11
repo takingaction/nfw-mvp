@@ -270,7 +270,7 @@ export default function StoreClient({
                       </p>
                     )}
 
-                    <div className="mt-auto flex gap-2">
+                    <div className="mt-auto pt-2.5 flex gap-2">
                       <button
                         onClick={() => handleClaim(product)}
                         disabled={!claimStatus.eligible}
