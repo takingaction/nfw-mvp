@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { GripVertical, Save } from "lucide-react";
+import { GripVertical, Save, Pencil, X } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -43,6 +43,7 @@ function SortableProductRow({
   onToggleVisibility,
   onToggleTier,
   onToggleFeatured,
+  onEdit,
 }: {
   product: ProductWithMapping;
   isFeatured: boolean;
@@ -50,6 +51,7 @@ function SortableProductRow({
   onToggleVisibility: () => void;
   onToggleTier: (tier: string) => void;
   onToggleFeatured: () => void;
+  onEdit: () => void;
 }) {
   const {
     attributes,
@@ -159,6 +161,15 @@ function SortableProductRow({
           ))}
         </div>
       </td>
+      <td className="px-6 py-4">
+        <button
+          onClick={onEdit}
+          className="p-2 text-nfw-blackberry/30 hover:text-nfw-aubergine hover:bg-nfw-aubergine/10 rounded transition-colors"
+          title="Edit card description"
+        >
+          <Pencil className="w-5 h-5" />
+        </button>
+      </td>
     </tr>
   );
 }
@@ -175,6 +186,9 @@ export default function ShopifyAdminClient() {
   const [savingHero, setSavingHero] = useState(false);
   const [heroSaved, setHeroSaved] = useState(false);
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductWithMapping | null>(null);
+  const [cardDescriptionInput, setCardDescriptionInput] = useState("");
+  const [savingCardDescription, setSavingCardDescription] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -420,6 +434,47 @@ const SHOPIFY_AUTH_URL = `https://nfw-checkout.myshopify.com/admin/oauth/authori
     }
   };
 
+  const handleEditCardDescription = (product: ProductWithMapping) => {
+    setEditingProduct(product);
+    setCardDescriptionInput(product.cardDescription || "");
+  };
+
+  const handleSaveCardDescription = async () => {
+    if (!editingProduct) return;
+    setSavingCardDescription(true);
+    try {
+      const res = await fetch("/api/admin/shopify/update-product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shopify_product_id: editingProduct.shopifyProductId,
+          updates: { card_description: cardDescriptionInput },
+        }),
+      });
+      if (res.ok) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.shopifyProductId === editingProduct.shopifyProductId
+              ? { ...p, cardDescription: cardDescriptionInput }
+              : p,
+          ),
+        );
+        setEditingProduct(null);
+      } else {
+        setMessage({ type: "error", text: "Failed to save card description" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Failed to save card description" });
+    } finally {
+      setSavingCardDescription(false);
+    }
+  };
+
+  const handleCloseCardDescriptionModal = () => {
+    setEditingProduct(null);
+    setCardDescriptionInput("");
+  };
+
   if (loading) {
     return (
       <div className="p-8">
@@ -582,6 +637,9 @@ const SHOPIFY_AUTH_URL = `https://nfw-checkout.myshopify.com/admin/oauth/authori
                 <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
                   Eligibility
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-nfw-blackberry/5">
@@ -602,6 +660,7 @@ const SHOPIFY_AUTH_URL = `https://nfw-checkout.myshopify.com/admin/oauth/authori
                       onToggleVisibility={() => toggleVisibility(product.shopifyProductId, product.mvpVisibility)}
                       onToggleTier={(tier) => toggleTier(product.shopifyProductId, tier, product.eligibilityTiers ?? [])}
                       onToggleFeatured={() => toggleFeatured(product.shopifyProductId)}
+                      onEdit={() => handleEditCardDescription(product)}
                     />
                   );
                 })}
@@ -610,6 +669,58 @@ const SHOPIFY_AUTH_URL = `https://nfw-checkout.myshopify.com/admin/oauth/authori
           </table>
         </DndContext>
       </div>
+
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-nfw-blackberry/50">
+          <div className="bg-white w-full max-w-md mx-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-nfw-blackberry/10">
+              <h3 className="text-lg font-bold text-nfw-blackberry font-ui">Edit Card Description</h3>
+              <button
+                onClick={handleCloseCardDescriptionModal}
+                className="p-1 text-nfw-blackberry/50 hover:text-nfw-blackberry"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-nfw-blackberry/60 mb-4 font-sans">
+                Editing: <span className="font-medium">{editingProduct.title}</span>
+              </p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-nfw-blackberry mb-2 font-sans">
+                  Card Description <span className="text-nfw-blackberry/40">(shown on store cards, max 150 chars)</span>
+                </label>
+                <textarea
+                  value={cardDescriptionInput}
+                  onChange={(e) => setCardDescriptionInput(e.target.value.slice(0, 150))}
+                  maxLength={150}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry resize-none font-sans"
+                  placeholder="Enter a short description for the store card..."
+                />
+                <p className="text-xs text-nfw-blackberry/40 mt-1 text-right font-sans">
+                  {cardDescriptionInput.length}/150
+                </p>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={handleCloseCardDescriptionModal}
+                  className="px-4 py-2 text-sm font-medium text-nfw-blackberry/60 hover:text-nfw-blackberry font-ui"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveCardDescription}
+                  disabled={savingCardDescription}
+                  className="px-4 py-2 bg-nfw-aubergine text-white text-sm font-medium hover:bg-nfw-aubergine/90 disabled:opacity-50 font-ui"
+                >
+                  {savingCardDescription ? "Saving..." : "Save"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <MediaLibraryModal
         isOpen={mediaLibraryOpen}
