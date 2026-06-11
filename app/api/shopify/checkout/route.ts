@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
-import { shopifyFetch, CHECKOUT_CREATE_MUTATION } from "@/lib/shopify";
+import { shopifyFetch, CART_CREATE_MUTATION } from "@/lib/shopify";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -110,17 +110,17 @@ export async function POST(request: NextRequest) {
     
     try {
       const checkoutData = await shopifyFetch<{
-        checkoutCreate: {
-          checkout: { id: string; webUrl: string };
-          checkoutUserErrors: Array<{ code: string; field: string; message: string }>;
+        cartCreate: {
+          cart: { id: string; checkoutUrl: string };
+          userErrors: Array<{ field: string; message: string }>;
         };
       }>({
-        query: CHECKOUT_CREATE_MUTATION,
+        query: CART_CREATE_MUTATION,
         variables: {
           input: {
-            lineItems: [
+            lines: [
               {
-                variantId: variantId,
+                merchandiseId: variantId,
                 quantity: 1,
               },
             ],
@@ -133,17 +133,17 @@ export async function POST(request: NextRequest) {
       });
 
       // Check for user errors from Shopify
-      if (checkoutData.checkoutCreate.checkoutUserErrors?.length > 0) {
-        const errorMsg = checkoutData.checkoutCreate.checkoutUserErrors[0].message;
-        console.error("Shopify checkout error:", errorMsg);
+      if (checkoutData.cartCreate.userErrors?.length > 0) {
+        const errorMsg = checkoutData.cartCreate.userErrors[0].message;
+        console.error("Shopify cart error:", errorMsg);
         return NextResponse.json(
           { error: `Shopify checkout failed: ${errorMsg}` },
           { status: 500 }
         );
       }
 
-      checkoutUrl = checkoutData.checkoutCreate.checkout.webUrl;
-      shopifyCheckoutId = checkoutData.checkoutCreate.checkout.id;
+      checkoutUrl = checkoutData.cartCreate.cart.checkoutUrl;
+      shopifyCheckoutId = checkoutData.cartCreate.cart.id;
       
       console.log(`Created Shopify checkout: ${shopifyCheckoutId} for user ${userId}`);
     } catch (error) {

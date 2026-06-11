@@ -75,10 +75,10 @@ export async function POST(request: Request) {
       const claimMonth = new Date(orderCreatedAt.getFullYear(), orderCreatedAt.getMonth(), 1).toISOString().split('T')[0];
 
       if (variantId) {
-        // Extract nfw_user_id and nfw_checkout_time from order attributes (passed during checkout)
-        const orderAttributes = order.attributes || [];
-        const nfwUserIdAttr = orderAttributes.find((attr: { name: string; value: string }) => attr.name === "nfw_user_id");
-        const nfwCheckoutTimeAttr = orderAttributes.find((attr: { name: string; value: string }) => attr.name === "nfw_checkout_time");
+        // Extract nfw_user_id and nfw_checkout_time from note_attributes (Cart API passes custom attributes as note_attributes)
+        const orderAttributes = order.note_attributes || [];
+        const nfwUserIdAttr = orderAttributes.find((attr: { key: string; value: string }) => attr.key === "nfw_user_id");
+        const nfwCheckoutTimeAttr = orderAttributes.find((attr: { key: string; value: string }) => attr.key === "nfw_checkout_time");
         const nfwUserId = nfwUserIdAttr?.value || null;
         const nfwCheckoutTime = nfwCheckoutTimeAttr ? parseInt(nfwCheckoutTimeAttr.value, 10) : null;
 
@@ -245,17 +245,17 @@ export async function POST(request: Request) {
 
       // Only process if order was cancelled (any cancellation - including fulfilled orders)
       if (cancelReason) {
-        const orderAttributes = order.attributes || [];
+        const orderAttributes = order.note_attributes || [];
         const nfwUserIdAttr = orderAttributes.find(
-          (attr: { name: string; value: string }) => attr.name === "nfw_user_id"
+          (attr: { key: string; value: string }) => attr.key === "nfw_user_id"
         );
         let nfwUserId = nfwUserIdAttr?.value || null;
         let claimMonth: string | null = null;
 
-        // Fallback: if nfw_user_id not in attributes, look up by shopify_order_id
+        // Fallback: if nfw_user_id not in note_attributes, look up by shopify_order_id
         if (!nfwUserId) {
           const orderId = `gid://shopify/Order/${order.id}`;
-          console.log(`[orders/updated] nfw_user_id not in attributes, looking up by shopify_order_id: ${orderId}`);
+          console.log(`[orders/updated] nfw_user_id not in note_attributes, looking up by shopify_order_id: ${orderId}`);
 
           const { data: claimByOrderId } = await supabaseAdmin
             .from("zero_dollar_claims")

@@ -217,20 +217,14 @@ export const PRODUCT_BY_HANDLE_QUERY = `
   }
 `;
 
-export const CHECKOUT_CREATE_MUTATION = `
-  mutation CheckoutCreate($input: CheckoutCreateInput!) {
-    checkoutCreate(input: $input) {
-      checkout {
+export const CART_CREATE_MUTATION = `
+  mutation CartCreate($input: CartInput!) {
+    cartCreate(input: $input) {
+      cart {
         id
-        webUrl
-        completedAt
-        totalPriceV2 {
-          amount
-          currencyCode
-        }
+        checkoutUrl
       }
-      checkoutUserErrors {
-        code
+      userErrors {
         field
         message
       }
