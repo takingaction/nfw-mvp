@@ -92,7 +92,7 @@ export default function ProductDetailPanel({
     });
     return Object.entries(optionMap).map(([name, values]) => ({
       name,
-      options: Array.from(values).sort(),
+      options: Array.from(values),
     }));
   };
 

@@ -222,7 +222,7 @@ export default function StoreClient({
               return (
                 <div
                   key={product.shopifyProductId}
-                  className=""
+                  className="flex flex-col h-full"
                 >
                   <div className="relative aspect-[3/4] overflow-hidden bg-nfw-stone/10">
                     {product.imageUrl ? (
@@ -259,18 +259,18 @@ export default function StoreClient({
                     )}
                   </div>
 
-                  <div className="py-4">
+                  <div className="flex flex-col flex-1 py-4">
                     <h3 className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-blackberry mb-2">
                       {product.title}
                     </h3>
 
                     {product.cardDescription && (
-                      <p className="font-sans text-sm text-nfw-blackberry/70">
+                      <p className="flex-1 font-sans text-sm text-nfw-blackberry/70">
                         {product.cardDescription}
                       </p>
                     )}
 
-                    <div className="flex gap-2 mt-4">
+                    <div className="mt-auto flex gap-2">
                       <button
                         onClick={() => handleClaim(product)}
                         disabled={!claimStatus.eligible}
