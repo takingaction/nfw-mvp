@@ -183,7 +183,7 @@ export default function ShopifyAdminClient() {
     })
   );
 
-  const normalizeOrigin = (origin: string) => origin.replace(/^https?:\/\/www\./, '$1');
+  const normalizeOrigin = (origin: string) => origin.replace(/^https:\/\/www\./, 'https://');
 const SHOPIFY_AUTH_URL = `https://nfw-checkout.myshopify.com/admin/oauth/authorize?client_id=${process.env.NEXT_PUBLIC_SHOPIFY_CLIENT_ID}&scope=read_products,write_checkouts,read_checkouts&redirect_uri=${typeof window !== 'undefined' ? normalizeOrigin(window.location.origin) : ''}/api/shopify-callback`;
 
   const checkConnection = async () => {
