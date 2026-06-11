@@ -34,8 +34,8 @@ const DELETE_WEBHOOK_MUTATION = `
 `;
 
 const CREATE_WEBHOOK_MUTATION = `
-  mutation CreateWebhookSubscription($input: WebhookSubscriptionInput!) {
-    webhookSubscriptionCreate(input: $input) {
+  mutation CreateWebhookSubscription($topic: WebhookSubscriptionTopic!, $webhookSubscription: WebhookSubscriptionInput!) {
+    webhookSubscriptionCreate(topic: $topic, webhookSubscription: $webhookSubscription) {
       webhookSubscription {
         id
         topic
@@ -108,8 +108,8 @@ async function registerWebhooks(accessToken: string) {
         body: JSON.stringify({
           query: CREATE_WEBHOOK_MUTATION,
           variables: {
-            input: {
-              topic,
+            topic,
+            webhookSubscription: {
               callbackUrl: WEBHOOK_CALLBACK_URL,
               format: "JSON",
             },
