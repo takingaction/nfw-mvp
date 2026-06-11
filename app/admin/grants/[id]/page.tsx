@@ -78,7 +78,7 @@ export default async function AdminGrantCyclePage({
               {cycle.grants_available} available
             </p>
           </div>
-          <div className="text-right flex gap-6">
+          <div className="text-right flex gap-6 items-center">
             <div>
               <p
                 className={`text-3xl font-black font-ui ${
@@ -97,6 +97,12 @@ export default async function AdminGrantCyclePage({
               </p>
               <p className="text-sm text-nfw-blackberry/50">applications</p>
             </div>
+            <a
+              href={`/api/admin/grants/${id}/export`}
+              className="px-4 py-2 bg-nfw-dove border border-nfw-blackberry/20 text-nfw-blackberry font-ui text-sm font-medium hover:bg-nfw-dove/80 transition-colors"
+            >
+              Download CSV
+            </a>
           </div>
         </div>
 
