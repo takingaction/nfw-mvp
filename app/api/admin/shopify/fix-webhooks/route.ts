@@ -198,6 +198,122 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const url = new URL(request.url);
+  const action = url.searchParams.get("action");
+
+  // If ?action=fix is passed, trigger the fix logic
+  if (action === "fix") {
+    // Delegate to POST handler logic
+    const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN;
+    if (!shopDomain) {
+      return NextResponse.json({ error: "Missing SHOPIFY_SHOP_DOMAIN" }, { status: 500 });
+    }
+
+    const { data: tokenData } = await supabaseAdmin
+      .from("shopify_tokens")
+      .select("access_token")
+      .eq("shop", shopDomain)
+      .single();
+
+    if (!tokenData?.access_token) {
+      return NextResponse.json({ error: "No Shopify access token found" }, { status: 400 });
+    }
+
+    const accessToken = tokenData.access_token;
+
+    // Get existing webhooks
+    const listResponse = await fetch(
+      `https://${shopDomain}/admin/api/2026-01/graphql.json`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Access-Token": accessToken,
+        },
+        body: JSON.stringify({ query: GET_WEBHOOK_SUBSCRIPTIONS }),
+      }
+    );
+    const listJson = await listResponse.json();
+    const subscriptions = listJson.data?.webhookSubscriptions?.edges || [];
+
+    const results = {
+      deleted: [] as string[],
+      created: [] as string[],
+      errors: [] as string[],
+    };
+
+    // Delete all existing webhooks
+    for (const sub of subscriptions) {
+      const webhookId = sub.node.id;
+      const topic = sub.node.topic;
+      console.log(`Deleting webhook ${webhookId} (${topic})`);
+
+      const deleteResponse = await fetch(
+        `https://${shopDomain}/admin/api/2026-01/graphql.json`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": accessToken,
+          },
+          body: JSON.stringify({
+            query: DELETE_WEBHOOK_MUTATION,
+            variables: { id: webhookId },
+          }),
+        }
+      );
+      const deleteJson = await deleteResponse.json();
+      if (deleteJson.errors || deleteJson.data?.webhookSubscriptionDelete?.userErrors?.length > 0) {
+        const errorMsg = deleteJson.errors?.[0]?.message || deleteJson.data?.webhookSubscriptionDelete?.userErrors?.[0]?.message;
+        results.errors.push(`Failed to delete ${topic}: ${errorMsg}`);
+      } else {
+        results.deleted.push(topic);
+      }
+    }
+
+    // Create fresh webhooks with correct www URL
+    const webhookTopics = ["ORDERS_CREATE", "ORDERS_UPDATED"];
+    for (const topic of webhookTopics) {
+      console.log(`Creating webhook for ${topic} at ${NEW_WEBHOOK_CALLBACK_URL}`);
+
+      const createResponse = await fetch(
+        `https://${shopDomain}/admin/api/2026-01/graphql.json`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": accessToken,
+          },
+          body: JSON.stringify({
+            query: CREATE_WEBHOOK_MUTATION,
+            variables: {
+              topic,
+              webhookSubscription: {
+                callbackUrl: NEW_WEBHOOK_CALLBACK_URL,
+                format: "JSON",
+              },
+            },
+          }),
+        }
+      );
+      const createJson = await createResponse.json();
+      if (createJson.errors || createJson.data?.webhookSubscriptionCreate?.userErrors?.length > 0) {
+        const errorMsg = createJson.errors?.[0]?.message || createJson.data?.webhookSubscriptionCreate?.userErrors?.[0]?.message;
+        results.errors.push(`Failed to create ${topic}: ${errorMsg}`);
+      } else {
+        const newId = createJson.data?.webhookSubscriptionCreate?.webhookSubscription?.id;
+        console.log(`Created webhook for ${topic}: ${newId}`);
+        results.created.push(topic);
+      }
+    }
+
+    return NextResponse.json({
+      message: `Deleted ${results.deleted.length} webhooks, created ${results.created.length} new webhooks`,
+      results,
+    });
+  }
+
+  // Otherwise, just list current webhooks
   try {
     const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN;
     if (!shopDomain) {
