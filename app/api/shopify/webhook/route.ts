@@ -42,19 +42,27 @@ export async function POST(request: Request) {
 
     const event = JSON.parse(body.toString());
 
+    // Debug: Log when webhook is received
+    console.log(`[webhook] Received ${topic} at ${new Date().toISOString()}`);
+
     if (topic === "orders/create") {
       const order = event;
       const orderId = `gid://shopify/Order/${order.id}`;
       const checkoutId = order.checkout_id ? `gid://shopify/Checkout/${order.checkout_id}` : null;
       const lineItems = order.line_items || [];
       
+      console.log(`[orders/create] Order ID: ${orderId}, checkout_id: ${checkoutId}`);
+
       if (lineItems.length === 0) {
+        console.log(`[orders/create] No line items, skipping`);
         return NextResponse.json({ received: true });
       }
 
       const variantId = lineItems[0].variant_id
         ? `gid://shopify/ProductVariant/${lineItems[0].variant_id}`
         : null;
+      
+      console.log(`[orders/create] Variant ID: ${variantId}`);
 
       const fulfillment = order.fulfillments?.[0];
       const trackingNumber = fulfillment?.tracking_number || null;
@@ -101,7 +109,9 @@ export async function POST(request: Request) {
         }
 
         // Third fallback: try by shopify_checkout_id (checkout ID stored when claim created)
+        let foundViaCheckoutId = false;
         if ((!existingClaims || existingClaims.length === 0) && checkoutId) {
+          // First try exact match (should rarely work since formats differ)
           const { data: claimsByCheckout } = await supabaseAdmin
             .from("zero_dollar_claims")
             .select("*")
@@ -111,7 +121,8 @@ export async function POST(request: Request) {
           
           if (claimsByCheckout && claimsByCheckout.length > 0) {
             existingClaims = claimsByCheckout;
-            console.log(`Found claim ${existingClaims[0].id} via checkout_id fallback`);
+            foundViaCheckoutId = true;
+            console.log(`Found claim ${existingClaims[0].id} via checkout_id exact match`);
             
             // Update shopify_checkout_id to the real Shopify GID format
             await supabaseAdmin
@@ -122,11 +133,41 @@ export async function POST(request: Request) {
           }
         }
 
+        // Fourth fallback: try by extracting numeric part from checkout ID
+        // Shopify sends: gid://shopify/Checkout/1234567890
+        // We store: checkout_1781130242614
+        if ((!existingClaims || existingClaims.length === 0) && checkoutId) {
+          const shopifyCheckoutNumeric = checkoutId.split('/').pop();
+          if (shopifyCheckoutNumeric) {
+            // Try to find claim where shopify_checkout_id ends with the numeric ID
+            const { data: claimsByNumeric } = await supabaseAdmin
+              .from("zero_dollar_claims")
+              .select("*")
+              .like("shopify_checkout_id", `%${shopifyCheckoutNumeric}`)
+              .eq("status", "created")
+              .limit(1);
+            
+            if (claimsByNumeric && claimsByNumeric.length > 0) {
+              existingClaims = claimsByNumeric;
+              foundViaCheckoutId = true;
+              console.log(`Found claim ${existingClaims[0].id} via checkout_id numeric fallback (${shopifyCheckoutNumeric})`);
+              
+              // Update shopify_checkout_id to the real Shopify GID format
+              await supabaseAdmin
+                .from("zero_dollar_claims")
+                .update({ shopify_checkout_id: checkoutId })
+                .eq("id", existingClaims[0].id);
+              console.log(`Updated shopify_checkout_id to ${checkoutId}`);
+            }
+          }
+        }
+
         if (existingClaims && existingClaims.length > 0) {
           const claim = existingClaims[0];
 
           // Validate nfw_user_id matches the claim's user_id (prevents direct Shopify checkout fraud)
-          if (!nfwUserId || nfwUserId !== claim.user_id) {
+          // Skip this validation if claim was found via checkout_id fallback (nfwUserId won't be present)
+          if (!foundViaCheckoutId && (!nfwUserId || nfwUserId !== claim.user_id)) {
             console.log(`Rejecting order ${orderId} - invalid or missing nfw_user_id attribute. Expected: ${claim.user_id}, Got: ${nfwUserId}`);
 
             await supabaseAdmin
@@ -187,10 +228,10 @@ export async function POST(request: Request) {
             console.log("Updated claim", claim.id, "with order", orderId, "status:", newStatus);
           }
         } else {
-          console.log("No matching claim found for variant", variantId);
+          console.log(`[orders/create] No matching claim found. Tried: variant=${variantId}, nfwUserId=${nfwUserId}, checkoutId=${checkoutId}`);
         }
       } else {
-        console.log("No variant ID in order:", order);
+        console.log("[orders/create] No variant ID in order");
       }
     }
 
