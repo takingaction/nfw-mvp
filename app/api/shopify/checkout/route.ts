@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
-import { shopifyFetch, CART_CREATE_MUTATION } from "@/lib/shopify";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -70,6 +69,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Parse variant ID to numeric form for Shopify API
+    const variantIdMatch = variantId.match(/gid:\/\/shopify\/ProductVariant\/(\d+)/);
+    if (!variantIdMatch) {
+      return NextResponse.json(
+        { error: "Invalid variant ID format" },
+        { status: 400 }
+      );
+    }
+    const numericVariantId = parseInt(variantIdMatch[1], 10);
+
     // Check lifetime claim limit (1 per product per user)
     const { data: existingClaim } = await supabaseAdmin
       .from("zero_dollar_claims")
@@ -102,50 +111,79 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create Shopify checkout via GraphQL with proper attributes
+    // Create Shopify draft order via REST Admin API
     const checkoutTime = Date.now();
     
     let checkoutUrl: string;
     let shopifyCheckoutId: string;
     
     try {
-      const checkoutData = await shopifyFetch<{
-        cartCreate: {
-          cart: { id: string; checkoutUrl: string };
-          userErrors: Array<{ field: string; message: string }>;
-        };
-      }>({
-        query: CART_CREATE_MUTATION,
-        variables: {
-          input: {
-            lines: [
-              {
-                merchandiseId: variantId,
-                quantity: 1,
-              },
-            ],
-            attributes: [
-              { key: "nfw_user_id", value: userId },
-              { key: "nfw_checkout_time", value: String(checkoutTime) },
-            ],
-          },
-        },
-      });
+      // Get admin token from Supabase
+      const { data: tokenData } = await supabaseAdmin
+        .from("shopify_tokens")
+        .select("access_token")
+        .eq("shop", process.env.SHOPIFY_SHOP_DOMAIN)
+        .single();
 
-      // Check for user errors from Shopify
-      if (checkoutData.cartCreate.userErrors?.length > 0) {
-        const errorMsg = checkoutData.cartCreate.userErrors[0].message;
-        console.error("Shopify cart error:", errorMsg);
+      if (!tokenData?.access_token) {
+        console.error("No Shopify admin token found");
         return NextResponse.json(
-          { error: `Shopify checkout failed: ${errorMsg}` },
+          { error: "Shopify not configured. Please reconnect." },
           { status: 500 }
         );
       }
 
-      checkoutUrl = checkoutData.cartCreate.cart.checkoutUrl;
-      shopifyCheckoutId = checkoutData.cartCreate.cart.id;
+      const adminToken = tokenData.access_token;
+
+      // Create draft order via REST Admin API
+      const response = await fetch(
+        `https://${process.env.SHOPIFY_SHOP_DOMAIN}/admin/api/2026-01/draft_orders.json`,
+        {
+          method: "POST",
+          headers: {
+            "X-Shopify-Access-Token": adminToken,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            draft_order: {
+              line_items: [
+                {
+                  variant_id: numericVariantId,
+                  quantity: 1
+                }
+              ],
+              note_attributes: [
+                { name: "nfw_user_id", value: userId },
+                { name: "nfw_checkout_time", value: String(checkoutTime) }
+              ]
+            }
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.text();
+        console.error("Shopify draft order error:", err);
+        return NextResponse.json(
+          { error: "Failed to create Shopify checkout" },
+          { status: 500 }
+        );
+      }
+
+      const result = await response.json();
       
-      console.log(`Created Shopify checkout: ${shopifyCheckoutId} for user ${userId}`);
+      if (!result.draft_order) {
+        console.error("No draft_order in response:", result);
+        return NextResponse.json(
+          { error: "Invalid response from Shopify" },
+          { status: 500 }
+        );
+      }
+
+      checkoutUrl = result.draft_order.invoice_url;
+      shopifyCheckoutId = `draft_${result.draft_order.id}`;
+      
+      console.log(`Created Shopify draft order: ${result.draft_order.id} for user ${userId}`);
     } catch (error) {
       console.error("Failed to create Shopify checkout:", error);
       return NextResponse.json(
