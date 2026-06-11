@@ -4253,5 +4253,25 @@ const nfwUserIdAttr = orderAttributes.find(
 **Commits:**
 - `f0ab248` - feat: add card description editing to /admin/shopify
 
+### Session 2026-06-11: Temporarily Disabled Automatic Grant Status Emails
+
+**Decision:** Disabled automatic status update emails (under_review, approved, not_approved, payment_pending, payment_sent) to review and test the email flow before re-enabling.
+
+**What emails remain active:**
+- `grant-application-received` - Sent when user submits grant (in `app/api/grants/create/route.ts`)
+- `bank-info-request` - Sent when admin clicks "Send Bank Info Email" button (in `app/api/admin/grants/send-bank-info-email/route.ts`)
+
+**What emails are disabled:**
+- `grant-under-review` (status = "in_review")
+- `grant-approved` (status = "approved")
+- `grant-not-approved` (status = "not_approved")
+- `grant-payment-pending` (status = "payment_pending")
+- `grant-payment-sent` (status = "payment_sent")
+
+**Files modified:**
+- `app/api/admin/grants/update-status/route.ts` - Commented out automatic `sendGrantStatusEmail` call (lines 66-95)
+
+**To re-enable:** Uncomment the email sending block in `app/api/admin/grants/update-status/route.ts` and update this session entry.
+
 ## Next Steps
 - (none)
