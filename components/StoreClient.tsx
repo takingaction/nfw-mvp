@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp } from "lucide-react";
 import ClaimItemModal from "./ClaimItemModal";
 import ProductDetailPanel from "./ProductDetailPanel";
 import Link from "next/link";
@@ -50,7 +49,6 @@ export default function StoreClient({
       options: Array<{ name: string; value: string }>;
     }>;
   } | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [monthlyClaimed, setMonthlyClaimed] = useState(false);
   const [detailsProduct, setDetailsProduct] = useState<StoreProduct | null>(null);
   const [heroSettings, setHeroSettings] = useState<{
@@ -139,10 +137,6 @@ export default function StoreClient({
     });
   };
 
-  const toggleExpand = (productId: string) => {
-    setExpandedId(expandedId === productId ? null : productId);
-  };
-
   const handleShowDetails = (product: StoreProduct) => {
     setDetailsProduct(product);
   };
@@ -224,8 +218,6 @@ export default function StoreClient({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {products.map((product) => {
               const claimStatus = canClaim(product);
-              const isExpanded = expandedId === product.shopifyProductId;
-              const needsExpand = product.cardDescription && product.cardDescription.length > 100;
 
               return (
                 <div
@@ -273,27 +265,9 @@ export default function StoreClient({
                     </h3>
 
                     {product.cardDescription && (
-                      <div>
-                        <p className={`font-sans text-sm text-nfw-blackberry/70 ${isExpanded || !needsExpand ? "" : "line-clamp-2"}`}>
-                          {product.cardDescription}
-                        </p>
-                        {needsExpand && (
-                          <button
-                            onClick={() => toggleExpand(product.shopifyProductId)}
-                            className="flex items-center gap-1 mt-1 text-nfw-aubergine font-ui text-xs font-medium hover:underline"
-                          >
-                            {isExpanded ? (
-                              <>
-                                Show less <ChevronUp className="w-3 h-3" />
-                              </>
-                            ) : (
-                              <>
-                                Read more <ChevronDown className="w-3 h-3" />
-                              </>
-                            )}
-                          </button>
-                        )}
-                      </div>
+                      <p className="font-sans text-sm text-nfw-blackberry/70">
+                        {product.cardDescription}
+                      </p>
                     )}
 
                     <div className="flex gap-2 mt-4">
