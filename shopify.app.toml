@@ -18,13 +18,14 @@ uri = "/api/shopify/webhook"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_checkouts,read_checkouts,read_products,read_orders"
+scopes = "write_checkouts,read_checkouts,read_products,read_orders,write_draft_orders,read_draft_orders"
 optional_scopes = [ ]
 use_legacy_install_flow = false
 
 [auth]
 redirect_urls = [
   "https://nationalfundforwomen.org/api/shopify-callback",
+  "https://www.nationalfundforwomen.org/api/shopify-callback",
   "https://nfw-mvp-4n2i.vercel.app/api/shopify-callback",
   "http://localhost:3000/api/shopify-callback"
 ]
