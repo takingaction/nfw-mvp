@@ -258,6 +258,13 @@ export default function StoreClient({
                         </span>
                       </div>
                     )}
+                    {product.variants.length > 0 && product.variants[0].title !== "Default" && (
+                      <div className="absolute bottom-3 left-3">
+                        <span className="bg-nfw-wisteria text-white px-3 py-1.5 font-ui text-xs font-black tracking-[0.06em] uppercase">
+                          {product.variants.map((v) => v.title).join(", ")}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="py-4">
@@ -287,12 +294,6 @@ export default function StoreClient({
                           </button>
                         )}
                       </div>
-                    )}
-
-                    {product.variants.length > 0 && product.variants[0].title !== "Default" && (
-                      <p className="font-sans text-xs text-nfw-blackberry/50 mt-2">
-                        Options: {product.variants.map((v) => v.title).join(", ")}
-                      </p>
                     )}
 
                     <div className="flex gap-2 mt-4">
