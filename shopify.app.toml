@@ -2,7 +2,7 @@
 
 client_id = "f49eb5cfc37a77f54ab057d157ade89a"
 name = "NFW Storefront"
-application_url = "https://nationalfundforwomen.org/"
+application_url = "https://www.nationalfundforwomen.org/"
 embedded = false
 
 [webhooks]

@@ -7,7 +7,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const NEW_WEBHOOK_CALLBACK_URL = "https://nationalfundforwomen.org/api/shopify/webhook";
+const NEW_WEBHOOK_CALLBACK_URL = "https://www.nationalfundforwomen.org/api/shopify/webhook";
 const STALE_DOMAIN_PATTERN = "nfw-mvp-4n2i.vercel.app";
 
 const GET_WEBHOOK_SUBSCRIPTIONS = `

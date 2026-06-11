@@ -5,7 +5,7 @@ const SHOPIFY_CLIENT_ID = process.env.SHOPIFY_CLIENT_ID;
 const SHOPIFY_CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET;
 const SHOPIFY_SHOP_DOMAIN = process.env.SHOPIFY_SHOP_DOMAIN;
 
-const WEBHOOK_CALLBACK_URL = "https://nationalfundforwomen.org/api/shopify/webhook";
+const WEBHOOK_CALLBACK_URL = "https://www.nationalfundforwomen.org/api/shopify/webhook";
 
 const GET_WEBHOOK_SUBSCRIPTIONS = `
   query GetWebhookSubscriptions {

@@ -28,6 +28,10 @@ function verifyShopifyWebhook(body: Buffer, signature: string | null): boolean {
   return crypto.timingSafeEqual(signatureBuffer, digestBuffer);
 }
 
+export async function GET() {
+  return NextResponse.json({ received: true });
+}
+
 export async function POST(request: Request) {
   try {
     const arrayBuffer = await request.arrayBuffer();
