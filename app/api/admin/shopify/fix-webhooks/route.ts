@@ -38,8 +38,8 @@ const DELETE_WEBHOOK_MUTATION = `
 `;
 
 const CREATE_WEBHOOK_MUTATION = `
-  mutation CreateWebhookSubscription($topic: WebhookSubscriptionTopic!, $callbackUrl: String!, $format: WebhookSubscriptionFormat) {
-    webhookSubscriptionCreate(topic: $topic, callbackUrl: $callbackUrl, format: $format) {
+  mutation CreateWebhookSubscription($input: WebhookSubscriptionInput!) {
+    webhookSubscriptionCreate(input: $input) {
       webhookSubscription {
         id
         topic
@@ -174,9 +174,11 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           query: CREATE_WEBHOOK_MUTATION,
           variables: {
-            topic: graphqlTopic,
-            callbackUrl: NEW_WEBHOOK_CALLBACK_URL,
-            format: "JSON",
+            input: {
+              topic: graphqlTopic,
+              callbackUrl: NEW_WEBHOOK_CALLBACK_URL,
+              format: "JSON",
+            },
           },
         }),
       });
