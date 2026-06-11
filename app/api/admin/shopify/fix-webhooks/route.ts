@@ -101,34 +101,21 @@ export async function POST(request: Request) {
 
     const subscriptions = json.data?.webhookSubscriptions?.edges || [];
     
-    if (subscriptions.length === 0) {
-      return NextResponse.json({ 
-        message: "No webhook subscriptions found. Deploy your app to create them.",
-        deleted: 0,
-        created: 0
-      });
-    }
-
     console.log(`Found ${subscriptions.length} webhook subscriptions`);
 
-    const staleWebhooks = subscriptions.filter(
-      (sub: { node: { callbackUrl: string; id: string; topic: string } }) => 
-        sub.node.callbackUrl.includes(STALE_DOMAIN_PATTERN)
-    );
-
-    console.log(`Found ${staleWebhooks.length} stale webhooks`);
-
+    // Delete ALL existing webhooks (not just stale ones) - needed when verification failed
     const results = {
       deleted: [] as string[],
       created: [] as string[],
       errors: [] as string[],
     };
 
-    for (const stale of staleWebhooks) {
-      const webhookId = stale.node.id;
-      const topic = stale.node.topic;
+    // Delete all existing webhooks
+    for (const sub of subscriptions) {
+      const webhookId = sub.node.id;
+      const topic = sub.node.topic;
 
-      console.log(`Deleting webhook ${webhookId} (${topic}) pointing to ${stale.node.callbackUrl}`);
+      console.log(`Deleting webhook ${webhookId} (${topic})`);
 
       const deleteResponse = await fetch(`https://${shopDomain}/admin/api/2026-01/graphql.json`, {
         method: "POST",
@@ -154,16 +141,11 @@ export async function POST(request: Request) {
       }
     }
 
-    for (const stale of staleWebhooks) {
-      const topic = stale.node.topic;
-      const graphqlTopic = TOPIC_MAP[topic];
+    // Create fresh webhooks with correct www URL
+    const webhookTopics = ["ORDERS_CREATE", "ORDERS_UPDATED"];
 
-      if (!graphqlTopic) {
-        console.log(`Skipping unknown topic: ${topic}`);
-        continue;
-      }
-
-      console.log(`Creating new webhook for ${topic} at ${NEW_WEBHOOK_CALLBACK_URL}`);
+    for (const topic of webhookTopics) {
+      console.log(`Creating webhook for ${topic} at ${NEW_WEBHOOK_CALLBACK_URL}`);
 
       const createResponse = await fetch(`https://${shopDomain}/admin/api/2026-01/graphql.json`, {
         method: "POST",
@@ -174,7 +156,7 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           query: CREATE_WEBHOOK_MUTATION,
           variables: {
-            topic: graphqlTopic,
+            topic,
             webhookSubscription: {
               callbackUrl: NEW_WEBHOOK_CALLBACK_URL,
               format: "JSON",
@@ -197,7 +179,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      message: `Fixed ${results.deleted.length} webhooks, created ${results.created.length} new webhooks`,
+      message: `Deleted ${results.deleted.length} webhooks, created ${results.created.length} new webhooks`,
       results,
     });
 
