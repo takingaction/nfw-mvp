@@ -111,6 +111,7 @@ export async function getPreRenderedHtmlAdmin(
   console.log(`[getPreRenderedHtmlAdmin] templateSlug=${templateSlug}, found=${!!template}, error=${templateError?.message}, status=${template?.status}, hasFullHtml=${!!template?.full_email_html}`);
 
   if (templateError || !template) {
+    console.log(`[getPreRenderedHtmlAdmin] Returning null: templateError=${!!templateError}, !template=${!template}`);
     return null;
   }
 

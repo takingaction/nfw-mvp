@@ -779,12 +779,16 @@ export async function sendBankInfoRequestEmail({
   }
 
   const template = await fetchEmailTemplateAdmin(slug);
-  console.log(`[sendBankInfoRequestEmail] template from admin fetch: found=${!!template}, html length=${template?.html?.length}`);
+  console.log(`[sendBankInfoRequestEmail] template from admin fetch: found=${!!template}, html length=${template?.html?.length}, subject=${template?.subject}`);
   if (!template) return;
 
   const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
-  const body = replaceTemplateVariables(template.html, variables);
+  console.log(`[sendBankInfoRequestEmail] template.html is:`, template.html ? `"${template.html.substring(0, 100)}..."` : "NULL or EMPTY");
+
+  const body = replaceTemplateVariables(template.html || "", variables);
+  console.log(`[sendBankInfoRequestEmail] body after replace:`, body ? `"${body.substring(0, 100)}..."` : "EMPTY");
+
   await sendBrandedEmail({
     to,
     subject: template.subject,
