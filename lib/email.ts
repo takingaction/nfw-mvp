@@ -26,6 +26,22 @@ async function fetchEmailTemplate(slug: string): Promise<{ subject: string; html
   return { subject: data.subject, html: data.html_content, hero_image_url: data.hero_image_url };
 }
 
+import getAdminClient from "@/lib/supabase/admin";
+
+async function fetchEmailTemplateAdmin(slug: string): Promise<{ subject: string; html: string; hero_image_url?: string } | null> {
+  const supabase = getAdminClient();
+  const { data, error } = await supabase
+    .from("email_templates")
+    .select("subject, html_content, hero_image_url")
+    .eq("slug", slug)
+    .single();
+  if (error || !data) {
+    console.error(`[email] Failed to fetch template "${slug}" (admin):`, error);
+    return null;
+  }
+  return { subject: data.subject, html: data.html_content, hero_image_url: data.hero_image_url };
+}
+
 function replaceTemplateVariables(html: string, variables: Record<string, string>): string {
   let result = html;
   for (const [key, value] of Object.entries(variables)) {
@@ -520,12 +536,12 @@ export async function sendNewsletterWelcomeEmail({
   const slug = "newsletter-welcome";
   const variables: Record<string, string> = { name };
 
-  const preRenderedResult = await getPreRenderedHtml(slug, variables);
+const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
 
   if (preRenderedResult) {
     await sendBrandedEmail({
       to,
-      subject: preRenderedResult.subject || "You're subscribed to NFW!",
+      subject: preRenderedResult.subject,
       name,
       preRenderedHtml: preRenderedResult.html,
       useShell: false,
@@ -533,7 +549,7 @@ export async function sendNewsletterWelcomeEmail({
     return;
   }
 
-  const template = await fetchEmailTemplate(slug);
+  const template = await fetchEmailTemplateAdmin(slug);
   const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
   const heroText = 'A <em>community</em> of women showing up for each other';
 
