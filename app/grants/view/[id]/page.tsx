@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import GrantDocuments from "@/components/grants/GrantDocuments";
 import ConnectBankButton from "@/components/grants/ConnectBankButton";
+import StripeAccountStatus from "@/components/grants/StripeAccountStatus";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -272,15 +273,7 @@ export default async function GrantDetailPage({
         )}
 
         {grant.status === "approved" && grant.stripe_connect_account_id && (
-          <div className="bg-[#b2d1ee]/20 border border-[#b2d1ee] p-6 mt-6">
-            <h3 className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-2">
-              Bank Account Connected
-            </h3>
-            <p className="font-serif text-nfw-blackberry/70">
-              Your bank account is connected. Our team will process your payment
-              shortly.
-            </p>
-          </div>
+          <StripeAccountStatus grantId={grant.id} hasAccountId={true} />
         )}
 
         {grant.status === "payment_pending" && (
