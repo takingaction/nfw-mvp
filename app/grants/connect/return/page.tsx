@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check, AlertTriangle } from "lucide-react";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -14,11 +14,11 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-export default async function ConnectReturnPage({
-  searchParams,
-}: {
+interface PageProps {
   searchParams: Promise<{ grantId?: string }>;
-}) {
+}
+
+export default async function ConnectReturnPage({ searchParams }: PageProps) {
   const { grantId } = await searchParams;
 
   const supabase = await createServerClient();
@@ -27,7 +27,9 @@ export default async function ConnectReturnPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  // Verify the Connect account is fully onboarded
+  let detailsSubmitted = false;
+  let stripeAccountId: string | null = null;
+
   if (grantId) {
     const { data: grant } = await supabaseAdmin
       .from("grants")
@@ -35,18 +37,54 @@ export default async function ConnectReturnPage({
       .eq("id", grantId)
       .single();
 
-    if (grant?.stripe_connect_account_id) {
-      const account = await stripe.accounts.retrieve(
-        grant.stripe_connect_account_id,
-      );
-      if (account.details_submitted) {
-        // Mark as payment pending
+    stripeAccountId = grant?.stripe_connect_account_id || null;
+
+    if (stripeAccountId) {
+      const account = await stripe.accounts.retrieve(stripeAccountId);
+      console.log("[Return] Stripe account:", account.id, "details_submitted:", account.details_submitted, "charges_enabled:", account.charges_enabled, "payouts_enabled:", account.payouts_enabled);
+      console.log("[Return] Full account object:", JSON.stringify({
+        id: account.id,
+        details_submitted: account.details_submitted,
+        charges_enabled: account.charges_enabled,
+        payouts_enabled: account.payouts_enabled,
+        requirements: account.requirements
+      }, null, 2));
+      detailsSubmitted = !!account.details_submitted;
+
+      if (detailsSubmitted) {
         await supabaseAdmin
           .from("grants")
           .update({ status: "payment_pending" })
           .eq("id", grantId);
       }
     }
+  }
+
+  if (!detailsSubmitted && stripeAccountId) {
+    return (
+      <main className="min-h-screen bg-[#2d1239] flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-nfw-citrine rounded-full flex items-center justify-center mx-auto mb-8">
+            <AlertTriangle className="w-10 h-10 text-[#2d1239]" strokeWidth={3} />
+          </div>
+          <h1
+            className="text-3xl font-black text-white mb-4"
+            style={{ fontFamily: "Montserrat, sans-serif" }}
+          >
+            Setup Incomplete
+          </h1>
+          <p className="text-[#bcafcf] mb-8">
+            You didn&apos;t complete the Stripe setup. Please continue your onboarding to receive your grant funds.
+          </p>
+          <Link
+            href={`/grants/connect/refresh?grantId=${grantId}`}
+            className="inline-flex items-center justify-center px-8 py-4 bg-[#fdf493] text-[#2d1239] rounded-xl font-bold hover:bg-[#fdf493]/90 transition-all"
+          >
+            Continue Onboarding →
+          </Link>
+        </div>
+      </main>
+    );
   }
 
   return (

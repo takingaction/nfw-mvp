@@ -126,11 +126,6 @@ export default function StripeAccountStatus({ grantId, hasAccountId }: StripeSta
       </h3>
       <p className="font-serif text-nfw-blackberry/70 mb-4">
         Please finish setting up your Stripe account to receive your grant funds.
-        {status?.requirements?.currently_due && status.requirements.currently_due.length > 0 && (
-          <span className="block mt-2 text-sm">
-            <strong>Pending items:</strong> {status.requirements.currently_due.join(", ")}
-          </span>
-        )}
       </p>
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
       <button
