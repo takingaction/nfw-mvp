@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
-import { sendGiftCodesEmail, sendWelcomeEmail } from "@/lib/email";
+import { sendGiftCodesEmail, sendWelcomeEmail, sendBankAccountConnectedAdminEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -312,6 +312,67 @@ export async function POST(request: Request) {
           }
         } else {
           console.error("[webhook] customer.subscription.deleted: No email found for customer", customerId);
+        }
+        break;
+      }
+
+      case "account.updated": {
+        const account = event.data.object as Stripe.Account;
+        console.log("[webhook] Processing account.updated for:", account.id);
+        console.log("[webhook] details_submitted:", account.details_submitted, "charges_enabled:", account.charges_enabled, "payouts_enabled:", account.payouts_enabled);
+
+        if (account.details_submitted && account.charges_enabled && account.payouts_enabled) {
+          // Find approved grants with this Stripe Connect account
+          const { data: grants, error: grantError } = await supabaseAdmin
+            .from("grants")
+            .select("id, user_id, grant_cycles(cycle_name)")
+            .eq("stripe_connect_account_id", account.id)
+            .eq("status", "approved");
+
+          if (grantError) {
+            console.error("[webhook] Error finding grants:", grantError);
+            break;
+          }
+
+          if (!grants || grants.length === 0) {
+            console.log("[webhook] No approved grants found for account:", account.id);
+            break;
+          }
+
+          for (const grant of grants) {
+            // Update grant status to payment_pending
+            await supabaseAdmin
+              .from("grants")
+              .update({ status: "payment_pending" })
+              .eq("id", grant.id);
+
+            console.log("[webhook] Updated grant", grant.id, "to payment_pending");
+
+            // Get member info for email
+            const { data: profile } = await supabaseAdmin
+              .from("profiles")
+              .select("full_name")
+              .eq("id", grant.user_id)
+              .single();
+
+            const { data: authUser } = await supabaseAdmin
+              .from("auth.users")
+              .select("email")
+              .eq("id", grant.user_id)
+              .single();
+
+            const cycleName = (grant.grant_cycles as any)?.cycle_name || "Grant";
+
+            // Send admin notification email
+            await sendBankAccountConnectedAdminEmail({
+              memberName: profile?.full_name || "Unknown",
+              memberEmail: authUser?.email || "Unknown",
+              grantCycleName: cycleName,
+              grantId: grant.id,
+            });
+
+            console.log("[webhook] Admin notification sent for grant:", grant.id);
+          }
         }
         break;
       }

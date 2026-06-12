@@ -4322,14 +4322,7 @@ const nfwUserIdAttr = orderAttributes.find(
 
 **Solution:**
 1. **Add admin notification email** - Resend branded email to hello@ when bank account is successfully connected
-2. **Add Stripe webhook endpoint** - Backup that fires even if user doesn't return to site
-
-**Files Created:**
-- `app/api/stripe/webhook/route.ts` - Stripe webhook endpoint:
-  - Verifies webhook signature using `stripe.webhooks.constructEvent()`
-  - Handles `account.updated` events
-  - Updates grant status to `payment_pending` when `details_submitted && charges_enabled && payouts_enabled`
-  - Sends admin notification email via `sendBankAccountConnectedAdminEmail()`
+2. **Consolidate Stripe webhook** - Add `account.updated` handler to existing `/api/webhook` (handles membership + Connect events)
 
 **Files Modified:**
 - `lib/email.ts` - Added `sendBankAccountConnectedAdminEmail()` function:
@@ -4338,23 +4331,30 @@ const nfwUserIdAttr = orderAttributes.find(
   - Body includes: member name, email, grant cycle, grant ID
   - CTA button links to grant detail page for admin to initiate payment
 
+- `app/api/webhook/route.ts` - Added `account.updated` event handler:
+  - Handles Connect account status updates
+  - Updates grant status to `payment_pending` when `details_submitted && charges_enabled && payouts_enabled`
+  - Sends admin notification email via `sendBankAccountConnectedAdminEmail()`
+
 - `app/grants/connect/return/page.tsx`:
   - Imports and calls `sendBankAccountConnectedAdminEmail()` when onboarding completes successfully
   - Fetches grant cycle name and member profile info for the email
 
+**Files Deleted:**
+- `app/api/stripe/webhook/route.ts` - Consolidated into `/api/webhook`
+
 **Stripe Webhook Configuration:**
-- Requires `STRIPE_WEBHOOK_SECRET` environment variable (from Stripe Dashboard -> Webhooks)
-- Endpoint URL: `POST /api/stripe/webhook`
-- Events to subscribe: `account.updated`
+- Existing webhook at `POST /api/webhook` handles all Stripe events
+- Just add `account.updated` event to the existing webhook in Stripe Dashboard:
+  - Go to Developers → Webhooks → NFW Membership Webhook → Update
+  - Add `account.updated` under "Select events"
+- No new endpoint URL needed - uses existing `/api/webhook`
 
 **Grant Payment Process:**
 1. User completes Stripe onboarding → return URL fires → status updated to `payment_pending` → admin email sent
 2. OR: Stripe fires `account.updated` webhook (backup if user doesn't return) → same result
 3. Admin receives email, goes to Stripe dashboard, initiates bank transfer
 4. Admin manually updates grant status to `payment_sent` in NFW admin
-
-**Environment Variables Required:**
-- `STRIPE_WEBHOOK_SECRET` - Found in Stripe Dashboard -> Developers -> Webhooks -> signing secret
 
 ## Next Steps
 - (none)
