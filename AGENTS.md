@@ -4273,5 +4273,44 @@ const nfwUserIdAttr = orderAttributes.find(
 
 **To re-enable:** Uncomment the email sending block in `app/api/admin/grants/update-status/route.ts` and update this session entry.
 
+### Session 2026-06-12: Stripe Connect Onboarding Status Fixes
+
+**Problem:** "Bank Account Connected" message was misleading - it showed whenever `stripe_connect_account_id` existed, regardless of whether onboarding was actually completed.
+
+**Solution:** Query Stripe API for actual account status instead of just checking if account ID exists.
+
+**Files Created:**
+- `app/api/stripe/connect/status/route.ts` - GET endpoint that checks Stripe account status:
+  - Returns `{ connected, status, details_submitted, charges_enabled, payouts_enabled, requirements }`
+  - Uses Stripe's `accounts.retrieve()` to get real-time status
+  - Returns `connected: false` if no account ID exists
+
+- `components/grants/StripeAccountStatus.tsx` - Client component showing dynamic UI:
+  - Loading spinner while checking
+  - Error state with retry button if API fails
+  - ✅ "Bank Account Connected" if fully onboarded (details_submitted + charges_enabled + payouts_enabled)
+  - ⚠️ "Complete Your Stripe Onboarding" with "Continue Onboarding →" button if incomplete
+
+**Files Modified:**
+- `app/grants/view/[id]/page.tsx` - Replaced hardcoded success box with `<StripeAccountStatus>` component
+- `app/grants/connect/return/page.tsx` - Added conditional UI:
+  - **Complete return:** "Bank account connected!" success page → "View My Application →"
+  - **Incomplete return:** "Setup Incomplete" warning page → "Continue Onboarding →" (links to `/grants/connect/refresh`)
+
+**User Flow for Incomplete Onboarding:**
+1. User clicks "Continue Onboarding" in StripeAccountStatus
+2. Redirected to Stripe, doesn't complete, clicks return URL
+3. Lands on `/grants/connect/return?grantId=...`
+4. `details_submitted` is `false` → shows "Setup Incomplete" warning with "Continue Onboarding →" button
+5. User clicks "Continue Onboarding" → regenerates account link → redirected back to Stripe
+
+**Changes from user feedback:**
+- Removed "Pending items: business_type, external_account, etc." from StripeAccountStatus warning
+- Only shows: "Please finish setting up your Stripe account to receive your grant funds." + button
+
+**Commits:**
+- `4eda610` - fix: query Stripe for actual onboarding status instead of just checking account ID
+- `b8d21f3` - fix: show incomplete warning on return page, remove pending items display
+
 ## Next Steps
 - (none)
