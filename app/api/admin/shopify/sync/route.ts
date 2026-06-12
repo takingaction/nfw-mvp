@@ -40,7 +40,7 @@ export async function POST() {
             image_url: node.featuredImage?.url || "",
             shopify_variant_id: firstVariant?.id || "",
             eligibility_tiers: ["free", "contributing", "founding"],
-            display_order: syncedCount + 1,
+            ...(existing ? {} : { display_order: syncedCount + 1 }),
             // Only set visibility for new products; preserve existing for updates
             ...(existing ? {} : { mvp_visibility: false }),
           },
