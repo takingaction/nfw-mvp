@@ -21,8 +21,11 @@ const AdminAnalyticsClient = dynamic(
 );
 
 async function AdminAnalyticsContent() {
+  console.log("[Analytics] Page loading...");
   await requireAdmin();
+  console.log("[Analytics] requireAdmin passed");
   const supabase = await createClient();
+  console.log("[Analytics] supabase created");
 
   // Members data
   const { data: profiles } = await supabase

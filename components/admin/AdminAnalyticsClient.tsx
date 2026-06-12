@@ -86,6 +86,12 @@ export default function AdminAnalyticsClient({
   grants: Grant[];
   redemptions: Redemption[];
 }) {
+  console.log("[AdminAnalyticsClient] Props received:", {
+    profiles: profiles.length,
+    grants: grants.length,
+    redemptions: redemptions.length,
+  });
+
   const [tab, setTab] = useState<"members" | "grants" | "perks">("members");
   const [days, setDays] = useState(30);
   const dashboardRef = useRef<HTMLDivElement>(null);
