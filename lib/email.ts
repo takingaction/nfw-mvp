@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
-import { getPreRenderedHtml } from "./email-blocks/publish";
+import { getPreRenderedHtmlAdmin, getPreRenderedHtml } from "./email-blocks/publish";
 
 const FROM =
   process.env.RESEND_FROM_EMAIL || "National Fund for Women <hello@nationalfundforwomen.org>";
@@ -451,7 +451,7 @@ export async function sendWelcomeEmail({
     faq_url: `${siteUrl}/faq`,
   };
 
-  const preRenderedResult = await getPreRenderedHtml(slug, variables);
+  const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
 
   if (preRenderedResult) {
     await sendBrandedEmail({
@@ -1021,13 +1021,12 @@ export async function sendContactAcknowledgement({
   const siteUrl = "https://nationalfundforwomen.org";
   const slug = "contact-form";
 
-  const variables: Record<string, string> = {
+const variables: Record<string, string> = {
     name,
-    email,
     subject,
   };
 
-  const preRenderedResult = await getPreRenderedHtml(slug, variables);
+  const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
 
   if (preRenderedResult) {
     await sendBrandedEmail({
