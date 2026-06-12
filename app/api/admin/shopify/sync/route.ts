@@ -36,6 +36,8 @@ export async function POST() {
         .upsert(
           {
             shopify_product_id: node.id,
+            title: node.title,
+            image_url: node.featuredImage?.url || "",
             shopify_variant_id: firstVariant?.id || "",
             eligibility_tiers: ["free", "contributing", "founding"],
             display_order: syncedCount + 1,

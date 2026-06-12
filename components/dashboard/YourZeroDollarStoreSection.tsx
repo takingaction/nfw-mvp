@@ -10,13 +10,32 @@ interface Claim {
   id: string;
   claimed_at: string;
   created_at?: string;
+  status?: string | null;
   order_status_url?: string | null;
   shopify_order_id?: string | null;
   shopify_product_mappings: {
     title: string;
     image_url: string | null;
-    price: number | null;
   } | null;
+}
+
+function getStatusLabel(status: string | null | undefined): { label: string; color: string } {
+  switch (status) {
+    case "created":
+      return { label: "Order Placed", color: "bg-blue-500" };
+    case "fulfilled":
+      return { label: "Shipped", color: "bg-green-500" };
+    case "delivered":
+      return { label: "Delivered", color: "bg-green-600" };
+    case "cancelled":
+      return { label: "Cancelled", color: "bg-red-500" };
+    case "completed":
+      return { label: "Completed", color: "bg-green-500" };
+    case "pending":
+      return { label: "Pending", color: "bg-yellow-500" };
+    default:
+      return { label: "Processing", color: "bg-yellow-500" };
+  }
 }
 
 interface LatestProduct {
@@ -43,6 +62,7 @@ function getShopifyOrderUrl(claim: Claim): string | null {
 function OnlineHistoryItem({ claim }: { claim: Claim }) {
   const product = claim.shopify_product_mappings;
   const shopifyOrderUrl = getShopifyOrderUrl(claim);
+  const statusInfo = getStatusLabel(claim.status);
 
   const displayDate = (() => {
     if (!claim.claimed_at) return "Unknown date";
@@ -74,9 +94,14 @@ function OnlineHistoryItem({ claim }: { claim: Claim }) {
         <p className="text-white text-sm font-medium truncate">
           {product?.title || "Product"}
         </p>
-        <p className="text-white/50 text-xs">
-          {displayDate}
-        </p>
+        <div className="flex items-center gap-2 mt-1">
+          <span className={`${statusInfo.color} text-white text-xs px-2 py-0.5 rounded`}>
+            {statusInfo.label}
+          </span>
+          <span className="text-white/50 text-xs">
+            {displayDate}
+          </span>
+        </div>
         {shopifyOrderUrl && (
           <a
             href={shopifyOrderUrl}
