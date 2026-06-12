@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import Stripe from "stripe";
-import { sendBankAccountConnectedAdminEmail } from "@/lib/email";
+import { sendPaymentSentAdminEmail, sendPaymentSentUserEmail } from "@/lib/email";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
             updates.status = "payment_sent";
             updates.funded_at = new Date().toISOString();
 
-            // Send admin notification
+            // Send admin and user notification emails
             const { data: profile } = await supabaseAdmin
               .from("profiles")
               .select("full_name")
@@ -102,13 +102,24 @@ export async function POST(request: NextRequest) {
               .single();
 
             const cycleName = (grant.grant_cycles as any)?.cycle_name || "Grant";
+            const amountStr = amount_approved.toLocaleString();
 
-            sendBankAccountConnectedAdminEmail({
+            // Send admin notification
+            sendPaymentSentAdminEmail({
               memberName: profile?.full_name || "Unknown",
               memberEmail: authUser?.email || "Unknown",
               grantCycleName: cycleName,
               grantId: grantId,
+              amount: amountStr,
             }).catch(err => console.error("[AutoTransfer] Failed to send admin email:", err));
+
+            // Send user notification
+            sendPaymentSentUserEmail({
+              memberName: profile?.full_name || "Unknown",
+              memberEmail: authUser?.email || "Unknown",
+              grantCycleName: cycleName,
+              amount: amountStr,
+            }).catch(err => console.error("[AutoTransfer] Failed to send user email:", err));
           } else {
             console.log(`[AutoTransfer] Stripe account not fully onboarded for grant ${grantId}, will handle via webhook`);
           }

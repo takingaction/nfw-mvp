@@ -844,6 +844,130 @@ export async function sendBankAccountConnectedAdminEmail({
   });
 }
 
+export async function sendPaymentSentAdminEmail({
+  memberName,
+  memberEmail,
+  grantCycleName,
+  grantId,
+  amount,
+}: {
+  memberName: string;
+  memberEmail: string;
+  grantCycleName: string;
+  grantId: string;
+  amount: string;
+}) {
+  const siteUrl = "https://nationalfundforwomen.org";
+
+  const body = `
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      A grant payment of <strong>$${amount}</strong> has been successfully sent to the recipient.
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      <strong>Member:</strong> ${memberName} (${memberEmail})<br/>
+      <strong>Grant Cycle:</strong> ${grantCycleName}<br/>
+      <strong>Grant ID:</strong> ${grantId}<br/>
+      <strong>Amount:</strong> $${amount}
+    </p>
+  `;
+
+  await sendBrandedEmail({
+    to: "hello@nationalfundforwomen.org",
+    subject: `Payment Sent - ${memberName} - ${grantCycleName} - $${amount}`,
+    name: "NFW Admin",
+    heroImage: "https://nationalfundforwomen.org/images/email-welcome-hero.jpg",
+    heroText: 'Payment <em>Sent</em>',
+    headline: "Grant Payment Sent",
+    body,
+    footerCtaText: "VIEW APPLICATION",
+    footerCtaUrl: `${siteUrl}/grants/view/${grantId}`,
+  });
+}
+
+export async function sendPaymentSentUserEmail({
+  memberName,
+  memberEmail,
+  grantCycleName,
+  amount,
+}: {
+  memberName: string;
+  memberEmail: string;
+  grantCycleName: string;
+  amount: string;
+}) {
+  const siteUrl = "https://nationalfundforwomen.org";
+
+  const body = `
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      Congratulations ${memberName},
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      Your grant payment of <strong>$${amount}</strong> for <strong>${grantCycleName}</strong> has been sent!
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      The funds are being processed and should arrive in your bank account within 1-3 business days.
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      If you have any questions, please contact us at <a href="mailto:hello@nationalfundforwomen.org" style="color: #F8F19A;">hello@nationalfundforwomen.org</a>.
+    </p>
+  `;
+
+  await sendBrandedEmail({
+    to: memberEmail,
+    subject: `Your NFW Grant Payment Has Been Sent - $${amount}`,
+    name: memberName,
+    heroImage: "https://nationalfundforwomen.org/images/email-welcome-hero.jpg",
+    heroText: 'Payment <em>Sent</em>',
+    headline: "Grant Payment On Its Way!",
+    body,
+    footerCtaText: "VIEW APPLICATION",
+    footerCtaUrl: `${siteUrl}/grants/my-applications`,
+  });
+}
+
+export async function sendTransferReversedAdminEmail({
+  memberName,
+  memberEmail,
+  grantCycleName,
+  grantId,
+  amount,
+}: {
+  memberName: string;
+  memberEmail: string;
+  grantCycleName: string;
+  grantId: string;
+  amount: string;
+}) {
+  const siteUrl = "https://nationalfundforwomen.org";
+
+  const body = `
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      <strong style="color: #ff6b6b;">ALERT:</strong> A grant payment transfer was reversed and did not go through.
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      <strong>Member:</strong> ${memberName} (${memberEmail})<br/>
+      <strong>Grant Cycle:</strong> ${grantCycleName}<br/>
+      <strong>Grant ID:</strong> ${grantId}<br/>
+      <strong>Amount:</strong> $${amount}
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      Please investigate this issue and re-initiate the payment if necessary.
+    </p>
+  `;
+
+  await sendBrandedEmail({
+    to: "hello@nationalfundforwomen.org",
+    subject: `⚠️ Transfer Reversed - ${memberName} - ${grantCycleName} - $${amount}`,
+    name: "NFW Admin",
+    heroImage: "https://nationalfundforwomen.org/images/email-welcome-hero.jpg",
+    heroText: 'Transfer <em>Failed</em>',
+    headline: "Payment Transfer Reversed",
+    body,
+    footerCtaText: "VIEW APPLICATION",
+    footerCtaUrl: `${siteUrl}/grants/view/${grantId}`,
+  });
+}
+
 export async function sendGiftCodesEmail({
   to,
   buyerName,

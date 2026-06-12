@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
-import { sendGiftCodesEmail, sendWelcomeEmail, sendBankAccountConnectedAdminEmail } from "@/lib/email";
+import { sendGiftCodesEmail, sendWelcomeEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -322,12 +322,12 @@ export async function POST(request: Request) {
         console.log("[webhook] details_submitted:", account.details_submitted, "charges_enabled:", account.charges_enabled, "payouts_enabled:", account.payouts_enabled);
 
         if (account.details_submitted && account.charges_enabled && account.payouts_enabled) {
-          // Find approved grants with this Stripe Connect account
+          // Find grants with this Stripe Connect account that need payment (approved or payment_pending)
           const { data: grants, error: grantError } = await supabaseAdmin
             .from("grants")
-            .select("id, user_id, grant_cycles(cycle_name)")
+            .select("id, user_id, amount_approved, grant_cycles(cycle_name)")
             .eq("stripe_connect_account_id", account.id)
-            .eq("status", "approved");
+            .in("status", ["approved", "payment_pending"]);
 
           if (grantError) {
             console.error("[webhook] Error finding grants:", grantError);
@@ -335,20 +335,33 @@ export async function POST(request: Request) {
           }
 
           if (!grants || grants.length === 0) {
-            console.log("[webhook] No approved grants found for account:", account.id);
+            console.log("[webhook] No grants needing payment found for account:", account.id);
             break;
           }
 
           for (const grant of grants) {
-            // Update grant status to payment_pending
+            // Create transfer for this grant
+            const transfer = await stripe.transfers.create({
+              amount: Math.round((grant.amount_approved || 0) * 100),
+              currency: "usd",
+              destination: account.id,
+              metadata: {
+                grantId: grant.id,
+                userId: grant.user_id,
+              },
+            });
+
+            console.log("[webhook] Created transfer", transfer.id, "for grant", grant.id);
+
+            // Update grant status to payment_sent
             await supabaseAdmin
               .from("grants")
-              .update({ status: "payment_pending" })
+              .update({ status: "payment_sent", funded_at: new Date().toISOString() })
               .eq("id", grant.id);
 
-            console.log("[webhook] Updated grant", grant.id, "to payment_pending");
+            console.log("[webhook] Updated grant", grant.id, "to payment_sent");
 
-            // Get member info for email
+            // Send admin and user notification emails
             const { data: profile } = await supabaseAdmin
               .from("profiles")
               .select("full_name")
@@ -362,16 +375,80 @@ export async function POST(request: Request) {
               .single();
 
             const cycleName = (grant.grant_cycles as any)?.cycle_name || "Grant";
+            const amountStr = (grant.amount_approved || 0).toLocaleString();
 
-            // Send admin notification email
-            await sendBankAccountConnectedAdminEmail({
+            const { sendPaymentSentAdminEmail, sendPaymentSentUserEmail } = await import("@/lib/email");
+
+            sendPaymentSentAdminEmail({
               memberName: profile?.full_name || "Unknown",
               memberEmail: authUser?.email || "Unknown",
               grantCycleName: cycleName,
               grantId: grant.id,
-            });
+              amount: amountStr,
+            }).catch(err => console.error("[webhook] Failed to send admin email:", err));
 
-            console.log("[webhook] Admin notification sent for grant:", grant.id);
+            sendPaymentSentUserEmail({
+              memberName: profile?.full_name || "Unknown",
+              memberEmail: authUser?.email || "Unknown",
+              grantCycleName: cycleName,
+              amount: amountStr,
+            }).catch(err => console.error("[webhook] Failed to send user email:", err));
+          }
+        }
+        break;
+      }
+
+      case "transfer.created": {
+        const transfer = event.data.object as Stripe.Transfer;
+        console.log("[webhook] Transfer created:", transfer.id, "to:", transfer.destination, "amount:", transfer.amount);
+        // Backup confirmation - transfer was initiated by Stripe
+        // Status is already payment_sent from the approval/update-status flow
+        break;
+      }
+
+      case "transfer.reversed": {
+        const transfer = event.data.object as Stripe.Transfer;
+        console.log("[webhook] Transfer reversed:", transfer.id, "amount:", transfer.amount);
+
+        // Find grant by transfer metadata and revert status
+        const grantId = transfer.metadata?.grantId;
+        if (grantId) {
+          await supabaseAdmin
+            .from("grants")
+            .update({ status: "payment_pending" })
+            .eq("id", grantId);
+
+          console.log("[webhook] Reverted grant", grantId, "to payment_pending due to transfer reversal");
+
+          // Notify admin of reversal
+          const { data: grant } = await supabaseAdmin
+            .from("grants")
+            .select("user_id, grant_cycles(cycle_name)")
+            .eq("id", grantId)
+            .single();
+
+          if (grant) {
+            const { data: profile } = await supabaseAdmin
+              .from("profiles")
+              .select("full_name")
+              .eq("id", grant.user_id)
+              .single();
+
+            const { data: authUser } = await supabaseAdmin
+              .from("auth.users")
+              .select("email")
+              .eq("id", grant.user_id)
+              .single();
+
+            // Send reversal notification to admin
+            const { sendTransferReversedAdminEmail } = await import("@/lib/email");
+            sendTransferReversedAdminEmail({
+              memberName: profile?.full_name || "Unknown",
+              memberEmail: authUser?.email || "Unknown",
+              grantCycleName: (grant.grant_cycles as any)?.cycle_name || "Grant",
+              grantId: grantId,
+              amount: (transfer.amount / 100).toFixed(2),
+            }).catch(err => console.error("[webhook] Failed to send reversal email:", err));
           }
         }
         break;

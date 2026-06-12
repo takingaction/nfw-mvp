@@ -4314,47 +4314,63 @@ const nfwUserIdAttr = orderAttributes.find(
 
 **Debug session (2026-06-12):** User confirmed "Setup Incomplete" now shows correctly after returning from Stripe without completing onboarding. Debug logging removed in cleanup commit.
 
-### Session 2026-06-12: Admin Email Notification + Stripe Webhook Backup
+### Session 2026-06-12: Auto-Transfer Grants + Payment Notifications
 
 **Problem:**
-1. No email sent to hello@nationalfundforwomen.org when applicant's bank account is successfully connected
-2. If user closes browser without returning to NFW site, the return URL never fires and status doesn't update
+1. Admin manually initiates each grant payment in Stripe dashboard
+2. Admin manually updates grant status to `payment_sent` after sending
+3. No notification emails sent when payment is made
 
 **Solution:**
-1. **Add admin notification email** - Resend branded email to hello@ when bank account is successfully connected
-2. **Consolidate Stripe webhook** - Add `account.updated` handler to existing `/api/webhook` (handles membership + Connect events)
+1. **Auto-transfer on approval** - When admin approves a grant with amount, check Stripe account status. If fully onboarded, create transfer immediately and mark `payment_sent`
+2. **Webhook backup** - `account.updated` webhook creates transfer if Stripe becomes ready after approval
+3. **User + admin notifications** - Send branded emails to both when payment is sent
+4. **Transfer reversal handling** - `transfer.reversed` webhook reverts status and alerts admin
+
+**New Email Functions (lib/email.ts):**
+- `sendPaymentSentAdminEmail()` - Branded email to hello@ with amount, member info, grant details
+- `sendPaymentSentUserEmail()` - Branded email to user confirming payment sent, 1-3 day arrival
+- `sendTransferReversedAdminEmail()` - Alert when transfer fails/reverses
 
 **Files Modified:**
-- `lib/email.ts` - Added `sendBankAccountConnectedAdminEmail()` function:
-  - Sends branded email to hello@nationalfundforwomen.org
-  - Subject: "Bank Account Connected - [Member Name] - [Grant Cycle]"
-  - Body includes: member name, email, grant cycle, grant ID
-  - CTA button links to grant detail page for admin to initiate payment
-
-- `app/api/webhook/route.ts` - Added `account.updated` event handler:
-  - Handles Connect account status updates
-  - Updates grant status to `payment_pending` when `details_submitted && charges_enabled && payouts_enabled`
-  - Sends admin notification email via `sendBankAccountConnectedAdminEmail()`
-
+- `app/api/admin/grants/update-status/route.ts`:
+  - Auto-transfer when admin approves and Stripe is fully onboarded
+  - Sends admin + user notification emails on `payment_sent`
+- `app/api/webhook/route.ts`:
+  - `account.updated`: Creates transfer if Stripe becomes ready after approval (webhook backup)
+  - `transfer.created`: Backup confirmation (logs only)
+  - `transfer.reversed`: Reverts status to `payment_pending`, alerts admin
 - `app/grants/connect/return/page.tsx`:
-  - Imports and calls `sendBankAccountConnectedAdminEmail()` when onboarding completes successfully
-  - Fetches grant cycle name and member profile info for the email
+  - Removed email sending (handled by webhook + update-status now)
 
-**Files Deleted:**
-- `app/api/stripe/webhook/route.ts` - Consolidated into `/api/webhook`
+**Stripe Webhook Events to Add:**
+- `account.updated` - Triggers transfer when Stripe account becomes ready
+- `transfer.created` - Backup confirmation
+- `transfer.reversed` - Handles failed transfers
 
-**Stripe Webhook Configuration:**
-- Existing webhook at `POST /api/webhook` handles all Stripe events
-- Just add `account.updated` event to the existing webhook in Stripe Dashboard:
-  - Go to Developers → Webhooks → NFW Membership Webhook → Update
-  - Add `account.updated` under "Select events"
-- No new endpoint URL needed - uses existing `/api/webhook`
+**Payment Flow:**
+```
+Admin approves grant with amount_approved
+        ↓
+Stripe account ready?
+        ↓
+    YES → Create transfer → payment_sent → admin email + user email
+        ↓
+    NO  → Mark approved (webhook handles when Stripe becomes ready)
+        ↓
+Stripe account becomes ready (account.updated webhook)
+        ↓
+Create transfer → payment_sent → admin email + user email
+```
 
-**Grant Payment Process:**
-1. User completes Stripe onboarding → return URL fires → status updated to `payment_pending` → admin email sent
-2. OR: Stripe fires `account.updated` webhook (backup if user doesn't return) → same result
-3. Admin receives email, goes to Stripe dashboard, initiates bank transfer
-4. Admin manually updates grant status to `payment_sent` in NFW admin
+**Transfer Reversal Flow:**
+```
+transfer.reversed webhook fires
+        ↓
+Revert grant status to payment_pending
+        ↓
+Send alert email to admin with details
+```
 
 ## Next Steps
 - (none)

@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Check, AlertTriangle } from "lucide-react";
 import Stripe from "stripe";
-import { sendBankAccountConnectedAdminEmail } from "@/lib/email";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
@@ -30,7 +29,6 @@ export default async function ConnectReturnPage({ searchParams }: PageProps) {
 
   let detailsSubmitted = false;
   let stripeAccountId: string | null = null;
-  let grantInfo: { id: string; user_id: string; grant_cycle_name?: string } | null = null;
 
   if (grantId) {
     const { data: grant } = await supabaseAdmin
@@ -41,11 +39,6 @@ export default async function ConnectReturnPage({ searchParams }: PageProps) {
 
     if (grant) {
       stripeAccountId = grant.stripe_connect_account_id || null;
-      grantInfo = {
-        id: grant.id,
-        user_id: grant.user_id,
-        grant_cycle_name: (grant.grant_cycles as any)?.cycle_name,
-      };
     }
 
     if (stripeAccountId) {
@@ -53,26 +46,11 @@ export default async function ConnectReturnPage({ searchParams }: PageProps) {
       detailsSubmitted = !!account.details_submitted;
 
       if (detailsSubmitted) {
+        // Update grant status - webhook will create transfer and payment_sent
         await supabaseAdmin
           .from("grants")
           .update({ status: "payment_pending" })
           .eq("id", grantId);
-
-        // Send admin notification email
-        if (grantInfo) {
-          const { data: profile } = await supabaseAdmin
-            .from("profiles")
-            .select("full_name")
-            .eq("id", grantInfo.user_id)
-            .single();
-
-          sendBankAccountConnectedAdminEmail({
-            memberName: profile?.full_name || "Unknown",
-            memberEmail: user.email || "Unknown",
-            grantCycleName: grantInfo.grant_cycle_name || "Grant",
-            grantId: grantId,
-          });
-        }
       }
     }
   }
