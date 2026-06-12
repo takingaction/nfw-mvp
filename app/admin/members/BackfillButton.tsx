@@ -5,7 +5,7 @@ export default function BackfillButton() {
     <button
       id="run-backfill"
       onClick={async () => {
-        const btn = document.getElementById("run-backfill");
+        const btn = document.getElementById("run-backfill") as HTMLButtonElement | null;
         if (btn) {
           btn.disabled = true;
           btn.textContent = "Running...";
