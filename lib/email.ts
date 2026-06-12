@@ -35,6 +35,7 @@ async function fetchEmailTemplateAdmin(slug: string): Promise<{ subject: string;
     .select("subject, html_content, hero_image_url")
     .eq("slug", slug)
     .single();
+  console.log(`[fetchEmailTemplateAdmin] slug=${slug}, found=${!!data}, error=${error?.message}, hasHtml=${!!data?.html_content}`);
   if (error || !data) {
     console.error(`[email] Failed to fetch template "${slug}" (admin):`, error);
     return null;
@@ -762,7 +763,9 @@ export async function sendBankInfoRequestEmail({
     amount: amountApproved ? amountApproved.toLocaleString() : "",
   };
 
-  const preRenderedResult = await getPreRenderedHtml(slug, variables);
+  const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
+
+  console.log(`[sendBankInfoRequestEmail] preRenderedResult=${!!preRenderedResult}, html length=${preRenderedResult?.html?.length}`);
 
   if (preRenderedResult) {
     await sendBrandedEmail({
@@ -775,7 +778,8 @@ export async function sendBankInfoRequestEmail({
     return;
   }
 
-  const template = await fetchEmailTemplate(slug);
+  const template = await fetchEmailTemplateAdmin(slug);
+  console.log(`[sendBankInfoRequestEmail] template from admin fetch: found=${!!template}, html length=${template?.html?.length}`);
   if (!template) return;
 
   const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
@@ -822,7 +826,7 @@ export async function sendGiftCodesEmail({
   if (preRenderedResult) {
     await sendBrandedEmail({
       to,
-      subject: preRenderedResult.subject || "Your National Fund for Women Gift Code(s)",
+      subject: preRenderedResult.subject,
       name: buyerName,
       preRenderedHtml: preRenderedResult.html,
       useShell: false,
