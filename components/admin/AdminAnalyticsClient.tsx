@@ -13,7 +13,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 import {
@@ -29,6 +28,8 @@ type Profile = {
   id: string;
   joined_at: string | null;
   subscription_status: string | null;
+  membership_level: string | null;
+  first_paid_at: string | null;
   state: string | null;
   city: string | null;
   household_income: string | null;
@@ -130,12 +131,31 @@ export default function AdminAnalyticsClient({
       .map(([state, count]) => ({ state, count }));
   }, [profiles]);
 
-  const estimatedMRR = useMemo(() => {
-    const active = profiles.filter(
-      (p) => p.subscription_status === "active",
+  const paidCount = useMemo(() => {
+    return profiles.filter(
+      (p) => p.membership_level === "contributing" || p.membership_level === "founding"
     ).length;
-    return Math.round((active * 15) / 12);
   }, [profiles]);
+
+  const contributingCount = useMemo(() => {
+    return profiles.filter((p) => p.membership_level === "contributing").length;
+  }, [profiles]);
+
+  const foundingCount = useMemo(() => {
+    return profiles.filter((p) => p.membership_level === "founding").length;
+  }, [profiles]);
+
+  const upgradedCount = useMemo(() => {
+    return profiles.filter((p) => p.first_paid_at !== null).length;
+  }, [profiles]);
+
+  const upgradedPercent = useMemo(() => {
+    return paidCount > 0 ? Math.round((upgradedCount / paidCount) * 100) : 0;
+  }, [paidCount, upgradedCount]);
+
+  const estimatedMRR = useMemo(() => {
+    return Math.round((contributingCount * 15 + foundingCount * 100) / 12);
+  }, [contributingCount, foundingCount]);
 
   // ── GRANTS ───────────────────────────────────────────────
   const filteredGrants = useMemo(
@@ -327,19 +347,46 @@ export default function AdminAnalyticsClient({
             text: "text-nfw-blackberry",
           },
           {
-            label: "Active Paid",
-            value: profiles.filter((p) => p.subscription_status === "active")
-              .length,
+            label: "Paid Members",
+            value: paidCount,
             icon: TrendingUp,
             color: "bg-nfw-citrine",
+            text: "text-nfw-blackberry",
+          },
+          {
+            label: "Contributing",
+            value: contributingCount,
+            icon: TrendingUp,
+            color: "bg-nfw-citrine/70",
+            text: "text-nfw-blackberry",
+          },
+          {
+            label: "Founding",
+            value: foundingCount,
+            icon: TrendingUp,
+            color: "bg-nfw-citrine/50",
             text: "text-nfw-blackberry",
           },
           {
             label: "Est. MRR",
             value: `$${estimatedMRR}`,
             icon: DollarSign,
-            color: "bg-nfw-citrine/70",
-            text: "text-nfw-blackberry",
+            color: "bg-nfw-aubergine",
+            text: "text-white",
+          },
+          {
+            label: "Upgraded Members",
+            value: upgradedCount,
+            icon: TrendingUp,
+            color: "bg-nfw-wisteria",
+            text: "text-white",
+          },
+          {
+            label: "% Upgraded",
+            value: `${upgradedPercent}%`,
+            icon: TrendingUp,
+            color: "bg-nfw-wisteria/70",
+            text: "text-white",
           },
         ]
       : tab === "grants"
