@@ -8,6 +8,7 @@ const supabaseAdmin = createAdminClient(
 import { requireAdmin } from "@/middleware/adminCheck";
 import { Suspense } from "react";
 import AdminMembersClient from "@/components/admin/AdminMembersClient";
+import BackfillButton from "./BackfillButton";
 
 async function AdminMembersContent() {
   await requireAdmin();
@@ -58,6 +59,7 @@ async function AdminMembersContent() {
             </svg>
             Download CSV
           </a>
+          <BackfillButton />
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
