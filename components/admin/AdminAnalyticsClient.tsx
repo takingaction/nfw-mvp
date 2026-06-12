@@ -146,7 +146,13 @@ export default function AdminAnalyticsClient({
   }, [profiles]);
 
   const upgradedCount = useMemo(() => {
-    return profiles.filter((p) => p.first_paid_at !== null).length;
+    return profiles.filter((p) => {
+      if (!p.first_paid_at || !p.joined_at) return false;
+      const daysDiff =
+        (new Date(p.first_paid_at).getTime() - new Date(p.joined_at).getTime()) /
+        (1000 * 60 * 60 * 24);
+      return daysDiff >= 1;
+    }).length;
   }, [profiles]);
 
   const upgradedPercent = useMemo(() => {
