@@ -1,7 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/middleware/adminCheck";
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
+
+const supabaseAdmin = createAdminClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
 const AdminAnalyticsClient = dynamic(
   () => import("@/components/admin/AdminAnalyticsClient"),
@@ -26,16 +32,16 @@ async function AdminAnalyticsContent() {
     )
     .order("joined_at", { ascending: true });
 
-  // Grants data
-  const { data: grants } = await supabase
+  // Grants data (use admin client to bypass RLS)
+  const { data: grants } = await supabaseAdmin
     .from("grants")
     .select(
       "id, status, amount_requested, payout_amount, category, submitted_at, funded_at",
     )
     .order("submitted_at", { ascending: true });
 
-  // Perks redemptions
-  const { data: redemptions } = await supabase
+  // Perks redemptions (use admin client to bypass RLS)
+  const { data: redemptions } = await supabaseAdmin
     .from("offer_redemptions")
     .select("id, offer_key, offer_title, store_name, redeem_type, created_at")
     .order("created_at", { ascending: true });
