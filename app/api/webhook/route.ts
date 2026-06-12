@@ -154,6 +154,9 @@ export async function POST(request: Request) {
                       subscription_status: "active",
                       subscription_ends_at: null,
                       updated_at: new Date().toISOString(),
+                      // Track first paid upgrade
+                      first_paid_at: new Date().toISOString(),
+                      first_paid_level: membershipLevel,
                     })
                     .eq("id", authUser.id);
 
@@ -180,6 +183,9 @@ export async function POST(request: Request) {
                   subscription_status: "active",
                   subscription_ends_at: null,
                   updated_at: new Date().toISOString(),
+                  // Track first paid upgrade
+                  first_paid_at: new Date().toISOString(),
+                  first_paid_level: membershipLevel,
                 })
                 .eq("id", userId);
 
