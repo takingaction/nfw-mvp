@@ -70,6 +70,7 @@ const CSV_COLUMNS = [
   "biggest_challenge",
   "fund_usage",
   "consent_given_at",
+  "certification_consent",
   "amount_approved",
 ];
 
@@ -90,6 +91,7 @@ const COLUMN_LABELS: Record<string, string> = {
   biggest_challenge: "Biggest Challenge",
   fund_usage: "Fund Usage",
   consent_given_at: "Consent Given At",
+  certification_consent: "Certification Consent",
   amount_approved: "Amount Approved",
 };
 
@@ -158,6 +160,7 @@ export async function GET(
         decodeHtml(grant.biggest_challenge),
         decodeHtml(grant.fund_usage),
         formatDateTime(grant.consent_given_at),
+        formatBoolean(grant.certification_consent),
         formatCurrency(grant.amount_approved),
       ];
       rows.push(row.map(escapeCsvField));

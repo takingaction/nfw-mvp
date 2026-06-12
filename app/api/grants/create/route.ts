@@ -32,6 +32,7 @@ export async function POST(request: Request) {
       is_nominating,
       nominee_name,
       nominee_email,
+      certification_consent,
     } = body;
 
     if (!cycle_id || !isValidUUID(cycle_id)) {
@@ -133,6 +134,7 @@ export async function POST(request: Request) {
         submitted_at: new Date().toISOString(),
         consent_version: "v1",
         consent_given_at: new Date().toISOString(),
+        certification_consent: Boolean(certification_consent),
       })
       .select()
       .single();

@@ -38,6 +38,7 @@ export default function GrantApplicationForm({
   const [consentChecked, setConsentChecked] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitConsentChecked, setSubmitConsentChecked] = useState(false);
+  const [certificationChecked, setCertificationChecked] = useState(false);
 
   const [formData, setFormData] = useState({
     cycle_id: cycles.length === 1 ? cycles[0].id : "",
@@ -101,6 +102,7 @@ export default function GrantApplicationForm({
           is_nominating: isNominating,
           nominee_name: isNominating ? nomineeName.trim() : null,
           nominee_email: isNominating ? nomineeEmail.trim() : null,
+          certification_consent: certificationChecked,
         }),
       });
 
@@ -541,7 +543,7 @@ export default function GrantApplicationForm({
             className="absolute inset-0 bg-nfw-blackberry/40"
             onClick={() => !loading && setShowConfirm(false)}
           />
-          <div className="relative bg-white rounded-xl shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-serif text-nfw-blackberry mb-4">
               Ready to Submit
             </h3>
@@ -549,6 +551,21 @@ export default function GrantApplicationForm({
               <p className="text-sm font-serif text-nfw-blackberry/80 mb-4">
                 Before submitting, please read and consent to the following:
               </p>
+              <div className="flex items-start gap-3 mb-2">
+                <input
+                  type="checkbox"
+                  id="submit-certification"
+                  checked={certificationChecked}
+                  onChange={(e) => setCertificationChecked(e.target.checked)}
+                  className="mt-1 w-4 h-4 accent-nfw-blackberry flex-shrink-0"
+                />
+                <label
+                  htmlFor="submit-certification"
+                  className="text-sm font-serif text-nfw-blackberry/70 leading-relaxed"
+                >
+                  I certify that the information provided is accurate and understand NFW may request supporting documentation.
+                </label>
+              </div>
               <div className="flex items-start gap-3 mb-2">
                 <input
                   type="checkbox"
@@ -590,7 +607,7 @@ export default function GrantApplicationForm({
               <button
                 type="button"
                 onClick={handleConfirmSubmit}
-                disabled={!submitConsentChecked || loading || uploadingDocs}
+                disabled={!submitConsentChecked || !certificationChecked || loading || uploadingDocs}
                 className="flex-1 bg-nfw-blackberry text-white px-6 py-3 hover:bg-nfw-blackberry/90 disabled:opacity-50 disabled:cursor-not-allowed font-ui transition-colors flex items-center justify-center gap-2"
               >
                 {(loading || uploadingDocs) && (
