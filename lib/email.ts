@@ -804,6 +804,46 @@ export async function sendBankInfoRequestEmail({
   });
 }
 
+export async function sendBankAccountConnectedAdminEmail({
+  memberName,
+  memberEmail,
+  grantCycleName,
+  grantId,
+}: {
+  memberName: string;
+  memberEmail: string;
+  grantCycleName: string;
+  grantId: string;
+}) {
+  const siteUrl = "https://nationalfundforwomen.org";
+
+  const body = `
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      A grant applicant has successfully connected their bank account and is ready to receive payment.
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      <strong>Member:</strong> ${memberName} (${memberEmail})<br/>
+      <strong>Grant Cycle:</strong> ${grantCycleName}<br/>
+      <strong>Grant ID:</strong> ${grantId}
+    </p>
+    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
+      Please initiate the payment in the Stripe dashboard and update the grant status to "Payment Sent" once completed.
+    </p>
+  `;
+
+  await sendBrandedEmail({
+    to: "hello@nationalfundforwomen.org",
+    subject: `Bank Account Connected - ${memberName} - ${grantCycleName}`,
+    name: "NFW Admin",
+    heroImage: "https://nationalfundforwomen.org/images/email-welcome-hero.jpg",
+    heroText: 'Bank Account <em>Connected</em>',
+    headline: "Grant Payment Ready",
+    body,
+    footerCtaText: "VIEW APPLICATION",
+    footerCtaUrl: `${siteUrl}/grants/view/${grantId}`,
+  });
+}
+
 export async function sendGiftCodesEmail({
   to,
   buyerName,
