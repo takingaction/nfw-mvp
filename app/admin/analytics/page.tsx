@@ -33,18 +33,22 @@ async function AdminAnalyticsContent() {
     .order("joined_at", { ascending: true });
 
   // Grants data (use admin client to bypass RLS)
-  const { data: grants } = await supabaseAdmin
+  const { data: grants, error: grantsError } = await supabaseAdmin
     .from("grants")
     .select(
       "id, status, amount_requested, payout_amount, category, submitted_at, funded_at",
     )
     .order("submitted_at", { ascending: true });
 
+  console.log("[Analytics] Grants count:", grants?.length, "error:", grantsError);
+
   // Perks redemptions (use admin client to bypass RLS)
   const { data: redemptions } = await supabaseAdmin
     .from("offer_redemptions")
     .select("id, offer_key, offer_title, store_name, redeem_type, created_at")
     .order("created_at", { ascending: true });
+
+  console.log("[Analytics] Redemptions count:", redemptions?.length);
 
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">
