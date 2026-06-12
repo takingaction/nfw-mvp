@@ -4312,5 +4312,7 @@ const nfwUserIdAttr = orderAttributes.find(
 - `4eda610` - fix: query Stripe for actual onboarding status instead of just checking account ID
 - `b8d21f3` - fix: show incomplete warning on return page, remove pending items display
 
+**Debug session (2026-06-12):** User confirmed "Setup Incomplete" now shows correctly after returning from Stripe without completing onboarding. Debug logging removed in cleanup commit.
+
 ## Next Steps
 - (none)

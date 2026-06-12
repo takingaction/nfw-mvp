@@ -41,14 +41,6 @@ export default async function ConnectReturnPage({ searchParams }: PageProps) {
 
     if (stripeAccountId) {
       const account = await stripe.accounts.retrieve(stripeAccountId);
-      console.log("[Return] Stripe account:", account.id, "details_submitted:", account.details_submitted, "charges_enabled:", account.charges_enabled, "payouts_enabled:", account.payouts_enabled);
-      console.log("[Return] Full account object:", JSON.stringify({
-        id: account.id,
-        details_submitted: account.details_submitted,
-        charges_enabled: account.charges_enabled,
-        payouts_enabled: account.payouts_enabled,
-        requirements: account.requirements
-      }, null, 2));
       detailsSubmitted = !!account.details_submitted;
 
       if (detailsSubmitted) {
