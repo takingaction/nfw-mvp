@@ -39,9 +39,7 @@ type Profile = {
 type Grant = {
   id: string;
   status: string | null;
-  amount_requested: number | null;
-  payout_amount: number | null;
-  category: string | null;
+  amount_approved: number | null;
   submitted_at: string | null;
   funded_at: string | null;
 };
@@ -64,19 +62,6 @@ const COLORS = [
   "#2E1F38",
 ];
 
-const GRANT_CATEGORY_LABELS: Record<string, string> = {
-  childcare_support: "Childcare",
-  emergency_care: "Emergency",
-  education_essentials: "Education",
-  medical_medicine: "Medical",
-  rent_transportation: "Rent/Transport",
-  school_supplies: "School Supplies",
-  food_essentials: "Food",
-  car_repair: "Car Repair",
-  small_business_starter: "Small Business",
-  other: "Other",
-};
-
 export default function AdminAnalyticsClient({
   profiles,
   grants,
@@ -86,12 +71,6 @@ export default function AdminAnalyticsClient({
   grants: Grant[];
   redemptions: Redemption[];
 }) {
-  console.log("[AdminAnalyticsClient] Props received:", {
-    profiles: profiles.length,
-    grants: grants.length,
-    redemptions: redemptions.length,
-  });
-
   const [tab, setTab] = useState<"members" | "grants" | "perks">("members");
   const [days, setDays] = useState(30);
   const dashboardRef = useRef<HTMLDivElement>(null);
@@ -198,25 +177,11 @@ export default function AdminAnalyticsClient({
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [filteredGrants]);
 
-  const grantsByCategory = useMemo(() => {
-    const map: Record<string, number> = {};
-    filteredGrants.forEach((g) => {
-      const c = g.category || "other";
-      map[c] = (map[c] || 0) + 1;
-    });
-    return Object.entries(map)
-      .sort(([, a], [, b]) => b - a)
-      .map(([cat, count]) => ({
-        category: GRANT_CATEGORY_LABELS[cat] || cat,
-        count,
-      }));
-  }, [filteredGrants]);
-
   const totalFunded = useMemo(
     () =>
       grants
         .filter((g) => g.status === "funded")
-        .reduce((sum, g) => sum + (g.payout_amount || 0), 0),
+        .reduce((sum, g) => sum + (g.amount_approved || 0), 0),
     [grants],
   );
 
@@ -297,9 +262,6 @@ export default function AdminAnalyticsClient({
         [],
         ["Status", "Count"],
         ...grantsByStatus.map((r) => [r.name, String(r.value)]),
-        [],
-        ["Category", "Count"],
-        ...grantsByCategory.map((r) => [r.category, String(r.count)]),
       ];
     } else {
       filename = "nfw-perks-analytics.csv";
@@ -678,29 +640,6 @@ export default function AdminAnalyticsClient({
                 </ResponsiveContainer>
               </div>
 
-              <div className="bg-white border border-nfw-blackberry/10 p-6">
-                <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
-                  Applications by Category
-                </h3>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={grantsByCategory} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis type="number" tick={{ fontSize: 11 }} />
-                    <YAxis
-                      dataKey="category"
-                      type="category"
-                      tick={{ fontSize: 11 }}
-                      width={90}
-                    />
-                    <Tooltip />
-                    <Bar
-                      dataKey="count"
-                      fill="#d4f1ad"
-                      name="Applications"
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
             </div>
           </div>
         )}
