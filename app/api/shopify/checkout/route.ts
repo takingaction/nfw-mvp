@@ -94,20 +94,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check monthly claim limit (1 per month per user)
+    // Check monthly claim limit (1 per month per user) - ATOMIC via unique constraint
+    // The INSERT will fail with unique constraint violation if user already claimed this month
     const now = new Date();
     const claimMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-    const { data: existingMonthlyClaim } = await supabaseAdmin
-      .from("monthly_claims")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("claim_month", claimMonth)
-      .limit(1);
 
-    if (existingMonthlyClaim && existingMonthlyClaim.length > 0) {
+    const { error: monthlyClaimError } = await supabaseAdmin
+      .from("monthly_claims")
+      .insert({
+        user_id: userId,
+        shopify_product_id: productId,
+        claim_month: claimMonth,
+        claimed_at: now.toISOString(),
+      });
+
+    // Handle unique constraint violation (race condition - user already claimed this month)
+    if (monthlyClaimError?.code === "23505") {
       return NextResponse.json(
-        { error: "Monthly claim limit reached. You can only claim one item per month." },
-        { status: 400 }
+        { error: "Monthly Limit Reached. Limits are reset on the 1st of each month." },
+        { status: 429 }
+      );
+    }
+
+    if (monthlyClaimError) {
+      console.error("Error creating monthly claim:", monthlyClaimError);
+      return NextResponse.json(
+        { error: "Failed to process monthly claim check" },
+        { status: 500 }
       );
     }
 

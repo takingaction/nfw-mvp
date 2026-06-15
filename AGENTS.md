@@ -4374,3 +4374,76 @@ Send alert email to admin with details
 
 ## Next Steps
 - (none)
+
+### Session 2026-06-15: Share Your Story Feature + Various Fixes
+
+#### Share Your Story Feature
+
+**Database Migrations:**
+- `supabase/migrations/083_create_testimonials_table.sql` - Creates `testimonials` table with all story fields
+- `supabase/migrations/083_create_monthly_claims_table.sql` - Creates `monthly_claims` table for race condition prevention
+- `supabase/migrations/084_fix_monthly_claims_race_condition.sql` - Adds unique index on (user_id, claim_month)
+
+**Public Form (`/share-your-story`):**
+- Form at `app/share-your-story/page.tsx` with fields: name, email, age, city/state, story prompts
+- All checkboxes (permission, anonymous, video interest) are optional
+- Age field is always editable (not pre-filled)
+- Mandatory fields marked with red asterisks: name, email, age, location
+- Success page at `/share-your-story/success`
+
+**Admin Page (`/admin/story-submissions`):**
+- View all submissions with status tabs (all, pending, reviewed, approved)
+- Search by name/email, filter by date range
+- Detail modal with edit capability for age, city/state, permissions
+- Actions: Mark as Reviewed, Mark as Approved, Revert to Pending
+- Revert available for both "reviewed" and "approved" statuses
+- CSV export functionality
+
+**API Routes:**
+- `POST /api/testimonials` - Submit story (auth required)
+- `GET /api/admin/story-submissions` - List submissions (admin)
+- `PATCH /api/admin/story-submissions` - Update status (admin)
+- `DELETE /api/admin/story-submissions` - Delete submission (admin)
+
+**Email Notification:**
+- `sendStoryNotificationEmail()` in `lib/email.ts`
+- Sends to `hello@nationalfundforwomen.org`
+- Includes all story fields, permissions, and admin link
+
+**Dashboard Integration:**
+- "Share Your Story" button in `BottomActions.tsx` links to `/share-your-story`
+- Removed "(Coming Soon)" label
+
+**Navigation Links:**
+- Added "Story Submissions" link to AuthButtonCombined, auth-button, MobileMenu
+
+**Monthly Claims Race Condition Fix:**
+- `app/api/shopify/checkout/route.ts` - Uses atomic INSERT with unique constraint on (user_id, claim_month)
+- Prevents duplicate claims when user clicks rapidly
+
+#### Story Form Fixes
+
+**ShareStoryClient.tsx:**
+- Checkboxes are optional (removed required validation)
+- All checkboxes same size with `flex-shrink-0`
+- Age field always editable (no calculated-from-profile logic)
+- Removed "(calculated from profile)" label
+- Required fields: name, email, age, location (all marked with red asterisks)
+
+#### Email Template Fixes
+
+**Story Notification Email (`lib/email.ts`):**
+- Header: `border-radius: 12px 12px 0 0` (top rounded)
+- Body: `border-radius: 0` (square - connects seamlessly to footer)
+- Footer: `border-radius: 0 0 12px 12px` (bottom rounded)
+
+**General Email Shell (`lib/email.ts`):**
+- Body cell: Added `border-bottom-left-radius: 0; border-bottom-right-radius: 0;`
+- Ensures square corners at bottom where body meets aubergine footer
+
+#### Page Navigation Fixes
+
+**Removed duplicate Navigation from:**
+- `app/share-your-story/page.tsx` - Layout already renders Navigation
+- `app/share-your-story/success/page.tsx` - Layout already renders Navigation
+- Also removed `rounded-full` from success checkmark badge

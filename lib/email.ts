@@ -234,7 +234,7 @@ export function buildEmailHtml({
 
           <!-- Body Content -->
           <tr>
-            <td style="padding: 0 40px 20px 40px; background-color: ${bodyBackground};" class="body-cell">
+            <td style="padding: 0 40px 20px 40px; background-color: ${bodyBackground}; border-bottom-left-radius: 0; border-bottom-right-radius: 0;" class="body-cell">
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 ${body}
               </table>
@@ -1334,5 +1334,135 @@ export async function sendContactFormEmail({
     body,
     footerCtaText: "VISIT WEBSITE",
     footerCtaUrl: siteUrl,
+  });
+}
+
+interface StoryFormData {
+  name: string;
+  email: string;
+  age: string;
+  city: string;
+  state: string;
+  drawnToMembership?: string;
+  programsEngaged?: string;
+  favoritePart?: string;
+  howNfwHelped?: string;
+  whyJoin?: string;
+  permissionGranted: boolean;
+  preferAnonymous: boolean;
+  interestedVideo: boolean;
+}
+
+export async function sendStoryNotificationEmail(data: StoryFormData) {
+  const resend = getResend();
+  const toEmail = "hello@nationalfundforwomen.org";
+
+  const submittedAt = new Date().toLocaleString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+
+  const formatOptional = (val?: string) => val?.trim() || "<em>No response</em>";
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #EBEBE8; font-family: 'DM Sans', Arial, sans-serif;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <div style="background-color: #3E145F; padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
+      <h1 style="color: #FFFFFF; margin: 0; font-size: 24px; font-weight: 900;">New Story Submission</h1>
+    </div>
+    <div style="background-color: #B693C0; padding: 30px; border-radius: 0;">
+      <table style="width: 100%; border-collapse: collapse; color: #FFFFFF; font-size: 14px;">
+        <tr>
+          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2); font-weight: bold; width: 120px;">Submitted</td>
+          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2);">${submittedAt}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2); font-weight: bold;">Name</td>
+          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2);">${data.name}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2); font-weight: bold;">Email</td>
+          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2);"><a href="mailto:${data.email}" style="color: #F8F19A;">${data.email}</a></td>
+        </tr>
+        <tr>
+          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2); font-weight: bold;">Age</td>
+          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2);">${data.age}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2); font-weight: bold;">Location</td>
+          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2);">${data.city || ""}${data.city && data.state ? ", " : ""}${data.state || ""}</td>
+        </tr>
+      </table>
+
+      <div style="margin-top: 30px;">
+        <h3 style="color: #F8F19A; margin: 0 0 15px 0; font-size: 16px; font-weight: bold;">Story Responses</h3>
+
+        <div style="margin-bottom: 20px;">
+          <div style="font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">What drew you to becoming a National Fund for Women member?</div>
+          <div style="color: #FFFFFF; line-height: 1.6;">${formatOptional(data.drawnToMembership)}</div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <div style="font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">Which NFW program(s) have you engaged with? What was your experience?</div>
+          <div style="color: #FFFFFF; line-height: 1.6;">${formatOptional(data.programsEngaged)}</div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <div style="font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">What is your favorite part about being an NFW member?</div>
+          <div style="color: #FFFFFF; line-height: 1.6;">${formatOptional(data.favoritePart)}</div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <div style="font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">How has NFW helped you?</div>
+          <div style="color: #FFFFFF; line-height: 1.6;">${formatOptional(data.howNfwHelped)}</div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <div style="font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">Why should others join NFW?</div>
+          <div style="color: #FFFFFF; line-height: 1.6;">${formatOptional(data.whyJoin)}</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
+        <h3 style="color: #F8F19A; margin: 0 0 15px 0; font-size: 16px; font-weight: bold;">Permissions</h3>
+        <table style="width: 100%; color: #FFFFFF; font-size: 14px;">
+          <tr>
+            <td style="padding: 5px 0;">Permission to use quotes:</td>
+            <td style="padding: 5px 0; text-align: right;">${data.permissionGranted ? "Yes" : "No"}</td>
+          </tr>
+          <tr>
+            <td style="padding: 5px 0;">Prefer anonymous:</td>
+            <td style="padding: 5px 0; text-align: right;">${data.preferAnonymous ? "Yes" : "No"}</td>
+          </tr>
+          <tr>
+            <td style="padding: 5px 0;">Interested in video:</td>
+            <td style="padding: 5px 0; text-align: right;">${data.interestedVideo ? "Yes" : "No"}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+    <div style="background-color: #2E1F38; padding: 20px; text-align: center; border-radius: 0 0 12px 12px;">
+      <a href="https://nationalfundforwomen.org/admin/story-submissions" style="color: #B693C0; text-decoration: none; font-size: 12px;">View in Admin</a>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  await resend.emails.send({
+    from: FROM,
+    to: toEmail,
+    subject: `New Story Submission from ${data.name}`,
+    html,
   });
 }

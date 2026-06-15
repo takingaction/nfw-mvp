@@ -230,6 +230,13 @@ export function AuthButton() {
                   Contact Submissions
                 </Link>
                 <Link
+                  href="/admin/story-submissions"
+                  className="block px-4 py-1 text-sm text-nfw-blackberry hover:bg-nfw-dove"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Story Submissions
+                </Link>
+                <Link
                   href="/admin/analytics"
                   className="block px-4 py-1 text-sm text-nfw-blackberry hover:bg-nfw-dove"
                   onClick={() => setIsOpen(false)}

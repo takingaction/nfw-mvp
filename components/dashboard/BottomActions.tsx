@@ -22,7 +22,7 @@ export default function BottomActions({
   const items = [
     { image: squareImage1, link: squareImage1Link, label: "Contact Us" },
     { image: squareImage2, link: squareImage2Link, label: "Gift a Membership" },
-    { image: squareImage3, link: squareImage3Link, label: "Share Your Story (Coming Soon)", disabled: true },
+    { image: squareImage3, link: "/share-your-story", label: "Share Your Story" },
   ];
 
   return (
