@@ -147,7 +147,12 @@ supabaseAdmin
   // Join claims with mappings in JavaScript
   const userClaims = (claimsResult?.data || []).map((claim: any) => {
     const mapping = mappingMap.get(claim.shopify_product_id);
-    console.log("[Dashboard] claim:", claim.id, "shopify_product_id:", claim.shopify_product_id, "mapping found:", !!mapping, "mapping:", mapping);
+    // Debug: check if the key exists in mappingMap
+    const hasKey = mappingMap.has(claim.shopify_product_id);
+    if (!mapping) {
+      console.log("[Dashboard] Mapping NOT found for:", claim.shopify_product_id);
+      console.log("[Dashboard] Available keys (first 5):", [...mappingMap.keys()].slice(0, 5));
+    }
     return {
       ...claim,
       shopify_product_mappings: mapping || null
