@@ -159,6 +159,8 @@ export default function YourZeroDollarStoreSection({ claims }: YourZeroDollarSto
   const [latestProducts, setLatestProducts] = useState<LatestProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
+  console.log("[YourZeroDollarStoreSection] Received claims:", claims?.length, claims);
+
   useEffect(() => {
     const fetchLatestProducts = async () => {
       try {
