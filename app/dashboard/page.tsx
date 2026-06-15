@@ -136,11 +136,15 @@ supabaseAdmin
 
   console.log("[Dashboard] Total mappings fetched:", allMappings?.length);
   console.log("[Dashboard] Mappings sample:", allMappings?.slice(0, 3));
+  console.log("[Dashboard] Looking for shopify_product_id:", "gid://shopify/Product/8251856322604");
+  console.log("[Dashboard] Does this key exist in mappings?:", allMappings?.some(m => m.shopify_product_id === "gid://shopify/Product/8251856322604"));
 
   const mappingMap = new Map(
     (allMappings || []).map(m => [m.shopify_product_id, m])
   );
   
+  console.log("[Dashboard] mappingMap size:", mappingMap.size);
+  console.log("[Dashboard] mappingMap has key?:", mappingMap.has("gid://shopify/Product/8251856322604"));
   console.log("[Dashboard] Claims from DB:", claimsResult?.data?.length, "claims");
   console.log("[Dashboard] Claims sample:", claimsResult?.data?.slice(0, 2));
 
