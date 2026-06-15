@@ -4460,3 +4460,14 @@ Send alert email to admin with details
 
 **Also Fixed:**
 - `YourZeroDollarStoreSection.tsx`: Changed image class from `object-contain` to `object-cover` so images fill the square container
+
+#### Security: Enable RLS on monthly_claims
+
+**Migration:** `supabase/migrations/085_enable_rls_monthly_claims.sql`
+
+Enabled RLS on `monthly_claims` table with policies:
+- SELECT: Users can only view their own monthly claims
+- INSERT: Users can only insert their own monthly claims
+- DELETE: Users can only delete their own monthly claims
+
+**Note:** The checkout API uses `supabaseAdmin` (service role key) which bypasses RLS, so the Zero Dollar Store checkout flow continues to work correctly.
