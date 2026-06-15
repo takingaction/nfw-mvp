@@ -132,7 +132,7 @@ supabaseAdmin
   // Fetch shopify product mappings for enrichment
   const { data: allMappings, error: mappingsError } = await supabaseAdmin
     .from("shopify_product_mappings")
-    .select("shopify_product_id, shopify_variant_id, title, image_url, price");
+    .select("shopify_product_id, shopify_variant_id, title, image_url");
 
   console.log("[Dashboard] Mappings error:", mappingsError);
   console.log("[Dashboard] Total mappings fetched:", allMappings?.length);
