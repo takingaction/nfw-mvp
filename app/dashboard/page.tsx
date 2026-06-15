@@ -134,15 +134,25 @@ supabaseAdmin
     .from("shopify_product_mappings")
     .select("shopify_product_id, shopify_variant_id, title, image_url, price");
 
+  console.log("[Dashboard] Total mappings fetched:", allMappings?.length);
+  console.log("[Dashboard] Mappings sample:", allMappings?.slice(0, 3));
+
   const mappingMap = new Map(
     (allMappings || []).map(m => [m.shopify_product_id, m])
   );
+  
+  console.log("[Dashboard] Claims from DB:", claimsResult?.data?.length, "claims");
+  console.log("[Dashboard] Claims sample:", claimsResult?.data?.slice(0, 2));
 
   // Join claims with mappings in JavaScript
-  const userClaims = (claimsResult?.data || []).map((claim: any) => ({
-    ...claim,
-    shopify_product_mappings: mappingMap.get(claim.shopify_product_id) || null
-  }));
+  const userClaims = (claimsResult?.data || []).map((claim: any) => {
+    const mapping = mappingMap.get(claim.shopify_product_id);
+    console.log("[Dashboard] claim:", claim.id, "shopify_product_id:", claim.shopify_product_id, "mapping found:", !!mapping, "mapping:", mapping);
+    return {
+      ...claim,
+      shopify_product_mappings: mapping || null
+    };
+  });
 
   const profile = profileResult?.data;
 

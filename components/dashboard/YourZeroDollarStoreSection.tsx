@@ -8,6 +8,7 @@ const SHOPIFY_STORE_DOMAIN = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN || "na
 
 interface Claim {
   id: string;
+  shopify_product_id: string;
   claimed_at: string;
   created_at?: string;
   status?: string | null;
@@ -61,6 +62,7 @@ function getShopifyOrderUrl(claim: Claim): string | null {
 
 function OnlineHistoryItem({ claim }: { claim: Claim }) {
   const product = claim.shopify_product_mappings;
+  console.log("[OrderHistory] claim:", claim.id, "shopify_product_id:", claim.shopify_product_id, "product:", product);
   const shopifyOrderUrl = getShopifyOrderUrl(claim);
   const statusInfo = getStatusLabel(claim.status);
 

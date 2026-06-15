@@ -39,34 +39,16 @@ export default function BottomActions({
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 <div className="absolute inset-0 flex items-end">
-                  {item.disabled ? (
-                    <div className="w-full">
-                      <div className="bg-neutral-500 px-4 py-3">
-                        <p className="text-center font-bold text-white font-ui uppercase text-sm">
-                          {item.label}
-                        </p>
-                      </div>
+                  <Link
+                    href={item.link}
+                    className="w-full"
+                  >
+                    <div className="bg-nfw-lilac hover:brightness-110 transition-all px-4 py-3">
+                      <p className="text-center font-bold text-white font-ui uppercase text-sm">
+                        {item.label}
+                      </p>
                     </div>
-                  ) : item.link ? (
-                    <Link
-                      href={item.link}
-                      className="w-full"
-                    >
-                      <div className="bg-nfw-lilac hover:brightness-110 transition-all px-4 py-3">
-                        <p className="text-center font-bold text-white font-ui uppercase text-sm">
-                          {item.label}
-                        </p>
-                      </div>
-                    </Link>
-                  ) : (
-                    <div className="w-full">
-                      <div className="bg-neutral-500 px-4 py-3">
-                        <p className="text-center font-bold text-white font-ui uppercase text-sm">
-                          {item.label}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                  </Link>
                 </div>
               </>
             ) : (
