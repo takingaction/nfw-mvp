@@ -268,12 +268,12 @@ export default function Footer() {
         )}
 
         {/* Bottom Bar */}
-        <div className="border-t pt-4 flex flex-col sm:flex-row justify-between items-center gap-4" style={{ borderColor: "#B7B6B9" }}>
-          <p className="text-sm" style={{ color: "#B7B6B9" }}>
+        <div className="border-t pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6" style={{ borderColor: "#B7B6B9" }}>
+          <p className="text-sm order-2 md:order-1" style={{ color: "#B7B6B9" }}>
             {data.copyright_text}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-center">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-center md:justify-end order-1 md:order-2">
             {/* Social icons - centered on mobile */}
             <div className="flex items-center justify-center gap-3">
               <a href={data.social_instagram} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ color: "#B693C0" }}>
