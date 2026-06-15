@@ -62,7 +62,6 @@ function getShopifyOrderUrl(claim: Claim): string | null {
 
 function OnlineHistoryItem({ claim }: { claim: Claim }) {
   const product = claim.shopify_product_mappings;
-  console.log("[OrderHistory] claim:", claim.id, "shopify_product_id:", claim.shopify_product_id, "product:", product);
   const shopifyOrderUrl = getShopifyOrderUrl(claim);
   const statusInfo = getStatusLabel(claim.status);
 
@@ -86,7 +85,7 @@ function OnlineHistoryItem({ claim }: { claim: Claim }) {
           <img
             src={product.image_url}
             alt=""
-            className="w-full h-full object-contain"
+            className="w-full h-full object-cover"
           />
         ) : (
           <Gift className="w-5 h-5 text-white/40" />
@@ -158,8 +157,6 @@ function LatestOfferingCard({ product }: { product: LatestProduct }) {
 export default function YourZeroDollarStoreSection({ claims }: YourZeroDollarStoreSectionProps) {
   const [latestProducts, setLatestProducts] = useState<LatestProduct[]>([]);
   const [loading, setLoading] = useState(true);
-
-  console.log("[YourZeroDollarStoreSection] Received claims:", claims?.length, claims);
 
   useEffect(() => {
     const fetchLatestProducts = async () => {

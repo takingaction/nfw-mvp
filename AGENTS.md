@@ -4447,3 +4447,16 @@ Send alert email to admin with details
 - `app/share-your-story/page.tsx` - Layout already renders Navigation
 - `app/share-your-story/success/page.tsx` - Layout already renders Navigation
 - Also removed `rounded-full` from success checkmark badge
+
+#### Dashboard Order History Fix
+
+**Problem:** "Your Order History" section on /dashboard showed "Product" and no image for all users.
+
+**Root Cause:** Query for `shopify_product_mappings` was selecting a `price` column that doesn't exist in the table. This caused the entire query to fail with error `column shopify_product_mappings.price does not exist`.
+
+**Fix:**
+- Removed `price` from the select query in `app/dashboard/page.tsx`
+- Query now correctly fetches `shopify_product_id, shopify_variant_id, title, image_url`
+
+**Also Fixed:**
+- `YourZeroDollarStoreSection.tsx`: Changed image class from `object-contain` to `object-cover` so images fill the square container
