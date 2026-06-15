@@ -130,10 +130,11 @@ supabaseAdmin
   ]);
 
   // Fetch shopify product mappings for enrichment
-  const { data: allMappings } = await supabaseAdmin
+  const { data: allMappings, error: mappingsError } = await supabaseAdmin
     .from("shopify_product_mappings")
     .select("shopify_product_id, shopify_variant_id, title, image_url, price");
 
+  console.log("[Dashboard] Mappings error:", mappingsError);
   console.log("[Dashboard] Total mappings fetched:", allMappings?.length);
   console.log("[Dashboard] Mappings sample:", allMappings?.slice(0, 3));
   console.log("[Dashboard] Looking for shopify_product_id:", "gid://shopify/Product/8251856322604");
