@@ -21,12 +21,16 @@ async function MyClaimsContent() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, membership_level")
+    .select("full_name, membership_level, profile_completed")
     .eq("id", user.id)
     .single();
 
   if (!profile) {
     redirect("/profile");
+  }
+
+  if (!profile?.profile_completed) {
+    redirect("/auth/sign-up?step=1");
   }
 
   const { data: claims, error } = await supabase

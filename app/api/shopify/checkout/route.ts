@@ -41,24 +41,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Fetch profile for all checks
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("joined_at, profile_completed")
+      .eq("id", userId)
+      .single();
+
+    // Check profile completion (always required)
+    if (!profile?.profile_completed) {
+      return NextResponse.json(
+        { error: "Please complete your profile to claim items" },
+        { status: 403 }
+      );
+    }
+
     // Check account age (minimum 48 hours before claiming) - disabled via ACCOUNT_AGE_CHECK_ENABLED env var
     const isAccountAgeCheckEnabled = process.env.ACCOUNT_AGE_CHECK_ENABLED !== "false";
-    if (isAccountAgeCheckEnabled) {
-      const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("joined_at")
-        .eq("id", userId)
-        .single();
-
-      if (profile?.joined_at) {
-        const joinedAt = new Date(profile.joined_at);
-        const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
-        if (joinedAt > fortyEightHoursAgo) {
-          return NextResponse.json(
-            { error: "Your account must be at least 48 hours old before claiming items" },
-            { status: 403 }
-          );
-        }
+    if (isAccountAgeCheckEnabled && profile?.joined_at) {
+      const joinedAt = new Date(profile.joined_at);
+      const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+      if (joinedAt > fortyEightHoursAgo) {
+        return NextResponse.json(
+          { error: "Your account must be at least 48 hours old before claiming items" },
+          { status: 403 }
+        );
       }
     }
 

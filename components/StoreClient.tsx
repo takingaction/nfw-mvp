@@ -50,6 +50,7 @@ export default function StoreClient({
     }>;
   } | null>(null);
   const [monthlyClaimed, setMonthlyClaimed] = useState(false);
+  const [profileCompleted, setProfileCompleted] = useState(true);
   const [detailsProduct, setDetailsProduct] = useState<StoreProduct | null>(null);
   const [heroSettings, setHeroSettings] = useState<{
     hero_image_url: string | null;
@@ -104,9 +105,32 @@ export default function StoreClient({
     checkMonthlyClaim();
   }, [userId]);
 
+  useEffect(() => {
+    async function checkProfileCompletion() {
+      if (!userId) {
+        setProfileCompleted(true);
+        return;
+      }
+      try {
+        const res = await fetch("/api/auth/profile");
+        const data = await res.json();
+        setProfileCompleted(data.profile_completed !== false);
+      } catch (error) {
+        console.error("Error checking profile:", error);
+        setProfileCompleted(true);
+      }
+    }
+    checkProfileCompletion();
+  }, [userId]);
+
   const handleClaim = (item: StoreProduct) => {
     if (!userId) {
       router.push("/auth/login");
+      return;
+    }
+
+    if (!profileCompleted) {
+      router.push("/auth/sign-up?step=1");
       return;
     }
 

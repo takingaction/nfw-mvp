@@ -4471,3 +4471,42 @@ Enabled RLS on `monthly_claims` table with policies:
 - DELETE: Users can only delete their own monthly claims
 
 **Note:** The checkout API uses `supabaseAdmin` (service role key) which bypasses RLS, so the Zero Dollar Store checkout flow continues to work correctly.
+
+#### Security: Fix testimonials Foreign Key Cascade
+
+**Issue:** User deletion failed with error `"update or delete on table \"profiles\" violates foreign key constraint \"testimonials_user_id_fkey\"`
+
+**Root Cause:** The `testimonials` table FK to `profiles` was missing `ON DELETE CASCADE`
+
+**Fix Applied in Supabase SQL Editor:**
+```sql
+ALTER TABLE testimonials DROP CONSTRAINT testimonials_user_id_fkey;
+ALTER TABLE testimonials ADD CONSTRAINT testimonials_user_id_fkey
+  FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
+```
+
+#### Zero Dollar Store Claim Protection for Incomplete Profiles
+
+**Goal:** Prevent Google OAuth users who haven't completed onboarding from claiming items
+
+**Changes Made:**
+
+1. **Checkout API (`app/api/shopify/checkout/route.ts`):**
+   - Added `profile_completed` to profile SELECT query
+   - Added server-side check: returns 403 error if `profile_completed === false`
+   - Error message: "Please complete your profile to claim items"
+
+2. **StoreClient (`components/StoreClient.tsx`):**
+   - Added `profileCompleted` state
+   - Added `checkProfileCompletion()` useEffect to fetch profile_completed on mount
+   - Added client-side check in `handleClaim()`: redirects to `/auth/sign-up?step=1` if profile not completed
+
+3. **My Claims Page (`app/store/my-claims/page.tsx`):**
+   - Added `profile_completed` to profile SELECT query
+   - Added redirect to `/auth/sign-up?step=1` if `profile_completed === false`
+
+**Behavior:**
+- Store page remains public (users can browse)
+- "Claim Item" buttons redirect incomplete users to complete signup
+- Server-side API also validates (defense in depth)
+- `/store/my-claims` also protected
