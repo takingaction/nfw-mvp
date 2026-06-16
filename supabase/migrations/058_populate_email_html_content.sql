@@ -216,7 +216,7 @@ UPDATE email_templates SET
                   <td style="padding: 50px 40px; text-align: center;">
                     <h1 style="font-family: Georgia, ''Times New Roman'', serif; font-size: 28px; font-weight: 700; color: #FFFFFF; margin: 0 0 20px 0;">Reset Your Password</h1>
                     <p style="font-family: ''DM Sans'', Arial, sans-serif; font-size: 16px; color: #FFFFFF; line-height: 1.6; margin: 0 0 30px 0;">Click the button below to reset your password. This link will expire in 24 hours.</p>
-                    <a href="{{ .SiteURL }}/auth/update-password?token_hash={{ .TokenHash }}" style="display: inline-block; background-color: #F8F19A; color: #3E145F; font-family: ''DM Sans'', Arial, sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; text-decoration: none; padding: 14px 28px;">RESET PASSWORD</a>
+                    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/auth/update-password" style="display: inline-block; background-color: #F8F19A; color: #3E145F; font-family: ''DM Sans'', Arial, sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; text-decoration: none; padding: 14px 28px;">RESET PASSWORD</a>
                     <p style="font-family: ''DM Sans'', Arial, sans-serif; font-size: 12px; color: rgba(255,255,255,0.7); margin: 30px 0 0 0;">If you didn''t request a password reset, you can safely ignore this email.</p>
                   </td>
                 </tr>

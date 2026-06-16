@@ -15,6 +15,9 @@ export default function EditGrantCyclePage() {
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState("");
+  const [pendingStatus, setPendingStatus] = useState("");
 
   const [formData, setFormData] = useState({
     cycle_name: "",
@@ -64,9 +67,39 @@ export default function EditGrantCyclePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
 
+    // Validate date conflicts when opening a cycle
+    if (formData.status === "open" && pendingStatus !== "open") {
+      const today = new Date();
+      const todayStr = today.toISOString().split("T")[0];
+
+      // Check if end_date has passed (EST)
+      if (formData.end_date < todayStr) {
+        setConfirmMessage(
+          "This grant's end date has already passed. Opening it now will allow applications outside the intended timeframe. Are you sure you want to open it?"
+        );
+        setPendingStatus("open");
+        setShowConfirmModal(true);
+        return;
+      }
+
+      // Check if start_date hasn't arrived yet (EST)
+      if (formData.start_date > todayStr) {
+        setConfirmMessage(
+          "This grant's start date hasn't arrived yet. Opening it early will allow applications before the intended start date. Are you sure you want to open it early?"
+        );
+        setPendingStatus("open");
+        setShowConfirmModal(true);
+        return;
+      }
+    }
+
+    await submitCycle();
+  };
+
+  const submitCycle = async () => {
+    setLoading(true);
     try {
       const res = await fetch("/api/admin/grants/update-cycle", {
         method: "POST",
@@ -81,6 +114,17 @@ export default function EditGrantCyclePage() {
       setError(err.message);
       setLoading(false);
     }
+  };
+
+  const handleConfirmYes = () => {
+    setShowConfirmModal(false);
+    setPendingStatus("");
+    submitCycle();
+  };
+
+  const handleConfirmNo = () => {
+    setShowConfirmModal(false);
+    setPendingStatus("");
   };
 
   if (fetching) {
@@ -323,6 +367,33 @@ export default function EditGrantCyclePage() {
         }}
         bucket="page-builder"
       />
+
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-blackberry/50 flex items-center justify-center z-50">
+          <div className="bg-white border border-nfw-blackberry/10 p-8 max-w-md w-full mx-4">
+            <h3 className="text-xl font-bold text-nfw-blackberry font-serif mb-4">
+              Date Conflict Warning
+            </h3>
+            <p className="text-nfw-blackberry/70 mb-6 font-serif">
+              {confirmMessage}
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={handleConfirmYes}
+                className="flex-1 py-3 bg-nfw-aubergine text-white font-bold hover:bg-nfw-aubergine/90 transition-colors"
+              >
+                Yes, Open Anyway
+              </button>
+              <button
+                onClick={handleConfirmNo}
+                className="px-6 py-3 border border-nfw-blackberry/20 text-nfw-blackberry font-medium hover:bg-nfw-blackberry/5 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -33,14 +33,15 @@ This file contains context and instructions for AI agents working on this projec
 
 ## Critical Database Schema Notes
 
-### IMPORTANT: `profiles` Table Does NOT Have `email` Column
+### `profiles` Table Schema
 
-The `profiles` table schema does NOT include an `email` column. User email is stored in `auth.users`, NOT in `profiles`.
+The `profiles` table includes an `email` column (added via migration 075). User email is stored in both `auth.users` and `profiles.email`.
 
-**Correct `profiles` table columns:**
+**Common `profiles` table columns:**
 - `id` (UUID, PK)
+- `email` (TEXT) - synced from auth.users via trigger
 - `full_name` (TEXT)
-- `membership_level` (TEXT)
+- `membership_level` (TEXT) - 'free', 'contributing', 'founding'
 - `is_admin` (BOOLEAN)
 - `profile_completed` (BOOLEAN)
 - `city`, `state`, `zip` (TEXT)
@@ -50,24 +51,29 @@ The `profiles` table schema does NOT include an `email` column. User email is st
 - `subscription_status`, `subscription_ends_at` (TEXT)
 - `shipping_address` (JSONB)
 - `social_handles` (JSONB)
+- `access_perks_member_id` (TEXT)
+- `first_paid_at` (TIMESTAMPTZ)
+- `first_paid_level` (TEXT)
 - And more...
 
-**NEVER query `profiles.email`** - it doesn't exist. To get user email, you must query `auth.users` table directly.
+### Deprecated Bug Pattern
 
-### Bug Pattern to Avoid
+The following bug pattern was fixed in 2026-04-04 to 2026-04-07, but is kept as historical reference:
 
 ```typescript
-// WRONG - profiles table has no email column:
+// WRONG - querying email from profiles when it didn't exist:
 .supabase.from("profiles").select("id, full_name, email")
 
-// CORRECT - only select columns that exist:
+// CORRECT (pre-2026-05-27):
 .supabase.from("profiles").select("id, full_name")
 ```
 
-This mistake has caused bugs in:
+Fixed in:
 - `app/admin/grants/[id]/page.tsx` - Fixed 2026-04-04
 - `components/admin/AdminGrantReviewer.tsx` - Fixed 2026-04-05
 - `app/api/admin/users/route.ts` - Fixed 2026-04-07
+
+**Note:** As of migration 075, `profiles.email` now exists and is auto-synced from `auth.users` via a trigger.
 
 ## Accomplishments
 
@@ -4510,3 +4516,120 @@ ALTER TABLE testimonials ADD CONSTRAINT testimonials_user_id_fkey
 - "Claim Item" buttons redirect incomplete users to complete signup
 - Server-side API also validates (defense in depth)
 - `/store/my-claims` also protected
+
+### Session 2026-06-16: Mobile Password Reset Auth Session Fix
+
+#### Problem
+
+"Auth Session Missing" error on `/auth/update-password` occurred on mobile but not desktop when resetting password via email link.
+
+#### Root Cause
+
+**Password reset flow was not following Supabase PKCE flow:**
+
+1. **Email had:** `/auth/update-password?token_hash=XXX` (no type, no next)
+2. **Page rendered form** but never extracted or used `token_hash` from URL
+3. **API called** `updateUser({ password })` with NO session - relied on existing session cookie
+4. **Desktop:** Session cookie existed from previous login → worked
+5. **Mobile:** ITP (Intelligent Tracking Prevention) blocked cookies → no session → "Auth Session Missing"
+
+#### Solution
+
+**1. Created `/auth/confirm` route** (`app/auth/confirm/route.ts`)
+
+Per Supabase PKCE flow, this route:
+- Receives `token_hash`, `type=recovery`, and `next` params from URL
+- Calls `supabase.auth.verifyOtp({ type, token_hash })` to exchange token for session
+- Sets auth cookies on success
+- Redirects to `next` (or `/auth/update-password`)
+- Redirects to `/auth/error` on failure
+
+**2. Updated email template** (`supabase/migrations/058_populate_email_html_content.sql`)
+
+Changed reset password link from:
+```
+{{ .SiteURL }}/auth/update-password?token_hash={{ .TokenHash }}
+```
+To:
+```
+{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/auth/update-password
+```
+
+#### New Flow
+
+```
+User clicks reset link in email
+        ↓
+https://nationalfundforwomen.org/auth/confirm?token_hash=XXX&type=recovery&next=/auth/update-password
+        ↓
+/auth/confirm calls verifyOtp() → creates session + sets cookies
+        ↓
+Redirect to /auth/update-password (now authenticated)
+        ↓
+Form submits password to API
+        ↓
+updateUser({ password }) → works because session exists in cookies
+```
+
+#### To Apply the Template Change
+
+Run this SQL in Supabase SQL Editor:
+
+```sql
+UPDATE email_templates
+SET html_content = REPLACE(
+  html_content,
+  '/auth/update-password?token_hash={{ .TokenHash }}"',
+  '/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/auth/update-password"'
+)
+WHERE slug = 'supabase-reset-password';
+```
+
+### Session 2026-06-16: Grant Cycle Auto-Open/Close
+
+#### Database Migration
+
+**File:** `supabase/migrations/086_auto_open_close_grant_cycles.sql`
+
+**pg_cron job** runs daily at 5 AM UTC (midnight EST):
+- Opens cycles when `start_date <= today(EST) <= end_date`
+- Closes cycles when `today(EST) > end_date`
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+
+CREATE OR REPLACE FUNCTION sync_grant_cycle_statuses()
+RETURNS void
+LANGUAGE plpgsql
+SET search_path = pg_catalog
+AS $$
+BEGIN
+  UPDATE grant_cycles
+  SET status = 'open'
+  WHERE start_date <= (CURRENT_DATE AT TIME ZONE 'America/New_York')
+    AND end_date >= (CURRENT_DATE AT TIME ZONE 'America/New_York')
+    AND status = 'closed';
+
+  UPDATE grant_cycles
+  SET status = 'closed'
+  WHERE end_date < (CURRENT_DATE AT TIME ZONE 'America/New_York')
+    AND status = 'open';
+END;
+$$;
+
+SELECT cron.schedule(
+  'sync-grant-cycle-statuses',
+  '0 5 * * *',
+  'SELECT sync_grant_cycle_statuses()'
+);
+```
+
+#### Admin Confirmation Modal
+
+**File:** `app/admin/grants/[id]/edit/page.tsx`
+
+Added confirmation modal when opening a cycle with date conflicts:
+- **Warning when end_date has passed:** "This grant's end date has already passed. Opening it now will allow applications outside the intended timeframe."
+- **Warning when start_date hasn't arrived:** "This grant's start date hasn't arrived yet. Opening it early will allow applications before the intended start date."
+
+Modal has "Yes, Open Anyway" and "Cancel" buttons.
