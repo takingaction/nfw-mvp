@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
       const insertValues = {
         id: user.id,
         ...updates,
+        subscription_status: null,
         full_name: updates.full_name || "Member",
         updated_at: new Date().toISOString(),
       };

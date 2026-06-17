@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
               full_name: "Member",
               date_of_birth: "1900-01-01",
               membership_level: "free",
+              subscription_status: null,
               profile_completed: false,
             });
 

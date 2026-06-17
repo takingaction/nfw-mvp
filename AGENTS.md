@@ -4633,3 +4633,31 @@ Added confirmation modal when opening a cycle with date conflicts:
 - **Warning when start_date hasn't arrived:** "This grant's start date hasn't arrived yet. Opening it early will allow applications before the intended start date."
 
 Modal has "Yes, Open Anyway" and "Cancel" buttons.
+
+### Session 2026-06-17: Fix Free Members Showing "Active" Status
+
+#### Problem
+
+All free members showed "Active" status on `/admin/members` even though they never paid. This was because:
+1. `subscription_status` column defaults to `'active'` in the database
+2. Profile creation code didn't explicitly set `subscription_status = null` for free members
+
+#### Solution
+
+**1. Database Migration (`supabase/migrations/087_fix_free_members_active_status.sql`):**
+```sql
+UPDATE profiles
+SET subscription_status = NULL,
+    updated_at = NOW()
+WHERE membership_level = 'free'
+  AND subscription_status = 'active';
+```
+
+**2. Code Fixes - Explicitly set `subscription_status = null` when creating free profiles:**
+
+- `app/auth/callback/route.ts` - Google OAuth callback
+- `app/api/profile/update/route.ts` - Profile update API (INSERT case)
+
+#### Result
+
+Free members now have `subscription_status = NULL` and display correctly on admin page.
