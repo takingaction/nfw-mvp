@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,30 @@ export function UpdatePasswordForm({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+  const exchanged = useRef(false);
+
+  useEffect(() => {
+    if (exchanged.current) return;
+    exchanged.current = true;
+
+    const code = new URLSearchParams(window.location.search).get("code");
+
+    if (!code) {
+      setError("Invalid or expired reset link. Please request a new one.");
+      return;
+    }
+
+    const supabase = createClient();
+    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+      if (error) {
+        setError("This reset link has expired or already been used. Please request a new one.");
+      } else {
+        window.history.replaceState({}, "", window.location.pathname);
+        setSessionReady(true);
+      }
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +78,8 @@ export function UpdatePasswordForm({
     }
   };
 
+  const isExchanging = !sessionReady && !error;
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="border-nfw-blackberry/10">
@@ -66,6 +93,14 @@ export function UpdatePasswordForm({
           {isSuccess ? (
             <div className="text-center py-4">
               <p className="text-nfw-aubergine font-serif text-lg">Redirecting to dashboard...</p>
+            </div>
+          ) : isExchanging ? (
+            <div className="text-center py-4">
+              <p className="text-nfw-blackberry/60">Verifying your reset link...</p>
+            </div>
+          ) : error && !sessionReady ? (
+            <div className="text-center py-4">
+              <p className="text-sm text-red-500">{error}</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
