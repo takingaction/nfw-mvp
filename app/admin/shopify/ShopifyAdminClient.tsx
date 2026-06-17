@@ -797,7 +797,7 @@ const SHOPIFY_AUTH_URL = `https://nfw-checkout.myshopify.com/admin/oauth/authori
               </p>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-nfw-blackberry mb-2 font-sans">
-                  Retail Value <span className="text-nfw-blackberry/40">(internal use only)</span>
+                  Retail Value
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-nfw-blackberry/40">$</span>
