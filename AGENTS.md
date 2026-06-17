@@ -4661,3 +4661,41 @@ WHERE membership_level = 'free'
 #### Result
 
 Free members now have `subscription_status = NULL` and display correctly on admin page.
+
+### Session 2026-06-17: Admin Members Page Improvements
+
+#### Features Added
+
+**1. Grey Avatar for Incomplete Profiles**
+
+Members with `profile_completed === false` now show a grey (`bg-nfw-stone/40`) avatar instead of lilac. This visual indicator helps admins quickly identify members who haven't completed their profile.
+
+**2. Incomplete Profiles Stat Card**
+
+Added new stat card showing count and percentage of members with incomplete profiles. Displayed next to Total, Paid, Free, and Admins cards.
+
+**3. Incomplete Filter Button**
+
+Added "Incomplete" filter button in the toolbar. When clicked, filters the member list to show only those with `profile_completed === false`.
+
+**4. Percentages on Stat Cards**
+
+Paid, Free, and Incomplete stat cards now show percentages in parentheses:
+- Paid Members: `50 (8.3%)`
+- Free Members: `540 (90.0%)`
+- Incomplete Profiles: `200 (33.3%)`
+
+#### Files Modified
+
+- `app/admin/members/page.tsx`:
+  - Added `profile_completed` to select query
+  - Added `incomplete` count calculation
+  - Changed grid from 4 to 5 columns for 5 stat cards
+  - Added Incomplete Profiles stat card with percentage
+
+- `components/admin/AdminMembersClient.tsx`:
+  - Added `profile_completed` to Member type
+  - Added `"incomplete"` to filter state type
+  - Added incomplete filter logic
+  - Added "Incomplete" filter button
+  - Conditional avatar background: grey if incomplete, lilac if complete

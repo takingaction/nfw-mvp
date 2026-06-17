@@ -28,6 +28,7 @@ type Member = {
   is_admin: boolean | null;
   access_perks_synced_at: string | null;
   membership_level: string | null;
+  profile_completed: boolean | null;
 };
 
 export default function AdminMembersClient({
@@ -39,7 +40,7 @@ export default function AdminMembersClient({
 }) {
   const [members, setMembers] = useState(initialMembers);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "paid" | "free" | "admin">(
+  const [filter, setFilter] = useState<"all" | "paid" | "free" | "admin" | "incomplete">(
     "all",
   );
   const [selected, setSelected] = useState<Member | null>(null);
@@ -70,7 +71,8 @@ export default function AdminMembersClient({
       filter === "all" ||
       (filter === "paid" && (m.membership_level === "contributing" || m.membership_level === "founding")) ||
       (filter === "free" && (m.membership_level === "free" || m.membership_level === null)) ||
-      (filter === "admin" && m.is_admin);
+      (filter === "admin" && m.is_admin) ||
+      (filter === "incomplete" && !m.profile_completed);
 
     return matchesSearch && matchesFilter;
   });
@@ -208,7 +210,7 @@ export default function AdminMembersClient({
             />
           </div>
           <div className="flex gap-2">
-            {(["all", "paid", "free", "admin"] as const).map((f) => (
+            {(["all", "paid", "free", "incomplete", "admin"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -280,7 +282,7 @@ export default function AdminMembersClient({
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-nfw-lilac/40 flex items-center justify-center text-xs font-black text-nfw-blackberry flex-shrink-0">
+                        <div className={`w-8 h-8 flex items-center justify-center text-xs font-black text-nfw-blackberry flex-shrink-0 ${member.profile_completed ? "bg-nfw-lilac/40" : "bg-nfw-stone/40"}`}>
                           {(member.full_name || member.email || "U")
                             .charAt(0)
                             .toUpperCase()}
@@ -414,7 +416,7 @@ export default function AdminMembersClient({
             {/* Profile Summary */}
             <div className="p-6 border-b border-nfw-blackberry/5 bg-nfw-dove">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-nfw-lilac/40 flex items-center justify-center text-xl font-black text-nfw-blackberry">
+                <div className={`w-14 h-14 flex items-center justify-center text-xl font-black text-nfw-blackberry ${selected.profile_completed ? "bg-nfw-lilac/40" : "bg-nfw-stone/40"}`}>
                   {(selected.full_name || selected.email || "U")
                     .charAt(0)
                     .toUpperCase()}

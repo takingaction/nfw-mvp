@@ -22,7 +22,7 @@ async function AdminMembersContent() {
   const { data: profiles, error } = await supabaseAdmin
     .from("profiles")
     .select(
-      "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, access_perks_synced_at",
+      "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, access_perks_synced_at, profile_completed",
     )
     .order("joined_at", { ascending: false });
 
@@ -39,6 +39,11 @@ async function AdminMembersContent() {
     profiles?.filter((m) => m.membership_level === "free" || m.membership_level === null)
       .length || 0;
   const admins = profiles?.filter((m) => m.is_admin).length || 0;
+  const incomplete =
+    profiles?.filter((m) => !m.profile_completed || m.profile_completed === false)
+      .length || 0;
+
+  const percent = (value: number) => total > 0 ? ((value / total) * 100).toFixed(1) : "0";
 
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">
@@ -62,29 +67,40 @@ async function AdminMembersContent() {
           <BackfillButton />
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           {[
             {
               label: "Total Members",
               value: total,
+              showPercent: false,
               color: "bg-nfw-blackberry",
               text: "text-white",
             },
             {
               label: "Paid Members",
-              value: paid,
+              value: `${paid} (${percent(paid)}%)`,
+              showPercent: false,
               color: "bg-[#d4f1ad]",
               text: "text-nfw-blackberry",
             },
             {
               label: "Free Members",
-              value: free,
+              value: `${free} (${percent(free)}%)`,
+              showPercent: false,
               color: "bg-[#b2d1ee]",
+              text: "text-nfw-blackberry",
+            },
+            {
+              label: "Incomplete Profiles",
+              value: `${incomplete} (${percent(incomplete)}%)`,
+              showPercent: false,
+              color: "bg-nfw-stone",
               text: "text-nfw-blackberry",
             },
             {
               label: "Admins",
               value: admins,
+              showPercent: false,
               color: "bg-nfw-citrine",
               text: "text-nfw-blackberry",
             },
