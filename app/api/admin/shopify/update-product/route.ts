@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing updates" }, { status: 400 });
     }
 
-    const allowedFields = ["mvp_visibility", "eligibility_tiers", "display_order", "featured_order", "card_description"];
+    const allowedFields = ["mvp_visibility", "eligibility_tiers", "display_order", "featured_order", "card_description", "value"];
     const sanitizedUpdates: Record<string, unknown> = {};
 
     for (const key of allowedFields) {

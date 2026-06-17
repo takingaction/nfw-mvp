@@ -25,6 +25,7 @@ type StoreProduct = {
   eligibilityTiers: string[];
   displayOrder: number;
   status: "ACTIVE" | "DRAFT" | "ARCHIVED" | null;
+  value?: number;
 };
 
 export default function StoreClient({

@@ -4699,3 +4699,22 @@ Paid, Free, and Incomplete stat cards now show percentages in parentheses:
   - Added incomplete filter logic
   - Added "Incomplete" filter button
   - Conditional avatar background: grey if incomplete, lilac if complete
+
+### Session 2026-06-17: Store Items Value Field
+
+Added `value` (dollar amount) field to store items for internal tracking.
+
+**Database Migration:**
+- `supabase/migrations/088_add_value_to_shopify_product_mappings.sql` - Adds `value NUMERIC(10,2) DEFAULT 0` column
+
+**Files Modified:**
+- `app/api/admin/shopify/update-product/route.ts` - Added `"value"` to allowedFields
+- `lib/mock-shopify.ts` - Added `value?: number` to MockProduct type and transform
+- `components/StoreClient.tsx` - Added `value?: number` to StoreProduct type
+- `app/admin/shopify/ShopifyAdminClient.tsx` - Added `value` to ProductWithMapping type, added `$` edit button and value modal
+
+**Admin UI:**
+- Products table has new `$` button next to pencil edit button
+- Clicking `$` opens modal with dollar input for retail value
+- Value defaults to 0 (no NULLs)
+- Field is hidden on public store pages (internal use only)

@@ -20,6 +20,7 @@ export type MockProduct = {
   displayOrder: number;
   featuredOrder: number;
   status: "ACTIVE" | "DRAFT" | "ARCHIVED" | null;
+  value?: number;
 };
 
 export const MOCK_PRODUCTS: MockProduct[] = [
@@ -198,5 +199,6 @@ export function transformShopifyProduct(shopifyProduct: ShopifyProduct, mockMapp
     displayOrder: mockMapping?.displayOrder ?? 999,
     featuredOrder: mockMapping?.featuredOrder ?? 999,
     status: shopifyProduct.status ?? "ACTIVE",
+    value: mockMapping?.value,
   };
 }
