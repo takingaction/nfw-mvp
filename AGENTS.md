@@ -4867,3 +4867,52 @@ Added ability to toggle each Resend email template on/off from `/admin/emails`.
 #### To Apply
 
 Run migration 093 in Supabase SQL Editor, then manually toggle the 3 grant templates in `/admin/emails` UI when ready.
+
+### Session 2026-06-18 (Evening): Fix Email is_active Enforcement
+
+**Problem:** The `is_active` toggle in `/admin/emails` was not being checked by any email functions. Emails sent regardless of the toggle state.
+
+**Audit Results:** All 14 Resend email templates had their `is_active` toggle non-functional:
+- 0 out of 14 templates had their toggle respected
+
+**Fix Applied:**
+
+**`lib/email.ts`:**
+1. Updated `fetchEmailTemplate()` to return `is_active` field
+2. Updated `fetchEmailTemplateAdmin()` to return `is_active` field (and removed debug console.log)
+3. Added helper function `fetchTemplateWithActiveCheck()` for future use
+4. Added `is_active` check to all 8 email functions:
+   - `sendWelcomeEmail`
+   - `sendNewsletterWelcomeEmail`
+   - `sendGrantApplicationReceivedEmail`
+   - `sendGrantStatusEmail`
+   - `sendBankInfoRequestEmail`
+   - `sendGiftCodesEmail`
+   - `sendContactFormEmail`
+   - `sendAbandonedCheckoutEmail`
+
+**Check Pattern (each function):**
+```typescript
+const template = await fetchEmailTemplate(slug);
+if (!template) return;
+if (template.is_active === false) {
+  console.log(`[FunctionName] Template ${slug} is inactive, skipping email to ${to}`);
+  return;
+}
+```
+
+**Migration 094:**
+- Deleted orphaned "Grant Status Update" template (`slug = 'grant-status-update'`)
+- This was the old unified template that was replaced by 5 individual status templates
+
+**Files Modified:**
+
+| File | Change |
+|------|--------|
+| `lib/email.ts` | Updated 2 fetch functions, added is_active check to 8 email functions |
+| `supabase/migrations/094_delete_grant_status_update_template.sql` | Created - deletes orphaned template |
+
+**To Apply:**
+1. Run migration 093 in Supabase SQL Editor
+2. Run migration 094 in Supabase SQL Editor
+3. Templates now respect `is_active` toggle in `/admin/emails`

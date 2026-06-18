@@ -12,35 +12,46 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
 }
 
-async function fetchEmailTemplate(slug: string): Promise<{ subject: string; html: string; hero_image_url?: string } | null> {
+async function fetchEmailTemplate(slug: string): Promise<{ subject: string; html: string; hero_image_url?: string; is_active?: boolean } | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("email_templates")
-    .select("subject, html_content, hero_image_url")
+    .select("subject, html_content, hero_image_url, is_active")
     .eq("slug", slug)
     .single();
   if (error || !data) {
     console.error(`[email] Failed to fetch template "${slug}":`, error);
     return null;
   }
-  return { subject: data.subject, html: data.html_content, hero_image_url: data.hero_image_url };
+  return { subject: data.subject, html: data.html_content, hero_image_url: data.hero_image_url, is_active: data.is_active };
 }
 
 import getAdminClient from "@/lib/supabase/admin";
 
-async function fetchEmailTemplateAdmin(slug: string): Promise<{ subject: string; html: string; hero_image_url?: string } | null> {
+async function fetchEmailTemplateAdmin(slug: string): Promise<{ subject: string; html: string; hero_image_url?: string; is_active?: boolean } | null> {
   const supabase = getAdminClient();
   const { data, error } = await supabase
     .from("email_templates")
-    .select("subject, html_content, hero_image_url")
+    .select("subject, html_content, hero_image_url, is_active")
     .eq("slug", slug)
     .single();
-  console.log(`[fetchEmailTemplateAdmin] slug=${slug}, found=${!!data}, error=${error?.message}, hasHtml=${!!data?.html_content}`);
   if (error || !data) {
     console.error(`[email] Failed to fetch template "${slug}" (admin):`, error);
     return null;
   }
-  return { subject: data.subject, html: data.html_content, hero_image_url: data.hero_image_url };
+  return { subject: data.subject, html: data.html_content, hero_image_url: data.hero_image_url, is_active: data.is_active };
+}
+
+async function fetchTemplateWithActiveCheck(slug: string): Promise<{
+  template: { subject: string; html: string; hero_image_url?: string } | null;
+  isActive: boolean;
+}> {
+  const template = await fetchEmailTemplateAdmin(slug);
+  if (!template) return { template: null, isActive: false };
+  return {
+    template: { subject: template.subject, html: template.html, hero_image_url: template.hero_image_url },
+    isActive: template.is_active !== false
+  };
 }
 
 function replaceTemplateVariables(html: string, variables: Record<string, string>): string {
@@ -482,6 +493,16 @@ export async function sendWelcomeEmail({
   }
 
   const template = await fetchEmailTemplate(slug);
+  if (!template) {
+    throw new Error(`Failed to load email template: ${slug}`);
+  }
+
+  // Check if template is active before sending
+  if (template.is_active === false) {
+    console.log(`[sendWelcomeEmail] Template ${slug} is inactive, skipping email to ${to}`);
+    return;
+  }
+
   const heroImageUrl = heroImage || template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   if (template) {
@@ -551,6 +572,10 @@ const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
   }
 
   const template = await fetchEmailTemplateAdmin(slug);
+  if (template?.is_active === false) {
+    console.log(`[sendNewsletterWelcomeEmail] Template ${slug} is inactive, skipping email to ${to}`);
+    return;
+  }
   const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
   const heroText = 'A <em>community</em> of women showing up for each other';
 
@@ -640,6 +665,10 @@ export async function sendGrantApplicationReceivedEmail({
 
   const template = await fetchEmailTemplate(slug);
   if (!template) return;
+  if (template.is_active === false) {
+    console.log(`[sendGrantApplicationReceivedEmail] Template ${slug} is inactive, skipping email to ${to}`);
+    return;
+  }
 
   const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
@@ -706,6 +735,10 @@ export async function sendGrantStatusEmail({
 
   const template = await fetchEmailTemplate(slug);
   if (!template) return;
+  if (template.is_active === false) {
+    console.log(`[sendGrantStatusEmail] Template ${slug} is inactive, skipping email to ${to}`);
+    return;
+  }
 
   const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
@@ -765,8 +798,6 @@ export async function sendBankInfoRequestEmail({
 
   const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
 
-  console.log(`[sendBankInfoRequestEmail] preRenderedResult=${!!preRenderedResult}, html length=${preRenderedResult?.html?.length}`);
-
   if (preRenderedResult) {
     await sendBrandedEmail({
       to,
@@ -779,15 +810,15 @@ export async function sendBankInfoRequestEmail({
   }
 
   const template = await fetchEmailTemplateAdmin(slug);
-  console.log(`[sendBankInfoRequestEmail] template from admin fetch: found=${!!template}, html length=${template?.html?.length}, subject=${template?.subject}`);
   if (!template) return;
+  if (template.is_active === false) {
+    console.log(`[sendBankInfoRequestEmail] Template ${slug} is inactive, skipping email to ${to}`);
+    return;
+  }
 
   const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
-  console.log(`[sendBankInfoRequestEmail] template.html is:`, template.html ? `"${template.html.substring(0, 100)}..."` : "NULL or EMPTY");
-
   const body = replaceTemplateVariables(template.html || "", variables);
-  console.log(`[sendBankInfoRequestEmail] body after replace:`, body ? `"${body.substring(0, 100)}..."` : "EMPTY");
 
   await sendBrandedEmail({
     to,
@@ -1003,6 +1034,12 @@ export async function sendGiftCodesEmail({
   }
 
   const template = await fetchEmailTemplate(slug);
+  if (!template) return;
+  if (template.is_active === false) {
+    console.log(`[sendGiftCodesEmail] Template ${slug} is inactive, skipping email to ${to}`);
+    return;
+  }
+
   const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const body = `
@@ -1304,6 +1341,12 @@ export async function sendContactFormEmail({
   }
 
   const template = await fetchEmailTemplate(slug);
+  if (!template) return;
+  if (template.is_active === false) {
+    console.log(`[sendContactFormEmail] Template ${slug} is inactive, skipping email to ${email}`);
+    return;
+  }
+
   const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
 
   const body = `
@@ -1492,9 +1535,10 @@ export async function sendAbandonedCheckoutEmail({
     return;
   }
 
-  // Check if template is active (is_active column)
-  // Note: This requires adding is_active to the query in fetchEmailTemplateAdmin
-  // For now, we rely on the database constraint and cron job to prevent sends when disabled
+  if (template.is_active === false) {
+    console.log(`[sendAbandonedCheckoutEmail] Template ${slug} is inactive, skipping email to ${to}`);
+    return;
+  }
 
   const variables: Record<string, string> = {
     name: name || "there",
