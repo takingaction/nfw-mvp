@@ -4819,3 +4819,51 @@ Add `checkout.session.expired` to Stripe webhook events:
 - Select endpoint → Add event
 - Check: `checkout.session.expired`
 - Save
+
+### Session 2026-06-18 (Afternoon): Email Template Toggle Feature
+
+Added ability to toggle each Resend email template on/off from `/admin/emails`.
+
+#### Database
+
+- Created `supabase/migrations/093_add_email_active_defaults.sql`
+- Sets `is_active = false` for: `grant-under-review`, `grant-approved`, `grant-not-approved`
+
+#### API
+
+**`app/api/admin/emails/[slug]/route.ts`:**
+- PUT now accepts `is_active` for partial updates
+- Supports independent toggling without content changes
+
+#### Admin UI
+
+**`components/admin/AdminEmailsClient.tsx`:**
+- Left panel: Each Resend template shows **ACTIVE** (green badge) or **INACTIVE** (gray badge)
+- Right panel header: **Enable/Disable** toggle button for editable Resend templates
+- Clicking toggle calls API and updates UI immediately
+
+#### Default States
+
+| Template | Default |
+|----------|---------|
+| `grant-under-review` | **OFF** |
+| `grant-approved` | **OFF** |
+| `grant-not-approved` | **OFF** |
+| `grant-payment-pending` | ON |
+| `grant-payment-sent` | ON |
+| `bank-info-request` | ON |
+| `abandoned-checkout-recovery` | **OFF** |
+| All others | ON |
+
+#### Files Created/Modified
+
+| File | Change |
+|------|--------|
+| `supabase/migrations/093_add_email_active_defaults.sql` | Created |
+| `app/api/admin/emails/[slug]/route.ts` | Modified - accepts `is_active` |
+| `app/api/admin/emails/seed/route.ts` | Modified - `is_active: false` for grant templates |
+| `components/admin/AdminEmailsClient.tsx` | Modified - badges + toggle button |
+
+#### To Apply
+
+Run migration 093 in Supabase SQL Editor, then manually toggle the 3 grant templates in `/admin/emails` UI when ready.

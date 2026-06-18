@@ -13,6 +13,7 @@ type EmailTemplate = {
   html_content: string | null;
   hero_image_url: string | null;
   is_editable: boolean;
+  is_active?: boolean;
   source_file: string | null;
   updated_at: string;
   status?: "draft" | "published";
@@ -35,6 +36,7 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [togglingTemplate, setTogglingTemplate] = useState<string | null>(null);
   const supabase = createClient();
 
   const resendTemplates = templates.filter((t) => t.category === "resend");
@@ -143,6 +145,36 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
     }
   };
 
+  const handleToggleActive = async (template: EmailTemplate) => {
+    if (!template.is_editable || template.category !== "resend") return;
+
+    setTogglingTemplate(template.slug);
+
+    try {
+      const res = await fetch(`/api/admin/emails/${template.slug}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: !template.is_active }),
+      });
+
+      if (res.ok) {
+        const { template: updated } = await res.json();
+        // Update in templates list
+        setTemplates((prev) =>
+          prev.map((t) => (t.slug === template.slug ? { ...t, is_active: updated.is_active } : t))
+        );
+        // Update selected template if it's the one being toggled
+        if (selectedTemplate?.slug === template.slug) {
+          setSelectedTemplate({ ...selectedTemplate, is_active: updated.is_active });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to toggle template:", error);
+    } finally {
+      setTogglingTemplate(null);
+    }
+  };
+
   return (
     <>
       <div className="mb-8">
@@ -226,7 +258,20 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
                   selectedTemplate?.id === template.id ? "bg-nfw-dove" : ""
                 }`}
               >
-                <div className="font-medium text-nfw-blackberry">{template.name}</div>
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-nfw-blackberry">{template.name}</span>
+                  {template.category === "resend" && (
+                    <span
+                      className={`px-2 py-0.5 text-xs font-medium rounded ${
+                        template.is_active !== false
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      {template.is_active !== false ? "ACTIVE" : "INACTIVE"}
+                    </span>
+                  )}
+                </div>
                 <div className="text-sm text-nfw-blackberry/50 mt-1">
                   {template.source_file || template.slug}
                 </div>
@@ -283,6 +328,23 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
                       <span className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800">
                         EDITABLE
                       </span>
+                    )}
+                    {selectedTemplate.category === "resend" && selectedTemplate.is_editable && (
+                      <button
+                        onClick={() => handleToggleActive(selectedTemplate)}
+                        disabled={togglingTemplate === selectedTemplate.slug}
+                        className={`px-3 py-1 text-xs font-medium rounded border transition-colors ${
+                          selectedTemplate.is_active !== false
+                            ? "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                            : "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
+                        } disabled:opacity-50`}
+                      >
+                        {togglingTemplate === selectedTemplate.slug
+                          ? "..."
+                          : selectedTemplate.is_active !== false
+                          ? "Disable"
+                          : "Enable"}
+                      </button>
                     )}
                   </div>
                 </div>

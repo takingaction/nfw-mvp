@@ -49,7 +49,7 @@ const EMAIL_TEMPLATES = [
     source_file: "lib/email.ts:sendGrantApplicationReceivedEmail",
     is_editable: true,
   },
-  // Grant Status Update Templates
+  // Grant Status Update Templates (disabled by default - enable in admin when ready)
   {
     name: "Grant: Under Review",
     slug: "grant-under-review",
@@ -58,6 +58,7 @@ const EMAIL_TEMPLATES = [
     subject: "Your NFW grant application is being reviewed",
     source_file: "lib/email.ts:sendGrantStatusEmail",
     is_editable: true,
+    is_active: false,
   },
   {
     name: "Grant: Approved",
@@ -67,6 +68,7 @@ const EMAIL_TEMPLATES = [
     subject: "Your NFW grant application has been approved!",
     source_file: "lib/email.ts:sendGrantStatusEmail",
     is_editable: true,
+    is_active: false,
   },
   {
     name: "Grant: Not Approved",
@@ -76,6 +78,7 @@ const EMAIL_TEMPLATES = [
     subject: "Update on your NFW grant application",
     source_file: "lib/email.ts:sendGrantStatusEmail",
     is_editable: true,
+    is_active: false,
   },
   {
     name: "Grant: Payment Pending",

@@ -49,7 +49,7 @@ export async function PUT(
   try {
     const { slug } = await params;
     const body = await request.json();
-    const { subject, html_content, hero_image_url } = body;
+    const { subject, html_content, hero_image_url, is_active } = body;
 
     const supabase = await createClient();
 
@@ -95,14 +95,17 @@ export async function PUT(
     }
 
     // Update template
+    const updates: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (subject !== undefined) updates.subject = subject;
+    if (html_content !== undefined) updates.html_content = html_content;
+    if (hero_image_url !== undefined) updates.hero_image_url = hero_image_url || null;
+    if (is_active !== undefined) updates.is_active = is_active;
+
     const { data: template, error } = await supabase
       .from("email_templates")
-      .update({
-        subject,
-        html_content,
-        hero_image_url: hero_image_url || null,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updates)
       .eq("slug", slug)
       .select()
       .single();
