@@ -702,7 +702,6 @@ export async function sendGrantStatusEmail({
   amountApproved?: number;
 }) {
   const slugMap: Record<string, string> = {
-    in_review: "grant-under-review",
     approved: "grant-approved",
     not_approved: "grant-not-approved",
     payment_pending: "grant-payment-pending",

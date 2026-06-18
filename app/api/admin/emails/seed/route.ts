@@ -50,16 +50,7 @@ const EMAIL_TEMPLATES = [
     is_editable: true,
   },
   // Grant Status Update Templates (disabled by default - enable in admin when ready)
-  {
-    name: "Grant: Under Review",
-    slug: "grant-under-review",
-    category: "resend",
-    description: "Sent when admin changes status to in_review",
-    subject: "Your NFW grant application is being reviewed",
-    source_file: "lib/email.ts:sendGrantStatusEmail",
-    is_editable: true,
-    is_active: false,
-  },
+  // Note: "Grant: Under Review" is not included - it's internal-only, no email sent
   {
     name: "Grant: Approved",
     slug: "grant-approved",
