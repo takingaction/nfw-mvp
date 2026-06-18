@@ -186,6 +186,8 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
             Supabase Emails ({supabaseTemplates.length})
           </button>
         </div>
+        {/* Seed Templates button - temporarily hidden until needed */}
+        {/*
         <div className="flex items-center gap-3">
           {seedResult && (
             <span className={`text-sm ${seedResult.success ? "text-green-600" : "text-red-600"}`}>
@@ -200,6 +202,7 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
             {seeding ? "Seeding..." : "Seed Templates"}
           </button>
         </div>
+        */}
       </div>
 
       {/* Main Content */}

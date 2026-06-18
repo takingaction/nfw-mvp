@@ -4718,3 +4718,104 @@ Added `value` (dollar amount) field to store items for internal tracking.
 - Clicking `$` opens modal with dollar input for retail value
 - Value defaults to 0 (no NULLs)
 - Field is hidden on public store pages (internal use only)
+
+### Session 2026-06-18: Abandoned Checkout Recovery System
+
+Implemented a system to recover abandoned Stripe checkout sessions and re-engage users who don't complete membership purchase.
+
+#### Database
+
+**Migration 089:** `supabase/migrations/089_create_abandoned_checkouts_table.sql`
+- Creates `abandoned_checkouts` table with RLS
+- Tracks: user_id, membership_level, stripe_session_id, email_sent_at, email_retry_at, recovered_at
+- Unique index ensures only one active abandoned checkout per user
+
+**Migration 090:** `supabase/migrations/090_add_is_active_to_email_templates.sql`
+- Adds `is_active` column to `email_templates` table
+- Default: `true`, except `abandoned-checkout-recovery` set to `false`
+
+**Migration 092:** `supabase/migrations/092_add_abandoned_checkout_email_sections.sql`
+- Adds default builder sections for `abandoned-checkout-recovery` template:
+  - Hero with welcome image
+  - Headline: "You left something behind"
+  - Body text with `{{name}}` variable
+  - CTA button
+  - Spacer
+
+#### Webhook Handlers
+
+**`app/api/webhook/route.ts`:**
+
+1. **`checkout.session.expired`** - When Stripe checkout expires:
+   - Records abandoned checkout in database
+   - Schedules first email for 24 hours later
+   - Skips gift purchases
+
+2. **`checkout.session.completed`** (updated) - When checkout completes:
+   - Checks if this was a recorded abandoned checkout
+   - Marks `recovered_at` timestamp if found
+
+#### Email System
+
+**Email Template:** `abandoned-checkout-recovery`
+- Subject: "Complete your NFW membership - your impact is waiting"
+- Disabled by default (`is_active = false`)
+- Uses builder sections for content
+- Variables: `{{name}}`, `{{ctaUrl}}`
+
+**pg_cron Job:** `send-abandoned-checkout-emails` (runs hourly)
+- Sends first email 24 hours after abandonment
+- Sends retry email 3 days later if not recovered
+- Only sends if template `is_active = true`
+
+#### Dashboard Banner
+
+**`components/dashboard/AbandonedCheckoutBanner.tsx`:**
+- Yellow (citrine) banner below nav bar
+- Shows: "You have an incomplete membership purchase. Complete it now →"
+- "Resume Checkout" button generates new Stripe checkout session
+- Dismiss permanently (stored in localStorage)
+
+#### API Routes
+
+**`app/api/checkout/abandoned/route.ts`** (GET)
+- Returns user's active abandoned checkout if exists
+- Used by banner to check if user has pending abandonment
+
+**`app/api/checkout/resume/route.ts`** (POST)
+- Generates fresh Stripe checkout session
+- Updates `abandoned_checkouts` with new `stripe_session_id`
+- Returns new checkout URL
+
+**`app/checkout/resume/page.tsx`:**
+- Resume page with loading state
+- Redirects to Stripe checkout on success
+- Shows error and back link on failure
+
+#### Seed Route
+
+**`app/api/admin/emails/seed/route.ts`:**
+- Seeds `abandoned-checkout-recovery` template entry
+- Seed Templates button hidden in UI (commented out) until needed
+- To re-enable button: uncomment in `components/admin/AdminEmailsClient.tsx`
+
+#### Admin Cleanup
+
+**`app/admin/members/page.tsx`:**
+- Removed unused BackfillButton import and component
+- CSV Download button remains in header
+
+#### How to Enable
+
+1. Run migration 092 to create builder sections
+2. Edit template at `/admin/emails/abandoned-checkout-recovery/builder`
+3. Update CTA URL to: `https://nationalfundforwomen.org/checkout/resume`
+4. Enable via SQL: `UPDATE email_templates SET is_active = true WHERE slug = 'abandoned-checkout-recovery';`
+
+#### Stripe Webhook Requirement
+
+Add `checkout.session.expired` to Stripe webhook events:
+- Stripe Dashboard → Developers → Webhooks
+- Select endpoint → Add event
+- Check: `checkout.session.expired`
+- Save
