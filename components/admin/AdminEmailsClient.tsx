@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 type EmailTemplate = {
   id: string;
@@ -24,7 +25,7 @@ type Props = {
 };
 
 export default function AdminEmailsClient({ initialTemplates, userEmail }: Props) {
-  const [templates] = useState(initialTemplates);
+  const [templates, setTemplates] = useState(initialTemplates);
   const [activeCategory, setActiveCategory] = useState<"resend" | "supabase">("resend");
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
   const [testEmail, setTestEmail] = useState(userEmail || "");
@@ -32,6 +33,9 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+  const [seedResult, setSeedResult] = useState<{ success: boolean; message: string } | null>(null);
+  const supabase = createClient();
 
   const resendTemplates = templates.filter((t) => t.category === "resend");
   const supabaseTemplates = templates.filter((t) => t.category === "supabase");
@@ -108,6 +112,37 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
     }
   };
 
+  const handleSeedTemplates = async () => {
+    setSeeding(true);
+    setSeedResult(null);
+
+    try {
+      const res = await fetch("/api/admin/emails/seed", {
+        method: "POST",
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setSeedResult({ success: true, message: `Seeded ${data.results?.filter((r: any) => r.success).length || 0} templates successfully!` });
+        // Refresh templates list
+        const { data: updatedTemplates } = await supabase
+          .from("email_templates")
+          .select("*")
+          .order("category", { ascending: false })
+          .order("name", { ascending: true });
+        if (updatedTemplates) {
+          setTemplates(updatedTemplates);
+        }
+      } else {
+        setSeedResult({ success: false, message: data.error || "Failed to seed templates" });
+      }
+    } catch (error) {
+      setSeedResult({ success: false, message: "Failed to seed templates" });
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   return (
     <>
       <div className="mb-8">
@@ -149,6 +184,20 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
             }`}
           >
             Supabase Emails ({supabaseTemplates.length})
+          </button>
+        </div>
+        <div className="flex items-center gap-3">
+          {seedResult && (
+            <span className={`text-sm ${seedResult.success ? "text-green-600" : "text-red-600"}`}>
+              {seedResult.message}
+            </span>
+          )}
+          <button
+            onClick={handleSeedTemplates}
+            disabled={seeding}
+            className="px-4 py-2 bg-nfw-wisteria text-white text-sm font-medium hover:bg-nfw-wisteria/90 disabled:opacity-50"
+          >
+            {seeding ? "Seeding..." : "Seed Templates"}
           </button>
         </div>
       </div>

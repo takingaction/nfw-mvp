@@ -123,6 +123,17 @@ const EMAIL_TEMPLATES = [
     source_file: "lib/email.ts:sendContactFormEmail",
     is_editable: true,
   },
+  // Abandoned Checkout Recovery
+  {
+    name: "Abandoned Checkout Recovery",
+    slug: "abandoned-checkout-recovery",
+    category: "resend",
+    description: "Sent to users who abandon Stripe checkout - disabled by default, enable in admin when ready",
+    subject: "Complete your NFW membership - your impact is waiting",
+    source_file: "lib/email.ts:sendAbandonedCheckoutEmail",
+    is_editable: true,
+    is_active: false,
+  },
   // Supabase Templates (read-only, copy/paste into Supabase Dashboard)
   {
     name: "Confirm Signup",

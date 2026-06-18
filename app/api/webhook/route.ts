@@ -109,6 +109,25 @@ export async function POST(request: Request) {
           console.log("[webhook] membershipLevel from metadata:", membershipLevel);
           console.log("[webhook] full metadata:", JSON.stringify(session.metadata));
 
+          // Mark abandoned checkout as recovered if exists
+          if (userId && session.id) {
+            const { data: abandoned } = await supabaseAdmin
+              .from("abandoned_checkouts")
+              .select("id")
+              .eq("stripe_session_id", session.id)
+              .eq("user_id", userId)
+              .is("recovered_at", null)
+              .single();
+
+            if (abandoned) {
+              await supabaseAdmin
+                .from("abandoned_checkouts")
+                .update({ recovered_at: new Date().toISOString() })
+                .eq("id", abandoned.id);
+              console.log("[webhook] Marked abandoned checkout as recovered:", abandoned.id);
+            }
+          }
+
           if (userId && membershipLevel) {
             console.log("[webhook] Updating profile for user:", userId, "to level:", membershipLevel);
 
@@ -225,6 +244,58 @@ export async function POST(request: Request) {
           }
         }
         console.log("[webhook] checkout.session.completed handler complete");
+        break;
+      }
+
+      case "checkout.session.expired": {
+        console.log("[webhook] Processing checkout.session.expired event");
+        const session = event.data.object as Stripe.Checkout.Session;
+        const userId = session.metadata?.userId;
+        const membershipLevel = session.metadata?.membershipLevel;
+        const isGiftPurchase = session.metadata?.giftPurchase === "true";
+
+        // Skip gift purchases - they have their own flow
+        if (isGiftPurchase) {
+          console.log("[webhook] Skipping expired gift checkout");
+          break;
+        }
+
+        // Only track regular membership purchases
+        if (userId && membershipLevel) {
+          // Check if already recorded (e.g., if completed before we processed expired)
+          const { data: existing } = await supabaseAdmin
+            .from("abandoned_checkouts")
+            .select("id")
+            .eq("stripe_session_id", session.id)
+            .single();
+
+          if (existing) {
+            console.log("[webhook] Abandoned checkout already recorded:", existing.id);
+            break;
+          }
+
+          // Insert abandoned checkout record
+          const { data: abandoned, error: abandonedError } = await supabaseAdmin
+            .from("abandoned_checkouts")
+            .insert({
+              user_id: userId,
+              membership_level: membershipLevel,
+              stripe_session_id: session.id,
+              stripe_customer_id: session.customer as string || null,
+              checkout_url: session.url || null,
+              email_retry_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
+            })
+            .select("id")
+            .single();
+
+          if (abandonedError) {
+            console.error("[webhook] Failed to record abandoned checkout:", abandonedError);
+          } else {
+            console.log("[webhook] Recorded abandoned checkout:", abandoned.id, "for user:", userId);
+          }
+        } else {
+          console.log("[webhook] Skipping expired checkout - missing userId or membershipLevel in metadata");
+        }
         break;
       }
 

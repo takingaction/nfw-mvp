@@ -11,6 +11,7 @@ import DashboardPerksSection from "@/components/dashboard/DashboardPerksSection"
 import YourMicrograntsSection from "@/components/dashboard/YourMicrograntsSection";
 import YourZeroDollarStoreSection from "@/components/dashboard/YourZeroDollarStoreSection";
 import { ProfileBanner } from "@/components/profile/ProfileBanner";
+import { AbandonedCheckoutBanner } from "@/components/dashboard/AbandonedCheckoutBanner";
 
 export const metadata = {
   title: "Dashboard",
@@ -215,6 +216,7 @@ supabaseAdmin
     <main className="min-h-screen">
       <AccessPerksSync userId={user.id} />
       <ProfileBanner profile={profile} />
+      <AbandonedCheckoutBanner />
 
       <DashboardHero heroImage={settings.hero_image_url || "/images/landing.jpg"} />
 

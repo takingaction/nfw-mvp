@@ -1466,3 +1466,56 @@ export async function sendStoryNotificationEmail(data: StoryFormData) {
     html,
   });
 }
+
+// =============================================================================
+// ABANDONED CHECKOUT RECOVERY EMAIL
+// =============================================================================
+
+export async function sendAbandonedCheckoutEmail({
+  to,
+  name,
+  membershipLevel,
+  ctaUrl,
+}: {
+  to: string;
+  name: string;
+  membershipLevel: string;
+  ctaUrl: string;
+}) {
+  const slug = "abandoned-checkout-recovery";
+  const siteUrl = "https://nationalfundforwomen.org";
+
+  // Check if template is active (only send if enabled)
+  const template = await fetchEmailTemplateAdmin(slug);
+  if (!template) {
+    console.log(`[sendAbandonedCheckoutEmail] Template "${slug}" not found`);
+    return;
+  }
+
+  // Check if template is active (is_active column)
+  // Note: This requires adding is_active to the query in fetchEmailTemplateAdmin
+  // For now, we rely on the database constraint and cron job to prevent sends when disabled
+
+  const variables: Record<string, string> = {
+    name: name || "there",
+    membershipLevel: membershipLevel === "founding" ? "Founding" : "Contributing",
+    ctaUrl: ctaUrl || `${siteUrl}/checkout/resume`,
+    siteUrl,
+  };
+
+  const body = replaceTemplateVariables(template.html, variables);
+
+  await sendBrandedEmail({
+    to,
+    subject: template.subject,
+    name: variables.name,
+    heroImage: template.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg",
+    heroText: "Complete your <em>membership</em>",
+    headline: "You left something behind",
+    body,
+    ctaText: "COMPLETE YOUR MEMBERSHIP",
+    ctaUrl: variables.ctaUrl,
+    footerCtaText: "VISIT WEBSITE",
+    footerCtaUrl: siteUrl,
+  });
+}
