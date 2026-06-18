@@ -4916,3 +4916,27 @@ if (template.is_active === false) {
 1. Run migration 093 in Supabase SQL Editor
 2. Run migration 094 in Supabase SQL Editor
 3. Templates now respect `is_active` toggle in `/admin/emails`
+
+### Session 2026-06-18 (Late): Disable Auto-Transfer
+
+**Problem:** Auto-transfer of grant funds when approved was happening automatically without a way to disable it.
+
+**Solution:** Commented out the auto-transfer logic in `app/api/admin/grants/update-status/route.ts`.
+
+**What was disabled:**
+- Auto-creating Stripe transfer when admin approves a grant
+- Auto-updating status to `payment_sent` after transfer
+- Auto-sending payment notification emails (admin and user)
+
+**To Re-enable:**
+1. Uncomment the auto-transfer block in `app/api/admin/grants/update-status/route.ts`
+2. Restore the `Stripe` import and `stripe` client initialization
+3. Restore the `sendPaymentSentAdminEmail` and `sendPaymentSentUserEmail` imports
+
+**Future Enhancement:**
+Add a database setting (`site_settings.grant_auto_transfer_enabled`) to toggle this feature without code changes.
+
+**Files Modified:**
+| File | Change |
+|------|--------|
+| `app/api/admin/grants/update-status/route.ts` | Commented out auto-transfer logic, removed unused imports |
