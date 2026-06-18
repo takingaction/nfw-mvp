@@ -133,10 +133,6 @@ const EMAIL_TEMPLATES = [
     source_file: "lib/email.ts:sendAbandonedCheckoutEmail",
     is_editable: true,
     is_active: false,
-    html_content: `<p>Hi {{name}},</p>
-<p>You started your NFW membership checkout but didn't finish. Your impact is waiting — complete your purchase today.</p>
-<p>If you have any questions, simply reply to this email and we'll help you out.</p>
-<p>Warmly,<br>The National Fund for Women Team</p>`,
   },
   // Supabase Templates (read-only, copy/paste into Supabase Dashboard)
   {
