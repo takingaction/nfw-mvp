@@ -18,6 +18,7 @@ interface ProductDetailPanelProps {
       options: Array<{ name: string; value: string }>;
     }>;
     status: "ACTIVE" | "DRAFT" | "ARCHIVED" | null;
+    compareAtPrice?: number;
   } | null;
   isOpen: boolean;
   onClose: () => void;
@@ -204,6 +205,12 @@ export default function ProductDetailPanel({
                     </span>
                   )}
                 </div>
+
+                {product?.compareAtPrice && product.compareAtPrice > 0 && (
+                  <p className="font-sans text-sm text-nfw-blackberry/60 mb-3">
+                    Value: ${product.compareAtPrice.toFixed(2)}
+                  </p>
+                )}
 
                 {product?.description && (
                   <div

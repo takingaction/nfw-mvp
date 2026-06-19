@@ -23,6 +23,12 @@ export async function POST() {
       const firstVariant = node.variants.edges[0]?.node;
       shopifyProductIds.push(node.id);
 
+      // Calculate lowest compareAtPrice across all variants (compareAtPrice is a Money scalar string)
+      const compareAtPrices = node.variants.edges
+        .map(({ node: variant }) => variant.compareAtPrice ? parseFloat(variant.compareAtPrice) : null)
+        .filter((p): p is number => p !== null && p > 0);
+      const compareAtPrice = compareAtPrices.length > 0 ? Math.min(...compareAtPrices) : null;
+
       // Check if product already exists to preserve visibility/starred status
       const { data: existing } = await supabaseAdmin
         .from("shopify_product_mappings")
@@ -40,6 +46,7 @@ export async function POST() {
             image_url: node.featuredImage?.url || "",
             shopify_variant_id: firstVariant?.id || "",
             eligibility_tiers: ["free", "contributing", "founding"],
+            compare_at_price: compareAtPrice,
             ...(existing ? {} : { display_order: syncedCount + 1 }),
             // Only set visibility for new products; preserve existing for updates
             ...(existing ? {} : { mvp_visibility: false }),

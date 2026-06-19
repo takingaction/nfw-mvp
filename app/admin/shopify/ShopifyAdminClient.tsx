@@ -31,6 +31,7 @@ type ProductWithMapping = {
   displayOrder: number;
   featuredOrder: number;
   cardDescription?: string;
+  compareAtPrice?: number;
 };
 
 const TIERS = ["free", "contributing", "founding"];
