@@ -20,7 +20,6 @@ export type MockProduct = {
   displayOrder: number;
   featuredOrder: number;
   status: "ACTIVE" | "DRAFT" | "ARCHIVED" | null;
-  compareAtPrice?: number;
 };
 
 export const MOCK_PRODUCTS: MockProduct[] = [
@@ -179,12 +178,6 @@ export function transformShopifyProduct(shopifyProduct: ShopifyProduct, mockMapp
     return html.replace(/<[^>]*>/g, '').substring(0, 150).trim();
   };
 
-  // Get lowest compareAtPrice across variants
-  const compareAtPrices = shopifyProduct.variants.edges
-    .map(({ node }) => parseFloat(node.compareAtPrice?.amount || "0"))
-    .filter(p => p > 0);
-  const compareAtPrice = compareAtPrices.length > 0 ? Math.min(...compareAtPrices) : undefined;
-
   return {
     shopifyProductId: shopifyProduct.id,
     shopifyVariantId: firstVariant?.id || "",
@@ -205,6 +198,5 @@ export function transformShopifyProduct(shopifyProduct: ShopifyProduct, mockMapp
     displayOrder: mockMapping?.displayOrder ?? 999,
     featuredOrder: mockMapping?.featuredOrder ?? 999,
     status: shopifyProduct.status ?? "ACTIVE",
-    compareAtPrice: compareAtPrice,
   };
 }

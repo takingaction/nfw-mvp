@@ -25,7 +25,6 @@ type StoreProduct = {
   eligibilityTiers: string[];
   displayOrder: number;
   status: "ACTIVE" | "DRAFT" | "ARCHIVED" | null;
-  compareAtPrice?: number;
 };
 
 export default function StoreClient({
@@ -288,12 +287,6 @@ export default function StoreClient({
                     <h3 className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-blackberry mb-1">
                       {product.title}
                     </h3>
-
-                    {product.compareAtPrice && product.compareAtPrice > 0 && (
-                      <p className="font-sans text-xs text-nfw-blackberry/60 mb-2">
-                        Value: ${product.compareAtPrice.toFixed(2)}
-                      </p>
-                    )}
 
                     {product.cardDescription && (
                       <p className="flex-1 font-sans text-sm text-nfw-blackberry/70">
