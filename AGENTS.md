@@ -4945,6 +4945,15 @@ Add a database setting (`site_settings.grant_auto_transfer_enabled`) to toggle t
 
 Added `compare_at_price` field to sync the "list price" from Shopify for displaying "Value: $X" on store cards.
 
+#### Research Findings
+
+**Key Discovery:** In Shopify's Admin API, `compareAtPrice` is a `Money` scalar (a plain string like `"150.00"`), NOT a `MoneyV2` object like `price`.
+
+- `Money` scalar: Query directly as a string - `compareAtPrice`
+- `MoneyV2` object: Query with sub-selections - `compareAtPrice { amount currencyCode }`
+
+The error `can't select on scalars` occurred because we tried to query `compareAtPrice` with sub-selections like `price`.
+
 #### Database Migration
 
 **File:** `supabase/migrations/095_sync_compare_at_price.sql`
@@ -4956,16 +4965,15 @@ ALTER TABLE shopify_product_mappings ADD COLUMN compare_at_price NUMERIC(10,2) D
 
 | File | Change |
 |------|--------|
-| `lib/shopify.ts` | Added `compareAtPrice` to `ShopifyVariant` type and `PRODUCTS_QUERY` GraphQL |
+| `lib/shopify.ts` | Added `compareAtPrice: string \| null` to `ShopifyVariant` type; Added `compareAtPrice` scalar to `PRODUCTS_QUERY` and `PRODUCT_BY_HANDLE_QUERY` (no sub-selections) |
 | `lib/mock-shopify.ts` | Added `compareAtPrice` to `MockProduct` type and `transformShopifyProduct()` |
-| `app/api/admin/shopify/sync/route.ts` | Stores lowest `compareAtPrice` across variants on sync |
+| `app/api/admin/shopify/sync/route.ts` | Parses `compareAtPrice` as string, finds lowest across variants |
 | `components/StoreClient.tsx` | Added `compareAtPrice` to `StoreProduct` type, displays "Value: $X" when > 0 |
-| `components/ProductDetailPanel.tsx` | Displays "Value: $X" in product detail slideout |
-| `app/admin/shopify/ShopifyAdminClient.tsx` | Read-only `compareAtPrice` column in products table |
+| `components/ProductDetailPanel.tsx` | Added `compareAtPrice` to props, displays "Value: $X" |
+| `app/admin/shopify/ShopifyAdminClient.tsx` | Added `compareAtPrice` to `ProductWithMapping` type |
 
 #### Display Logic
 
 - Store null or 0 as NULL in database
 - Only display "Value: $X" when `compareAtPrice > 0`
 - Shows on both store card and product detail slideout
-- Admin table shows read-only value (no edit button)
