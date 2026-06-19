@@ -163,6 +163,15 @@ function SortableProductRow({
         </div>
       </td>
       <td className="px-6 py-4">
+        {product.compareAtPrice && product.compareAtPrice > 0 ? (
+          <span className="font-sans text-sm text-nfw-blackberry/70">
+            ${product.compareAtPrice.toFixed(2)}
+          </span>
+        ) : (
+          <span className="font-sans text-sm text-nfw-blackberry/30">—</span>
+        )}
+      </td>
+      <td className="px-6 py-4">
         <div className="flex gap-2">
           <button
             onClick={onEdit}
@@ -639,6 +648,9 @@ const SHOPIFY_AUTH_URL = `https://nfw-checkout.myshopify.com/admin/oauth/authori
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
                   Eligibility
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
+                  Value
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider">
                   Actions
