@@ -45,7 +45,6 @@ function SortableProductRow({
   onToggleTier,
   onToggleFeatured,
   onEdit,
-  onEditValue,
 }: {
   product: ProductWithMapping;
   isFeatured: boolean;
@@ -54,7 +53,6 @@ function SortableProductRow({
   onToggleTier: (tier: string) => void;
   onToggleFeatured: () => void;
   onEdit: () => void;
-  onEditValue: () => void;
 }) {
   const {
     attributes,
@@ -173,13 +171,6 @@ function SortableProductRow({
           >
             <Pencil className="w-5 h-5" />
           </button>
-          <button
-            onClick={onEditValue}
-            className="p-2 text-nfw-blackberry/30 hover:text-nfw-aubergine hover:bg-nfw-aubergine/10 rounded transition-colors"
-            title="Edit value"
-          >
-            <span className="text-xs font-bold">$</span>
-          </button>
         </div>
       </td>
     </tr>
@@ -201,9 +192,6 @@ export default function ShopifyAdminClient() {
   const [editingProduct, setEditingProduct] = useState<ProductWithMapping | null>(null);
   const [cardDescriptionInput, setCardDescriptionInput] = useState("");
   const [savingCardDescription, setSavingCardDescription] = useState(false);
-  const [editingValueProduct, setEditingValueProduct] = useState<ProductWithMapping | null>(null);
-  const [valueInput, setValueInput] = useState("");
-  const [savingValue, setSavingValue] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -490,47 +478,6 @@ const SHOPIFY_AUTH_URL = `https://nfw-checkout.myshopify.com/admin/oauth/authori
     setCardDescriptionInput("");
   };
 
-  const handleEditValue = (product: ProductWithMapping) => {
-    setEditingValueProduct(product);
-    setValueInput(product.value?.toString() || "0");
-  };
-
-  const handleSaveValue = async () => {
-    if (!editingValueProduct) return;
-    setSavingValue(true);
-    try {
-      const res = await fetch("/api/admin/shopify/update-product", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          shopify_product_id: editingValueProduct.shopifyProductId,
-          updates: { value: parseFloat(valueInput) || 0 },
-        }),
-      });
-      if (res.ok) {
-        setProducts((prev) =>
-          prev.map((p) =>
-            p.shopifyProductId === editingValueProduct.shopifyProductId
-              ? { ...p, value: parseFloat(valueInput) || 0 }
-              : p,
-          ),
-        );
-        setEditingValueProduct(null);
-      } else {
-        setMessage({ type: "error", text: "Failed to save value" });
-      }
-    } catch {
-      setMessage({ type: "error", text: "Failed to save value" });
-    } finally {
-      setSavingValue(false);
-    }
-  };
-
-  const handleCloseValueModal = () => {
-    setEditingValueProduct(null);
-    setValueInput("");
-  };
-
   if (loading) {
     return (
       <div className="p-8">
@@ -717,7 +664,6 @@ const SHOPIFY_AUTH_URL = `https://nfw-checkout.myshopify.com/admin/oauth/authori
                       onToggleTier={(tier) => toggleTier(product.shopifyProductId, tier, product.eligibilityTiers ?? [])}
                       onToggleFeatured={() => toggleFeatured(product.shopifyProductId)}
                       onEdit={() => handleEditCardDescription(product)}
-                      onEditValue={() => handleEditValue(product)}
                     />
                   );
                 })}
@@ -772,59 +718,6 @@ const SHOPIFY_AUTH_URL = `https://nfw-checkout.myshopify.com/admin/oauth/authori
                   className="px-4 py-2 bg-nfw-aubergine text-white text-sm font-medium hover:bg-nfw-aubergine/90 disabled:opacity-50 font-ui"
                 >
                   {savingCardDescription ? "Saving..." : "Save"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {editingValueProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-nfw-blackberry/50">
-          <div className="bg-white w-full max-w-md mx-4">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-nfw-blackberry/10">
-              <h3 className="text-lg font-bold text-nfw-blackberry font-ui">Edit Value</h3>
-              <button
-                onClick={handleCloseValueModal}
-                className="p-1 text-nfw-blackberry/50 hover:text-nfw-blackberry"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6">
-              <p className="text-sm text-nfw-blackberry/60 mb-4 font-sans">
-                Editing: <span className="font-medium">{editingValueProduct.title}</span>
-              </p>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-nfw-blackberry mb-2 font-sans">
-                  Retail Value
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-nfw-blackberry/40">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={valueInput}
-                    onChange={(e) => setValueInput(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry font-sans"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={handleCloseValueModal}
-                  className="px-4 py-2 text-sm font-medium text-nfw-blackberry/60 hover:text-nfw-blackberry font-ui"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveValue}
-                  disabled={savingValue}
-                  className="px-4 py-2 bg-nfw-aubergine text-white text-sm font-medium hover:bg-nfw-aubergine/90 disabled:opacity-50 font-ui"
-                >
-                  {savingValue ? "Saving..." : "Save"}
                 </button>
               </div>
             </div>
