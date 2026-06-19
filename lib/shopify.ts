@@ -109,6 +109,10 @@ export type ShopifyVariant = {
     amount: string;
     currencyCode: string;
   };
+  compareAtPrice: {
+    amount: string;
+    currencyCode: string;
+  } | null;
 };
 
 export type ShopifyCheckout = {
@@ -168,6 +172,10 @@ export const PRODUCTS_QUERY = `
                   name
                   value
                 }
+                compareAtPrice {
+                  amount
+                  currencyCode
+                }
               }
             }
           }
@@ -203,6 +211,10 @@ export const PRODUCT_BY_HANDLE_QUERY = `
             selectedOptions {
               name
               value
+            }
+            compareAtPrice {
+              amount
+              currencyCode
             }
           }
         }

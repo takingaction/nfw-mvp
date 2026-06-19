@@ -4940,3 +4940,32 @@ Add a database setting (`site_settings.grant_auto_transfer_enabled`) to toggle t
 | File | Change |
 |------|--------|
 | `app/api/admin/grants/update-status/route.ts` | Commented out auto-transfer logic, removed unused imports |
+
+### Session 2026-06-19: Shopify compareAtPrice Sync
+
+Added `compare_at_price` field to sync the "list price" from Shopify for displaying "Value: $X" on store cards.
+
+#### Database Migration
+
+**File:** `supabase/migrations/095_sync_compare_at_price.sql`
+```sql
+ALTER TABLE shopify_product_mappings ADD COLUMN compare_at_price NUMERIC(10,2) DEFAULT NULL;
+```
+
+#### Files Modified
+
+| File | Change |
+|------|--------|
+| `lib/shopify.ts` | Added `compareAtPrice` to `ShopifyVariant` type and `PRODUCTS_QUERY` GraphQL |
+| `lib/mock-shopify.ts` | Added `compareAtPrice` to `MockProduct` type and `transformShopifyProduct()` |
+| `app/api/admin/shopify/sync/route.ts` | Stores lowest `compareAtPrice` across variants on sync |
+| `components/StoreClient.tsx` | Added `compareAtPrice` to `StoreProduct` type, displays "Value: $X" when > 0 |
+| `components/ProductDetailPanel.tsx` | Displays "Value: $X" in product detail slideout |
+| `app/admin/shopify/ShopifyAdminClient.tsx` | Read-only `compareAtPrice` column in products table |
+
+#### Display Logic
+
+- Store null or 0 as NULL in database
+- Only display "Value: $X" when `compareAtPrice > 0`
+- Shows on both store card and product detail slideout
+- Admin table shows read-only value (no edit button)
