@@ -29,6 +29,8 @@ interface RedeemedPerksListProps {
     offer_title: string;
     store_name: string | null;
     redeemed_at: string;
+    store_logo_url?: string | null;
+    logo_url?: string | null;
   }[];
   onExplore: () => void;
 }
@@ -56,18 +58,26 @@ function RedeemedPerksList({ redemptions, onExplore }: RedeemedPerksListProps) {
           key={redemption.id}
           className="flex items-center gap-3 p-2 bg-white/5"
         >
-          <div className="w-10 h-10 bg-white/10 flex items-center justify-center flex-shrink-0">
-            <Gift className="w-4 h-4 text-white/40" />
+          <div className="w-10 h-10 bg-white/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+            {(redemption.store_logo_url || redemption.logo_url) ? (
+              <img
+                src={`${redemption.store_logo_url || redemption.logo_url || ""}`}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Gift className="w-4 h-4 text-white/40" />
+            )}
           </div>
           <div className="flex-1 min-w-0">
-<p className="text-white text-sm font-medium truncate [&_sup]:text-[0.6em] [&_sup]:align-super"
-                    dangerouslySetInnerHTML={{ __html: decodeHtml(redemption.offer_title) }}
-                  />
-                  {redemption.store_name && (
-                    <p className="text-white/50 text-xs truncate [&_sup]:text-[0.6em] [&_sup]:align-super"
-                       dangerouslySetInnerHTML={{ __html: decodeHtml(redemption.store_name) }}
-                    />
-            )}
+            <p className="text-white text-sm font-medium truncate [&_sup]:text-[0.6em] [&_sup]:align-super"
+               dangerouslySetInnerHTML={{ __html: decodeHtml(redemption.offer_title) }}
+             />
+             {redemption.store_name && (
+               <p className="text-white/50 text-xs truncate [&_sup]:text-[0.6em] [&_sup]:align-super"
+                  dangerouslySetInnerHTML={{ __html: decodeHtml(redemption.store_name) }}
+               />
+             )}
           </div>
         </div>
       ))}
@@ -106,12 +116,12 @@ function SavedBrandsList({ stores, onExplore }: SavedBrandsListProps) {
           key={store.id}
           className="flex items-center gap-3 p-2 bg-white/5"
         >
-          <div className="w-10 h-10 bg-white/10 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 bg-white/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
             {store.logo_url ? (
               <img
                 src={store.logo_url}
                 alt=""
-                className="w-8 h-8 object-contain"
+                className="w-full h-full object-cover"
               />
             ) : (
               <Heart className="w-4 h-4 text-white/40" />

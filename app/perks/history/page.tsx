@@ -26,6 +26,7 @@ interface Redemption {
   offer_title: string;
   store_name: string | null;
   store_logo_url: string | null;
+  logo_url: string | null;
   location_name: string | null;
   redeem_type: string;
   coupon_code: string | null;
@@ -371,11 +372,11 @@ export default function RedemptionHistoryPage() {
                 >
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0">
-                      {redemption.store_logo_url ? (
+                      {(redemption.store_logo_url || redemption.logo_url) ? (
                         <img
-                          src={redemption.store_logo_url}
+                          src={`${redemption.store_logo_url || redemption.logo_url || ""}`}
                           alt={redemption.store_name || "Store logo"}
-                          className="w-12 h-12 rounded-lg object-contain bg-white border border-nfw-blackberry/10"
+                          className="w-12 h-12 rounded-lg object-cover bg-white border border-nfw-blackberry/10"
                         />
                       ) : (
                         <div className="w-12 h-12 bg-nfw-dove border border-nfw-blackberry/10 flex items-center justify-center">

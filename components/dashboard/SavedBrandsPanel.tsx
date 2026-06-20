@@ -29,6 +29,10 @@ export default function SavedBrandsPanel({
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
+    console.log("SavedBrandsPanel stores:", stores);
+  }, [stores]);
+
+  useEffect(() => {
     if (isOpen) {
       setIsVisible(true);
       setIsAnimating(true);
@@ -118,12 +122,12 @@ export default function SavedBrandsPanel({
                     key={store.id}
                     className="flex items-center gap-3 p-3 bg-nfw-dove/50"
                   >
-                    <div className="w-14 h-14 bg-white border border-nfw-blackberry/10 flex items-center justify-center flex-shrink-0">
+                    <div className="w-14 h-14 bg-white border border-nfw-blackberry/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {store.logo_url ? (
                         <img
                           src={store.logo_url}
                           alt=""
-                          className="w-10 h-10 object-contain"
+                          className="w-full h-full object-cover"
                         />
                       ) : (
                         <Heart className="w-6 h-6 text-nfw-blackberry/30" />
@@ -136,7 +140,8 @@ export default function SavedBrandsPanel({
                           __html: decodeHtml(store.store_name),
                         }}
                       />
-<a
+                      {!isNaN(Number(store.store_key)) ? (
+                        <a
                           href={`/perks?store=${store.store_key}`}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -144,6 +149,16 @@ export default function SavedBrandsPanel({
                         >
                           View Offers
                         </a>
+                      ) : (
+                        <a
+                          href={`/perks?nfw_partner=${encodeURIComponent(store.store_key)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-nfw-aubergine hover:underline"
+                        >
+                          View Offers
+                        </a>
+                      )}
                     </div>
                     <button
                       onClick={() => onUnlike(store.store_key)}

@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     }
 
     const { store_key, store_name, logo_url } = await request.json();
-    console.log("Liking store:", { store_key, store_name });
+    console.log("Liking store:", { store_key, store_name, logo_url });
 
     if (!store_key || !store_name) {
       return NextResponse.json(
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       .select()
       .single();
 
-    console.log("Insert result:", { data, error });
+    console.log("Insert result:", { data, error, logo_url });
 
     if (error) {
       if (error.code === "23505") {

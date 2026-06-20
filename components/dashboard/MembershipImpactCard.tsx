@@ -7,6 +7,7 @@ type MembershipImpactCardProps = {
   micrograntsSavings: number;
   perksSavings: number;
   zeroDollarStoreSavings: number;
+  nfwPerksSavings?: number;
 };
 
 function AnimatedCurrency({ value }: { value: number }) {
@@ -52,6 +53,7 @@ export default function MembershipImpactCard({
   micrograntsSavings,
   perksSavings,
   zeroDollarStoreSavings,
+  nfwPerksSavings = 0,
 }: MembershipImpactCardProps) {
   return (
     <div className="p-6 flex flex-col items-center justify-center">
@@ -69,24 +71,30 @@ export default function MembershipImpactCard({
       </h1>
 
       <div className="w-full bg-nfw-lilac p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-2">
           <div className="text-center">
-            <p className="text-6xl text-white font-serif">
+            <p className="text-4xl lg:text-5xl text-white font-serif">
               <AnimatedCurrency value={micrograntsSavings} />
             </p>
-            <p className="text-lg text-white/60 font-ui uppercase mt-1">From Microgrants</p>
+            <p className="text-sm lg:text-base text-white/60 font-ui uppercase mt-1">Microgrants</p>
           </div>
-          <div className="text-center sm:border-x sm:border-white/10">
-            <p className="text-6xl text-white font-serif">
+          <div className="text-center lg:border-x lg:border-white/10">
+            <p className="text-4xl lg:text-5xl text-white font-serif">
               <AnimatedCurrency value={perksSavings} />
             </p>
-            <p className="text-lg text-white/60 font-ui uppercase mt-1">From Perks</p>
+            <p className="text-sm lg:text-base text-white/60 font-ui uppercase mt-1">Access Perks</p>
           </div>
-          <div className="text-center">
-            <p className="text-6xl text-white font-serif">
+          <div className="text-center lg:border-x lg:border-white/10">
+            <p className="text-4xl lg:text-5xl text-white font-serif">
+              <AnimatedCurrency value={nfwPerksSavings} />
+            </p>
+            <p className="text-sm lg:text-base text-white/60 font-ui uppercase mt-1">NFW Perks</p>
+          </div>
+          <div className="text-center lg:border-x lg:border-white/10">
+            <p className="text-4xl lg:text-5xl text-white font-serif">
               <AnimatedCurrency value={zeroDollarStoreSavings} />
             </p>
-            <p className="text-lg text-white/60 font-ui uppercase mt-1">From the Zero Dollar Store</p>
+            <p className="text-sm lg:text-base text-white/60 font-ui uppercase mt-1">Zero Dollar Store</p>
           </div>
         </div>
       </div>

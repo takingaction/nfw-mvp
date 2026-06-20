@@ -10,8 +10,12 @@ import FilterSidebar from "@/components/perks/FilterSidebar";
 import StoreCard from "@/components/perks/StoreCard";
 import LocationCard from "@/components/perks/LocationCard";
 import OfferDetailPanel from "@/components/perks/OfferDetailPanel";
+import NfwPerkStoreCard from "@/components/perks/NfwPerkStoreCard";
+import NfwPerkOfferCard from "@/components/perks/NfwPerkOfferCard";
+import NfwPerkDetailPanel from "@/components/perks/NfwPerkDetailPanel";
 
 type ViewType = "stores" | "offers" | "locations";
+type NfwViewType = "partners" | "perks";
 
 interface Facet {
   key: string;
@@ -71,6 +75,7 @@ export default function PerksPage() {
   const [searchPostalCode, setSearchPostalCode] = useState<string>("");
   const [searchDistance, setSearchDistance] = useState<string>("10mi");
   const [selectedOfferKey, setSelectedOfferKey] = useState<string | null>(null);
+  const [detailPanelStoreKey, setDetailPanelStoreKey] = useState<number | null>(null);
   const [onlineOnly, setOnlineOnly] = useState<boolean>(false);
   const [savedFilters, setSavedFilters] = useState<{
     selectedCategories: number[];
@@ -84,6 +89,15 @@ export default function PerksPage() {
   const [user, setUser] = useState<any>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [likedStoreKeys, setLikedStoreKeys] = useState<number[]>([]);
+  const [nfwOnly, setNfwOnly] = useState(false);
+  const [nfwPerks, setNfwPerks] = useState<any[]>([]);
+  const [nfwPerkRedeeming, setNfwPerkRedeeming] = useState<string | null>(null);
+  const [nfwView, setNfwView] = useState<NfwViewType>("partners");
+  const [selectedPartner, setSelectedPartner] = useState<string | null>(null);
+  const [selectedNfwPerk, setSelectedNfwPerk] = useState<any>(null);
+  const [isNfwDetailOpen, setIsNfwDetailOpen] = useState(false);
+  const [nfwLikedPerks, setNfwLikedPerks] = useState<string[]>([]);
+  const [nfwLikedPartners, setNfwLikedPartners] = useState<string[]>([]);
 
   useEffect(() => {
     const storeParam = searchParams.get("store");
@@ -93,6 +107,13 @@ export default function PerksPage() {
         setSelectedStore(storeKey);
         setCurrentView("offers");
       }
+    }
+
+    const nfwPartnerParam = searchParams.get("nfw_partner");
+    if (nfwPartnerParam) {
+      setNfwOnly(true);
+      setSelectedPartner(decodeURIComponent(nfwPartnerParam));
+      setNfwView("perks");
     }
   }, [searchParams]);
 
@@ -284,13 +305,17 @@ export default function PerksPage() {
         const data = await response.json();
         const stores = data.stores || [];
         const keys: number[] = [];
+        const nfwPartners: string[] = [];
         for (const s of stores) {
           const key = parseInt(String(s.store_key), 10);
           if (!isNaN(key)) {
             keys.push(key);
+          } else {
+            nfwPartners.push(s.store_name);
           }
         }
         setLikedStoreKeys(keys);
+        setNfwLikedPartners(nfwPartners);
       } else {
         console.error("Failed to fetch liked stores:", response.status);
       }
@@ -322,6 +347,84 @@ export default function PerksPage() {
       console.error("Failed to toggle like:", err);
     }
   };
+
+  const handleNfwPartnerToggleLike = async (partnerName: string, logoUrl: string | null, liked: boolean) => {
+    console.log("handleNfwPartnerToggleLike:", { partnerName, logoUrl, liked });
+    try {
+      if (liked) {
+        const res = await fetch("/api/perks/liked-stores", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ store_key: partnerName, store_name: partnerName, logo_url: logoUrl }),
+        });
+        console.log("Like response:", res.status);
+        if (res.ok) {
+          setNfwLikedPartners((prev) => [...prev, partnerName]);
+        }
+      } else {
+        const res = await fetch("/api/perks/liked-stores", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ store_key: partnerName }),
+        });
+        if (res.ok) {
+          setNfwLikedPartners((prev) => prev.filter((p) => p !== partnerName));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to toggle NFW partner like:", err);
+    }
+  };
+
+  const fetchNfwPerks = async () => {
+    try {
+      const response = await fetch("/api/nfw-perks");
+      if (response.ok) {
+        const data = await response.json();
+        setNfwPerks(data.perks || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch NFW perks:", err);
+    }
+  };
+
+  const handleNfwPerkRedeem = async (perk: any) => {
+    if (!user) return;
+
+    // If already redeemed landing page offer, just open URL (like Access Perks "View Again")
+    if (perk.userHasRedeemed && perk.landing_page_url) {
+      window.open(perk.landing_page_url, "_blank");
+      return;
+    }
+
+    setNfwPerkRedeeming(perk.id);
+    try {
+      const response = await fetch(`/api/nfw-perks/${perk.id}/redeem`, {
+        method: "POST",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.landingPageUrl) {
+          window.open(data.landingPageUrl, "_blank");
+        }
+        fetchNfwPerks();
+      } else {
+        const error = await response.json();
+        alert(error.error || "Failed to redeem perk");
+      }
+    } catch (err) {
+      console.error("Failed to redeem NFW perk:", err);
+      alert("Failed to redeem perk");
+    } finally {
+      setNfwPerkRedeeming(null);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchNfwPerks();
+    }
+  }, [user]);
 
   const fetchRollup = async (isOnlineOnly: boolean) => {
     setLoading(true);
@@ -689,6 +792,15 @@ export default function PerksPage() {
             onOnlineOnlyChange={setOnlineOnly}
             isMobileOpen={isFilterDrawerOpen}
             onMobileClose={() => setIsFilterDrawerOpen(false)}
+            nfwOnly={nfwOnly}
+            onNfwOnlyChange={(value: boolean) => {
+              setNfwOnly(value);
+              if (value) {
+                setCurrentView("stores");
+                setNfwView("partners");
+                setSelectedPartner(null);
+              }
+            }}
           />
 
           <div className="flex-1 min-w-0">
@@ -717,7 +829,7 @@ export default function PerksPage() {
               )}
             </div>
 
-            {searchInfo && !loading && !error && (
+            {searchInfo && !loading && !error && !nfwOnly && (
               <div className="mb-4 font-serif text-sm text-nfw-blackberry/50 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   {selectedStore && currentView === "offers" && (
@@ -811,7 +923,102 @@ export default function PerksPage() {
 
             {!loading && !error && rollupGroups.length > 0 && (
               <>
-                {currentView === "stores" && (
+                {nfwOnly && nfwView === "partners" && (
+                  <>
+                    <div className="mb-4 flex items-center justify-between">
+                      <p className="font-serif text-sm text-nfw-blackberry/50">
+                        Showing {nfwPerks.length} exclusive {nfwPerks.length === 1 ? "partner" : "partners"}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {Object.entries(
+                        nfwPerks
+                          .filter((perk: any) => {
+                            if (selectedCategories.length === 0) return true;
+                            const perkCategories = perk.categories || [];
+                            return perkCategories.some((cat: string) => {
+                              const catIndex = categories.findIndex((c: any) => c.category_name === cat);
+                              return catIndex !== -1 && selectedCategories.includes(categories[catIndex].category_key);
+                            });
+                          })
+                          .reduce((acc: Record<string, any>, perk: any) => {
+                            const partner = perk.partner_name || "Other";
+                            if (!acc[partner]) {
+                              acc[partner] = {
+                                partner_name: partner,
+                                partner_logo_url: perk.partner_logo_url,
+                                perks: [],
+                                total_value: 0,
+                              };
+                            }
+                            acc[partner].perks.push(perk);
+                            acc[partner].total_value += perk.estimated_value || 0;
+                            return acc;
+                          }, {})
+                      ).map(([partnerName, partnerData]: [string, any]) => (
+                        <NfwPerkStoreCard
+                          key={partnerName}
+                          partner={{
+                            partner_name: partnerData.partner_name,
+                            partner_logo_url: partnerData.partner_logo_url,
+                          }}
+                          liked={nfwLikedPartners.includes(partnerName)}
+                          onToggleLike={handleNfwPartnerToggleLike}
+                          onClick={() => {
+                            setSelectedPartner(partnerName);
+                            setNfwView("perks");
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {nfwOnly && nfwView === "perks" && selectedPartner && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setNfwView("partners");
+                        setSelectedPartner(null);
+                      }}
+                      className="mb-4 text-nfw-aubergine hover:underline flex items-center gap-1 font-serif text-sm"
+                    >
+                      ← Back to partners
+                    </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5">
+                      {nfwPerks
+                        .filter((p: any) => {
+                          if (p.partner_name !== selectedPartner) return false;
+                          if (selectedCategories.length === 0) return true;
+                          const perkCategories = p.categories || [];
+                          return perkCategories.some((cat: string) => {
+                            const catIndex = categories.findIndex((c: any) => c.category_name === cat);
+                            return catIndex !== -1 && selectedCategories.includes(categories[catIndex].category_key);
+                          });
+                        })
+                        .map((perk: any) => (
+                          <NfwPerkOfferCard
+                            key={perk.id}
+                            perk={perk}
+                            liked={nfwLikedPerks.includes(perk.id)}
+                            onToggleLike={(perkId, liked) => {
+                              if (liked) {
+                                setNfwLikedPerks((prev) => [...prev, perkId]);
+                              } else {
+                                setNfwLikedPerks((prev) => prev.filter((id) => id !== perkId));
+                              }
+                            }}
+                            onClick={() => {
+                              setSelectedNfwPerk(perk);
+                              setIsNfwDetailOpen(true);
+                            }}
+                          />
+                        ))}
+                    </div>
+                  </>
+                )}
+
+                {!nfwOnly && currentView === "stores" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     {rollupGroups
                       .filter((group) => !EXCLUDED_STORES.includes(group.name || ""))
@@ -840,7 +1047,7 @@ export default function PerksPage() {
                   </div>
                 )}
 
-                {currentView === "locations" && (
+                {!nfwOnly && currentView === "locations" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     {rollupGroups.map((group) => (
                       <LocationCard
@@ -864,13 +1071,19 @@ export default function PerksPage() {
                   </div>
                 )}
 
-                {currentView === "offers" && (
+                {!nfwOnly && currentView === "offers" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5">
                     {rollupGroups.map((item: any, index: number) => (
                       <OfferCard
                         key={item.offer_key || item.key || index}
                         offer={item}
                         onClick={() => {
+                          const storeKey = item.offer_store?.store_key;
+                          if (storeKey) {
+                            setDetailPanelStoreKey(storeKey);
+                          } else {
+                            setDetailPanelStoreKey(null);
+                          }
                           setSelectedOfferKey(item.offer_key || item.key);
                           setIsOfferPanelOpen(true);
                         }}
@@ -878,10 +1091,58 @@ export default function PerksPage() {
                     ))}
                   </div>
                 )}
+
+                {!nfwOnly && selectedCategories.length > 0 && nfwPerks.length > 0 && (
+                  <div className="mt-8 pt-8 border-t border-nfw-blackberry/10">
+                    <h3 className="font-serif text-lg font-semibold text-nfw-blackberry mb-4">
+                      NFW Exclusive Perks in Selected Categories
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {nfwPerks
+                        .filter((perk: any) => {
+                          if (selectedCategories.length === 0) return false;
+                          const perkCategories = perk.categories || [];
+                          return perkCategories.some((cat: string) => {
+                            const catIndex = categories.findIndex((c: any) => c.category_name === cat);
+                            return catIndex !== -1 && selectedCategories.includes(categories[catIndex].category_key);
+                          });
+                        })
+                        .map((perk: any) => (
+                          <NfwPerkOfferCard
+                            key={perk.id}
+                            perk={perk}
+                            liked={nfwLikedPerks.includes(perk.id)}
+                            onToggleLike={(perkId, liked) => {
+                              if (liked) {
+                                setNfwLikedPerks((prev) => [...prev, perkId]);
+                              } else {
+                                setNfwLikedPerks((prev) => prev.filter((id) => id !== perkId));
+                              }
+                            }}
+                            onClick={() => {
+                              setSelectedNfwPerk(perk);
+                              setIsNfwDetailOpen(true);
+                            }}
+                          />
+                        ))}
+                    </div>
+                  </div>
+                )}
               </>
             )}
 
-            {!loading && !error && rollupGroups.length === 0 && searchInfo?.total_results === 0 && (
+            {nfwOnly && nfwPerks.length === 0 && !loading && (
+              <div className="text-center py-16">
+                <h3 className="font-serif text-lg font-semibold text-nfw-blackberry mb-2">
+                  No NFW Exclusive Perks available
+                </h3>
+                <p className="font-serif text-nfw-blackberry/60 mb-6">
+                  Check back soon for exclusive member deals.
+                </p>
+              </div>
+            )}
+
+            {!loading && !error && rollupGroups.length === 0 && searchInfo?.total_results === 0 && !nfwOnly && (
               <div className="text-center py-16">
                 <h3 className="font-serif text-lg font-semibold text-nfw-blackberry mb-2">
                   No results found
@@ -903,10 +1164,40 @@ export default function PerksPage() {
 
       <OfferDetailPanel
         offerKey={selectedOfferKey}
+        storeKey={detailPanelStoreKey}
         isOpen={isOfferPanelOpen}
-        onClose={() => setIsOfferPanelOpen(false)}
+        onClose={() => {
+          setIsOfferPanelOpen(false);
+          setDetailPanelStoreKey(null);
+        }}
         likedStores={likedStoreKeys}
         onToggleLike={handleToggleLike}
+      />
+
+      <NfwPerkDetailPanel
+        perk={selectedNfwPerk}
+        isOpen={isNfwDetailOpen}
+        onClose={() => setIsNfwDetailOpen(false)}
+        onRedeem={handleNfwPerkRedeem}
+        liked={selectedNfwPerk ? nfwLikedPartners.includes(selectedNfwPerk.partner_name || "") : false}
+        onToggleLike={(partnerName, logoUrl, liked) => {
+          if (selectedNfwPerk) {
+            // Update local state first for immediate UI feedback
+            if (liked) {
+              setNfwLikedPartners((prev) => [...prev, partnerName]);
+            } else {
+              setNfwLikedPartners((prev) => prev.filter((p) => p !== partnerName));
+            }
+            // Also toggle perk ID in nfwLikedPerks for the offer card
+            if (liked) {
+              setNfwLikedPerks((prev) => [...prev, selectedNfwPerk.id]);
+            } else {
+              setNfwLikedPerks((prev) => prev.filter((id) => id !== selectedNfwPerk.id));
+            }
+            // Persist to database via handleNfwPartnerToggleLike
+            handleNfwPartnerToggleLike(partnerName, logoUrl, liked);
+          }
+        }}
       />
     </main>
   );

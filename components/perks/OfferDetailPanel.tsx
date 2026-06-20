@@ -22,6 +22,7 @@ import Link from "next/link";
 
 interface OfferDetailPanelProps {
   offerKey: string | null;
+  storeKey?: number | null;
   isOpen: boolean;
   onClose: () => void;
   likedStores?: number[];
@@ -118,6 +119,7 @@ export default function OfferDetailPanel({
   offerKey,
   isOpen,
   onClose,
+  storeKey: storeKeyProp,
   likedStores = [],
   onToggleLike,
 }: OfferDetailPanelProps) {
@@ -187,10 +189,12 @@ export default function OfferDetailPanel({
   }, [isOpen, offerKey]);
 
   useEffect(() => {
-    if (offer?.offer_store?.key) {
-      setIsStoreLiked(likedStores.includes(offer.offer_store.key));
+    const storeKeyFromStore = offer?.offer_store?.store_key;
+    const effectiveStoreKey = storeKeyProp ?? storeKeyFromStore;
+    if (effectiveStoreKey) {
+      setIsStoreLiked(likedStores.includes(effectiveStoreKey));
     }
-  }, [offer, likedStores]);
+  }, [offer, likedStores, storeKeyProp]);
 
   const fetchOffer = async (key: string) => {
     setLoading(true);
@@ -295,14 +299,15 @@ export default function OfferDetailPanel({
   }, [isOpen]);
 
   const handleToggleLike = () => {
-    if (!offer?.offer_store) return;
-    const storeKey = offer.offer_store.key;
-    const storeName = offer.offer_store.name || "Unknown Store";
-    const logoUrl = offer.offer_store.logo_url;
+    const storeKeyFromStore = offer?.offer_store?.store_key;
+    const effectiveStoreKey = storeKeyProp ?? storeKeyFromStore;
+    if (!effectiveStoreKey) return;
+    const storeName = offer?.offer_store?.name || "Unknown Store";
+    const logoUrl = offer?.offer_store?.logo_url || offer?.logo_url;
     const newLiked = !isStoreLiked;
     setIsStoreLiked(newLiked);
     setLikeAnimating(true);
-    onToggleLike?.(storeKey, storeName, logoUrl, newLiked);
+    onToggleLike?.(effectiveStoreKey, storeName, logoUrl, newLiked);
     setTimeout(() => setLikeAnimating(false), 300);
   };
 

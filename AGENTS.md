@@ -4977,3 +4977,220 @@ ALTER TABLE shopify_product_mappings ADD COLUMN compare_at_price NUMERIC(10,2) D
 - Store null or 0 as NULL in database
 - Only display "Value: $X" when `compareAtPrice > 0`
 - Shows on both store card and product detail slideout
+
+### Session 2026-06-19: NFW Exclusive Perks System
+
+Implemented a new NFW Exclusive Perks system for member-only deals from partner organizations.
+
+#### Database Migration
+
+**File:** `supabase/migrations/096_create_nfw_perks.sql`
+
+Creates two tables:
+- `nfw_perks` - Stores exclusive perk offers with partner info, discount details, landing page URL
+- `nfw_perk_redemptions` - Tracks which users have redeemed which perks
+
+**Schema:**
+```sql
+nfw_perks (
+  id UUID PK,
+  title TEXT NOT NULL,
+  description TEXT,
+  partner_name TEXT,
+  partner_logo_url TEXT,
+  discount_type TEXT CHECK (percent, fixed, free_item, landing_page),
+  discount_value TEXT,
+  landing_page_url TEXT,
+  expires_at TIMESTAMPTZ,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+)
+
+nfw_perk_redemptions (
+  id UUID PK,
+  perk_id UUID REFERENCES nfw_perks(id),
+  user_id UUID REFERENCES profiles(id),
+  redeemed_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(perk_id, user_id)
+)
+```
+
+#### Public API Routes
+
+**`GET /api/nfw-perks`**
+- Returns list of active NFW perks with user redemption status
+- Requires authentication
+- Response: `{ perks: [...] }`
+
+**`GET /api/nfw-perks/[id]`**
+- Returns single perk details
+
+**`POST /api/nfw-perks/[id]/redeem`**
+- Records redemption in database
+- Returns `{ landing_page_url, success: true }` for landing_page type perks
+- User redirected to partner landing page
+
+#### Admin API Routes
+
+**`GET /api/admin/nfw-perks`** - List all perks (active/inactive)
+**`POST /api/admin/nfw-perks`** - Create new perk
+**`GET /api/admin/nfw-perks/[id]`** - Get single perk
+**`PUT /api/admin/nfw-perks/[id]`** - Update perk
+**`DELETE /api/admin/nfw-perks/[id]`** - Delete perk
+
+#### Admin Page
+
+**`/admin/nfw-perks`** - Full CRUD interface:
+- Table view with all perks (id, title, partner, discount, status, expires)
+- Active toggle switch
+- Create/Edit modal with fields:
+  - Title, Description
+  - Partner Name, Partner Logo URL
+  - Discount Type (select), Discount Value
+  - Landing Page URL (required for landing_page type)
+  - Expires At (datetime)
+- Delete confirmation modal
+
+#### Frontend Components
+
+**`NfwPerkCard` component (`components/perks/NfwPerkCard.tsx`):**
+- Partner logo display with fallback
+- Aubergine "NFW Exclusive" badge
+- Discount value display
+- "Get Perk" / "Redeemed" button states
+- Built-in detail panel (slide-out on click)
+- Handles redemption via onRedeem callback
+
+**FilterSidebar changes (`components/perks/FilterSidebar.tsx`):**
+- Added NFW Exclusive Perks toggle button above Travel Benefits
+- Button shows aubergine when active, dove when inactive
+- Star icon to differentiate from Travel Benefits
+- Props: `nfwOnly`, `onNfwOnlyChange`
+
+#### Perks Page Integration
+
+**`app/perks/page.tsx`:**
+- Added `nfwOnly` state to toggle between Access Perks and NFW perks
+- Added `nfwPerks` state for NFW perks list
+- Added `handleNfwPerkRedeem()` function for redemption flow
+- Added useEffect to fetch NFW perks when `nfwOnly` becomes true
+- Modified grid render to show `NfwPerkCard` components when `nfwOnly` is true
+- NFW perks display in same 3-column grid as stores
+
+**NFW Perk Redemption Flow:**
+1. User clicks "Get Perk" button
+2. POST to `/api/nfw-perks/${perk.id}/redeem`
+3. API records redemption, returns `landing_page_url`
+4. User's browser opens partner URL in new tab
+5. Card button changes to "Redeemed" state
+
+#### Navigation Links Added
+
+Added "NFW Perks" link to admin dropdown menus in:
+- `components/AuthButtonCombined.tsx`
+- `components/auth-button.tsx`
+- `components/MobileMenu.tsx`
+
+#### Files Created/Modified
+
+| File | Change |
+|------|--------|
+| `supabase/migrations/096_create_nfw_perks.sql` | Created |
+| `app/api/nfw-perks/route.ts` | Created - public list endpoint |
+| `app/api/nfw-perks/[id]/route.ts` | Created - public single endpoint |
+| `app/api/nfw-perks/[id]/redeem/route.ts` | Created - redemption endpoint |
+| `app/api/admin/nfw-perks/route.ts` | Created - admin CRUD |
+| `app/api/admin/nfw-perks/[id]/route.ts` | Created - admin single/get/delete |
+| `app/admin/nfw-perks/page.tsx` | Created - admin page wrapper |
+| `app/admin/nfw-perks/AdminNfwPerks.tsx` | Created - admin CRUD client |
+| `components/perks/NfwPerkCard.tsx` | Created - perk card component |
+| `components/perks/FilterSidebar.tsx` | Modified - added nfwOnly button |
+| `app/perks/page.tsx` | Modified - integrated NFW perks display |
+| `components/AuthButtonCombined.tsx` | Modified - added NFW Perks link |
+| `components/auth-button.tsx` | Modified - added NFW Perks link |
+| `components/MobileMenu.tsx` | Modified - added NFW Perks link |
+
+#### To Deploy
+
+1. Run migration 096 in Supabase SQL Editor
+2. Add perks via `/admin/nfw-perks`
+3. Test redemption flow from `/perks` page
+
+## Session 2026-06-20: Offer Detail Panel Likes + Admin Hub
+
+### Offer Detail Panel Liked State Fix
+
+**Problem:** Liked stores showed yellow heart instead of lilac in OfferDetailPanel because the Access Perks offer detail API doesn't return `offer_store.key` - it returns `offer.offer_store.store_key` instead.
+
+**Root Cause:** The offers view data has `item.offer_store.store_key` but the code was looking for `item.offer_store.key`.
+
+**Fix Applied:**
+- Changed `item.offer_store?.key` to `item.offer_store?.store_key` in page.tsx
+- Updated `OfferDetailPanel.tsx` useEffect and handleToggleLike to use `offer.offer_store?.store_key`
+- Added `detailPanelStoreKey` state to pass store key from offers view to detail panel
+
+**Files Modified:**
+- `app/perks/page.tsx` - Use `item.offer_store?.store_key` for setting detailPanelStoreKey
+- `components/perks/OfferDetailPanel.tsx` - Use `store_key` instead of `key`, added storeKeyProp
+
+### Admin Hub - Consolidated Admin Menu
+
+**Problem:** Admin dropdown had 14 separate admin links making it too long.
+
+**Solution:** Created centralized Admin Dashboard page at `/admin` with all admin links organized by category. Dropdowns now show single "Admin Dashboard" link.
+
+**Admin Hub Layout (5 categories):**
+
+**Content & Website:**
+- Manage Pages, Edit Header, Edit Footer, Edit FAQ, Edit Contact, Legal Pages, Manage Articles, Manage Dashboard
+
+**Members & Grants:**
+- Manage Members, Manage Grants
+
+**Store & Commerce:**
+- Manage Zero Dollar Store, Gift Codes, NFW Perks
+
+**Emails & Subscriptions:**
+- Email Templates, Newsletter Signups, Contact Submissions, Story Submissions
+
+**Analytics:**
+- Analytics
+
+**Files Created:**
+- `app/admin/page.tsx` - Server wrapper with requireAdmin()
+- `app/admin/AdminHubClient.tsx` - Client component with categorized buttons
+
+**Files Modified:**
+- `components/AuthButtonCombined.tsx` - Replaced 14 admin links with single "Admin Dashboard" link
+- `components/auth-button.tsx` - Same change
+- `components/MobileMenu.tsx` - Same change
+
+### Type Fixes (Pre-existing)
+
+Fixed `img` src TypeScript errors in 4 files where `string | null` wasn't assignable to `string | Blob | undefined`:
+
+- `app/perks/history/page.tsx`
+- `components/dashboard/RecentRedemptions.tsx`
+- `components/dashboard/RedeemedPerksPanel.tsx`
+- `components/dashboard/YourPerksAndBenefits.tsx`
+
+Fixed by using template literal: `` `${value || ""}` ``
+
+## Session 2026-06-20: Category Filter for NFW Perks
+
+### Feature: Show NFW Perks in Category Filter Results
+
+**Problem:** NFW perks only showed when NFW Only toggle was ON. Category filters only applied to Access Perks.
+
+**Solution:** When a category filter is active AND NFW Only is OFF, show NFW perks in a separate section below Access Perks results.
+
+**Behavior:**
+- NFW Only OFF + Category filter = Access Perks results + NFW perks section at bottom
+- NFW Only ON = Only NFW perks shown (existing behavior)
+- NFW Only OFF + No category filter = Only Access Perks shown (existing behavior)
+
+**Files Modified:**
+- `app/perks/page.tsx`:
+  - Removed `[nfwOnly, user]` dependency from fetchNfwPerks useEffect, now only `[user]` (fetches NFW perks always when logged in)
+  - Added conditional rendering of NFW perks section when `!nfwOnly && selectedCategories.length > 0 && nfwPerks.length > 0`

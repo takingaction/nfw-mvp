@@ -19,6 +19,7 @@ interface Redemption {
   offer_title: string;
   store_name: string | null;
   store_logo_url: string | null;
+  logo_url: string | null;
   redeem_type: string;
   coupon_code: string | null;
   phone_number: string | null;
@@ -70,10 +71,44 @@ export default function RedeemedPerksPanel({
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/access-perks/redemptions?limit=50");
-      if (!response.ok) throw new Error("Failed to fetch redemptions");
-      const data = await response.json();
-      setRedemptions(data.redemptions || []);
+      // Fetch Access Perks redemptions
+      const accessResponse = await fetch("/api/access-perks/redemptions?limit=50");
+      let accessRedemptions: any[] = [];
+      if (accessResponse.ok) {
+        const accessData = await accessResponse.json();
+        accessRedemptions = accessData.redemptions || [];
+      }
+
+      // Fetch NFW perk redemptions
+      const nfwResponse = await fetch("/api/nfw-perks/redemptions");
+      let nfwRedemptions: any[] = [];
+      if (nfwResponse.ok) {
+        const nfwData = await nfwResponse.json();
+        nfwRedemptions = (nfwData.redemptions || []).map((r: any) => ({
+          id: r.id,
+          offer_key: undefined,
+          offer_title: r.title,
+          store_name: r.partner_name,
+          store_logo_url: r.logo_url,
+          logo_url: r.logo_url,
+          redeem_type: "landing_page",
+          redemption_url: r.landing_page_url,
+          coupon_code: null,
+          phone_number: null,
+          instructions: null,
+          status: "active",
+          redeemed_at: r.redeemed_at,
+          expires_at: null,
+        }));
+      }
+
+      // Combine and sort by date
+      const allRedemptions = [...accessRedemptions, ...nfwRedemptions];
+      allRedemptions.sort((a, b) => {
+        return new Date(b.redeemed_at).getTime() - new Date(a.redeemed_at).getTime();
+      });
+
+      setRedemptions(allRedemptions);
     } catch (err: any) {
       setError(err.message || "Failed to load redemptions");
     } finally {
@@ -128,6 +163,7 @@ export default function RedeemedPerksPanel({
   const getRedemptionTypeLabel = (type: string) => {
     switch (type) {
       case "link":
+      case "landing_page":
         return "Online";
       case "instore":
         return "In-Store";
@@ -143,6 +179,7 @@ export default function RedeemedPerksPanel({
   const getRedemptionTypeColor = (type: string) => {
     switch (type) {
       case "link":
+      case "landing_page":
         return "bg-nfw-blackberry text-white";
       case "instore":
         return "bg-nfw-lilac text-nfw-blackberry";
@@ -232,11 +269,11 @@ export default function RedeemedPerksPanel({
                 {redemptions.map((redemption) => (
                   <div key={redemption.id} className="p-4">
                     <div className="flex items-start gap-3">
-                      {redemption.store_logo_url ? (
+                      {(redemption.store_logo_url || redemption.logo_url) ? (
                         <img
-                          src={redemption.store_logo_url}
+                          src={`${redemption.store_logo_url || redemption.logo_url || ""}`}
                           alt={redemption.store_name || "Store logo"}
-                          className="w-12 h-12 object-contain bg-white border border-nfw-blackberry/10"
+                          className="w-12 h-12 object-cover bg-white border border-nfw-blackberry/10"
                         />
                       ) : (
                         <div className="w-12 h-12 bg-nfw-dove border border-nfw-blackberry/10 flex items-center justify-center flex-shrink-0">
@@ -316,14 +353,25 @@ export default function RedeemedPerksPanel({
                               Open
                             </button>
                           )}
-                          <Link
-                            href={`/perks/${redemption.offer_key}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-nfw-blackberry hover:bg-gray-200 transition-colors text-xs font-medium"
-                          >
-                            Details
-                          </Link>
+                          {redemption.offer_key ? (
+                            <Link
+                              href={`/perks/${redemption.offer_key}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-nfw-blackberry hover:bg-gray-200 transition-colors text-xs font-medium"
+                            >
+                              Details
+                            </Link>
+                          ) : redemption.store_name ? (
+                            <Link
+                              href={`/perks?nfw_partner=${encodeURIComponent(redemption.store_name)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-nfw-blackberry hover:bg-gray-200 transition-colors text-xs font-medium"
+                            >
+                              Details
+                            </Link>
+                          ) : null}
                         </div>
                       </div>
                     </div>

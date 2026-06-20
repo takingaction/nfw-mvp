@@ -24,6 +24,7 @@ export async function GET() {
       micrograntsResult,
       perksResult,
       claimsResult,
+      nfwPerksResult,
     ] = await Promise.all([
       supabaseAdmin
         .from("grants")
@@ -39,6 +40,10 @@ export async function GET() {
         .select("shopify_product_id, shopify_variant_id")
         .eq("user_id", userId)
         .in("status", ["fulfilled", "paid", "delivered"]),
+      supabaseAdmin
+        .from("nfw_perk_redemptions")
+        .select("perk_id")
+        .eq("user_id", userId),
     ]);
 
     const micrograntsTotal = (micrograntsResult.data || [])
@@ -53,12 +58,12 @@ export async function GET() {
       const variantIds = claims.map((c: { shopify_variant_id: string }) => c.shopify_variant_id);
       const { data: products } = await supabaseAdmin
         .from("shopify_product_mappings")
-        .select("shopify_variant_id, price")
+        .select("shopify_variant_id, compare_at_price")
         .in("shopify_variant_id", variantIds);
 
       const priceMap = new Map<string, number>();
-      (products || []).forEach((p: { shopify_variant_id: string; price: number }) => {
-        priceMap.set(p.shopify_variant_id, p.price || 0);
+      (products || []).forEach((p: { shopify_variant_id: string; compare_at_price: number | null }) => {
+        priceMap.set(p.shopify_variant_id, p.compare_at_price || 0);
       });
 
       claimsTotal = claims.reduce((sum: number, c: { shopify_variant_id: string }) => {
@@ -66,13 +71,33 @@ export async function GET() {
       }, 0);
     }
 
-    const total = micrograntsTotal + perksTotal + claimsTotal;
+    let nfwPerksTotal = 0;
+    const nfwPerkRedemptions = nfwPerksResult.data || [];
+    if (nfwPerkRedemptions.length > 0) {
+      const perkIds = nfwPerkRedemptions.map((r: { perk_id: string }) => r.perk_id);
+      const { data: perks } = await supabaseAdmin
+        .from("nfw_perks")
+        .select("id, estimated_value")
+        .in("id", perkIds);
+
+      const perkValueMap = new Map<string, number>();
+      (perks || []).forEach((p: { id: string; estimated_value: number | null }) => {
+        perkValueMap.set(p.id, p.estimated_value || 0);
+      });
+
+      nfwPerksTotal = nfwPerkRedemptions.reduce((sum: number, r: { perk_id: string }) => {
+        return sum + (perkValueMap.get(r.perk_id) || 0);
+      }, 0);
+    }
+
+    const total = micrograntsTotal + perksTotal + claimsTotal + nfwPerksTotal;
 
     return NextResponse.json({
       total,
       microgrants: micrograntsTotal,
       perks: perksTotal,
       zeroDollarStore: claimsTotal,
+      nfwPerks: nfwPerksTotal,
     });
   } catch (error) {
     console.error("Error calculating savings:", error);

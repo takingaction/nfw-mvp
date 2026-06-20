@@ -18,6 +18,7 @@ interface Redemption {
   offer_title: string;
   store_name: string | null;
   redeemed_at: string;
+  logo_url?: string | null;
 }
 
 interface DashboardPerksSectionProps {
@@ -38,11 +39,42 @@ export default function DashboardPerksSection({
 
   const fetchRedemptions = async () => {
     try {
-      const response = await fetch("/api/access-perks/redemptions?limit=50");
-      if (response.ok) {
-        const data = await response.json();
-        setRecentRedemptions(data.redemptions || []);
+      // Fetch Access Perks redemptions
+      const accessResponse = await fetch("/api/access-perks/redemptions?limit=50");
+      let accessRedemptions: any[] = [];
+      if (accessResponse.ok) {
+        const accessData = await accessResponse.json();
+        accessRedemptions = accessData.redemptions || [];
       }
+
+      // Fetch NFW perk redemptions
+      const nfwResponse = await fetch("/api/nfw-perks/redemptions");
+      let nfwRedemptions: any[] = [];
+      if (nfwResponse.ok) {
+        const nfwData = await nfwResponse.json();
+        nfwRedemptions = (nfwData.redemptions || []).map((r: any) => ({
+          ...r,
+          offer_key: undefined,
+          offer_title: r.title,
+          store_name: r.partner_name,
+          store_logo_url: r.logo_url,
+          logo_url: r.logo_url,
+          redeem_type: "landing_page",
+          redemption_url: r.landing_page_url,
+          coupon_code: null,
+          phone_number: null,
+          status: "active",
+          expires_at: null,
+        }));
+      }
+
+      // Combine and sort by date
+      const allRedemptions = [...accessRedemptions, ...nfwRedemptions];
+      allRedemptions.sort((a, b) => {
+        return new Date(b.redeemed_at).getTime() - new Date(a.redeemed_at).getTime();
+      });
+
+      setRecentRedemptions(allRedemptions.slice(0, 50));
     } catch (err) {
       console.error("Failed to fetch redemptions:", err);
     }

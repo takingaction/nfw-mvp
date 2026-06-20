@@ -101,7 +101,8 @@ export async function POST(request: Request, { params }: RouteParams) {
     let offerDetails: {
       title?: string;
       offer_value?: string | number;
-      offer_store?: { name?: string; logo_url?: string };
+      logo_url?: string;
+      offer_store?: { name?: string; logo_url?: string; image_url?: string };
       physical_location?: { location_name?: string; city_locality?: string };
       expires_on?: string;
     } = {};
@@ -109,6 +110,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       const offerData = await offerResponse.json();
       if (offerData.offers && offerData.offers.length > 0) {
         offerDetails = offerData.offers[0];
+      } else if (offerData.offer) {
+        offerDetails = offerData.offer;
       }
     }
 
@@ -166,6 +169,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       expiresAt = new Date(offerDetails.expires_on).toISOString();
     }
 
+    const storeLogoUrl = offerDetails.offer_store?.logo_url || offerDetails.logo_url || offerDetails.offer_store?.image_url || redemptionData.logo_url || null;
+
     await supabase.from("offer_redemptions").insert({
       user_id: user.id,
       offer_key: offerKey,
@@ -173,7 +178,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       redeem_type: method,
       offer_title: offerDetails.title || "Unknown Offer",
       store_name: offerDetails.offer_store?.name || null,
-      store_logo_url: offerDetails.offer_store?.logo_url || null,
+      store_logo_url: storeLogoUrl,
       location_name:
         offerDetails.physical_location?.location_name ||
         offerDetails.physical_location?.city_locality ||

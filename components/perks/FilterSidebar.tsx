@@ -31,6 +31,8 @@ interface FilterSidebarProps {
   onOnlineOnlyChange?: (onlineOnly: boolean) => void;
   isMobileOpen?: boolean;
   onMobileClose?: () => void;
+  nfwOnly?: boolean;
+  onNfwOnlyChange?: (nfwOnly: boolean) => void;
 }
 
 const OFFER_TYPE_OPTIONS = [
@@ -57,6 +59,8 @@ export default function FilterSidebar({
   onOnlineOnlyChange,
   isMobileOpen = false,
   onMobileClose,
+  nfwOnly = false,
+  onNfwOnlyChange,
 }: FilterSidebarProps) {
   const [expandedParents, setExpandedParents] = useState<Set<number>>(
     new Set(categories.map((c) => c.category_key))
@@ -147,6 +151,27 @@ export default function FilterSidebar({
           </button>
         )}
       </div>
+
+      {onNfwOnlyChange && (
+        <div className="p-4 border-b border-nfw-blackberry/10">
+          <button
+            onClick={() => onNfwOnlyChange(!nfwOnly)}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              nfwOnly
+                ? "bg-nfw-aubergine text-white"
+                : "bg-nfw-dove text-nfw-blackberry hover:bg-nfw-stone/20"
+            }`}
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+            </svg>
+            <div className="text-left">
+              <div className="font-ui font-medium text-sm">NFW Exclusive Perks</div>
+              <div className={`text-xs ${nfwOnly ? "text-nfw-lilac" : "text-nfw-blackberry/50"}`}>Member-only deals</div>
+            </div>
+          </button>
+        </div>
+      )}
 
       <div className="p-4 border-b border-nfw-blackberry/10">
         <Link

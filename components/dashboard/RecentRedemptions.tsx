@@ -20,6 +20,7 @@ interface Redemption {
   offer_title: string;
   store_name: string | null;
   store_logo_url: string | null;
+  logo_url: string | null;
   redeem_type: string;
   coupon_code: string | null;
   phone_number: string | null;
@@ -131,6 +132,7 @@ export default function RecentRedemptions() {
   const getRedemptionTypeLabel = (type: string) => {
     switch (type) {
       case "link":
+      case "landing_page":
         return "Online";
       case "instore":
         return "In-Store";
@@ -146,6 +148,7 @@ export default function RecentRedemptions() {
   const getRedemptionTypeColor = (type: string) => {
     switch (type) {
       case "link":
+      case "landing_page":
         return "bg-nfw-blackberry text-white";
       case "instore":
         return "bg-nfw-lilac text-nfw-blackberry";
@@ -238,11 +241,11 @@ export default function RecentRedemptions() {
               <div className="flex items-start gap-3">
                 {/* Icon */}
                 <div className="flex-shrink-0 mt-1">
-                  {redemption.store_logo_url ? (
+                  {(redemption.store_logo_url || redemption.logo_url) ? (
                     <img
-                      src={redemption.store_logo_url}
+                      src={`${redemption.store_logo_url || redemption.logo_url || ""}`}
                       alt={redemption.store_name || "Store logo"}
-                      className="w-10 h-10 rounded-lg object-contain bg-white border border-nfw-blackberry/10"
+                      className="w-10 h-10 rounded-lg object-cover bg-white border border-nfw-blackberry/10"
                     />
                   ) : (
                     <div className="w-10 h-10 bg-nfw-dove border border-nfw-blackberry/10 flex items-center justify-center">
@@ -333,15 +336,27 @@ export default function RecentRedemptions() {
                     )}
 
                     {/* View Details */}
-                    <Link
-                      href={`/perks/${redemption.offer_key}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-nfw-blackberry hover:bg-gray-200 transition-colors text-xs font-medium"
-                    >
-                      View Details
-                      <ChevronRight className="w-3 h-3" />
-                    </Link>
+                    {redemption.offer_key ? (
+                      <Link
+                        href={`/perks/${redemption.offer_key}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-nfw-blackberry hover:bg-gray-200 transition-colors text-xs font-medium"
+                      >
+                        View Details
+                        <ChevronRight className="w-3 h-3" />
+                      </Link>
+                    ) : redemption.store_name ? (
+                      <Link
+                        href={`/perks?nfw_partner=${encodeURIComponent(redemption.store_name)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-nfw-blackberry hover:bg-gray-200 transition-colors text-xs font-medium"
+                      >
+                        View Details
+                        <ChevronRight className="w-3 h-3" />
+                      </Link>
+                    ) : null}
                   </div>
                 </div>
               </div>
