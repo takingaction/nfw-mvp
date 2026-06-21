@@ -175,3 +175,12 @@
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
+
+@keyframes popupFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-popup-fade {
+  animation: popupFadeIn 1s ease-out forwards;
+}

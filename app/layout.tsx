@@ -7,6 +7,7 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/landing/Footer";
 import BackToTop from "@/components/BackToTop";
 import TermlyCMP from "@/components/TermlyCMP";
+import PromotionalPopupWrapper from "@/components/popup/PromotionalPopupWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -74,6 +75,7 @@ export default async function RootLayout({
       >
         {!isPublicRoute && <Navigation />}
         <TermlyCMP />
+        <PromotionalPopupWrapper />
         {children}
         {!isPublicRoute && <Footer />}
         {!isPublicRoute && <BackToTop />}

@@ -5194,3 +5194,153 @@ Fixed by using template literal: `` `${value || ""}` ``
 - `app/perks/page.tsx`:
   - Removed `[nfwOnly, user]` dependency from fetchNfwPerks useEffect, now only `[user]` (fetches NFW perks always when logged in)
   - Added conditional rendering of NFW perks section when `!nfwOnly && selectedCategories.length > 0 && nfwPerks.length > 0`
+
+## Session 2026-06-20: Promotional Popup System
+
+Implemented a promotional popup system with admin interface for creating/managing popups that display on specific pages or globally.
+
+### Database
+
+**Migration 098:** `supabase/migrations/098_create_promotional_popups.sql`
+
+Creates `promotional_popups` table with columns:
+- `id` (UUID, PK)
+- `title` (TEXT, required)
+- `body` (TEXT)
+- `image_url` (TEXT)
+- `cta_text` (TEXT)
+- `cta_url` (TEXT)
+- `target_pages` (TEXT[]) - array of page paths, ["*"] for global
+- `frequency_type` (TEXT) - once, per_session, every_visit, limited, daily, weekly
+- `frequency_value` (INT) - for limited type
+- `delay_seconds` (INT) - delay before showing
+- `is_active` (BOOLEAN)
+- `start_date`, `end_date` (TIMESTAMPTZ)
+- `created_at`, `updated_at` (TIMESTAMPTZ)
+
+RLS enabled - anyone can view active popups, admin can manage all.
+
+### API Routes
+
+**Admin CRUD:**
+- `GET /api/admin/promotional-popups` - List all popups
+- `POST /api/admin/promotional-popups` - Create popup
+- `GET /api/admin/promotional-popups/[id]` - Get single popup
+- `PUT /api/admin/promotional-popups/[id]` - Update popup
+- `DELETE /api/admin/promotional-popups/[id]` - Delete popup
+
+**Public:**
+- `GET /api/promotional-popups?path=/current/path` - Get active popups for page
+
+### Admin Page
+
+**`/admin/promotional-popups`** - Full CRUD interface:
+- Table view with status, title, target pages, frequency
+- Active/Inactive toggle per popup
+- Create/Edit modal with all fields
+- Delete confirmation
+- Conflict warning when creating popup for page with existing active popup
+
+### Frontend Component
+
+**`components/popup/PromotionalPopup.tsx`**:
+- **Desktop:** Centered modal, max-width ~800px, image left / text right, dim overlay, overlay click closes
+- **Mobile:** Bottom sheet slides up, no image, auto height, X to close
+- localStorage tracking for dismissal:
+  - `once` - permanently dismissed
+  - `per_session` - dismissed for browser session
+  - `every_visit` - shown every time
+  - `limited` - shown X times (per frequency_value)
+  - `daily` - once per day
+  - `weekly` - once per week
+
+**`components/popup/PromotionalPopupWrapper.tsx`**:
+- Client wrapper using `usePathname()` to pass current path
+
+### Integration
+
+- Added to `app/layout.tsx` via `PromotionalPopupWrapper`
+- Shows on all pages, filters by `target_pages` or global "*"
+- Multiple popups queue sequentially
+
+### Admin Hub Update
+
+Added "Promotional Popups" to Content & Website section in admin hub.
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/098_create_promotional_popups.sql` | Database table |
+| `app/api/admin/promotional-popups/route.ts` | Admin list/create |
+| `app/api/admin/promotional-popups/[id]/route.ts` | Admin get/update/delete |
+| `app/api/promotional-popups/route.ts` | Public active popups |
+| `app/admin/promotional-popups/page.tsx` | Admin page wrapper |
+| `app/admin/promotional-popups/AdminPromotionalPopups.tsx` | Admin UI |
+| `components/popup/PromotionalPopup.tsx` | Display component |
+| `components/popup/PromotionalPopupWrapper.tsx` | Client wrapper |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/layout.tsx` | Added PromotionalPopupWrapper |
+| `app/admin/AdminHubClient.tsx` | Added Promotional Popups link |
+
+### To Deploy
+
+1. Run migration 098 in Supabase SQL Editor
+2. Add popups via `/admin/promotional-popups`
+
+## Session 2026-06-21: Promotional Popup Updates
+
+### Database Migration
+
+**Migration 099:** `supabase/migrations/099_add_mobile_label_to_promotional_popups.sql`
+- Added `mobile_label` field (TEXT, default 'Special Offer') for mobile header text
+
+### Updates Made
+
+**Desktop Popup Layout:**
+- Image left column (50%), text/button right column (50%)
+- 1-second fade-in animation using `animate-popup-fade` CSS class
+- Image fills left column with rounded corners (top-left/bottom-left on mobile, left side on desktop)
+- Content vertically centered in right column
+- Button uses citrine background matching site style: `bg-nfw-citrine text-nfw-blackberry font-ui font-black text-sm tracking-[0.06em] uppercase hover:bg-nfw-citrine/90`
+
+**Mobile Popup Layout:**
+- Bottom sheet slides up from bottom
+- Shows "Special Offer" header (customizable via mobile_label)
+- No image on mobile
+- Auto height based on content
+
+**CSS Animation (globals.css):**
+```css
+@keyframes popupFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-popup-fade {
+  animation: popupFadeIn 1s ease-out forwards;
+}
+```
+
+**Admin Preview:**
+- Desktop/Mobile toggle to preview both layouts
+- Close button works in preview mode
+- Same styling as live popup
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `supabase/migrations/099_add_mobile_label_to_promotional_popups.sql` | Added mobile_label column |
+| `app/globals.css` | Added `animate-popup-fade` keyframes |
+| `components/popup/PromotionalPopup.tsx` | Full layout rewrite, mobile_label support, animation |
+| `app/admin/promotional-popups/AdminPromotionalPopups.tsx` | mobile_label field, preview updates |
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/099_add_mobile_label_to_promotional_popups.sql` | Mobile label migration |

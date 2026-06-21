@@ -24,6 +24,7 @@ const adminSections: AdminSection[] = [
       { label: "Legal Pages", href: "/admin/legal" },
       { label: "Manage Articles", href: "/admin/articles" },
       { label: "Manage Dashboard", href: "/admin/dashboard" },
+      { label: "Promotional Popups", href: "/admin/promotional-popups" },
     ],
   },
   {
