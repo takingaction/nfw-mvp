@@ -5344,3 +5344,59 @@ Added "Promotional Popups" to Content & Website section in admin hub.
 | File | Purpose |
 |------|---------|
 | `supabase/migrations/099_add_mobile_label_to_promotional_popups.sql` | Mobile label migration |
+
+## Session 2026-06-21: Seed Grant Email Template Sections
+
+### Database Migration
+
+**Migration 100:** `supabase/migrations/100_seed_grant_email_sections.sql`
+
+Seeded default builder sections for 4 grant email templates. Also updated subject lines.
+
+### Subject Line Updates
+
+| Template | Old Subject | New Subject |
+|----------|-------------|-------------|
+| `grant-approved` | "Your NFW grant application has been approved!" | "Your microgrant is approved!" |
+| `grant-not-approved` | "Update on your NFW grant application" | "An update on your NFW microgrant application" |
+
+### Section Structure per Template
+
+Each template has 5 sections:
+1. **Hero** - Welcome hero image with overlay text
+2. **Headline** - Centered, Playfair Display 28px, lilac background
+3. **Body** - Centered, DM Sans 16px, lilac background, variable placeholders
+4. **CTA** - Centered button, color varies by template
+5. **Spacer** - 30px height, lilac background
+
+### Per-Template Content
+
+**grant-approved** (citrine CTA):
+- Hero: "Your microgrant is approved!"
+- Headline: "Congratulations, {{name}}!"
+- Body: "Great news! Your application for the {{grantCycleName}} grant has been approved. We're excited to support your work. Next steps will be sent shortly."
+- CTA: "VIEW YOUR DASHBOARD" → `{{dashboard_url}}`
+
+**grant-not-approved** (wisteria CTA):
+- Hero: "An update on your application"
+- Headline: "Thank You for Applying"
+- Body: "Dear {{name}}, thank you for your interest in the {{grantCycleName}} grant program. After careful review, we're unable to move forward with your application at this time. We encourage you to apply for future grant cycles."
+- CTA: "BROWSE OTHER GRANTS" → `{{grants_url}}`
+
+**grant-payment-pending** (wisteria CTA):
+- Hero: "Payment being processed"
+- Headline: "Payment Processing Underway"
+- Body: "Dear {{name}}, your grant payment for the {{grantCycleName}} grant in the amount of {{amount}} is being processed. You will receive another email once the payment has been sent."
+- CTA: "VIEW APPLICATION STATUS" → `{{dashboard_url}}`
+
+**grant-payment-sent** (citrine CTA):
+- Hero: "Payment sent!"
+- Headline: "Your Payment is on Its Way!"
+- Body: "Dear {{name}}, great news! Your grant payment of {{amount}} for the {{grantCycleName}} grant has been sent. Please allow 1-3 business days for the funds to arrive in your account."
+- CTA: "VIEW YOUR DASHBOARD" → `{{dashboard_url}}`
+
+### To Deploy
+
+1. Run migration 100 in Supabase SQL Editor
+2. Navigate to `/admin/emails`
+3. Click any grant template → "Edit with Builder" to customize text
