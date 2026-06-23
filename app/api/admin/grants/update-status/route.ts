@@ -137,37 +137,35 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
 
-    // TEMPORARILY DISABLED: Status update emails
-    // Re-enable by uncommenting this block when ready to send automatic status emails
-    //
-    // const { data: grantData } = await supabaseAdmin
-    //   .from("grants")
-    //   .select("user_id, grant_cycles(cycle_name)")
-    //   .eq("id", grantId)
-    //   .single();
-    //
-    // if (grantData) {
-    //   const { data: profile } = await supabaseAdmin
-    //     .from("profiles")
-    //     .select("full_name")
-    //     .eq("id", grantData.user_id)
-    //     .single();
-    //
-    //   const { data: userData } = await supabaseAdmin.auth.admin.getUserById(grantData.user_id);
-    //   const userEmail = userData?.user?.email;
-    //
-    //   if (userEmail) {
-    //     const { sendGrantStatusEmail } = await import("@/lib/email");
-    //     await sendGrantStatusEmail({
-    //       to: userEmail,
-    //       name: profile?.full_name || "Member",
-    //       status,
-    //       grantCycleName:
-    //         (grantData.grant_cycles as any)?.cycle_name || "NFW Microgrant",
-    //       amountApproved: amount_approved,
-    //     });
-    //   }
-    // }
+    // Send status update email
+    const { data: grantData } = await supabaseAdmin
+      .from("grants")
+      .select("user_id, grant_cycles(cycle_name)")
+      .eq("id", grantId)
+      .single();
+
+    if (grantData) {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("full_name")
+        .eq("id", grantData.user_id)
+        .single();
+
+      const { data: userData } = await supabaseAdmin.auth.admin.getUserById(grantData.user_id);
+      const userEmail = userData?.user?.email;
+
+      if (userEmail) {
+        const { sendGrantStatusEmail } = await import("@/lib/email");
+        await sendGrantStatusEmail({
+          to: userEmail,
+          name: profile?.full_name || "Member",
+          status,
+          grantCycleName:
+            (grantData.grant_cycles as any)?.cycle_name || "NFW Microgrant",
+          amountApproved: amount_approved,
+        });
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch {
