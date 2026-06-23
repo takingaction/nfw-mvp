@@ -40,6 +40,7 @@ export default function DeleteCycleButton({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete");
+      setLoading(false);
       router.refresh();
     } catch (err: any) {
       alert(err.message);
