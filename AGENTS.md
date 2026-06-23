@@ -4275,9 +4275,21 @@ const nfwUserIdAttr = orderAttributes.find(
 - `grant-payment-sent` (status = "payment_sent")
 
 **Files modified:**
-- `app/api/admin/grants/update-status/route.ts` - Commented out automatic `sendGrantStatusEmail` call (lines 66-95)
+- `app/api/admin/grants/update-status/route.ts` - Commented out automatic `sendGrantStatusEmail` call
 
 **To re-enable:** Uncomment the email sending block in `app/api/admin/grants/update-status/route.ts` and update this session entry.
+
+### Session 2026-06-23: Re-enabled Grant Status Emails
+
+**Fixed:** Re-enabled automatic status update emails by uncommenting the email sending block in `app/api/admin/grants/update-status/route.ts`.
+
+**Emails now respect the `is_active` toggle** in `/admin/emails`:
+- Enable or disable each template individually via the admin UI
+- Active templates (green "ACTIVE" badge) will send when grant status changes
+- Inactive templates (gray badge) will be skipped
+
+**Files modified:**
+- `app/api/admin/grants/update-status/route.ts` - Uncommented automatic `sendGrantStatusEmail` call
 
 ### Session 2026-06-12: Stripe Connect Onboarding Status Fixes
 
