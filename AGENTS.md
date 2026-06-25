@@ -5421,20 +5421,21 @@ Page publishing failed with "Failed to Publish" error. Preview showed correct ed
 
 ### Root Cause
 
-Migration 076 (`076_fix_search_path_for_functions.sql`) recreated `publish_page` and `revert_page` functions with incorrect column names (`section_key` instead of `section_type`).
+Two issues found:
+1. **Migration 076/101:** `publish_page` and `revert_page` had `SET search_path = pg_catalog` which only looks in system tables, not user tables like `page_sections` and `pages`
+2. **Migration 076:** Used wrong column name (`section_key` instead of `section_type`)
 
 ### Fix
 
-Created migration 101 (`101_fix_page_publish_functions.sql`) that:
-1. Uses original 007 DELETE+INSERT pattern (proven to work)
-2. Keeps 076 security fix (`SET search_path = pg_catalog`)
-3. Uses correct column name (`section_type`)
+**Migration 101:** Fixed column name from `section_key` to `section_type`
+**Migration 102:** Fixed search_path to `SET search_path = pg_catalog, public`
 
 ### Files Created
 
-- `supabase/migrations/101_fix_page_publish_functions.sql` - Fixes `publish_page` and `revert_page` functions
+- `supabase/migrations/101_fix_page_publish_functions.sql` - Fixes column name
+- `supabase/migrations/102_fix_page_functions_search_path.sql` - Fixes search_path
 
 ### To Deploy
 
-1. Run migration 101 in Supabase SQL Editor
+1. Run migration 102 in Supabase SQL Editor
 2. Try publishing a page again
