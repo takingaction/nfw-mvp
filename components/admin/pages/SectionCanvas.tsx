@@ -220,8 +220,9 @@ export default function SectionCanvas({ page, initialSections, templates }: Prop
         try {
           await publishPage(page.id, page.slug);
           showToast("Page published successfully");
-        } catch {
-          showToast("Failed to publish");
+        } catch (err: any) {
+          console.error("[publishPage] Error:", err);
+          showToast("Failed to publish: " + (err?.message || "Unknown error"));
         } finally {
           setPublishing(false);
         }
