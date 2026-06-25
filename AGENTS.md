@@ -5412,3 +5412,29 @@ Each template has 5 sections:
 1. Run migration 100 in Supabase SQL Editor
 2. Navigate to `/admin/emails`
 3. Click any grant template → "Edit with Builder" to customize text
+
+## Session 2026-06-25: Fix Page Publishing Bug
+
+### Problem
+
+Page publishing failed with "Failed to Publish" error. Preview showed correct edits, but live page still showed old content.
+
+### Root Cause
+
+Migration 076 (`076_fix_search_path_for_functions.sql`) recreated `publish_page` and `revert_page` functions with incorrect column names (`section_key` instead of `section_type`).
+
+### Fix
+
+Created migration 101 (`101_fix_page_publish_functions.sql`) that:
+1. Uses original 007 DELETE+INSERT pattern (proven to work)
+2. Keeps 076 security fix (`SET search_path = pg_catalog`)
+3. Uses correct column name (`section_type`)
+
+### Files Created
+
+- `supabase/migrations/101_fix_page_publish_functions.sql` - Fixes `publish_page` and `revert_page` functions
+
+### To Deploy
+
+1. Run migration 101 in Supabase SQL Editor
+2. Try publishing a page again
