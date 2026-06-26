@@ -22,6 +22,7 @@ export async function GET() {
         nfw_perks (
           id,
           title,
+          slug,
           partner_name,
           partner_logo_url,
           landing_page_url
@@ -40,6 +41,7 @@ export async function GET() {
       perk_id: r.perk_id,
       redeemed_at: r.redeemed_at,
       title: r.nfw_perks?.title || "NFW Perk",
+      slug: r.nfw_perks?.slug || null,
       partner_name: r.nfw_perks?.partner_name || null,
       logo_url: r.nfw_perks?.partner_logo_url || null,
       landing_page_url: r.nfw_perks?.landing_page_url || null,
