@@ -60,6 +60,7 @@ export async function PUT(
       expires_at,
       is_active,
       categories,
+      slug,
     } = body;
 
     if (!landing_page_url) {
@@ -67,6 +68,11 @@ export async function PUT(
     }
 
     const supabase = await createClient();
+
+    // Generate slug from title if not provided
+    const generatedSlug = slug || (title
+      ? title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+      : null);
 
     const { data: perk, error } = await supabase
       .from("nfw_perks")
@@ -82,6 +88,7 @@ export async function PUT(
         expires_at,
         is_active,
         categories,
+        slug: generatedSlug,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)

@@ -58,6 +58,7 @@ export async function POST(request: Request) {
       expires_at,
       is_active,
       categories,
+      slug,
     } = body;
 
     if (!title) {
@@ -69,6 +70,12 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createClient();
+
+    // Generate slug from title if not provided
+    const generatedSlug = slug || title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
 
     const { data: perk, error } = await supabase
       .from("nfw_perks")
@@ -85,6 +92,7 @@ export async function POST(request: Request) {
         is_active: is_active !== false,
         categories: categories || [],
         discount_type: "landing_page",
+        slug: generatedSlug,
       })
       .select()
       .single();

@@ -1009,8 +1009,7 @@ export default function PerksPage() {
                               }
                             }}
                             onClick={() => {
-                              setSelectedNfwPerk(perk);
-                              setIsNfwDetailOpen(true);
+                              window.location.href = `/perks/nfw/${perk.slug}`;
                             }}
                           />
                         ))}
@@ -1093,7 +1092,7 @@ export default function PerksPage() {
                 )}
 
                 {!nfwOnly && selectedCategories.length > 0 && nfwPerks.length > 0 && (
-                  <div className="mt-8 pt-8 border-t border-nfw-blackberry/10">
+                    <div className="mt-8 pt-8 border-t border-nfw-blackberry/10">
                     <h3 className="font-serif text-lg font-semibold text-nfw-blackberry mb-4">
                       NFW Exclusive Perks in Selected Categories
                     </h3>
@@ -1120,8 +1119,7 @@ export default function PerksPage() {
                               }
                             }}
                             onClick={() => {
-                              setSelectedNfwPerk(perk);
-                              setIsNfwDetailOpen(true);
+                              window.location.href = `/perks/nfw/${perk.slug}`;
                             }}
                           />
                         ))}

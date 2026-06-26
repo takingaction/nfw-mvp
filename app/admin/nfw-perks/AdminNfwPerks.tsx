@@ -7,6 +7,7 @@ import MediaLibraryModal from "@/components/admin/MediaLibraryModal";
 type NfwPerk = {
   id: string;
   title: string;
+  slug: string | null;
   description: string | null;
   partner_name: string | null;
   partner_logo_url: string | null;
@@ -50,6 +51,7 @@ export default function AdminNfwPerks() {
 
   const [formData, setFormData] = useState({
     title: "",
+    slug: "",
     description: "",
     partner_name: "",
     partner_logo_url: "",
@@ -84,6 +86,7 @@ export default function AdminNfwPerks() {
     setEditingPerk(null);
     setFormData({
       title: "",
+      slug: "",
       description: "",
       partner_name: "",
       partner_logo_url: "",
@@ -102,6 +105,7 @@ export default function AdminNfwPerks() {
     setEditingPerk(perk);
     setFormData({
       title: perk.title,
+      slug: perk.slug || "",
       description: perk.description || "",
       partner_name: perk.partner_name || "",
       partner_logo_url: perk.partner_logo_url || "",
@@ -146,6 +150,7 @@ export default function AdminNfwPerks() {
 
     const payload = {
       title: formData.title,
+      slug: formData.slug || null,
       description: formData.description || null,
       partner_name: formData.partner_name || null,
       partner_logo_url: formData.partner_logo_url || null,
@@ -266,6 +271,11 @@ export default function AdminNfwPerks() {
                 <tr key={perk.id} className={!perk.is_active ? "bg-nfw-stone/5" : ""}>
                   <td className="px-6 py-4">
                     <div className="font-medium text-nfw-blackberry font-ui">{perk.title}</div>
+                    {perk.slug && (
+                      <div className="text-xs text-nfw-blackberry/40 font-ui mt-0.5">
+                        /perks/nfw/{perk.slug}
+                      </div>
+                    )}
                     {perk.categories && perk.categories.length > 0 && (
                       <div className="text-xs text-nfw-blackberry/50 font-ui mt-0.5">
                         {perk.categories.slice(0, 2).join(", ")}
@@ -351,6 +361,22 @@ export default function AdminNfwPerks() {
                   className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry font-ui"
                   placeholder="e.g., 20% off at Partner Store"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-nfw-blackberry mb-1 font-ui">
+                  URL Slug
+                </label>
+                <input
+                  type="text"
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })}
+                  className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry font-ui"
+                  placeholder="e.g., summer-sale (auto-generated if empty)"
+                />
+                <p className="text-xs text-nfw-blackberry/50 mt-1 font-ui">
+                  Leave empty to auto-generate from title. URL: /perks/nfw/{formData.slug || "your-slug"}
+                </p>
               </div>
 
               <div>
