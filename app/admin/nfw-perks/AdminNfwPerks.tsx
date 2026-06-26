@@ -48,6 +48,7 @@ export default function AdminNfwPerks() {
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
   const [mediaLibraryCallback, setMediaLibraryCallback] = useState<((url: string) => void) | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -98,6 +99,7 @@ export default function AdminNfwPerks() {
       is_active: true,
       categories: [],
     });
+    setSlugManuallyEdited(false);
     setShowModal(true);
   }
 
@@ -117,7 +119,7 @@ export default function AdminNfwPerks() {
       is_active: perk.is_active,
       categories: perk.categories || [],
     });
-    setShowModal(true);
+    setSlugManuallyEdited(true);
   }
 
   function openMediaLibrary(callback: (url: string) => void) {
@@ -367,7 +369,7 @@ export default function AdminNfwPerks() {
                     setFormData((prev) => ({
                       ...prev,
                       title: newTitle,
-                      slug: prev.slug || newTitle
+                      slug: slugManuallyEdited ? prev.slug : newTitle
                         .toLowerCase()
                         .replace(/[^a-z0-9]+/g, "-")
                         .replace(/^-|-$/g, ""),
@@ -385,7 +387,10 @@ export default function AdminNfwPerks() {
                 <input
                   type="text"
                   value={formData.slug}
-                  onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })}
+                  onChange={(e) => {
+                    setSlugManuallyEdited(true);
+                    setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") });
+                  }}
                   className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry font-ui"
                   placeholder="e.g., summer-sale"
                 />
