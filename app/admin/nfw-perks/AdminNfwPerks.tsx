@@ -140,6 +140,11 @@ export default function AdminNfwPerks() {
       return;
     }
 
+    if (!formData.slug) {
+      setError("URL slug is required");
+      return;
+    }
+
     if (!formData.landing_page_url) {
       setError("Landing page URL is required");
       return;
@@ -357,7 +362,17 @@ export default function AdminNfwPerks() {
                 <input
                   type="text"
                   value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  onChange={(e) => {
+                    const newTitle = e.target.value;
+                    setFormData((prev) => ({
+                      ...prev,
+                      title: newTitle,
+                      slug: prev.slug || newTitle
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]+/g, "-")
+                        .replace(/^-|-$/g, ""),
+                    }));
+                  }}
                   className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry font-ui"
                   placeholder="e.g., 20% off at Partner Store"
                 />
@@ -365,17 +380,17 @@ export default function AdminNfwPerks() {
 
               <div>
                 <label className="block text-sm font-medium text-nfw-blackberry mb-1 font-ui">
-                  URL Slug
+                  URL Slug <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.slug}
                   onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })}
                   className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry font-ui"
-                  placeholder="e.g., summer-sale (auto-generated if empty)"
+                  placeholder="e.g., summer-sale"
                 />
                 <p className="text-xs text-nfw-blackberry/50 mt-1 font-ui">
-                  Leave empty to auto-generate from title. URL: /perks/nfw/{formData.slug || "your-slug"}
+                  URL: /perks/nfw/{formData.slug || "your-slug"}
                 </p>
               </div>
 
