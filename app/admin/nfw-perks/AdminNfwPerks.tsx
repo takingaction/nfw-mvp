@@ -280,9 +280,14 @@ export default function AdminNfwPerks() {
                   <td className="px-6 py-4">
                     <div className="font-medium text-nfw-blackberry font-ui">{perk.title}</div>
                     {perk.slug && (
-                      <div className="text-xs text-nfw-blackberry/40 font-ui mt-0.5">
+                      <a
+                        href={`/perks/nfw/${perk.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-nfw-aubergine hover:underline font-ui mt-0.5 inline-block"
+                      >
                         /perks/nfw/{perk.slug}
-                      </div>
+                      </a>
                     )}
                     {perk.categories && perk.categories.length > 0 && (
                       <div className="text-xs text-nfw-blackberry/50 font-ui mt-0.5">
