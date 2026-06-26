@@ -1009,7 +1009,8 @@ export default function PerksPage() {
                               }
                             }}
                             onClick={() => {
-                              window.location.href = `/perks/nfw/${perk.slug}`;
+                              setSelectedNfwPerk(perk);
+                              setIsNfwDetailOpen(true);
                             }}
                           />
                         ))}
@@ -1119,7 +1120,8 @@ export default function PerksPage() {
                               }
                             }}
                             onClick={() => {
-                              window.location.href = `/perks/nfw/${perk.slug}`;
+                              setSelectedNfwPerk(perk);
+                              setIsNfwDetailOpen(true);
                             }}
                           />
                         ))}
