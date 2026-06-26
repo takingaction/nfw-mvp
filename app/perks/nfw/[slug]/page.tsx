@@ -179,7 +179,7 @@ export default function NfwPerkDetailPage() {
                       <img
                         src={perk.partner_logo_url}
                         alt=""
-                        className="w-full h-full object-contain"
+                        className="w-full h-full object-cover"
                       />
                     ) : (
                       <span className="text-3xl opacity-30">🎁</span>
