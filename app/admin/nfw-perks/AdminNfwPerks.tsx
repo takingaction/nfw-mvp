@@ -120,6 +120,7 @@ export default function AdminNfwPerks() {
       categories: perk.categories || [],
     });
     setSlugManuallyEdited(true);
+    setShowModal(true);
   }
 
   function openMediaLibrary(callback: (url: string) => void) {
