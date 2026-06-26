@@ -9,7 +9,6 @@ import {
   Heart,
   Clock,
   Loader2,
-  CheckCircle,
   XCircle,
 } from "lucide-react";
 
@@ -35,8 +34,6 @@ export default function NfwPerkDetailPage() {
   const [perk, setPerk] = useState<NfwPerk | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [redeeming, setRedeeming] = useState(false);
-  const [redeemed, setRedeemed] = useState(false);
   const [liked, setLiked] = useState(false);
 
   useEffect(() => {
@@ -47,16 +44,7 @@ export default function NfwPerkDetailPage() {
 
   const fetchPerk = async () => {
     try {
-      // Get user ID from profile API
-      const profileRes = await fetch("/api/auth/profile");
-      const profileData = await profileRes.json();
-      const userId = profileData?.profile?.id;
-
-      const url = userId
-        ? `/api/nfw-perks/slug/${encodeURIComponent(slug)}?userId=${userId}`
-        : `/api/nfw-perks/slug/${encodeURIComponent(slug)}`;
-
-      const res = await fetch(url);
+      const res = await fetch(`/api/nfw-perks/slug/${encodeURIComponent(slug)}`);
 
       if (!res.ok) {
         throw new Error("Perk not found");
@@ -64,9 +52,6 @@ export default function NfwPerkDetailPage() {
 
       const data = await res.json();
       setPerk(data);
-      if (data.userHasRedeemed) {
-        setRedeemed(true);
-      }
     } catch (err: any) {
       console.error("Error fetching perk:", err);
       setError(err.message || "Failed to load perk");
@@ -75,32 +60,9 @@ export default function NfwPerkDetailPage() {
     }
   };
 
-  const handleRedeem = async () => {
-    if (!perk?.id || !perk?.landing_page_url) return;
-
-    setRedeeming(true);
-
-    try {
-      // Redeem via API
-      const res = await fetch(`/api/nfw-perks/${perk.id}/redeem`, {
-        method: "POST",
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to redeem");
-      }
-
-      setRedeemed(true);
-
-      // Open landing page
-      window.open(perk.landing_page_url, "_blank");
-    } catch (err: any) {
-      console.error("Redeem error:", err);
-      alert(err.message || "Failed to redeem. Please try again.");
-    } finally {
-      setRedeeming(false);
-    }
+  const handleRedeem = () => {
+    if (!perk?.landing_page_url) return;
+    window.open(perk.landing_page_url, "_blank");
   };
 
   const formatExpiry = (date: string | null) => {
@@ -280,40 +242,15 @@ export default function NfwPerkDetailPage() {
                   Redeem This Offer
                 </h3>
 
-                {redeemed && (
-                  <div className="mb-4 p-3 bg-nfw-citrine/20 border border-nfw-citrine rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-nfw-blackberry">
-                          Redeemed!
-                        </p>
-                        <p className="text-xs text-nfw-blackberry/70 mt-1">
-                          You&apos;ve used this perk. Visit the partner site to claim your offer.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 <button
                   onClick={handleRedeem}
-                  disabled={!perk.landing_page_url || redeeming}
+                  disabled={!perk.landing_page_url}
                   className={`w-full px-4 py-3 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 ${
-                    !perk.landing_page_url || redeeming ? "opacity-50 cursor-not-allowed" : ""
+                    !perk.landing_page_url ? "opacity-50 cursor-not-allowed" : ""
                   }`}
                 >
-                  {redeeming ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Redirecting...
-                    </>
-                  ) : (
-                    <>
-                      <ExternalLink className="w-4 h-4" />
-                      {redeemed ? "Visit Again" : "Redeem Online"}
-                    </>
-                  )}
+                  <ExternalLink className="w-4 h-4" />
+                  Visit Partner Site
                 </button>
 
                 {!perk.landing_page_url && (
