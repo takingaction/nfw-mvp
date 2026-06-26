@@ -5439,3 +5439,93 @@ Two issues found:
 
 1. Run migration 102 in Supabase SQL Editor
 2. Try publishing a page again
+
+## Session 2026-06-26: NFW Perks Slug Feature
+
+### Goal
+- Add slug feature to NFW perks with dedicated detail page at `/perks/nfw/[slug]`, plus admin UI for slug management
+
+### Constraints & Preferences
+- Slug auto-generated from title on create, can be edited by admin
+- Existing perks don't need slugs (starting fresh)
+- No old URLs to redirect (new feature)
+
+### Database Migration
+
+**Migration 103:** `supabase/migrations/103_add_slug_to_nfw_perks.sql`
+- Added `slug TEXT UNIQUE` column to `nfw_perks` table
+- Created index `idx_nfw_perks_slug` on slug column
+
+### API Routes Created/Modified
+
+**POST `/api/admin/nfw-perks`** - Updated to accept and generate slug on create
+**PUT `/api/admin/nfw-perks/[id]`** - Updated to accept slug updates
+**GET `/api/nfw-perks/slug/[slug]`** - Fetch perk by slug (route at `/api/nfw-perks/slug/:slug`)
+
+### Admin UI Changes
+
+**`app/admin/nfw-perks/AdminNfwPerks.tsx`:**
+- Added slug field to NfwPerk type
+- Added slug to formData state (initial, create, edit)
+- Title onChange auto-fills slug field (unless slug was manually edited)
+- Slug field marked as mandatory (red asterisk)
+- Added slug validation on save
+- Added clickable slug URLs in perk table rows (opens in new tab)
+- Fixed openEditModal missing `setShowModal(true)` call
+- Reset `slugManuallyEdited` flag when opening create modal
+
+### Public Detail Page
+
+**`app/perks/nfw/[slug]/page.tsx`:**
+- Created new page for NFW perk detail views
+- Layout: 2-column grid (3/5 content, 2/5 sidebar)
+- Shows: partner logo, title, description, terms, estimated value, categories, expiry
+- "Visit Partner Site" button opens landing_page_url directly (no redemption tracking)
+- No redemption limits - unlimited visits allowed
+
+### NFW Perk Slideout Panel
+
+**`components/perks/NfwPerkDetailPanel.tsx`:**
+- Removed `onRedeem` prop (no longer needed)
+- Removed `redeeming` state (no longer tracks redemption)
+- Button always shows "Visit Partner Site" and opens landing_page_url directly
+- Simplified to just open URL on click
+
+### /perks Page Integration
+
+**`app/perks/page.tsx`:**
+- NFW perk cards now use `setSelectedNfwPerk` + `setIsNfwDetailOpen` for slideout instead of `window.location.href`
+- Removed unused `handleNfwPerkRedeem` function
+
+### Redeemed Perks Panel
+
+**`components/dashboard/RedeemedPerksPanel.tsx`:**
+- Added `slug` field to Redemption interface
+- Added `slug` to NFW perk redemptions mapping
+- "Details" button now links to `/perks/nfw/${slug}` for NFW perks
+
+### API Route Fix
+
+**Issue:** Route at `/api/nfw-perks/[slug]` conflicted with `/api/nfw-perks/[id]`
+
+**Solution:** Moved slug route to `/api/nfw-perks/slug/[slug]` (nested route)
+
+### Commits
+
+- `b2baaa3` - feat: add slug field to NFW perks admin UI and API
+- `7ea3774` - fix: properly track slug manual edit state to fix auto-fill
+- `d05edf0` - fix: correct API route path for NFW perk slug lookup
+- `2525d9b` - fix: use object-cover for partner logo
+- `87139c1` - fix: remove redemption limits on NFW perks, always allow visiting partner site
+- `b0cd975` - fix: openEditModal now opens the modal
+- `b3de9cf` - fix: make NFW perk URLs clickable to open in new tab
+- `132232a` - fix: NFW perks open in slideout panel instead of navigating
+- `dd73f91` - fix: NFW perk redemptions show detail page link in slideout
+- `e100426` - fix: include slug in NFW perk redemptions API response
+
+### To Deploy
+
+1. Run migration 103 in Supabase SQL Editor
+2. Add NFW perks with slugs via `/admin/nfw-perks`
+3. Slug auto-fills from title, or can be manually edited
+4. Click slug URL in admin table to view perk in new tab
