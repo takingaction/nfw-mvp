@@ -21,7 +21,6 @@ type NfwPerkDetailPanelProps = {
   perk: NfwPerk | null;
   isOpen: boolean;
   onClose: () => void;
-  onRedeem?: (perk: NfwPerk) => void;
   liked?: boolean;
   onToggleLike?: (partnerName: string, logoUrl: string | null, liked: boolean) => void;
 };
@@ -45,12 +44,10 @@ export default function NfwPerkDetailPanel({
   perk,
   isOpen,
   onClose,
-  onRedeem,
   liked = false,
   onToggleLike,
 }: NfwPerkDetailPanelProps) {
   const [likeAnimating, setLikeAnimating] = useState(false);
-  const [redeeming, setRedeeming] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -214,46 +211,18 @@ export default function NfwPerkDetailPanel({
           </div>
 
           <div className="p-4 border-t border-nfw-blackberry/10 bg-white">
-            <div className="space-y-3">
-              <button
-                onClick={() => {
-                  if (!perk.landing_page_url) return;
-                  
-                  // If already redeemed, just open URL directly without API call
-                  if (perk.userHasRedeemed) {
-                    window.open(perk.landing_page_url, "_blank");
-                    return;
-                  }
-                  
-                  // Not yet redeemed - call the redeem handler
-                  if (!redeeming) {
-                    setRedeeming(true);
-                    onRedeem?.(perk);
-                  }
-                }}
-                disabled={!perk.landing_page_url || redeeming}
-                className={`w-full px-4 py-2.5 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm ${
-                  !perk.landing_page_url || redeeming ? "opacity-50 cursor-not-allowed" : ""
-                }`}
-              >
-                {redeeming ? (
-                  <>
-                    <span className="animate-spin">⏳</span>
-                    Redirecting...
-                  </>
-                ) : perk.userHasRedeemed ? (
-                  <>
-                    <Globe className="w-4 h-4" />
-                    View Again
-                  </>
-                ) : (
-                  <>
-                    <Globe className="w-4 h-4" />
-                    Redeem Online
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                if (perk.landing_page_url) {
+                  window.open(perk.landing_page_url, "_blank");
+                }
+              }}
+              disabled={!perk.landing_page_url}
+              className="w-full px-4 py-2.5 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+            >
+              <Globe className="w-4 h-4" />
+              Visit Partner Site
+            </button>
           </div>
         </div>
       </div>

@@ -1178,7 +1178,6 @@ export default function PerksPage() {
         perk={selectedNfwPerk}
         isOpen={isNfwDetailOpen}
         onClose={() => setIsNfwDetailOpen(false)}
-        onRedeem={handleNfwPerkRedeem}
         liked={selectedNfwPerk ? nfwLikedPartners.includes(selectedNfwPerk.partner_name || "") : false}
         onToggleLike={(partnerName, logoUrl, liked) => {
           if (selectedNfwPerk) {

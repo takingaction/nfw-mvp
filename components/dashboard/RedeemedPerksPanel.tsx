@@ -28,6 +28,7 @@ interface Redemption {
   status: "active" | "used" | "expired";
   redeemed_at: string;
   expires_at: string | null;
+  slug?: string | null;
 }
 
 interface RedeemedPerksPanelProps {
@@ -99,6 +100,7 @@ export default function RedeemedPerksPanel({
           status: "active",
           redeemed_at: r.redeemed_at,
           expires_at: null,
+          slug: r.slug,
         }));
       }
 
@@ -353,7 +355,16 @@ export default function RedeemedPerksPanel({
                               Open
                             </button>
                           )}
-                          {redemption.offer_key ? (
+                          {redemption.slug ? (
+                            <Link
+                              href={`/perks/nfw/${redemption.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-nfw-blackberry hover:bg-gray-200 transition-colors text-xs font-medium"
+                            >
+                              Details
+                            </Link>
+                          ) : redemption.offer_key ? (
                             <Link
                               href={`/perks/${redemption.offer_key}`}
                               target="_blank"
