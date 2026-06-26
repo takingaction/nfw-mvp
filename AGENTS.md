@@ -5529,3 +5529,44 @@ Two issues found:
 2. Add NFW perks with slugs via `/admin/nfw-perks`
 3. Slug auto-fills from title, or can be manually edited
 4. Click slug URL in admin table to view perk in new tab
+
+## Session 2026-06-26: Admin Copy Link Button
+
+### Feature
+
+Added "Copy Link" button to both offer slideout panels for admins only.
+
+### Changes
+
+**`app/perks/page.tsx`:**
+- Added `profile` state to store profile data including `is_admin`
+- Profile is fetched and stored when user logs in
+- Passes `isAdmin={profile?.is_admin}` to both `OfferDetailPanel` and `NfwPerkDetailPanel`
+
+**`components/perks/OfferDetailPanel.tsx`:**
+- Added `isAdmin?: boolean` prop
+- Added Copy icon import
+- Added `linkCopied` state for feedback
+- Added "Copy Link" button in panel header (next to close button)
+- Button only shows when `isAdmin === true`
+- Copies `/perks/{offerKey}` URL to clipboard
+
+**`components/perks/NfwPerkDetailPanel.tsx`:**
+- Added `slug` field to NfwPerk type
+- Added `isAdmin?: boolean` prop
+- Added Copy and Check icon imports
+- Added `linkCopied` state for feedback
+- Added "Copy Link" button in panel header (next to close button)
+- Button only shows when `isAdmin === true` and perk has a slug
+- Copies `/perks/nfw/{slug}` URL to clipboard
+
+### UI Behavior
+
+- Button shows "Copy Link" with Copy icon
+- After clicking, shows "Copied!" with Check icon for 2 seconds
+- Button styled with aubergine background tint to differentiate from close button
+
+### Commits
+
+- `45c2565` - feat: add Copy Link button for admins on offer detail panel
+- `1a37977` - feat: add Copy Link button for admins on NFW perk slideout panel
