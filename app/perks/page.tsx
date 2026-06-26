@@ -1201,6 +1201,7 @@ export default function PerksPage() {
             handleNfwPartnerToggleLike(partnerName, logoUrl, liked);
           }
         }}
+        isAdmin={profile?.is_admin}
       />
     </main>
   );

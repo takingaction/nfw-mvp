@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, ArrowLeft, Globe, Heart, Clock } from "lucide-react";
+import { X, ArrowLeft, Globe, Heart, Clock, Copy, Check } from "lucide-react";
 
 type NfwPerk = {
   id: string;
   title: string;
+  slug: string | null;
   description: string | null;
   partner_name: string | null;
   partner_logo_url: string | null;
@@ -23,6 +24,7 @@ type NfwPerkDetailPanelProps = {
   onClose: () => void;
   liked?: boolean;
   onToggleLike?: (partnerName: string, logoUrl: string | null, liked: boolean) => void;
+  isAdmin?: boolean;
 };
 
 function formatExpiry(date: string | null): string {
@@ -46,10 +48,12 @@ export default function NfwPerkDetailPanel({
   onClose,
   liked = false,
   onToggleLike,
+  isAdmin = false,
 }: NfwPerkDetailPanelProps) {
   const [likeAnimating, setLikeAnimating] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -107,12 +111,37 @@ export default function NfwPerkDetailPanel({
               <ArrowLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Back to Results</span>
             </button>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-nfw-blackberry/5 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-nfw-blackberry/60" />
-            </button>
+            <div className="flex items-center gap-2">
+              {isAdmin && perk?.slug && (
+                <button
+                  onClick={() => {
+                    const url = `${window.location.origin}/perks/nfw/${perk.slug}`;
+                    navigator.clipboard.writeText(url);
+                    setLinkCopied(true);
+                    setTimeout(() => setLinkCopied(false), 2000);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-nfw-aubergine bg-nfw-aubergine/10 hover:bg-nfw-aubergine/20 rounded-lg transition-colors"
+                >
+                  {linkCopied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      Copy Link
+                    </>
+                  )}
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-nfw-blackberry/5 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-nfw-blackberry/60" />
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto">
