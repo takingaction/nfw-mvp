@@ -17,6 +17,7 @@ import {
   User,
   Heart,
   Check,
+  Copy,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -27,6 +28,7 @@ interface OfferDetailPanelProps {
   onClose: () => void;
   likedStores?: number[];
   onToggleLike?: (storeKey: number, storeName: string, logoUrl: string | undefined, liked: boolean) => void;
+  isAdmin?: boolean;
 }
 
 interface Offer {
@@ -122,6 +124,7 @@ export default function OfferDetailPanel({
   storeKey: storeKeyProp,
   likedStores = [],
   onToggleLike,
+  isAdmin = false,
 }: OfferDetailPanelProps) {
   const [offer, setOffer] = useState<Offer | null>(null);
   const [loading, setLoading] = useState(false);
@@ -142,6 +145,7 @@ export default function OfferDetailPanel({
   } | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const [selectedLocation, setSelectedLocation] = useState<{
     key: string;
@@ -549,12 +553,37 @@ export default function OfferDetailPanel({
               <ArrowLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Back to Results</span>
             </button>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-nfw-blackberry/5 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-nfw-blackberry/60" />
-            </button>
+            <div className="flex items-center gap-2">
+              {isAdmin && offerKey && (
+                <button
+                  onClick={() => {
+                    const url = `${window.location.origin}/perks/${offerKey}`;
+                    navigator.clipboard.writeText(url);
+                    setLinkCopied(true);
+                    setTimeout(() => setLinkCopied(false), 2000);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-nfw-aubergine bg-nfw-aubergine/10 hover:bg-nfw-aubergine/20 rounded-lg transition-colors"
+                >
+                  {linkCopied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      Copy Link
+                    </>
+                  )}
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-nfw-blackberry/5 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-nfw-blackberry/60" />
+              </button>
+            </div>
           </div>
 
           {loading && (

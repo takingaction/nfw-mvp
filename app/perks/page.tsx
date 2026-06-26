@@ -87,6 +87,7 @@ export default function PerksPage() {
   } | null>(null);
   const [isOfferPanelOpen, setIsOfferPanelOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [likedStoreKeys, setLikedStoreKeys] = useState<number[]>([]);
   const [nfwOnly, setNfwOnly] = useState(false);
@@ -132,18 +133,20 @@ export default function PerksPage() {
             window.location.href = "/auth/login";
             return;
           }
-          const profile = await response.json();
+          const profileData = await response.json();
 
-          if (!profile?.profile_completed) {
+          if (!profileData?.profile_completed) {
             window.location.href = "/auth/sign-up?step=1";
             return;
           }
           // membership_level can be "free" for free members - allow them to access perks
           // Only redirect if membership_level is explicitly set to a non-perk plan
-          if (profile?.membership_level && !["free", "contributing", "founding"].includes(profile.membership_level)) {
+          if (profileData?.membership_level && !["free", "contributing", "founding"].includes(profileData.membership_level)) {
             window.location.href = "/auth/sign-up?step=3";
             return;
           }
+
+          setProfile(profileData);
         } catch (err) {
           console.error("Profile fetch error:", err);
           window.location.href = "/auth/login";
@@ -1172,6 +1175,7 @@ export default function PerksPage() {
         }}
         likedStores={likedStoreKeys}
         onToggleLike={handleToggleLike}
+        isAdmin={profile?.is_admin}
       />
 
       <NfwPerkDetailPanel
