@@ -25,7 +25,12 @@ export async function GET(request: NextRequest) {
       .range(offset, offset + perPage - 1);
 
     if (status && status !== "all") {
-      query = query.eq("freshdesk_status", status);
+      if (status === "free") {
+        // Special filter for free membership requests
+        query = query.eq("subject_label", "Free Membership Request");
+      } else {
+        query = query.eq("freshdesk_status", status);
+      }
     }
 
     if (search) {

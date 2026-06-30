@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Download, RefreshCw, Eye } from "lucide-react";
+import { Search, Download, RefreshCw, Eye, Check } from "lucide-react";
+import { FreeMembershipApprovalModal } from "@/components/admin/FreeMembershipApprovalModal";
 
 interface Submission {
   id: string;
@@ -24,6 +25,12 @@ export default function AdminContactSubmissions() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+
+  // Approval modal state
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [approvingSubmission, setApprovingSubmission] = useState<Submission | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSendError, setEmailSendError] = useState<string | null>(null);
 
   const fetchSubmissions = async () => {
     setLoading(true);
@@ -53,6 +60,42 @@ export default function AdminContactSubmissions() {
     e.preventDefault();
     setPage(1);
     fetchSubmissions();
+  };
+
+  const handleApprove = async () => {
+    if (!approvingSubmission) return;
+
+    setSendingEmail(true);
+    setEmailSendError(null);
+
+    try {
+      const res = await fetch("/api/admin/contact-submissions/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionId: approvingSubmission.id }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || "Failed to approve");
+      }
+
+      // Close modal and refresh
+      setShowApprovalModal(false);
+      setApprovingSubmission(null);
+      fetchSubmissions();
+    } catch (err: any) {
+      setEmailSendError(err.message || "Failed to approve");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const openApprovalModal = (submission: Submission) => {
+    setApprovingSubmission(submission);
+    setEmailSendError(null);
+    setShowApprovalModal(true);
   };
 
   const exportCSV = () => {
@@ -114,6 +157,10 @@ export default function AdminContactSubmissions() {
     }
   };
 
+  const isFreeMembershipRequest = (sub: Submission) => {
+    return sub.subject_label === "Free Membership Request";
+  };
+
   return (
     <div className="p-8">
       <div className="max-w-7xl mx-auto">
@@ -129,8 +176,8 @@ export default function AdminContactSubmissions() {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           {/* Status tabs */}
-          <div className="flex gap-2">
-            {["all", "created", "rejected", "error", "pending"].map((s) => (
+          <div className="flex gap-2 flex-wrap">
+            {["all", "created", "rejected", "error", "pending", "free"].map((s) => (
               <button
                 key={s}
                 onClick={() => {
@@ -143,7 +190,7 @@ export default function AdminContactSubmissions() {
                     : "bg-nfw-dove text-nfw-blackberry hover:bg-nfw-dove/80"
                 }`}
               >
-                {s.charAt(0).toUpperCase() + s.slice(1)}
+                {s === "free" ? "Free Request" : s.charAt(0).toUpperCase() + s.slice(1)}
               </button>
             ))}
           </div>
@@ -231,7 +278,12 @@ export default function AdminContactSubmissions() {
                   </tr>
                 ) : (
                   submissions.map((sub) => (
-                    <tr key={sub.id} className="hover:bg-nfw-dove/30 transition-colors">
+                    <tr
+                      key={sub.id}
+                      className={`hover:bg-nfw-dove/30 transition-colors ${
+                        isFreeMembershipRequest(sub) ? "border-l-4 border-nfw-citrine" : ""
+                      }`}
+                    >
                       <td className="px-4 py-3 font-sans text-sm text-nfw-blackberry">
                         {new Date(sub.created_at).toLocaleDateString("en-US", {
                           month: "short",
@@ -255,13 +307,24 @@ export default function AdminContactSubmissions() {
                         {sub.freshdesk_ticket_id || "—"}
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => setSelectedSubmission(sub)}
-                          className="p-1.5 bg-nfw-aubergine/10 text-nfw-aubergine hover:bg-nfw-aubergine/20 transition-colors"
-                          title="View details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          {isFreeMembershipRequest(sub) && (
+                            <button
+                              onClick={() => openApprovalModal(sub)}
+                              className="p-1.5 bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/80 transition-colors"
+                              title="Approve free membership"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setSelectedSubmission(sub)}
+                            className="p-1.5 bg-nfw-aubergine/10 text-nfw-aubergine hover:bg-nfw-aubergine/20 transition-colors"
+                            title="View details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -371,10 +434,38 @@ export default function AdminContactSubmissions() {
                   {selectedSubmission.message}
                 </p>
               </div>
+              {isFreeMembershipRequest(selectedSubmission) && (
+                <div className="pt-4 border-t border-nfw-blackberry/10">
+                  <button
+                    onClick={() => {
+                      setSelectedSubmission(null);
+                      openApprovalModal(selectedSubmission);
+                    }}
+                    className="w-full py-3 bg-nfw-wisteria text-white font-bold text-sm hover:bg-nfw-wisteria/90 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Check className="w-4 h-4" />
+                    Approve Free Membership
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
+
+      {/* Approval Confirmation Modal */}
+      <FreeMembershipApprovalModal
+        isOpen={showApprovalModal}
+        onClose={() => {
+          setShowApprovalModal(false);
+          setApprovingSubmission(null);
+          setEmailSendError(null);
+        }}
+        onConfirm={handleApprove}
+        memberName={approvingSubmission?.name}
+        sendingEmail={sendingEmail}
+        emailSendError={emailSendError}
+      />
     </div>
   );
 }

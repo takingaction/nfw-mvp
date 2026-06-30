@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { X } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 type AbandonedCheckout = {
   hasAbandoned: boolean;
@@ -11,7 +11,11 @@ type AbandonedCheckout = {
   createdAt?: string;
 };
 
-export function AbandonedCheckoutBanner() {
+interface AbandonedCheckoutBannerProps {
+  showRequestFreeMembershipLink?: boolean;
+}
+
+export function AbandonedCheckoutBanner({ showRequestFreeMembershipLink = false }: AbandonedCheckoutBannerProps) {
   const [abandoned, setAbandoned] = useState<AbandonedCheckout | null>(null);
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(false);
@@ -71,20 +75,30 @@ export function AbandonedCheckoutBanner() {
     return null;
   }
 
+  const isPaidMember = abandoned?.membershipLevel === "contributing" || abandoned?.membershipLevel === "founding";
+
   return (
     <div className="w-full bg-nfw-citrine py-3 px-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         <p className="text-nfw-blackberry font-ui text-sm font-medium flex-1">
           You have an incomplete membership purchase. Complete it now →
         </p>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-3 flex-shrink-0">
           <button
             onClick={handleResume}
             disabled={resuming}
-            className="bg-nfw-blackberry text-white px-4 py-1.5 rounded text-sm font-ui font-medium hover:bg-nfw-blackberry/90 transition-colors disabled:opacity-50"
+            className="bg-nfw-blackberry text-white px-4 py-1.5 text-sm font-ui font-medium hover:bg-nfw-blackberry/90 transition-colors disabled:opacity-50"
           >
             {resuming ? "Loading..." : "Resume Checkout"}
           </button>
+          {(showRequestFreeMembershipLink || isPaidMember) && (
+            <Link
+              href="/contact?reason=free-membership&from=abandoned"
+              className="text-nfw-blackberry/60 hover:text-nfw-blackberry transition-colors text-sm font-ui underline"
+            >
+              {isPaidMember ? "or apply as free member instead" : "or request free membership instead"}
+            </Link>
+          )}
           <button
             onClick={handleDismiss}
             className="text-nfw-blackberry/60 hover:text-nfw-blackberry transition-colors p-1"

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Mail, Clock, Heart } from "lucide-react";
 
 interface HelpCard {
@@ -66,6 +67,10 @@ const defaultData: ContactData = {
 
 export default function ContactClient({ contactData }: { contactData: ContactData | null }) {
   const data = contactData || defaultData;
+  const searchParams = useSearchParams();
+  const isFreeMembershipRequest = searchParams.get("reason") === "free-membership";
+  const fromLogin = searchParams.get("from") === "login";
+  const fromAbandoned = searchParams.get("from") === "abandoned";
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -89,6 +94,7 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
           subject: formData.get("subject"),
           message: formData.get("message"),
           website: formData.get("website"),
+          from_abandoned: fromAbandoned,
         }),
       });
     } catch {
@@ -138,10 +144,16 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
                   Get in touch
                 </p>
                 <h2 className="font-serif text-4xl lg:text-6xl text-nfw-aubergine mb-4 leading-tight">
-                  {data.help_heading}
+                  {isFreeMembershipRequest ? "Free Membership Request" : data.help_heading}
                 </h2>
                 <p className="font-serif text-lg text-nfw-blackberry/70 leading-relaxed">
-                  {data.help_intro}
+                  {isFreeMembershipRequest && fromLogin
+                    ? "Welcome back! Please complete your free membership request below. Our team will review your application and contact you once approved."
+                    : isFreeMembershipRequest && fromAbandoned
+                    ? "No problem! You can still request free membership below. Our team will review your application and contact you once approved."
+                    : isFreeMembershipRequest
+                    ? "You're requesting free membership. Our team will review your application and contact you once approved. Please tell us a little about yourself below."
+                    : data.help_intro}
                 </p>
               </div>
 
@@ -206,17 +218,19 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
                       />
                     </div>
                     <h3 className="font-serif text-2xl text-nfw-aubergine mb-3">
-                      Success!
+                      {isFreeMembershipRequest ? "Request Received!" : "Success!"}
                     </h3>
                     <p className="font-serif text-nfw-blackberry/60">
-                      We will get back to you within 2-3 business days.
+                      {isFreeMembershipRequest
+                        ? "Thank you for your free membership request. Our team will review your application and send you an email once approved."
+                        : "We will get back to you within 2-3 business days."}
                     </p>
                   </div>
-                ) : (
-                  <>
-                    <h3 className="font-ui text-lg font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-6">
-                      Send us a message
-                    </h3>
+                  ) : (
+                    <>
+                      <h3 className="font-ui text-lg font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-6">
+                        {isFreeMembershipRequest ? "Submit your request" : "Send us a message"}
+                      </h3>
                     <form onSubmit={handleSubmit} className="space-y-5">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
@@ -260,13 +274,18 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
                         <select
                           name="subject"
                           required
-                          value={form.subject}
+                          value={isFreeMembershipRequest ? "free-membership" : form.subject}
                           onChange={(e) =>
                             setForm((f) => ({ ...f, subject: e.target.value }))
                           }
                           className="w-full px-4 py-3 border border-nfw-blackberry/20 font-sans text-sm text-nfw-blackberry focus:outline-none focus:border-nfw-aubergine transition-colors bg-white"
                         >
                           <option value="">Select a topic</option>
+                          {isFreeMembershipRequest && (
+                            <option value="free-membership">
+                              Free Membership Request
+                            </option>
+                          )}
                           <option value="microgrant">
                             Microgrant question
                           </option>

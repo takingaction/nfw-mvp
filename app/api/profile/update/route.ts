@@ -30,13 +30,15 @@ const ALLOWED_FIELDS = [
   "social_handles",
   "profile_completed",
   "membership_level",
+  "is_approved_free_member",
+  "free_membership_contact_submitted",
 ] as const;
 
 type AllowedField = (typeof ALLOWED_FIELDS)[number];
 
 const ALLOWED_ARRAYS = ["identities"];
 const ALLOWED_OBJECTS = ["social_handles"];
-const ALLOWED_BOOLEANS = ["profile_completed"];
+const ALLOWED_BOOLEANS = ["profile_completed", "is_approved_free_member", "free_membership_contact_submitted"];
 
 export async function POST(request: NextRequest) {
   try {

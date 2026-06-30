@@ -1169,18 +1169,30 @@ export default function SignUpFlow() {
                   Free Membership
                 </h2>
                 <p className="text-nfw-blackberry/80 text-sm leading-relaxed mb-6">
-                  If contributing financially isn't possible, this tier is for you. A simple gut check: if you have stable housing, regular income, and financial breathing room, a higher tier is probably a better fit for you. The National Fund for Women doesn't exist without membership dues.
+                  If contributing financially isn't possible, this tier is for you. A simple gut check: if you have stable housing, regular income, and financial breathing room, a higher tier is probably a better fit for you. The National Fund for Women doesn't exist without membership dues. To continue with your free membership request, please click the button below and you will be taken to our contact form.
                 </p>
                 <div className="space-y-3">
                   <button
                     type="button"
-                    onClick={() => {
-                      const freePlan = PLANS.find(p => p.id === "free");
-                      if (freePlan) handleSelectPlan(freePlan);
+                    onClick={async () => {
+                      // Set profile as pending free membership
+                      setLoading(true);
+                      setShowFreeModal(false);
+                      try {
+                        await saveProfile({
+                          membership_level: "free",
+                          is_approved_free_member: false,
+                          free_membership_contact_submitted: false,
+                        });
+                      } catch (err) {
+                        console.error("Failed to save free membership request:", err);
+                      }
+                      setLoading(false);
+                      window.location.href = "/contact?reason=free-membership";
                     }}
                     className="w-full py-3 bg-nfw-citrine text-nfw-blackberry font-bold text-sm hover:bg-nfw-citrine/90 transition-colors"
                   >
-                    FREE MEMBERSHIP IS RIGHT FOR ME
+                    CONTINUE TO CONTACT FORM
                   </button>
                   <button
                     type="button"

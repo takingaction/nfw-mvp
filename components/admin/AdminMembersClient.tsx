@@ -13,6 +13,7 @@ import {
   Check,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { FreeMembershipApprovalModal } from "@/components/admin/FreeMembershipApprovalModal";
 
 type Member = {
   id: string;
@@ -29,6 +30,8 @@ type Member = {
   access_perks_synced_at: string | null;
   membership_level: string | null;
   profile_completed: boolean | null;
+  is_approved_free_member: boolean | null;
+  free_membership_contact_submitted: boolean | null;
 };
 
 export default function AdminMembersClient({
@@ -40,7 +43,7 @@ export default function AdminMembersClient({
 }) {
   const [members, setMembers] = useState(initialMembers);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "paid" | "free" | "admin" | "incomplete">(
+  const [filter, setFilter] = useState<"all" | "paid" | "free" | "admin" | "incomplete" | "pending">(
     "all",
   );
   const [selected, setSelected] = useState<Member | null>(null);
@@ -49,6 +52,12 @@ export default function AdminMembersClient({
   const [selfDemoteWarning, setSelfDemoteWarning] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Partial<Member>>({});
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+
+  // Approval confirmation modal state
+  const [showApprovalConfirmModal, setShowApprovalConfirmModal] = useState(false);
+  const [pendingApprovalValue, setPendingApprovalValue] = useState<boolean | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSendError, setEmailSendError] = useState<string | null>(null);
 
   const copyEmail = async (email: string) => {
     try {
@@ -72,7 +81,11 @@ export default function AdminMembersClient({
       (filter === "paid" && (m.membership_level === "contributing" || m.membership_level === "founding")) ||
       (filter === "free" && (m.membership_level === "free" || m.membership_level === null)) ||
       (filter === "admin" && m.is_admin) ||
-      (filter === "incomplete" && !m.profile_completed);
+      (filter === "incomplete" && !m.profile_completed) ||
+      (filter === "pending" &&
+        m.membership_level === "free" &&
+        m.free_membership_contact_submitted === true &&
+        m.is_approved_free_member !== true);
 
     return matchesSearch && matchesFilter;
   });
@@ -89,6 +102,9 @@ export default function AdminMembersClient({
     setPendingChanges({});
     setSaveError("");
     setSelfDemoteWarning(false);
+    setShowApprovalConfirmModal(false);
+    setPendingApprovalValue(null);
+    setEmailSendError(null);
   };
 
   const handleChange = (field: keyof Member, value: any) => {
@@ -102,18 +118,37 @@ export default function AdminMembersClient({
     } else {
       setSelfDemoteWarning(false);
     }
+
+    // Show confirmation modal when approving free membership
+    if (
+      field === "is_approved_free_member" &&
+      value === true &&
+      selected?.membership_level === "free"
+    ) {
+      setPendingApprovalValue(true);
+      setShowApprovalConfirmModal(true);
+      return;
+    }
+
     setPendingChanges((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSave = async () => {
     if (!selected) return;
     setSaving(true);
+    setEmailSendError(null);
 
     const updates: any = {};
     if ("is_admin" in pendingChanges)
       updates.is_admin = pendingChanges.is_admin;
     if ("subscription_status" in pendingChanges)
       updates.subscription_status = pendingChanges.subscription_status;
+    // Use pendingApprovalValue if set (from approval confirmation modal), otherwise use pendingChanges
+    if (pendingApprovalValue !== null) {
+      updates.is_approved_free_member = pendingApprovalValue;
+    } else if ("is_approved_free_member" in pendingChanges) {
+      updates.is_approved_free_member = pendingChanges.is_approved_free_member;
+    }
 
     if (Object.keys(updates).length === 0) {
       setSaving(false);
@@ -129,6 +164,31 @@ export default function AdminMembersClient({
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to save");
 
+      // If approving free membership, send welcome email
+      if (pendingApprovalValue === true) {
+        setSendingEmail(true);
+        try {
+          const emailRes = await fetch("/api/admin/members/send-welcome-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ memberId: selected.id }),
+          });
+          const emailResult = await emailRes.json();
+          if (!emailRes.ok) {
+            throw new Error(emailResult.error || "Failed to send email");
+          }
+        } catch (emailErr: any) {
+          console.error("Failed to send welcome email:", emailErr);
+          setEmailSendError(emailErr.message || "Failed to send email");
+          // Don't block - still show success
+        } finally {
+          setSendingEmail(false);
+        }
+      }
+
+      // Close modal and reload
+      setShowApprovalConfirmModal(false);
+      setPendingApprovalValue(null);
       window.location.reload();
     } catch (err: any) {
       alert(err.message || "Failed to save changes");
@@ -157,7 +217,7 @@ export default function AdminMembersClient({
     );
   };
 
-  const membershipBadge = (level: string | null) => {
+  const membershipBadge = (level: string | null, member: Member) => {
     if (level === "founding")
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#fdf493] text-nfw-blackberry">
@@ -170,6 +230,30 @@ export default function AdminMembersClient({
           Contributing
         </span>
       );
+    if (level === "free") {
+      // Free (Pending) - contact submitted, not yet approved
+      if (member.free_membership_contact_submitted && member.is_approved_free_member !== true) {
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-citrine text-nfw-blackberry">
+            Free (Pending)
+          </span>
+        );
+      }
+      // Free (Started) - started the flow but hasn't submitted contact form
+      if (!member.free_membership_contact_submitted && member.is_approved_free_member !== true) {
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-wisteria text-white">
+            Free (Started)
+          </span>
+        );
+      }
+      // Free - approved member
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/20 text-nfw-blackberry/60">
+          Free
+        </span>
+      );
+    }
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/20 text-nfw-blackberry/60">
         Free
@@ -194,6 +278,11 @@ export default function AdminMembersClient({
   const currentIsAdmin =
     "is_admin" in pendingChanges ? pendingChanges.is_admin : selected?.is_admin;
 
+  const currentIsApprovedFreeMember =
+    "is_approved_free_member" in pendingChanges
+      ? pendingChanges.is_approved_free_member
+      : selected?.is_approved_free_member;
+
   return (
     <>
       <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
@@ -210,7 +299,7 @@ export default function AdminMembersClient({
             />
           </div>
           <div className="flex gap-2">
-            {(["all", "paid", "free", "incomplete", "admin"] as const).map((f) => (
+            {(["all", "paid", "free", "incomplete", "admin", "pending"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -328,7 +417,7 @@ export default function AdminMembersClient({
                       {statusBadge(member.subscription_status)}
                     </td>
                     <td className="px-4 py-3">
-                      {membershipBadge(member.membership_level)}
+                      {membershipBadge(member.membership_level, member)}
                     </td>
                     <td className="px-4 py-3 text-nfw-blackberry/60 text-xs">
                       {member.household_income || "—"}
@@ -594,6 +683,78 @@ export default function AdminMembersClient({
                 )}
               </div>
 
+              {/* Free Membership Status - only show for free members */}
+              {selected?.membership_level === "free" && (
+                <div>
+                  <label className="block text-sm font-black text-nfw-blackberry mb-3">
+                    Free Membership Status
+                  </label>
+                  <div className="space-y-2">
+                    <label
+                      className={`flex items-start gap-3 p-3 border-2 cursor-pointer transition-all ${
+                        currentIsApprovedFreeMember === true
+                          ? "border-nfw-blackberry bg-nfw-blackberry/5"
+                          : "border-nfw-blackberry/5 hover:border-nfw-blackberry/10"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="is_approved_free_member"
+                        value="true"
+                        checked={currentIsApprovedFreeMember === true}
+                        onChange={() =>
+                          handleChange("is_approved_free_member", true)
+                        }
+                        className="mt-0.5 accent-nfw-blackberry"
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-nfw-blackberry">
+                            Approved
+                          </span>
+                        </div>
+                        <p className="text-xs text-nfw-blackberry/40 mt-0.5">
+                          Member has full access to free member benefits
+                        </p>
+                      </div>
+                    </label>
+                    <label
+                      className={`flex items-start gap-3 p-3 border-2 cursor-pointer transition-all ${
+                        currentIsApprovedFreeMember === false
+                          ? "border-nfw-blackberry bg-nfw-blackberry/5"
+                          : "border-nfw-blackberry/5 hover:border-nfw-blackberry/10"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="is_approved_free_member"
+                        value="false"
+                        checked={currentIsApprovedFreeMember === false}
+                        onChange={() =>
+                          handleChange("is_approved_free_member", false)
+                        }
+                        className="mt-0.5 accent-nfw-blackberry"
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-nfw-blackberry">
+                            Pending Approval
+                          </span>
+                        </div>
+                        <p className="text-xs text-nfw-blackberry/40 mt-0.5">
+                          Member is waiting for admin review to access benefits
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                  {selected?.is_approved_free_member === false && (
+                    <p className="text-xs text-nfw-blackberry/60 mt-2 bg-nfw-citrine/20 p-2">
+                      This member submitted a free membership request but hasn't been approved yet. Toggle to "Approved" to give them access.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {saveError && (
                 <div className="bg-red-50 border border-red-200 p-3">
                   <p className="text-xs text-red-600">{saveError}</p>
@@ -617,6 +778,20 @@ export default function AdminMembersClient({
                 {saving ? "Saving..." : "Save Changes"}
               </button>
             </div>
+
+            {/* Approval Confirmation Modal */}
+            <FreeMembershipApprovalModal
+              isOpen={showApprovalConfirmModal}
+              onClose={() => {
+                setShowApprovalConfirmModal(false);
+                setPendingApprovalValue(null);
+              }}
+              onConfirm={handleSave}
+              memberName={selected?.full_name || undefined}
+              sendingEmail={sendingEmail}
+              saving={saving}
+              emailSendError={emailSendError}
+            />
           </div>
         </div>
       )}

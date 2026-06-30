@@ -12,6 +12,7 @@ import YourMicrograntsSection from "@/components/dashboard/YourMicrograntsSectio
 import YourZeroDollarStoreSection from "@/components/dashboard/YourZeroDollarStoreSection";
 import { ProfileBanner } from "@/components/profile/ProfileBanner";
 import { AbandonedCheckoutBanner } from "@/components/dashboard/AbandonedCheckoutBanner";
+import { PendingFreeMembershipBanner } from "@/components/dashboard/PendingFreeMembershipBanner";
 
 export const metadata = {
   title: "Dashboard",
@@ -119,7 +120,7 @@ export default async function DashboardPage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const [profileResult, dashboardSettingsResult, likedStoresResult, grantsResult, claimsResult, cyclesResult] = await Promise.all([
+  const [profileResult, dashboardSettingsResult, likedStoresResult, grantsResult, claimsResult, cyclesResult, abandonedCheckoutResult] = await Promise.all([
     supabase
       .from("profiles")
       .select("*, joined_at")
@@ -141,17 +142,23 @@ export default async function DashboardPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(10),
-supabaseAdmin
+    supabaseAdmin
       .from("zero_dollar_claims")
       .select("*, shopify_product_id, order_status_url, shopify_order_id")
       .eq("user_id", user.id)
       .limit(10),
-supabaseAdmin
+    supabaseAdmin
       .from("grant_cycles")
       .select("id, cycle_name, amount_per_grant, end_date, featured_image, status")
       .eq("status", "open")
       .order("end_date", { ascending: true })
       .limit(6),
+    supabaseAdmin
+      .from("abandoned_checkouts")
+      .select("id")
+      .eq("user_id", user.id)
+      .is("recovered_at", null)
+      .limit(1),
   ]);
 
   // Fetch shopify product mappings for enrichment
@@ -176,6 +183,34 @@ supabaseAdmin
   } else if (!profile?.membership_level) {
     redirect("/auth/sign-up?step=3");
   }
+
+  // If free member has NULL contact_submitted (never started free flow), redirect to step 3
+  // This catches users who have database default 'free' but never interacted with step 3
+  if (
+    profile?.membership_level === "free" &&
+    profile?.free_membership_contact_submitted === null
+  ) {
+    redirect("/auth/sign-up?step=3");
+  }
+
+  // Check for abandoned checkout for the banner display
+  const hasAbandonedCheckout = (abandonedCheckoutResult?.data?.length ?? 0) > 0;
+
+  // If free member started free flow (submitted=false) and has no abandoned checkout, redirect to contact
+  // If they HAVE an abandoned checkout, show the AbandonedCheckoutBanner instead
+  if (
+    profile?.membership_level === "free" &&
+    profile?.free_membership_contact_submitted === false &&
+    !hasAbandonedCheckout
+  ) {
+    redirect("/contact?reason=free-membership&from=login");
+  }
+
+  // Show pending banner if free member has submitted contact but not yet approved
+  const isPendingFreeMember =
+    profile?.membership_level === "free" &&
+    profile?.is_approved_free_member !== true &&
+    profile?.free_membership_contact_submitted === true;
 
   const savings = await getSavings(user.id);
   const settings = dashboardSettingsResult?.data || {};
@@ -240,7 +275,13 @@ supabaseAdmin
     <main className="min-h-screen">
       <AccessPerksSync userId={user.id} />
       <ProfileBanner profile={profile} />
-      <AbandonedCheckoutBanner />
+      <AbandonedCheckoutBanner
+        showRequestFreeMembershipLink={
+          profile?.membership_level === "free" &&
+          profile?.free_membership_contact_submitted === false
+        }
+      />
+      {isPendingFreeMember && <PendingFreeMembershipBanner />}
 
       <DashboardHero heroImage={settings.hero_image_url || "/images/landing.jpg"} />
 

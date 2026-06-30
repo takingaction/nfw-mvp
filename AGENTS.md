@@ -5570,3 +5570,150 @@ Added "Copy Link" button to both offer slideout panels for admins only.
 
 - `45c2565` - feat: add Copy Link button for admins on offer detail panel
 - `1a37977` - feat: add Copy Link button for admins on NFW perk slideout panel
+
+---
+
+## Session 2026-06-30: Free Membership Admin Approval System
+
+### Overview
+
+Implemented a free membership system where users can request free membership via contact form, but require admin approval before gaining access to member benefits. This prevents abuse while allowing legitimate free access.
+
+### Database Migrations
+
+**Migration 104: `supabase/migrations/104_add_is_approved_free_member.sql`**
+- Adds `is_approved_free_member BOOLEAN DEFAULT FALSE` to profiles table
+- Grandfathers existing free members (sets `is_approved_free_member = TRUE` for all existing free/null members)
+- Creates index `idx_profiles_is_approved_free_member` for efficient lookups
+
+**Migration 105: `supabase/migrations/105_add_free_membership_contact_submitted.sql`**
+- Adds `free_membership_contact_submitted BOOLEAN DEFAULT NULL` to profiles table
+- Track the progression through the free membership flow:
+  - `NULL` = not in free membership flow (default)
+  - `FALSE` = started free request (clicked "Continue for free") but hasn't submitted contact form
+  - `TRUE` = submitted contact form, awaiting admin approval
+
+### Profile Flags Summary
+
+| Flag | Values | Purpose |
+|------|--------|---------|
+| `membership_level` | `'free'`, `'contributing'`, `'founding'`, `NULL` | Member tier (database default is `'free'`) |
+| `is_approved_free_member` | `TRUE`, `FALSE` | Admin approval status for free members |
+| `free_membership_contact_submitted` | `TRUE`, `FALSE`, `NULL` | Contact form submission status |
+
+### Membership Access Matrix
+
+| membership_level | is_approved_free_member | free_membership_contact_submitted | Can Access Benefits |
+|-----------------|------------------------|----------------------------------|-------------------|
+| `free` | `FALSE` or `NULL` | `NULL` | No - redirect to step 3 (never started) |
+| `free` | `FALSE` or `NULL` | `FALSE` | No - redirect to contact form |
+| `free` | `FALSE` or `NULL` | `TRUE` | No - show "pending approval" banner |
+| `free` | `TRUE` | `TRUE` | Yes - fully approved free member |
+| `contributing` | any | any | Yes - paid member |
+| `founding` | any | any | Yes - paid member |
+
+### Signup Flow Changes
+
+**`components/SignUpFlow.tsx`:**
+- Step 3 displays only paid plans ($15 Contributing, $100 Founding)
+- "If contributing financially isn't possible, you can apply for free membership here." link opens modal
+- Modal explains the free membership process and consent
+- Clicking "CONTINUE TO CONTACT FORM" sets:
+  - `membership_level = 'free'`
+  - `is_approved_free_member = FALSE`
+  - `free_membership_contact_submitted = FALSE`
+- Redirects to `/contact?reason=free-membership`
+
+### Contact Form Changes
+
+**`components/contact/ContactClient.tsx`:**
+- Detects `reason=free-membership` and `from=abandoned` URL params
+- Shows appropriate messaging for each scenario:
+  - `from=login`: "Welcome back! Please complete your free membership request below."
+  - `from=abandoned`: "No problem! You can still request free membership below."
+  - default: "You're requesting free membership..."
+- Passes `from_abandoned` to API on submit
+
+**`app/api/contact/submit/route.ts`:**
+- When `subject=free-membership`:
+  - Sets `free_membership_contact_submitted = TRUE`
+  - If `from_abandoned=TRUE`: also sets `membership_level = 'free'` and deletes abandoned checkout record
+
+### Dashboard Changes
+
+**`app/dashboard/page.tsx`:**
+- Redirect logic for free members:
+  - `free_membership_contact_submitted === NULL` → redirect to `/auth/sign-up?step=3`
+  - `free_membership_contact_submitted === FALSE` → redirect to contact form
+  - `free_membership_contact_submitted === TRUE && is_approved_free_member !== TRUE` → show pending banner
+- Passes `hasAbandonedCheckout` from server-side query to AbandonedCheckoutBanner
+
+**`components/dashboard/PendingFreeMembershipBanner.tsx`:**
+- New component showing "Your free membership is pending review"
+- Link to contact form if they haven't submitted yet
+- Link to dashboard home if they have
+
+**`components/dashboard/AbandonedCheckoutBanner.tsx`:**
+- Added `showRequestFreeMembershipLink` prop
+- Shows "or request free membership instead" link for free members who started but didn't submit
+- Shows "or apply as free member instead" link for paid members with abandoned checkout
+- Link redirects to `/contact?reason=free-membership&from=abandoned`
+
+### Feature Access Restrictions
+
+**`app/perks/page.tsx`:**
+- Free members with `is_approved_free_member !== TRUE` are redirected to signup step 3
+
+**`app/grants/apply/page.tsx`:**
+- Same restriction as perks - requires approval
+
+**`app/store/page.tsx`:**
+- Store browsing is now PUBLIC (anyone can view)
+- Claiming requires `is_approved_free_member === TRUE` or paid membership
+
+**`components/StoreClient.tsx`:**
+- Added `isApprovedFreeMember` prop
+- `canClaim()` returns "Approval Required" for unapproved free members
+
+### Abandoned Checkout Race Condition Fix
+
+**`app/api/webhook/route.ts`:**
+- `checkout.session.expired` handler now checks `membership_level` before creating abandoned record
+- If user has already switched to `'free'` (via contact form), skip recording abandoned checkout
+- Prevents stuck abandoned checkouts for users who abandon then switch to free
+
+### Admin Approval System
+
+**`components/admin/FreeMembershipApprovalModal.tsx`:**
+- Shared modal component for approving free memberships
+- Props: `isOpen`, `onClose`, `onConfirm`, `memberName`, `sendingEmail`, `saving`, `emailSendError`
+- Used by both AdminMembersClient and AdminContactSubmissions
+
+**`app/api/admin/members/send-welcome-email/route.ts`:**
+- New endpoint for sending welcome email to approved free members
+- Validates profile is still free and not already approved
+
+**`app/admin/contact-submissions/AdminContactSubmissions.tsx`:**
+- Added "Free Request" filter tab
+- Free membership request rows have citrine left border
+- Green "Approve" button for free membership submissions
+- Opens FreeMembershipApprovalModal
+
+**`app/api/admin/contact-submissions/approve/route.ts`:**
+- New endpoint for approving free membership from contact submissions
+- Looks up profile by email
+- Validates `membership_level === 'free'` and `is_approved_free_member !== TRUE`
+- Sets `is_approved_free_member = TRUE`
+- Sends welcome email
+
+### Commits
+
+- Multiple commits for free membership approval system including:
+  - Database migrations for new profile flags
+  - Signup flow changes with modal
+  - Contact form integration
+  - Dashboard redirect logic and pending banner
+  - Abandoned checkout race condition fix
+  - Admin approval modal and endpoints
+  - Store browsing/claiming separation
+  - Admin contact submissions approval features

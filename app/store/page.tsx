@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import StoreClient from "@/components/StoreClient";
 
 export const metadata = {
@@ -20,15 +21,17 @@ export default async function StorePage() {
   } = await supabase.auth.getUser();
 
   let userTier = "free";
+  let isApprovedFreeMember = null;
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("membership_level")
+      .select("membership_level, is_approved_free_member")
       .eq("id", user.id)
       .single();
 
     userTier = profile?.membership_level || "free";
+    isApprovedFreeMember = profile?.is_approved_free_member;
   }
 
-  return <StoreClient userId={user?.id} userTier={userTier} />;
+  return <StoreClient userId={user?.id} userTier={userTier} isApprovedFreeMember={isApprovedFreeMember} />;
 }

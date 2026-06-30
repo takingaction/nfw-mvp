@@ -139,7 +139,12 @@ export default function PerksPage() {
             window.location.href = "/auth/sign-up?step=1";
             return;
           }
-          // membership_level can be "free" for free members - allow them to access perks
+          // Free members need is_approved_free_member = true to access perks
+          // If free but not approved, redirect to upgrade page
+          if (profileData?.membership_level === "free" && profileData?.is_approved_free_member !== true) {
+            window.location.href = "/auth/sign-up?step=3";
+            return;
+          }
           // Only redirect if membership_level is explicitly set to a non-perk plan
           if (profileData?.membership_level && !["free", "contributing", "founding"].includes(profileData.membership_level)) {
             window.location.href = "/auth/sign-up?step=3";

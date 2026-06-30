@@ -262,6 +262,19 @@ export async function POST(request: Request) {
 
         // Only track regular membership purchases
         if (userId && membershipLevel) {
+          // Check if user's current membership_level matches what was in the session
+          // If they've already switched to "free" (e.g., via contact form), skip recording
+          const { data: profile } = await supabaseAdmin
+            .from("profiles")
+            .select("membership_level")
+            .eq("id", userId)
+            .single();
+
+          if (profile && profile.membership_level !== membershipLevel) {
+            console.log("[webhook] Skipping abandoned checkout - user has already switched to:", profile.membership_level);
+            break;
+          }
+
           // Check if already recorded (e.g., if completed before we processed expired)
           const { data: existing } = await supabaseAdmin
             .from("abandoned_checkouts")

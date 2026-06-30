@@ -22,12 +22,14 @@ export default async function ApplyForGrantPage() {
   // Check profile completion and membership level
   const { data: profile } = await supabase
     .from("profiles")
-    .select("profile_completed, membership_level")
+    .select("profile_completed, membership_level, is_approved_free_member")
     .eq("id", user.id)
     .single();
 
   if (!profile?.profile_completed) {
     redirect("/auth/sign-up?step=1");
+  } else if (profile?.membership_level === "free" && profile?.is_approved_free_member !== true) {
+    redirect("/auth/sign-up?step=3");
   } else if (profile?.membership_level && !["free", "contributing", "founding"].includes(profile.membership_level)) {
     redirect("/auth/sign-up?step=3");
   }

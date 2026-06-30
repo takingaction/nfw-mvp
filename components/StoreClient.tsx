@@ -31,9 +31,11 @@ type StoreProduct = {
 export default function StoreClient({
   userId,
   userTier,
+  isApprovedFreeMember,
 }: {
   userId?: string;
   userTier?: string;
+  isApprovedFreeMember?: boolean | null;
 }) {
   const router = useRouter();
   const [products, setProducts] = useState<StoreProduct[]>([]);
@@ -169,6 +171,10 @@ export default function StoreClient({
   const canClaim = (product: StoreProduct) => {
     if (product.status === "DRAFT") {
       return { eligible: false, reason: "Dropping Soon" };
+    }
+    // Free members need to be approved to claim
+    if (userTier === "free" && !isApprovedFreeMember) {
+      return { eligible: false, reason: "Approval Required" };
     }
     if (!userTier || !product.eligibilityTiers.includes(userTier)) {
       return { eligible: false, reason: "Not Available for Your Tier" };
