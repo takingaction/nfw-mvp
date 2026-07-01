@@ -5832,3 +5832,25 @@ Ran UPDATE statements against `section_templates` table to change:
 - `fc5ed8c` - feat: add member approval status to contact submissions admin
 - `1310993` - fix: hide approve button for already-approved free requests
 - `18a0c6f` - fix: remove Member column from contact submissions table
+
+## Session 2026-06-30 (Evening): Perks Feature Marquee Fix
+
+### Problem
+The scrolling logos in the Perks Feature + Brand Logos section had the first and last logos touching each other during the scroll loop, instead of having the same consistent spacing as other logos.
+
+### Root Cause
+The `react-fast-marquee` library was duplicating the content internally for seamless looping via `autoFill`, but there was no trailing gap between the end of one logo set and the start of the next duplicated set.
+
+### Solution
+1. Removed manual logo duplication (was conflicting with library's internal duplication)
+2. Added `autoFill={true}` to let library handle seamless looping with proper calculations
+3. Added `pr-16` (padding-right) to the logo container to create trailing gap between duplicated sets
+4. Removed `pauseOnHover` to keep scroll continuous
+
+### Files Modified
+
+- `components/sections/PerksFeatureSection.tsx`:
+  - Added `autoFill` prop to Marquee
+  - Added `pr-16` class to logo container for trailing gap
+  - Removed manual logo duplication block
+  - Removed `pauseOnHover` prop
