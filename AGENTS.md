@@ -5946,3 +5946,60 @@ Enhanced the analytics admin page with timeline views, membership metrics, newsl
 - Support tickets via Freshdesk API (already has write integration)
 - Retention rate calculated as members with active subscription / total cohort members
 - Active = `subscription_status = 'active'/'contributing'` OR `is_approved_free_member = true`
+
+---
+
+## Session 2026-07-01: Fix Grandfathered Free Member Access Bug
+
+### Problem
+
+Grandfathered free members (with `is_approved_free_member = TRUE` from migration 104, but `free_membership_contact_submitted = NULL`) were being incorrectly forced to fill out the contact form.
+
+### Root Cause
+
+The dashboard redirect logic only checked `free_membership_contact_submitted === null` without first checking if the member was already approved.
+
+```typescript
+// BEFORE (bug):
+if (
+  profile?.membership_level === "free" &&
+  profile?.free_membership_contact_submitted === null
+) {
+  redirect("/auth/sign-up?step=3");
+}
+```
+
+### Solution
+
+Added `is_approved_free_member !== true` check before the NULL and FALSE redirects:
+
+```typescript
+// AFTER (fixed):
+if (
+  profile?.membership_level === "free" &&
+  profile?.is_approved_free_member !== true &&  // Added check
+  profile?.free_membership_contact_submitted === null
+) {
+  redirect("/auth/sign-up?step=3");
+}
+```
+
+### Access Matrix (Corrected)
+
+| membership_level | is_approved_free_member | free_membership_contact_submitted | Can Access |
+|-----------------|------------------------|----------------------------------|------------|
+| `free` | `TRUE` | `NULL` | **Yes** (grandfathered) |
+| `free` | `TRUE` | `TRUE` | Yes (approved) |
+| `free` | `FALSE` | `NULL` | No → step 3 |
+| `free` | `FALSE` | `FALSE` | No → contact form |
+| `free` | `FALSE` | `TRUE` | No → pending banner |
+| `contributing` | any | any | Yes (paid) |
+| `founding` | any | any | Yes (paid) |
+
+### Files Modified
+
+- `app/dashboard/page.tsx` - Added `is_approved_free_member !== true` checks before NULL and FALSE redirects
+
+### Commit
+
+- `50fcf01` - fix: skip free membership redirect checks for approved members
