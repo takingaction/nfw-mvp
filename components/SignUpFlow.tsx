@@ -1243,9 +1243,9 @@ export default function SignUpFlow() {
                   rest of us are right there supporting her. NFW is the space
                   all women have been looking for.&rdquo;
                 </p>
-                <p className="text-nfw-lilac text-xs mt-2 font-semibold">
+                {/* <p className="text-nfw-lilac text-xs mt-2 font-semibold">
                   Tiana, 29 — Retail Manager
-                </p>
+                </p> */}
               </div>
             </div>
           </div>
