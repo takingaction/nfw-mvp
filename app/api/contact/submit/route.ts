@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
     // Check if user is logged in and update free membership contact status
     const supabase = await createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id || null;
 
     const subjectLabel = subjectLabels[subject] || subject;
 
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
           subject_label: subjectLabel,
           message,
           freshdesk_status: "pending",
+          user_id: userId,
         },
       ])
       .select("id")

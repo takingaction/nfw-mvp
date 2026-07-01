@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     // Get the contact submission
     const { data: submission, error: submissionError } = await supabaseAdmin
       .from("contact_submissions")
-      .select("id, email, name, subject_label")
+      .select("id, user_id, email, name, subject_label")
       .eq("id", submissionId)
       .single();
 
@@ -33,12 +33,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Not a free membership request" }, { status: 400 });
     }
 
-    console.log("[approve/free-membership] Processing approval for:", submission.email, submission.name);
+    console.log("[approve/free-membership] Processing approval for:", submission.email, submission.name, "user_id:", submission.user_id);
 
-    // Look up profile by email (primary method since contact_submissions doesn't have user_id)
+    // Look up profile by user_id first (preferred), then fall back to email
     let profile = null;
 
-    if (submission.email) {
+    if (submission.user_id) {
+      // Primary lookup by user_id
+      const { data: profileById } = await supabaseAdmin
+        .from("profiles")
+        .select("id, email, full_name, membership_level, is_approved_free_member")
+        .eq("id", submission.user_id)
+        .single();
+
+      if (profileById) {
+        profile = profileById;
+        console.log("[approve/free-membership] Profile found by user_id:", profile.id);
+      }
+    } else if (submission.email) {
+      // Fallback lookup by email (for older submissions before user_id was added)
       const { data: profileByEmail } = await supabaseAdmin
         .from("profiles")
         .select("id, email, full_name, membership_level, is_approved_free_member")
@@ -47,12 +60,12 @@ export async function POST(request: NextRequest) {
 
       if (profileByEmail) {
         profile = profileByEmail;
-        console.log("[approve/free-membership] Profile found:", profile.id, "membership:", profile.membership_level);
+        console.log("[approve/free-membership] Profile found by email:", profile.id);
       }
     }
 
     if (!profile) {
-      console.error("[approve/free-membership] No matching profile found for email:", submission.email);
+      console.error("[approve/free-membership] No matching profile found for user_id:", submission.user_id, "email:", submission.email);
       return NextResponse.json({ error: "No matching profile found" }, { status: 404 });
     }
 
