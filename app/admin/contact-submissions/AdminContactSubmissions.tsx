@@ -292,9 +292,6 @@ export default function AdminContactSubmissions() {
                     Status
                   </th>
                   <th className="px-4 py-3 text-left font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-blackberry/60">
-                    Member
-                  </th>
-                  <th className="px-4 py-3 text-left font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-blackberry/60">
                     Ticket ID
                   </th>
                   <th className="px-4 py-3 text-left font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-blackberry/60">
@@ -305,13 +302,13 @@ export default function AdminContactSubmissions() {
               <tbody className="divide-y divide-nfw-blackberry/10">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center font-sans text-sm text-nfw-blackberry/60">
+                    <td colSpan={6} className="px-4 py-8 text-center font-sans text-sm text-nfw-blackberry/60">
                       Loading...
                     </td>
                   </tr>
                 ) : submissions.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center font-sans text-sm text-nfw-blackberry/60">
+                    <td colSpan={6} className="px-4 py-8 text-center font-sans text-sm text-nfw-blackberry/60">
                       No submissions found
                     </td>
                   </tr>
@@ -340,13 +337,6 @@ export default function AdminContactSubmissions() {
                         {sub.subject_label}
                       </td>
                       <td className="px-4 py-3">{getStatusBadge(sub.freshdesk_status)}</td>
-                      <td className="px-4 py-3">
-                        {isFreeMembershipRequest(sub) && !isFreeMemberApproved(sub) && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                            Pending
-                          </span>
-                        )}
-                      </td>
                       <td className="px-4 py-3 font-mono text-xs text-nfw-blackberry/60">
                         {sub.freshdesk_ticket_id || "—"}
                       </td>
