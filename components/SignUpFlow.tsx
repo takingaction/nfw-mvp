@@ -1060,9 +1060,9 @@ export default function SignUpFlow() {
               )}
 
               {giftCode.applied && (
-                <div className="p-4 bg-[#d4f1ad]/20 border border-[#d4f1ad]/30 rounded-xl">
+                <div className="p-4 bg-nfw-wisteria/20 border border-nfw-wisteria/30 rounded-xl">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-[#d4f1ad] rounded-full flex items-center justify-center">
+                    <div className="w-8 h-8 bg-nfw-wisteria/40 rounded-full flex items-center justify-center">
                       <Check className="w-4 h-4 text-nfw-blackberry" />
                     </div>
                     <div>

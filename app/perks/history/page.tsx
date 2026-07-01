@@ -209,7 +209,7 @@ export default function RedemptionHistoryPage() {
       case "instore_print":
         return "bg-[#b2d1ee] text-nfw-blackberry";
       case "call":
-        return "bg-[#d4f1ad] text-nfw-blackberry";
+        return "bg-nfw-wisteria/30 text-nfw-blackberry";
       default:
         return "bg-gray-100 text-gray-700";
     }
@@ -447,7 +447,7 @@ export default function RedemptionHistoryPage() {
                             disabled={updatingId === redemption.id}
                             className={`inline-flex items-center gap-1.5 px-3 py-1.5 transition-colors text-xs font-medium disabled:opacity-50 ${
                               redemption.status === "active"
-                                ? "bg-[#d4f1ad] text-nfw-blackberry hover:bg-[#d4f1ad]/80"
+                                ? "bg-nfw-wisteria/40 text-nfw-blackberry hover:bg-nfw-wisteria/60"
                                 : "bg-nfw-lilac/20 text-nfw-blackberry hover:bg-nfw-lilac/30 border border-nfw-lilac"
                             }`}
                           >
@@ -532,7 +532,7 @@ export default function RedemptionHistoryPage() {
                         {redemption.phone_number && (
                           <a
                             href={`tel:${redemption.phone_number}`}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#d4f1ad] text-nfw-blackberry hover:bg-[#d4f1ad]/80 transition-colors text-xs font-medium"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-nfw-wisteria/40 text-nfw-blackberry hover:bg-nfw-wisteria/60 transition-colors text-xs font-medium"
                           >
                             <Phone className="w-3 h-3" />
                             {redemption.phone_number}

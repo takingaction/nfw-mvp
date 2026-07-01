@@ -79,7 +79,7 @@ async function AdminMembersContent() {
               label: "Paid Members",
               value: `${paid} (${percent(paid)}%)`,
               showPercent: false,
-              color: "bg-[#d4f1ad]",
+              color: "bg-nfw-wisteria/40",
               text: "text-nfw-blackberry",
             },
             {

@@ -19,7 +19,6 @@ interface Props {
 }
 
 const CHECKED_COLORS: Record<CheckboxColor, string> = {
-  green: "#d4f1ad",
   aubergine: "#3e155f",
   wisteria: "#7786be",
   lilac: "#c4b7eb",

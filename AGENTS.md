@@ -5717,3 +5717,81 @@ Implemented a free membership system where users can request free membership via
   - Admin approval modal and endpoints
   - Store browsing/claiming separation
   - Admin contact submissions approval features
+
+---
+
+## Session 2026-06-30 (Afternoon): Remove Green from Brand
+
+### Overview
+
+Removed the green color (#d4f1ad) from the brand, replacing it with wisteria (#7786BE) for non-status UI elements and keeping green only for status badges (approved, paid, delivered, etc.).
+
+### Strategy
+
+- **Remove:** Green from CardSwatchColor type, section template checkmarks/icons, non-status UI elements
+- **Replace:** With wisteria (#7786BE) for brand consistency
+- **Keep:** Green for status badges to maintain semantic meaning (green = success/approved)
+
+### Files Modified
+
+**Type Definitions:**
+- `lib/sections/types.ts` - Removed "green" from `CardSwatchColor` and `IconColor` union types
+
+**Color Utilities:**
+- `lib/colors.ts` - Removed `green` from `CARD_COLOR_MAP` and `getCardSwatchBgClass()` function
+
+**Section Template Check Colors → Wisteria:**
+- `components/sections/BenefitsCheckmarksSection.tsx`
+- `components/sections/PricingCardsSection.tsx`
+- `components/sections/PricingComparisonSection.tsx`
+- `components/sections/PricingFinalCtaSection.tsx`
+- `components/sections/PricingBenefitsSection.tsx`
+- `components/sections/HowItWorksSection.tsx`
+
+**Non-Status UI Elements → Wisteria/30 or Wisteria/40:**
+- `app/admin/items/page.tsx` - Active Items progress bar
+- `app/admin/grants/page.tsx` - Total Applications stat card
+- `app/admin/shopify/ShopifyAdminClient.tsx` - Toggle ON state, success messages
+- `app/auth/welcome/page.tsx` - Badge dot indicator
+- `app/admin/dashboard/DashboardAdminClient.tsx` - Success message
+- `app/admin/members/page.tsx` - Paid Members stat card
+- `components/ArticlesClient.tsx` - Like button active state
+- `components/SignUpFlow.tsx` - Gift code applied success box
+- `components/GrantApplicationForm.tsx` - Single cycle info box
+- `app/perks/history/page.tsx` - Call method badge, Mark as Used button, phone CTA
+- `components/admin/AdminAnalyticsClient.tsx` - Chart color
+- `app/admin/gift-codes/AdminGiftCodes.tsx` - Redeemed stat card icon
+
+**Database Migrations Updated (source files only):**
+- `supabase/migrations/009_add_new_section_templates.sql`
+- `supabase/migrations/014_add_pricing_and_shared_section_templates.sql`
+
+### Status Badges Kept Green (Unchanged)
+
+- Grant statuses: `approved`, `payment_sent`, `open`
+- Membership statuses: `active`, `contributing`
+- Redemption statuses: `active`, `delivered`, `completed`
+- Publication statuses: `published`
+- Success indicators: bank connected, gift code applied, etc.
+
+### Database Updates Required
+
+Ran UPDATE statements against `section_templates` table to change:
+- `"checkbox_checked":"green"` → `"checkbox_checked":"wisteria"`
+- `"icon_color":"green"` → `"icon_color":"wisteria"`
+- `"check_color":"green"` → `"check_color":"wisteria"`
+- `"color":"green"` → `"color":"wisteria"` (in card arrays)
+- `"avatar_color":"green"` → `"avatar_color":"wisteria"`
+- Hardcoded `"#d4f1ad"` → `"#7786BE"` in perks_store_grid
+
+### Brand Color Reference (Updated)
+
+| Color | Hex | Usage |
+|-------|-----|-------|
+| aubergine | #3E145F | Primary brand, headers, CTAs |
+| citrine | #F8F19A | Highlights, buttons |
+| lilac | #B693C0 | Secondary accents |
+| wisteria | #7786BE | Tertiary accents (replaced green) |
+| dove | #F6F5F0 | Light backgrounds |
+| blackberry | #2E1F38 | Dark text/backgrounds |
+| green | #d4f1ad | Status badges only (approved, paid, success) |

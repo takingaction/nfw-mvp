@@ -219,7 +219,7 @@ export default function GrantApplicationForm({
         )}
 
         {cycles.length === 1 && selectedCycle && (
-          <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] p-5">
+          <div className="bg-nfw-wisteria/20 border border-nfw-wisteria/30 p-5">
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="font-serif text-xl text-nfw-blackberry [&_sup]:text-[0.6em] [&_sup]:align-super"

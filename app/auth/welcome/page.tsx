@@ -57,7 +57,7 @@ export default async function WelcomePage() {
           />
 
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-nfw-lilac/20 border border-nfw-lilac/30 text-sm mb-6">
-          <span className="w-2 h-2 bg-[#d4f1ad]"></span>
+          <span className="w-2 h-2 bg-nfw-wisteria"></span>
           <span className="text-nfw-dove font-semibold font-ui">
             {content.badge}
           </span>

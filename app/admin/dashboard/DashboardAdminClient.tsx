@@ -329,7 +329,7 @@ export default function DashboardAdminClient() {
         {message && (
           <div
             className={`mb-6 p-4 ${
-              message.type === "success" ? "bg-[#d4f1ad] text-nfw-blackberry" : "bg-red-50 text-red-800"
+              message.type === "success" ? "bg-nfw-wisteria/20 text-nfw-blackberry" : "bg-red-50 text-red-800"
             }`}
           >
             {message.text}

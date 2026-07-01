@@ -99,7 +99,7 @@ export default async function AdminItemsPage() {
               {items?.filter((i) => i.is_active).length || 0}
             </div>
             <div className="text-nfw-blackberry/50 text-sm mt-1">Active Items</div>
-            <div className="mt-2 h-1 w-8 bg-[#d4f1ad]" />
+            <div className="mt-2 h-1 w-8 bg-nfw-wisteria/40" />
           </div>
           <div className="bg-white border border-nfw-blackberry/10 p-5">
             <div className="text-3xl font-bold text-nfw-blackberry">

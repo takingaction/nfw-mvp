@@ -242,7 +242,7 @@ export interface MembershipCtaContent {
 
 export type BackgroundColor = "dove" | "aubergine" | "wisteria" | "lilac" | "blackberry";
 
-export type CardSwatchColor = "yellow" | "green" | "blue" | "lavender" | "citrine" | "lilac" | "powder" | "dark_purple" | "medium_lavender" | "soft_blue";
+export type CardSwatchColor = "yellow" | "blue" | "lavender" | "citrine" | "lilac" | "powder" | "dark_purple" | "medium_lavender" | "soft_blue";
 
 // ── right_side_3_features ──────────────────────────────────────
 
@@ -346,7 +346,7 @@ export interface PerksFeatureContent {
 
 // ── Shared color types for new templates ────────────────────
 
-export type IconColor = "green" | "yellow" | "blue" | "lilac";
+export type IconColor = "yellow" | "blue" | "lilac" | "wisteria";
 export type CheckboxColor = "green" | "aubergine" | "wisteria" | "lilac" | "citrine";
 export type UncheckedColor = "blackberry10" | "blackberry20" | "wisteria20";
 

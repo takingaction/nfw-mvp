@@ -54,7 +54,7 @@ export default async function AdminGrantsPage() {
             {
               label: "Total Applications",
               value: grants?.length || 0,
-              color: "bg-[#d4f1ad]",
+              color: "bg-nfw-wisteria/40",
               text: "text-nfw-blackberry",
             },
             {

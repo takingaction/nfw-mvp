@@ -112,7 +112,7 @@ export default function AdminGiftCodes() {
 
             <div className="bg-white border border-nfw-blackberry/10 rounded-xl p-5">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 bg-[#d4f1ad]/30 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-nfw-wisteria/30 rounded-full flex items-center justify-center">
                   <Check className="w-5 h-5 text-nfw-blackberry" />
                 </div>
                 <span className="text-sm text-nfw-blackberry/60">Redeemed</span>

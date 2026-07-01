@@ -106,7 +106,7 @@ function SortableProductRow({
             <button
               onClick={onToggleVisibility}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                product.mvpVisibility ? "bg-[#d4f1ad]" : "bg-nfw-stone/30"
+                product.mvpVisibility ? "bg-nfw-wisteria/40" : "bg-nfw-stone/30"
               }`}
             >
               <span
@@ -619,7 +619,7 @@ const SHOPIFY_AUTH_URL = `https://nfw-checkout.myshopify.com/admin/oauth/authori
       {message && (
         <div
           className={`mb-6 p-4 ${
-            message.type === "success" ? "bg-[#d4f1ad] text-nfw-blackberry" : "bg-red-50 text-red-800"
+            message.type === "success" ? "bg-nfw-wisteria/20 text-nfw-blackberry" : "bg-red-50 text-red-800"
           }`}
         >
           {message.text}

@@ -55,7 +55,7 @@ type Redemption = {
 
 const COLORS = [
   "#3E145F",
-  "#d4f1ad",
+  "#7786BE",
   "#b2d1ee",
   "#fdf493",
   "#B693C0",

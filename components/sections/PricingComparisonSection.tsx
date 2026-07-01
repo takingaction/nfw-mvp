@@ -12,7 +12,6 @@ interface Props {
 }
 
 const CHECKED_COLORS: Record<string, string> = {
-  green: "#d4f1ad",
   aubergine: "#3e155f",
   wisteria: "#7786be",
   citrine: "#e8d5a3",

@@ -12,10 +12,10 @@ interface Props {
 }
 
 const ICON_COLORS: Record<IconColor, string> = {
-  green: "#d4f1ad",
   yellow: "#e8d5a3",
   blue: "#b2d1ee",
   lilac: "#c4b7eb",
+  wisteria: "#7786BE",
 };
 
 function getIcon(iconName: string) {

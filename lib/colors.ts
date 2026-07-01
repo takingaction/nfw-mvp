@@ -81,7 +81,6 @@ export function getPrimaryButtonClass(background?: BackgroundColor): string {
 
 const CARD_COLOR_MAP: Record<CardSwatchColor, string> = {
   yellow: "#FEFCDE",
-  green: "#F1FAE5",
   blue: "#E7F0FA",
   lavender: "#E9E6F0",
   citrine: "#F8F2E2",
@@ -100,8 +99,6 @@ export function getCardSwatchBgClass(color: CardSwatchColor): string {
   switch (color) {
     case "yellow":
       return "bg-yellow-100";
-    case "green":
-      return "bg-green-100";
     case "blue":
       return "bg-blue-100";
     case "lavender":

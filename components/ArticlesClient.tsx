@@ -233,7 +233,7 @@ export default function ArticlesClient({
                       disabled={likingArticleId === article.id}
                       className={`flex items-center gap-2 px-4 py-2 font-medium transition-all disabled:opacity-50 ${
                         article.user_has_liked
-                          ? "bg-[#d4f1ad] text-nfw-blackberry hover:bg-[#d4f1ad]/70"
+                          ?                           "bg-nfw-wisteria/30 text-nfw-blackberry hover:bg-nfw-wisteria/50"
                           : "bg-nfw-lilac/20 text-nfw-blackberry/60 hover:bg-nfw-lilac/40 hover:text-nfw-blackberry"
                       }`}
                     >

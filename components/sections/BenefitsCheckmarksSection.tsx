@@ -15,10 +15,10 @@ interface Props {
 }
 
 const CHECK_COLORS: Record<IconColor, string> = {
-  green: "#d4f1ad",
   yellow: "#fdf493",
   blue: "#b2d1ee",
   lilac: "#c4b7eb",
+  wisteria: "#7786BE",
 };
 
 export default function BenefitsCheckmarksSection({ content }: Props) {
