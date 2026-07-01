@@ -6003,3 +6003,60 @@ if (
 ### Commit
 
 - `50fcf01` - fix: skip free membership redirect checks for approved members
+
+---
+
+## Session 2026-07-01 (Afternoon): Link Contact Submissions to Profiles via user_id
+
+### Problem
+
+Admin was seeing approve buttons for contact submissions where:
+- The member's profile **did** exist and was **already approved**
+- But the approval API failed with "No matching profile found" because:
+  - The contact submission stored a different email than the profile's email
+  - Or the contact form was submitted without being logged in
+
+### Root Cause
+
+The `contact_submissions` table had **no `user_id` column** - it only stored email. The approval API looked up profiles by email only, which fails when:
+1. User submits contact form with a different email than their profile
+2. User submits contact form while logged out (no profile link)
+
+### Solution
+
+1. **Added `user_id` column** to `contact_submissions` table (migration 106)
+2. **Updated contact submit API** to capture `user_id` when user is logged in
+3. **Updated approval API** to use `user_id` lookup first, fall back to email
+
+### Database Migration
+
+```sql
+ALTER TABLE contact_submissions ADD COLUMN user_id UUID REFERENCES profiles(id);
+CREATE INDEX idx_contact_submissions_user_id ON contact_submissions(user_id);
+-- Backfill: match existing submissions by email
+UPDATE contact_submissions SET user_id = profiles.id FROM profiles WHERE profiles.email = contact_submissions.email;
+```
+
+### API Changes
+
+**`app/api/contact/submit/route.ts`:**
+- Capture `userId = user?.id || null` when user is logged in
+- Include `user_id` in insert
+
+**`app/api/admin/contact-submissions/approve/route.ts`:**
+- Select `user_id` from submission
+- Look up by `user_id` first (preferred)
+- Fall back to email lookup for older submissions without `user_id`
+
+### Files Created
+
+- `supabase/migrations/106_add_user_id_to_contact_submissions.sql`
+
+### Files Modified
+
+- `app/api/contact/submit/route.ts`
+- `app/api/admin/contact-submissions/approve/route.ts`
+
+### Commit
+
+- `96ed438` - feat: link contact submissions to profiles via user_id
