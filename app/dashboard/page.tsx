@@ -186,8 +186,10 @@ export default async function DashboardPage() {
 
   // If free member has NULL contact_submitted (never started free flow), redirect to step 3
   // This catches users who have database default 'free' but never interacted with step 3
+  // Skip if is_approved_free_member === TRUE (grandfathered or admin-approved members)
   if (
     profile?.membership_level === "free" &&
+    profile?.is_approved_free_member !== true &&
     profile?.free_membership_contact_submitted === null
   ) {
     redirect("/auth/sign-up?step=3");
@@ -198,8 +200,10 @@ export default async function DashboardPage() {
 
   // If free member started free flow (submitted=false) and has no abandoned checkout, redirect to contact
   // If they HAVE an abandoned checkout, show the AbandonedCheckoutBanner instead
+  // Skip if is_approved_free_member === TRUE
   if (
     profile?.membership_level === "free" &&
+    profile?.is_approved_free_member !== true &&
     profile?.free_membership_contact_submitted === false &&
     !hasAbandonedCheckout
   ) {
