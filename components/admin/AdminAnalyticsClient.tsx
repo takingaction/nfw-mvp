@@ -13,6 +13,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
 } from "recharts";
 import {
@@ -32,6 +33,7 @@ type DateRangeOption = {
 };
 
 const DATE_RANGE_OPTIONS: DateRangeOption[] = [
+  { label: "All Time", value: 9999, description: "Everything" },
   { label: "Today", value: 1, description: "Current day" },
   { label: "Last 7 Days", value: 7, description: "Past week" },
   { label: "Last 30 Days", value: 30, description: "Past month" },
@@ -81,10 +83,10 @@ type Redemption = {
 const COLORS = [
   "#3E145F",
   "#7786BE",
-  "#b2d1ee",
-  "#fdf493",
   "#B693C0",
   "#2E1F38",
+  "#5a3d7a",
+  "#9580b4",
 ];
 
 type NewsletterEmail = {
@@ -172,6 +174,11 @@ export default function AdminAnalyticsClient({
   // Calculate cutoff based on selected date range
   const cutoff = useMemo(() => {
     const now = new Date();
+
+    if (dateRange === 9999) {
+      // All time - return epoch
+      return new Date(0);
+    }
 
     if (dateRange === "custom") {
       if (!customStartDate) return new Date(0);
@@ -302,15 +309,24 @@ export default function AdminAnalyticsClient({
 
   // Membership revenue (annual)
   const membershipRevenue = useMemo(() => {
-    return contributingCount * 15 * 12 + foundingCount * 100 * 12;
+    return contributingCount * 15 + foundingCount * 100;
   }, [contributingCount, foundingCount]);
 
-  // Average membership dues per paid member
+  // Average membership dues per paid member (filtered)
   const averageDues = useMemo(() => {
-    if (paidCount === 0) return 0;
-    const totalAnnual = contributingCount * 15 * 12 + foundingCount * 100 * 12;
-    return Math.round(totalAnnual / paidCount);
-  }, [contributingCount, foundingCount, paidCount]);
+    const paidFiltered = filteredProfiles.filter(
+      (p) => p.membership_level === "contributing" || p.membership_level === "founding"
+    ).length;
+    if (paidFiltered === 0) return 0;
+    const contributingFiltered = filteredProfiles.filter(
+      (p) => p.membership_level === "contributing"
+    ).length;
+    const foundingFiltered = filteredProfiles.filter(
+      (p) => p.membership_level === "founding"
+    ).length;
+    const totalAnnual = contributingFiltered * 15 + foundingFiltered * 100;
+    return Math.round(totalAnnual / paidFiltered);
+  }, [filteredProfiles]);
 
   // Free members (approved free members only)
   const freeMembersCount = useMemo(() => {
@@ -339,16 +355,22 @@ export default function AdminAnalyticsClient({
     ).length;
   }, [profiles]);
 
-  // Paid vs free percentage
+  // Paid vs free percentage (based on filtered profiles)
   const paidPercent = useMemo(() => {
-    const total = profiles.length;
-    return total > 0 ? Math.round((paidCount / total) * 100) : 0;
-  }, [profiles, paidCount]);
+    const total = filteredProfiles.length;
+    const paidFiltered = filteredProfiles.filter(
+      (p) => p.membership_level === "contributing" || p.membership_level === "founding"
+    ).length;
+    return total > 0 ? Math.round((paidFiltered / total) * 100) : 0;
+  }, [filteredProfiles]);
 
   const freePercent = useMemo(() => {
-    const total = profiles.length;
-    return total > 0 ? Math.round((freeMembersCount / total) * 100) : 0;
-  }, [profiles, freeMembersCount]);
+    const total = filteredProfiles.length;
+    const freeFiltered = filteredProfiles.filter(
+      (p) => p.membership_level === "free" && p.is_approved_free_member === true
+    ).length;
+    return total > 0 ? Math.round((freeFiltered / total) * 100) : 0;
+  }, [filteredProfiles]);
 
   // Retention rate: members who joined 12+ months ago and still active
   const retentionRate = useMemo(() => {
@@ -497,23 +519,46 @@ export default function AdminAnalyticsClient({
   }, [filteredRedemptions]);
 
   // ── ZDS (ZERO DOLLAR STORE) ──────────────────────────────
+  // Date-filtered only (for pie chart showing all statuses)
   const filteredZdsClaims = useMemo(
     () =>
       zdsClaims.filter(
-        (c) => c.claimed_at && isInRange(c.claimed_at),
+        (c) =>
+          c.claimed_at &&
+          isInRange(c.claimed_at),
       ),
     [zdsClaims, isInRange],
   );
 
+  // Date + success filtered (for stat boxes)
+  const successfulZdsClaims = useMemo(
+    () =>
+      filteredZdsClaims.filter(
+        (c) =>
+          c.status === "fulfilled" || c.status === "delivered" || c.status === "completed",
+      ),
+    [filteredZdsClaims],
+  );
+
+  // All-time successful ZDS claims (for Total All Time box)
+  const successfulZdsClaimsAllTime = useMemo(
+    () =>
+      zdsClaims.filter(
+        (c) =>
+          c.status === "fulfilled" || c.status === "delivered" || c.status === "completed",
+      ),
+    [zdsClaims],
+  );
+
   // Unique ZDS claimants
   const uniqueZdsClaimants = useMemo(() => {
-    return new Set(filteredZdsClaims.map((c) => c.user_id).filter(Boolean)).size;
-  }, [filteredZdsClaims]);
+    return new Set(successfulZdsClaims.map((c) => c.user_id).filter(Boolean)).size;
+  }, [successfulZdsClaims]);
 
   // ZDS claims by day
   const zdsClaimsByDay = useMemo(() => {
     const map: Record<string, number> = {};
-    filteredZdsClaims.forEach((c) => {
+    successfulZdsClaims.forEach((c) => {
       const d = c.claimed_at!.slice(0, 10);
       map[d] = (map[d] || 0) + 1;
     });
@@ -540,12 +585,14 @@ export default function AdminAnalyticsClient({
       }));
   }, [filteredZdsClaims, shopifyProducts]);
 
-  // ZDS claims by status
+  // ZDS claims by status (excluding "created" - not a final state)
   const zdsClaimsByStatus = useMemo(() => {
     const map: Record<string, number> = {};
     filteredZdsClaims.forEach((c) => {
       const s = c.status || "unknown";
-      map[s] = (map[s] || 0) + 1;
+      if (s !== "created") {
+        map[s] = (map[s] || 0) + 1;
+      }
     });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [filteredZdsClaims]);
@@ -819,57 +866,57 @@ export default function AdminAnalyticsClient({
             label: "New Members",
             value: filteredProfiles.length,
             icon: Users,
-            color: "bg-nfw-blackberry",
+            color: "bg-nfw-wisteria",
             text: "text-white",
           },
           {
             label: "Total Members",
             value: profiles.length,
             icon: Users,
-            color: "bg-nfw-lilac/30",
-            text: "text-nfw-blackberry",
+            color: "bg-nfw-aubergine",
+            text: "text-white",
           },
           {
             label: "Paid Members",
             value: paidCount,
             icon: TrendingUp,
-            color: "bg-nfw-citrine",
-            text: "text-nfw-blackberry",
+            color: "bg-nfw-aubergine",
+            text: "text-white",
           },
           {
             label: "Free Members",
             value: freeMembersCount,
             icon: Users,
-            color: "bg-nfw-wisteria/50",
+            color: "bg-nfw-aubergine",
             text: "text-white",
           },
           {
             label: "Pending Free",
             value: pendingFreeCount,
             icon: Users,
-            color: "bg-nfw-lilac/50",
+            color: "bg-nfw-aubergine",
             text: "text-white",
           },
           {
             label: "Started Free",
             value: startedFreeCount,
             icon: Users,
-            color: "bg-nfw-blackberry/30",
+            color: "bg-nfw-aubergine",
             text: "text-white",
           },
           {
             label: "Contributing $15",
             value: contributingCount,
             icon: DollarSign,
-            color: "bg-nfw-citrine/70",
-            text: "text-nfw-blackberry",
+            color: "bg-nfw-aubergine",
+            text: "text-white",
           },
           {
             label: "Founding $100",
             value: foundingCount,
             icon: DollarSign,
-            color: "bg-nfw-citrine/50",
-            text: "text-nfw-blackberry",
+            color: "bg-nfw-aubergine",
+            text: "text-white",
           },
           {
             label: "Membership Revenue",
@@ -889,36 +936,36 @@ export default function AdminAnalyticsClient({
             label: "Avg Dues",
             value: `$${averageDues}`,
             icon: DollarSign,
-            color: "bg-nfw-lilac/50",
+            color: "bg-nfw-wisteria",
             text: "text-white",
           },
           {
             label: "Churn",
             value: `${churnRate}%`,
             icon: TrendingUp,
-            color: "bg-nfw-blackberry/50",
+            color: "bg-nfw-wisteria",
             text: "text-white",
           },
           {
             label: "Paid / Free",
             value: `${paidPercent}% / ${freePercent}%`,
             icon: TrendingUp,
-            color: "bg-nfw-citrine/50",
-            text: "text-nfw-blackberry",
+            color: "bg-nfw-wisteria",
+            text: "text-white",
           },
           {
             label: "Signups (Members + Newsletter)",
             value: combinedSignups,
             icon: Users,
-            color: "bg-nfw-blackberry",
+            color: "bg-nfw-wisteria",
             text: "text-white",
           },
           {
             label: "Newsletter Subscribers",
             value: totalNewsletterSubscribers,
             icon: Users,
-            color: "bg-nfw-lilac/30",
-            text: "text-nfw-blackberry",
+            color: "bg-nfw-aubergine",
+            text: "text-white",
           },
         ]
       : tab === "grants"
@@ -927,29 +974,29 @@ export default function AdminAnalyticsClient({
               label: "Applications",
               value: filteredGrants.length,
               icon: FileText,
-              color: "bg-nfw-blackberry",
+              color: "bg-nfw-wisteria",
               text: "text-white",
             },
             {
               label: "Approval Rate",
               value: `${approvalRate}%`,
               icon: TrendingUp,
-              color: "bg-nfw-citrine",
-              text: "text-nfw-blackberry",
+              color: "bg-nfw-wisteria",
+              text: "text-white",
             },
             {
               label: "Total Funded",
               value: `$${totalFunded.toLocaleString()}`,
               icon: DollarSign,
-              color: "bg-nfw-citrine/70",
-              text: "text-nfw-blackberry",
+              color: "bg-nfw-aubergine",
+              text: "text-white",
             },
             {
               label: "Funded Grants",
               value: grants.filter((g) => g.status === "funded").length,
               icon: Gift,
-              color: "bg-blue-100",
-              text: "text-nfw-blackberry",
+              color: "bg-nfw-aubergine",
+              text: "text-white",
             },
           ]
         : tab === "perks"
@@ -958,61 +1005,54 @@ export default function AdminAnalyticsClient({
                 label: "Redemptions",
                 value: filteredRedemptions.length,
                 icon: Gift,
-                color: "bg-nfw-blackberry",
+                color: "bg-nfw-wisteria",
                 text: "text-white",
               },
               {
                 label: "Total All Time",
                 value: redemptions.length,
                 icon: Gift,
-                color: "bg-nfw-lilac/30",
-                text: "text-nfw-blackberry",
+                color: "bg-nfw-aubergine",
+                text: "text-white",
               },
               {
                 label: "Unique Redeemers",
                 value: new Set(filteredRedemptions.map((r) => r.user_id)).size,
                 icon: TrendingUp,
-                color: "bg-nfw-citrine",
-                text: "text-nfw-blackberry",
+                color: "bg-nfw-wisteria",
+                text: "text-white",
               },
               {
                 label: "Redeem Types",
                 value: new Set(filteredRedemptions.map((r) => r.redeem_type))
                   .size,
                 icon: FileText,
-                color: "bg-nfw-citrine/70",
-                text: "text-nfw-blackberry",
+                color: "bg-nfw-wisteria",
+                text: "text-white",
               },
             ]
           : tab === "zds"
             ? [
                 {
                   label: "ZDS Claims",
-                  value: filteredZdsClaims.length,
+                  value: successfulZdsClaims.length,
                   icon: Gift,
-                  color: "bg-nfw-blackberry",
+                  color: "bg-nfw-wisteria",
                   text: "text-white",
                 },
                 {
                   label: "Total All Time",
-                  value: zdsClaims.length,
+                  value: successfulZdsClaimsAllTime.length,
                   icon: Gift,
-                  color: "bg-nfw-lilac/30",
-                  text: "text-nfw-blackberry",
+                  color: "bg-nfw-aubergine",
+                  text: "text-white",
                 },
                 {
                   label: "Unique Claimants",
                   value: uniqueZdsClaimants,
                   icon: Users,
-                  color: "bg-nfw-citrine",
-                  text: "text-nfw-blackberry",
-                },
-                {
-                  label: "Claim Status",
-                  value: new Set(filteredZdsClaims.map((c) => c.status)).size,
-                  icon: FileText,
-                  color: "bg-nfw-citrine/70",
-                  text: "text-nfw-blackberry",
+                  color: "bg-nfw-wisteria",
+                  text: "text-white",
                 },
               ]
             : tab === "engagement"
@@ -1021,22 +1061,22 @@ export default function AdminAnalyticsClient({
                     label: "Active Members",
                     value: activeMembers,
                     icon: Users,
-                    color: "bg-nfw-blackberry",
+                    color: "bg-nfw-wisteria",
                     text: "text-white",
                   },
                   {
                     label: "Weekly Active",
                     value: weeklyActive,
                     icon: TrendingUp,
-                    color: "bg-nfw-citrine",
-                    text: "text-nfw-blackberry",
+                    color: "bg-nfw-wisteria",
+                    text: "text-white",
                   },
                   {
                     label: "Monthly Active",
                     value: monthlyActive,
                     icon: TrendingUp,
-                    color: "bg-nfw-citrine/70",
-                    text: "text-nfw-blackberry",
+                    color: "bg-nfw-wisteria",
+                    text: "text-white",
                   },
                   {
                     label: "Total Activities",
@@ -1049,8 +1089,8 @@ export default function AdminAnalyticsClient({
                     label: "Avg Actions/Member",
                     value: avgActionsPerMember,
                     icon: TrendingUp,
-                    color: "bg-nfw-lilac/30",
-                    text: "text-nfw-blackberry",
+                    color: "bg-nfw-wisteria",
+                    text: "text-white",
                   },
                 ]
               : tab === "cohorts"
@@ -1066,15 +1106,15 @@ export default function AdminAnalyticsClient({
                       label: "Total Members",
                       value: overallRetention.totalMembers,
                       icon: Users,
-                      color: "bg-nfw-lilac/30",
-                      text: "text-nfw-blackberry",
+                      color: "bg-nfw-wisteria",
+                      text: "text-white",
                     },
                     {
                       label: "Active Members",
                       value: overallRetention.totalRetained,
                       icon: TrendingUp,
-                      color: "bg-nfw-citrine",
-                      text: "text-nfw-blackberry",
+                      color: "bg-nfw-aubergine",
+                      text: "text-white",
                     },
                     {
                       label: "Overall Retention",
@@ -1097,15 +1137,15 @@ export default function AdminAnalyticsClient({
                       label: "Open",
                       value: freshdeskStats?.open ?? "-",
                       icon: TrendingUp,
-                      color: "bg-nfw-citrine",
-                      text: "text-nfw-blackberry",
+                      color: "bg-nfw-aubergine",
+                      text: "text-white",
                     },
                     {
                       label: "Pending",
                       value: freshdeskStats?.pending ?? "-",
                       icon: TrendingUp,
-                      color: "bg-nfw-citrine/70",
-                      text: "text-nfw-blackberry",
+                      color: "bg-nfw-aubergine/70",
+                      text: "text-white",
                     },
                     {
                       label: "Resolved",
@@ -1118,8 +1158,8 @@ export default function AdminAnalyticsClient({
                       label: "Closed",
                       value: freshdeskStats?.closed ?? "-",
                       icon: TrendingUp,
-                      color: "bg-nfw-lilac/30",
-                      text: "text-nfw-blackberry",
+                      color: "bg-nfw-wisteria",
+                      text: "text-white",
                     },
                   ]
                 : []
@@ -1273,15 +1313,13 @@ export default function AdminAnalyticsClient({
                       cx="50%"
                       cy="50%"
                       outerRadius={80}
-                      label={({ name, percent }) =>
-                        `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                      }
                     >
                       {membersByLevel.map((_, i) => (
                         <Cell key={i} fill={COLORS[i % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip />
+                    <Legend verticalAlign="bottom" height={36} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -1298,7 +1336,8 @@ export default function AdminAnalyticsClient({
                       dataKey="state"
                       type="category"
                       tick={{ fontSize: 11 }}
-                      width={30}
+                      width={50}
+                      interval={0}
                     />
                     <Tooltip />
                     <Bar
@@ -1358,15 +1397,13 @@ export default function AdminAnalyticsClient({
                       cx="50%"
                       cy="50%"
                       outerRadius={80}
-                      label={({ name, percent }) =>
-                        `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                      }
                     >
                       {grantsByStatus.map((_, i) => (
                         <Cell key={i} fill={COLORS[i % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip />
+                    <Legend verticalAlign="bottom" height={36} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -1444,15 +1481,13 @@ export default function AdminAnalyticsClient({
                       cx="50%"
                       cy="50%"
                       outerRadius={80}
-                      label={({ name, percent }) =>
-                        `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                      }
                     >
                       {redemptionsByType.map((_, i) => (
                         <Cell key={i} fill={COLORS[i % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip />
+                    <Legend verticalAlign="bottom" height={36} />
                   </PieChart>
                 </ResponsiveContainer>
             </div>
@@ -1540,15 +1575,13 @@ export default function AdminAnalyticsClient({
                         cx="50%"
                         cy="50%"
                         outerRadius={80}
-                        label={({ name, percent }) =>
-                          `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                        }
                       >
                         {zdsClaimsByStatus.map((_, i) => (
                           <Cell key={i} fill={COLORS[i % COLORS.length]} />
                         ))}
                       </Pie>
                       <Tooltip />
+                      <Legend verticalAlign="bottom" height={36} />
                     </PieChart>
                   </ResponsiveContainer>
                 )}
@@ -1627,14 +1660,14 @@ export default function AdminAnalyticsClient({
                     Total activities / active members
                   </div>
                 </div>
-                <div className="text-center p-6 bg-nfw-citrine">
-                  <div className="text-4xl font-black text-nfw-blackberry mb-2">
+                <div className="text-center p-6 bg-nfw-aubergine">
+                  <div className="text-4xl font-black text-white mb-2">
                     {profiles.length > 0 ? Math.round((activeMembers / profiles.length) * 100) : 0}%
                   </div>
-                  <div className="text-sm font-semibold text-nfw-blackberry/70">
+                  <div className="text-sm font-semibold text-white/70">
                     Engagement Rate
                   </div>
-                  <div className="text-xs text-nfw-blackberry/50 mt-2">
+                  <div className="text-xs text-white/50 mt-2">
                     Active members / total members
                 </div>
               </div>
@@ -1678,10 +1711,10 @@ export default function AdminAnalyticsClient({
                             <span
                               className={`inline-block px-2 py-1 text-xs font-black rounded ${
                                 row.retentionRate >= 70
-                                  ? "bg-nfw-citrine text-nfw-blackberry"
+                                  ? "bg-nfw-aubergine text-white"
                                   : row.retentionRate >= 40
                                   ? "bg-nfw-wisteria text-white"
-                                  : "bg-nfw-lilac/30 text-nfw-blackberry"
+                                  : "bg-nfw-wisteria text-white"
                               }`}
                             >
                               {row.retentionRate}%
@@ -1759,7 +1792,7 @@ export default function AdminAnalyticsClient({
               ) : freshdeskStats ? (
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                    <div className="text-center p-4 bg-nfw-dove">
+                    <div className="text-center p-4 bg-nfw-aubergine/30">
                       <div className="text-3xl font-black text-nfw-blackberry">
                         {freshdeskStats.total}
                       </div>
@@ -1767,31 +1800,31 @@ export default function AdminAnalyticsClient({
                         Total Tickets
                       </div>
                     </div>
-                    <div className="text-center p-4 bg-nfw-citrine/30">
-                      <div className="text-3xl font-black text-nfw-blackberry">
+                    <div className="text-center p-4 bg-nfw-aubergine">
+                      <div className="text-3xl font-black text-white">
                         {freshdeskStats.open}
                       </div>
-                      <div className="text-xs font-semibold text-nfw-blackberry/70 mt-1">
+                      <div className="text-xs font-semibold text-white/70 mt-1">
                         Open
                       </div>
                     </div>
-                    <div className="text-center p-4 bg-nfw-citrine/50">
-                      <div className="text-3xl font-black text-nfw-blackberry">
+                    <div className="text-center p-4 bg-nfw-aubergine/70">
+                      <div className="text-3xl font-black text-white">
                         {freshdeskStats.pending}
                       </div>
-                      <div className="text-xs font-semibold text-nfw-blackberry/70 mt-1">
+                      <div className="text-xs font-semibold text-white/70 mt-1">
                         Pending
                       </div>
                     </div>
-                    <div className="text-center p-4 bg-nfw-wisteria/30">
-                      <div className="text-3xl font-black text-nfw-blackberry">
+                    <div className="text-center p-4 bg-nfw-aubergine/50">
+                      <div className="text-3xl font-black text-white">
                         {freshdeskStats.resolved}
                       </div>
-                      <div className="text-xs font-semibold text-nfw-blackberry/70 mt-1">
+                      <div className="text-xs font-semibold text-white/70 mt-1">
                         Resolved
                       </div>
                     </div>
-                    <div className="text-center p-4 bg-nfw-lilac/30">
+                    <div className="text-center p-4 bg-nfw-aubergine/30">
                       <div className="text-3xl font-black text-nfw-blackberry">
                         {freshdeskStats.closed}
                       </div>

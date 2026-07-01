@@ -6146,3 +6146,78 @@ Combined Access Perks and NFW Perks into single "Perks" column:
 ### Commit
 
 - `xxxxxxx` - feat: analytics enhancements with timeline, cohort analysis, freshdesk integration
+
+---
+
+## Session 2026-07-01 (Late): Analytics UI Fixes + ZDS Claims Fixes
+
+### Overview
+
+Fixed analytics page color scheme, pie chart overlaps, calculation bugs, and ZDS claims filtering.
+
+### Color Scheme Fixes
+
+**Removed yellow (citrine) from analytics page:**
+- Pie chart COLORS array updated to remove `#fdf493` and `#b2d1ee`
+- Now uses only aubergine and wisteria shades
+
+**Simplified Members tab boxes:**
+- Wisteria for filtered/dynamic values (changes with dropdown)
+- Aubergine for all-time/fixed values
+- Removed all lilac/30 with blackberry text (poor contrast)
+
+**Fixed stat card colors:**
+- Members: Wisteria for New Members, Retention Rate, Avg Dues, Churn, Paid/Free, Signups
+- Members: Aubergine for Total, Paid, Free, Pending Free, Started Free, Contributing, Founding, Revenue, Newsletter
+- Grants: Wisteria for filtered (Applications, Approval Rate), Aubergine for all-time (Total Funded, Funded Grants)
+- Perks: Wisteria for filtered (Redemptions, Unique Redeemers, Redeem Types), Aubergine for all-time (Total All Time)
+- ZDS: Wisteria for filtered (ZDS Claims, Unique Claimants), Aubergine for all-time (Total All Time)
+- Engagement: All Wisteria (all are filtered values)
+- Cohorts/Support: Wisteria for filtered, Aubergine for all-time
+
+### Calculation Fixes
+
+**Membership Revenue:**
+- Was: `contributingCount * 15 * 12 + foundingCount * 100 * 12` (monthly × 12)
+- Fixed: `contributingCount * 15 + foundingCount * 100` (annual, not monthly)
+
+**Average Dues:**
+- Same fix - removed erroneous `* 12` multiplier
+
+**Paid/Free Percentages:**
+- Was: Calculated from all profiles, not filtered
+- Fixed: Now uses `filteredProfiles` for accurate percentage based on date range
+
+### UI Improvements
+
+**Top 10 States chart:**
+- Increased Y-axis width from 30 to 50
+- Added `interval={0}` to show ALL state labels (not just every other)
+
+**Pie charts:**
+- Removed overlapping slice labels
+- Added Legend at bottom for clean label display
+- Removed redundant "Created" status from ZDS Claims pie chart
+
+**Dropdown:**
+- Added "All Time" option (value: 9999, returns epoch as cutoff)
+
+### ZDS Claims Fixes
+
+**Stat boxes now only show successful claims:**
+- ZDS Claims (filtered): Only `fulfilled`, `delivered`, `completed`
+- Total All Time: Only successful claims all time
+- Pie chart still shows all statuses for context (except "Created")
+
+**Removed:**
+- "Claim Status" box from ZDS tab (not needed)
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/admin/AdminAnalyticsClient.tsx` | All color fixes, calculation fixes, UI improvements, ZDS filtering |
+
+### Commit
+
+- `xxxxxxx` - fix: analytics color scheme, calculations, ZDS claims filtering
