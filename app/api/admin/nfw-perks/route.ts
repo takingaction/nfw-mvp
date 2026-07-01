@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createClientSupabase } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/adminCheck";
+
+const supabaseAdmin = createClientSupabase(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET() {
   try {
     await requireAdmin();
 
-    const supabase = await createClient();
-
-    const { data: perks, error } = await supabase
+    const { data: perks, error } = await supabaseAdmin
       .from("nfw_perks")
       .select("*")
       .order("featured_order", { nullsFirst: false })
@@ -21,7 +24,7 @@ export async function GET() {
 
     const perksWithStats = await Promise.all(
       (perks || []).map(async (perk) => {
-        const { count: redemptionCount } = await supabase
+        const { count: redemptionCount } = await supabaseAdmin
           .from("nfw_perk_redemptions")
           .select("*", { count: "exact", head: true })
           .eq("perk_id", perk.id);
@@ -69,15 +72,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Landing page URL is required" }, { status: 400 });
     }
 
-    const supabase = await createClient();
-
     // Generate slug from title if not provided
     const generatedSlug = slug || title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
 
-    const { data: perk, error } = await supabase
+    const { data: perk, error } = await supabaseAdmin
       .from("nfw_perks")
       .insert({
         title,

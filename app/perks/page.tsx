@@ -1207,6 +1207,7 @@ export default function PerksPage() {
           }
         }}
         isAdmin={profile?.is_admin}
+        onRedeem={handleNfwPerkRedeem}
       />
     </main>
   );

@@ -25,6 +25,7 @@ type NfwPerkDetailPanelProps = {
   liked?: boolean;
   onToggleLike?: (partnerName: string, logoUrl: string | null, liked: boolean) => void;
   isAdmin?: boolean;
+  onRedeem?: (perk: NfwPerk) => void;
 };
 
 function formatExpiry(date: string | null): string {
@@ -49,6 +50,7 @@ export default function NfwPerkDetailPanel({
   liked = false,
   onToggleLike,
   isAdmin = false,
+  onRedeem,
 }: NfwPerkDetailPanelProps) {
   const [likeAnimating, setLikeAnimating] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
@@ -242,7 +244,9 @@ export default function NfwPerkDetailPanel({
           <div className="p-4 border-t border-nfw-blackberry/10 bg-white">
             <button
               onClick={() => {
-                if (perk.landing_page_url) {
+                if (onRedeem && perk) {
+                  onRedeem(perk);
+                } else if (perk.landing_page_url) {
                   window.open(perk.landing_page_url, "_blank");
                 }
               }}

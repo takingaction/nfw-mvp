@@ -5854,3 +5854,31 @@ The `react-fast-marquee` library was duplicating the content internally for seam
   - Added `pr-16` class to logo container for trailing gap
   - Removed manual logo duplication block
   - Removed `pauseOnHover` prop
+
+## Session 2026-07-01: NFW Perk Redemption Fix
+
+### Problem
+
+When users redeemed an NFW perk via the "Visit Partner Site" button, the redemption was never recorded. This caused:
+1. Admin page (`/admin/nfw-perks`) showed 0 redemptions
+2. Dashboard showed no NFW perk redemptions
+3. User's "already redeemed" check never triggered
+
+### Root Cause
+
+`NfwPerkDetailPanel` directly opened the partner URL via `window.open()` without calling the redemption API (`POST /api/nfw-perks/[id]/redeem`). The `handleNfwPerkRedeem` function existed in `perks/page.tsx` but was never passed to or called by the detail panel.
+
+### Solution
+
+1. Added `onRedeem?: (perk: NfwPerk) => void` prop to `NfwPerkDetailPanel`
+2. Modified "Visit Partner Site" button to call `onRedeem(perk)` when provided
+3. Passed `handleNfwPerkRedeem` as `onRedeem` prop from `perks/page.tsx`
+4. Changed admin API to use `supabaseAdmin` instead of `createClient()` for reliable redemption counts
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/perks/NfwPerkDetailPanel.tsx` | Added `onRedeem` prop, calls it instead of just opening URL |
+| `app/perks/page.tsx` | Passed `handleNfwPerkRedeem` as `onRedeem` prop |
+| `app/api/admin/nfw-perks/route.ts` | Uses `supabaseAdmin` instead of user-context client |
