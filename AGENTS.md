@@ -5695,9 +5695,9 @@ Implemented a free membership system where users can request free membership via
 
 **`app/admin/contact-submissions/AdminContactSubmissions.tsx`:**
 - Added "Free Request" filter tab
-- Free membership request rows have citrine left border
-- Green "Approve" button for free membership submissions
-- Opens FreeMembershipApprovalModal
+- Approve button only shown for pending (not yet approved) free requests
+- Approval statuses batch-fetched via `/api/admin/contact-submissions/approval-statuses`
+- Member Status column removed - status is now only indicated by presence/absence of approve button
 
 **`app/api/admin/contact-submissions/approve/route.ts`:**
 - New endpoint for approving free membership from contact submissions
@@ -5795,3 +5795,40 @@ Ran UPDATE statements against `section_templates` table to change:
 | dove | #F6F5F0 | Light backgrounds |
 | blackberry | #2E1F38 | Dark text/backgrounds |
 | green | #d4f1ad | Status badges only (approved, paid, success) |
+
+---
+
+## Session 2026-06-30 (Evening): Admin Contact Submissions Fixes
+
+### Issue 1: Approve button appeared for already-approved members
+
+**Problem:** Even after approving a member, the checkmark button still opened the modal and allowed attempting to resend the welcome email.
+
+**Solution:**
+- Added batch-fetch of approval statuses via `/api/admin/contact-submissions/approval-statuses` API
+- Only show approve button when `is_approved_free_member !== true`
+- Already-approved members show no approve button (just view button)
+
+### Issue 2: Empty Member column confusing
+
+**Problem:** Added a "Member" column that showed "Pending" badge only for unapproved free requests, leaving the cell empty for everything else.
+
+**Solution:**
+- Removed the "Member" column entirely
+- Approve button only appears in Actions column for pending free requests
+- Admins identify free requests by the subject "Free Membership Request" and the presence/absence of the approve button
+
+### Files Modified
+
+- `app/admin/contact-submissions/AdminContactSubmissions.tsx`:
+  - Removed left citrine border from free request rows
+  - Removed Member column and Pending badge
+  - Only show approve button for pending (not yet approved) free requests
+  - Updated colSpan from 7 to 6
+- `app/api/admin/contact-submissions/approval-statuses/route.ts` - New API endpoint for batch-fetching approval statuses
+
+### Commits
+
+- `fc5ed8c` - feat: add member approval status to contact submissions admin
+- `1310993` - fix: hide approve button for already-approved free requests
+- `18a0c6f` - fix: remove Member column from contact submissions table
