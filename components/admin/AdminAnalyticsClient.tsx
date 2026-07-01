@@ -329,6 +329,16 @@ export default function AdminAnalyticsClient({
     ).length;
   }, [profiles]);
 
+  // Started free members (started flow but abandoned before submitting)
+  const startedFreeCount = useMemo(() => {
+    return profiles.filter(
+      (p) =>
+        p.membership_level === "free" &&
+        p.is_approved_free_member !== true &&
+        p.free_membership_contact_submitted === false
+    ).length;
+  }, [profiles]);
+
   // Paid vs free percentage
   const paidPercent = useMemo(() => {
     const total = profiles.length;
@@ -831,6 +841,20 @@ export default function AdminAnalyticsClient({
             value: freeMembersCount,
             icon: Users,
             color: "bg-nfw-wisteria/50",
+            text: "text-white",
+          },
+          {
+            label: "Pending Free",
+            value: pendingFreeCount,
+            icon: Users,
+            color: "bg-nfw-lilac/50",
+            text: "text-white",
+          },
+          {
+            label: "Started Free",
+            value: startedFreeCount,
+            icon: Users,
+            color: "bg-nfw-blackberry/30",
             text: "text-white",
           },
           {

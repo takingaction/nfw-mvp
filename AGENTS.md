@@ -6060,3 +6060,89 @@ UPDATE contact_submissions SET user_id = profiles.id FROM profiles WHERE profile
 ### Commit
 
 - `96ed438` - feat: link contact submissions to profiles via user_id
+
+---
+
+## Session 2026-07-01 (Afternoon): Analytics Enhancements + Dashboard Perks Combination
+
+### Overview
+
+Enhanced the analytics admin page with timeline views, membership metrics, cohort analysis, and Freshdesk integration. Also combined Access Perks and NFW Perks into one "Perks" tally on the dashboard.
+
+### Analytics Admin Page - Steps 1-8 Complete
+
+**Step 1: Timeline View**
+- Added Day/Month/Quarter/Year + Custom date range picker
+- Dropdown with presets + "Custom Range" at bottom that opens date pickers
+
+**Step 2: Membership Metrics**
+- Added revenue, avg dues, retention rate, churn metrics
+- Paid/free percentage breakdowns
+
+**Step 3: Newsletter Signups**
+- Combined member + newsletter signups tracking
+
+**Step 4: ZDS Claims**
+- Added claims tab with Total/Unique Claimants/Status breakdown
+
+**Step 5: Unique Redeemers for Perks**
+- Added `user_id` to redemptions query
+- Replaced "Unique Offers" with "Unique Redeemers"
+
+**Step 6: Engagement Metrics**
+- Added Active Members/Weekly/Monthly counts
+- Total activities and avg actions per member
+
+**Step 7: Support Tickets - Freshdesk Integration**
+- Created API route at `app/api/admin/analytics/freshdesk/route.ts`
+- Added Freshdesk tab to analytics with Total/Open/Pending/Resolved/Closed stats
+
+**Step 8: Cohort Analysis**
+- Added Cohorts tab with table showing members grouped by join month
+- Retention rate = active members / total members in cohort
+- Bar chart visualization of retention rates by cohort
+
+### Bug Fixes
+
+**ZDS Claims Showing 0 in Engagement Tab**
+- **Root Cause**: `zero_dollar_claims` table has `claimed_at` column but NOT `created_at`. Query was selecting `created_at` which doesn't exist, causing silent failure.
+- **Fix**: Removed `created_at` from select query in `app/admin/analytics/page.tsx`
+
+**Tab Label "Zds" Capitalization**
+- **Root Cause**: Tailwind's `capitalize` class makes it "Zds" not "ZDS"
+- **Fix**: Added conditional `{t === "zds" ? "ZDS" : t}` in tab rendering
+
+### New Analytics Stat Cards
+
+Added two new stat cards to the Members tab:
+- **Pending Free**: Members with `is_approved_free_member = TRUE` but `free_membership_contact_submitted = TRUE` (approved but need to complete flow)
+- **Started Free**: Members with `free_membership_contact_submitted = FALSE` (clicked "Continue for free" but abandoned)
+
+### Dashboard "Your Membership at Work" Changes
+
+Combined Access Perks and NFW Perks into single "Perks" column:
+- Removed separate NFW Perks column
+- Access Perks + NFW Perks values are now combined in the data source
+- Grid changed from 4 columns to 3 columns: Microgrants | Perks | Zero Dollar Store
+- Total savings calculation unchanged (still includes all four categories)
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/admin/AdminAnalyticsClient.tsx` | All 8 steps + new stat cards |
+| `app/admin/analytics/page.tsx` | Fixed ZDS query (removed non-existent `created_at`) |
+| `app/dashboard/page.tsx` | Combined perks + nfwPerks in getSavings return |
+| `components/dashboard/MembershipImpactCard.tsx` | 3-column layout, combined perks label |
+
+### Key Decisions
+
+- Used session tracking for website users (not GA4 API)
+- Support tickets via Freshdesk API (already has write integration)
+- Retention rate calculated as members with active subscription / total cohort members
+- Active = `subscription_status = 'active'/'contributing'` OR `is_approved_free_member = true`
+- `zero_dollar_claims` table has `claimed_at` but NOT `created_at`
+
+### Commit
+
+- `xxxxxxx` - feat: analytics enhancements with timeline, cohort analysis, freshdesk integration

@@ -7,7 +7,6 @@ type MembershipImpactCardProps = {
   micrograntsSavings: number;
   perksSavings: number;
   zeroDollarStoreSavings: number;
-  nfwPerksSavings?: number;
 };
 
 function AnimatedCurrency({ value }: { value: number }) {
@@ -53,7 +52,6 @@ export default function MembershipImpactCard({
   micrograntsSavings,
   perksSavings,
   zeroDollarStoreSavings,
-  nfwPerksSavings = 0,
 }: MembershipImpactCardProps) {
   return (
     <div className="p-6 flex flex-col items-center justify-center">
@@ -71,7 +69,7 @@ export default function MembershipImpactCard({
       </h1>
 
       <div className="w-full bg-nfw-lilac p-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-2">
+        <div className="grid grid-cols-3 gap-4 lg:gap-2">
           <div className="text-center">
             <p className="text-4xl lg:text-5xl text-white font-serif">
               <AnimatedCurrency value={micrograntsSavings} />
@@ -82,13 +80,7 @@ export default function MembershipImpactCard({
             <p className="text-4xl lg:text-5xl text-white font-serif">
               <AnimatedCurrency value={perksSavings} />
             </p>
-            <p className="text-sm lg:text-base text-white/60 font-ui uppercase mt-1">Access Perks</p>
-          </div>
-          <div className="text-center lg:border-x lg:border-white/10">
-            <p className="text-4xl lg:text-5xl text-white font-serif">
-              <AnimatedCurrency value={nfwPerksSavings} />
-            </p>
-            <p className="text-sm lg:text-base text-white/60 font-ui uppercase mt-1">NFW Perks</p>
+            <p className="text-sm lg:text-base text-white/60 font-ui uppercase mt-1">Perks</p>
           </div>
           <div className="text-center lg:border-x lg:border-white/10">
             <p className="text-4xl lg:text-5xl text-white font-serif">

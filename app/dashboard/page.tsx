@@ -97,9 +97,8 @@ async function getSavings(userId: string) {
   return {
     total: micrograntsTotal + perksTotal + claimsTotal + nfwPerksTotal,
     microgrants: micrograntsTotal,
-    perks: perksTotal,
+    perks: perksTotal + nfwPerksTotal,
     zeroDollarStore: claimsTotal,
-    nfwPerks: nfwPerksTotal,
   };
 }
 
@@ -308,7 +307,6 @@ export default async function DashboardPage() {
             micrograntsSavings={savings.microgrants}
             perksSavings={savings.perks}
             zeroDollarStoreSavings={savings.zeroDollarStore}
-            nfwPerksSavings={savings.nfwPerks}
           />
         </div>
       </div>
