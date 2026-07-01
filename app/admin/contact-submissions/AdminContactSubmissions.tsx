@@ -319,9 +319,7 @@ export default function AdminContactSubmissions() {
                   submissions.map((sub) => (
                     <tr
                       key={sub.id}
-                      className={`hover:bg-nfw-dove/30 transition-colors ${
-                        isFreeMembershipRequest(sub) ? "border-l-4 border-nfw-citrine" : ""
-                      }`}
+                      className="hover:bg-nfw-dove/30 transition-colors"
                     >
                       <td className="px-4 py-3 font-sans text-sm text-nfw-blackberry">
                         {new Date(sub.created_at).toLocaleDateString("en-US", {
@@ -343,18 +341,10 @@ export default function AdminContactSubmissions() {
                       </td>
                       <td className="px-4 py-3">{getStatusBadge(sub.freshdesk_status)}</td>
                       <td className="px-4 py-3">
-                        {isFreeMembershipRequest(sub) ? (
-                          isFreeMemberApproved(sub) ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              Approved
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                              Pending
-                            </span>
-                          )
-                        ) : (
-                          <span className="text-nfw-blackberry/30">—</span>
+                        {isFreeMembershipRequest(sub) && !isFreeMemberApproved(sub) && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                            Pending
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3 font-mono text-xs text-nfw-blackberry/60">
@@ -362,23 +352,14 @@ export default function AdminContactSubmissions() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          {isFreeMembershipRequest(sub) && (
-                            isFreeMemberApproved(sub) ? (
-                              <span
-                                className="p-1.5 bg-green-100 text-green-800 cursor-default"
-                                title="Already approved"
-                              >
-                                <Check className="w-4 h-4" />
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => openApprovalModal(sub)}
-                                className="p-1.5 bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/80 transition-colors"
-                                title="Approve free membership"
-                              >
-                                <Check className="w-4 h-4" />
-                              </button>
-                            )
+                          {isFreeMembershipRequest(sub) && !isFreeMemberApproved(sub) && (
+                            <button
+                              onClick={() => openApprovalModal(sub)}
+                              className="p-1.5 bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/80 transition-colors"
+                              title="Approve free membership"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
                           )}
                           <button
                             onClick={() => setSelectedSubmission(sub)}
@@ -497,25 +478,18 @@ export default function AdminContactSubmissions() {
                   {selectedSubmission.message}
                 </p>
               </div>
-              {isFreeMembershipRequest(selectedSubmission) && (
+              {isFreeMembershipRequest(selectedSubmission) && !isFreeMemberApproved(selectedSubmission) && (
                 <div className="pt-4 border-t border-nfw-blackberry/10">
-                  {isFreeMemberApproved(selectedSubmission) ? (
-                    <div className="py-3 bg-green-50 text-green-800 font-ui text-sm font-bold text-center flex items-center justify-center gap-2">
-                      <Check className="w-4 h-4" />
-                      Member Already Approved
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setSelectedSubmission(null);
-                        openApprovalModal(selectedSubmission);
-                      }}
-                      className="w-full py-3 bg-nfw-wisteria text-white font-bold text-sm hover:bg-nfw-wisteria/90 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Check className="w-4 h-4" />
-                      Approve Free Membership
-                    </button>
-                  )}
+                  <button
+                    onClick={() => {
+                      setSelectedSubmission(null);
+                      openApprovalModal(selectedSubmission);
+                    }}
+                    className="w-full py-3 bg-nfw-wisteria text-white font-bold text-sm hover:bg-nfw-wisteria/90 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Check className="w-4 h-4" />
+                    Approve Free Membership
+                  </button>
                 </div>
               )}
             </div>
