@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Download, RefreshCw, Eye, Check } from "lucide-react";
+import { Search, Download, RefreshCw, Eye, Check, X } from "lucide-react";
 import { FreeMembershipApprovalModal } from "@/components/admin/FreeMembershipApprovalModal";
 
 interface Submission {
@@ -14,6 +14,8 @@ interface Submission {
   freshdesk_ticket_id: string | null;
   freshdesk_response: string | null;
   created_at: string;
+  user_id: string | null;
+  addressed: boolean | null;
 }
 
 export default function AdminContactSubmissions() {
@@ -35,21 +37,26 @@ export default function AdminContactSubmissions() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSendError, setEmailSendError] = useState<string | null>(null);
 
+  // Addressed modal state
+  const [showAddressedModal, setShowAddressedModal] = useState(false);
+  const [addressingSubmission, setAddressingSubmission] = useState<Submission | null>(null);
+  const [markingAddressed, setMarkingAddressed] = useState(false);
+
   // Fetch approval statuses for free membership requests
   const fetchApprovalStatuses = async (subs: Submission[]) => {
-    const freeRequestEmails = subs
-      .filter((s) => isFreeMembershipRequest(s))
-      .map((s) => s.email)
-      .filter((email) => email); // Filter out empty emails
+    const freeRequestUserIds = subs
+      .filter((s) => isFreeMembershipRequest(s) && s.user_id)
+      .map((s) => s.user_id)
+      .filter((id): id is string => !!id);
 
-    if (freeRequestEmails.length === 0) return;
+    if (freeRequestUserIds.length === 0) return;
 
-    // Dedupe emails
-    const uniqueEmails = [...new Set(freeRequestEmails)];
+    // Dedupe user_ids
+    const uniqueUserIds = [...new Set(freeRequestUserIds)];
 
     try {
       const res = await fetch(
-        `/api/admin/contact-submissions/approval-statuses?emails=${uniqueEmails.join(",")}`
+        `/api/admin/contact-submissions/approval-statuses?user_ids=${uniqueUserIds.join(",")}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -120,6 +127,36 @@ export default function AdminContactSubmissions() {
       setEmailSendError(err.message || "Failed to approve");
     } finally {
       setSendingEmail(false);
+    }
+  };
+
+  const handleMarkAddressed = async () => {
+    if (!addressingSubmission) return;
+
+    setMarkingAddressed(true);
+
+    try {
+      const res = await fetch(
+        `/api/admin/contact-submissions/addressed`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: addressingSubmission.id }),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to mark as addressed");
+      }
+
+      // Close modal and refresh
+      setShowAddressedModal(false);
+      setAddressingSubmission(null);
+      fetchSubmissions();
+    } catch (err: any) {
+      alert(err.message || "Failed to mark as addressed");
+    } finally {
+      setMarkingAddressed(false);
     }
   };
 
@@ -194,7 +231,8 @@ export default function AdminContactSubmissions() {
 
   const isFreeMemberApproved = (sub: Submission): boolean => {
     if (!isFreeMembershipRequest(sub)) return false;
-    return approvalStatusMap.get(sub.email) === true;
+    if (!sub.user_id) return false;
+    return approvalStatusMap.get(sub.user_id) === true;
   };
 
   return (
@@ -342,14 +380,29 @@ export default function AdminContactSubmissions() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          {isFreeMembershipRequest(sub) && !isFreeMemberApproved(sub) && (
-                            <button
-                              onClick={() => openApprovalModal(sub)}
-                              className="p-1.5 bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/80 transition-colors"
-                              title="Approve free membership"
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
+                          {isFreeMembershipRequest(sub) && !isFreeMemberApproved(sub) && sub.addressed !== true && (
+                            <>
+                              {sub.user_id ? (
+                                <button
+                                  onClick={() => openApprovalModal(sub)}
+                                  className="p-1.5 bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/80 transition-colors"
+                                  title="Approve free membership"
+                                >
+                                  <Check className="w-4 h-4" />
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setAddressingSubmission(sub);
+                                    setShowAddressedModal(true);
+                                  }}
+                                  className="p-1.5 bg-gray-200 text-gray-500 hover:bg-gray-300 transition-colors"
+                                  title="Mark as addressed"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              )}
+                            </>
                           )}
                           <button
                             onClick={() => setSelectedSubmission(sub)}
@@ -500,6 +553,43 @@ export default function AdminContactSubmissions() {
         sendingEmail={sendingEmail}
         emailSendError={emailSendError}
       />
+
+      {/* Mark Addressed Confirmation Modal */}
+      {showAddressedModal && addressingSubmission && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white max-w-md w-full shadow-2xl">
+            <div className="p-6 border-b border-nfw-blackberry/10">
+              <h2 className="font-ui text-lg font-black tracking-[0.03em] uppercase text-nfw-blackberry">
+                Mark as Addressed?
+              </h2>
+            </div>
+            <div className="p-6">
+              <p className="font-sans text-sm text-nfw-blackberry mb-6">
+                This will mark the submission from <strong>{addressingSubmission.name}</strong> ({addressingSubmission.email}) as addressed. This cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowAddressedModal(false);
+                    setAddressingSubmission(null);
+                  }}
+                  className="flex-1 py-3 bg-nfw-dove text-nfw-blackberry font-ui text-sm font-bold tracking-[0.06em] uppercase hover:bg-nfw-dove/80 transition-colors"
+                  disabled={markingAddressed}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleMarkAddressed}
+                  className="flex-1 py-3 bg-nfw-aubergine text-white font-ui text-sm font-bold tracking-[0.06em] uppercase hover:bg-nfw-aubergine/90 transition-colors disabled:opacity-50"
+                  disabled={markingAddressed}
+                >
+                  {markingAddressed ? "Saving..." : "Yes, Mark Addressed"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

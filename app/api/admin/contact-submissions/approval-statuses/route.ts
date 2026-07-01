@@ -12,32 +12,32 @@ export async function GET(request: NextRequest) {
     await requireAdmin();
 
     const { searchParams } = new URL(request.url);
-    const emailsParam = searchParams.get("emails");
+    const userIdsParam = searchParams.get("user_ids");
 
-    if (!emailsParam) {
+    if (!userIdsParam) {
       return NextResponse.json({ statuses: [] });
     }
 
-    const emails = emailsParam.split(",").filter((e) => e.includes("@"));
+    const userIds = userIdsParam.split(",").filter((id) => id.length > 0);
 
-    if (emails.length === 0) {
+    if (userIds.length === 0) {
       return NextResponse.json({ statuses: [] });
     }
 
-    // Fetch approval statuses for these emails
+    // Fetch approval statuses for these user_ids
     const { data: profiles, error } = await supabaseAdmin
       .from("profiles")
-      .select("email, is_approved_free_member")
-      .in("email", emails);
+      .select("id, is_approved_free_member")
+      .in("id", userIds);
 
     if (error) {
       console.error("[approval-statuses] Error fetching profiles:", error);
       return NextResponse.json({ error: "Failed to fetch statuses" }, { status: 500 });
     }
 
-    // Build statuses array with [email, isApproved] pairs for Map construction
+    // Build statuses array with [user_id, isApproved] pairs for Map construction
     const statuses: [string, boolean][] = (profiles || []).map((p) => [
-      p.email,
+      p.id,
       p.is_approved_free_member === true,
     ]);
 
