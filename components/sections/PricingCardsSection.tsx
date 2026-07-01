@@ -36,7 +36,7 @@ export default function PricingCardsSection({ content }: Props) {
   const cardTextColor = getCardTextColorForBackground(c.background);
   const cardBorderColor = getCardBorderColorForBackground(c.background);
   const cardBgClass = c.background === "dove" ? "bg-white" : "bg-white/10";
-  const checkedBg = CHECKED_COLORS[c.checkbox_checked] || CHECKED_COLORS.green;
+  const checkedBg = CHECKED_COLORS[c.checkbox_checked] || CHECKED_COLORS.aubergine;
   const isDarkChecked = DARK_CHECKED_COLORS.includes(c.checkbox_checked);
   const checkIconColor = isDarkChecked ? "#ffffff" : "#1a1a1a";
   const cardSubtextColor = c.background === "dove" ? "text-nfw-blackberry/60" : "text-white/60";

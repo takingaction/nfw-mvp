@@ -572,7 +572,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
           description: "Navigating cost of living, student debt, and building a future in a complicated world.",
         },
         {
-          color: "green",
+          color: "lilac",
           age: "All ages",
           title: "Moms of Young Kids",
           description: "Balancing childcare costs, limited time, and the daily demands of raising a family.",
@@ -603,7 +603,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
         type: "array",
         itemLabel: "Card",
         fields: [
-          { key: "color", label: "Color", type: "select", options: ["yellow", "green", "blue", "lavender", "citrine", "lilac", "powder"] },
+          { key: "color", label: "Color", type: "select", options: ["yellow", "blue", "lavender", "citrine", "lilac", "powder"] },
           { key: "age", label: "Age label", type: "text" },
           { key: "title", label: "Title", type: "text" },
           { key: "description", label: "Description", type: "textarea" },
@@ -621,7 +621,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       background: "dove",
       cards: [
         {
-          color: "green",
+          color: "lilac",
           title: "Microgrants",
           description: "Apply for grants from $100 to $5,000 to cover emergency bills, childcare, medical costs, car repairs, and more. Real people review every application within 48 hours.",
           link: "/grants",
@@ -653,7 +653,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
         type: "array",
         itemLabel: "Card",
         fields: [
-          { key: "color", label: "Color", type: "select", options: ["yellow", "green", "blue", "lavender", "citrine", "lilac", "powder"] },
+          { key: "color", label: "Color", type: "select", options: ["yellow", "blue", "lavender", "citrine", "lilac", "powder"] },
           { key: "title", label: "Title", type: "text" },
           { key: "description", label: "Description", type: "textarea" },
           { key: "link", label: "Link URL", type: "url" },
@@ -763,7 +763,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
           stripe_price_id: "",
         },
       ],
-      checkbox_checked: "green",
+      checkbox_checked: "wisteria",
       show_buttons: true,
       show_cta: true,
       cta_headline: "Ready to join?",
@@ -847,7 +847,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       column1_label: "Free",
       column2_label: "Contributing",
       column3_label: "Founding",
-      checkbox_checked: "green",
+      checkbox_checked: "wisteria",
       checkbox_unchecked: "blackberry10",
       benefits: [
         { label: "Community access", free: true, contributing: true, founding: true },
@@ -901,9 +901,9 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       cta_label: "Join the Community",
       cta_url: "/auth/sign-up",
       items: [
-        { title: "$2.5M+ in grants awarded", description: "Member dues directly fund microgrants that help women cover emergency bills, childcare, medical costs and more.", icon_color: "green" },
-        { title: "50,000+ women supported", description: "A growing community of women across all 50 states finding relief, connection and resources through NFW.", icon_color: "green" },
-        { title: "1,000+ perks and discounts", description: "Members save an average of $500+ per year on everyday essentials through the NFW perks platform.", icon_color: "green" },
+        { title: "$2.5M+ in grants awarded", description: "Member dues directly fund microgrants that help women cover emergency bills, childcare, medical costs and more.", icon_color: "wisteria" },
+        { title: "50,000+ women supported", description: "A growing community of women across all 50 states finding relief, connection and resources through NFW.", icon_color: "wisteria" },
+        { title: "1,000+ perks and discounts", description: "Members save an average of $500+ per year on everyday essentials through the NFW perks platform.", icon_color: "wisteria" },
       ],
       background: "dove",
     },
@@ -935,9 +935,9 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       headline: "Ready to feel supported?",
       subheadline: "Join thousands of women who have already found relief, connection and real support through NFW. Your journey starts here.",
       items: [
-        { title: "Microgrants", sub: "Up to $1,000 in support", icon_color: "green" },
-        { title: "Exclusive Perks", sub: "Save $500+ per year", icon_color: "green" },
-        { title: "Community", sub: "50,000+ women strong", icon_color: "green" },
+        { title: "Microgrants", sub: "Up to $1,000 in support", icon_color: "wisteria" },
+        { title: "Exclusive Perks", sub: "Save $500+ per year", icon_color: "wisteria" },
+        { title: "Community", sub: "50,000+ women strong", icon_color: "wisteria" },
       ],
       cta_label: "Become a Member Today",
       cta_url: "/auth/sign-up",
@@ -973,7 +973,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       headline: "How it works",
       subheadline: "Getting support should feel simple.",
       steps: [
-        { icon: "FileText", icon_color: "green", title: "Apply in a few minutes", description: "Share the basics of your situation in a short, simple form. No lengthy paperwork." },
+        { icon: "FileText", icon_color: "wisteria", title: "Apply in a few minutes", description: "Share the basics of your situation in a short, simple form. No lengthy paperwork." },
         { icon: "Eye", icon_color: "yellow", title: "We review your request", description: "A real person looks at your application with care. Most reviews happen within 48 hours." },
         { icon: "Banknote", icon_color: "blue", title: "Funds are sent securely", description: "If approved, your grant is delivered by bank transfer or digital wallet — fast." },
       ],
@@ -1007,7 +1007,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       headline: "Why members love them",
       body: "Perks are built to make everyday life easier. Members use them to save money on the things they already buy, discover helpful offers and find small moments of relief throughout the week.",
       benefits: [
-        { check_color: "green", title: "Real savings you can feel", description: "Many members save more than their membership cost. Discounts on essentials help your budget stretch further." },
+        { check_color: "wisteria", title: "Real savings you can feel", description: "Many members save more than their membership cost. Discounts on essentials help your budget stretch further." },
         { check_color: "yellow", title: "Helpful for everyday life", description: "Perks cover things you use every day like groceries, health items and childcare bringing quick relief when life feels busy." },
         { check_color: "blue", title: "New deals added often", description: "Fresh offers are added throughout the month so there is always something helpful to claim and enjoy." },
       ],
@@ -1202,8 +1202,8 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       cards: [
         { category: "Insurance", name: "Fetch Pet Insurance", description: "5% off monthly premiums", color: "yellow" },
         { category: "Travel", name: "Zipcar Car Sharing", description: "25% off annual membership", color: "blue" },
-        { category: "Health & Wellness", name: "Calm & Co.", description: "20% off mindfulness membership", color: "green" },
-        { category: "Health & Wellness", name: "CVS Pharmacy", description: "Savings & Discounts by Optum Rx", color: "green" },
+        { category: "Health & Wellness", name: "Calm & Co.", description: "20% off mindfulness membership", color: "lilac" },
+        { category: "Health & Wellness", name: "CVS Pharmacy", description: "Savings & Discounts by Optum Rx", color: "lilac" },
         { category: "Entertainment", name: "Ancestry", description: "50% off 1 year subscription", color: "lavender" },
         { category: "Shopping & Groceries", name: "bistroMD", description: "25% off plus Free Shipping on your first order", color: "yellow" },
       ],
@@ -1225,7 +1225,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
           { key: "category", label: "Category", type: "text" },
           { key: "name", label: "Name", type: "text" },
           { key: "description", label: "Description", type: "textarea" },
-          { key: "color", label: "Color", type: "select", options: ["yellow", "green", "blue", "lavender", "citrine", "lilac", "powder"] },
+          { key: "color", label: "Color", type: "select", options: ["yellow", "blue", "lavender", "citrine", "lilac", "powder"] },
         ],
       },
     ],
@@ -1240,7 +1240,7 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       subheadline: "These everyday moments show how perks, savings and small bits of support can make life feel a little lighter.",
       cards: [
         { quote: "I applied for a microgrant and within 48 hours I had the funds. It was such a relief.", name: "Sarah M.", role: "Member since 2023", avatar_color: "citrine" },
-        { quote: "The perks program has saved me over $400 this year alone. It's been a game-changer.", name: "Jennifer L.", role: "Founding Member", avatar_color: "green" },
+        { quote: "The perks program has saved me over $400 this year alone. It's been a game-changer.", name: "Jennifer L.", role: "Founding Member", avatar_color: "lilac" },
         { quote: "Knowing there's a community behind me makes all the difference. NFW feels like home.", name: "Maria R.", role: "Member since 2024", avatar_color: "blue" },
         { quote: "I love that I can claim free essentials from the Zero Dollar Store whenever I need to.", name: "Ashley T.", role: "Contributing Member", avatar_color: "lavender" },
         { quote: "The grants helped me cover my car repairs so I could get back to work. So grateful.", name: "Demi W.", role: "Member since 2023", avatar_color: "lilac" },

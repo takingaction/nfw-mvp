@@ -10,7 +10,6 @@ interface Props {
 
 const TEXT_COLOR_MAP: Record<CardSwatchColor, string> = {
   yellow: "text-nfw-blackberry",
-  green: "text-nfw-blackberry",
   blue: "text-nfw-blackberry",
   lavender: "text-nfw-blackberry",
   citrine: "text-nfw-blackberry",

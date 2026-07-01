@@ -26,11 +26,39 @@ export default function AdminContactSubmissions() {
   const [total, setTotal] = useState(0);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
 
+  // Map of email -> isApprovedFreeMember for free membership requests
+  const [approvalStatusMap, setApprovalStatusMap] = useState<Map<string, boolean>>(new Map());
+
   // Approval modal state
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [approvingSubmission, setApprovingSubmission] = useState<Submission | null>(null);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSendError, setEmailSendError] = useState<string | null>(null);
+
+  // Fetch approval statuses for free membership requests
+  const fetchApprovalStatuses = async (subs: Submission[]) => {
+    const freeRequestEmails = subs
+      .filter((s) => isFreeMembershipRequest(s))
+      .map((s) => s.email)
+      .filter((email) => email); // Filter out empty emails
+
+    if (freeRequestEmails.length === 0) return;
+
+    // Dedupe emails
+    const uniqueEmails = [...new Set(freeRequestEmails)];
+
+    try {
+      const res = await fetch(
+        `/api/admin/contact-submissions/approval-statuses?emails=${uniqueEmails.join(",")}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setApprovalStatusMap(new Map(data.statuses || []));
+      }
+    } catch (err) {
+      console.error("Failed to fetch approval statuses:", err);
+    }
+  };
 
   const fetchSubmissions = async () => {
     setLoading(true);
@@ -45,6 +73,9 @@ export default function AdminContactSubmissions() {
       setSubmissions(data.submissions || []);
       setTotal(data.total || 0);
       setTotalPages(data.totalPages || 1);
+
+      // Fetch approval statuses for free membership requests
+      await fetchApprovalStatuses(data.submissions || []);
     } catch (err) {
       console.error("Failed to fetch submissions:", err);
     } finally {
@@ -161,6 +192,11 @@ export default function AdminContactSubmissions() {
     return sub.subject_label === "Free Membership Request";
   };
 
+  const isFreeMemberApproved = (sub: Submission): boolean => {
+    if (!isFreeMembershipRequest(sub)) return false;
+    return approvalStatusMap.get(sub.email) === true;
+  };
+
   return (
     <div className="p-8">
       <div className="max-w-7xl mx-auto">
@@ -256,6 +292,9 @@ export default function AdminContactSubmissions() {
                     Status
                   </th>
                   <th className="px-4 py-3 text-left font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-blackberry/60">
+                    Member
+                  </th>
+                  <th className="px-4 py-3 text-left font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-blackberry/60">
                     Ticket ID
                   </th>
                   <th className="px-4 py-3 text-left font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-blackberry/60">
@@ -303,19 +342,43 @@ export default function AdminContactSubmissions() {
                         {sub.subject_label}
                       </td>
                       <td className="px-4 py-3">{getStatusBadge(sub.freshdesk_status)}</td>
+                      <td className="px-4 py-3">
+                        {isFreeMembershipRequest(sub) ? (
+                          isFreeMemberApproved(sub) ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Approved
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                              Pending
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-nfw-blackberry/30">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 font-mono text-xs text-nfw-blackberry/60">
                         {sub.freshdesk_ticket_id || "—"}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           {isFreeMembershipRequest(sub) && (
-                            <button
-                              onClick={() => openApprovalModal(sub)}
-                              className="p-1.5 bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/80 transition-colors"
-                              title="Approve free membership"
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
+                            isFreeMemberApproved(sub) ? (
+                              <span
+                                className="p-1.5 bg-green-100 text-green-800 cursor-default"
+                                title="Already approved"
+                              >
+                                <Check className="w-4 h-4" />
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => openApprovalModal(sub)}
+                                className="p-1.5 bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/80 transition-colors"
+                                title="Approve free membership"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                            )
                           )}
                           <button
                             onClick={() => setSelectedSubmission(sub)}
@@ -436,16 +499,23 @@ export default function AdminContactSubmissions() {
               </div>
               {isFreeMembershipRequest(selectedSubmission) && (
                 <div className="pt-4 border-t border-nfw-blackberry/10">
-                  <button
-                    onClick={() => {
-                      setSelectedSubmission(null);
-                      openApprovalModal(selectedSubmission);
-                    }}
-                    className="w-full py-3 bg-nfw-wisteria text-white font-bold text-sm hover:bg-nfw-wisteria/90 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Check className="w-4 h-4" />
-                    Approve Free Membership
-                  </button>
+                  {isFreeMemberApproved(selectedSubmission) ? (
+                    <div className="py-3 bg-green-50 text-green-800 font-ui text-sm font-bold text-center flex items-center justify-center gap-2">
+                      <Check className="w-4 h-4" />
+                      Member Already Approved
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setSelectedSubmission(null);
+                        openApprovalModal(selectedSubmission);
+                      }}
+                      className="w-full py-3 bg-nfw-wisteria text-white font-bold text-sm hover:bg-nfw-wisteria/90 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Check className="w-4 h-4" />
+                      Approve Free Membership
+                    </button>
+                  )}
                 </div>
               )}
             </div>

@@ -347,7 +347,7 @@ export interface PerksFeatureContent {
 // ── Shared color types for new templates ────────────────────
 
 export type IconColor = "yellow" | "blue" | "lilac" | "wisteria";
-export type CheckboxColor = "green" | "aubergine" | "wisteria" | "lilac" | "citrine";
+export type CheckboxColor = "aubergine" | "wisteria" | "lilac" | "citrine";
 export type UncheckedColor = "blackberry10" | "blackberry20" | "wisteria20";
 
 export type IconName =
