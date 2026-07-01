@@ -363,7 +363,7 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
             href="/auth/sign-up"
             className="inline-flex items-center justify-center px-10 py-4 bg-nfw-aubergine text-nfw-dove font-ui font-black text-sm tracking-[0.06em] uppercase hover:bg-nfw-blackberry transition-colors"
           >
-            Join for Free
+            JOIN TODAY
           </Link>
         </div>
       </div>
