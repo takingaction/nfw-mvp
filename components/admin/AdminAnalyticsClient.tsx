@@ -22,14 +22,38 @@ import {
   DollarSign,
   Gift,
   TrendingUp,
+  Calendar,
 } from "lucide-react";
+
+type DateRangeOption = {
+  label: string;
+  value: number | "custom";
+  description?: string;
+};
+
+const DATE_RANGE_OPTIONS: DateRangeOption[] = [
+  { label: "Today", value: 1, description: "Current day" },
+  { label: "Last 7 Days", value: 7, description: "Past week" },
+  { label: "Last 30 Days", value: 30, description: "Past month" },
+  { label: "Month to Date", value: -1, description: "Current month" },
+  { label: "Last 90 Days", value: 90, description: "Past 3 months" },
+  { label: "Quarter to Date", value: -2, description: "Current quarter" },
+  { label: "Last 6 Months", value: 180, description: "Past 6 months" },
+  { label: "Year to Date", value: -3, description: "Current year" },
+  { label: "Last 12 Months", value: 365, description: "Past year" },
+  { label: "Custom Range", value: "custom", description: "Choose dates" },
+];
 
 type Profile = {
   id: string;
   joined_at: string | null;
   subscription_status: string | null;
   membership_level: string | null;
+  subscription_ends_at: string | null;
   first_paid_at: string | null;
+  first_paid_level: string | null;
+  is_approved_free_member: boolean | null;
+  free_membership_contact_submitted: boolean | null;
   state: string | null;
   city: string | null;
   household_income: string | null;
@@ -46,6 +70,7 @@ type Grant = {
 
 type Redemption = {
   id: string;
+  user_id: string | null;
   offer_key: string | null;
   offer_title: string | null;
   store_name: string | null;
@@ -62,27 +87,144 @@ const COLORS = [
   "#2E1F38",
 ];
 
+type NewsletterEmail = {
+  id: string;
+  created_at: string | null;
+};
+
+type ZdsClaim = {
+  id: string;
+  user_id: string | null;
+  shopify_product_id: string | null;
+  status: string | null;
+  claimed_at: string | null;
+};
+
+type ShopifyProduct = {
+  shopify_product_id: string | null;
+  title: string | null;
+};
+
+type NfwPerkRedemption = {
+  id: string;
+  user_id: string | null;
+  perk_id: string | null;
+  redeemed_at: string | null;
+};
+
 export default function AdminAnalyticsClient({
   profiles,
   grants,
   redemptions,
+  newsletterEmails,
+  zdsClaims,
+  shopifyProducts,
+  nfwPerkRedemptions,
 }: {
   profiles: Profile[];
   grants: Grant[];
   redemptions: Redemption[];
+  newsletterEmails: NewsletterEmail[];
+  zdsClaims: ZdsClaim[];
+  shopifyProducts: ShopifyProduct[];
+  nfwPerkRedemptions: NfwPerkRedemption[];
 }) {
-  const [tab, setTab] = useState<"members" | "grants" | "perks">("members");
-  const [days, setDays] = useState(30);
+  const [tab, setTab] = useState<"members" | "grants" | "perks" | "zds" | "engagement" | "cohorts" | "support">("members");
+  const [dateRange, setDateRange] = useState<number | "custom">(30);
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
+  const [freshdeskStats, setFreshdeskStats] = useState<{
+    total: number;
+    open: number;
+    pending: number;
+    resolved: number;
+    closed: number;
+  } | null>(null);
+  const [freshdeskLoading, setFreshdeskLoading] = useState(false);
+  const [freshdeskError, setFreshdeskError] = useState<string | null>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
 
-  const now = new Date();
-  const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  // Fetch Freshdesk stats when support tab is active
+  useMemo(() => {
+    if (tab === "support" && !freshdeskStats && !freshdeskLoading) {
+      setFreshdeskLoading(true);
+      const params = new URLSearchParams();
+      if (customStartDate) params.set("start_date", customStartDate);
+      if (customEndDate) params.set("end_date", customEndDate);
+      const queryString = params.toString();
+
+      fetch(`/api/admin/analytics/freshdesk${queryString ? `?${queryString}` : ""}`)
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to fetch Freshdesk stats");
+          return res.json();
+        })
+        .then((data) => {
+          setFreshdeskStats(data);
+          setFreshdeskLoading(false);
+        })
+        .catch((err) => {
+          setFreshdeskError(err.message);
+          setFreshdeskLoading(false);
+        });
+    }
+  }, [tab, customStartDate, customEndDate]);
+
+  // Calculate cutoff based on selected date range
+  const cutoff = useMemo(() => {
+    const now = new Date();
+
+    if (dateRange === "custom") {
+      if (!customStartDate) return new Date(0);
+      const start = new Date(customStartDate);
+      start.setHours(0, 0, 0, 0);
+      return start;
+    }
+
+    if (dateRange === -1) {
+      // Month to date - start of current month
+      return new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+
+    if (dateRange === -2) {
+      // Quarter to date - start of current quarter
+      const quarterMonth = Math.floor(now.getMonth() / 3) * 3;
+      return new Date(now.getFullYear(), quarterMonth, 1);
+    }
+
+    if (dateRange === -3) {
+      // Year to date - start of current year
+      return new Date(now.getFullYear(), 0, 1);
+    }
+
+    // Regular day offset
+    return new Date(now.getTime() - dateRange * 24 * 60 * 60 * 1000);
+  }, [dateRange, customStartDate]);
+
+  // Get end date for custom range (end of end date day)
+  const endDate = useMemo(() => {
+    if (dateRange !== "custom" || !customEndDate) return new Date();
+    const end = new Date(customEndDate);
+    end.setHours(23, 59, 59, 999);
+    return end;
+  }, [dateRange, customEndDate]);
+
+  // Helper to check if a date is within range
+  const isInRange = useMemo(() => {
+    return (dateStr: string | null | undefined): boolean => {
+      if (!dateStr) return false;
+      const date = new Date(dateStr);
+      if (dateRange === "custom") {
+        return date >= cutoff && date <= endDate;
+      }
+      return date >= cutoff;
+    };
+  }, [cutoff, endDate, dateRange]);
 
   // ── MEMBERS ──────────────────────────────────────────────
   const filteredProfiles = useMemo(
     () =>
-      profiles.filter((p) => p.joined_at && new Date(p.joined_at) >= cutoff),
-    [profiles, days],
+      profiles.filter((p) => p.joined_at && isInRange(p.joined_at)),
+    [profiles, isInRange],
   );
 
   const membersByDay = useMemo(() => {
@@ -96,11 +238,21 @@ export default function AdminAnalyticsClient({
       .map(([date, count]) => ({ date: date.slice(5), count }));
   }, [filteredProfiles]);
 
-  const membersByStatus = useMemo(() => {
+  const membersByLevel = useMemo(() => {
     const map: Record<string, number> = {};
     profiles.forEach((p) => {
-      const s = p.subscription_status || "free";
-      map[s] = (map[s] || 0) + 1;
+      let level = p.membership_level || "unknown";
+      // Distinguish between approved free and pending free
+      if (level === "free") {
+        if (p.is_approved_free_member === true) {
+          level = "free";
+        } else if (p.free_membership_contact_submitted === true) {
+          level = "free_pending";
+        } else {
+          level = "free_unapproved";
+        }
+      }
+      map[level] = (map[level] || 0) + 1;
     });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [profiles]);
@@ -148,13 +300,110 @@ export default function AdminAnalyticsClient({
     return Math.round((contributingCount * 15 + foundingCount * 100) / 12);
   }, [contributingCount, foundingCount]);
 
+  // Membership revenue (annual)
+  const membershipRevenue = useMemo(() => {
+    return contributingCount * 15 * 12 + foundingCount * 100 * 12;
+  }, [contributingCount, foundingCount]);
+
+  // Average membership dues per paid member
+  const averageDues = useMemo(() => {
+    if (paidCount === 0) return 0;
+    const totalAnnual = contributingCount * 15 * 12 + foundingCount * 100 * 12;
+    return Math.round(totalAnnual / paidCount);
+  }, [contributingCount, foundingCount, paidCount]);
+
+  // Free members (approved free members only)
+  const freeMembersCount = useMemo(() => {
+    return profiles.filter(
+      (p) => p.membership_level === "free" && p.is_approved_free_member === true
+    ).length;
+  }, [profiles]);
+
+  // Pending free members (started process but not approved)
+  const pendingFreeCount = useMemo(() => {
+    return profiles.filter(
+      (p) =>
+        p.membership_level === "free" &&
+        p.is_approved_free_member !== true &&
+        p.free_membership_contact_submitted === true
+    ).length;
+  }, [profiles]);
+
+  // Paid vs free percentage
+  const paidPercent = useMemo(() => {
+    const total = profiles.length;
+    return total > 0 ? Math.round((paidCount / total) * 100) : 0;
+  }, [profiles, paidCount]);
+
+  const freePercent = useMemo(() => {
+    const total = profiles.length;
+    return total > 0 ? Math.round((freeMembersCount / total) * 100) : 0;
+  }, [profiles, freeMembersCount]);
+
+  // Retention rate: members who joined 12+ months ago and still active
+  const retentionRate = useMemo(() => {
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
+
+    const oldMembers = profiles.filter((p) => {
+      if (!p.joined_at) return false;
+      return new Date(p.joined_at) <= twelveMonthsAgo;
+    });
+
+    if (oldMembers.length === 0) return 0;
+
+    const retainedMembers = oldMembers.filter((p) => {
+      // Still active if: paid with active status OR free with approved status
+      if (p.membership_level === "free") {
+        return p.is_approved_free_member === true;
+      }
+      return p.subscription_status === "active";
+    });
+
+    return Math.round((retainedMembers.length / oldMembers.length) * 100);
+  }, [profiles]);
+
+  // Churn: members who cancelled/expired in the period
+  const churnCount = useMemo(() => {
+    return profiles.filter((p) => {
+      if (!p.subscription_ends_at) return false;
+      // Churned if subscription ended in the period
+      return isInRange(p.subscription_ends_at);
+    }).length;
+  }, [profiles, isInRange]);
+
+  const churnRate = useMemo(() => {
+    // Calculate based on members at start of period (12 months ago or period start)
+    const periodStart = new Date();
+    periodStart.setFullYear(periodStart.getFullYear() - 1);
+    const membersAtStart = profiles.filter((p) => {
+      if (!p.joined_at) return false;
+      return new Date(p.joined_at) <= periodStart;
+    }).length;
+
+    return membersAtStart > 0 ? Math.round((churnCount / membersAtStart) * 100) : 0;
+  }, [profiles, churnCount]);
+
+  // Newsletter signups (filtered by period)
+  const filteredNewsletterSignups = useMemo(() => {
+    return newsletterEmails.filter((e) => e.created_at && isInRange(e.created_at));
+  }, [newsletterEmails, isInRange]);
+
+  // Combined: new member signups + newsletter signups in period
+  const combinedSignups = useMemo(() => {
+    return filteredProfiles.length + filteredNewsletterSignups.length;
+  }, [filteredProfiles, filteredNewsletterSignups]);
+
+  // Total newsletter subscribers (all time)
+  const totalNewsletterSubscribers = newsletterEmails.length;
+
   // ── GRANTS ───────────────────────────────────────────────
   const filteredGrants = useMemo(
     () =>
       grants.filter(
-        (g) => g.submitted_at && new Date(g.submitted_at) >= cutoff,
+        (g) => g.submitted_at && isInRange(g.submitted_at),
       ),
-    [grants, days],
+    [grants, isInRange],
   );
 
   const grantsByDay = useMemo(() => {
@@ -197,9 +446,9 @@ export default function AdminAnalyticsClient({
   const filteredRedemptions = useMemo(
     () =>
       redemptions.filter(
-        (r) => r.created_at && new Date(r.created_at) >= cutoff,
+        (r) => r.created_at && isInRange(r.created_at),
       ),
-    [redemptions, days],
+    [redemptions, isInRange],
   );
 
   const redemptionsByDay = useMemo(() => {
@@ -237,6 +486,235 @@ export default function AdminAnalyticsClient({
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [filteredRedemptions]);
 
+  // ── ZDS (ZERO DOLLAR STORE) ──────────────────────────────
+  const filteredZdsClaims = useMemo(
+    () =>
+      zdsClaims.filter(
+        (c) => c.claimed_at && isInRange(c.claimed_at),
+      ),
+    [zdsClaims, isInRange],
+  );
+
+  // Unique ZDS claimants
+  const uniqueZdsClaimants = useMemo(() => {
+    return new Set(filteredZdsClaims.map((c) => c.user_id).filter(Boolean)).size;
+  }, [filteredZdsClaims]);
+
+  // ZDS claims by day
+  const zdsClaimsByDay = useMemo(() => {
+    const map: Record<string, number> = {};
+    filteredZdsClaims.forEach((c) => {
+      const d = c.claimed_at!.slice(0, 10);
+      map[d] = (map[d] || 0) + 1;
+    });
+    return Object.entries(map)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, count]) => ({ date: date.slice(5), count }));
+  }, [filteredZdsClaims]);
+
+  // Top ZDS products
+  const topZdsProducts = useMemo(() => {
+    const map: Record<string, number> = {};
+    const productMap = new Map(shopifyProducts.map((p) => [p.shopify_product_id, p.title || "Unknown"]));
+
+    filteredZdsClaims.forEach((c) => {
+      const title = productMap.get(c.shopify_product_id || "") || "Unknown Product";
+      map[title] = (map[title] || 0) + 1;
+    });
+    return Object.entries(map)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 8)
+      .map(([product, count]) => ({
+        product: product.length > 30 ? product.slice(0, 30) + "…" : product,
+        count,
+      }));
+  }, [filteredZdsClaims, shopifyProducts]);
+
+  // ZDS claims by status
+  const zdsClaimsByStatus = useMemo(() => {
+    const map: Record<string, number> = {};
+    filteredZdsClaims.forEach((c) => {
+      const s = c.status || "unknown";
+      map[s] = (map[s] || 0) + 1;
+    });
+    return Object.entries(map).map(([name, value]) => ({ name, value }));
+  }, [filteredZdsClaims]);
+
+  // ── ENGAGEMENT ───────────────────────────────────────────
+  // Filter NFW perk redemptions by date range
+  const filteredNfwPerkRedemptions = useMemo(
+    () =>
+      nfwPerkRedemptions.filter(
+        (r) => r.redeemed_at && isInRange(r.redeemed_at),
+      ),
+    [nfwPerkRedemptions, isInRange],
+  );
+
+  // Calculate unique active members (members with any activity in period)
+  const activeMembers = useMemo(() => {
+    const activeUserIds = new Set<string>();
+
+    // From grants
+    filteredGrants.forEach((g) => {
+      // We don't have user_id in grants data directly, but we can infer from profiles
+      // Actually, grants have user_id but it's not selected - skip for now
+    });
+
+    // From redemptions
+    filteredRedemptions.forEach((r) => {
+      if (r.user_id) activeUserIds.add(r.user_id);
+    });
+
+    // From ZDS claims
+    filteredZdsClaims.forEach((c) => {
+      if (c.user_id) activeUserIds.add(c.user_id);
+    });
+
+    // From NFW perk redemptions
+    filteredNfwPerkRedemptions.forEach((r) => {
+      if (r.user_id) activeUserIds.add(r.user_id);
+    });
+
+    return activeUserIds.size;
+  }, [filteredGrants, filteredRedemptions, filteredZdsClaims, filteredNfwPerkRedemptions]);
+
+  // Weekly active members (last 7 days)
+  const weeklyActive = useMemo(() => {
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekAgoStr = weekAgo.toISOString();
+
+    const activeUserIds = new Set<string>();
+
+    filteredRedemptions.forEach((r) => {
+      if (r.created_at && r.created_at >= weekAgoStr && r.user_id) {
+        activeUserIds.add(r.user_id);
+      }
+    });
+
+    filteredZdsClaims.forEach((c) => {
+      if (c.claimed_at && c.claimed_at >= weekAgoStr && c.user_id) {
+        activeUserIds.add(c.user_id);
+      }
+    });
+
+    filteredNfwPerkRedemptions.forEach((r) => {
+      if (r.redeemed_at && r.redeemed_at >= weekAgoStr && r.user_id) {
+        activeUserIds.add(r.user_id);
+      }
+    });
+
+    return activeUserIds.size;
+  }, [filteredRedemptions, filteredZdsClaims, filteredNfwPerkRedemptions]);
+
+  // Monthly active members (last 30 days)
+  const monthlyActive = useMemo(() => {
+    const monthAgo = new Date();
+    monthAgo.setDate(monthAgo.getDate() - 30);
+    const monthAgoStr = monthAgo.toISOString();
+
+    const activeUserIds = new Set<string>();
+
+    filteredRedemptions.forEach((r) => {
+      if (r.created_at && r.created_at >= monthAgoStr && r.user_id) {
+        activeUserIds.add(r.user_id);
+      }
+    });
+
+    filteredZdsClaims.forEach((c) => {
+      if (c.claimed_at && c.claimed_at >= monthAgoStr && c.user_id) {
+        activeUserIds.add(c.user_id);
+      }
+    });
+
+    filteredNfwPerkRedemptions.forEach((r) => {
+      if (r.redeemed_at && r.redeemed_at >= monthAgoStr && r.user_id) {
+        activeUserIds.add(r.user_id);
+      }
+    });
+
+    return activeUserIds.size;
+  }, [filteredRedemptions, filteredZdsClaims, filteredNfwPerkRedemptions]);
+
+  // Total activities in period
+  const totalActivities = useMemo(() => {
+    return (
+      filteredRedemptions.length +
+      filteredZdsClaims.length +
+      filteredNfwPerkRedemptions.length +
+      filteredGrants.length
+    );
+  }, [filteredRedemptions, filteredZdsClaims, filteredNfwPerkRedemptions, filteredGrants]);
+
+  // Average actions per active member
+  const avgActionsPerMember = useMemo(() => {
+    if (activeMembers === 0) return 0;
+    return Math.round((totalActivities / activeMembers) * 10) / 10;
+  }, [activeMembers, totalActivities]);
+
+  // ── COHORT ANALYSIS ───────────────────────────────────────
+  type CohortRow = {
+    cohort: string;
+    cohortShort: string;
+    members: number;
+    retained: number;
+    retentionRate: number;
+  };
+
+  const cohortData = useMemo(() => {
+    const cohorts = new Map<string, { total: number; active: number }>();
+
+    profiles.forEach((p) => {
+      if (!p.joined_at) return;
+      const date = new Date(p.joined_at);
+      const key = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+      const label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+      if (!cohorts.has(key)) {
+        cohorts.set(key, { total: 0, active: 0 });
+      }
+      const cohort = cohorts.get(key)!;
+      cohort.total++;
+
+      const isActive =
+        p.subscription_status === 'active' ||
+        p.subscription_status === 'contributing' ||
+        p.is_approved_free_member === true;
+      if (isActive) {
+        cohort.active++;
+      }
+    });
+
+    const rows: CohortRow[] = [];
+    const sortedCohorts = Array.from(cohorts.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    const displayCohorts = sortedCohorts.slice(-12);
+
+    displayCohorts.forEach(([key, data]) => {
+      const date = new Date(key + '-01');
+      const label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      const shortLabel = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      rows.push({
+        cohort: label,
+        cohortShort: shortLabel,
+        members: data.total,
+        retained: data.active,
+        retentionRate: data.total > 0 ? Math.round((data.active / data.total) * 100) : 0,
+      });
+    });
+
+    return rows;
+  }, [profiles]);
+
+  const overallRetention = useMemo(() => {
+    const totalMembers = cohortData.reduce((sum, c) => sum + c.members, 0);
+    const totalRetained = cohortData.reduce((sum, c) => sum + c.retained, 0);
+    return {
+      totalMembers,
+      totalRetained,
+      rate: totalMembers > 0 ? Math.round((totalRetained / totalMembers) * 100) : 0,
+    };
+  }, [cohortData]);
+
   // ── EXPORT CSV ───────────────────────────────────────────
   const exportCSV = () => {
     let rows: string[][] = [];
@@ -249,7 +727,7 @@ export default function AdminAnalyticsClient({
         ...membersByDay.map((r) => [r.date, String(r.count)]),
         [],
         ["Status", "Count"],
-        ...membersByStatus.map((r) => [r.name, String(r.value)]),
+        ...membersByLevel.map((r) => [r.name, String(r.value)]),
         [],
         ["State", "Members"],
         ...membersByState.map((r) => [r.state, String(r.count)]),
@@ -262,6 +740,15 @@ export default function AdminAnalyticsClient({
         [],
         ["Status", "Count"],
         ...grantsByStatus.map((r) => [r.name, String(r.value)]),
+      ];
+    } else if (tab === "zds") {
+      filename = "nfw-zds-analytics.csv";
+      rows = [
+        ["Date", "Claims"],
+        ...zdsClaimsByDay.map((r) => [r.date, String(r.count)]),
+        [],
+        ["Product", "Claims"],
+        ...topZdsProducts.map((r) => [r.product, String(r.count)]),
       ];
     } else {
       filename = "nfw-perks-analytics.csv";
@@ -284,6 +771,18 @@ export default function AdminAnalyticsClient({
     URL.revokeObjectURL(url);
   };
 
+  // Get date range label for exports
+  const getDateRangeLabel = (): string => {
+    if (dateRange === "custom") {
+      if (customStartDate && customEndDate) {
+        return `${customStartDate}-to-${customEndDate}`;
+      }
+      return "custom";
+    }
+    const option = DATE_RANGE_OPTIONS.find((o) => o.value === dateRange);
+    return option?.label.toLowerCase().replace(/\s+/g, "-") || String(dateRange);
+  };
+
   // ── EXPORT PDF ───────────────────────────────────────────
   const exportPDF = async () => {
     const { default: jsPDF } = await import("jspdf");
@@ -300,7 +799,7 @@ export default function AdminAnalyticsClient({
       format: [canvas.width / 1.5, canvas.height / 1.5],
     });
     pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 1.5, canvas.height / 1.5);
-    pdf.save(`nfw-analytics-${tab}-${days}days.pdf`);
+    pdf.save(`nfw-analytics-${tab}-${getDateRangeLabel()}.pdf`);
   };
 
   const statCards =
@@ -328,39 +827,74 @@ export default function AdminAnalyticsClient({
             text: "text-nfw-blackberry",
           },
           {
-            label: "Contributing",
+            label: "Free Members",
+            value: freeMembersCount,
+            icon: Users,
+            color: "bg-nfw-wisteria/50",
+            text: "text-white",
+          },
+          {
+            label: "Contributing $15",
             value: contributingCount,
-            icon: TrendingUp,
+            icon: DollarSign,
             color: "bg-nfw-citrine/70",
             text: "text-nfw-blackberry",
           },
           {
-            label: "Founding",
+            label: "Founding $100",
             value: foundingCount,
-            icon: TrendingUp,
+            icon: DollarSign,
             color: "bg-nfw-citrine/50",
             text: "text-nfw-blackberry",
           },
           {
-            label: "Est. MRR",
-            value: `$${estimatedMRR}`,
+            label: "Membership Revenue",
+            value: `$${membershipRevenue.toLocaleString()}`,
             icon: DollarSign,
             color: "bg-nfw-aubergine",
             text: "text-white",
           },
           {
-            label: "Upgraded Members",
-            value: upgradedCount,
+            label: "Retention Rate",
+            value: `${retentionRate}%`,
             icon: TrendingUp,
             color: "bg-nfw-wisteria",
             text: "text-white",
           },
           {
-            label: "% Upgraded",
-            value: `${upgradedPercent}%`,
-            icon: TrendingUp,
-            color: "bg-nfw-wisteria/70",
+            label: "Avg Dues",
+            value: `$${averageDues}`,
+            icon: DollarSign,
+            color: "bg-nfw-lilac/50",
             text: "text-white",
+          },
+          {
+            label: "Churn",
+            value: `${churnRate}%`,
+            icon: TrendingUp,
+            color: "bg-nfw-blackberry/50",
+            text: "text-white",
+          },
+          {
+            label: "Paid / Free",
+            value: `${paidPercent}% / ${freePercent}%`,
+            icon: TrendingUp,
+            color: "bg-nfw-citrine/50",
+            text: "text-nfw-blackberry",
+          },
+          {
+            label: "Signups (Members + Newsletter)",
+            value: combinedSignups,
+            icon: Users,
+            color: "bg-nfw-blackberry",
+            text: "text-white",
+          },
+          {
+            label: "Newsletter Subscribers",
+            value: totalNewsletterSubscribers,
+            icon: Users,
+            color: "bg-nfw-lilac/30",
+            text: "text-nfw-blackberry",
           },
         ]
       : tab === "grants"
@@ -394,37 +928,177 @@ export default function AdminAnalyticsClient({
               text: "text-nfw-blackberry",
             },
           ]
-        : [
-            {
-              label: "Redemptions",
-              value: filteredRedemptions.length,
-              icon: Gift,
-              color: "bg-nfw-blackberry",
-              text: "text-white",
-            },
-            {
-              label: "Total All Time",
-              value: redemptions.length,
-              icon: Gift,
-              color: "bg-nfw-lilac/30",
-              text: "text-nfw-blackberry",
-            },
-            {
-              label: "Unique Offers",
-              value: new Set(filteredRedemptions.map((r) => r.offer_key)).size,
-              icon: TrendingUp,
-              color: "bg-nfw-citrine",
-              text: "text-nfw-blackberry",
-            },
-            {
-              label: "Redeem Types",
-              value: new Set(filteredRedemptions.map((r) => r.redeem_type))
-                .size,
-              icon: FileText,
-              color: "bg-nfw-citrine/70",
-              text: "text-nfw-blackberry",
-            },
-          ];
+        : tab === "perks"
+          ? [
+              {
+                label: "Redemptions",
+                value: filteredRedemptions.length,
+                icon: Gift,
+                color: "bg-nfw-blackberry",
+                text: "text-white",
+              },
+              {
+                label: "Total All Time",
+                value: redemptions.length,
+                icon: Gift,
+                color: "bg-nfw-lilac/30",
+                text: "text-nfw-blackberry",
+              },
+              {
+                label: "Unique Redeemers",
+                value: new Set(filteredRedemptions.map((r) => r.user_id)).size,
+                icon: TrendingUp,
+                color: "bg-nfw-citrine",
+                text: "text-nfw-blackberry",
+              },
+              {
+                label: "Redeem Types",
+                value: new Set(filteredRedemptions.map((r) => r.redeem_type))
+                  .size,
+                icon: FileText,
+                color: "bg-nfw-citrine/70",
+                text: "text-nfw-blackberry",
+              },
+            ]
+          : tab === "zds"
+            ? [
+                {
+                  label: "ZDS Claims",
+                  value: filteredZdsClaims.length,
+                  icon: Gift,
+                  color: "bg-nfw-blackberry",
+                  text: "text-white",
+                },
+                {
+                  label: "Total All Time",
+                  value: zdsClaims.length,
+                  icon: Gift,
+                  color: "bg-nfw-lilac/30",
+                  text: "text-nfw-blackberry",
+                },
+                {
+                  label: "Unique Claimants",
+                  value: uniqueZdsClaimants,
+                  icon: Users,
+                  color: "bg-nfw-citrine",
+                  text: "text-nfw-blackberry",
+                },
+                {
+                  label: "Claim Status",
+                  value: new Set(filteredZdsClaims.map((c) => c.status)).size,
+                  icon: FileText,
+                  color: "bg-nfw-citrine/70",
+                  text: "text-nfw-blackberry",
+                },
+              ]
+            : tab === "engagement"
+              ? [
+                  {
+                    label: "Active Members",
+                    value: activeMembers,
+                    icon: Users,
+                    color: "bg-nfw-blackberry",
+                    text: "text-white",
+                  },
+                  {
+                    label: "Weekly Active",
+                    value: weeklyActive,
+                    icon: TrendingUp,
+                    color: "bg-nfw-citrine",
+                    text: "text-nfw-blackberry",
+                  },
+                  {
+                    label: "Monthly Active",
+                    value: monthlyActive,
+                    icon: TrendingUp,
+                    color: "bg-nfw-citrine/70",
+                    text: "text-nfw-blackberry",
+                  },
+                  {
+                    label: "Total Activities",
+                    value: totalActivities,
+                    icon: Gift,
+                    color: "bg-nfw-wisteria",
+                    text: "text-white",
+                  },
+                  {
+                    label: "Avg Actions/Member",
+                    value: avgActionsPerMember,
+                    icon: TrendingUp,
+                    color: "bg-nfw-lilac/30",
+                    text: "text-nfw-blackberry",
+                  },
+                ]
+              : tab === "cohorts"
+                ? [
+                    {
+                      label: "Total Cohorts",
+                      value: cohortData.length,
+                      icon: Users,
+                      color: "bg-nfw-blackberry",
+                      text: "text-white",
+                    },
+                    {
+                      label: "Total Members",
+                      value: overallRetention.totalMembers,
+                      icon: Users,
+                      color: "bg-nfw-lilac/30",
+                      text: "text-nfw-blackberry",
+                    },
+                    {
+                      label: "Active Members",
+                      value: overallRetention.totalRetained,
+                      icon: TrendingUp,
+                      color: "bg-nfw-citrine",
+                      text: "text-nfw-blackberry",
+                    },
+                    {
+                      label: "Overall Retention",
+                      value: `${overallRetention.rate}%`,
+                      icon: TrendingUp,
+                      color: "bg-nfw-wisteria",
+                      text: "text-white",
+                    },
+                  ]
+              : tab === "support"
+                ? [
+                    {
+                      label: "Total Tickets",
+                      value: freshdeskStats?.total ?? "-",
+                      icon: Users,
+                      color: "bg-nfw-blackberry",
+                      text: "text-white",
+                    },
+                    {
+                      label: "Open",
+                      value: freshdeskStats?.open ?? "-",
+                      icon: TrendingUp,
+                      color: "bg-nfw-citrine",
+                      text: "text-nfw-blackberry",
+                    },
+                    {
+                      label: "Pending",
+                      value: freshdeskStats?.pending ?? "-",
+                      icon: TrendingUp,
+                      color: "bg-nfw-citrine/70",
+                      text: "text-nfw-blackberry",
+                    },
+                    {
+                      label: "Resolved",
+                      value: freshdeskStats?.resolved ?? "-",
+                      icon: TrendingUp,
+                      color: "bg-nfw-wisteria",
+                      text: "text-white",
+                    },
+                    {
+                      label: "Closed",
+                      value: freshdeskStats?.closed ?? "-",
+                      icon: TrendingUp,
+                      color: "bg-nfw-lilac/30",
+                      text: "text-nfw-blackberry",
+                    },
+                  ]
+                : []
 
   return (
     <div>
@@ -432,7 +1106,7 @@ export default function AdminAnalyticsClient({
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-6">
         {/* Tabs */}
         <div className="flex gap-2">
-          {(["members", "grants", "perks"] as const).map((t) => (
+          {(["members", "grants", "perks", "zds", "engagement", "cohorts", "support"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -442,24 +1116,57 @@ export default function AdminAnalyticsClient({
                   : "bg-white text-nfw-blackberry border border-nfw-blackberry/10 hover:bg-nfw-blackberry/5"
               }`}
             >
-              {t}
+              {t === "zds" ? "ZDS" : t}
             </button>
           ))}
         </div>
 
-        <div className="flex gap-3 items-center">
-          {/* Date Range */}
-          <select
-            value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
-            className="text-sm border border-nfw-blackberry/20 px-3 py-2 focus:outline-none focus:border-nfw-blackberry bg-white"
-          >
-            <option value={7}>Last 7 days</option>
-            <option value={30}>Last 30 days</option>
-            <option value={90}>Last 90 days</option>
-            <option value={180}>Last 6 months</option>
-            <option value={365}>Last 12 months</option>
-          </select>
+        <div className="flex gap-3 items-center flex-wrap">
+          {/* Date Range Dropdown */}
+          <div className="relative">
+            <select
+              value={dateRange === "custom" ? "custom" : dateRange}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "custom") {
+                  setDateRange("custom");
+                } else {
+                  setDateRange(Number(val));
+                  setCustomStartDate("");
+                  setCustomEndDate("");
+                }
+              }}
+              className="text-sm border border-nfw-blackberry/20 pl-10 pr-8 py-2 focus:outline-none focus:border-nfw-blackberry bg-white appearance-none cursor-pointer"
+            >
+              {DATE_RANGE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-nfw-blackberry/50 pointer-events-none" />
+          </div>
+
+          {/* Custom Date Range Pickers */}
+          {dateRange === "custom" && (
+            <div className="flex gap-2 items-center">
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="text-sm border border-nfw-blackberry/20 px-3 py-2 focus:outline-none focus:border-nfw-blackberry bg-white"
+                placeholder="Start date"
+              />
+              <span className="text-nfw-blackberry/50 text-sm">to</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="text-sm border border-nfw-blackberry/20 px-3 py-2 focus:outline-none focus:border-nfw-blackberry bg-white"
+                placeholder="End date"
+              />
+            </div>
+          )}
 
           {/* Export CSV */}
           <button
@@ -531,12 +1238,12 @@ export default function AdminAnalyticsClient({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white border border-nfw-blackberry/10 p-6">
                 <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
-                  Membership Status Breakdown
+                  Membership Level Breakdown
                 </h3>
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
                     <Pie
-                      data={membersByStatus}
+                      data={membersByLevel}
                       dataKey="value"
                       nameKey="name"
                       cx="50%"
@@ -546,7 +1253,7 @@ export default function AdminAnalyticsClient({
                         `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
                       }
                     >
-                      {membersByStatus.map((_, i) => (
+                      {membersByLevel.map((_, i) => (
                         <Cell key={i} fill={COLORS[i % COLORS.length]} />
                       ))}
                     </Pie>
@@ -724,7 +1431,361 @@ export default function AdminAnalyticsClient({
                     <Tooltip />
                   </PieChart>
                 </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+        )}
+
+        {/* ZDS TAB */}
+        {tab === "zds" && (
+          <div className="space-y-6">
+            <div className="bg-white border border-nfw-blackberry/10 p-6">
+              <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
+                ZDS Claims Over Time
+              </h3>
+              {zdsClaimsByDay.length === 0 ? (
+                <p className="text-nfw-blackberry/40 text-sm text-center py-8">
+                  No claims in this period.
+                </p>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={zdsClaimsByDay}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Line
+                      type="monotone"
+                      dataKey="count"
+                      stroke="#3E145F"
+                      strokeWidth={2}
+                      dot={false}
+                      name="Claims"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white border border-nfw-blackberry/10 p-6">
+                <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
+                  Top Products Claimed
+                </h3>
+                {topZdsProducts.length === 0 ? (
+                  <p className="text-nfw-blackberry/40 text-sm text-center py-8">
+                    No claims in this period.
+                  </p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={topZdsProducts} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis type="number" tick={{ fontSize: 11 }} />
+                      <YAxis
+                        dataKey="product"
+                        type="category"
+                        tick={{ fontSize: 10 }}
+                        width={120}
+                      />
+                      <Tooltip />
+                      <Bar
+                        dataKey="count"
+                        fill="#B693C0"
+                        name="Claims"
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
+
+              <div className="bg-white border border-nfw-blackberry/10 p-6">
+                <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
+                  Claims by Status
+                </h3>
+                {zdsClaimsByStatus.length === 0 ? (
+                  <p className="text-nfw-blackberry/40 text-sm text-center py-8">
+                    No claims in this period.
+                  </p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie
+                        data={zdsClaimsByStatus}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        label={({ name, percent }) =>
+                          `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+                        }
+                      >
+                        {zdsClaimsByStatus.map((_, i) => (
+                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ENGAGEMENT TAB */}
+        {tab === "engagement" && (
+          <div className="space-y-6">
+            <div className="bg-white border border-nfw-blackberry/10 p-6">
+              <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
+                Activity Breakdown
+              </h3>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-nfw-dove">
+                  <div className="text-3xl font-black text-nfw-blackberry mb-1">
+                    {filteredRedemptions.length}
+                  </div>
+                  <div className="text-xs font-semibold text-nfw-blackberry/70">
+                    Perk Redemptions
+                  </div>
+                </div>
+                <div className="text-center p-4 bg-nfw-dove">
+                  <div className="text-3xl font-black text-nfw-blackberry mb-1">
+                    {filteredZdsClaims.length}
+                  </div>
+                  <div className="text-xs font-semibold text-nfw-blackberry/70">
+                    ZDS Claims
+                  </div>
+                </div>
+                <div className="text-center p-4 bg-nfw-dove">
+                  <div className="text-3xl font-black text-nfw-blackberry mb-1">
+                    {filteredNfwPerkRedemptions.length}
+                  </div>
+                  <div className="text-xs font-semibold text-nfw-blackberry/70">
+                    NFW Perk Redemptions
+                  </div>
+                </div>
+                <div className="text-center p-4 bg-nfw-dove">
+                  <div className="text-3xl font-black text-nfw-blackberry mb-1">
+                    {filteredGrants.length}
+                  </div>
+                  <div className="text-xs font-semibold text-nfw-blackberry/70">
+                    Grant Applications
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-nfw-blackberry/10 p-6">
+              <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
+                Engagement Summary
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="text-center p-6 bg-nfw-aubergine">
+                  <div className="text-4xl font-black text-white mb-2">
+                    {activeMembers}
+                  </div>
+                  <div className="text-sm font-semibold text-white/70">
+                    Total Active Members
+                  </div>
+                  <div className="text-xs text-white/50 mt-2">
+                    Members with any activity in period
+                  </div>
+                </div>
+                <div className="text-center p-6 bg-nfw-wisteria">
+                  <div className="text-4xl font-black text-white mb-2">
+                    {avgActionsPerMember}
+                  </div>
+                  <div className="text-sm font-semibold text-white/70">
+                    Avg Actions per Member
+                  </div>
+                  <div className="text-xs text-white/50 mt-2">
+                    Total activities / active members
+                  </div>
+                </div>
+                <div className="text-center p-6 bg-nfw-citrine">
+                  <div className="text-4xl font-black text-nfw-blackberry mb-2">
+                    {profiles.length > 0 ? Math.round((activeMembers / profiles.length) * 100) : 0}%
+                  </div>
+                  <div className="text-sm font-semibold text-nfw-blackberry/70">
+                    Engagement Rate
+                  </div>
+                  <div className="text-xs text-nfw-blackberry/50 mt-2">
+                    Active members / total members
+                </div>
+              </div>
+            </div>
+              </div>
+          </div>
+        )}
+
+        {/* COHORTS TAB */}
+        {tab === "cohorts" && (
+          <div className="space-y-6">
+            <div className="bg-white border border-nfw-blackberry/10 p-6">
+              <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
+                Membership Cohorts by Join Month
+              </h3>
+              <p className="text-sm text-nfw-blackberry/60 mb-6">
+                Shows members grouped by the month they joined. Retention rate = members still active / total members in cohort.
+              </p>
+              {cohortData.length === 0 ? (
+                <p className="text-nfw-blackberry/40 text-sm text-center py-8">
+                  No cohort data available.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-nfw-blackberry/10">
+                        <th className="text-left py-3 px-4 font-black text-nfw-blackberry">Cohort</th>
+                        <th className="text-right py-3 px-4 font-black text-nfw-blackberry">Members</th>
+                        <th className="text-right py-3 px-4 font-black text-nfw-blackberry">Active</th>
+                        <th className="text-right py-3 px-4 font-black text-nfw-blackberry">Retention</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cohortData.map((row) => (
+                        <tr key={row.cohort} className="border-b border-nfw-blackberry/5 hover:bg-nfw-blackberry/5">
+                          <td className="py-3 px-4 font-medium text-nfw-blackberry">{row.cohort}</td>
+                          <td className="py-3 px-4 text-right text-nfw-blackberry/70">{row.members}</td>
+                          <td className="py-3 px-4 text-right text-nfw-blackberry/70">{row.retained}</td>
+                          <td className="py-3 px-4 text-right">
+                            <span
+                              className={`inline-block px-2 py-1 text-xs font-black rounded ${
+                                row.retentionRate >= 70
+                                  ? "bg-nfw-citrine text-nfw-blackberry"
+                                  : row.retentionRate >= 40
+                                  ? "bg-nfw-wisteria text-white"
+                                  : "bg-nfw-lilac/30 text-nfw-blackberry"
+                              }`}
+                            >
+                              {row.retentionRate}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Retention Chart */}
+            {cohortData.length > 0 && (
+              <div className="bg-white border border-nfw-blackberry/10 p-6">
+                <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
+                  Retention Rate by Cohort
+                </h3>
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={cohortData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="cohortShort" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} />
+                    <Tooltip
+                      formatter={(value) => [`${value}%`, "Retention"]}
+                      labelFormatter={(label) => `Cohort: ${label}`}
+                    />
+                    <Bar
+                      dataKey="retentionRate"
+                      name="Retention Rate"
+                      radius={[4, 4, 0, 0]}
+                    >
+                      {cohortData.map((_, i) => (
+                        <Cell
+                          key={i}
+                          fill={i === cohortData.length - 1 ? "#3E145F" : "#7786BE"}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* SUPPORT TAB */}
+        {tab === "support" && (
+          <div className="space-y-6">
+            <div className="bg-white border border-nfw-blackberry/10 p-6">
+              <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
+                Freshdesk Support Tickets
+              </h3>
+              {freshdeskLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-pulse text-nfw-blackberry/50">
+                    Loading Freshdesk data...
+                  </div>
+                </div>
+              ) : freshdeskError ? (
+                <div className="text-center py-12">
+                  <p className="text-red-500 mb-4">{freshdeskError}</p>
+                  <button
+                    onClick={() => {
+                      setFreshdeskStats(null);
+                      setFreshdeskLoading(false);
+                      setFreshdeskError(null);
+                    }}
+                    className="px-4 py-2 bg-nfw-blackberry text-white text-sm font-semibold hover:bg-nfw-blackberry/90"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : freshdeskStats ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div className="text-center p-4 bg-nfw-dove">
+                      <div className="text-3xl font-black text-nfw-blackberry">
+                        {freshdeskStats.total}
+                      </div>
+                      <div className="text-xs font-semibold text-nfw-blackberry/70 mt-1">
+                        Total Tickets
+                      </div>
+                    </div>
+                    <div className="text-center p-4 bg-nfw-citrine/30">
+                      <div className="text-3xl font-black text-nfw-blackberry">
+                        {freshdeskStats.open}
+                      </div>
+                      <div className="text-xs font-semibold text-nfw-blackberry/70 mt-1">
+                        Open
+                      </div>
+                    </div>
+                    <div className="text-center p-4 bg-nfw-citrine/50">
+                      <div className="text-3xl font-black text-nfw-blackberry">
+                        {freshdeskStats.pending}
+                      </div>
+                      <div className="text-xs font-semibold text-nfw-blackberry/70 mt-1">
+                        Pending
+                      </div>
+                    </div>
+                    <div className="text-center p-4 bg-nfw-wisteria/30">
+                      <div className="text-3xl font-black text-nfw-blackberry">
+                        {freshdeskStats.resolved}
+                      </div>
+                      <div className="text-xs font-semibold text-nfw-blackberry/70 mt-1">
+                        Resolved
+                      </div>
+                    </div>
+                    <div className="text-center p-4 bg-nfw-lilac/30">
+                      <div className="text-3xl font-black text-nfw-blackberry">
+                        {freshdeskStats.closed}
+                      </div>
+                      <div className="text-xs font-semibold text-nfw-blackberry/70 mt-1">
+                        Closed
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-nfw-blackberry/50 text-center">
+                    Data from Freshdesk. Cached for 5 minutes. Last updated:{" "}
+                    {new Date().toLocaleTimeString()}
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-nfw-blackberry/50">
+                  Select the Support tab to load Freshdesk data.
+                </div>
+              )}
             </div>
           </div>
         )}

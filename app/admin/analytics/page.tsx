@@ -28,7 +28,7 @@ async function AdminAnalyticsContent() {
   const { data: profiles } = await supabase
     .from("profiles")
     .select(
-      "id, joined_at, subscription_status, membership_level, first_paid_at, state, city, household_income, date_of_birth",
+      "id, joined_at, subscription_status, membership_level, subscription_ends_at, first_paid_at, first_paid_level, is_approved_free_member, free_membership_contact_submitted, state, city, household_income, date_of_birth",
     )
     .order("joined_at", { ascending: true });
 
@@ -43,8 +43,32 @@ async function AdminAnalyticsContent() {
   // Perks redemptions (use admin client to bypass RLS)
   const { data: redemptions } = await supabaseAdmin
     .from("offer_redemptions")
-    .select("id, offer_key, offer_title, store_name, redeem_type, created_at")
+    .select("id, user_id, offer_key, offer_title, store_name, redeem_type, created_at")
     .order("created_at", { ascending: true });
+
+  // Newsletter signups (use admin client to bypass RLS)
+  const { data: newsletterEmails } = await supabaseAdmin
+    .from("coming_soon_emails")
+    .select("id, created_at")
+    .order("created_at", { ascending: true });
+
+  // Zero Dollar Store claims (use admin client to bypass RLS)
+  const { data: zdsClaims } = await supabaseAdmin
+    .from("zero_dollar_claims")
+    .select("id, user_id, shopify_product_id, status, claimed_at")
+    .order("claimed_at", { ascending: true });
+
+  // NFW Perk Redemptions for engagement (use admin client to bypass RLS)
+  const { data: nfwPerkRedemptions } = await supabaseAdmin
+    .from("nfw_perk_redemptions")
+    .select("id, user_id, perk_id, redeemed_at")
+    .order("redeemed_at", { ascending: true });
+
+  // Shopify product mappings for product titles
+  const { data: shopifyProducts } = await supabaseAdmin
+    .from("shopify_product_mappings")
+    .select("shopify_product_id, title")
+    .not("title", "is", null);
 
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">
@@ -59,6 +83,10 @@ async function AdminAnalyticsContent() {
           profiles={profiles || []}
           grants={grants || []}
           redemptions={redemptions || []}
+          newsletterEmails={newsletterEmails || []}
+          zdsClaims={zdsClaims || []}
+          shopifyProducts={shopifyProducts || []}
+          nfwPerkRedemptions={nfwPerkRedemptions || []}
         />
       </div>
     </main>

@@ -5882,3 +5882,67 @@ When users redeemed an NFW perk via the "Visit Partner Site" button, the redempt
 | `components/perks/NfwPerkDetailPanel.tsx` | Added `onRedeem` prop, calls it instead of just opening URL |
 | `app/perks/page.tsx` | Passed `handleNfwPerkRedeem` as `onRedeem` prop |
 | `app/api/admin/nfw-perks/route.ts` | Uses `supabaseAdmin` instead of user-context client |
+
+## Session 2026-07-01: Analytics Page Fixes + Cohort Analysis
+
+### Overview
+
+Enhanced the analytics admin page with timeline views, membership metrics, newsletter tracking, ZDS claims, engagement metrics, and Freshdesk integration. Also fixed several bugs.
+
+### Completed Steps
+
+**Step 1: Timeline View**
+- Added Day/Month/Quarter/Year + Custom date range picker
+- Dropdown with presets + "Custom Range" at bottom that opens date pickers
+
+**Step 2: Membership Metrics**
+- Added revenue, avg dues, retention rate, churn metrics
+- Paid/free percentage breakdowns
+
+**Step 3: Newsletter Signups**
+- Combined member + newsletter signups tracking
+
+**Step 4: ZDS Claims**
+- Added claims tab with Total/Unique Claimants/Status breakdown
+
+**Step 5: Unique Redeemers for Perks**
+- Added `user_id` to redemptions query
+- Replaced "Unique Offers" with "Unique Redeemers"
+
+**Step 6: Engagement Metrics**
+- Added Active Members/Weekly/Monthly counts
+- Total activities and avg actions per member
+
+**Step 7: Support Tickets - Freshdesk Integration**
+- Created API route at `app/api/admin/analytics/freshdesk/route.ts`
+- Added Freshdesk tab to analytics with Total/Open/Pending/Resolved/Closed stats
+
+**Step 8: Cohort Analysis**
+- Added Cohorts tab with table showing members grouped by join month
+- Retention rate = active members / total members in cohort
+- Bar chart visualization of retention rates by cohort
+
+### Bug Fixes
+
+**ZDS Claims Showing 0 in Engagement Tab**
+- **Root Cause**: `zero_dollar_claims` table has `claimed_at` column but NOT `created_at`. Query was selecting `created_at` which doesn't exist, causing silent failure.
+- **Fix**: Removed `created_at` from select query in `app/admin/analytics/page.tsx`
+
+**Tab Label "Zds" Capitalization**
+- **Root Cause**: Tailwind's `capitalize` class makes it "Zds" not "ZDS"
+- **Fix**: Added conditional `{t === "zds" ? "ZDS" : t}` in tab rendering
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/admin/AdminAnalyticsClient.tsx` | All 8 steps + bug fixes |
+| `app/admin/analytics/page.tsx` | Removed `created_at` from ZDS query |
+| `app/api/admin/analytics/freshdesk/route.ts` | Freshdesk API proxy (new) |
+
+### Key Decisions
+
+- Used session tracking for website users (not GA4 API)
+- Support tickets via Freshdesk API (already has write integration)
+- Retention rate calculated as members with active subscription / total cohort members
+- Active = `subscription_status = 'active'/'contributing'` OR `is_approved_free_member = true`
