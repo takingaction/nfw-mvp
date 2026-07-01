@@ -14,6 +14,8 @@ interface Submission {
   freshdesk_ticket_id: string | null;
   freshdesk_response: string | null;
   created_at: string;
+  user_id: string | null;
+  addressed: boolean | null;
 }
 
 export default function AdminContactSubmissions() {
@@ -37,19 +39,19 @@ export default function AdminContactSubmissions() {
 
   // Fetch approval statuses for free membership requests
   const fetchApprovalStatuses = async (subs: Submission[]) => {
-    const freeRequestEmails = subs
-      .filter((s) => isFreeMembershipRequest(s))
-      .map((s) => s.email)
-      .filter((email) => email); // Filter out empty emails
+    const freeRequestUserIds = subs
+      .filter((s) => isFreeMembershipRequest(s) && s.user_id)
+      .map((s) => s.user_id)
+      .filter((id): id is string => !!id); // Filter out null/undefined
 
-    if (freeRequestEmails.length === 0) return;
+    if (freeRequestUserIds.length === 0) return;
 
-    // Dedupe emails
-    const uniqueEmails = [...new Set(freeRequestEmails)];
+    // Dedupe user_ids
+    const uniqueUserIds = [...new Set(freeRequestUserIds)];
 
     try {
       const res = await fetch(
-        `/api/admin/contact-submissions/approval-statuses?emails=${uniqueEmails.join(",")}`
+        `/api/admin/contact-submissions/approval-statuses?user_ids=${uniqueUserIds.join(",")}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -194,7 +196,8 @@ export default function AdminContactSubmissions() {
 
   const isFreeMemberApproved = (sub: Submission): boolean => {
     if (!isFreeMembershipRequest(sub)) return false;
-    return approvalStatusMap.get(sub.email) === true;
+    if (!sub.user_id) return false;
+    return approvalStatusMap.get(sub.user_id) === true;
   };
 
   return (
@@ -342,7 +345,7 @@ export default function AdminContactSubmissions() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          {isFreeMembershipRequest(sub) && !isFreeMemberApproved(sub) && (
+                          {isFreeMembershipRequest(sub) && !isFreeMemberApproved(sub) && sub.addressed !== true && (
                             <button
                               onClick={() => openApprovalModal(sub)}
                               className="p-1.5 bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/80 transition-colors"
@@ -468,7 +471,7 @@ export default function AdminContactSubmissions() {
                   {selectedSubmission.message}
                 </p>
               </div>
-              {isFreeMembershipRequest(selectedSubmission) && !isFreeMemberApproved(selectedSubmission) && (
+              {isFreeMembershipRequest(selectedSubmission) && !isFreeMemberApproved(selectedSubmission) && selectedSubmission.addressed !== true && (
                 <div className="pt-4 border-t border-nfw-blackberry/10">
                   <button
                     onClick={() => {
