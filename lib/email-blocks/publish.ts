@@ -73,7 +73,7 @@ export async function getPreRenderedHtml(
 
   const { data: template, error: templateError } = await supabase
     .from("email_templates")
-    .select("id, slug, subject, full_email_html, status")
+    .select("id, slug, subject, full_email_html, status, is_active")
     .eq("slug", templateSlug)
     .single();
 
@@ -81,7 +81,7 @@ export async function getPreRenderedHtml(
     return null;
   }
 
-  if (template.full_email_html && template.status === "published") {
+  if (template.full_email_html && template.status === "published" && template.is_active !== false) {
     let html = template.full_email_html;
     for (const [key, value] of Object.entries(variables)) {
       html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
@@ -104,23 +104,19 @@ export async function getPreRenderedHtmlAdmin(
 
   const { data: template, error: templateError } = await supabase
     .from("email_templates")
-    .select("id, slug, subject, full_email_html, status")
+    .select("id, slug, subject, full_email_html, status, is_active")
     .eq("slug", templateSlug)
     .single();
 
-  console.log(`[getPreRenderedHtmlAdmin] templateSlug=${templateSlug}, found=${!!template}, error=${templateError?.message}, status=${template?.status}, hasFullHtml=${!!template?.full_email_html}`);
-
   if (templateError || !template) {
-    console.log(`[getPreRenderedHtmlAdmin] Returning null: templateError=${!!templateError}, !template=${!template}`);
     return null;
   }
 
-  if (template.full_email_html && template.status === "published") {
+  if (template.full_email_html && template.status === "published" && template.is_active !== false) {
     let html = template.full_email_html;
     for (const [key, value] of Object.entries(variables)) {
       html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
     }
-    console.log(`[getPreRenderedHtmlAdmin] Returning pre-rendered HTML, html length=${html.length}`);
     return {
       html,
       useShell: false,
@@ -128,7 +124,6 @@ export async function getPreRenderedHtmlAdmin(
     };
   }
 
-  console.log(`[getPreRenderedHtmlAdmin] Template found but conditions not met: full_email_html=${!!template.full_email_html}, status=${template.status}`);
   return null;
 }
 
