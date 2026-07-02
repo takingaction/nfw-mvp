@@ -59,7 +59,10 @@ async function AdminMembersContent() {
     return <div className="text-red-600 p-8">Error loading members</div>;
   }
 
-  const percent = (value: number) => total > 0 ? ((value / total) * 100).toFixed(1) : "0";
+  const percent = (value: number | null | undefined) => {
+    if (!total || total === 0 || !value) return "0";
+    return ((value / total) * 100).toFixed(1);
+  };
 
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">
