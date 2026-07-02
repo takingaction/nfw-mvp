@@ -27,6 +27,10 @@ async function AdminMembersContent() {
     .order("joined_at", { ascending: false })
     .range(0, 10000);
 
+  // DEBUG: Log to terminal (server-side)
+  console.log("[DEBUG] profiles returned:", profiles?.length);
+  console.log("[DEBUG] admins in result:", profiles?.filter(p => p.is_admin).length);
+
   if (error) {
     console.error("Error fetching members:", error);
     return <div className="text-red-600 p-8">Error loading members</div>;
