@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
           .single();
 
         if (!profile) {
-          const rawMeta = user.raw_user_meta_data || {};
+          const rawMeta = user.user_metadata || {};
           const isGoogle = rawMeta.iss === 'https://accounts.google.com';
 
           const { error: insertError } = await supabaseAdmin
