@@ -19,35 +19,45 @@ async function AdminMembersContent() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Try with ascending order like analytics (oldest first)
+  // Query for exact total count (bypasses 1000 row limit)
+  const { count: total, error: countError } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true });
+
+  // Query for breakdown counts (each query is lightweight with head: true)
+  const { count: paid } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .in("membership_level", ["contributing", "founding"]);
+
+  const { count: free } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .or("(membership_level.eq.free,membership_level.is.null)");
+
+  const { count: admins } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .eq("is_admin", true);
+
+  const { count: incomplete } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .or("profile_completed.is.null,profile_completed.eq.false");
+
+  // Query for actual data to display (limited for performance)
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select(
       "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted",
     )
     .order("joined_at", { ascending: true })
-    .range(0, 10000);
+    .range(0, 100);
 
-  // DEBUG: Log to terminal (server-side)
-  console.log("[DEBUG] profiles returned:", profiles?.length);
-  console.log("[DEBUG] admins in result:", profiles?.filter(p => p.is_admin).length);
-
-  if (error) {
-    console.error("Error fetching members:", error);
+  if (error || countError) {
+    console.error("Error fetching members:", error || countError);
     return <div className="text-red-600 p-8">Error loading members</div>;
   }
-
-  const total = profiles?.length || 0;
-  const paid =
-    profiles?.filter((m) => m.membership_level === "contributing" || m.membership_level === "founding")
-      .length || 0;
-  const free =
-    profiles?.filter((m) => m.membership_level === "free" || m.membership_level === null)
-      .length || 0;
-  const admins = profiles?.filter((m) => m.is_admin).length || 0;
-  const incomplete =
-    profiles?.filter((m) => !m.profile_completed || m.profile_completed === false)
-      .length || 0;
 
   const percent = (value: number) => total > 0 ? ((value / total) * 100).toFixed(1) : "0";
 
