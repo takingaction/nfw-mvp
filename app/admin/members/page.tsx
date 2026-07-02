@@ -19,12 +19,13 @@ async function AdminMembersContent() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Try with ascending order like analytics (oldest first)
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select(
       "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted",
     )
-    .order("joined_at", { ascending: false })
+    .order("joined_at", { ascending: true })
     .range(0, 10000);
 
   // DEBUG: Log to terminal (server-side)
