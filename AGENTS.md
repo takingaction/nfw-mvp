@@ -6284,3 +6284,32 @@ Added hybrid responsive layout to `/admin/nfw-perks`:
 ### Commit
 
 - (pending) - feat: admin hub redesign, analytics legend, NFW perks mobile responsive
+
+---
+
+## Session 2026-07-02 (Afternoon): Analytics Member Count Fixes
+
+### Issues Fixed
+
+1. **Supabase 1000 row limit** - Added `.limit(10000)` to profiles query to override default cap
+2. **Missing `is_admin` field** - Added to analytics profiles select and Profile type
+3. **Missing `profile_completed` field** - Added to analytics profiles select and Profile type
+4. **Admin count showing 0** - Now properly calculated and displayed
+
+### New Stat Cards Added
+
+| Stat | Color | Note |
+|------|-------|------|
+| Incomplete Profiles (not counted) | Stone/gray | Shows profiles that haven't completed signup, not counted in totals |
+| Admins | Aubergine | Shows admin user count |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/analytics/page.tsx` | Added `.limit(10000)`, added `is_admin` and `profile_completed` to select |
+| `components/admin/AdminAnalyticsClient.tsx` | Added fields to Profile type, added `incompleteCount` and `adminCount` calculations, added stat cards |
+
+### Commit
+
+- (pending) - fix: analytics member counts - add row limit, incomplete stat, admin count

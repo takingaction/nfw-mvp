@@ -60,6 +60,8 @@ type Profile = {
   city: string | null;
   household_income: string | null;
   date_of_birth: string | null;
+  is_admin: boolean | null;
+  profile_completed: boolean | null;
 };
 
 type Grant = {
@@ -353,6 +355,16 @@ export default function AdminAnalyticsClient({
         p.is_approved_free_member !== true &&
         p.free_membership_contact_submitted === false
     ).length;
+  }, [profiles]);
+
+  // Incomplete profiles (profile started but not completed - NOT counted as members)
+  const incompleteCount = useMemo(() => {
+    return profiles.filter((p) => !p.profile_completed).length;
+  }, [profiles]);
+
+  // Admin count
+  const adminCount = useMemo(() => {
+    return profiles.filter((p) => p.is_admin === true).length;
   }, [profiles]);
 
   // Paid vs free percentage (based on filtered profiles)
@@ -900,6 +912,20 @@ export default function AdminAnalyticsClient({
           {
             label: "Started Free",
             value: startedFreeCount,
+            icon: Users,
+            color: "bg-nfw-aubergine",
+            text: "text-white",
+          },
+          {
+            label: "Incomplete Profiles (not counted)",
+            value: incompleteCount,
+            icon: Users,
+            color: "bg-nfw-stone",
+            text: "text-nfw-blackberry",
+          },
+          {
+            label: "Admins",
+            value: adminCount,
             icon: Users,
             color: "bg-nfw-aubergine",
             text: "text-white",
