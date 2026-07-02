@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Shield,
@@ -37,12 +37,23 @@ type Member = {
 export default function AdminMembersClient({
   members: initialMembers,
   currentUserId,
+  totalCount = 0,
+  currentPage = 1,
+  pageSize = 100,
 }: {
   members: Member[];
   currentUserId: string;
+  totalCount?: number;
+  currentPage?: number;
+  pageSize?: number;
 }) {
-  const [members, setMembers] = useState(initialMembers);
-  const [search, setSearch] = useState("");
+  const [allMembers, setAllMembers] = useState<Member[]>(initialMembers); // Start with initial, fetch all for search
+  const [search, setSearch] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("membersSearch") || "";
+    }
+    return "";
+  });
   const [filter, setFilter] = useState<"all" | "paid" | "free" | "admin" | "incomplete" | "pending">(
     "all",
   );
@@ -52,6 +63,44 @@ export default function AdminMembersClient({
   const [selfDemoteWarning, setSelfDemoteWarning] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Partial<Member>>({});
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+
+  // Fetch ALL members for search via pagination
+  useEffect(() => {
+    const fetchAllMembers = async () => {
+      const supabase = createClient();
+      const allData: Member[] = [];
+      const pageSize = 1000;
+      let page = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const from = page * pageSize;
+        const { data, error } = await supabase
+          .from("profiles")
+          .select(
+            "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted",
+          )
+          .order("joined_at", { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (error) {
+          console.error("Error fetching members:", error);
+          break;
+        }
+
+        if (data && data.length > 0) {
+          allData.push(...data);
+          page++;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      setAllMembers(allData);
+    };
+    fetchAllMembers();
+  }, []);
 
   // Approval confirmation modal state
   const [showApprovalConfirmModal, setShowApprovalConfirmModal] = useState(false);
@@ -69,8 +118,10 @@ export default function AdminMembersClient({
     }
   };
 
-  const filtered = members.filter((m) => {
+  // Client-side search across ALL members, then apply filter
+  const filtered = allMembers.filter((m) => {
     const matchesSearch =
+      !search ||
       (m.full_name?.toLowerCase() || "").includes(search.toLowerCase()) ||
       (m.email?.toLowerCase() || "").includes(search.toLowerCase()) ||
       (m.state?.toLowerCase() || "").includes(search.toLowerCase()) ||
@@ -89,6 +140,10 @@ export default function AdminMembersClient({
 
     return matchesSearch && matchesFilter;
   });
+
+  // Paginated subset of filtered results
+  const paginatedOffset = (currentPage - 1) * pageSize;
+  const paginatedFiltered = filtered.slice(paginatedOffset, paginatedOffset + pageSize);
 
   const openEdit = (member: Member) => {
     setSelected(member);
@@ -294,9 +349,27 @@ export default function AdminMembersClient({
               type="text"
               placeholder="Search by name or email..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry transition-colors"
+              onChange={(e) => {
+                setSearch(e.target.value);
+                if (typeof window !== "undefined") {
+                  sessionStorage.setItem("membersSearch", e.target.value);
+                }
+              }}
+              className="w-full pl-9 pr-10 py-2 text-sm border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry transition-colors"
             />
+            {search && (
+              <button
+                onClick={() => {
+                  setSearch("");
+                  if (typeof window !== "undefined") {
+                    sessionStorage.removeItem("membersSearch");
+                  }
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-nfw-blackberry/40 hover:text-nfw-blackberry"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
           <div className="flex gap-2">
             {(["all", "paid", "free", "incomplete", "admin", "pending"] as const).map((f) => (
@@ -316,10 +389,29 @@ export default function AdminMembersClient({
         </div>
 
         {/* Results count */}
-        <div className="px-4 py-2 bg-nfw-dove border-b border-nfw-blackberry/5">
+        <div className="px-4 py-2 bg-nfw-dove border-b border-nfw-blackberry/5 flex items-center justify-between">
           <p className="text-xs text-nfw-blackberry/50 font-medium">
-            Showing {filtered.length} of {members.length} members
+            Showing {filtered.length === 0 ? 0 : ((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, filtered.length)} of {filtered.length} members
+            {filtered.length !== totalCount && search && ` (filtered from ${totalCount} total)`}
           </p>
+          <div className="flex items-center gap-2">
+            {currentPage > 1 && (
+              <button
+                onClick={() => window.location.href = `?page=${currentPage - 1}${search ? `&search=${encodeURIComponent(search)}` : ""}`}
+                className="px-3 py-1 text-xs bg-nfw-aubergine/10 text-nfw-aubergine hover:bg-nfw-aubergine/20 font-medium"
+              >
+                ← Previous
+              </button>
+            )}
+            {currentPage * pageSize < filtered.length && (
+              <button
+                onClick={() => window.location.href = `?page=${currentPage + 1}${search ? `&search=${encodeURIComponent(search)}` : ""}`}
+                className="px-3 py-1 text-xs bg-nfw-aubergine/10 text-nfw-aubergine hover:bg-nfw-aubergine/20 font-medium"
+              >
+                Next →
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Table */}
@@ -364,7 +456,7 @@ export default function AdminMembersClient({
                   </td>
                 </tr>
               ) : (
-                filtered.map((member) => (
+                paginatedFiltered.map((member) => (
                   <tr
                     key={member.id}
                     className="hover:bg-nfw-dove/50 transition-colors"

@@ -10,7 +10,7 @@ import { Suspense } from "react";
 import AdminMembersClient from "@/components/admin/AdminMembersClient";
 // BackfillButton removed - no longer needed
 
-async function AdminMembersContent() {
+async function AdminMembersContent({ page }: { page: number }) {
   await requireAdmin();
 
   const supabase = await createClient();
@@ -45,14 +45,17 @@ async function AdminMembersContent() {
     .select("*", { count: "exact", head: true })
     .or("profile_completed.is.null,profile_completed.eq.false");
 
-  // Query for actual data to display (limited for performance)
+  // Query for actual data to display with pagination
+  const pageSize = 100;
+  const offset = (page - 1) * pageSize;
+
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select(
       "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted",
     )
-    .order("joined_at", { ascending: true })
-    .range(0, 100);
+    .order("joined_at", { ascending: false })
+    .range(offset, offset + pageSize - 1);
 
   if (error || countError) {
     console.error("Error fetching members:", error || countError);
@@ -137,13 +140,23 @@ async function AdminMembersContent() {
         <AdminMembersClient
           members={profiles || []}
           currentUserId={user?.id || ""}
+          totalCount={total || 0}
+          currentPage={page}
+          pageSize={pageSize}
         />
       </div>
     </main>
   );
 }
 
-export default function AdminMembersPage() {
+interface PageProps {
+  searchParams: Promise<{ page?: string }>;
+}
+
+export default async function AdminMembersPage({ searchParams }: PageProps) {
+  const resolvedSearchParams = await searchParams;
+  const page = parseInt(resolvedSearchParams.page || "1", 10);
+
   return (
     <Suspense
       fallback={
@@ -156,7 +169,7 @@ export default function AdminMembersPage() {
         </main>
       }
     >
-      <AdminMembersContent />
+      <AdminMembersContent page={page} />
     </Suspense>
   );
 }

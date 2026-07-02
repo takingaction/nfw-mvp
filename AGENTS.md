@@ -6335,3 +6335,152 @@ Added `.limit(10000)` to the profiles query in `app/admin/members/page.tsx` to o
 ### Commit
 
 - (pending) - fix: members page row limit for admin count
+
+---
+
+## Session 2026-07-02 (Morning): Admin Hub Redesign + Analytics Legend + NFW Perks Mobile
+
+### Admin Hub Redesign
+
+Reworked the `/admin` page to be more visually organized and easier to navigate.
+
+**Layout:**
+- 2-column grid for main sections
+- Sections arranged left-to-right, top-to-bottom
+- Analytics section as a hero card at the bottom (full-width)
+
+**Section Cards:**
+| Section | Header Color | Card BG | Link Style |
+|---------|-------------|---------|------------|
+| Content & Website | Aubergine | White | Aubergine tinted |
+| Members & Grants | Wisteria | White | Aubergine tinted |
+| Store & Commerce | Lilac | White | Aubergine tinted |
+| Emails & Subscriptions | Citrine | White | Aubergine tinted |
+| Analytics | Aubergine | White with aubergine border | Hero card with gradient |
+
+**Icons:**
+- `FileText` for Content & Website
+- `Users` for Members & Grants
+- `ShoppingCart` for Store & Commerce
+- `Mail` for Emails & Subscriptions
+- `BarChart3` for Analytics
+
+### Analytics Legend
+
+Added a color legend at the top of `/admin/analytics` to clarify which stats change with the date dropdown:
+- **Aubergine cards** = Fixed (all time)
+- **Wisteria cards** = Changes with date range
+
+### NFW Perks Mobile Responsiveness
+
+Added hybrid responsive layout to `/admin/nfw-perks`:
+- **Desktop (md+):** Full 6-column table
+- **Mobile:** Card-based layout with all info visible
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/AdminHubClient.tsx` | Complete redesign with 2-column grid, icons, consistent button styles |
+| `app/admin/analytics/page.tsx` | Added color legend for aubergine/wisteria stat cards |
+| `app/admin/nfw-perks/AdminNfwPerks.tsx` | Added mobile card view alongside desktop table |
+
+### Commit
+
+- (pending) - feat: admin hub redesign, analytics legend, NFW perks mobile responsive
+
+---
+
+## Session 2026-07-02 (Afternoon): Members Page Search + Pagination Fix
+
+### Problem
+
+Members page search only searched visible 100 rows instead of all members. Also showed oldest members first instead of newest.
+
+### Solution
+
+Reverted to client-side search using `sessionStorage` to persist search term:
+
+1. **Fetch ALL members** (up to 10,000) on mount via 1000-row pagination loop
+2. **Client-side search** filters across all loaded members
+3. **Paginated display** of filtered results (100 per page)
+4. **sessionStorage** persists search term across page navigations
+5. **X button** to clear search
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/members/page.tsx` | Removed URL-driven search, uses pagination for display |
+| `components/admin/AdminMembersClient.tsx` | Fetches all members via pagination loop, client-side search + filter, sessionStorage persistence |
+
+### Commit
+
+- (pending) - fix: members page search and pagination - client-side search with sessionStorage
+
+---
+
+## Session 2026-07-02 (Evening): Google OAuth Name Sync Fix
+
+### Problem
+
+Google OAuth signups (like geraldtyisha7@gmail.com) had empty `full_name` in profiles even though Google provided the name. Profile was incorrectly marked as `profile_completed = true` with missing required fields.
+
+### Root Cause
+
+1. Auth callback created profile with placeholder `full_name: "Member"` 
+2. `auth.users.raw_user_meta_data` had the correct Google name but it was never synced
+3. Profile was somehow marked complete without required fields
+
+### Solution
+
+**1. Migration 107: Database trigger for edge cases**
+
+```sql
+-- INSERT only, only if NULL/empty - never overwrites user-entered data
+CREATE OR REPLACE FUNCTION sync_profile_google_data()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.raw_user_meta_data ? 'iss' AND NEW.raw_user_meta_data->>'iss' = 'https://accounts.google.com' THEN
+      IF NEW.full_name IS NULL OR NEW.full_name = '' THEN
+        NEW.full_name = COALESCE(NEW.raw_user_meta_data->>'full_name', 'Member');
+      END IF;
+      IF NEW.avatar_url IS NULL THEN
+        NEW.avatar_url = NEW.raw_user_meta_data->>'avatar_url';
+      END IF;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+```
+
+**2. Updated auth callback** (`app/auth/callback/route.ts`)
+
+Extracts Google metadata on profile creation:
+- `full_name`: Google name or "Member" fallback
+- `avatar_url`: Google avatar or null
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/107_sync_google_full_name_avatar.sql` | Trigger to sync Google name/avatar on INSERT (only if NULL/empty) |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/auth/callback/route.ts` | Extract full_name and avatar_url from Google OAuth on profile creation |
+
+### Key Design Decision
+
+Trigger is **INSERT-only** and only fills NULL/empty values. This ensures:
+- User manually entering name in signup step 1 is never overwritten
+- Only edge cases (bug scenarios) get auto-filled from Google
+- Never overwrites user-entered data during UPDATE
+
+### Commit
+
+- (pending) - fix: google oauth name sync - trigger for edge cases + callback extraction

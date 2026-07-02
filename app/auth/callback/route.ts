@@ -27,11 +27,15 @@ export async function GET(request: NextRequest) {
           .single();
 
         if (!profile) {
+          const rawMeta = user.raw_user_meta_data || {};
+          const isGoogle = rawMeta.iss === 'https://accounts.google.com';
+
           const { error: insertError } = await supabaseAdmin
             .from("profiles")
             .insert({
               id: user.id,
-              full_name: "Member",
+              full_name: isGoogle ? (rawMeta.full_name || "Member") : "Member",
+              avatar_url: isGoogle ? (rawMeta.avatar_url || null) : null,
               date_of_birth: "1900-01-01",
               membership_level: "free",
               subscription_status: null,
