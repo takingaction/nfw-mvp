@@ -6313,3 +6313,25 @@ Added hybrid responsive layout to `/admin/nfw-perks`:
 ### Commit
 
 - (pending) - fix: analytics member counts - add row limit, incomplete stat, admin count
+
+---
+
+## Session 2026-07-02 (Evening): Members Page Row Limit Fix
+
+### Issue
+
+`/admin/members` showed 0 admins because the profiles query was hitting Supabase's default 1000 row limit. The `/admin/analytics` page worked correctly after adding `.limit(10000)`, but `/admin/members` still had no limit.
+
+### Fix
+
+Added `.limit(10000)` to the profiles query in `app/admin/members/page.tsx` to override Supabase's default 1000 row limit.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/members/page.tsx` | Added `.limit(10000)` to profiles query |
+
+### Commit
+
+- (pending) - fix: members page row limit for admin count
