@@ -79,6 +79,18 @@ async function AdminAnalyticsContent() {
             Member, grant, and perks performance data
           </p>
         </div>
+
+        <div className="mb-6 flex items-center gap-6 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-nfw-aubergine"></div>
+            <span className="text-nfw-blackberry/70">Fixed (all time)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-nfw-wisteria"></div>
+            <span className="text-nfw-blackberry/70">Changes with date range</span>
+          </div>
+        </div>
+
         <AdminAnalyticsClient
           profiles={profiles || []}
           grants={grants || []}

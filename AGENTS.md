@@ -6221,3 +6221,66 @@ Fixed analytics page color scheme, pie chart overlaps, calculation bugs, and ZDS
 ### Commit
 
 - `xxxxxxx` - fix: analytics color scheme, calculations, ZDS claims filtering
+
+---
+
+## Session 2026-07-02: Admin Hub Redesign + Analytics Legend
+
+### Admin Hub Redesign
+
+Reworked the `/admin` page to be more visually organized and easier to navigate.
+
+**Layout:**
+- 2-column grid for main sections
+- Sections arranged left-to-right, top-to-bottom
+- Analytics section as a hero card at the bottom (full-width)
+
+**Section Cards:**
+| Section | Header Color | Card BG | Link Style |
+|---------|-------------|---------|------------|
+| Content & Website | Aubergine | White | Aubergine tinted |
+| Members & Grants | Wisteria | White | Aubergine tinted |
+| Store & Commerce | Lilac | White | Aubergine tinted |
+| Emails & Subscriptions | Citrine | White | Aubergine tinted |
+| Analytics | Aubergine | White with aubergine border | Hero card with gradient |
+
+**Icons:**
+- `FileText` for Content & Website
+- `Users` for Members & Grants
+- `ShoppingCart` for Store & Commerce
+- `Mail` for Emails & Subscriptions
+- `BarChart3` for Analytics
+
+**Link Buttons:**
+- All buttons now use consistent aubergine-tinted style
+- Default: `bg-nfw-aubergine/10 text-nfw-aubergine`
+- Hover: `bg-nfw-aubergine text-white`
+
+### Analytics Color Legend
+
+Added a color legend at the top of `/admin/analytics` to clarify which stats change with the date dropdown:
+
+- **Aubergine cards** = Fixed (all time)
+- **Wisteria cards** = Changes with date range
+
+### NFW Perks Mobile Responsiveness
+
+Added hybrid responsive layout to `/admin/nfw-perks`:
+- **Desktop (md+):** Full 6-column table
+- **Mobile:** Card-based layout with all info visible
+  - Title + Status badge at top
+  - Partner, Est. Value, Redeemed in 2-column grid
+  - Categories below
+  - Full-width Edit/Delete buttons
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/AdminHubClient.tsx` | Complete redesign with 2-column grid, icons, consistent button styles |
+| `app/admin/analytics/page.tsx` | Added color legend for aubergine/wisteria stat cards |
+| `app/admin/nfw-perks/AdminNfwPerks.tsx` | Added mobile card view alongside desktop table |
+
+### Commit
+
+- (pending) - feat: admin hub redesign, analytics legend, NFW perks mobile responsive

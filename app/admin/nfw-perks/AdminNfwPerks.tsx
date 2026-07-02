@@ -244,101 +244,182 @@ export default function AdminNfwPerks() {
       )}
 
       <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
-        <table className="min-w-full divide-y divide-nfw-blackberry/5">
-          <thead className="bg-nfw-dove">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider font-ui">
-                Perk
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider font-ui">
-                Partner
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider font-ui">
-                Est. Value
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider font-ui">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider font-ui">
-                Redeemed
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider font-ui">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-nfw-blackberry/5">
-            {perks.length === 0 ? (
+        {/* Desktop Table - hidden on mobile */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="min-w-full divide-y divide-nfw-blackberry/5">
+            <thead className="bg-nfw-dove">
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-nfw-blackberry/50 font-ui">
-                  No perks yet. Click &quot;Add Perk&quot; to create one.
-                </td>
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider font-ui">
+                  Perk
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider font-ui">
+                  Partner
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider font-ui">
+                  Est. Value
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider font-ui">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider font-ui">
+                  Redeemed
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-nfw-blackberry/50 uppercase tracking-wider font-ui">
+                  Actions
+                </th>
               </tr>
-            ) : (
-              perks.map((perk) => (
-                <tr key={perk.id} className={!perk.is_active ? "bg-nfw-stone/5" : ""}>
-                  <td className="px-6 py-4">
+            </thead>
+            <tbody className="bg-white divide-y divide-nfw-blackberry/5">
+              {perks.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-nfw-blackberry/50 font-ui">
+                    No perks yet. Click &quot;Add Perk&quot; to create one.
+                  </td>
+                </tr>
+              ) : (
+                perks.map((perk) => (
+                  <tr key={perk.id} className={!perk.is_active ? "bg-nfw-stone/5" : ""}>
+                    <td className="px-6 py-4">
+                      <div className="font-medium text-nfw-blackberry font-ui">{perk.title}</div>
+                      {perk.slug && (
+                        <a
+                          href={`/perks/nfw/${perk.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-nfw-aubergine hover:underline font-ui mt-0.5 inline-block"
+                        >
+                          /perks/nfw/{perk.slug}
+                        </a>
+                      )}
+                      {perk.categories && perk.categories.length > 0 && (
+                        <div className="text-xs text-nfw-blackberry/50 font-ui mt-0.5">
+                          {perk.categories.slice(0, 2).join(", ")}
+                          {perk.categories.length > 2 && ` +${perk.categories.length - 2}`}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-nfw-blackberry/70 font-ui text-sm">
+                      {perk.partner_name || "—"}
+                    </td>
+                    <td className="px-6 py-4 text-nfw-blackberry/70 font-ui text-sm">
+                      {perk.estimated_value ? `$${perk.estimated_value.toFixed(2)}` : "—"}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-medium font-ui ${
+                          perk.is_active
+                            ? "bg-[#d4f1ad] text-nfw-blackberry"
+                            : "bg-nfw-stone/20 text-nfw-blackberry/50"
+                        }`}
+                      >
+                        {perk.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-nfw-blackberry/70 font-ui text-sm">
+                      {perk.redemptionCount}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => openEditModal(perk)}
+                          className="p-2 text-nfw-blackberry/30 hover:text-nfw-aubergine hover:bg-nfw-aubergine/10 rounded transition-colors"
+                          title="Edit perk"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(perk.id)}
+                          className="p-2 text-nfw-blackberry/30 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Delete perk"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Cards - hidden on desktop */}
+        <div className="md:hidden divide-y divide-nfw-blackberry/5">
+          {perks.length === 0 ? (
+            <div className="px-6 py-8 text-center text-nfw-blackberry/50 font-ui">
+              No perks yet. Click &quot;Add Perk&quot; to create one.
+            </div>
+          ) : (
+            perks.map((perk) => (
+              <div key={perk.id} className={`p-4 ${!perk.is_active ? "bg-nfw-stone/5" : ""}`}>
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
                     <div className="font-medium text-nfw-blackberry font-ui">{perk.title}</div>
                     {perk.slug && (
                       <a
                         href={`/perks/nfw/${perk.slug}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-nfw-aubergine hover:underline font-ui mt-0.5 inline-block"
+                        className="text-xs text-nfw-aubergine hover:underline font-ui"
                       >
                         /perks/nfw/{perk.slug}
                       </a>
                     )}
-                    {perk.categories && perk.categories.length > 0 && (
-                      <div className="text-xs text-nfw-blackberry/50 font-ui mt-0.5">
-                        {perk.categories.slice(0, 2).join(", ")}
-                        {perk.categories.length > 2 && ` +${perk.categories.length - 2}`}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-nfw-blackberry/70 font-ui text-sm">
-                    {perk.partner_name || "—"}
-                  </td>
-                  <td className="px-6 py-4 text-nfw-blackberry/70 font-ui text-sm">
-                    {perk.estimated_value ? `$${perk.estimated_value.toFixed(2)}` : "—"}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-medium font-ui ${
-                        perk.is_active
-                          ? "bg-[#d4f1ad] text-nfw-blackberry"
-                          : "bg-nfw-stone/20 text-nfw-blackberry/50"
-                      }`}
-                    >
-                      {perk.is_active ? "Active" : "Inactive"}
+                  </div>
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-medium font-ui ${
+                      perk.is_active
+                        ? "bg-[#d4f1ad] text-nfw-blackberry"
+                        : "bg-nfw-stone/20 text-nfw-blackberry/50"
+                    }`}
+                  >
+                    {perk.is_active ? "Active" : "Inactive"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                  <div>
+                    <span className="text-nfw-blackberry/50 font-ui">Partner:</span>
+                    <span className="text-nfw-blackberry/70 font-ui ml-1">{perk.partner_name || "—"}</span>
+                  </div>
+                  <div>
+                    <span className="text-nfw-blackberry/50 font-ui">Est. Value:</span>
+                    <span className="text-nfw-blackberry/70 font-ui ml-1">
+                      {perk.estimated_value ? `$${perk.estimated_value.toFixed(2)}` : "—"}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 text-nfw-blackberry/70 font-ui text-sm">
-                    {perk.redemptionCount}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => openEditModal(perk)}
-                        className="p-2 text-nfw-blackberry/30 hover:text-nfw-aubergine hover:bg-nfw-aubergine/10 rounded transition-colors"
-                        title="Edit perk"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirm(perk.id)}
-                        className="p-2 text-nfw-blackberry/30 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                        title="Delete perk"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                  </div>
+                  <div>
+                    <span className="text-nfw-blackberry/50 font-ui">Redeemed:</span>
+                    <span className="text-nfw-blackberry/70 font-ui ml-1">{perk.redemptionCount}</span>
+                  </div>
+                </div>
+
+                {perk.categories && perk.categories.length > 0 && (
+                  <div className="text-xs text-nfw-blackberry/50 font-ui mb-3">
+                    {perk.categories.join(", ")}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => openEditModal(perk)}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-nfw-aubergine bg-nfw-aubergine/10 hover:bg-nfw-aubergine/20 rounded font-ui text-sm"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirm(perk.id)}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded font-ui text-sm"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {showModal && (
