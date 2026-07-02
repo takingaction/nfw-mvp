@@ -33,7 +33,7 @@ async function AdminMembersContent() {
   const { count: free } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
-    .or("(membership_level.eq.free,membership_level.is.null)");
+    .or("membership_level.eq.free,membership_level.is.null");
 
   const { count: admins } = await supabase
     .from("profiles")
