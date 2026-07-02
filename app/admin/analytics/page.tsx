@@ -31,7 +31,7 @@ async function AdminAnalyticsContent() {
       "id, joined_at, subscription_status, membership_level, subscription_ends_at, first_paid_at, first_paid_level, is_approved_free_member, free_membership_contact_submitted, state, city, household_income, date_of_birth, is_admin, profile_completed",
     )
     .order("joined_at", { ascending: true })
-    .limit(10000);
+    .range(0, 10000);
 
   // Grants data (use admin client to bypass RLS)
   const { data: grants } = await supabaseAdmin

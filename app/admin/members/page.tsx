@@ -25,7 +25,7 @@ async function AdminMembersContent() {
       "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted",
     )
     .order("joined_at", { ascending: false })
-    .limit(10000);
+    .range(0, 10000);
 
   if (error) {
     console.error("Error fetching members:", error);
