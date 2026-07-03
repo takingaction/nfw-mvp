@@ -251,14 +251,14 @@ export default function AdminAnalyticsClient({
     const map: Record<string, number> = {};
     profiles.forEach((p) => {
       let level = p.membership_level || "unknown";
-      // Distinguish between approved free and pending free
+      // Distinguish between approved free, pending free, and started free
       if (level === "free") {
         if (p.is_approved_free_member === true) {
-          level = "free";
+          level = "Free";
         } else if (p.free_membership_contact_submitted === true) {
-          level = "free_pending";
+          level = "Pending Free";
         } else {
-          level = "free_unapproved";
+          level = "Started Free";
         }
       }
       map[level] = (map[level] || 0) + 1;
@@ -525,7 +525,9 @@ export default function AdminAnalyticsClient({
     const map: Record<string, number> = {};
     filteredRedemptions.forEach((r) => {
       const t = r.redeem_type || "unknown";
-      map[t] = (map[t] || 0) + 1;
+      // Map API names to display names
+      const displayName = t === "instore" ? "In Store" : t === "instore_print" ? "Print" : t === "link" ? "Online" : t;
+      map[displayName] = (map[displayName] || 0) + 1;
     });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [filteredRedemptions]);
