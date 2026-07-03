@@ -24,15 +24,37 @@ async function AdminAnalyticsContent() {
   await requireAdmin();
   const supabase = await createClient();
 
-  // Members data
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select(
-      "id, joined_at, subscription_status, membership_level, subscription_ends_at, first_paid_at, first_paid_level, is_approved_free_member, free_membership_contact_submitted, state, city, household_income, date_of_birth, is_admin, profile_completed",
-    )
-    .order("joined_at", { ascending: true })
-    .limit(10000)
-    .range(0, 9999);
+  // Members data - fetch ALL via pagination to bypass 1000 row limit
+  const pageSize = 1000;
+  const allProfiles: any[] = [];
+  let page = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const from = page * pageSize;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(
+        "id, joined_at, subscription_status, membership_level, subscription_ends_at, first_paid_at, first_paid_level, is_approved_free_member, free_membership_contact_submitted, state, city, household_income, date_of_birth, is_admin, profile_completed",
+      )
+      .order("joined_at", { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.error("Error fetching profiles:", error);
+      break;
+    }
+
+    if (data && data.length > 0) {
+      allProfiles.push(...data);
+      page++;
+      hasMore = data.length === pageSize;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  const profiles = allProfiles;
 
   // Grants data (use admin client to bypass RLS)
   const { data: grants } = await supabaseAdmin
