@@ -11,9 +11,18 @@ import {
   AlertTriangle,
   Copy,
   Check,
+  Trash2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { FreeMembershipApprovalModal } from "@/components/admin/FreeMembershipApprovalModal";
+import { DeleteMemberModal } from "@/components/admin/DeleteMemberModal";
+
+const TEST_EMAILS = [
+  "ronpassaro@aol.com",
+  "ronpassaro@gmail.com",
+  "kelseykdriscoll@protonmail.com",
+  "kdrisco2@gmail.com",
+];
 
 type Member = {
   id: string;
@@ -108,6 +117,12 @@ export default function AdminMembersClient({
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSendError, setEmailSendError] = useState<string | null>(null);
 
+  // Delete member modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingMember, setDeletingMember] = useState<Member | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const copyEmail = async (email: string) => {
     try {
       await navigator.clipboard.writeText(email);
@@ -160,6 +175,42 @@ export default function AdminMembersClient({
     setShowApprovalConfirmModal(false);
     setPendingApprovalValue(null);
     setEmailSendError(null);
+  };
+
+  const openDelete = (member: Member) => {
+    setDeletingMember(member);
+    setDeleteError(null);
+    setShowDeleteModal(true);
+  };
+
+  const closeDelete = () => {
+    setShowDeleteModal(false);
+    setDeletingMember(null);
+    setDeleteError(null);
+    setDeleting(false);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingMember) return;
+    setDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const res = await fetch("/api/admin/members/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId: deletingMember.id }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to delete member");
+
+      closeDelete();
+      window.location.reload();
+    } catch (err: any) {
+      setDeleteError(err.message || "Failed to delete member");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleChange = (field: keyof Member, value: any) => {
@@ -533,6 +584,15 @@ export default function AdminMembersClient({
                       >
                         Edit
                       </button>
+                      {TEST_EMAILS.includes(member.email?.toLowerCase() || "") && (
+                        <button
+                          onClick={() => openDelete(member)}
+                          className="ml-3 text-xs font-semibold text-red-600 hover:text-red-700 transition-colors"
+                          title="Delete test member"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -884,9 +944,20 @@ export default function AdminMembersClient({
               saving={saving}
               emailSendError={emailSendError}
             />
-          </div>
+
+            </div>
         </div>
       )}
+
+      {/* Delete Member Modal - rendered outside of selected conditional */}
+      <DeleteMemberModal
+        isOpen={showDeleteModal}
+        onClose={closeDelete}
+        onConfirm={handleDelete}
+        memberName={deletingMember?.full_name || undefined}
+        memberEmail={deletingMember?.email || undefined}
+        deleting={deleting}
+      />
     </>
   );
 }

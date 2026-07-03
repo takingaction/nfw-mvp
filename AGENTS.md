@@ -6484,3 +6484,54 @@ Trigger is **INSERT-only** and only fills NULL/empty values. This ensures:
 ### Commit
 
 - (pending) - fix: google oauth name sync - trigger for edge cases + callback extraction
+
+---
+
+## Session 2026-07-03: Delete Test Users from Admin
+
+### Overview
+
+Added ability to delete specific test users from `/admin/members` page. Delete buttons only appear for predefined test email addresses as a safety measure.
+
+### Test Emails with Delete Access
+
+- ronpassaro@aol.com
+- ronpassaro@gmail.com
+- kelseykdriscoll@protonmail.com
+- kdrisco2@gmail.com
+
+### Database
+
+No database changes required. Deletion uses Supabase Admin SDK which deletes from `auth.users`, and FK cascade automatically removes corresponding `profiles` row.
+
+### API Route Created
+
+**`POST /api/admin/members/delete`**
+- Authenticates admin user
+- Prevents self-deletion
+- Uses `supabaseAdmin.auth.admin.deleteUser(userId)` to delete from auth.users
+- Cascade delete removes profile and related records
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `app/api/admin/members/delete/route.ts` | API endpoint for deleting users |
+| `components/admin/DeleteMemberModal.tsx` | Confirmation modal with warning text |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/admin/AdminMembersClient.tsx` | Added TEST_EMAILS constant, delete button (trash icon), delete modal integration |
+
+### UI Behavior
+
+- Trash icon appears only for rows with matching test emails
+- Clicking trash opens confirmation modal
+- Modal shows member name/email and irreversible warning
+- Confirm deletes user and reloads page
+
+### Commit
+
+- `7c3d8a1` - feat: add delete user functionality for test emails in admin members page
