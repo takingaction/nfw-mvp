@@ -8,6 +8,7 @@ import Footer from "@/components/landing/Footer";
 import BackToTop from "@/components/BackToTop";
 import TermlyCMP from "@/components/TermlyCMP";
 import PromotionalPopupWrapper from "@/components/popup/PromotionalPopupWrapper";
+import FloatingAdminButton from "@/components/admin/FloatingAdminButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -74,6 +75,7 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         {!isPublicRoute && <Navigation />}
+        <FloatingAdminButton />
         <TermlyCMP />
         <PromotionalPopupWrapper />
         {children}
