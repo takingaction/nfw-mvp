@@ -260,6 +260,10 @@ export default function AdminAnalyticsClient({
         } else {
           level = "Started Free";
         }
+      } else if (level === "contributing") {
+        level = "Contributing";
+      } else if (level === "founding") {
+        level = "Founding";
       }
       map[level] = (map[level] || 0) + 1;
     });
@@ -464,7 +468,12 @@ export default function AdminAnalyticsClient({
   const grantsByStatus = useMemo(() => {
     const map: Record<string, number> = {};
     filteredGrants.forEach((g) => {
-      const s = g.status || "unknown";
+      let s = g.status || "unknown";
+      // Map status values to display names
+      if (s === "approved") s = "Approved";
+      else if (s === "not_approved") s = "Not Approved";
+      else if (s === "payment_pending") s = "Payment Pending";
+      else if (s === "submitted") s = "Submitted";
       map[s] = (map[s] || 0) + 1;
     });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
@@ -603,8 +612,12 @@ export default function AdminAnalyticsClient({
   const zdsClaimsByStatus = useMemo(() => {
     const map: Record<string, number> = {};
     filteredZdsClaims.forEach((c) => {
-      const s = c.status || "unknown";
+      let s = c.status || "unknown";
       if (s !== "created") {
+        // Map status values to display names
+        if (s === "completed") s = "Completed";
+        else if (s === "rejected_invalid_user") s = "Rejected Invalid User";
+        else if (s === "rejected_monthly_limit") s = "Rejected Monthly Limit";
         map[s] = (map[s] || 0) + 1;
       }
     });
