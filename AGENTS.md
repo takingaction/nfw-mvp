@@ -6626,3 +6626,22 @@ But `"created"` status means an abandoned checkout that never completed.
 
 **Files Modified:**
 - `app/api/store/claims/check/route.ts` - Removed `"created"` from status check
+
+### Additional Fix: Lifetime Claim Check - Allow Re-claim of Abandoned Products
+
+**Problem:** Users who abandoned checkout got "You have already claimed this product" when trying to reclaim the same product.
+
+**Root Cause:** The lifetime claim check in checkout API blocked ANY claim record, even abandoned ones with `status = "created"`.
+
+**Fix:** Updated the query to only block completed claims:
+```typescript
+// Before: blocks all claims
+.eq("shopify_product_id", productId)
+
+// After: only blocks completed claims
+.eq("shopify_product_id", productId)
+.in("status", ["completed", "fulfilled", "paid"])
+```
+
+**Files Modified:**
+- `app/api/shopify/checkout/route.ts` - Updated lifetime claim check to allow re-claiming abandoned checkouts

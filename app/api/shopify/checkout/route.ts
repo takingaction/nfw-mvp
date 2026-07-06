@@ -87,11 +87,13 @@ export async function POST(request: NextRequest) {
     const numericVariantId = parseInt(variantIdMatch[1], 10);
 
     // Check lifetime claim limit (1 per product per user)
+    // Only block if there's a COMPLETED claim - allow re-claim if previous attempt was abandoned (status="created")
     const { data: existingClaim } = await supabaseAdmin
       .from("zero_dollar_claims")
-      .select("id")
+      .select("id, status")
       .eq("user_id", userId)
       .eq("shopify_product_id", productId)
+      .in("status", ["completed", "fulfilled", "paid"])
       .limit(1);
 
     if (existingClaim && existingClaim.length > 0) {
