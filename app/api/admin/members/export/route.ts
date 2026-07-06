@@ -146,7 +146,8 @@ export async function GET(request: NextRequest) {
   const { data: profiles, error } = await supabaseAdmin
     .from("profiles")
     .select(selectColumns)
-    .order("joined_at", { ascending: false });
+    .order("joined_at", { ascending: false })
+    .limit(10000);
 
   if (error) {
     console.error("Failed to fetch profiles:", error);

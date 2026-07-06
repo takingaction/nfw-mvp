@@ -216,10 +216,19 @@ export async function POST(request: Request) {
           }
 
           // Record monthly claim before updating claim status
-          await supabaseAdmin.from("monthly_claims").insert({
-            user_id: claim.user_id,
-            claim_month: claimMonth,
-          });
+          // Handle unique constraint violation gracefully (race condition - duplicate webhook)
+          try {
+            await supabaseAdmin.from("monthly_claims").insert({
+              user_id: claim.user_id,
+              claim_month: claimMonth,
+            });
+          } catch (insertError: any) {
+            if (insertError?.code === "23505") {
+              console.log(`Monthly claim already exists for user ${claim.user_id} in ${claimMonth}, skipping duplicate insert`);
+            } else {
+              console.error("Error recording monthly claim:", insertError);
+            }
+          }
 
           // Only set status to fulfilled if there's tracking info (meaning actually shipped)
           // Otherwise keep as "completed" (checkout done, awaiting fulfillment)

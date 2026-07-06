@@ -6535,3 +6535,76 @@ No database changes required. Deletion uses Supabase Admin SDK which deletes fro
 ### Commit
 
 - `7c3d8a1` - feat: add delete user functionality for test emails in admin members page
+
+---
+
+## Session 2026-07-06: ZDS Monthly Limit Fix - Move monthly_claims to Webhook
+
+### Problem
+
+"Monthly Limit Reached" error on ZDS when users click "Claim" but don't finish Shopify checkout (click back or out). The issue was that `monthly_claims` INSERT happened at **checkout time**, not **completion time**.
+
+### Root Cause
+
+**Checkout API** (`app/api/shopify/checkout/route.ts`) was inserting to `monthly_claims` immediately when user clicked "Claim":
+
+```
+User clicks "Claim" → monthly_claims INSERT → User goes to Shopify → User abandons → No webhook fires → monthly_claims stays forever → User stuck for month
+```
+
+Additionally, the `expire_abandoned_claims` function in migration 076 was broken (checking `status = 'pending'` instead of `'created'`).
+
+### Solution
+
+**Moved `monthly_claims` INSERT from checkout API to webhook (completion time only).**
+
+#### Flow After Fix
+
+| Scenario | monthly_claims Inserted? | Result |
+|----------|-------------------------|--------|
+| User claims but abandons | No (no webhook) | User can retry |
+| User completes checkout | Yes (webhook fires) | Monthly slot consumed |
+| Two tabs, both complete | First webhook succeeds, second catches 23505 gracefully | Monthly slot consumed once |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/shopify/checkout/route.ts` | Removed monthly_claims INSERT (lines 104-132) |
+| `app/api/shopify/webhook/route.ts` | Added try-catch around monthly_claims INSERT to handle duplicate gracefully |
+
+### Key Changes
+
+**Checkout API** - Removed:
+```typescript
+// REMOVED: Monthly claim check at checkout time
+const { error: monthlyClaimError } = await supabaseAdmin
+  .from("monthly_claims")
+  .insert({ user_id: userId, shopify_product_id: productId, claim_month: claimMonth });
+```
+
+**Webhook** - Added error handling:
+```typescript
+// Now INSERT happens only on successful checkout
+try {
+  await supabaseAdmin.from("monthly_claims").insert({
+    user_id: claim.user_id,
+    claim_month: claimMonth,
+  });
+} catch (insertError: any) {
+  if (insertError?.code === "23505") {
+    // Duplicate webhook - monthly_claims already exists for this month
+    console.log(`Monthly claim already exists for user ${claim.user_id} in ${claimMonth}`);
+  } else {
+    console.error("Error recording monthly claim:", insertError);
+  }
+}
+```
+
+### Note: Broken Cleanup Functions (Not Fixed)
+
+The `expire_abandoned_claims` and `cleanup_monthly_claims_for_expired` functions are still broken from migration 076 linter fixes, but they're no longer critical since abandoned checkouts no longer consume monthly slots.
+
+### Commit
+
+- (pending) - fix: move monthly_claims INSERT from checkout API to webhook to fix abandoned checkout issue
