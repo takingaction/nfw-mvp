@@ -6608,3 +6608,21 @@ The `expire_abandoned_claims` and `cleanup_monthly_claims_for_expired` functions
 ### Commit
 
 - (pending) - fix: move monthly_claims INSERT from checkout API to webhook to fix abandoned checkout issue
+
+### Additional Fix: Store Frontend Monthly Check
+
+**Problem:** Users still got "Monthly Limit Reached" error after the webhook fix. The frontend was checking `zero_dollar_claims` with status `"created"` (abandoned checkout), not just completed orders.
+
+**Root Cause:** `app/api/store/claims/check/route.ts` was querying:
+```typescript
+.in("status", ["created", "completed", "fulfilled", "paid"])
+```
+But `"created"` status means an abandoned checkout that never completed.
+
+**Fix:** Changed to only count completed statuses:
+```typescript
+.in("status", ["completed", "fulfilled", "paid"])
+```
+
+**Files Modified:**
+- `app/api/store/claims/check/route.ts` - Removed `"created"` from status check

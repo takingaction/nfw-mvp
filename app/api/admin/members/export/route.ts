@@ -143,30 +143,39 @@ export async function GET(request: NextRequest) {
   // Select only the columns we need, explicitly named
   const selectColumns = CSV_COLUMNS.join(",");
 
-  const { data: profiles, error } = await supabaseAdmin
-    .from("profiles")
-    .select(selectColumns)
-    .order("joined_at", { ascending: false })
-    .limit(10000);
+  // Fetch ALL profiles via pagination to bypass 1000 row limit
+  const pageSize = 1000;
+  const allProfiles: any[] = [];
+  let page = 0;
+  let hasMore = true;
 
-  if (error) {
-    console.error("Failed to fetch profiles:", error);
-    return NextResponse.json({ error: "Failed to fetch members", details: error.message }, { status: 500 });
+  while (hasMore) {
+    const from = page * pageSize;
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .select(selectColumns)
+      .order("joined_at", { ascending: false })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.error("Failed to fetch profiles:", error);
+      return NextResponse.json({ error: "Failed to fetch members", details: error.message }, { status: 500 });
+    }
+
+    if (data && data.length > 0) {
+      allProfiles.push(...data);
+      page++;
+      hasMore = data.length === pageSize;
+    } else {
+      hasMore = false;
+    }
   }
+
+  const profiles = allProfiles;
 
   // Use CSV_COLUMNS as our canonical column list
   const validColumns = [...CSV_COLUMNS];
   const headers = validColumns.map((col) => COLUMN_LABELS[col] || col);
-
-  // Debug: log first profile raw values and keys
-  if (profiles && profiles.length > 0) {
-    const first = profiles[0] as unknown as Record<string, unknown>;
-    console.log("First profile keys:", Object.keys(first));
-    console.log("First profile sample - id:", first.id, "email:", first.email);
-    console.log("First profile - identities:", first.identities, "type:", typeof first.identities);
-    console.log("First profile - social_handles:", first.social_handles, "type:", typeof first.social_handles);
-    console.log("First profile - stripe_connect_account_id:", first.stripe_connect_account_id);
-  }
 
   const rows = profiles?.map((profile: unknown) => {
     const p = profile as Record<string, unknown>;

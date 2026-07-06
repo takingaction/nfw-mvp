@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       .eq("user_id", userId)
       .gte("claimed_at", startOfMonth)
       .lte("claimed_at", endOfMonth)
-      .in("status", ["created", "completed", "fulfilled", "paid"]);
+      .in("status", ["completed", "fulfilled", "paid"]);
 
     return NextResponse.json({
       claimedThisMonth: (claims?.length || 0) > 0,
