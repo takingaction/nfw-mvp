@@ -6645,3 +6645,48 @@ But `"created"` status means an abandoned checkout that never completed.
 
 **Files Modified:**
 - `app/api/shopify/checkout/route.ts` - Updated lifetime claim check to allow re-claiming abandoned checkouts
+
+## Session 2026-07-07: Contact Privacy Text + Grants Apply Form Enhancements
+
+### Contact Form Privacy Text Update
+
+**Problem:** Contact form said "We never share your information with third parties." which wasn't accurate with Freshdesk integration.
+
+**Solution:** Changed to "Your data is handled as outlined in our Privacy Policy" with "Privacy Policy" linking to `https://www.nationalfundforwomen.org/privacy` (opens in new tab).
+
+**Files Modified:**
+- `components/contact/ContactClient.tsx` - Updated privacy text with linked Privacy Policy
+
+### Grants Apply Page - Quick Reminder Box
+
+**Added:** Warning/reminder box above "Which grant are you applying for?" section with eligibility requirements:
+
+```
+Quick reminder before you apply:
+• Applicants must be 18 or older and a U.S. citizen or permanent resident.
+• Applicants may apply for up to 3 grants, but can only be awarded 1 grant per cycle.
+• Applications cannot be edited after submission.
+```
+
+**Styling:** Wisteria background (`bg-nfw-wisteria/20`) + wisteria border, matching existing form styling.
+
+**Files Modified:**
+- `components/GrantApplicationForm.tsx` - Added reminder box
+
+### Grants Apply Page - Text Size Increases
+
+**Changes:** Increased body text sizes for better readability:
+
+| Element | Before | After |
+|---------|--------|-------|
+| Reminder heading | text-sm | text-base + font-bold |
+| Reminder bullets | text-xs | text-sm |
+| Grant cycle names | text-lg | text-xl |
+| Deadline text | text-xs | text-sm |
+| Grant descriptions | text-xs | text-sm |
+| "I'm applying for me" / "I'm nominating someone" | text-xs | text-sm |
+| Question descriptions | text-xs | text-sm |
+| Supporting docs description | text-xs (font-ui) | text-sm (font-serif) |
+
+**Files Modified:**
+- `components/GrantApplicationForm.tsx` - Updated all text sizes to text-sm, made heading bold, matched supporting doc font to question description font

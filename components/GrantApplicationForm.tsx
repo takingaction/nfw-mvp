@@ -159,6 +159,16 @@ export default function GrantApplicationForm({
       <form onSubmit={handleOpenConfirm} className="space-y-8">
         {cycles.length > 1 && (
           <div>
+            <div className="bg-nfw-wisteria/20 border border-nfw-wisteria/30 p-5 mb-6">
+              <p className="font-serif text-base font-bold text-nfw-blackberry mb-2">
+                Quick reminder before you apply:
+              </p>
+              <ul className="font-ui text-sm text-nfw-blackberry/70 space-y-1 list-disc list-inside">
+                <li>Applicants must be 18 or older and a U.S. citizen or permanent resident.</li>
+                <li>Applicants may apply for up to 3 grants, but can only be awarded 1 grant per cycle.</li>
+                <li>Applications cannot be edited after submission.</li>
+              </ul>
+            </div>
             <p className={labelClass}>
               Which grant are you applying for?{" "}
               <span className="text-nfw-lilac">*</span>
@@ -189,10 +199,10 @@ export default function GrantApplicationForm({
                       )}
                     </div>
                     <div>
-                      <p className="font-serif text-lg text-nfw-blackberry [&_sup]:text-[0.6em] [&_sup]:align-super"
+                      <p className="font-serif text-xl text-nfw-blackberry [&_sup]:text-[0.6em] [&_sup]:align-super"
                          dangerouslySetInnerHTML={{ __html: decodeHtml(cycle.cycle_name) }}
-                       />
-                      <p className="text-xs font-ui text-nfw-blackberry/50 mt-0.5">
+                        />
+                      <p className="text-sm font-ui text-nfw-blackberry/50 mt-0.5">
                         Deadline:{" "}
                         {new Date(cycle.end_date).toLocaleDateString("en-US", {
                           month: "long",
@@ -201,7 +211,7 @@ export default function GrantApplicationForm({
                         })}
                       </p>
                       {cycle.description && (
-                        <p className="text-xs font-serif text-nfw-blackberry/60 mt-1">
+                        <p className="text-sm font-serif text-nfw-blackberry/60 mt-1">
                           {decodeHtml(cycle.description)}
                         </p>
                       )}
@@ -268,7 +278,7 @@ export default function GrantApplicationForm({
               </div>
               <div className="text-left">
                 <p className="font-ui text-nfw-blackberry text-sm">Myself</p>
-                <p className="text-xs font-serif text-nfw-blackberry/50">
+                <p className="text-sm font-serif text-nfw-blackberry/50">
                   I'm applying for me
                 </p>
               </div>
@@ -295,7 +305,7 @@ export default function GrantApplicationForm({
                 <p className="font-ui text-nfw-blackberry text-sm">
                   Someone else
                 </p>
-                <p className="text-xs font-serif text-nfw-blackberry/50">
+                <p className="text-sm font-serif text-nfw-blackberry/50">
                   I'm nominating someone
                 </p>
               </div>
@@ -368,7 +378,7 @@ export default function GrantApplicationForm({
               : "Who are you?"}{" "}
             <span className="text-nfw-lilac">*</span>
           </label>
-          <p className="text-xs font-serif text-nfw-blackberry/50 mb-2">
+          <p className="text-sm font-serif text-nfw-blackberry/50 mb-2">
             {isNominating
               ? "Share their name, background, and why you're nominating them."
               : "Tell us a little about yourself — your situation, your life, what matters to you."}
@@ -400,7 +410,7 @@ export default function GrantApplicationForm({
               : "What's the biggest challenge you're facing right now?"}{" "}
             <span className="text-nfw-lilac">*</span>
           </label>
-          <p className="text-xs font-serif text-nfw-blackberry/50 mb-2">
+          <p className="text-sm font-serif text-nfw-blackberry/50 mb-2">
             Be specific. The more we understand the situation, the better we
             can help.
           </p>
@@ -434,7 +444,7 @@ export default function GrantApplicationForm({
               : "What would you do with the microgrant funds?"}{" "}
             <span className="text-nfw-lilac">*</span>
           </label>
-          <p className="text-xs font-serif text-nfw-blackberry/50 mb-2">
+          <p className="text-sm font-serif text-nfw-blackberry/50 mb-2">
             {isNominating
               ? "Describe how you think the funds would make a difference for them."
               : "Tell us exactly how you'd use the money and what difference it would make."}
@@ -466,7 +476,7 @@ export default function GrantApplicationForm({
               (Optional)
             </span>
           </label>
-          <p className="text-xs font-ui text-nfw-blackberry/50 mb-3">
+          <p className="text-sm font-serif text-nfw-blackberry/50 mb-3">
             Upload receipts, quotes, or other supporting documents. PDF, JPG,
             PNG, DOC accepted.
           </p>
