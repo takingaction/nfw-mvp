@@ -30,11 +30,6 @@ async function AdminMembersContent({ page }: { page: number }) {
     .select("*", { count: "exact", head: true })
     .in("membership_level", ["contributing", "founding"]);
 
-  const { count: free } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact", head: true })
-    .or("membership_level.eq.free,membership_level.is.null");
-
   const { count: admins } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
@@ -44,6 +39,27 @@ async function AdminMembersContent({ page }: { page: number }) {
     .from("profiles")
     .select("*", { count: "exact", head: true })
     .or("profile_completed.is.null,profile_completed.eq.false");
+
+  // Free members sub-categories
+  const { count: freeApproved } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .eq("membership_level", "free")
+    .eq("is_approved_free_member", true);
+
+  const { count: freePending } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .eq("membership_level", "free")
+    .eq("is_approved_free_member", false)
+    .eq("free_membership_contact_submitted", true);
+
+  const { count: freeStarted } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .eq("membership_level", "free")
+    .eq("is_approved_free_member", false)
+    .eq("free_membership_contact_submitted", false);
 
   // Query for actual data to display with pagination
   const pageSize = 100;
@@ -88,7 +104,7 @@ async function AdminMembersContent({ page }: { page: number }) {
           </a>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
             {
               label: "Total Members",
@@ -105,13 +121,6 @@ async function AdminMembersContent({ page }: { page: number }) {
               text: "text-nfw-blackberry",
             },
             {
-              label: "Free Members",
-              value: `${free} (${percent(free)}%)`,
-              showPercent: false,
-              color: "bg-[#b2d1ee]",
-              text: "text-nfw-blackberry",
-            },
-            {
               label: "Incomplete Profiles",
               value: `${incomplete} (${percent(incomplete)}%)`,
               showPercent: false,
@@ -123,6 +132,38 @@ async function AdminMembersContent({ page }: { page: number }) {
               value: admins,
               showPercent: false,
               color: "bg-nfw-citrine",
+              text: "text-nfw-blackberry",
+            },
+          ].map((stat) => (
+            <div key={stat.label} className={`${stat.color} p-6`}>
+              <div className={`text-3xl font-black mb-1 ${stat.text}`}>
+                {stat.value}
+              </div>
+              <div className={`text-sm font-semibold ${stat.text} opacity-70`}>
+                {stat.label}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          {[
+            {
+              label: "Free Approved",
+              value: freeApproved,
+              color: "bg-nfw-lilac/40",
+              text: "text-nfw-blackberry",
+            },
+            {
+              label: "Free Pending",
+              value: freePending,
+              color: "bg-[#b2d1ee]",
+              text: "text-nfw-blackberry",
+            },
+            {
+              label: "Free Started",
+              value: freeStarted,
+              color: "bg-nfw-wisteria/40",
               text: "text-nfw-blackberry",
             },
           ].map((stat) => (

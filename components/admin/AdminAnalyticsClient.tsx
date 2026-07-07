@@ -134,7 +134,7 @@ export default function AdminAnalyticsClient({
   nfwPerkRedemptions: NfwPerkRedemption[];
 }) {
   const [tab, setTab] = useState<"members" | "grants" | "perks" | "zds" | "engagement" | "cohorts" | "support">("members");
-  const [dateRange, setDateRange] = useState<number | "custom">(30);
+  const [dateRange, setDateRange] = useState<number | "custom">(9999);
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
   const [freshdeskStats, setFreshdeskStats] = useState<{
