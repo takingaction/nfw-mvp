@@ -339,7 +339,16 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
                       </button>
 
                       <p className="font-ui text-xs text-nfw-blackberry/40 text-center">
-                        We never share your information with third parties.
+                        Your data is handled as outlined in our{" "}
+                        <a
+                          href="https://www.nationalfundforwomen.org/privacy"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:text-nfw-aubergine"
+                        >
+                          Privacy Policy
+                        </a>
+                        .
                       </p>
                     </form>
                   </>
