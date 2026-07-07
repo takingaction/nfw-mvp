@@ -28,6 +28,7 @@ async function AdminMembersContent({ page }: { page: number }) {
   const { count: paid } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
+    .eq("is_admin", false)
     .in("membership_level", ["contributing", "founding"]);
 
   const { count: admins } = await supabase
@@ -38,28 +39,35 @@ async function AdminMembersContent({ page }: { page: number }) {
   const { count: incomplete } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
+    .eq("is_admin", false)
     .or("profile_completed.is.null,profile_completed.eq.false");
 
-  // Free members sub-categories
+  // Free members sub-categories (non-admin, completed profiles only)
   const { count: freeApproved } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
+    .eq("is_admin", false)
     .eq("membership_level", "free")
-    .eq("is_approved_free_member", true);
+    .eq("is_approved_free_member", true)
+    .eq("profile_completed", true);
 
   const { count: freePending } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
+    .eq("is_admin", false)
     .eq("membership_level", "free")
     .eq("is_approved_free_member", false)
-    .eq("free_membership_contact_submitted", true);
+    .eq("free_membership_contact_submitted", true)
+    .eq("profile_completed", true);
 
   const { count: freeStarted } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
+    .eq("is_admin", false)
     .eq("membership_level", "free")
     .eq("is_approved_free_member", false)
-    .eq("free_membership_contact_submitted", false);
+    .eq("free_membership_contact_submitted", false)
+    .eq("profile_completed", true);
 
   // Query for actual data to display with pagination
   const pageSize = 100;
@@ -149,19 +157,19 @@ async function AdminMembersContent({ page }: { page: number }) {
         <div className="grid grid-cols-3 gap-4 mb-8">
           {[
             {
-              label: "Free Approved",
+              label: "Free Members",
               value: freeApproved,
               color: "bg-nfw-lilac/40",
               text: "text-nfw-blackberry",
             },
             {
-              label: "Free Pending",
+              label: "Pending Free",
               value: freePending,
               color: "bg-[#b2d1ee]",
               text: "text-nfw-blackberry",
             },
             {
-              label: "Free Started",
+              label: "Started Free",
               value: freeStarted,
               color: "bg-nfw-wisteria/40",
               text: "text-nfw-blackberry",
