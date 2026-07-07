@@ -6744,3 +6744,34 @@ Two users who signed up on July 7, 2026 had `free_membership_contact_submitted =
 - `components/SignUpFlow.tsx` - Confirmed `free_membership_contact_submitted: false` is properly set
 - `components/contact/ContactClient.tsx` - Error handling for unauthenticated users
 - `app/api/contact/submit/route.ts` - Returns 401 if not authenticated
+
+---
+
+## Session 2026-07-07 (Continued): Admin Members Page Fixes
+
+### Changes
+
+**1. Analytics default to All Time**
+- Changed date range dropdown default from 30 days to 9999 (All Time)
+
+**2. /admin/members page - split free members into 3 cards**
+- Added 3 new stat cards: Free Members, Pending Free, Started Free
+- Card colors: lilac (Free Members), blue (Pending Free), wisteria (Started Free)
+
+**3. Fixed /admin/members waterfall to match analytics**
+- Added `profile_completed = true` filter to paid, free sub-category queries
+- Admins excluded from non-admin queries
+- Card labels now match analytics naming
+
+### Database Fix (SQL)
+```sql
+-- Fix the 2 free members with NULL contact_submitted
+UPDATE profiles
+SET free_membership_contact_submitted = false
+WHERE membership_level = 'free'
+  AND free_membership_contact_submitted IS NULL;
+```
+
+### Files Modified
+- `app/admin/members/page.tsx` - Added free sub-category queries, 3 new stat cards, added profile_completed filter
+- `components/admin/AdminAnalyticsClient.tsx` - Default dateRange to 9999 (All Time)
