@@ -6690,3 +6690,57 @@ Quick reminder before you apply:
 
 **Files Modified:**
 - `components/GrantApplicationForm.tsx` - Updated all text sizes to text-sm, made heading bold, matched supporting doc font to question description font
+
+---
+
+## Session 2026-07-07: Analytics Member Count Fixes + Free Membership Bug Fix
+
+### Problem
+Analytics page showed 1731 total profiles but breakdown categories only added up to 1729 (missing 2). Also, "Incomplete Profiles (not counted)" label was misleading since incomplete profiles ARE counted in total.
+
+### Fixes Applied
+
+**1. Fixed duplicate `paidCount` definition**
+- Renamed waterfall `paidCount` to `paidMembersCount` to avoid conflict with existing `paidCount` at line 297
+
+**2. Removed `breakdownTotal`**
+- Total profile count now simply shows `profiles.length` (all profiles including incomplete)
+
+**3. Renamed "New Members" → "Profiles"**
+- Better reflects that this includes all profiles, not just new signups
+
+**4. Added "Other" category for edge cases**
+- Catches profiles with unexpected `membership_level` values or free members with `free_membership_contact_submitted = NULL`
+- `otherCount` logic:
+  ```typescript
+  const otherCount = useMemo(() => {
+    return profiles.filter(
+      (p) =>
+        p.is_admin !== true &&
+        ( !["free", "contributing", "founding"].includes(p.membership_level || "")
+          || (p.membership_level === "free" && p.free_membership_contact_submitted === null)
+        )
+    ).length;
+  }, [profiles]);
+  ```
+
+**5. Removed "(not counted)" from Incomplete Profiles label**
+- Now just says "Incomplete Profiles"
+
+### Database Fix (SQL)
+```sql
+-- Fix the 2 free members with NULL contact_submitted (edge case from SignUpFlow bug)
+UPDATE profiles
+SET free_membership_contact_submitted = false
+WHERE membership_level = 'free'
+  AND free_membership_contact_submitted IS NULL;
+```
+
+### Bug Found: SignUpFlow Missing Field
+Two users who signed up on July 7, 2026 had `free_membership_contact_submitted = NULL` instead of `false`. Root cause was the field was being set in the modal button click handler but the profile update wasn't including it properly. Fixed in SignUpFlow.tsx line 1185.
+
+### Files Modified
+- `components/admin/AdminAnalyticsClient.tsx` - Fixed duplicate paidCount, removed breakdownTotal, renamed New Members → Profiles, added Other category, removed "(not counted)" from incomplete
+- `components/SignUpFlow.tsx` - Confirmed `free_membership_contact_submitted: false` is properly set
+- `components/contact/ContactClient.tsx` - Error handling for unauthenticated users
+- `app/api/contact/submit/route.ts` - Returns 401 if not authenticated

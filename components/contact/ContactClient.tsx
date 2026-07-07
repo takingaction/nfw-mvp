@@ -79,13 +79,15 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
   });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     try {
       const formData = new FormData(e.target as HTMLFormElement);
-      await fetch("/api/contact/submit", {
+      const response = await fetch("/api/contact/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -97,7 +99,18 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
           from_abandoned: fromAbandoned,
         }),
       });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || "Something went wrong. Please try again.");
+        setLoading(false);
+        return;
+      }
     } catch {
+      setError("Something went wrong. Please try again.");
+      setLoading(false);
+      return;
     }
     setSubmitted(true);
     setLoading(false);
@@ -329,6 +342,12 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
                         className="absolute -left-[9999px] w-1 h-1 opacity-0 pointer-events-none"
                         placeholder="Leave this blank if you're human"
                       />
+
+                      {error && (
+                        <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+                          <p className="text-sm text-red-700 font-medium">{error}</p>
+                        </div>
+                      )}
 
                       <button
                         type="submit"

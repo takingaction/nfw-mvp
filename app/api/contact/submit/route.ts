@@ -42,8 +42,14 @@ export async function POST(request: NextRequest) {
 
     const subjectLabel = subjectLabels[subject] || subject;
 
-    // If this is a free membership request and user is logged in, update their profile
-    if (subject === "free-membership" && user) {
+    // If this is a free membership request, user must be logged in
+    if (subject === "free-membership") {
+      if (!user) {
+        return NextResponse.json(
+          { error: "Please log in to submit a free membership request" },
+          { status: 401 }
+        );
+      }
       const profileUpdates: { free_membership_contact_submitted: boolean; membership_level?: string } = {
         free_membership_contact_submitted: true,
       };

@@ -1184,11 +1184,12 @@ export default function SignUpFlow() {
                           is_approved_free_member: false,
                           free_membership_contact_submitted: false,
                         });
+                        window.location.href = "/contact?reason=free-membership";
                       } catch (err) {
                         console.error("Failed to save free membership request:", err);
+                        setLoading(false);
+                        // Don't redirect - show error state instead
                       }
-                      setLoading(false);
-                      window.location.href = "/contact?reason=free-membership";
                     }}
                     className="w-full py-3 bg-nfw-citrine text-nfw-blackberry font-bold text-sm hover:bg-nfw-citrine/90 transition-colors"
                   >

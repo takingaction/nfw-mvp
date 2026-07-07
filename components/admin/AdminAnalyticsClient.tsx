@@ -281,22 +281,30 @@ export default function AdminAnalyticsClient({
       .map(([state, count]) => ({ state, count }));
   }, [profiles]);
 
-  const paidCount = useMemo(() => {
+  const contributingCount = useMemo(() => {
     return profiles.filter(
-      (p) => p.membership_level === "contributing" || p.membership_level === "founding"
+      (p) => p.is_admin !== true && p.membership_level === "contributing"
     ).length;
   }, [profiles]);
 
-  const contributingCount = useMemo(() => {
-    return profiles.filter((p) => p.membership_level === "contributing").length;
+  const foundingCount = useMemo(() => {
+    return profiles.filter(
+      (p) => p.is_admin !== true && p.membership_level === "founding"
+    ).length;
   }, [profiles]);
 
-  const foundingCount = useMemo(() => {
-    return profiles.filter((p) => p.membership_level === "founding").length;
+  // Paid members (non-admin only) - defined early for use in upgradedPercent
+  const paidCount = useMemo(() => {
+    return profiles.filter(
+      (p) =>
+        p.is_admin !== true &&
+        (p.membership_level === "contributing" || p.membership_level === "founding")
+    ).length;
   }, [profiles]);
 
   const upgradedCount = useMemo(() => {
     return profiles.filter((p) => {
+      if (p.is_admin) return false;
       if (!p.first_paid_at || !p.joined_at) return false;
       const daysDiff =
         (new Date(p.first_paid_at).getTime() - new Date(p.joined_at).getTime()) /
@@ -334,41 +342,75 @@ export default function AdminAnalyticsClient({
     return Math.round(totalAnnual / paidFiltered);
   }, [filteredProfiles]);
 
-  // Free members (approved free members only)
-  const freeMembersCount = useMemo(() => {
+  // Waterfall categories (mutually exclusive)
+  // Admin count (separate, not in other categories)
+  const adminCount = useMemo(() => {
+    return profiles.filter((p) => p.is_admin === true).length;
+  }, [profiles]);
+
+  // Paid members (non-admin, completed profile) - for waterfall breakdown
+  const paidMembersCount = useMemo(() => {
     return profiles.filter(
-      (p) => p.membership_level === "free" && p.is_approved_free_member === true
+      (p) =>
+        p.is_admin !== true &&
+        (p.membership_level === "contributing" || p.membership_level === "founding") &&
+        p.profile_completed === true
     ).length;
   }, [profiles]);
 
-  // Pending free members (started process but not approved)
+  // Free members (approved, non-admin, completed profile)
+  const freeMembersCount = useMemo(() => {
+    return profiles.filter(
+      (p) =>
+        p.is_admin !== true &&
+        p.membership_level === "free" &&
+        p.is_approved_free_member === true &&
+        p.profile_completed === true
+    ).length;
+  }, [profiles]);
+
+  // Pending free members (submitted form, not yet approved, non-admin, completed profile)
   const pendingFreeCount = useMemo(() => {
     return profiles.filter(
       (p) =>
+        p.is_admin !== true &&
         p.membership_level === "free" &&
         p.is_approved_free_member !== true &&
-        p.free_membership_contact_submitted === true
+        p.free_membership_contact_submitted === true &&
+        p.profile_completed === true
     ).length;
   }, [profiles]);
 
-  // Started free members (started flow but abandoned before submitting)
+  // Started free members (initiated flow, not submitted, non-admin, completed profile)
   const startedFreeCount = useMemo(() => {
     return profiles.filter(
       (p) =>
+        p.is_admin !== true &&
         p.membership_level === "free" &&
         p.is_approved_free_member !== true &&
-        p.free_membership_contact_submitted === false
+        p.free_membership_contact_submitted === false &&
+        p.profile_completed === true
     ).length;
   }, [profiles]);
 
-  // Incomplete profiles (profile started but not completed - NOT counted as members)
+  // Incomplete profiles (profile not completed, non-admin)
   const incompleteCount = useMemo(() => {
-    return profiles.filter((p) => !p.profile_completed).length;
+    return profiles.filter(
+      (p) =>
+        p.is_admin !== true &&
+        p.profile_completed !== true
+    ).length;
   }, [profiles]);
 
-  // Admin count
-  const adminCount = useMemo(() => {
-    return profiles.filter((p) => p.is_admin === true).length;
+  // Other/unknown profiles (membership_level not in free/paid categories, or free with null contact_submitted)
+  const otherCount = useMemo(() => {
+    return profiles.filter(
+      (p) =>
+        p.is_admin !== true &&
+        ( !["free", "contributing", "founding"].includes(p.membership_level || "")
+          || (p.membership_level === "free" && p.free_membership_contact_submitted === null)
+        )
+    ).length;
   }, [profiles]);
 
   // Paid vs free percentage (based on filtered profiles)
@@ -890,14 +932,14 @@ export default function AdminAnalyticsClient({
     tab === "members"
       ? [
           {
-            label: "New Members",
+            label: "Profiles",
             value: filteredProfiles.length,
             icon: Users,
             color: "bg-nfw-wisteria",
             text: "text-white",
           },
           {
-            label: "Total Members",
+            label: "Total Profiles",
             value: profiles.length,
             icon: Users,
             color: "bg-nfw-aubergine",
@@ -905,7 +947,7 @@ export default function AdminAnalyticsClient({
           },
           {
             label: "Paid Members",
-            value: paidCount,
+            value: paidMembersCount,
             icon: TrendingUp,
             color: "bg-nfw-aubergine",
             text: "text-white",
@@ -932,8 +974,15 @@ export default function AdminAnalyticsClient({
             text: "text-white",
           },
           {
-            label: "Incomplete Profiles (not counted)",
+            label: "Incomplete Profiles",
             value: incompleteCount,
+            icon: Users,
+            color: "bg-nfw-stone",
+            text: "text-nfw-blackberry",
+          },
+          {
+            label: "Other",
+            value: otherCount,
             icon: Users,
             color: "bg-nfw-stone",
             text: "text-nfw-blackberry",
