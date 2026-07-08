@@ -1,6 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+
+const supabaseAdmin = createSupabaseAdminClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
 // In-memory cache to reduce redundant profile fetches
 // Key: userId, Value: { data, timestamp }
@@ -58,6 +64,48 @@ export async function GET() {
       .select("id, full_name, is_admin, membership_level, profile_completed, is_approved_free_member, free_membership_contact_submitted")
       .eq("id", user.id)
       .single();
+
+    // If profile doesn't exist, create a defensive minimal profile
+    if (!profile && !error) {
+      const rawMeta = user.user_metadata || {};
+      const isGoogle = rawMeta.iss === 'https://accounts.google.com';
+
+      const { error: insertError } = await supabaseAdmin
+        .from("profiles")
+        .insert({
+          id: user.id,
+          full_name: isGoogle ? (rawMeta.full_name || "Member") : "Member",
+          membership_level: "free",
+          profile_completed: false,
+          is_approved_free_member: false,
+          free_membership_contact_submitted: false,
+          date_of_birth: "1900-01-01",
+        });
+
+      if (insertError) {
+        console.error("Failed to create defensive profile:", insertError);
+        return NextResponse.json({ error: "Failed to create profile" }, { status: 500 });
+      }
+
+      // Fetch the newly created profile
+      const { data: newProfile, error: fetchError } = await supabase
+        .from("profiles")
+        .select("id, full_name, is_admin, membership_level, profile_completed, is_approved_free_member, free_membership_contact_submitted")
+        .eq("id", user.id)
+        .single();
+
+      if (fetchError || !newProfile) {
+        console.error("Failed to fetch newly created profile:", fetchError);
+        return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 });
+      }
+
+      const normalizedProfile = {
+        ...newProfile,
+        membership_level: newProfile.membership_level || "free",
+      };
+      setCachedProfile(user.id, normalizedProfile);
+      return NextResponse.json(normalizedProfile);
+    }
 
     if (error) {
       console.error("Profile fetch error:", error);
