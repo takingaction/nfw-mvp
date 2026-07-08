@@ -207,27 +207,14 @@ export default function AdminHubClient() {
               </div>
             </div>
 
-            {/* Analytics - in right column */}
-            <div className="bg-white rounded-lg overflow-hidden border-2 border-nfw-aubergine/30">
-              <div className="bg-nfw-aubergine px-4 py-3 text-center text-white">
-                <div className="flex justify-center mb-1">
-                  {analyticsSection.icon}
-                </div>
-                <h2 className="font-sans text-sm font-bold uppercase tracking-wide mb-1">
-                  {analyticsSection.title}
-                </h2>
-                <p className="font-sans text-xs text-white/80 mb-2">
-                  {analyticsSection.description}
-                </p>
-                <Link
-                  href={analyticsSection.href}
-                  className="inline-flex items-center gap-1 bg-white text-nfw-aubergine px-3 py-1.5 rounded font-sans font-bold text-xs uppercase tracking-wide hover:bg-nfw-citrine transition-colors"
-                >
-                  View Analytics
-                  <ChevronRight className="w-3 h-3" />
-                </Link>
-              </div>
-            </div>
+            {/* Analytics - button only */}
+            <Link
+              href={analyticsSection.href}
+              className="flex items-center justify-center gap-2 bg-nfw-aubergine text-white px-4 py-3 rounded-lg font-sans font-bold text-sm uppercase tracking-wide hover:bg-nfw-aubergine/90 transition-colors"
+            >
+              {analyticsSection.title}
+              <ChevronRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       </div>
