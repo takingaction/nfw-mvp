@@ -112,34 +112,38 @@ export default function AdminHubClient() {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {adminSections.map((section) => (
-            <div
-              key={section.title}
-              className={`${section.bgColor} rounded-lg overflow-hidden border border-nfw-blackberry/10`}
-            >
+          {adminSections.map((section) => {
+            const isCompact = section.title === "Members & Grants";
+            const isThreeCol = section.title === "Store & Commerce";
+            return (
               <div
-                className={`${section.headerBgColor} ${section.title === "Emails & Subscriptions" ? "text-nfw-aubergine" : "text-white"} px-5 py-4 flex items-center gap-3`}
+                key={section.title}
+                className={`${section.bgColor} rounded-lg overflow-hidden border border-nfw-blackberry/10`}
               >
-                {section.icon}
-                <h2 className="font-sans text-lg font-bold uppercase tracking-wide">
-                  {section.title}
-                </h2>
-              </div>
-              <div className="p-5">
-                <div className={`grid ${getGridCols(section.links.length)} gap-3`}>
-                  {section.links.map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className={`${getLinkStyles()} px-4 py-2.5 rounded font-sans font-medium text-sm text-center transition-colors`}
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
+                <div
+                  className={`${section.headerBgColor} ${section.title === "Emails & Subscriptions" ? "text-nfw-aubergine" : "text-white"} px-5 py-3 flex items-center gap-3`}
+                >
+                  {section.icon}
+                  <h2 className="font-sans text-base font-bold uppercase tracking-wide">
+                    {section.title}
+                  </h2>
+                </div>
+                <div className={isCompact ? "p-3" : "p-5"}>
+                  <div className={`grid ${isThreeCol ? "grid-cols-3" : getGridCols(section.links.length)} gap-2 ${isCompact ? "" : "gap-3"}`}>
+                    {section.links.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className={`${getLinkStyles()} ${isCompact ? "px-2 py-1.5 text-xs" : "px-4 py-2.5 rounded font-sans font-medium text-sm text-center transition-colors"}`}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="bg-white rounded-lg overflow-hidden border-2 border-nfw-aubergine/30">
