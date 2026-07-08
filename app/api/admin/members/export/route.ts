@@ -16,6 +16,8 @@ const CSV_COLUMNS = [
   "subscription_ends_at",
   "profile_completed",
   "is_admin",
+  "is_approved_free_member",
+  "free_membership_contact_submitted",
   "date_of_birth",
   "state",
   "city",
@@ -43,6 +45,8 @@ const COLUMN_LABELS: Record<string, string> = {
   subscription_ends_at: "Subscription Ends At",
   profile_completed: "Profile Completed",
   is_admin: "Is Admin",
+  is_approved_free_member: "Is Approved Free Member",
+  free_membership_contact_submitted: "Free Membership Contact Submitted",
   date_of_birth: "Date of Birth",
   state: "State",
   city: "City",
@@ -115,6 +119,8 @@ function formatCell(col: string, value: unknown): string {
   switch (col) {
     case "is_admin":
     case "profile_completed":
+    case "is_approved_free_member":
+    case "free_membership_contact_submitted":
       return formatBoolean(value as boolean | null);
     case "date_of_birth":
       return formatDate(value as string | null);
