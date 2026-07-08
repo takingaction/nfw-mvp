@@ -6803,3 +6803,24 @@ Added free membership fields to the member CSV export on `/admin/members`:
 
 ### Files Modified
 - `app/api/admin/members/export/route.ts` - Added two new columns to CSV export
+
+---
+
+## Session 2026-07-08: Update Non-Member Card Labels and Colors
+
+### Changes
+
+**Label Changes:**
+- "Incomplete Profiles" → "Profile Incomplete"
+- "Pending Free" → "Awaiting Free Approval"
+- "Started Free" → "Free Account Not Requested"
+
+**Color Changes:**
+All non-member cards now use `bg-nfw-stone/40` (gray) to visually indicate these are NOT official members:
+- Awaiting Free Approval (was aubergine/blue)
+- Free Account Not Requested (was aubergine/wisteria)
+- Profile Incomplete (was stone)
+
+### Files Modified
+- `components/admin/AdminAnalyticsClient.tsx` - Updated labels and colors
+- `app/admin/members/page.tsx` - Updated labels and colors
