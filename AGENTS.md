@@ -6824,4 +6824,28 @@ All non-member cards now use `bg-nfw-stone/40` (gray) to visually indicate these
 ### Files Modified
 - `components/admin/AdminAnalyticsClient.tsx` - Updated labels and colors
 - `app/admin/members/page.tsx` - Updated labels and colors
-- `components/admin/AdminMembersClient.tsx` - Split Free filter into 3 buttons
+- `components/admin/AdminMembersClient.tsx` - Split Free filter into 3 buttons and fix filter logic to match stat cards
+
+---
+
+## Session 2026-07-08: Fix Filter Results to Match Stat Cards in Admin/Members
+
+### Problem
+Filter button results showed incorrect counts that didn't match the stat cards at the top of /admin/members page.
+
+### Root Cause
+Filter logic in AdminMembersClient.tsx was missing key constraints:
+- Paid filter: missing `is_admin === false`
+- Free_approved filter: missing `is_admin === false`, `profile_completed === true`
+- Free_pending filter: missing `is_admin === false`, `profile_completed === true`
+- Free_started filter: missing `is_admin === false`, `is_approved_free_member === false`, `profile_completed === true`
+- Incomplete filter: missing `is_admin === false`
+
+### Fix
+Updated filter logic to match stat card queries exactly:
+- All non-admin filters now include `m.is_admin === false`
+- All free sub-category filters include `m.profile_completed === true`
+- Free_started filter includes `m.is_approved_free_member === false`
+
+### Files Modified
+- `components/admin/AdminMembersClient.tsx` - Updated filter logic to match stat cards
