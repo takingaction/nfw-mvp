@@ -6855,16 +6855,17 @@ Updated filter logic to match stat card queries exactly:
 ## Session 2026-07-08: Admin Hub Layout Optimization
 
 ### Changes
-Optimized admin hub layout so all sections are visible above the fold:
+Restructured admin hub layout to fit Analytics in right column alongside other sections:
 
-**Store & Commerce:**
-- Changed to 3-column grid for 3 buttons in one row
+**Layout:**
+- 5-column grid: Content & Website takes left 3 columns, right column stacks all other sections
+- Content & Website: full left column with 3-column button grid
+- Right column (2 cols): Members & Grants, Store & Commerce, Emails & Subscriptions, Analytics stacked vertically
 
-**Members & Grants:**
-- Compact styling with reduced padding (p-3 vs p-5)
-- Smaller header padding (py-3 vs py-4)
-- Smaller text (text-base vs text-lg)
-- Smaller buttons (px-2 py-1.5 text-xs vs px-4 py-2.5 text-sm)
+**Benefits:**
+- Analytics now visible in right column, above the fold
+- All 4 sections + Analytics visible on screen without scrolling
+- Compact styling throughout with smaller headers, buttons, and text
 
 ### Files Modified
-- `app/admin/AdminHubClient.tsx` - Layout optimization for above-fold display
+- `app/admin/AdminHubClient.tsx` - Complete layout restructure for above-fold display
