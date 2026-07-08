@@ -1,0 +1,156 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient as createServerClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
+
+/**
+ * POST /api/waitlist/join
+ * 
+ * Adds the authenticated user to the waitlist.
+ * Updates profile with waitlist membership and assigns position.
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createServerClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get the next waitlist position
+    const { data: nextPosition, error: positionError } = await supabaseAdmin
+      .rpc("get_next_waitlist_position");
+
+    if (positionError) {
+      console.error("[waitlist/join] Error getting next position:", positionError);
+      return NextResponse.json(
+        { error: "Failed to assign waitlist position" },
+        { status: 500 }
+      );
+    }
+
+    const waitlistPosition = nextPosition || 1;
+
+    // Update profile to waitlist membership
+    const { error: updateError } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        membership_level: "waitlist",
+        is_approved_free_member: false,
+        free_membership_contact_submitted: true,
+        waitlist_position: waitlistPosition,
+        waitlist_joined_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", user.id);
+
+    if (updateError) {
+      console.error("[waitlist/join] Error updating profile:", updateError);
+      return NextResponse.json(
+        { error: "Failed to join waitlist" },
+        { status: 500 }
+      );
+    }
+
+    // Send welcome email (fire-and-forget)
+    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(user.id);
+    const { data: profileData } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+    const { data: waitlistCount } = await supabaseAdmin.rpc("get_waitlist_count");
+
+    const userEmail = authUser?.user?.email;
+    const userName = profileData?.full_name || "Member";
+    const currentCount = waitlistCount || 0;
+
+    if (userEmail) {
+      // Fire-and-forget: don't await
+      import("@/lib/email").then(({ sendWaitlistWelcomeEmail }) => {
+        sendWaitlistWelcomeEmail({
+          to: userEmail,
+          name: userName,
+          waitlistCount: currentCount,
+        }).catch(err => console.error("[waitlist/join] Email send failed:", err));
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      waitlistPosition,
+    });
+  } catch (err) {
+    console.error("[waitlist/join] Unexpected error:", err);
+    return NextResponse.json(
+      { error: "An error occurred" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * GET /api/waitlist/position
+ * 
+ * Gets the current user's waitlist position and total count.
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createServerClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get user's waitlist position
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("waitlist_position, waitlist_joined_at")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError) {
+      console.error("[waitlist/position] Error fetching profile:", profileError);
+      return NextResponse.json(
+        { error: "Failed to fetch waitlist position" },
+        { status: 500 }
+      );
+    }
+
+    // Get total waitlist count
+    const { data: totalCount, error: countError } = await supabaseAdmin
+      .rpc("get_waitlist_count");
+
+    if (countError) {
+      console.error("[waitlist/position] Error getting count:", countError);
+      return NextResponse.json(
+        { error: "Failed to fetch waitlist count" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      position: profile?.waitlist_position,
+      joinedAt: profile?.waitlist_joined_at,
+      totalInQueue: totalCount || 0,
+    });
+  } catch (err) {
+    console.error("[waitlist/position] Unexpected error:", err);
+    return NextResponse.json(
+      { error: "An error occurred" },
+      { status: 500 }
+    );
+  }
+}

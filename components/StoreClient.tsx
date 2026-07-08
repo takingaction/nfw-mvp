@@ -172,8 +172,8 @@ export default function StoreClient({
     if (product.status === "DRAFT") {
       return { eligible: false, reason: "Dropping Soon" };
     }
-    // Free members need to be approved to claim
-    if (userTier === "free" && !isApprovedFreeMember) {
+    // Free members need to be approved to claim, waitlist members cannot claim
+    if ((userTier === "free" && !isApprovedFreeMember) || userTier === "waitlist") {
       return { eligible: false, reason: "Approval Required" };
     }
     if (!userTier || !product.eligibilityTiers.includes(userTier)) {

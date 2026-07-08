@@ -197,21 +197,9 @@ export default async function DashboardPage() {
   // Check for abandoned checkout for the banner display
   const hasAbandonedCheckout = (abandonedCheckoutResult?.data?.length ?? 0) > 0;
 
-  // If free member started free flow (submitted=false) and has no abandoned checkout, redirect to contact
-  // If they HAVE an abandoned checkout, show the AbandonedCheckoutBanner instead
-  // Skip if is_approved_free_member === TRUE
-  if (
-    profile?.membership_level === "free" &&
-    profile?.is_approved_free_member !== true &&
-    profile?.free_membership_contact_submitted === false &&
-    !hasAbandonedCheckout
-  ) {
-    redirect("/contact?reason=free-membership&from=login");
-  }
-
-  // Show pending banner if free member has submitted contact but not yet approved
+  // Show pending/waitlist banner if free or waitlist member has submitted contact but not yet approved
   const isPendingFreeMember =
-    profile?.membership_level === "free" &&
+    (profile?.membership_level === "free" || profile?.membership_level === "waitlist") &&
     profile?.is_approved_free_member !== true &&
     profile?.free_membership_contact_submitted === true;
 
@@ -284,7 +272,7 @@ export default async function DashboardPage() {
           profile?.free_membership_contact_submitted === false
         }
       />
-      {isPendingFreeMember && <PendingFreeMembershipBanner />}
+      {isPendingFreeMember && <PendingFreeMembershipBanner membershipLevel={profile?.membership_level} />}
 
       <DashboardHero heroImage={settings.hero_image_url || "/images/landing.jpg"} />
 

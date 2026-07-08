@@ -1527,7 +1527,28 @@ export async function sendAbandonedCheckoutEmail({
   const slug = "abandoned-checkout-recovery";
   const siteUrl = "https://nationalfundforwomen.org";
 
-  // Check if template is active (only send if enabled)
+  const variables: Record<string, string> = {
+    name: name || "there",
+    membershipLevel: membershipLevel === "founding" ? "Founding" : "Contributing",
+    ctaUrl: ctaUrl || `${siteUrl}/checkout/resume`,
+    siteUrl,
+  };
+
+  // Check if template is published and use that, otherwise fall back
+  const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
+
+  if (preRenderedResult) {
+    await sendBrandedEmail({
+      to,
+      subject: preRenderedResult.subject || "Complete your membership",
+      name: variables.name,
+      preRenderedHtml: preRenderedResult.html,
+      useShell: false,
+    });
+    return;
+  }
+
+  // Fall back to html_content if not published
   const template = await fetchEmailTemplateAdmin(slug);
   if (!template) {
     console.log(`[sendAbandonedCheckoutEmail] Template "${slug}" not found`);
@@ -1538,13 +1559,6 @@ export async function sendAbandonedCheckoutEmail({
     console.log(`[sendAbandonedCheckoutEmail] Template ${slug} is inactive, skipping email to ${to}`);
     return;
   }
-
-  const variables: Record<string, string> = {
-    name: name || "there",
-    membershipLevel: membershipLevel === "founding" ? "Founding" : "Contributing",
-    ctaUrl: ctaUrl || `${siteUrl}/checkout/resume`,
-    siteUrl,
-  };
 
   const body = replaceTemplateVariables(template.html, variables);
 
@@ -1557,6 +1571,72 @@ export async function sendAbandonedCheckoutEmail({
     headline: "You left something behind",
     body,
     ctaText: "COMPLETE YOUR MEMBERSHIP",
+    ctaUrl: variables.ctaUrl,
+    footerCtaText: "VISIT WEBSITE",
+    footerCtaUrl: siteUrl,
+  });
+}
+
+// =============================================================================
+// WAITLIST WELCOME EMAIL
+// =============================================================================
+
+export async function sendWaitlistWelcomeEmail({
+  to,
+  name,
+  waitlistCount,
+}: {
+  to: string;
+  name: string;
+  waitlistCount: number;
+}) {
+  const slug = "waitlist-welcome";
+  const siteUrl = "https://nationalfundforwomen.org";
+
+  const variables: Record<string, string> = {
+    name: name || "there",
+    waitlistCount: waitlistCount.toString(),
+    ctaUrl: `${siteUrl}/auth/sign-up?step=3`,
+    siteUrl,
+  };
+
+  // Check if template is published and use that, otherwise fall back
+  const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
+
+  if (preRenderedResult) {
+    await sendBrandedEmail({
+      to,
+      subject: preRenderedResult.subject || "You're on the List",
+      name: variables.name,
+      preRenderedHtml: preRenderedResult.html,
+      useShell: false,
+    });
+    return;
+  }
+
+  // Fall back to html_content if not published
+  const template = await fetchEmailTemplateAdmin(slug);
+  if (!template) {
+    console.log(`[sendWaitlistWelcomeEmail] Template "${slug}" not found`);
+    return;
+  }
+
+  if (template.is_active === false) {
+    console.log(`[sendWaitlistWelcomeEmail] Template ${slug} is inactive, skipping email to ${to}`);
+    return;
+  }
+
+  const body = replaceTemplateVariables(template.html, variables);
+
+  await sendBrandedEmail({
+    to,
+    subject: template.subject,
+    name: variables.name,
+    heroImage: template.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg",
+    heroText: "You're on the List",
+    headline: "Thanks for joining the waitlist!",
+    body,
+    ctaText: "BECOME A CONTRIBUTING MEMBER",
     ctaUrl: variables.ctaUrl,
     footerCtaText: "VISIT WEBSITE",
     footerCtaUrl: siteUrl,

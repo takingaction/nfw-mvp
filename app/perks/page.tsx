@@ -140,13 +140,13 @@ export default function PerksPage() {
             return;
           }
           // Free members need is_approved_free_member = true to access perks
-          // If free but not approved, redirect to upgrade page
-          if (profileData?.membership_level === "free" && profileData?.is_approved_free_member !== true) {
+          // Waitlist members also cannot access perks
+          if ((profileData?.membership_level === "free" && profileData?.is_approved_free_member !== true) || profileData?.membership_level === "waitlist") {
             window.location.href = "/auth/sign-up?step=3";
             return;
           }
           // Only redirect if membership_level is explicitly set to a non-perk plan
-          if (profileData?.membership_level && !["free", "contributing", "founding"].includes(profileData.membership_level)) {
+          if (profileData?.membership_level && !["free", "contributing", "founding", "waitlist"].includes(profileData.membership_level)) {
             window.location.href = "/auth/sign-up?step=3";
             return;
           }

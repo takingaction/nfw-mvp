@@ -6869,3 +6869,83 @@ Restructured admin hub layout to fit Analytics in right column alongside other s
 
 ### Files Modified
 - `app/admin/AdminHubClient.tsx` - Complete layout restructure for above-fold display
+
+---
+
+## Session 2026-07-08 (Afternoon): Waitlist Membership System
+
+### Overview
+
+Implemented a free membership waitlist system with email notifications, batch sending, and admin bulk migration tools.
+
+### Database Migrations
+
+**Migration 108: `supabase/migrations/108_add_waitlist_membership.sql`**
+- Added `waitlist` to `membership_level` enum values
+- Added columns to `profiles`:
+  - `waitlist_position` (INTEGER)
+  - `waitlist_joined_at` (TIMESTAMPTZ)
+  - `waitlist_email_sent_at` (TIMESTAMPTZ)
+- Added indexes for efficient waitlist queries
+- Created RPC functions:
+  - `get_next_waitlist_position()` - Returns next position in queue
+  - `get_waitlist_count()` - Returns total waitlist members
+  - `get_waitlist_member_by_id()` - Gets member by ID
+- Created `move_to_waitlist(profile_id)` function for batch migrations
+
+**Migration 109: `supabase/migrations/109_seed_waitlist_welcome_email.sql`**
+- Seeded `waitlist-welcome` email template with basic content
+- Template uses builder sections (email_sections table)
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `app/api/waitlist/route.ts` | POST to join waitlist, GET to check position |
+| `app/auth/waitlist-confirmed/page.tsx` | Confirmation page after joining |
+| `app/api/admin/bulk/waitlist/route.ts` | Admin API for bulk operations |
+| `app/admin/waitlist/page.tsx` | Server wrapper with admin auth |
+| `app/admin/waitlist/AdminWaitlistClient.tsx` | Admin UI with stats and send interface |
+| `lib/email-batch.ts` | Batch email utility (50 recipients/call, 200ms delays) |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `lib/email.ts` | Added `sendWaitlistWelcomeEmail()` function |
+| `lib/email.ts` | Fixed `sendWaitlistWelcomeEmail` and `sendAbandonedCheckoutEmail` to use published builder content |
+| `components/SignUpFlow.tsx` | Updated modal copy, swapped button order, calls `/api/waitlist` |
+| `components/dashboard/PendingFreeMembershipBanner.tsx` | Added waitlist support with upgrade link |
+| `app/dashboard/page.tsx` | Removed contact form redirect, updated `isPendingFreeMember` to include waitlist |
+| `app/perks/page.tsx` | Added waitlist to membership checks |
+| `app/grants/apply/page.tsx` | Added waitlist to membership checks |
+| `components/StoreClient.tsx` | Added waitlist to claim eligibility check |
+| `app/admin/AdminHubClient.tsx` | Added "Waitlist Management" link |
+
+### Email Template Bug Fix
+
+**Problem:** `sendWaitlistWelcomeEmail` and `sendAbandonedCheckoutEmail` were reading from `html_content` instead of `full_email_html` (published builder content).
+
+**Fix:** Both functions now call `getPreRenderedHtmlAdmin` first to check for published content, falling back to `html_content` if not published.
+
+### Key Design Decisions
+
+- Waitlist members see same banner as pending free (matching existing behavior)
+- No separate dashboard page for waitlist - just a banner
+- Don't show queue position to users
+- Logged-out users clicking "here" go to step 0 (signup form) instead of step 3
+- Banner text: "You're on the free membership waitlist. We'll email you when a spot opens up. You can also upgrade at any time here."
+- Fire-and-forget for individual join emails (non-blocking)
+
+### Pending: Bulk Migration
+
+- Bulk migration tool created but not yet connected
+- Need to migrate existing `free_pending` members to `waitlist` when ready
+- SQL to add email sections for waitlist template was provided but not yet run
+
+### To Deploy
+
+1. Run migration 108 and 109 in Supabase SQL Editor
+2. Edit and publish `waitlist-welcome` template in `/admin/emails`
+3. Test waitlist signup flow locally
+4. When ready, run bulk migration SQL for `free_pending` members

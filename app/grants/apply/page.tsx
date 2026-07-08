@@ -28,9 +28,9 @@ export default async function ApplyForGrantPage() {
 
   if (!profile?.profile_completed) {
     redirect("/auth/sign-up?step=1");
-  } else if (profile?.membership_level === "free" && profile?.is_approved_free_member !== true) {
+  } else if ((profile?.membership_level === "free" && profile?.is_approved_free_member !== true) || profile?.membership_level === "waitlist") {
     redirect("/auth/sign-up?step=3");
-  } else if (profile?.membership_level && !["free", "contributing", "founding"].includes(profile.membership_level)) {
+  } else if (profile?.membership_level && !["free", "contributing", "founding", "waitlist"].includes(profile.membership_level)) {
     redirect("/auth/sign-up?step=3");
   }
 

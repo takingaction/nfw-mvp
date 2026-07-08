@@ -247,8 +247,11 @@ export default function SignUpFlow() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       
-      if (!user || !user.email_confirmed_at) {
-        // User hasn't confirmed email, redirect to success page
+      if (!user) {
+        // Not logged in - redirect to step 0 to show login/signup options
+        window.location.href = "/auth/sign-up?step=0";
+      } else if (!user.email_confirmed_at) {
+        // Logged in but email not confirmed
         window.location.href = "/auth/sign-up-success";
       }
     };
@@ -1149,13 +1152,13 @@ export default function SignUpFlow() {
               </div>
 
               <p className="text-sm text-nfw-blackberry/60 text-center">
-                If contributing financially isn't possible, you can apply for free membership{" "}
+                If contributing financially isn't possible, you can{" "}
                 <button
                   type="button"
                   onClick={() => setShowFreeModal(true)}
                   className="text-nfw-wisteria underline hover:text-nfw-wisteria/80"
                 >
-                  here
+                  join the waitlist for a free membership here
                 </button>
                 .
               </p>
@@ -1166,41 +1169,46 @@ export default function SignUpFlow() {
             <div className="fixed inset-0 bg-nfw-blackberry/50 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-xl p-8 max-w-md w-full">
                 <h2 className="text-2xl font-black text-nfw-blackberry mb-4 font-serif text-center">
-                  Free Membership
+                  Waitlist Membership
                 </h2>
                 <p className="text-nfw-blackberry/80 text-sm leading-relaxed mb-6">
-                  If contributing financially isn't possible, this tier is for you. A simple gut check: if you have stable housing, regular income, and financial breathing room, a higher tier is probably a better fit for you. The National Fund for Women doesn't exist without membership dues. To continue with your free membership request, please click the button below and you will be taken to our contact form.
+                  If contributing financially isn't possible, this tier is for you. A simple gut check: if you have stable housing, regular income, and financial breathing room, a higher tier is probably a better fit for you. The National Fund for Women doesn't exist without membership dues. To continue to the free member waitlist, please click the button below.
                 </p>
                 <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      // Set profile as pending free membership
-                      setLoading(true);
-                      setShowFreeModal(false);
-                      try {
-                        await saveProfile({
-                          membership_level: "free",
-                          is_approved_free_member: false,
-                          free_membership_contact_submitted: false,
-                        });
-                        window.location.href = "/contact?reason=free-membership";
-                      } catch (err) {
-                        console.error("Failed to save free membership request:", err);
-                        setLoading(false);
-                        // Don't redirect - show error state instead
-                      }
-                    }}
-                    className="w-full py-3 bg-nfw-citrine text-nfw-blackberry font-bold text-sm hover:bg-nfw-citrine/90 transition-colors"
-                  >
-                    CONTINUE TO CONTACT FORM
-                  </button>
                   <button
                     type="button"
                     onClick={() => setShowFreeModal(false)}
                     className="w-full py-3 bg-white text-nfw-blackberry font-semibold text-sm border border-nfw-blackberry/20 hover:bg-nfw-dove transition-colors"
                   >
                     I CAN CONTRIBUTE $15/YEAR
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      // Set profile as waitlist member via dedicated API
+                      setLoading(true);
+                      setShowFreeModal(false);
+                      try {
+                        // Call dedicated waitlist join API to assign position
+                        const response = await fetch("/api/waitlist", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                        });
+                        
+                        if (!response.ok) {
+                          throw new Error("Failed to join waitlist");
+                        }
+                        
+                        window.location.href = "/auth/waitlist-confirmed";
+                      } catch (err) {
+                        console.error("Failed to join waitlist:", err);
+                        setLoading(false);
+                        // Don't redirect - show error state instead
+                      }
+                    }}
+                    className="w-full py-3 bg-nfw-citrine text-nfw-blackberry font-bold text-sm hover:bg-nfw-citrine/90 transition-colors"
+                  >
+                    ADD ME TO THE WAITLIST
                   </button>
                 </div>
               </div>
