@@ -1589,7 +1589,7 @@ export async function sendWaitlistWelcomeEmail({
   to: string;
   name: string;
   waitlistCount: number;
-}) {
+}): Promise<{ success: boolean; error?: string }> {
   const slug = "waitlist-welcome";
   const siteUrl = "https://nationalfundforwomen.org";
 
@@ -1600,45 +1600,52 @@ export async function sendWaitlistWelcomeEmail({
     siteUrl,
   };
 
-  // Check if template is published and use that, otherwise fall back
-  const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
+  try {
+    // Check if template is published and use that, otherwise fall back
+    const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
 
-  if (preRenderedResult) {
+    if (preRenderedResult) {
+      await sendBrandedEmail({
+        to,
+        subject: preRenderedResult.subject || "You're on the List",
+        name: variables.name,
+        preRenderedHtml: preRenderedResult.html,
+        useShell: false,
+      });
+      return { success: true };
+    }
+
+    // Fall back to html_content if not published
+    const template = await fetchEmailTemplateAdmin(slug);
+    if (!template) {
+      console.log(`[sendWaitlistWelcomeEmail] Template "${slug}" not found`);
+      return { success: false, error: "Template not found" };
+    }
+
+    if (template.is_active === false) {
+      console.log(`[sendWaitlistWelcomeEmail] Template ${slug} is inactive, skipping email to ${to}`);
+      return { success: false, error: "Template inactive" };
+    }
+
+    const body = replaceTemplateVariables(template.html, variables);
+
     await sendBrandedEmail({
       to,
-      subject: preRenderedResult.subject || "You're on the List",
+      subject: template.subject,
       name: variables.name,
-      preRenderedHtml: preRenderedResult.html,
-      useShell: false,
+      heroImage: template.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg",
+      heroText: "You're on the List",
+      headline: "Thanks for joining the waitlist!",
+      body,
+      ctaText: "BECOME A CONTRIBUTING MEMBER",
+      ctaUrl: variables.ctaUrl,
+      footerCtaText: "VISIT WEBSITE",
+      footerCtaUrl: siteUrl,
     });
-    return;
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("[sendWaitlistWelcomeEmail] Error:", err);
+    return { success: false, error: err?.message || "Unknown error" };
   }
-
-  // Fall back to html_content if not published
-  const template = await fetchEmailTemplateAdmin(slug);
-  if (!template) {
-    console.log(`[sendWaitlistWelcomeEmail] Template "${slug}" not found`);
-    return;
-  }
-
-  if (template.is_active === false) {
-    console.log(`[sendWaitlistWelcomeEmail] Template ${slug} is inactive, skipping email to ${to}`);
-    return;
-  }
-
-  const body = replaceTemplateVariables(template.html, variables);
-
-  await sendBrandedEmail({
-    to,
-    subject: template.subject,
-    name: variables.name,
-    heroImage: template.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg",
-    heroText: "You're on the List",
-    headline: "Thanks for joining the waitlist!",
-    body,
-    ctaText: "BECOME A CONTRIBUTING MEMBER",
-    ctaUrl: variables.ctaUrl,
-    footerCtaText: "VISIT WEBSITE",
-    footerCtaUrl: siteUrl,
-  });
 }

@@ -9,6 +9,8 @@ interface WaitlistMember {
   waitlist_position: number | null;
   waitlist_joined_at: string | null;
   waitlist_email_sent_at: string | null;
+  is_approved_free_member: boolean;
+  membership_level: string;
   joined_at: string;
 }
 
@@ -83,6 +85,30 @@ export default function AdminWaitlistClient() {
     } catch (error) {
       console.error("Failed to send email:", error);
       alert("Failed to send email");
+    }
+  };
+
+  const handleApprove = async (memberId: string) => {
+    if (!confirm("Approve this member? They will receive the free membership welcome email.")) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/admin/waitlist/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId }),
+      });
+
+      if (response.ok) {
+        await fetchMembers(); // Refresh the list
+      } else {
+        const data = await response.json();
+        alert(data.error || "Failed to approve member");
+      }
+    } catch (error) {
+      console.error("Failed to approve:", error);
+      alert("Failed to approve member");
     }
   };
 
@@ -275,13 +301,34 @@ export default function AdminWaitlistClient() {
                       )}
                     </td>
                     <td className="px-4 py-4">
-                      {!member.waitlist_email_sent_at && (
-                        <button
-                          onClick={() => handleSendSingle(member.id)}
-                          className="text-sm font-ui text-nfw-aubergine hover:text-nfw-aubergine/80 underline"
-                        >
-                          Send Email
-                        </button>
+                      {member.is_approved_free_member ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-ui bg-green-100 text-green-700">
+                          Approved ({member.membership_level})
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-ui bg-nfw-wisteria/20 text-nfw-wisteria">
+                          Pending
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4">
+                      {!member.is_approved_free_member && (
+                        <div className="flex gap-2">
+                          {!member.waitlist_email_sent_at && (
+                            <button
+                              onClick={() => handleSendSingle(member.id)}
+                              className="text-sm font-ui text-nfw-aubergine hover:text-nfw-aubergine/80 underline"
+                            >
+                              Send Email
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleApprove(member.id)}
+                            className="px-3 py-1 bg-green-600 text-white rounded text-xs font-ui hover:bg-green-700"
+                          >
+                            Approve
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>

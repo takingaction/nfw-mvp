@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send welcome email (fire-and-forget)
+    // Send welcome email and update timestamp on success
     const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(user.id);
     const { data: profileData } = await supabaseAdmin
       .from("profiles")
@@ -74,14 +74,28 @@ export async function POST(request: NextRequest) {
     const currentCount = waitlistCount || 0;
 
     if (userEmail) {
-      // Fire-and-forget: don't await
-      import("@/lib/email").then(({ sendWaitlistWelcomeEmail }) => {
-        sendWaitlistWelcomeEmail({
+      try {
+        // Dynamically import to avoid circular dependency issues
+        const { sendWaitlistWelcomeEmail } = await import("@/lib/email");
+        const result = await sendWaitlistWelcomeEmail({
           to: userEmail,
           name: userName,
           waitlistCount: currentCount,
-        }).catch(err => console.error("[waitlist/join] Email send failed:", err));
-      });
+        });
+
+        if (result.success) {
+          // Update timestamp - email was sent successfully
+          await supabaseAdmin
+            .from("profiles")
+            .update({ waitlist_email_sent_at: new Date().toISOString() })
+            .eq("id", user.id);
+        } else {
+          console.error(`[waitlist/join] Email not sent: ${result.error}`);
+        }
+      } catch (err) {
+        console.error("[waitlist/join] Email send failed:", err);
+        // Don't fail the join if email fails
+      }
     }
 
     return NextResponse.json({

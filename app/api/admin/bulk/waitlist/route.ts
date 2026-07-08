@@ -13,7 +13,7 @@ export async function GET() {
   try {
     const supabase = getAdminClient();
 
-    // Fetch all waitlist members
+    // Fetch all waitlist members (and recently approved members)
     const { data: members, error } = await supabase
       .from("profiles")
       .select(`
@@ -23,9 +23,11 @@ export async function GET() {
         waitlist_position,
         waitlist_joined_at,
         waitlist_email_sent_at,
+        is_approved_free_member,
+        membership_level,
         joined_at
       `)
-      .eq("membership_level", "waitlist")
+      .or(`membership_level.eq.waitlist,and(membership_level.eq.free,is_approved_free_member.eq.true)`)
       .order("waitlist_position", { ascending: true });
 
     if (error) {
