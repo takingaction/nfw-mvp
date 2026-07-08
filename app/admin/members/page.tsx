@@ -129,10 +129,10 @@ async function AdminMembersContent({ page }: { page: number }) {
               text: "text-nfw-blackberry",
             },
             {
-              label: "Incomplete Profiles",
+              label: "Profile Incomplete",
               value: `${incomplete} (${percent(incomplete)}%)`,
               showPercent: false,
-              color: "bg-nfw-stone",
+              color: "bg-nfw-stone/40",
               text: "text-nfw-blackberry",
             },
             {
@@ -163,15 +163,15 @@ async function AdminMembersContent({ page }: { page: number }) {
               text: "text-nfw-blackberry",
             },
             {
-              label: "Pending Free",
+              label: "Awaiting Free Approval",
               value: freePending,
-              color: "bg-[#b2d1ee]",
+              color: "bg-nfw-stone/40",
               text: "text-nfw-blackberry",
             },
             {
-              label: "Started Free",
+              label: "Free Account Not Requested",
               value: freeStarted,
-              color: "bg-nfw-wisteria/40",
+              color: "bg-nfw-stone/40",
               text: "text-nfw-blackberry",
             },
           ].map((stat) => (
