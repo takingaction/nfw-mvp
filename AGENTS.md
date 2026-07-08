@@ -6791,3 +6791,15 @@ Added `is_approved_free_member: false` and `free_membership_contact_submitted: f
 
 ### Files Modified
 - `app/auth/callback/route.ts` - Added free membership fields to profile insert
+
+---
+
+## Session 2026-07-08: Member CSV Export Update
+
+### Changes
+Added free membership fields to the member CSV export on `/admin/members`:
+- `is_approved_free_member` - "Is Approved Free Member" (Yes/No)
+- `free_membership_contact_submitted` - "Free Membership Contact Submitted" (Yes/No)
+
+### Files Modified
+- `app/api/admin/members/export/route.ts` - Added two new columns to CSV export
