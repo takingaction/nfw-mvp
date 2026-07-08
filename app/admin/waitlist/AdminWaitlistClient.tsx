@@ -9,7 +9,7 @@ interface WaitlistMember {
   waitlist_position: number | null;
   waitlist_joined_at: string | null;
   waitlist_email_sent_at: string | null;
-  created_at: string;
+  joined_at: string;
 }
 
 interface Stats {

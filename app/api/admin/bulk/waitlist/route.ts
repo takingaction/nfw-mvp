@@ -23,7 +23,7 @@ export async function GET() {
         waitlist_position,
         waitlist_joined_at,
         waitlist_email_sent_at,
-        created_at
+        joined_at
       `)
       .eq("membership_level", "waitlist")
       .order("waitlist_position", { ascending: true });
