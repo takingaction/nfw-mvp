@@ -158,19 +158,19 @@ async function AdminMembersContent({ page }: { page: number }) {
           {[
             {
               label: "Free Members",
-              value: freeApproved,
+              value: `${freeApproved} (${percent(freeApproved)}%)`,
               color: "bg-nfw-lilac/40",
               text: "text-nfw-blackberry",
             },
             {
               label: "Awaiting Free Approval",
-              value: freePending,
+              value: `${freePending} (${percent(freePending)}%)`,
               color: "bg-nfw-stone/40",
               text: "text-nfw-blackberry",
             },
             {
               label: "Free Account Not Requested",
-              value: freeStarted,
+              value: `${freeStarted} (${percent(freeStarted)}%)`,
               color: "bg-nfw-stone/40",
               text: "text-nfw-blackberry",
             },
