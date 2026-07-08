@@ -6824,3 +6824,4 @@ All non-member cards now use `bg-nfw-stone/40` (gray) to visually indicate these
 ### Files Modified
 - `components/admin/AdminAnalyticsClient.tsx` - Updated labels and colors
 - `app/admin/members/page.tsx` - Updated labels and colors
+- `components/admin/AdminMembersClient.tsx` - Split Free filter into 3 buttons
