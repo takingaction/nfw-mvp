@@ -144,19 +144,28 @@ export default function AdminMembersClient({
 
     const matchesFilter =
       filter === "all" ||
-      (filter === "paid" && (m.membership_level === "contributing" || m.membership_level === "founding")) ||
+      (filter === "paid" &&
+        (m.membership_level === "contributing" || m.membership_level === "founding") &&
+        m.is_admin === false) ||
       (filter === "free_approved" &&
         m.membership_level === "free" &&
-        m.is_approved_free_member === true) ||
+        m.is_approved_free_member === true &&
+        m.profile_completed === true &&
+        m.is_admin === false) ||
       (filter === "free_pending" &&
         m.membership_level === "free" &&
         m.free_membership_contact_submitted === true &&
-        m.is_approved_free_member !== true) ||
+        m.is_approved_free_member !== true &&
+        m.profile_completed === true &&
+        m.is_admin === false) ||
       (filter === "free_started" &&
         m.membership_level === "free" &&
-        m.free_membership_contact_submitted === false) ||
-      (filter === "admin" && m.is_admin) ||
-      (filter === "incomplete" && !m.profile_completed);
+        m.free_membership_contact_submitted === false &&
+        m.is_approved_free_member === false &&
+        m.profile_completed === true &&
+        m.is_admin === false) ||
+      (filter === "admin" && m.is_admin === true) ||
+      (filter === "incomplete" && !m.profile_completed && m.is_admin === false);
 
     return matchesSearch && matchesFilter;
   });
