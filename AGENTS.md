@@ -6775,3 +6775,19 @@ WHERE membership_level = 'free'
 ### Files Modified
 - `app/admin/members/page.tsx` - Added free sub-category queries, 3 new stat cards, added profile_completed filter
 - `components/admin/AdminAnalyticsClient.tsx` - Default dateRange to 9999 (All Time)
+
+---
+
+## Session 2026-07-07 (Late): Auth Callback Free Membership Fix
+
+### Problem
+Two new users (July 7) signed up and had `free_membership_contact_submitted = NULL` despite having `membership_level = 'free'` and `is_approved_free_member = false`.
+
+### Root Cause
+Auth callback (`/auth/callback`) creates initial profile when user confirms email, but was NOT setting `free_membership_contact_submitted` field. This caused new signups to have NULL instead of `false`.
+
+### Fix
+Added `is_approved_free_member: false` and `free_membership_contact_submitted: false` to profile insert in auth callback.
+
+### Files Modified
+- `app/auth/callback/route.ts` - Added free membership fields to profile insert
