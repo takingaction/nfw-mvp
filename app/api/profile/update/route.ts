@@ -119,6 +119,8 @@ export async function POST(request: NextRequest) {
         ...updates,
         subscription_status: null,
         full_name: updates.full_name || "Member",
+        is_approved_free_member: updates.is_approved_free_member ?? false,
+        free_membership_contact_submitted: updates.free_membership_contact_submitted ?? false,
         updated_at: new Date().toISOString(),
       };
       const result = await supabaseAdmin

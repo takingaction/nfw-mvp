@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
 
           if (insertError) {
             console.error("[AuthCallback] Failed to create profile:", insertError);
+            redirect("/auth/error?error=Profile creation failed");
           }
         }
 
