@@ -63,7 +63,7 @@ export default function AdminMembersClient({
     }
     return "";
   });
-  const [filter, setFilter] = useState<"all" | "paid" | "free" | "admin" | "incomplete" | "pending">(
+  const [filter, setFilter] = useState<"all" | "paid" | "free_approved" | "free_pending" | "free_started" | "admin" | "incomplete">(
     "all",
   );
   const [selected, setSelected] = useState<Member | null>(null);
@@ -145,13 +145,18 @@ export default function AdminMembersClient({
     const matchesFilter =
       filter === "all" ||
       (filter === "paid" && (m.membership_level === "contributing" || m.membership_level === "founding")) ||
-      (filter === "free" && (m.membership_level === "free" || m.membership_level === null)) ||
-      (filter === "admin" && m.is_admin) ||
-      (filter === "incomplete" && !m.profile_completed) ||
-      (filter === "pending" &&
+      (filter === "free_approved" &&
+        m.membership_level === "free" &&
+        m.is_approved_free_member === true) ||
+      (filter === "free_pending" &&
         m.membership_level === "free" &&
         m.free_membership_contact_submitted === true &&
-        m.is_approved_free_member !== true);
+        m.is_approved_free_member !== true) ||
+      (filter === "free_started" &&
+        m.membership_level === "free" &&
+        m.free_membership_contact_submitted === false) ||
+      (filter === "admin" && m.is_admin) ||
+      (filter === "incomplete" && !m.profile_completed);
 
     return matchesSearch && matchesFilter;
   });
@@ -422,20 +427,31 @@ export default function AdminMembersClient({
               </button>
             )}
           </div>
-          <div className="flex gap-2">
-            {(["all", "paid", "free", "incomplete", "admin", "pending"] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 text-xs font-semibold capitalize transition-colors ${
-                  filter === f
-                    ? "bg-nfw-blackberry text-white"
-                    : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
-                }`}
-              >
-                {f}
-              </button>
-            ))}
+          <div className="flex gap-2 flex-wrap">
+            {(["all", "paid", "free_approved", "free_pending", "free_started", "admin", "incomplete"] as const).map((f) => {
+              const labelMap: Record<string, string> = {
+                all: "All",
+                paid: "Paid",
+                free_approved: "Free Members",
+                free_pending: "Awaiting Free Approval",
+                free_started: "Free Account Not Requested",
+                admin: "Admins",
+                incomplete: "Profile Incomplete",
+              };
+              return (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    filter === f
+                      ? "bg-nfw-blackberry text-white"
+                      : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
+                  }`}
+                >
+                  {labelMap[f]}
+                </button>
+              );
+            })}
           </div>
         </div>
 
