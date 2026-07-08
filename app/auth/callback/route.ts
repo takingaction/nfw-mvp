@@ -38,6 +38,8 @@ export async function GET(request: NextRequest) {
               avatar_url: isGoogle ? (rawMeta.avatar_url || null) : null,
               date_of_birth: "1900-01-01",
               membership_level: "free",
+              is_approved_free_member: false,
+              free_membership_contact_submitted: false,
               subscription_status: null,
               profile_completed: false,
             });
