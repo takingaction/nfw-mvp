@@ -67,13 +67,28 @@ async function AdminMembersContent({ page }: { page: number }) {
     .eq("membership_level", "waitlist");
 
   // Active Profiles = Free (approved) + Contributing + Founding (excludes admins, waitlist, incomplete, in limbo)
-  const { count: active } = await supabase
+  // Query separately and sum to avoid complex OR logic issues
+  const { count: activeFree } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
     .eq("is_admin", false)
-    .in("membership_level", ["free", "contributing", "founding"])
-    .eq("profile_completed", true)
-    .or("membership_level.eq.free.and(is_approved_free_member.eq.true),membership_level.eq.contributing,membership_level.eq.founding");
+    .eq("membership_level", "free")
+    .eq("is_approved_free_member", true)
+    .eq("profile_completed", true);
+
+  const { count: activeContributing } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .eq("is_admin", false)
+    .eq("membership_level", "contributing");
+
+  const { count: activeFounding } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .eq("is_admin", false)
+    .eq("membership_level", "founding");
+
+  const active = (activeFree || 0) + (activeContributing || 0) + (activeFounding || 0);
 
   // Query for actual data to display with pagination
   const pageSize = 100;
