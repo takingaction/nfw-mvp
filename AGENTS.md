@@ -6949,3 +6949,59 @@ Implemented a free membership waitlist system with email notifications, batch se
 2. Edit and publish `waitlist-welcome` template in `/admin/emails`
 3. Test waitlist signup flow locally
 4. When ready, run bulk migration SQL for `free_pending` members
+
+---
+
+## Session 2026-07-08 (Evening): Waitlist Admin Fixes + Approve Feature
+
+### Bug Fix: created_at vs joined_at
+
+**Problem:** Admin waitlist page returned 500 error and showed no members.
+
+**Root Cause:** The API query selected `created_at` column which doesn't exist in `profiles` table. The correct date column is `joined_at`.
+
+**Fix:** Changed `created_at` to `joined_at` in:
+- `app/api/admin/bulk/waitlist/route.ts` - SELECT clause
+- `app/admin/waitlist/AdminWaitlistClient.tsx` - Interface type
+
+### Email Tracking Fix
+
+**Problem:** When members joined the waitlist, `waitlist_email_sent_at` was never updated, so admin page showed "Pending" even for members who received the email.
+
+**Solution:** Modified `sendWaitlistWelcomeEmail` to return `{ success: boolean; error?: string }` and updated join API to:
+1. Await the email send instead of fire-and-forget
+2. Update `waitlist_email_sent_at` timestamp when email sent successfully
+
+### Approve Functionality
+
+**Feature:** Admin can approve waitlist members directly from the admin page.
+
+**New Files:**
+- `app/api/admin/waitlist/approve/route.ts` - POST endpoint to approve member
+
+**Approve Flow:**
+1. Admin clicks "Approve" button on a pending member
+2. Profile updated: `membership_level = 'free'`, `is_approved_free_member = true`, `profile_completed = true`
+3. Welcome email sent via `sendWelcomeEmail()` with `membershipType: 'free'`
+4. Member shows "Approved (free)" badge in admin table
+
+### UI Updates
+
+**Admin Waitlist Table now shows:**
+- Pending members: "Pending" badge + "Send Email" + "Approve" buttons
+- Approved members: "Approved (free)" badge (no actions)
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `lib/email.ts` | Modified `sendWaitlistWelcomeEmail` to return success/error |
+| `app/api/waitlist/route.ts` | Await email send, update `waitlist_email_sent_at` on success |
+| `app/api/admin/bulk/waitlist/route.ts` | Fixed `created_at` → `joined_at`, added `is_approved_free_member` and `membership_level` to query |
+| `app/api/admin/waitlist/approve/route.ts` | NEW - approve member + send welcome email |
+| `app/admin/waitlist/AdminWaitlistClient.tsx` | Added Approve button, Approved badge, show `membership_level` |
+
+### Commits
+
+- `4071760` - fix: use joined_at instead of created_at in waitlist admin API
+- `012c2ee` - feat: add approve functionality to waitlist admin
