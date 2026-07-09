@@ -6,7 +6,6 @@ interface WaitlistMember {
   id: string;
   full_name: string | null;
   email: string;
-  waitlist_position: number | null;
   waitlist_joined_at: string | null;
   waitlist_email_sent_at: string | null;
   is_approved_free_member: boolean;
@@ -252,9 +251,6 @@ export default function AdminWaitlistClient() {
               <thead>
                 <tr className="bg-nfw-aubergine/10">
                   <th className="px-4 py-3 text-left text-sm font-ui font-semibold text-nfw-blackberry">
-                    #
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-ui font-semibold text-nfw-blackberry">
                     Name
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-ui font-semibold text-nfw-blackberry">
@@ -277,9 +273,6 @@ export default function AdminWaitlistClient() {
                     key={member.id}
                     className="hover:bg-gray-50 transition-colors"
                   >
-                    <td className="px-4 py-4 text-nfw-aubergine font-ui text-sm">
-                      {member.waitlist_position || "—"}
-                    </td>
                     <td className="px-4 py-4 text-nfw-blackberry font-ui text-sm">
                       {member.full_name || "—"}
                     </td>

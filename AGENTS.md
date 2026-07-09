@@ -6883,30 +6883,36 @@ Implemented a free membership waitlist system with email notifications, batch se
 **Migration 108: `supabase/migrations/108_add_waitlist_membership.sql`**
 - Added `waitlist` to `membership_level` enum values
 - Added columns to `profiles`:
-  - `waitlist_position` (INTEGER)
+  - `waitlist_position` (INTEGER) - **REMOVED in migration 110**
   - `waitlist_joined_at` (TIMESTAMPTZ)
   - `waitlist_email_sent_at` (TIMESTAMPTZ)
 - Added indexes for efficient waitlist queries
 - Created RPC functions:
-  - `get_next_waitlist_position()` - Returns next position in queue
+  - `get_next_waitlist_position()` - **REMOVED in migration 110**
   - `get_waitlist_count()` - Returns total waitlist members
-  - `get_waitlist_member_by_id()` - Gets member by ID
-- Created `move_to_waitlist(profile_id)` function for batch migrations
+- **NOTE:** `get_waitlist_member_by_id()` and `move_to_waitlist()` were created but not used
 
 **Migration 109: `supabase/migrations/109_seed_waitlist_welcome_email.sql`**
 - Seeded `waitlist-welcome` email template with basic content
 - Template uses builder sections (email_sections table)
 
+**Migration 110: `supabase/migrations/110_remove_waitlist_position.sql`**
+- Removed `waitlist_position` column from `profiles`
+- Removed `get_next_waitlist_position()` function
+- Removed `idx_profiles_waitlist_position` index
+- **Reason:** Position was never shown to users and not maintained on approval, making it confusing/useless
+
 ### Files Created
 
 | File | Purpose |
 |------|---------|
-| `app/api/waitlist/route.ts` | POST to join waitlist, GET to check position |
+| `app/api/waitlist/route.ts` | POST to join waitlist, GET to check status |
 | `app/auth/waitlist-confirmed/page.tsx` | Confirmation page after joining |
 | `app/api/admin/bulk/waitlist/route.ts` | Admin API for bulk operations |
 | `app/admin/waitlist/page.tsx` | Server wrapper with admin auth |
 | `app/admin/waitlist/AdminWaitlistClient.tsx` | Admin UI with stats and send interface |
 | `lib/email-batch.ts` | Batch email utility (50 recipients/call, 200ms delays) |
+| `supabase/migrations/110_remove_waitlist_position.sql` | Removes waitlist_position field |
 
 ### Files Modified
 
@@ -7005,3 +7011,37 @@ Implemented a free membership waitlist system with email notifications, batch se
 
 - `4071760` - fix: use joined_at instead of created_at in waitlist admin API
 - `012c2ee` - feat: add approve functionality to waitlist admin
+
+---
+
+## Session 2026-07-08 (Late): Remove waitlist_position
+
+### Problem
+
+The `waitlist_position` field was unnecessary complexity because:
+- Position was never shown to users (by design decision)
+- Position was not maintained when members were approved (approved members kept their old position number)
+- Only caused confusion (e.g., 592 people showing in admin when there should be 1)
+
+### Solution
+
+Removed `waitlist_position` field entirely. Chronological order is preserved via `waitlist_joined_at`.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `supabase/migrations/110_remove_waitlist_position.sql` | Created - drops column, index, and function |
+| `app/api/waitlist/route.ts` | Removed position assignment and response |
+| `app/api/admin/bulk/waitlist/route.ts` | Removed position from SELECT, order by joined_at |
+| `app/admin/waitlist/AdminWaitlistClient.tsx` | Removed Position column from table |
+| `app/auth/waitlist-confirmed/page.tsx` | Removed unused position SELECT |
+
+### Migration 110 SQL
+
+```sql
+DROP INDEX IF EXISTS idx_profiles_waitlist_position;
+DROP FUNCTION IF EXISTS get_next_waitlist_position();
+ALTER TABLE profiles DROP COLUMN IF EXISTS waitlist_position;
+NOTIFY pgrst, 'reload';
+```

@@ -13,22 +13,21 @@ export async function GET() {
   try {
     const supabase = getAdminClient();
 
-    // Fetch all waitlist members (people who joined the waitlist with a position)
+    // Fetch all waitlist members (people who joined with a waitlist_joined_at)
     const { data: members, error } = await supabase
       .from("profiles")
       .select(`
         id,
         full_name,
         email,
-        waitlist_position,
         waitlist_joined_at,
         waitlist_email_sent_at,
         is_approved_free_member,
         membership_level,
         joined_at
       `)
-      .not("waitlist_position", "is", null)
-      .order("waitlist_position", { ascending: true });
+      .not("waitlist_joined_at", "is", null)
+      .order("waitlist_joined_at", { ascending: true });
 
     if (error) {
       console.error("[admin/bulk/waitlist] Error fetching waitlist:", error);
@@ -73,12 +72,11 @@ export async function POST(request: NextRequest) {
       .select(`
         id,
         full_name,
-        email,
-        waitlist_position
+        email
       `)
       .eq("membership_level", "waitlist")
       .is("waitlist_email_sent_at", null)
-      .order("waitlist_position", { ascending: true });
+      .order("waitlist_joined_at", { ascending: true });
 
     if (error) {
       console.error("[admin/bulk/waitlist] Error fetching members:", error);
@@ -189,8 +187,7 @@ export async function PUT(request: NextRequest) {
       .select(`
         id,
         full_name,
-        email,
-        waitlist_position
+        email
       `)
       .eq("id", memberId)
       .single();

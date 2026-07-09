@@ -25,20 +25,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get the next waitlist position
-    const { data: nextPosition, error: positionError } = await supabaseAdmin
-      .rpc("get_next_waitlist_position");
-
-    if (positionError) {
-      console.error("[waitlist/join] Error getting next position:", positionError);
-      return NextResponse.json(
-        { error: "Failed to assign waitlist position" },
-        { status: 500 }
-      );
-    }
-
-    const waitlistPosition = nextPosition || 1;
-
     // Update profile to waitlist membership
     const { error: updateError } = await supabaseAdmin
       .from("profiles")
@@ -46,7 +32,6 @@ export async function POST(request: NextRequest) {
         membership_level: "waitlist",
         is_approved_free_member: false,
         free_membership_contact_submitted: true,
-        waitlist_position: waitlistPosition,
         waitlist_joined_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -100,7 +85,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      waitlistPosition,
     });
   } catch (err) {
     console.error("[waitlist/join] Unexpected error:", err);
@@ -128,10 +112,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user's waitlist position
+    // Get user's waitlist info
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("waitlist_position, waitlist_joined_at")
+      .select("waitlist_joined_at")
       .eq("id", user.id)
       .single();
 
@@ -156,7 +140,6 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      position: profile?.waitlist_position,
       joinedAt: profile?.waitlist_joined_at,
       totalInQueue: totalCount || 0,
     });

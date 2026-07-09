@@ -18,7 +18,7 @@ export default async function WaitlistConfirmedPage() {
   // Verify user is on waitlist
   const { data: profile } = await supabase
     .from("profiles")
-    .select("membership_level, waitlist_position")
+    .select("membership_level")
     .eq("id", user.id)
     .single();
 
