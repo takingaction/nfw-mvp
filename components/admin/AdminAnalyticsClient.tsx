@@ -369,18 +369,6 @@ export default function AdminAnalyticsClient({
     ).length;
   }, [profiles]);
 
-  // Pending free members (submitted form, not yet approved, non-admin, completed profile)
-  const pendingFreeCount = useMemo(() => {
-    return profiles.filter(
-      (p) =>
-        p.is_admin !== true &&
-        p.membership_level === "free" &&
-        p.is_approved_free_member !== true &&
-        p.free_membership_contact_submitted === true &&
-        p.profile_completed === true
-    ).length;
-  }, [profiles]);
-
   // Started free members (initiated flow, not submitted, non-admin, completed profile)
   const startedFreeCount = useMemo(() => {
     return profiles.filter(
@@ -390,6 +378,25 @@ export default function AdminAnalyticsClient({
         p.is_approved_free_member !== true &&
         p.free_membership_contact_submitted === false &&
         p.profile_completed === true
+    ).length;
+  }, [profiles]);
+
+  // Waitlist members
+  const waitlistCount = useMemo(() => {
+    return profiles.filter((p) => p.membership_level === "waitlist").length;
+  }, [profiles]);
+
+  // Active Profiles = Free (approved) + Contributing + Founding (excludes admins, waitlist, incomplete, in limbo)
+  const activeProfilesCount = useMemo(() => {
+    return profiles.filter(
+      (p) =>
+        p.is_admin !== true &&
+        p.profile_completed === true &&
+        (
+          (p.membership_level === "free" && p.is_approved_free_member === true) ||
+          p.membership_level === "contributing" ||
+          p.membership_level === "founding"
+        )
     ).length;
   }, [profiles]);
 
@@ -946,6 +953,13 @@ export default function AdminAnalyticsClient({
             text: "text-white",
           },
           {
+            label: "Active Profiles",
+            value: activeProfilesCount,
+            icon: Users,
+            color: "bg-nfw-aubergine",
+            text: "text-white",
+          },
+          {
             label: "Paid Members",
             value: paidMembersCount,
             icon: TrendingUp,
@@ -960,15 +974,15 @@ export default function AdminAnalyticsClient({
             text: "text-white",
           },
           {
-            label: "Awaiting Free Approval",
-            value: pendingFreeCount,
+            label: "In Limbo",
+            value: startedFreeCount,
             icon: Users,
             color: "bg-nfw-stone/40",
             text: "text-nfw-blackberry",
           },
           {
-            label: "Free Account Not Requested",
-            value: startedFreeCount,
+            label: "Waitlist",
+            value: waitlistCount,
             icon: Users,
             color: "bg-nfw-stone/40",
             text: "text-nfw-blackberry",
@@ -978,13 +992,6 @@ export default function AdminAnalyticsClient({
             value: incompleteCount,
             icon: Users,
             color: "bg-nfw-stone/40",
-            text: "text-nfw-blackberry",
-          },
-          {
-            label: "Other",
-            value: otherCount,
-            icon: Users,
-            color: "bg-nfw-stone",
             text: "text-nfw-blackberry",
           },
           {

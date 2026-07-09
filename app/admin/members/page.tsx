@@ -51,15 +51,6 @@ async function AdminMembersContent({ page }: { page: number }) {
     .eq("is_approved_free_member", true)
     .eq("profile_completed", true);
 
-  const { count: freePending } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact", head: true })
-    .eq("is_admin", false)
-    .eq("membership_level", "free")
-    .eq("is_approved_free_member", false)
-    .eq("free_membership_contact_submitted", true)
-    .eq("profile_completed", true);
-
   const { count: freeStarted } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
@@ -68,6 +59,21 @@ async function AdminMembersContent({ page }: { page: number }) {
     .eq("is_approved_free_member", false)
     .eq("free_membership_contact_submitted", false)
     .eq("profile_completed", true);
+
+  // Waitlist count
+  const { count: waitlist } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .eq("membership_level", "waitlist");
+
+  // Active Profiles = Free (approved) + Contributing + Founding (excludes admins, waitlist, incomplete, in limbo)
+  const { count: active } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .eq("is_admin", false)
+    .in("membership_level", ["free", "contributing", "founding"])
+    .eq("profile_completed", true)
+    .or("membership_level.eq.free.and(is_approved_free_member.eq.true),membership_level.eq.contributing,membership_level.eq.founding");
 
   // Query for actual data to display with pagination
   const pageSize = 100;
@@ -115,10 +121,17 @@ async function AdminMembersContent({ page }: { page: number }) {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
             {
-              label: "Total Members",
+              label: "Total Profiles",
               value: total,
               showPercent: false,
               color: "bg-nfw-blackberry",
+              text: "text-white",
+            },
+            {
+              label: "Active Profiles",
+              value: `${active} (${percent(active)}%)`,
+              showPercent: false,
+              color: "bg-nfw-aubergine",
               text: "text-white",
             },
             {
@@ -126,13 +139,6 @@ async function AdminMembersContent({ page }: { page: number }) {
               value: `${paid} (${percent(paid)}%)`,
               showPercent: false,
               color: "bg-nfw-wisteria/40",
-              text: "text-nfw-blackberry",
-            },
-            {
-              label: "Profile Incomplete",
-              value: `${incomplete} (${percent(incomplete)}%)`,
-              showPercent: false,
-              color: "bg-nfw-stone/40",
               text: "text-nfw-blackberry",
             },
             {
@@ -163,14 +169,14 @@ async function AdminMembersContent({ page }: { page: number }) {
               text: "text-nfw-blackberry",
             },
             {
-              label: "Awaiting Free Approval",
-              value: `${freePending} (${percent(freePending)}%)`,
+              label: "In Limbo",
+              value: `${freeStarted} (${percent(freeStarted)}%)`,
               color: "bg-nfw-stone/40",
               text: "text-nfw-blackberry",
             },
             {
-              label: "Free Account Not Requested",
-              value: `${freeStarted} (${percent(freeStarted)}%)`,
+              label: "Waitlist",
+              value: `${waitlist} (${percent(waitlist)}%)`,
               color: "bg-nfw-stone/40",
               text: "text-nfw-blackberry",
             },
