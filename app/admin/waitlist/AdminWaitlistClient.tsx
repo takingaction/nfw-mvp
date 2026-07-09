@@ -179,7 +179,7 @@ export default function AdminWaitlistClient() {
             </div>
           </div>
           <div className="bg-white rounded-lg p-6 border border-nfw-aubergine/20">
-            <div className="text-3xl font-serif text-nfw-citrine">
+            <div className="text-3xl font-serif text-nfw-aubergine">
               {stats.total > 0 ? Math.round((stats.emailsSent / stats.total) * 100) : 0}%
             </div>
             <div className="text-sm font-ui text-nfw-aubergine/70 mt-1">
