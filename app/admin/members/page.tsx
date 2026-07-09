@@ -175,10 +175,10 @@ async function AdminMembersContent({ page }: { page: number }) {
           ))}
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-4 gap-4 mb-8">
           {[
             {
-              label: "Free Members",
+              label: "Free",
               value: `${freeApproved} (${percent(freeApproved)}%)`,
               color: "bg-nfw-lilac/40",
               text: "text-nfw-blackberry",
@@ -192,6 +192,12 @@ async function AdminMembersContent({ page }: { page: number }) {
             {
               label: "Waitlist",
               value: `${waitlist} (${percent(waitlist)}%)`,
+              color: "bg-nfw-stone/40",
+              text: "text-nfw-blackberry",
+            },
+            {
+              label: "Profile Incomplete",
+              value: `${incomplete} (${percent(incomplete)}%)`,
               color: "bg-nfw-stone/40",
               text: "text-nfw-blackberry",
             },
