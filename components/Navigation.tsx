@@ -36,8 +36,7 @@ export default async function Navigation() {
     id: "",
     logo_url: "/images/header-logo.png",
     nav_links: [
-      { label: "About", url: "/about", indent: 0 },
-      { label: "About Us", url: "/about", indent: 1 },
+      { label: "About Us", url: "/about-us", indent: 0 },
       { label: "Membership", url: "/pricing", indent: 0 },
       { label: "Membership", url: "/pricing", indent: 1 },
       { label: "Become a Member", url: "/auth/sign-up", indent: 1 },
