@@ -7045,3 +7045,7 @@ DROP FUNCTION IF EXISTS get_next_waitlist_position();
 ALTER TABLE profiles DROP COLUMN IF EXISTS waitlist_position;
 NOTIFY pgrst, 'reload';
 ```
+
+### Commit
+
+- `98a5419` - feat: remove waitlist_position field, order by joined_at instead
