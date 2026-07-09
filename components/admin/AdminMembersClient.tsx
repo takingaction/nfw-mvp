@@ -437,7 +437,7 @@ export default function AdminMembersClient({
               const labelMap: Record<string, string> = {
                 all: "All",
                 paid: "Paid",
-                free_approved: "Free Members",
+                free_approved: "Free",
                 free_started: "In Limbo",
                 waitlist: "Waitlist",
                 admin: "Admins",
