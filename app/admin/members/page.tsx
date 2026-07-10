@@ -36,13 +36,7 @@ async function AdminMembersContent({ page }: { page: number }) {
     .select("*", { count: "exact", head: true })
     .eq("is_admin", true);
 
-  const { count: incomplete } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact", head: true })
-    .eq("is_admin", false)
-    .or("profile_completed.is.null,profile_completed.eq.false");
-
-  // Free members sub-categories (non-admin, completed profiles only)
+  // Free members (approved, non-admin, completed profiles only)
   const { count: freeApproved } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
@@ -51,22 +45,22 @@ async function AdminMembersContent({ page }: { page: number }) {
     .eq("is_approved_free_member", true)
     .eq("profile_completed", true);
 
-  const { count: freeStarted } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact", head: true })
-    .eq("is_admin", false)
-    .eq("membership_level", "free")
-    .eq("is_approved_free_member", false)
-    .eq("free_membership_contact_submitted", false)
-    .eq("profile_completed", true);
-
   // Waitlist count
   const { count: waitlist } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
     .eq("membership_level", "waitlist");
 
-  // Active Profiles = Free (approved) + Contributing + Founding (excludes admins, waitlist, incomplete, in limbo)
+  // Incomplete = profile not complete OR (free but never submitted contact form for free membership)
+  const { count: incompleteAll } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .or(
+      "profile_completed.is.null,profile_completed.eq.false," +
+      "and(membership_level.eq.free,is_approved_free_member.eq.false,free_membership_contact_submitted.eq.false)"
+    );
+
+  // Active Profiles = Free (approved) + Contributing + Founding (excludes admins, waitlist, incomplete)
   // Query separately and sum to avoid complex OR logic issues
   const { count: activeFree } = await supabase
     .from("profiles")
@@ -175,18 +169,12 @@ async function AdminMembersContent({ page }: { page: number }) {
           ))}
         </div>
 
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-4 mb-8">
           {[
             {
               label: "Free",
               value: `${freeApproved} (${percent(freeApproved)}%)`,
               color: "bg-nfw-lilac/40",
-              text: "text-nfw-blackberry",
-            },
-            {
-              label: "In Limbo",
-              value: `${freeStarted} (${percent(freeStarted)}%)`,
-              color: "bg-nfw-stone/40",
               text: "text-nfw-blackberry",
             },
             {
@@ -196,8 +184,8 @@ async function AdminMembersContent({ page }: { page: number }) {
               text: "text-nfw-blackberry",
             },
             {
-              label: "Profile Incomplete",
-              value: `${incomplete} (${percent(incomplete)}%)`,
+              label: "Incomplete",
+              value: `${incompleteAll} (${percent(incompleteAll)}%)`,
               color: "bg-nfw-stone/40",
               text: "text-nfw-blackberry",
             },

@@ -63,7 +63,7 @@ export default function AdminMembersClient({
     }
     return "";
   });
-  const [filter, setFilter] = useState<"all" | "paid" | "free_approved" | "free_started" | "waitlist" | "admin" | "incomplete">(
+  const [filter, setFilter] = useState<"all" | "paid" | "free_approved" | "waitlist" | "admin" | "incomplete">(
     "all",
   );
   const [selected, setSelected] = useState<Member | null>(null);
@@ -152,16 +152,15 @@ export default function AdminMembersClient({
         m.is_approved_free_member === true &&
         m.profile_completed === true &&
         m.is_admin === false) ||
-      (filter === "free_started" &&
-        m.membership_level === "free" &&
-        m.free_membership_contact_submitted === false &&
-        m.is_approved_free_member === false &&
-        m.profile_completed === true &&
-        m.is_admin === false) ||
       (filter === "waitlist" &&
         m.membership_level === "waitlist") ||
       (filter === "admin" && m.is_admin === true) ||
-      (filter === "incomplete" && !m.profile_completed && m.is_admin === false);
+      (filter === "incomplete" && (
+        m.profile_completed !== true ||
+        (m.membership_level === "free" &&
+         m.is_approved_free_member !== true &&
+         m.free_membership_contact_submitted === false)
+      ));
 
     return matchesSearch && matchesFilter;
   });
@@ -433,15 +432,14 @@ export default function AdminMembersClient({
             )}
           </div>
           <div className="flex gap-2 flex-wrap">
-            {(["all", "paid", "free_approved", "free_started", "waitlist", "admin", "incomplete"] as const).map((f) => {
+            {(["all", "paid", "free_approved", "waitlist", "admin", "incomplete"] as const).map((f) => {
               const labelMap: Record<string, string> = {
                 all: "All",
                 paid: "Paid",
                 free_approved: "Free",
-                free_started: "In Limbo",
                 waitlist: "Waitlist",
                 admin: "Admins",
-                incomplete: "Profile Incomplete",
+                incomplete: "Incomplete",
               };
               return (
                 <button

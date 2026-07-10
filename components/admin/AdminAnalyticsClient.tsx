@@ -369,24 +369,12 @@ export default function AdminAnalyticsClient({
     ).length;
   }, [profiles]);
 
-  // Started free members (initiated flow, not submitted, non-admin, completed profile)
-  const startedFreeCount = useMemo(() => {
-    return profiles.filter(
-      (p) =>
-        p.is_admin !== true &&
-        p.membership_level === "free" &&
-        p.is_approved_free_member !== true &&
-        p.free_membership_contact_submitted === false &&
-        p.profile_completed === true
-    ).length;
-  }, [profiles]);
-
   // Waitlist members
   const waitlistCount = useMemo(() => {
     return profiles.filter((p) => p.membership_level === "waitlist").length;
   }, [profiles]);
 
-  // Active Profiles = Free (approved) + Contributing + Founding (excludes admins, waitlist, incomplete, in limbo)
+  // Active Profiles = Free (approved) + Contributing + Founding (excludes admins, waitlist, incomplete)
   const activeProfilesCount = useMemo(() => {
     return profiles.filter(
       (p) =>
@@ -400,23 +388,14 @@ export default function AdminAnalyticsClient({
     ).length;
   }, [profiles]);
 
-  // Incomplete profiles (profile not completed, non-admin)
+  // Incomplete = profile not complete OR (free but never submitted contact form for free membership)
   const incompleteCount = useMemo(() => {
     return profiles.filter(
       (p) =>
-        p.is_admin !== true &&
-        p.profile_completed !== true
-    ).length;
-  }, [profiles]);
-
-  // Other/unknown profiles (membership_level not in free/paid categories, or free with null contact_submitted)
-  const otherCount = useMemo(() => {
-    return profiles.filter(
-      (p) =>
-        p.is_admin !== true &&
-        ( !["free", "contributing", "founding"].includes(p.membership_level || "")
-          || (p.membership_level === "free" && p.free_membership_contact_submitted === null)
-        )
+        p.profile_completed !== true ||
+        (p.membership_level === "free" &&
+         p.is_approved_free_member !== true &&
+         p.free_membership_contact_submitted === false)
     ).length;
   }, [profiles]);
 
@@ -974,13 +953,6 @@ export default function AdminAnalyticsClient({
             text: "text-white",
           },
           {
-            label: "In Limbo",
-            value: startedFreeCount,
-            icon: Users,
-            color: "bg-nfw-stone/40",
-            text: "text-nfw-blackberry",
-          },
-          {
             label: "Waitlist",
             value: waitlistCount,
             icon: Users,
@@ -988,7 +960,7 @@ export default function AdminAnalyticsClient({
             text: "text-nfw-blackberry",
           },
           {
-            label: "Profile Incomplete",
+            label: "Incomplete",
             value: incompleteCount,
             icon: Users,
             color: "bg-nfw-stone/40",
