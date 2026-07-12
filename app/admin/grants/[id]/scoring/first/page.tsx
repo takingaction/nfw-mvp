@@ -278,7 +278,9 @@ export default function FirstReviewPage() {
         <div className="grid grid-cols-12 gap-6">
           {/* Rubric Sidebar */}
           <div className="col-span-12 lg:col-span-3">
-            <GrantScoringRubric showDiscussionFlag={true} />
+            <div className="sticky top-24">
+              <GrantScoringRubric showDiscussionFlag={true} />
+            </div>
           </div>
 
           {/* Application List */}

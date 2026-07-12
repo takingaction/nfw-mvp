@@ -248,12 +248,14 @@ export default function SecondReviewPage() {
         <div className="grid grid-cols-12 gap-6">
           {/* Rubric Sidebar */}
           <div className="col-span-12 lg:col-span-3">
-            <GrantScoringRubric showDiscussionFlag={false} />
-            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
-              <p className="text-xs text-yellow-800">
-                <strong>Note:</strong> You cannot see the first reviewer&apos;s
-                scores. Score each application independently based on the rubric.
-              </p>
+            <div className="sticky top-24">
+              <GrantScoringRubric showDiscussionFlag={false} />
+              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
+                <p className="text-xs text-yellow-800">
+                  <strong>Note:</strong> You cannot see the first reviewer&apos;s
+                  scores. Score each application independently based on the rubric.
+                </p>
+              </div>
             </div>
           </div>
 
