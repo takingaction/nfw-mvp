@@ -85,8 +85,14 @@ export default function GrantApplicationScorer({
   }, [urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes]);
 
   const handleSave = async (data: ScoreData) => {
+    console.log("[GrantApplicationScorer] handleSave called for grant", grant.id, data);
     setLocalSaving(true);
-    await onSave(grant.id, data);
+    try {
+      await onSave(grant.id, data);
+      console.log("[GrantApplicationScorer] save completed successfully");
+    } catch (err) {
+      console.error("[GrantApplicationScorer] save failed:", err);
+    }
     setLocalSaving(false);
   };
 

@@ -53,6 +53,7 @@ const adminSections: AdminSection[] = [
       { label: "Manage Members", href: "/admin/members" },
       { label: "Manage Grants", href: "/admin/grants" },
       { label: "Waitlist Management", href: "/admin/waitlist" },
+      { label: "Incomplete Members", href: "/admin/incomplete-members" },
     ],
   },
   {

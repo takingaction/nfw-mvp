@@ -12,16 +12,20 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    console.log("[scores/first GET] Request received");
+    
     const supabase = await createServerClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
+      console.log("[scores/first GET] Unauthorized");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id: cycleId } = await params;
+    console.log("[scores/first GET] cycleId:", cycleId);
 
     // Get cycle to check scoring_started_at
     const { data: cycle } = await supabaseAdmin
@@ -30,12 +34,15 @@ export async function GET(
       .eq("id", cycleId)
       .single();
 
+    console.log("[scores/first GET] cycle:", cycle);
+
     if (!cycle?.scoring_started_at) {
+      console.log("[scores/first GET] Scoring has not started yet");
       return NextResponse.json({ error: "Scoring has not started yet" }, { status: 400 });
     }
 
     // Get all grants with first reviewer scores
-    const { data: grants } = await supabaseAdmin
+    const { data: grants, error: grantsError } = await supabaseAdmin
       .from("grants")
       .select(`
         id,
@@ -54,11 +61,17 @@ export async function GET(
       .eq("cycle_id", cycleId)
       .order("submitted_at", { ascending: false });
 
+    console.log("[scores/first GET] grantsError:", grantsError);
+    console.log("[scores/first GET] grants count:", grants?.length);
+    console.log("[scores/first GET] sample grant scores:", grants?.[0]?.grant_scores);
+
     // Filter to only first reviewer scores
     const grantsWithFirstScores = grants?.map((g) => ({
       ...g,
       grant_scores: g.grant_scores?.filter((s: any) => s.reviewer_name === "first") || [],
     }));
+
+    console.log("[scores/first GET] filtered grantsWithFirstScores sample:", grantsWithFirstScores?.[0]?.grant_scores);
 
     return NextResponse.json({
       grants: grantsWithFirstScores || [],
@@ -66,6 +79,7 @@ export async function GET(
       scoring_completed_at: cycle.scoring_completed_at,
     });
   } catch (err: any) {
+    console.error("[scores/first GET] Exception:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
@@ -75,17 +89,21 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    console.log("[scores/first POST] Request received");
+    
     const supabase = await createServerClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
+      console.log("[scores/first POST] Unauthorized");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id: cycleId } = await params;
     const body = await request.json();
+    console.log("[scores/first POST] Body:", body);
 
     const {
       grantId,
@@ -100,8 +118,10 @@ export async function POST(
 
     // Calculate total score
     const total_score = (urgency_score || 0) + (authenticity_score || 0) + (impact_score || 0);
+    console.log("[scores/first POST] Calculated total_score:", total_score);
 
     // Upsert the score
+    console.log("[scores/first POST] Upserting to grant_scores...");
     const { error } = await supabaseAdmin
       .from("grant_scores")
       .upsert(
@@ -125,6 +145,8 @@ export async function POST(
         }
       );
 
+    console.log("[scores/first POST] Upsert error:", error);
+
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -137,8 +159,10 @@ export async function POST(
         .eq("id", grantId);
     }
 
+    console.log("[scores/first POST] Success! Returning total_score:", total_score);
     return NextResponse.json({ success: true, total_score });
   } catch (err: any) {
+    console.error("[scores/first POST] Exception:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

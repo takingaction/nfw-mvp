@@ -86,6 +86,7 @@ export default function FirstReviewPage() {
   };
 
   const handleSaveScore = async (grantId: string, scoreData: ScoreData) => {
+    console.log("[FirstReviewPage] handleSaveScore called for grantId:", grantId, scoreData);
     try {
       const res = await fetch(`/api/admin/grants/${cycleId}/scores/first`, {
         method: "POST",
@@ -93,10 +94,16 @@ export default function FirstReviewPage() {
         body: JSON.stringify({ grantId, ...scoreData }),
       });
 
+      console.log("[FirstReviewPage] API response status:", res.status);
+
       if (!res.ok) {
         const data = await res.json();
+        console.error("[FirstReviewPage] API error:", data);
         throw new Error(data.error || "Failed to save score");
       }
+
+      const result = await res.json();
+      console.log("[FirstReviewPage] API success:", result);
     } catch (err: any) {
       console.error("Error saving score:", err);
     }
@@ -271,9 +278,7 @@ export default function FirstReviewPage() {
         <div className="grid grid-cols-12 gap-6">
           {/* Rubric Sidebar */}
           <div className="col-span-12 lg:col-span-3">
-            <div className="sticky top-24">
-              <GrantScoringRubric showDiscussionFlag={true} />
-            </div>
+            <GrantScoringRubric showDiscussionFlag={true} />
           </div>
 
           {/* Application List */}

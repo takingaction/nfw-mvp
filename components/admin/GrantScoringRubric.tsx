@@ -31,7 +31,7 @@ export default function GrantScoringRubric({
 
       {/* Content */}
       {!isCollapsed && (
-        <div className="p-4 space-y-4 text-sm">
+        <div className="p-4 space-y-4 text-sm max-h-96 overflow-y-auto">
           {/* URGENCY */}
           <div>
             <h4 className="font-black text-nfw-blackberry font-ui uppercase tracking-wider mb-2 text-xs">
