@@ -86,7 +86,6 @@ export default function FirstReviewPage() {
   };
 
   const handleSaveScore = async (grantId: string, scoreData: ScoreData) => {
-    console.log("[FirstReviewPage] handleSaveScore called for grantId:", grantId, scoreData);
     try {
       const res = await fetch(`/api/admin/grants/${cycleId}/scores/first`, {
         method: "POST",
@@ -94,16 +93,28 @@ export default function FirstReviewPage() {
         body: JSON.stringify({ grantId, ...scoreData }),
       });
 
-      console.log("[FirstReviewPage] API response status:", res.status);
-
       if (!res.ok) {
         const data = await res.json();
-        console.error("[FirstReviewPage] API error:", data);
         throw new Error(data.error || "Failed to save score");
       }
 
+      // Update local state with saved score
       const result = await res.json();
-      console.log("[FirstReviewPage] API success:", result);
+      setGrants((prevGrants) =>
+        prevGrants.map((g) => {
+          if (g.id === grantId) {
+            return {
+              ...g,
+              grant_scores: [{
+                ...g.grant_scores?.[0],
+                ...scoreData,
+                total_score: result.total_score,
+              }],
+            };
+          }
+          return g;
+        })
+      );
     } catch (err: any) {
       console.error("Error saving score:", err);
     }
@@ -291,10 +302,10 @@ export default function FirstReviewPage() {
             <div className="space-y-3">
               {grants.map((grant) => {
                 const score = grant.grant_scores?.[0];
-                const isComplete = score?.is_complete;
                 const subtotal = (score?.urgency_score ?? 0) +
                   (score?.authenticity_score ?? 0) +
                   (score?.impact_score ?? 0);
+                const hasScore = subtotal > 0;
 
                 return (
                   <button
@@ -303,7 +314,7 @@ export default function FirstReviewPage() {
                     className={`w-full text-left p-4 rounded transition-all ${
                       selectedGrant === grant.id
                         ? "bg-nfw-aubergine text-white"
-                        : isComplete
+                        : hasScore
                         ? "bg-green-50 border border-green-200 hover:border-green-300"
                         : "bg-white border border-nfw-blackberry/10 hover:border-nfw-blackberry/20"
                     }`}
@@ -314,7 +325,7 @@ export default function FirstReviewPage() {
                           className={`w-8 h-8 rounded flex items-center justify-center text-sm font-bold ${
                             selectedGrant === grant.id
                               ? "bg-white/20 text-white"
-                              : isComplete
+                              : hasScore
                               ? "bg-green-500 text-white"
                               : "bg-nfw-dove text-nfw-blackberry"
                           }`}
@@ -345,7 +356,7 @@ export default function FirstReviewPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        {isComplete ? (
+                        {hasScore ? (
                           <span
                             className={`text-xs px-2 py-0.5 rounded ${
                               selectedGrant === grant.id
