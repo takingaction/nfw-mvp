@@ -1578,6 +1578,76 @@ export async function sendAbandonedCheckoutEmail({
 }
 
 // =============================================================================
+// INCOMPLETE MEMBER REENGAGEMENT EMAIL
+// =============================================================================
+
+export async function sendIncompleteMemberEmail({
+  to,
+  name,
+}: {
+  to: string;
+  name: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const slug = "incomplete-member-reengagement";
+  const siteUrl = "https://nationalfundforwomen.org";
+
+  const variables: Record<string, string> = {
+    name: name || "there",
+    signup_url: `${siteUrl}/auth/sign-up?step=1`,
+    siteUrl,
+  };
+
+  try {
+    // Check if template is published and use that, otherwise fall back
+    const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
+
+    if (preRenderedResult) {
+      await sendBrandedEmail({
+        to,
+        subject: preRenderedResult.subject || "Complete your NFW membership",
+        name: variables.name,
+        preRenderedHtml: preRenderedResult.html,
+        useShell: false,
+      });
+      return { success: true };
+    }
+
+    // Fall back to html_content if not published
+    const template = await fetchEmailTemplateAdmin(slug);
+    if (!template) {
+      console.log(`[sendIncompleteMemberEmail] Template "${slug}" not found`);
+      return { success: false, error: "Template not found" };
+    }
+
+    if (template.is_active === false) {
+      console.log(`[sendIncompleteMemberEmail] Template ${slug} is inactive, skipping email to ${to}`);
+      return { success: false, error: "Template inactive" };
+    }
+
+    const body = replaceTemplateVariables(template.html, variables);
+
+    await sendBrandedEmail({
+      to,
+      subject: template.subject,
+      name: variables.name,
+      heroImage: template.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg",
+      heroText: "Complete your membership",
+      headline: "You're almost there!",
+      body,
+      ctaText: "COMPLETE YOUR PROFILE",
+      ctaUrl: variables.signup_url,
+      footerCtaText: "VISIT WEBSITE",
+      footerCtaUrl: siteUrl,
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("[sendIncompleteMemberEmail] Error:", err);
+    return { success: false, error: err?.message || "Unknown error" };
+  }
+}
+
+// =============================================================================
 // WAITLIST WELCOME EMAIL
 // =============================================================================
 
@@ -1646,6 +1716,148 @@ export async function sendWaitlistWelcomeEmail({
     return { success: true };
   } catch (err: any) {
     console.error("[sendWaitlistWelcomeEmail] Error:", err);
+    return { success: false, error: err?.message || "Unknown error" };
+  }
+}
+
+// =============================================================================
+// SECOND REVIEWER NOTIFICATION EMAIL
+// =============================================================================
+
+export async function sendSecondReviewerNotification({
+  cycleName,
+}: {
+  cycleName: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const toEmail = "michelle@nationalfundforwomen.org";
+  const siteUrl = "https://nationalfundforwomen.org";
+
+  try {
+    const resend = getResend();
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #EBEBE8; font-family: 'DM Sans', Arial, sans-serif;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <div style="background-color: #3E145F; padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
+      <h1 style="color: #FFFFFF; margin: 0; font-size: 24px; font-weight: 900;">Grant Review Ready</h1>
+    </div>
+    <div style="background-color: #B693C0; padding: 30px; border-radius: 0;">
+      <p style="color: #FFFFFF; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+        Hello Michelle,
+      </p>
+      <p style="color: #FFFFFF; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+        The first reviewer has completed their scoring for the grant cycle:
+      </p>
+      <div style="background-color: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <h2 style="color: #F8F19A; margin: 0 0 10px 0; font-size: 20px;">${cycleName}</h2>
+      </div>
+      <p style="color: #FFFFFF; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+        You can now log in to complete your review. Your scores will be combined with the first reviewer's to determine final rankings.
+      </p>
+    </div>
+    <div style="background-color: #2E1F38; padding: 30px; text-align: center; border-radius: 0 0 12px 12px;">
+      <a href="${siteUrl}/admin/grants" style="display: inline-block; background-color: #F8F19A; color: #3E145F; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px;">
+        START YOUR REVIEW
+      </a>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    await resend.emails.send({
+      from: FROM,
+      to: toEmail,
+      subject: `Grant review ready - ${cycleName}`,
+      html,
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("[sendSecondReviewerNotification] Error:", err);
+    return { success: false, error: err?.message || "Unknown error" };
+  }
+}
+
+// =============================================================================
+// GRANT APPROVED EMAIL
+// =============================================================================
+
+export async function sendGrantApprovedEmail({
+  to,
+  name,
+  grantCycleName,
+  amount,
+  ctaUrl,
+}: {
+  to: string;
+  name: string;
+  grantCycleName: string;
+  amount: number;
+  ctaUrl: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const slug = "grant-approved";
+  const siteUrl = "https://nationalfundforwomen.org";
+
+  const variables: Record<string, string> = {
+    name: name || "there",
+    grantCycleName,
+    amount: amount.toLocaleString(),
+    ctaUrl,
+    siteUrl,
+  };
+
+  try {
+    // Check if template is published and use that
+    const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
+
+    if (preRenderedResult) {
+      await sendBrandedEmail({
+        to,
+        subject: preRenderedResult.subject || "Your grant application has been approved!",
+        name: variables.name,
+        preRenderedHtml: preRenderedResult.html,
+        useShell: false,
+      });
+      return { success: true };
+    }
+
+    // Fall back to html_content if not published
+    const template = await fetchEmailTemplateAdmin(slug);
+    if (!template) {
+      console.log(`[sendGrantApprovedEmail] Template "${slug}" not found`);
+      return { success: false, error: "Template not found" };
+    }
+
+    if (template.is_active === false) {
+      console.log(`[sendGrantApprovedEmail] Template ${slug} is inactive, skipping email to ${to}`);
+      return { success: false, error: "Template inactive" };
+    }
+
+    const body = replaceTemplateVariables(template.html, variables);
+
+    await sendBrandedEmail({
+      to,
+      subject: template.subject,
+      name: variables.name,
+      heroImage: template.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg",
+      heroText: "Grant Approved",
+      headline: "Congratulations!",
+      body,
+      ctaText: "VIEW YOUR DASHBOARD",
+      ctaUrl: variables.ctaUrl,
+      footerCtaText: "VISIT WEBSITE",
+      footerCtaUrl: siteUrl,
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("[sendGrantApprovedEmail] Error:", err);
     return { success: false, error: err?.message || "Unknown error" };
   }
 }

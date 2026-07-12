@@ -7049,3 +7049,107 @@ NOTIFY pgrst, 'reload';
 ### Commit
 
 - `98a5419` - feat: remove waitlist_position field, order by joined_at instead
+
+---
+
+## Session 2026-07-12: Grant Application Scoring System
+
+### Overview
+
+Implemented a dual-reviewer scoring system for grant applications with sequential review workflow and combined scoring for final decisions.
+
+### Database Schema
+
+**Migration 111:** Creates grant scoring tables with RLS policies
+
+**New Tables:**
+- `grant_scores` - Stores individual reviewer scores (urgency, authenticity, impact, barriers, discussion flag)
+- `grant_tentative_approvals` - Stores tentative approval selections
+
+**New Columns:**
+- `grant_cycles`: `scoring_started_at`, `scoring_completed_at`, `final_approved_at`
+- `grants`: `rachel_complete`, `michelle_complete`
+
+### Scoring Rubric
+
+| Criteria | Score Range | Description |
+|----------|-------------|-------------|
+| Urgency | 0-3 | Immediate threat to safety, housing, health |
+| Authenticity of Need | 0-3 | Clear personal narrative with who/what/why |
+| Impact | 0-3 | Grant transforms circumstances, bridge to stability |
+| Barriers | Y/N | Demographic experiencing disproportionate barriers |
+
+**Decision Bands (Combined):**
+- 14-18: Approved
+- 8-13: Runner Up
+- 0-7: Not Approved
+
+### Workflow
+
+1. **First Review** (`/admin/grants/[id]/scoring/first`)
+   - Score each application: Urgency, Authenticity, Impact, Barriers
+   - Flag for discussion if needed (notes field)
+   - Auto-save on change
+   - Mark review complete → notifies Michelle
+
+2. **Second Review** (`/admin/grants/[id]/scoring/second`)
+   - Locked until first review complete
+   - Same scoring (no discussion flag)
+   - Cannot see first reviewer's scores
+
+3. **Combined Scores** (`/admin/grants/[id]/scoring/combined`)
+   - Sorted by combined score
+   - Shows decision bands, discussion flags
+   - Tentative approval selection (up to grants_available)
+   - Finalize → sends approved/not-approved emails
+
+### API Routes
+
+| Route | Purpose |
+|-------|---------|
+| `/api/admin/grants/[id]/scoring/start` | Start first review |
+| `/api/admin/grants/[id]/scoring/complete` | Complete first review, notify Michelle |
+| `/api/admin/grants/[id]/scores/first` | Get/save first reviewer scores |
+| `/api/admin/grants/[id]/scores/second` | Get/save second reviewer scores |
+| `/api/admin/grants/[id]/scores/combined` | Get combined scores + ranking |
+| `/api/admin/grants/[id]/tentative-approve` | Save tentative approvals |
+| `/api/admin/grants/[id]/final-approve` | Finalize + send emails |
+
+### Email Notifications
+
+- **Second reviewer notification**: Sent to michelle@nationalfundforwomen.org when first completes
+- **Approved email**: Uses "Grant: Approved" template with bank info request
+- **Not approved email**: Uses "Grant: Not Approved" template via batch send (50 at a time)
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/111_grant_scoring_schema.sql` | Schema + RLS |
+| `app/api/admin/grants/[id]/scoring/start/route.ts` | Start scoring |
+| `app/api/admin/grants/[id]/scoring/complete/route.ts` | Complete + notify |
+| `app/api/admin/grants/[id]/scores/route.ts` | Get all scores |
+| `app/api/admin/grants/[id]/scores/first/route.ts` | First reviewer CRUD |
+| `app/api/admin/grants/[id]/scores/second/route.ts` | Second reviewer CRUD |
+| `app/api/admin/grants/[id]/scores/combined/route.ts` | Combined ranking |
+| `app/api/admin/grants/[id]/tentative-approve/route.ts` | Save selections |
+| `app/api/admin/grants/[id]/final-approve/route.ts` | Finalize + emails |
+| `app/admin/grants/[id]/scoring/first/page.tsx` | First review UI |
+| `app/admin/grants/[id]/scoring/second/page.tsx` | Second review UI |
+| `app/admin/grants/[id]/scoring/combined/page.tsx` | Combined scores UI |
+| `components/admin/GrantScoringRubric.tsx` | Collapsible rubric |
+| `components/admin/GrantScoreInput.tsx` | Score selector (0-3) |
+| `components/admin/GrantApplicationScorer.tsx` | Application scorer |
+| `components/admin/GrantCombinedScores.tsx` | Combined table |
+| `lib/email.ts` | Added sendSecondReviewerNotification, sendGrantApprovedEmail |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/grants/[id]/page.tsx` | Added First/Second Review buttons |
+| `app/api/admin/grants/[id]/final-approve/route.ts` | Uses batch email for rejections |
+
+### Commit
+
+- (pending) - feat: grant application scoring system with dual-reviewer workflow

@@ -1,0 +1,265 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Loader2 } from "lucide-react";
+import GrantScoreInput from "./GrantScoreInput";
+
+interface GrantApplicationScorerProps {
+  grant: any;
+  reviewerType: "first" | "second";
+  onSave: (grantId: string, data: ScoreData) => void;
+  saving?: boolean;
+}
+
+export interface ScoreData {
+  urgency_score: number | null;
+  authenticity_score: number | null;
+  impact_score: number | null;
+  barriers_yn: boolean | null;
+  needs_discussion?: boolean;
+  discussion_notes?: string;
+  is_complete?: boolean;
+}
+
+const decodeHtml = (html: string): string => {
+  if (typeof document === "undefined") return html || "";
+  const div = document.createElement("div");
+  div.innerHTML = html || "";
+  return div.textContent || "";
+};
+
+export default function GrantApplicationScorer({
+  grant,
+  reviewerType,
+  onSave,
+  saving = false,
+}: GrantApplicationScorerProps) {
+  const existingScore = grant.grant_scores?.[0];
+
+  const [urgency_score, setUrgency_score] = useState<number | null>(
+    existingScore?.urgency_score ?? null
+  );
+  const [authenticity_score, setAuthenticity_score] = useState<number | null>(
+    existingScore?.authenticity_score ?? null
+  );
+  const [impact_score, setImpact_score] = useState<number | null>(
+    existingScore?.impact_score ?? null
+  );
+  const [barriers_yn, setBarriers_yn] = useState<boolean | null>(
+    existingScore?.barriers_yn ?? null
+  );
+  const [needs_discussion, setNeeds_discussion] = useState<boolean>(
+    existingScore?.needs_discussion ?? false
+  );
+  const [discussion_notes, setDiscussion_notes] = useState<string>(
+    existingScore?.discussion_notes ?? ""
+  );
+
+  const [localSaving, setLocalSaving] = useState(false);
+
+  // Auto-save when values change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const totalScore =
+        (urgency_score ?? 0) +
+        (authenticity_score ?? 0) +
+        (impact_score ?? 0);
+
+      if (
+        urgency_score !== null ||
+        authenticity_score !== null ||
+        impact_score !== null
+      ) {
+        handleSave({
+          urgency_score,
+          authenticity_score,
+          impact_score,
+          barriers_yn,
+          needs_discussion: reviewerType === "first" ? needs_discussion : undefined,
+          discussion_notes: reviewerType === "first" ? discussion_notes : undefined,
+        });
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes]);
+
+  const handleSave = async (data: ScoreData) => {
+    setLocalSaving(true);
+    await onSave(grant.id, data);
+    setLocalSaving(false);
+  };
+
+  const totalScore = (urgency_score ?? 0) + (authenticity_score ?? 0) + (impact_score ?? 0);
+
+  return (
+    <div className="bg-white border-2 border-nfw-blackberry/10 p-4 space-y-4">
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 bg-nfw-lilac/30 flex items-center justify-center text-sm font-black text-nfw-blackberry flex-shrink-0">
+            {(grant.profiles?.full_name || "U")
+              .charAt(0)
+              .toUpperCase()}
+          </div>
+          <div>
+            <p className="font-bold text-nfw-blackberry">
+              {grant.profiles?.full_name || "Unknown"}
+            </p>
+            {grant.profiles?.email && (
+              <p className="text-xs text-nfw-blackberry/50">
+                {grant.profiles.email}
+              </p>
+            )}
+            {grant.profiles?.city && (
+              <p className="text-xs text-nfw-blackberry/50">
+                {grant.profiles.city}, {grant.profiles.state}
+              </p>
+            )}
+            {grant.is_nominating && (
+              <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-nfw-lilac/20 text-nfw-blackberry font-medium rounded">
+                Nomination: {grant.nominee_name}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="text-right">
+          {localSaving || saving ? (
+            <div className="flex items-center gap-1 text-xs text-nfw-blackberry/50">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Saving...
+            </div>
+          ) : totalScore > 0 ? (
+            <div className="text-xs text-nfw-blackberry/50">
+              Auto-saved
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Application Content */}
+      <div className="bg-nfw-dove p-3 space-y-3 text-sm">
+        <div>
+          <p className="text-xs font-semibold text-nfw-blackberry/40 uppercase tracking-wider mb-1">
+            {grant.is_nominating ? "About the nominee" : "Who are you?"}
+          </p>
+          <p className="text-nfw-blackberry leading-relaxed">
+            {decodeHtml(grant.who_are_you)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-nfw-blackberry/40 uppercase tracking-wider mb-1">
+            Biggest Challenge
+          </p>
+          <p className="text-nfw-blackberry leading-relaxed">
+            {decodeHtml(grant.biggest_challenge)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-nfw-blackberry/40 uppercase tracking-wider mb-1">
+            Fund Usage
+          </p>
+          <p className="text-nfw-blackberry leading-relaxed">
+            {decodeHtml(grant.fund_usage)}
+          </p>
+        </div>
+      </div>
+
+      {/* Scoring */}
+      <div className="space-y-4 pt-2">
+        <GrantScoreInput
+          label="URGENCY"
+          value={urgency_score}
+          onChange={setUrgency_score}
+          description="Is the applicant facing an immediate threat?"
+        />
+
+        <GrantScoreInput
+          label="AUTHENTICITY OF NEED"
+          value={authenticity_score}
+          onChange={setAuthenticity_score}
+          description="Does the applicant provide a clear, personal narrative?"
+        />
+
+        <GrantScoreInput
+          label="IMPACT"
+          value={impact_score}
+          onChange={setImpact_score}
+          description="Will this grant transform their circumstances?"
+        />
+
+        {/* BARRIERS */}
+        <div className="space-y-2">
+          <label className="block text-xs font-semibold text-nfw-blackberry/60 uppercase tracking-wider">
+            BARRIERS (Y/N)
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setBarriers_yn(true)}
+              className={`flex-1 py-2 text-sm font-bold rounded transition-all ${
+                barriers_yn === true
+                  ? "bg-nfw-aubergine text-white"
+                  : "bg-nfw-dove text-nfw-blackberry hover:bg-nfw-aubergine/20"
+              }`}
+            >
+              YES
+            </button>
+            <button
+              type="button"
+              onClick={() => setBarriers_yn(false)}
+              className={`flex-1 py-2 text-sm font-bold rounded transition-all ${
+                barriers_yn === false
+                  ? "bg-nfw-blackberry text-white"
+                  : "bg-nfw-dove text-nfw-blackberry hover:bg-nfw-blackberry/10"
+              }`}
+            >
+              NO
+            </button>
+          </div>
+        </div>
+
+        {/* NEEDS DISCUSSION (First reviewer only) */}
+        {reviewerType === "first" && (
+          <div className="border-t border-nfw-blackberry/10 pt-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id={`discussion-${grant.id}`}
+                checked={needs_discussion}
+                onChange={(e) => setNeeds_discussion(e.target.checked)}
+                className="w-4 h-4 accent-yellow-500"
+              />
+              <label
+                htmlFor={`discussion-${grant.id}`}
+                className="text-xs font-semibold text-nfw-blackberry/60 uppercase tracking-wider"
+              >
+                ⚠️ NEEDS ADDITIONAL DISCUSSION
+              </label>
+            </div>
+            {needs_discussion && (
+              <textarea
+                value={discussion_notes}
+                onChange={(e) => setDiscussion_notes(e.target.value)}
+                placeholder="Explain why this application needs discussion..."
+                rows={3}
+                className="w-full px-3 py-2 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac text-sm resize-none"
+              />
+            )}
+          </div>
+        )}
+
+        {/* TOTAL SCORE */}
+        <div className="bg-nfw-aubergine/10 p-3 rounded flex items-center justify-between">
+          <span className="text-xs font-semibold text-nfw-blackberry/60 uppercase tracking-wider">
+            Subtotal Score
+          </span>
+          <span className="text-2xl font-black text-nfw-aubergine">
+            {totalScore}
+            <span className="text-sm text-nfw-blackberry/50">/9</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}

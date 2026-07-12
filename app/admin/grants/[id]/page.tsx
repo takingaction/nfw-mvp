@@ -56,6 +56,19 @@ export default async function AdminGrantCyclePage({
     (g) => g.status === "payment_pending",
   ).length || 0;
 
+  // Check scoring status
+  const scoringStarted = !!cycle.scoring_started_at;
+  const scoringCompleted = !!cycle.scoring_completed_at;
+  const finalApproved = !!cycle.final_approved_at;
+
+  // Check if first reviewer has completed all scores
+  const firstCompleteCount = grants?.filter((g) => g.rachel_complete).length || 0;
+  const allFirstComplete = firstCompleteCount === grants?.length;
+
+  // Check if second reviewer has completed all scores
+  const secondCompleteCount = grants?.filter((g) => g.michelle_complete).length || 0;
+  const allSecondComplete = secondCompleteCount === grants?.length;
+
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-7xl mx-auto">
@@ -79,6 +92,53 @@ export default async function AdminGrantCyclePage({
             </p>
           </div>
           <div className="text-right flex gap-6 items-center">
+            {/* Scoring Buttons */}
+            <div className="flex gap-2">
+              {finalApproved ? (
+                <Link
+                  href={`/admin/grants/${id}/scoring/combined`}
+                  className="px-4 py-2 bg-nfw-green/20 border border-nfw-green text-nfw-blackberry font-ui text-sm font-medium hover:bg-nfw-green/30 transition-colors"
+                >
+                  View Finalized
+                </Link>
+              ) : scoringCompleted ? (
+                <>
+                  <Link
+                    href={`/admin/grants/${id}/scoring/combined`}
+                    className="px-4 py-2 bg-nfw-citrine border border-nfw-blackberry/20 text-nfw-blackberry font-ui text-sm font-medium hover:bg-nfw-citrine/80 transition-colors"
+                  >
+                    Combined Scores ({allSecondComplete ? "Complete" : "In Progress"})
+                  </Link>
+                </>
+              ) : scoringStarted ? (
+                <>
+                  <Link
+                    href={`/admin/grants/${id}/scoring/first`}
+                    className="px-4 py-2 bg-nfw-aubergine/10 border border-nfw-aubergine/30 text-nfw-blackberry font-ui text-sm font-medium hover:bg-nfw-aubergine/20 transition-colors"
+                  >
+                    First Review ({firstCompleteCount}/{grants?.length || 0})
+                  </Link>
+                  <Link
+                    href={`/admin/grants/${id}/scoring/second`}
+                    className={`px-4 py-2 font-ui text-sm font-medium transition-colors ${
+                      allFirstComplete
+                        ? "bg-nfw-wisteria/10 border border-nfw-wisteria/30 text-nfw-blackberry hover:bg-nfw-wisteria/20"
+                        : "bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed"
+                    }`}
+                  >
+                    Second Review {allFirstComplete ? `(${secondCompleteCount}/${grants?.length || 0})` : "(Locked)"}
+                  </Link>
+                </>
+              ) : (
+                <Link
+                  href={`/admin/grants/${id}/scoring/first`}
+                  className="px-4 py-2 bg-nfw-aubergine text-white font-ui text-sm font-medium hover:bg-nfw-aubergine/90 transition-colors"
+                >
+                  Start First Review
+                </Link>
+              )}
+            </div>
+
             <div>
               <p
                 className={`text-3xl font-black font-ui ${
