@@ -39,19 +39,19 @@ export default function GrantScoringRubric({
             </h4>
             <div className="space-y-2 text-xs">
               <div className="flex items-start gap-2">
-                <span className="font-bold text-nfw-blackberry w-6">3</span>
+                <span className="font-bold text-nfw-blackberry w-6 flex-shrink-0">3</span>
                 <span className="text-nfw-blackberry/70"><strong>Immediate</strong> - Unsafe environment or will lose necessities within the month</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="font-bold text-nfw-blackberry w-6">2</span>
+                <span className="font-bold text-nfw-blackberry w-6 flex-shrink-0">2</span>
                 <span className="text-nfw-blackberry/70"><strong>At Risk</strong> - Circumstances are precarious or unstable and trending downwards</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="font-bold text-nfw-blackberry w-6">1</span>
+                <span className="font-bold text-nfw-blackberry w-6 flex-shrink-0">1</span>
                 <span className="text-nfw-blackberry/70"><strong>Stable</strong> - Has flexibility and capacity to manage without the funds</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="font-bold text-nfw-blackberry w-6">0</span>
+                <span className="font-bold text-nfw-blackberry w-6 flex-shrink-0">0</span>
                 <span className="text-nfw-blackberry/70"><strong>Unclear</strong> - Cannot assess urgency from information provided</span>
               </div>
             </div>
@@ -64,19 +64,19 @@ export default function GrantScoringRubric({
             </h4>
             <div className="space-y-2 text-xs">
               <div className="flex items-start gap-2">
-                <span className="font-bold text-nfw-blackberry w-6">3</span>
+                <span className="font-bold text-nfw-blackberry w-6 flex-shrink-0">3</span>
                 <span className="text-nfw-blackberry/70"><strong>High Clarity</strong> - Clear link of who they are to a specific current hurdle</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="font-bold text-nfw-blackberry w-6">2</span>
+                <span className="font-bold text-nfw-blackberry w-6 flex-shrink-0">2</span>
                 <span className="text-nfw-blackberry/70"><strong>Medium Clarity</strong> - Need is clear, but the who or why now is thin</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="font-bold text-nfw-blackberry w-6">1</span>
+                <span className="font-bold text-nfw-blackberry w-6 flex-shrink-0">1</span>
                 <span className="text-nfw-blackberry/70"><strong>Low Clarity</strong> - Vague, generic language</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="font-bold text-nfw-blackberry w-6">0</span>
+                <span className="font-bold text-nfw-blackberry w-6 flex-shrink-0">0</span>
                 <span className="text-nfw-blackberry/70"><strong>No Clarity</strong> - No explanation of who they are or why they want funds</span>
               </div>
             </div>
@@ -89,19 +89,19 @@ export default function GrantScoringRubric({
             </h4>
             <div className="space-y-2 text-xs">
               <div className="flex items-start gap-2">
-                <span className="font-bold text-nfw-blackberry w-6">3</span>
+                <span className="font-bold text-nfw-blackberry w-6 flex-shrink-0">3</span>
                 <span className="text-nfw-blackberry/70"><strong>High</strong> - Clear financial gap, funds directly address it, circumstances will improve</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="font-bold text-nfw-blackberry w-6">2</span>
+                <span className="font-bold text-nfw-blackberry w-6 flex-shrink-0">2</span>
                 <span className="text-nfw-blackberry/70"><strong>Medium</strong> - Need for funds is clear, but connection to improved outcome is general</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="font-bold text-nfw-blackberry w-6">1</span>
+                <span className="font-bold text-nfw-blackberry w-6 flex-shrink-0">1</span>
                 <span className="text-nfw-blackberry/70"><strong>Low</strong> - Funds will help but impact is unclear</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="font-bold text-nfw-blackberry w-6">0</span>
+                <span className="font-bold text-nfw-blackberry w-6 flex-shrink-0">0</span>
                 <span className="text-nfw-blackberry/70"><strong>None</strong> - Intended use of funds is vague or unclear</span>
               </div>
             </div>
