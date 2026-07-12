@@ -7158,3 +7158,6 @@ Implemented a dual-reviewer scoring system for grant applications with sequentia
 - `5df2dd1` - feat: show flagged badge on application cards
 - `5ce1917` - fix: remove flag icon from avatar, keep flagged label only
 - `623429f` - feat: add reset button to clear scoring data for testing
+- `64253ee` - fix: clean up rubric instruction spacing, remove line breaks in descriptions
+- `e1906c5` - fix: replace em dashes with regular hyphens for consistent spacing
+- `337ffb6` - fix: add flex-shrink-0 to number spans for consistent alignment
