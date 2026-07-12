@@ -148,7 +148,7 @@ export default async function DashboardPage() {
       .limit(10),
     supabaseAdmin
       .from("grant_cycles")
-      .select("id, cycle_name, amount_per_grant, end_date, featured_image, status")
+      .select("id, cycle_name, amount_per_grant, end_date, featured_image, status, is_testing_only")
       .eq("status", "open")
       .order("end_date", { ascending: true })
       .limit(6),
@@ -207,7 +207,10 @@ export default async function DashboardPage() {
   const settings = dashboardSettingsResult?.data || {};
   const likedStores = likedStoresResult?.data || [];
   const userGrants = grantsResult?.data || [];
-  const availableCycles = cyclesResult?.data || [];
+  // Filter out testing-only cycles for non-admins
+  const availableCycles = (cyclesResult?.data || []).filter(
+    (cycle: any) => profile?.is_admin || !cycle.is_testing_only
+  );
 
   // Start with featured items from settings
   let featuredItems = (settings.featured_items || []).slice(0, 5);
