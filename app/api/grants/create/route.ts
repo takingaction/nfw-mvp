@@ -99,12 +99,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // Defense-in-depth: prevent applying to testing-only cycles
+    // Defense-in-depth: prevent non-admins from applying to testing-only cycles
     if (cycleData.is_testing_only) {
-      return NextResponse.json(
-        { error: "This grant cycle is not available" },
-        { status: 403 },
-      );
+      // Check if user is admin
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("is_admin")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.is_admin) {
+        return NextResponse.json(
+          { error: "This grant cycle is not available" },
+          { status: 403 },
+        );
+      }
+      // Admins can apply to testing-only cycles for testing purposes
     }
 
     // For self-applications, check if user already applied as themselves
