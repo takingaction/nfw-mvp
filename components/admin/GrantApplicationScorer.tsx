@@ -265,6 +265,31 @@ export default function GrantApplicationScorer({
             <span className="text-sm text-nfw-blackberry/50">/9</span>
           </span>
         </div>
+
+        {/* RESET BUTTON */}
+        <button
+          onClick={async () => {
+            if (!confirm("Reset all scoring data for this application?")) return;
+            setUrgency_score(null);
+            setAuthenticity_score(null);
+            setImpact_score(null);
+            setBarriers_yn(null);
+            setNeeds_discussion(false);
+            setDiscussion_notes("");
+            // Also reset via API
+            await onSave(grant.id, {
+              urgency_score: null,
+              authenticity_score: null,
+              impact_score: null,
+              barriers_yn: null,
+              needs_discussion: false,
+              discussion_notes: "",
+            });
+          }}
+          className="w-full py-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+        >
+          Reset Scoring
+        </button>
       </div>
     </div>
   );
