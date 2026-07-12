@@ -7161,3 +7161,29 @@ Implemented a dual-reviewer scoring system for grant applications with sequentia
 - `64253ee` - fix: clean up rubric instruction spacing, remove line breaks in descriptions
 - `e1906c5` - fix: replace em dashes with regular hyphens for consistent spacing
 - `337ffb6` - fix: add flex-shrink-0 to number spans for consistent alignment
+
+## Session 2026-07-12 (Afternoon): Internal Testing Only for Grant Cycles
+
+Added `is_testing_only` flag to grant cycles so admins can create test cycles that only they can see.
+
+### Database
+- Migration 114: `is_testing_only BOOLEAN DEFAULT FALSE` column on `grant_cycles` table
+
+### How It Works
+- Checkbox in admin grant cycle forms (new/edit pages)
+- `/grants/apply` - non-admin users don't see testing-only cycles; admins see all
+- `/dashboard` - available microgrants section filters out testing-only cycles for non-admins
+- Defense-in-depth: API rejects applications to testing-only cycles (returns 403)
+
+### Files Modified
+- `app/admin/grants/new/page.tsx` - Add checkbox
+- `app/admin/grants/[id]/edit/page.tsx` - Add checkbox
+- `app/api/admin/grants/create/route.ts` - Accept `is_testing_only`
+- `app/api/admin/grants/update-cycle/route.ts` - Accept `is_testing_only`
+- `app/grants/apply/page.tsx` - Filter testing cycles for non-admins
+- `app/api/grants/create/route.ts` - Defense-in-depth check
+- `app/dashboard/page.tsx` - Filter testing cycles from available microgrants
+
+### Commits
+- `be1a98c` - feat: add Internal Testing Only flag to grant cycles
+- `d520890` - fix: hide testing-only grant cycles from dashboard for non-admins
