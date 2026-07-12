@@ -37,34 +37,22 @@ export default function GrantScoringRubric({
             <h4 className="font-black text-nfw-blackberry font-ui uppercase tracking-wider mb-2 text-xs">
               URGENCY (0-3)
             </h4>
-            <div className="space-y-1 text-xs">
+            <div className="space-y-2 text-xs">
               <div className="flex items-start gap-2">
                 <span className="font-bold text-nfw-blackberry w-6">3</span>
-                <span className="text-nfw-blackberry/70">
-                  <strong>Immediate</strong> — Unsafe environment or will lose
-                  necessities within the month
-                </span>
+                <span className="text-nfw-blackberry/70"><strong>Immediate</strong> — Unsafe environment or will lose necessities within the month</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="font-bold text-nfw-blackberry w-6">2</span>
-                <span className="text-nfw-blackberry/70">
-                  <strong>At Risk</strong> — Circumstances are precarious or
-                  unstable and trending downwards
-                </span>
+                <span className="text-nfw-blackberry/70"><strong>At Risk</strong> — Circumstances are precarious or unstable and trending downwards</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="font-bold text-nfw-blackberry w-6">1</span>
-                <span className="text-nfw-blackberry/70">
-                  <strong>Stable</strong> — Has flexibility and capacity to manage
-                  without the funds
-                </span>
+                <span className="text-nfw-blackberry/70"><strong>Stable</strong> — Has flexibility and capacity to manage without the funds</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="font-bold text-nfw-blackberry w-6">0</span>
-                <span className="text-nfw-blackberry/70">
-                  <strong>Unclear</strong> — Cannot assess urgency from information
-                  provided
-                </span>
+                <span className="text-nfw-blackberry/70"><strong>Unclear</strong> — Cannot assess urgency from information provided</span>
               </div>
             </div>
           </div>
@@ -74,34 +62,22 @@ export default function GrantScoringRubric({
             <h4 className="font-black text-nfw-blackberry font-ui uppercase tracking-wider mb-2 text-xs">
               AUTHENTICITY OF NEED (0-3)
             </h4>
-            <div className="space-y-1 text-xs">
+            <div className="space-y-2 text-xs">
               <div className="flex items-start gap-2">
                 <span className="font-bold text-nfw-blackberry w-6">3</span>
-                <span className="text-nfw-blackberry/70">
-                  <strong>High Clarity</strong> — Clear link of who they are to
-                  a specific current hurdle. Feels like a genuine &quot;hand-raise&quot;
-                  moment.
-                </span>
+                <span className="text-nfw-blackberry/70"><strong>High Clarity</strong> — Clear link of who they are to a specific current hurdle</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="font-bold text-nfw-blackberry w-6">2</span>
-                <span className="text-nfw-blackberry/70">
-                  <strong>Medium Clarity</strong> — Need is clear, but the
-                  &quot;who&quot; or &quot;why now&quot; is thin
-                </span>
+                <span className="text-nfw-blackberry/70"><strong>Medium Clarity</strong> — Need is clear, but the who or why now is thin</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="font-bold text-nfw-blackberry w-6">1</span>
-                <span className="text-nfw-blackberry/70">
-                  <strong>Low Clarity</strong> — Vague, generic language
-                </span>
+                <span className="text-nfw-blackberry/70"><strong>Low Clarity</strong> — Vague, generic language</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="font-bold text-nfw-blackberry w-6">0</span>
-                <span className="text-nfw-blackberry/70">
-                  <strong>No Clarity</strong> — No explanation of who they
-                  are or why they want funds
-                </span>
+                <span className="text-nfw-blackberry/70"><strong>No Clarity</strong> — No explanation of who they are or why they want funds</span>
               </div>
             </div>
           </div>
@@ -111,33 +87,22 @@ export default function GrantScoringRubric({
             <h4 className="font-black text-nfw-blackberry font-ui uppercase tracking-wider mb-2 text-xs">
               IMPACT (0-3)
             </h4>
-            <div className="space-y-1 text-xs">
+            <div className="space-y-2 text-xs">
               <div className="flex items-start gap-2">
                 <span className="font-bold text-nfw-blackberry w-6">3</span>
-                <span className="text-nfw-blackberry/70">
-                  <strong>High</strong> — Clear financial gap, funds directly
-                  address it, circumstances will improve
-                </span>
+                <span className="text-nfw-blackberry/70"><strong>High</strong> — Clear financial gap, funds directly address it, circumstances will improve</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="font-bold text-nfw-blackberry w-6">2</span>
-                <span className="text-nfw-blackberry/70">
-                  <strong>Medium</strong> — Need for funds is clear, but
-                  connection to improved outcome is general
-                </span>
+                <span className="text-nfw-blackberry/70"><strong>Medium</strong> — Need for funds is clear, but connection to improved outcome is general</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="font-bold text-nfw-blackberry w-6">1</span>
-                <span className="text-nfw-blackberry/70">
-                  <strong>Low</strong> — Funds will help but impact is unclear
-                </span>
+                <span className="text-nfw-blackberry/70"><strong>Low</strong> — Funds will help but impact is unclear</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="font-bold text-nfw-blackberry w-6">0</span>
-                <span className="text-nfw-blackberry/70">
-                  <strong>None</strong> — Intended use of funds is vague or
-                  unclear
-                </span>
+                <span className="text-nfw-blackberry/70"><strong>None</strong> — Intended use of funds is vague or unclear</span>
               </div>
             </div>
           </div>
@@ -148,8 +113,7 @@ export default function GrantScoringRubric({
               BARRIERS (Y/N)
             </h4>
             <p className="text-xs text-nfw-blackberry/70 mb-2">
-              Does the applicant belong to a demographic experiencing
-              disproportionate barriers to financial stability?
+              Does the applicant belong to a demographic experiencing disproportionate barriers to financial stability?
             </p>
             <div className="flex flex-wrap gap-1 text-xs">
               {[
@@ -175,13 +139,11 @@ export default function GrantScoringRubric({
           {/* DISCUSSION FLAG (First reviewer only) */}
           {showDiscussionFlag && (
             <div className="border-t border-nfw-blackberry/10 pt-4">
-              <h4 className="font-black text-nfw-blackberry font-ui uppercase tracking-wider mb-2 text-xs flex items-center gap-2">
-                <span className="text-yellow-600">⚠️</span>
+              <h4 className="font-black text-nfw-blackberry font-ui uppercase tracking-wider mb-2 text-xs">
                 NEEDS DISCUSSION (First reviewer only)
               </h4>
               <p className="text-xs text-nfw-blackberry/70">
-                Flag this application if you believe it needs additional
-                discussion among reviewers before a final decision is made.
+                Flag this application if you believe it needs additional discussion among reviewers before a final decision is made.
               </p>
               <p className="text-xs text-nfw-blackberry/50 mt-1">
                 Add notes explaining why this application needs discussion.
