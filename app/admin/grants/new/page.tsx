@@ -17,6 +17,7 @@ export default function NewGrantCyclePage() {
     end_date: "",
     amount_per_grant: "",
     grants_available: "",
+    is_testing_only: false,
   });
 
   const inputClass =
@@ -195,6 +196,27 @@ export default function NewGrantCyclePage() {
               </p>
             </div>
           )}
+
+          <div className="border-t border-nfw-blackberry/10 pt-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.is_testing_only || false}
+                onChange={(e) =>
+                  setFormData({ ...formData, is_testing_only: e.target.checked })
+                }
+                className="mt-0.5 w-4 h-4 accent-nfw-wisteria"
+              />
+              <div>
+                <span className="text-sm font-semibold text-nfw-blackberry">
+                  Internal Testing Only
+                </span>
+                <p className="text-xs text-nfw-blackberry/50 mt-0.5">
+                  When enabled, this grant cycle will only be visible to admins. Users will not see it on the grants page.
+                </p>
+              </div>
+            </label>
+          </div>
 
           {error && (
             <div className="bg-red-50 border border-red-200 p-4">

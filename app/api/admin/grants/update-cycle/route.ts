@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
       grants_available,
       status,
       featured_image,
+      is_testing_only,
     } = await request.json();
 
     if (!cycleId)
@@ -56,6 +57,7 @@ export async function POST(request: NextRequest) {
         total_funds,
         status,
         featured_image,
+        is_testing_only,
         updated_at: new Date().toISOString(),
       })
       .eq("id", cycleId);

@@ -22,7 +22,7 @@ export default async function ApplyForGrantPage() {
   // Check profile completion and membership level
   const { data: profile } = await supabase
     .from("profiles")
-    .select("profile_completed, membership_level, is_approved_free_member")
+    .select("profile_completed, membership_level, is_approved_free_member, is_admin")
     .eq("id", user.id)
     .single();
 
@@ -34,12 +34,20 @@ export default async function ApplyForGrantPage() {
     redirect("/auth/sign-up?step=3");
   }
 
-  const { data: cycles } = await supabaseAdmin
+  // Build query - admins see all cycles, non-admins don't see testing-only cycles
+  let cyclesQuery = supabaseAdmin
     .from("grant_cycles")
     .select("*")
     .eq("status", "open")
     .order("display_order", { ascending: true })
     .order("end_date", { ascending: true });
+
+  // Non-admins should not see testing-only cycles
+  if (!profile?.is_admin) {
+    cyclesQuery = cyclesQuery.eq("is_testing_only", false);
+  }
+
+  const { data: cycles } = await cyclesQuery;
 
   return (
     <main className="min-h-screen bg-nfw-dove">

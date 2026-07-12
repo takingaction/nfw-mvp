@@ -81,7 +81,7 @@ export async function POST(request: Request) {
 
     const { data: cycleData } = await supabaseAdmin
       .from("grant_cycles")
-      .select("id, status")
+      .select("id, status, is_testing_only")
       .eq("id", cycle_id)
       .single();
 
@@ -96,6 +96,14 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "This grant cycle is not accepting applications" },
         { status: 400 },
+      );
+    }
+
+    // Defense-in-depth: prevent applying to testing-only cycles
+    if (cycleData.is_testing_only) {
+      return NextResponse.json(
+        { error: "This grant cycle is not available" },
+        { status: 403 },
       );
     }
 

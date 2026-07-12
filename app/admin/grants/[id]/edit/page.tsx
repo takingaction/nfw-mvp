@@ -28,6 +28,7 @@ export default function EditGrantCyclePage() {
     grants_available: "",
     status: "open",
     featured_image: "",
+    is_testing_only: false,
   });
 
   const inputClass =
@@ -49,6 +50,7 @@ export default function EditGrantCyclePage() {
           grants_available: data.grants_available?.toString() || "",
           status: data.status || "open",
           featured_image: data.featured_image || "",
+          is_testing_only: data.is_testing_only || false,
         });
       } catch (err: any) {
         setError(err.message);
@@ -279,6 +281,27 @@ export default function EditGrantCyclePage() {
                 Closed — no longer accepting applications
               </option>
             </select>
+          </div>
+
+          <div className="border-t border-nfw-blackberry/10 pt-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.is_testing_only || false}
+                onChange={(e) =>
+                  setFormData({ ...formData, is_testing_only: e.target.checked })
+                }
+                className="mt-0.5 w-4 h-4 accent-nfw-wisteria"
+              />
+              <div>
+                <span className="text-sm font-semibold text-nfw-blackberry">
+                  Internal Testing Only
+                </span>
+                <p className="text-xs text-nfw-blackberry/50 mt-0.5">
+                  When enabled, this grant cycle will only be visible to admins. Users will not see it on the grants page.
+                </p>
+              </div>
+            </label>
           </div>
 
           <div>
