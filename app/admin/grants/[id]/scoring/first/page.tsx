@@ -322,23 +322,16 @@ export default function FirstReviewPage() {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-2">
-                        <div className="relative">
-                          <div
-                            className={`w-8 h-8 rounded flex items-center justify-center text-sm font-bold ${
-                              selectedGrant === grant.id
-                                ? "bg-white/20 text-white"
-                                : hasScore
-                                ? "bg-green-500 text-white"
-                                : "bg-nfw-dove text-nfw-blackberry"
-                            }`}
-                          >
-                            {grant.profiles?.full_name?.charAt(0).toUpperCase() || "U"}
-                          </div>
-                          {isFlagged && (
-                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
-                              <span className="text-[8px]">⚑</span>
-                            </div>
-                          )}
+                        <div
+                          className={`w-8 h-8 rounded flex items-center justify-center text-sm font-bold ${
+                            selectedGrant === grant.id
+                              ? "bg-white/20 text-white"
+                              : hasScore
+                              ? "bg-green-500 text-white"
+                              : "bg-nfw-dove text-nfw-blackberry"
+                          }`}
+                        >
+                          {grant.profiles?.full_name?.charAt(0).toUpperCase() || "U"}
                         </div>
                         <div>
                           <p
