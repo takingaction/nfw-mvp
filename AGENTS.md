@@ -7150,6 +7150,11 @@ Implemented a dual-reviewer scoring system for grant applications with sequentia
 | `app/admin/grants/[id]/page.tsx` | Added First/Second Review buttons |
 | `app/api/admin/grants/[id]/final-approve/route.ts` | Uses batch email for rejections |
 
-### Commit
+### Commits
 
-- (pending) - feat: grant application scoring system with dual-reviewer workflow
+- `ab2d8db` - feat: grant application scoring system with dual-reviewer workflow
+- `233768e` - fix: restore sticky rubric sidebar (scroll inside expanded content)
+- `1a46cad` - fix: update local state after saving score, fix Not scored label
+- `5df2dd1` - feat: show flagged badge on application cards
+- `5ce1917` - fix: remove flag icon from avatar, keep flagged label only
+- `623429f` - feat: add reset button to clear scoring data for testing
