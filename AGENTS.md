@@ -7479,5 +7479,48 @@ CREATE TABLE pending_monthly_claims (
 | File | Change |
 |------|--------|
 | `supabase/migrations/116_cleanup_orphaned_pending_claims.sql` | search_path: `pg_catalog` → `pg_catalog, public` |
-| `app/api/shopify/checkout/route.ts` | claim_month format fix, added INSERT logging |
+| `app/api/shopify/checkout/route.ts` | claim_month format fix, monthly limit check, added INSERT logging |
 | `app/api/shopify/webhook/route.ts` | Query pending_monthly_claims to get correct claim_month, added DELETE logging |
+| `components/ClaimItemModal.tsx` | Added `onCheckoutSuccess` callback prop |
+| `components/StoreClient.tsx` | Added `handleCheckoutSuccess`, passes callback to modal, greys out buttons on checkout success |
+
+---
+
+## Session 2026-07-13: Zero Dollar Store Monthly Limit Fix
+
+### Problem
+
+User could claim a different product after already claiming one this month. The monthly limit check was missing.
+
+### Fix
+
+Added monthly limit check in checkout API after lifetime limit check, before pending checkout lock:
+
+```typescript
+// Check monthly limit (1 per month, any product)
+const monthStart = new Date().toISOString().split('T')[0];
+const { data: monthlyClaim } = await supabaseAdmin
+  .from("zero_dollar_claims")
+  .select("id")
+  .eq("user_id", userId)
+  .eq("claim_month", monthStart)
+  .in("status", ["completed", "fulfilled", "paid"])
+  .limit(1);
+
+if (monthlyClaim && monthlyClaim.length > 0) {
+  return NextResponse.json(
+    { error: "You have already claimed a product this month" },
+    { status: 400 }
+  );
+}
+```
+
+### UI Fix: Grey Out Buttons Without Refresh
+
+After checkout success, the API returns `remainingThisMonth: 0`. The StoreClient immediately greys out all claim buttons without requiring a page refresh.
+
+**Changes:**
+- Checkout API returns `remainingThisMonth: 0` on success
+- ClaimItemModal calls `onCheckoutSuccess(remainingThisMonth)` callback
+- StoreClient updates `monthlyClaimed` state immediately
+- All claim buttons grey out (handled by existing `canClaim()` function)

@@ -103,6 +103,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check monthly limit (1 per month, any product)
+    const monthStart = new Date().toISOString().split('T')[0];
+    const { data: monthlyClaim } = await supabaseAdmin
+      .from("zero_dollar_claims")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("claim_month", monthStart)
+      .in("status", ["completed", "fulfilled", "paid"])
+      .limit(1);
+
+    if (monthlyClaim && monthlyClaim.length > 0) {
+      return NextResponse.json(
+        { error: "You have already claimed a product this month" },
+        { status: 400 }
+      );
+    }
+
     // Acquire pending checkout lock to prevent concurrent checkouts
     // claim_month stored as YYYY-MM-01 (first of month) for consistency with webhook
     const now = new Date();
@@ -257,6 +274,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       checkoutUrl,
       checkoutId: shopifyCheckoutId,
+      remainingThisMonth: 0,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

@@ -168,6 +168,12 @@ export default function StoreClient({
     setDetailsProduct(product);
   };
 
+  const handleCheckoutSuccess = (remainingThisMonth: number) => {
+    if (remainingThisMonth === 0) {
+      setMonthlyClaimed(true);
+    }
+  };
+
   const canClaim = (product: StoreProduct) => {
     if (product.status === "DRAFT") {
       return { eligible: false, reason: "Dropping Soon" };
@@ -348,6 +354,7 @@ export default function StoreClient({
           item={claimingItem}
           userId={userId}
           onClose={() => setClaimingItem(null)}
+          onCheckoutSuccess={handleCheckoutSuccess}
         />
       )}
 
