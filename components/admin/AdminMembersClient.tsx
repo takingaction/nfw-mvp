@@ -354,13 +354,23 @@ export default function AdminMembersClient({
           </span>
         );
       }
-      // Free (Started) - started the flow but hasn't submitted contact form
+      // Incomplete free members - differentiate between Abandoned and Profile Incomplete
       if (!member.free_membership_contact_submitted && member.is_approved_free_member !== true) {
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-wisteria text-white">
-            Free (Started)
-          </span>
-        );
+        if (member.profile_completed) {
+          // Abandoned - completed profile but abandoned at step 3
+          return (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-wisteria text-white">
+              Abandoned
+            </span>
+          );
+        } else {
+          // Profile Incomplete - never finished profile
+          return (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/40 text-nfw-blackberry">
+              Profile Incomplete
+            </span>
+          );
+        }
       }
       // Free - approved member
       return (

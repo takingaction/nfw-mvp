@@ -7526,3 +7526,83 @@ After checkout success, the API returns `remainingThisMonth: 0`. The StoreClient
 - ClaimItemModal calls `onCheckoutSuccess(remainingThisMonth)` callback
 - StoreClient updates `monthlyClaimed` state immediately
 - All claim buttons grey out (handled by existing `canClaim()` function)
+
+---
+
+## Session 2026-07-13 (Afternoon): Incomplete Members Investigation + Badge Renames
+
+### Problem
+
+The `/admin/members` page showed 826 "incomplete" members with no clear breakdown of who they were or why. The badge "Free (Started)" was misleading.
+
+### Investigation
+
+Queried the database to understand the breakdown of incomplete members:
+
+```sql
+SELECT 
+  profile_completed,
+  membership_level,
+  is_approved_free_member,
+  free_membership_contact_submitted,
+  COUNT(*) as count
+FROM profiles
+WHERE profile_completed IS DISTINCT FROM true 
+   OR (membership_level = 'free' AND is_approved_free_member IS DISTINCT FROM true AND free_membership_contact_submitted = false)
+GROUP BY 1, 2, 3, 4
+ORDER BY count DESC;
+```
+
+**Results:**
+
+| Group | profile_completed | membership_level | is_approved_free_member | free_membership_contact_submitted | Count | Description |
+|-------|------------------|-----------------|------------------------|---------------------------------|-------|-------------|
+| A | true | free | false | false | 530 | Completed profile, abandoned at step 3 |
+| B | false | free | false | false | 221 | Never completed profile |
+| C | false | free | true | false | 75 | Legacy - incorrectly approved before profile complete |
+
+### Group Analysis
+
+**Group A (530):** Joined July 2-13, 2026. Completed step 2 (identity form) but abandoned at step 3 - never selected membership tier or joined waitlist. Should be labeled **"Abandoned"**.
+
+**Group B (221):** Never completed step 2. True incompletes. Should be labeled **"Profile Incomplete"**.
+
+**Group C (75):** Joined May-June 2026. Legacy cases from old approval system that incorrectly approved members before their profiles were complete. Verified they have `date_of_birth=1900-01-01`, `identities=[]`, `household_income=null` - truly incomplete.
+
+### SQL Fix for Group C
+
+```sql
+-- Fix Group C: Set is_approved_free_member = false for incorrectly approved members
+UPDATE profiles
+SET is_approved_free_member = false,
+    updated_at = NOW()
+WHERE profile_completed = false
+  AND membership_level = 'free'
+  AND is_approved_free_member = true;
+```
+
+After fix, verified new breakdown:
+
+| category | count |
+|----------|-------|
+| Abandoned | 530 |
+| Incomplete | 296 |
+| Total | 826 |
+
+### UI Changes
+
+**`components/admin/AdminMembersClient.tsx`:**
+- Changed "Free (Started)" badge to differentiate:
+  - **Abandoned** (wisteria) - completed profile but abandoned at step 3
+  - **Profile Incomplete** (stone/gray) - never finished profile
+- Filter on `/admin/members` and `/admin/analytics` remains unchanged - all 826 still show under "Incomplete"
+
+**`components/grants/ConnectBankButton.tsx`:**
+- Changed "Connect Bank Account" button color from `bg-nfw-blackberry` to `bg-nfw-lilac`
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/admin/AdminMembersClient.tsx` | Badge labels updated to "Abandoned" / "Profile Incomplete" |
+| `components/grants/ConnectBankButton.tsx` | Button color changed to lilac |
