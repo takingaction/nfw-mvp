@@ -41,7 +41,7 @@ export default async function ConnectReturnPage({ searchParams }: PageProps) {
       stripeAccountId = grant.stripe_connect_account_id || null;
     }
 
-    if (stripeAccountId) {
+    if (stripeAccountId && grant) {
       const account = await stripe.accounts.retrieve(stripeAccountId);
       detailsSubmitted = !!account.details_submitted;
 
@@ -51,6 +51,12 @@ export default async function ConnectReturnPage({ searchParams }: PageProps) {
           .from("grants")
           .update({ status: "payment_pending" })
           .eq("id", grantId);
+
+        // Mark user's onboarding as completed on their profile
+        await supabaseAdmin
+          .from("profiles")
+          .update({ stripe_onboarding_completed: true })
+          .eq("id", grant.user_id);
       }
     }
   }
@@ -99,10 +105,10 @@ export default async function ConnectReturnPage({ searchParams }: PageProps) {
           process your payment shortly.
         </p>
         <Link
-          href={grantId ? `/grants/view/${grantId}` : "/grants/my-applications"}
+          href="/dashboard"
           className="inline-flex items-center justify-center px-8 py-4 bg-[#fdf493] text-[#2d1239] rounded-xl font-bold hover:bg-[#fdf493]/90 transition-all"
         >
-          View My Application →
+          Back to Dashboard →
         </Link>
       </div>
     </main>

@@ -7318,3 +7318,68 @@ Hid "In Review" and "Pmt Pending" statuses from member-facing grant pages since 
 - `app/grants/my-applications/page.tsx`
 - `app/grants/view/[id]/page.tsx`
 - `components/dashboard/YourMicrograntsSection.tsx`
+
+---
+
+## Session 2026-07-13: Dashboard "You're Approved!" Banner
+
+### Overview
+
+Added a "You're Approved!" banner to the dashboard that prompts users to connect their bank account when they have an approved grant but haven't completed Stripe onboarding yet.
+
+### Problem
+
+Users with approved grants needed an easy way to connect their bank account from the dashboard, rather than navigating back through the approval email or grant view page.
+
+### Solution
+
+1. **New database field:** Added `stripe_onboarding_completed BOOLEAN DEFAULT FALSE` to `profiles` table (migration 114)
+
+2. **Track completion:** When users complete Stripe onboarding, `stripe_onboarding_completed` is set to `true` on their profile
+
+3. **Dashboard banner:** Shows "You're Approved!" section when:
+   - User has at least one approved grant
+   - Grant cycle ends after July 12, 2026
+   - User has NOT completed Stripe onboarding (`stripe_onboarding_completed = false`)
+
+### Banner Display Logic
+
+```typescript
+const showStripeConnectBanner = 
+  hasApprovedGrant && 
+  !stripeOnboardingCompleted && 
+  latestApprovedGrantId;
+```
+
+Banner only shows if:
+- User has approved grant with cycle ending after July 12, 2026
+- User has NOT completed Stripe onboarding
+- A valid grant ID exists for the Connect Bank Account button
+
+### Files Created/Modified
+
+| File | Changes |
+|------|---------|
+| `supabase/migrations/114_add_stripe_onboarding_completed.sql` | New migration - adds `stripe_onboarding_completed` field |
+| `app/grants/connect/return/page.tsx` | Set `stripe_onboarding_completed = true` when onboarding completes |
+| `app/dashboard/page.tsx` | Query `stripe_onboarding_completed` from profile, filter approved grants by cycle end date |
+| `components/dashboard/YourMicrograntsSection.tsx` | Added "You're Approved!" banner section |
+
+### Banner Content
+
+```
+YOU'RE APPROVED!
+
+Connect your bank account to receive your grant payments.
+
+[Connect Bank Account →]
+```
+
+### Database Backfill
+
+Ran SQL to mark existing users with valid Stripe accounts as `stripe_onboarding_completed = true`:
+- All users with existing `stripe_connect_account_id` values were backfilled
+
+### Related Changes
+
+- Changed "Connect Bank Account" return page button from "View My Application →" to "Back to Dashboard →"

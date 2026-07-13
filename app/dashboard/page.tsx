@@ -207,6 +207,16 @@ export default async function DashboardPage() {
   const settings = dashboardSettingsResult?.data || {};
   const likedStores = likedStoresResult?.data || [];
   const userGrants = grantsResult?.data || [];
+
+  // Check if user has approved grants with cycle ending after July 12, 2026 (for showing bank connection banner)
+  const approvedGrants = (userGrants || []).filter(
+    (g: any) => g.status === "approved" &&
+    g.grant_cycles?.end_date > '2026-07-12'
+  );
+  const hasApprovedGrant = approvedGrants.length > 0;
+  // Get the most recently approved grant ID for the Connect Bank Account button
+  const latestApprovedGrantId = approvedGrants[0]?.id || null;
+
   // Filter out testing-only cycles for non-admins
   const availableCycles = (cyclesResult?.data || []).filter(
     (cycle: any) => profile?.is_admin || !cycle.is_testing_only
@@ -304,7 +314,13 @@ export default async function DashboardPage() {
 
       <PopularAcrossNFW featuredItems={featuredItems} />
 
-      <YourMicrograntsSection grants={userGrants} availableCycles={availableCycles} />
+      <YourMicrograntsSection
+        grants={userGrants}
+        availableCycles={availableCycles}
+        hasApprovedGrant={hasApprovedGrant}
+        stripeOnboardingCompleted={profile?.stripe_onboarding_completed ?? false}
+        latestApprovedGrantId={latestApprovedGrantId}
+      />
 
       <DashboardPerksSection likedStores={likedStores} />
 
