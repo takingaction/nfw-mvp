@@ -54,7 +54,6 @@ export default function ClaimItemModal({
   item,
   userId,
   onClose,
-  onCheckoutSuccess,
 }: {
   item: {
     productId: string;
@@ -65,7 +64,6 @@ export default function ClaimItemModal({
   };
   userId: string;
   onClose: () => void;
-  onCheckoutSuccess?: (remainingThisMonth: number) => void;
 }) {
   const [claiming, setClaiming] = useState(false);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
@@ -141,9 +139,6 @@ export default function ClaimItemModal({
       }
 
       window.open(data.checkoutUrl, "_blank");
-      if (onCheckoutSuccess && typeof onCheckoutSuccess === "function") {
-        onCheckoutSuccess(data.remainingThisMonth ?? 0);
-      }
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error claiming item");
