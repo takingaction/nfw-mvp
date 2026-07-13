@@ -7187,3 +7187,53 @@ Added `is_testing_only` flag to grant cycles so admins can create test cycles th
 ### Commits
 - `be1a98c` - feat: add Internal Testing Only flag to grant cycles
 - `d520890` - fix: hide testing-only grant cycles from dashboard for non-admins
+
+## Session 2026-07-12 (Evening): Email System Centralization
+
+### Goal
+Centralize email sending in `lib/email.ts` to eliminate inconsistent `is_active` checks and remove `html_content` fallback, ensuring all emails send from published builder content only.
+
+### Constraints
+- Same email for manual send and 72-hour automation
+- Remove html_content fallback entirely - email only sends if published content exists
+- Return `{ success: boolean; error?: string }` pattern for email failures
+- `grant-payment-pending` and `grant-payment-sent` have no content - accept they won't send
+
+### What Was Done
+
+**1. Created centralized `sendEmailBySlug` function**
+- Single source of truth for email sending
+- Checks: template exists → `is_active !== false` → published content exists → send
+- Returns `{ success: true }` or `{ success: false; error: string }` pattern
+- Error codes: `TEMPLATE_NOT_FOUND`, `TEMPLATE_INACTIVE`, `NO_PUBLISHED_CONTENT`, `EMAIL_SEND_FAILED`
+
+**2. Refactored 11 email functions to use `sendEmailBySlug`:**
+- `sendWelcomeEmail`
+- `sendNewsletterWelcomeEmail`
+- `sendGrantApplicationReceivedEmail`
+- `sendGrantStatusEmail`
+- `sendBankInfoRequestEmail`
+- `sendGiftCodesEmail`
+- `sendContactFormEmail`
+- `sendAbandonedCheckoutEmail`
+- `sendIncompleteMemberEmail`
+- `sendWaitlistWelcomeEmail`
+- `sendGrantApprovedEmail`
+
+**3. Removed dead code:**
+- All fallback bodies (long HTML strings that were never used since content comes from published builder)
+- All redundant `fetchEmailTemplateAdmin` calls
+- All redundant `is_active` checks outside the centralized function
+
+### Key Behavior
+- Email only sends if published builder content exists (`full_email_html` with `status = 'published'`)
+- `is_active` is checked before sending via centralized function
+- Returns `{ success: boolean; error?: string }` - no throws
+- `grant-payment-pending` and `grant-payment-sent` have no content - they return `NO_PUBLISHED_CONTENT` error
+
+### Files Modified
+- `lib/email.ts` - Centralized email sending with `sendEmailBySlug` function
+
+### Build Status
+- ✅ Build passed
+- ✅ TypeScript compiled without errors

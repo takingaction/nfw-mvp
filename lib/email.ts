@@ -54,6 +54,61 @@ async function fetchTemplateWithActiveCheck(slug: string): Promise<{
   };
 }
 
+// =============================================================================
+// CENTRALIZED EMAIL SENDER - Single source of truth for email sending
+// =============================================================================
+
+interface SendEmailBySlugOptions {
+  to: string;
+  name: string;
+  variables: Record<string, string>;
+  errorContext?: string;
+}
+
+type EmailSendResult = { success: true } | { success: false; error: string };
+
+async function sendEmailBySlug(
+  slug: string,
+  options: SendEmailBySlugOptions
+): Promise<EmailSendResult> {
+  const { to, name, variables, errorContext } = options;
+  const context = errorContext || slug;
+
+  // Step 1: Check if template exists and is active
+  const templateCheck = await fetchTemplateWithActiveCheck(slug);
+  if (!templateCheck.template) {
+    console.log(`[${context}] Template "${slug}" not found, skipping email to ${to}`);
+    return { success: false, error: "TEMPLATE_NOT_FOUND" };
+  }
+  if (!templateCheck.isActive) {
+    console.log(`[${context}] Template "${slug}" is inactive, skipping email to ${to}`);
+    return { success: false, error: "TEMPLATE_INACTIVE" };
+  }
+
+  // Step 2: Get published content (checks status=published AND is_active !== false)
+  const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
+  if (!preRenderedResult) {
+    console.log(`[${context}] No published content for "${slug}", skipping email to ${to}`);
+    return { success: false, error: "NO_PUBLISHED_CONTENT" };
+  }
+
+  // Step 3: Send the email
+  const result = await sendBrandedEmail({
+    to,
+    subject: preRenderedResult.subject || "National Fund for Women",
+    name,
+    preRenderedHtml: preRenderedResult.html,
+    useShell: false,
+  });
+
+  if (!result.success) {
+    console.error(`[${context}] Failed to send email to ${to}:`, result.error);
+    return { success: false, error: "EMAIL_SEND_FAILED" };
+  }
+
+  return { success: true };
+}
+
 function replaceTemplateVariables(html: string, variables: Record<string, string>): string {
   let result = html;
   for (const [key, value] of Object.entries(variables)) {
@@ -451,7 +506,7 @@ export async function sendWelcomeEmail({
   renewalDate?: string;
   heroImage?: string;
   templateSlug?: string;
-}) {
+}): Promise<{ success: boolean; error?: string }> {
   const siteUrl = "https://nationalfundforwomen.org";
 
   const slug = templateSlug || `welcome-${membershipType}`;
@@ -479,68 +534,12 @@ export async function sendWelcomeEmail({
     faq_url: `${siteUrl}/faq`,
   };
 
-  const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
-
-  if (preRenderedResult) {
-    await sendBrandedEmail({
-      to,
-      subject: preRenderedResult.subject || "Welcome to NFW!",
-      name,
-      preRenderedHtml: preRenderedResult.html,
-      useShell: false,
-    });
-    return;
-  }
-
-  const template = await fetchEmailTemplate(slug);
-  if (!template) {
-    throw new Error(`Failed to load email template: ${slug}`);
-  }
-
-  // Check if template is active before sending
-  if (template.is_active === false) {
-    console.log(`[sendWelcomeEmail] Template ${slug} is inactive, skipping email to ${to}`);
-    return;
-  }
-
-  const heroImageUrl = heroImage || template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
-
-  if (template) {
-    const body = replaceTemplateVariables(template.html, variables);
-
-    const membershipSnapshot = `
-      <div style="background-color: rgba(255,255,255,0.1); border-radius: 8px; padding: 15px 20px; margin-bottom: 20px;">
-        <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 12px; font-weight: 700; color: #FFFFFF; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.05em;">Your membership snapshot</p>
-        <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 4px 0;"><strong>Email:</strong> ${to}</p>
-        <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 4px 0;"><strong>Membership Tier:</strong> ${tierLabel}</p>
-        ${renewalDate ? `<p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0;"><strong>Renewal Date:</strong> ${formatDate(renewalDate)}</p>` : ''}
-      </div>
-    `;
-
-    try {
-      await sendBrandedEmail({
-        to,
-        subject: "Welcome to NFW! We're here to help",
-        name,
-        heroImage: heroImageUrl,
-        heroText: 'A <em>community</em> of women showing up for each other',
-        headline: "Welcome to NFW!",
-        body,
-        membershipSnapshot,
-        ctaText: "GET STARTED",
-        ctaUrl: `${siteUrl}/dashboard`,
-        secondaryCtaText: "BROWSE PERKS",
-        secondaryCtaUrl: `${siteUrl}/perks`,
-        footerCtaText: "VISIT WEBSITE",
-        footerCtaUrl: siteUrl,
-      });
-    } catch (err) {
-      console.error('[sendWelcomeEmail] sendBrandedEmail error:', err);
-      throw err;
-    }
-  } else {
-    throw new Error(`Failed to load email template: ${slug}`);
-  }
+  return sendEmailBySlug(slug, {
+    to,
+    name,
+    variables,
+    errorContext: "sendWelcomeEmail",
+  });
 }
 
 // =============================================================================
@@ -553,75 +552,15 @@ export async function sendNewsletterWelcomeEmail({
 }: {
   to: string;
   name: string;
-}) {
-  const siteUrl = "https://nationalfundforwomen.org";
+}): Promise<{ success: boolean; error?: string }> {
   const slug = "newsletter-welcome";
   const variables: Record<string, string> = { name };
 
-const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
-
-  if (preRenderedResult) {
-    await sendBrandedEmail({
-      to,
-      subject: preRenderedResult.subject,
-      name,
-      preRenderedHtml: preRenderedResult.html,
-      useShell: false,
-    });
-    return;
-  }
-
-  const template = await fetchEmailTemplateAdmin(slug);
-  if (template?.is_active === false) {
-    console.log(`[sendNewsletterWelcomeEmail] Template ${slug} is inactive, skipping email to ${to}`);
-    return;
-  }
-  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
-  const heroText = 'A <em>community</em> of women showing up for each other';
-
-  const bodyHtml = `
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
-      Dear ${name},
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
-      Welcome to the National Fund for Women newsletter — where we share ways to make life a little more possible for women (yourself included), and where a growing community shows up for each other in real ways.
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; color: #FFFFFF; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.05em;">
-      What to expect:
-    </p>
-    <ul style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 20px 0; padding-left: 20px;">
-      <li style="margin-bottom: 8px;">Microgrant opportunities</li>
-      <li style="margin-bottom: 8px;">Perks and partner discounts</li>
-      <li style="margin-bottom: 8px;">Drops from the Zero Dollar Store</li>
-      <li style="margin-bottom: 8px;">A few things we think are actually worth your time</li>
-      <li style="margin-bottom: 8px;">Real stories from women across the country</li>
-    </ul>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 20px 0;">
-      No noise — just the good stuff.
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; color: #FFFFFF; margin: 0 0 30px 0;">
-      Ready to become a member? Check out our website to find the membership tier that's right for you. With an NFW membership, you're supporting women simply by belonging.
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; font-style: italic; color: #FFFFFF; margin: 0;">
-      Talk soon,
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; font-style: italic; color: #FFFFFF; margin: 5px 0 0 0;">
-      The NFW Team
-    </p>
-  `;
-
-  await sendBrandedEmail({
+  return sendEmailBySlug(slug, {
     to,
-    subject: "You're subscribed to NFW!",
     name,
-    heroImage: heroImageUrl,
-    heroText,
-    headline: "You're subscribed!",
-    body: bodyHtml,
-    ctaText: "BECOME A MEMBER",
-    ctaUrl: `${siteUrl}/auth/sign-up`,
-    footerCtaText: "VISIT WEBSITE",
-    footerCtaUrl: siteUrl,
+    variables,
+    errorContext: "sendNewsletterWelcomeEmail",
   });
 }
 
@@ -639,7 +578,7 @@ export async function sendGrantApplicationReceivedEmail({
   name: string;
   grantCycleName: string;
   applicationId: string;
-}) {
+}): Promise<{ success: boolean; error?: string }> {
   const slug = "grant-application-received";
   const siteUrl = "https://nationalfundforwomen.org";
 
@@ -650,41 +589,11 @@ export async function sendGrantApplicationReceivedEmail({
     siteUrl,
   };
 
-  const preRenderedResult = await getPreRenderedHtml(slug, variables);
-
-  if (preRenderedResult) {
-    await sendBrandedEmail({
-      to,
-      subject: preRenderedResult.subject,
-      name,
-      preRenderedHtml: preRenderedResult.html,
-      useShell: false,
-    });
-    return;
-  }
-
-  const template = await fetchEmailTemplate(slug);
-  if (!template) return;
-  if (template.is_active === false) {
-    console.log(`[sendGrantApplicationReceivedEmail] Template ${slug} is inactive, skipping email to ${to}`);
-    return;
-  }
-
-  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
-
-  const body = replaceTemplateVariables(template.html, variables);
-  await sendBrandedEmail({
+  return sendEmailBySlug(slug, {
     to,
-    subject: template.subject,
     name,
-    heroImage: heroImageUrl,
-    heroText: 'Your application is <em>in review</em>',
-    headline: "Application Received",
-    body,
-    ctaText: "VIEW YOUR APPLICATION",
-    ctaUrl: `${siteUrl}/grants/my-applications`,
-    footerCtaText: "VISIT WEBSITE",
-    footerCtaUrl: siteUrl,
+    variables,
+    errorContext: "sendGrantApplicationReceivedEmail",
   });
 }
 
@@ -700,7 +609,7 @@ export async function sendGrantStatusEmail({
   status: string;
   grantCycleName: string;
   amountApproved?: number;
-}) {
+}): Promise<{ success: boolean; error?: string }> {
   const slugMap: Record<string, string> = {
     approved: "grant-approved",
     not_approved: "grant-not-approved",
@@ -709,9 +618,9 @@ export async function sendGrantStatusEmail({
   };
 
   const slug = slugMap[status];
-  if (!slug) return;
-
-  const siteUrl = "https://nationalfundforwomen.org";
+  if (!slug) {
+    return { success: false, error: "Unknown status" };
+  }
 
   const variables: Record<string, string> = {
     name,
@@ -719,57 +628,11 @@ export async function sendGrantStatusEmail({
     amount: amountApproved ? amountApproved.toLocaleString() : "",
   };
 
-  const preRenderedResult = await getPreRenderedHtml(slug, variables);
-
-  if (preRenderedResult) {
-    await sendBrandedEmail({
-      to,
-      subject: preRenderedResult.subject,
-      name,
-      preRenderedHtml: preRenderedResult.html,
-      useShell: false,
-    });
-    return;
-  }
-
-  const template = await fetchEmailTemplate(slug);
-  if (!template) return;
-  if (template.is_active === false) {
-    console.log(`[sendGrantStatusEmail] Template ${slug} is inactive, skipping email to ${to}`);
-    return;
-  }
-
-  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
-
-  const statusHeadlines: Record<string, string> = {
-    in_review: "Application Under Review",
-    approved: "Congratulations!",
-    not_approved: "Update on Your Application",
-    payment_pending: "Payment Processing",
-    payment_sent: "Payment Sent!",
-  };
-
-  const statusHeroText: Record<string, string> = {
-    in_review: "We're <em>reviewing</em> your application",
-    approved: "You've been <em>approved</em>",
-    not_approved: "We've <em>updated</em> your application",
-    payment_pending: "Your payment is <em>on the way</em>",
-    payment_sent: "Your payment is <em>on the way</em>",
-  };
-
-  const body = replaceTemplateVariables(template.html, variables);
-  await sendBrandedEmail({
+  return sendEmailBySlug(slug, {
     to,
-    subject: template.subject,
     name,
-    heroImage: heroImageUrl,
-    heroText: statusHeroText[status] || 'Your application status has changed',
-    headline: statusHeadlines[status] || "Application Update",
-    body,
-    ctaText: "VIEW YOUR APPLICATION",
-    ctaUrl: `${siteUrl}/grants/my-applications`,
-    footerCtaText: "VISIT WEBSITE",
-    footerCtaUrl: siteUrl,
+    variables,
+    errorContext: "sendGrantStatusEmail",
   });
 }
 
@@ -785,9 +648,8 @@ export async function sendBankInfoRequestEmail({
   grantCycleName: string;
   amountApproved?: number;
   isNominee: boolean;
-}) {
+}): Promise<{ success: boolean; error?: string }> {
   const slug = "bank-info-request";
-  const siteUrl = "https://nationalfundforwomen.org";
 
   const variables: Record<string, string> = {
     name,
@@ -795,42 +657,11 @@ export async function sendBankInfoRequestEmail({
     amount: amountApproved ? amountApproved.toLocaleString() : "",
   };
 
-  const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
-
-  if (preRenderedResult) {
-    await sendBrandedEmail({
-      to,
-      subject: preRenderedResult.subject,
-      name,
-      preRenderedHtml: preRenderedResult.html,
-      useShell: false,
-    });
-    return;
-  }
-
-  const template = await fetchEmailTemplateAdmin(slug);
-  if (!template) return;
-  if (template.is_active === false) {
-    console.log(`[sendBankInfoRequestEmail] Template ${slug} is inactive, skipping email to ${to}`);
-    return;
-  }
-
-  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
-
-  const body = replaceTemplateVariables(template.html || "", variables);
-
-  await sendBrandedEmail({
+  return sendEmailBySlug(slug, {
     to,
-    subject: template.subject,
     name,
-    heroImage: heroImageUrl,
-    heroText: 'Action <em>required</em>',
-    headline: isNominee ? "You've Been Nominated" : "Congratulations!",
-    body,
-    ctaText: "CONNECT BANK ACCOUNT",
-    ctaUrl: `${siteUrl}/grants/my-applications`,
-    footerCtaText: "VISIT WEBSITE",
-    footerCtaUrl: siteUrl,
+    variables,
+    errorContext: "sendBankInfoRequestEmail",
   });
 }
 
@@ -1006,8 +837,7 @@ export async function sendGiftCodesEmail({
   to: string;
   buyerName: string;
   codes: string[];
-}) {
-  const siteUrl = "https://nationalfundforwomen.org";
+}): Promise<{ success: boolean; error?: string }> {
   const slug = "gift-codes";
 
   const codesList = codes.map((code) => `<p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #F8F19A; margin: 10px 0;">${code}</p>`).join("");
@@ -1019,64 +849,11 @@ export async function sendGiftCodesEmail({
     codes_list: codesList,
   };
 
-  const preRenderedResult = await getPreRenderedHtml(slug, variables);
-
-  if (preRenderedResult) {
-    await sendBrandedEmail({
-      to,
-      subject: preRenderedResult.subject,
-      name: buyerName,
-      preRenderedHtml: preRenderedResult.html,
-      useShell: false,
-    });
-    return;
-  }
-
-  const template = await fetchEmailTemplate(slug);
-  if (!template) return;
-  if (template.is_active === false) {
-    console.log(`[sendGiftCodesEmail] Template ${slug} is inactive, skipping email to ${to}`);
-    return;
-  }
-
-  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
-
-  const body = `
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
-      Dear ${buyerName},
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
-      Thank you for your gift membership purchase! Here are your redemption code(s):
-    </p>
-    ${codesList}
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 20px 0 10px 0;">
-      To redeem, share these code(s) with your friends. Each code redeems 1 year of Contributing membership.
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; color: #FFFFFF; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.05em;">
-      How to redeem:
-    </p>
-    <ol style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 0 0 20px 0; padding-left: 20px;">
-      <li style="margin-bottom: 8px;">Friend creates a free NFW account at nationalfundforwomen.org/auth/sign-up</li>
-      <li style="margin-bottom: 8px;">During signup, they enter their code on the membership step</li>
-      <li style="margin-bottom: 8px;">They enjoy a full year of Contributing membership!</li>
-    </ol>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; color: #FFFFFF; margin: 20px 0 0 0;">
-      Questions? Email <a href="mailto:hello@nationalfundforwomen.org" style="color: #F8F19A;">hello@nationalfundforwomen.org</a>
-    </p>
-  `;
-
-  await sendBrandedEmail({
+  return sendEmailBySlug(slug, {
     to,
-    subject: "Your National Fund for Women Gift Code(s)",
     name: buyerName,
-    heroImage: heroImageUrl,
-    heroText: 'Gift a <em>year of community</em>',
-    headline: "Your Gift Codes",
-    body,
-    ctaText: "LEARN ABOUT MEMBERSHIP",
-    ctaUrl: `${siteUrl}/auth/sign-up`,
-    footerCtaText: "VISIT WEBSITE",
-    footerCtaUrl: siteUrl,
+    variables,
+    errorContext: "sendGiftCodesEmail",
   });
 }
 
@@ -1307,8 +1084,7 @@ export async function sendContactFormEmail({
   email: string;
   subject: string;
   message: string;
-}) {
-  const siteUrl = "https://nationalfundforwomen.org";
+}): Promise<{ success: boolean; error?: string }> {
   const slug = "contact-form";
   const timestamp = new Date().toLocaleString("en-US", {
     year: "numeric",
@@ -1326,56 +1102,11 @@ export async function sendContactFormEmail({
     timestamp,
   };
 
-  const preRenderedResult = await getPreRenderedHtml(slug, variables);
-
-  if (preRenderedResult) {
-    await sendBrandedEmail({
-      to: email,
-      subject: preRenderedResult.subject || `NFW Contact Form: ${subject}`,
-      name,
-      preRenderedHtml: preRenderedResult.html,
-      useShell: false,
-    });
-    return;
-  }
-
-  const template = await fetchEmailTemplate(slug);
-  if (!template) return;
-  if (template.is_active === false) {
-    console.log(`[sendContactFormEmail] Template ${slug} is inactive, skipping email to ${email}`);
-    return;
-  }
-
-  const heroImageUrl = template?.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg";
-
-  const body = `
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
-      Dear ${name},
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
-      Thanks for reaching out! We've received your message and will get back to you within 1-2 business days.
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #FFFFFF; margin: 0 0 20px 0;">
-      In the meantime, feel free to explore our <a href="${siteUrl}" style="color: #F8F19A;">website</a> or check out our <a href="${siteUrl}/faq" style="color: #F8F19A;">FAQ</a> for quick answers.
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; font-style: italic; color: #FFFFFF; margin: 30px 0 0 0;">
-      Talk soon,
-    </p>
-    <p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; font-style: italic; color: #FFFFFF; margin: 5px 0 0 0;">
-      The NFW Team
-    </p>
-  `;
-
-  await sendBrandedEmail({
+  return sendEmailBySlug(slug, {
     to: email,
-    subject: `NFW Contact Form: ${subject}`,
     name,
-    heroImage: heroImageUrl,
-    heroText: 'We\'ve <em>received</em> your message',
-    headline: "Message Received",
-    body,
-    footerCtaText: "VISIT WEBSITE",
-    footerCtaUrl: siteUrl,
+    variables,
+    errorContext: "sendContactFormEmail",
   });
 }
 
@@ -1523,7 +1254,7 @@ export async function sendAbandonedCheckoutEmail({
   name: string;
   membershipLevel: string;
   ctaUrl: string;
-}) {
+}): Promise<{ success: boolean; error?: string }> {
   const slug = "abandoned-checkout-recovery";
   const siteUrl = "https://nationalfundforwomen.org";
 
@@ -1534,46 +1265,11 @@ export async function sendAbandonedCheckoutEmail({
     siteUrl,
   };
 
-  // Check if template is published and use that, otherwise fall back
-  const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
-
-  if (preRenderedResult) {
-    await sendBrandedEmail({
-      to,
-      subject: preRenderedResult.subject || "Complete your membership",
-      name: variables.name,
-      preRenderedHtml: preRenderedResult.html,
-      useShell: false,
-    });
-    return;
-  }
-
-  // Fall back to html_content if not published
-  const template = await fetchEmailTemplateAdmin(slug);
-  if (!template) {
-    console.log(`[sendAbandonedCheckoutEmail] Template "${slug}" not found`);
-    return;
-  }
-
-  if (template.is_active === false) {
-    console.log(`[sendAbandonedCheckoutEmail] Template ${slug} is inactive, skipping email to ${to}`);
-    return;
-  }
-
-  const body = replaceTemplateVariables(template.html, variables);
-
-  await sendBrandedEmail({
+  return sendEmailBySlug(slug, {
     to,
-    subject: template.subject,
     name: variables.name,
-    heroImage: template.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg",
-    heroText: "Complete your <em>membership</em>",
-    headline: "You left something behind",
-    body,
-    ctaText: "COMPLETE YOUR MEMBERSHIP",
-    ctaUrl: variables.ctaUrl,
-    footerCtaText: "VISIT WEBSITE",
-    footerCtaUrl: siteUrl,
+    variables,
+    errorContext: "sendAbandonedCheckoutEmail",
   });
 }
 
@@ -1597,54 +1293,12 @@ export async function sendIncompleteMemberEmail({
     siteUrl,
   };
 
-  try {
-    // Check if template is published and use that, otherwise fall back
-    const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
-
-    if (preRenderedResult) {
-      await sendBrandedEmail({
-        to,
-        subject: preRenderedResult.subject || "Complete your NFW membership",
-        name: variables.name,
-        preRenderedHtml: preRenderedResult.html,
-        useShell: false,
-      });
-      return { success: true };
-    }
-
-    // Fall back to html_content if not published
-    const template = await fetchEmailTemplateAdmin(slug);
-    if (!template) {
-      console.log(`[sendIncompleteMemberEmail] Template "${slug}" not found`);
-      return { success: false, error: "Template not found" };
-    }
-
-    if (template.is_active === false) {
-      console.log(`[sendIncompleteMemberEmail] Template ${slug} is inactive, skipping email to ${to}`);
-      return { success: false, error: "Template inactive" };
-    }
-
-    const body = replaceTemplateVariables(template.html, variables);
-
-    await sendBrandedEmail({
-      to,
-      subject: template.subject,
-      name: variables.name,
-      heroImage: template.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg",
-      heroText: "Complete your membership",
-      headline: "You're almost there!",
-      body,
-      ctaText: "COMPLETE YOUR PROFILE",
-      ctaUrl: variables.signup_url,
-      footerCtaText: "VISIT WEBSITE",
-      footerCtaUrl: siteUrl,
-    });
-
-    return { success: true };
-  } catch (err: any) {
-    console.error("[sendIncompleteMemberEmail] Error:", err);
-    return { success: false, error: err?.message || "Unknown error" };
-  }
+  return sendEmailBySlug(slug, {
+    to,
+    name: variables.name,
+    variables,
+    errorContext: "sendIncompleteMemberEmail",
+  });
 }
 
 // =============================================================================
@@ -1670,54 +1324,12 @@ export async function sendWaitlistWelcomeEmail({
     siteUrl,
   };
 
-  try {
-    // Check if template is published and use that, otherwise fall back
-    const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
-
-    if (preRenderedResult) {
-      await sendBrandedEmail({
-        to,
-        subject: preRenderedResult.subject || "You're on the List",
-        name: variables.name,
-        preRenderedHtml: preRenderedResult.html,
-        useShell: false,
-      });
-      return { success: true };
-    }
-
-    // Fall back to html_content if not published
-    const template = await fetchEmailTemplateAdmin(slug);
-    if (!template) {
-      console.log(`[sendWaitlistWelcomeEmail] Template "${slug}" not found`);
-      return { success: false, error: "Template not found" };
-    }
-
-    if (template.is_active === false) {
-      console.log(`[sendWaitlistWelcomeEmail] Template ${slug} is inactive, skipping email to ${to}`);
-      return { success: false, error: "Template inactive" };
-    }
-
-    const body = replaceTemplateVariables(template.html, variables);
-
-    await sendBrandedEmail({
-      to,
-      subject: template.subject,
-      name: variables.name,
-      heroImage: template.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg",
-      heroText: "You're on the List",
-      headline: "Thanks for joining the waitlist!",
-      body,
-      ctaText: "BECOME A CONTRIBUTING MEMBER",
-      ctaUrl: variables.ctaUrl,
-      footerCtaText: "VISIT WEBSITE",
-      footerCtaUrl: siteUrl,
-    });
-
-    return { success: true };
-  } catch (err: any) {
-    console.error("[sendWaitlistWelcomeEmail] Error:", err);
-    return { success: false, error: err?.message || "Unknown error" };
-  }
+  return sendEmailBySlug(slug, {
+    to,
+    name: variables.name,
+    variables,
+    errorContext: "sendWaitlistWelcomeEmail",
+  });
 }
 
 // =============================================================================
@@ -1802,62 +1414,19 @@ export async function sendGrantApprovedEmail({
   ctaUrl: string;
 }): Promise<{ success: boolean; error?: string }> {
   const slug = "grant-approved";
-  const siteUrl = "https://nationalfundforwomen.org";
 
   const variables: Record<string, string> = {
     name: name || "there",
     grantCycleName,
     amount: amount.toLocaleString(),
     ctaUrl,
-    siteUrl,
+    siteUrl: "https://nationalfundforwomen.org",
   };
 
-  try {
-    // Check if template is published and use that
-    const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
-
-    if (preRenderedResult) {
-      await sendBrandedEmail({
-        to,
-        subject: preRenderedResult.subject || "Your grant application has been approved!",
-        name: variables.name,
-        preRenderedHtml: preRenderedResult.html,
-        useShell: false,
-      });
-      return { success: true };
-    }
-
-    // Fall back to html_content if not published
-    const template = await fetchEmailTemplateAdmin(slug);
-    if (!template) {
-      console.log(`[sendGrantApprovedEmail] Template "${slug}" not found`);
-      return { success: false, error: "Template not found" };
-    }
-
-    if (template.is_active === false) {
-      console.log(`[sendGrantApprovedEmail] Template ${slug} is inactive, skipping email to ${to}`);
-      return { success: false, error: "Template inactive" };
-    }
-
-    const body = replaceTemplateVariables(template.html, variables);
-
-    await sendBrandedEmail({
-      to,
-      subject: template.subject,
-      name: variables.name,
-      heroImage: template.hero_image_url || "https://nationalfundforwomen.org/images/email-welcome-hero.jpg",
-      heroText: "Grant Approved",
-      headline: "Congratulations!",
-      body,
-      ctaText: "VIEW YOUR DASHBOARD",
-      ctaUrl: variables.ctaUrl,
-      footerCtaText: "VISIT WEBSITE",
-      footerCtaUrl: siteUrl,
-    });
-
-    return { success: true };
-  } catch (err: any) {
-    console.error("[sendGrantApprovedEmail] Error:", err);
-    return { success: false, error: err?.message || "Unknown error" };
-  }
+  return sendEmailBySlug(slug, {
+    to,
+    name: variables.name,
+    variables,
+    errorContext: "sendGrantApprovedEmail",
+  });
 }
