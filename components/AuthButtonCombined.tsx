@@ -11,11 +11,18 @@ interface Profile {
   is_admin: boolean | null;
 }
 
+const ADMIN_STATUS_EVENT = "nfw-admin-status-change";
+
 export function AuthButtonCombined() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+
+  const updateAdminStatus = (adminStatus: boolean) => {
+    setIsAdmin(adminStatus);
+    window.dispatchEvent(new CustomEvent(ADMIN_STATUS_EVENT, { detail: { isAdmin: adminStatus } }));
+  };
 
   useEffect(() => {
     const fetchProfile = async (userId: string) => {
@@ -24,7 +31,9 @@ export function AuthButtonCombined() {
         if (response.ok) {
           const data = await response.json();
           setProfile(data);
-          setIsAdmin(data.is_admin === true);
+          const adminStatus = data.is_admin === true;
+          setIsAdmin(adminStatus);
+          updateAdminStatus(adminStatus);
           localStorage.setItem("nfw_profile", JSON.stringify(data));
         }
       } catch (error) {
@@ -36,7 +45,9 @@ export function AuthButtonCombined() {
     if (cachedProfile) {
       const parsed = JSON.parse(cachedProfile) as Profile;
       setProfile(parsed);
-      setIsAdmin(parsed?.is_admin === true);
+      const adminStatus = parsed?.is_admin === true;
+      setIsAdmin(adminStatus);
+      updateAdminStatus(adminStatus);
     }
 
     const supabase = createClient();
@@ -59,6 +70,7 @@ export function AuthButtonCombined() {
       if (event === "SIGNED_OUT") {
         setProfile(null);
         setIsAdmin(false);
+        updateAdminStatus(false);
         localStorage.removeItem("nfw_profile");
         return;
       }
