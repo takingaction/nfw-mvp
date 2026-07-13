@@ -7453,3 +7453,31 @@ CREATE TABLE pending_monthly_claims (
 2. Run migration 116 in Supabase SQL Editor (schedules cron cleanup)
 3. Deploy code changes
 4. Run migration 117 in Supabase SQL Editor (drops `monthly_claims`)
+
+### Bugs Found After Testing
+
+**Bug 1: Cron function search_path missing public schema**
+- Migration 116 function had `SET search_path = pg_catalog` which only looks in system tables
+- Fix: Changed to `SET search_path = pg_catalog, public`
+
+**Bug 2: claim_month format mismatch**
+- Checkout stored `claim_month` as full date `YYYY-MM-DD` (e.g., `2026-07-13`)
+- Webhook DELETE tried to delete with `claim_month` computed as `YYYY-MM-01` (first of month)
+- Fix: Checkout now stores `claim_month` as first of month (`YYYY-MM-01`)
+
+**Bug 3: DELETE in webhook had no error handling**
+- Webhook DELETE of `pending_monthly_claims` had no logging or error handling
+- If DELETE failed, we never knew
+- Fix: Added error handling and logging to webhook DELETE
+
+**Bug 4: INSERT in checkout had no error handling**
+- Checkout INSERT into `pending_monthly_claims` had no logging
+- Fix: Added error handling and logging to checkout INSERT
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `supabase/migrations/116_cleanup_orphaned_pending_claims.sql` | search_path: `pg_catalog` → `pg_catalog, public` |
+| `app/api/shopify/checkout/route.ts` | claim_month format fix, added INSERT logging |
+| `app/api/shopify/webhook/route.ts` | Query pending_monthly_claims to get correct claim_month, added DELETE logging |

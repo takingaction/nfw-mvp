@@ -218,11 +218,28 @@ export async function POST(request: Request) {
           }
 
           // Release pending checkout lock on completion
-          await supabaseAdmin
+          // Query pending_monthly_claims to get the correct claim_month (stored as YYYY-MM-01)
+          const { data: pendingClaim } = await supabaseAdmin
             .from("pending_monthly_claims")
-            .delete()
+            .select("claim_month")
             .eq("user_id", claim.user_id)
-            .eq("claim_month", claimMonth);
+            .limit(1);
+
+          if (pendingClaim && pendingClaim.length > 0) {
+            const { error: deletePendingError } = await supabaseAdmin
+              .from("pending_monthly_claims")
+              .delete()
+              .eq("user_id", claim.user_id)
+              .eq("claim_month", pendingClaim[0].claim_month);
+
+            if (deletePendingError) {
+              console.error("Failed to delete pending claim:", deletePendingError);
+            } else {
+              console.log("Deleted pending claim for user", claim.user_id);
+            }
+          } else {
+            console.log("No pending claim found for user", claim.user_id);
+          }
         } else {
           console.log(`[orders/create] No matching claim found. Tried: variant=${variantId}, nfwUserId=${nfwUserId}, checkoutId=${checkoutId}`);
         }

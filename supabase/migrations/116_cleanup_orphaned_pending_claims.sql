@@ -10,7 +10,7 @@ BEGIN;
 CREATE OR REPLACE FUNCTION cleanup_orphaned_pending_claims()
 RETURNS void
 LANGUAGE plpgsql
-SET search_path = pg_catalog
+SET search_path = pg_catalog, public
 AS $$
 BEGIN
   -- Delete pending_monthly_claims older than 30 minutes that have no corresponding
