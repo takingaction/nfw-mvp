@@ -52,6 +52,18 @@ export async function POST(request: NextRequest) {
     let accountId =
       grant.stripe_connect_account_id || profile?.stripe_connect_account_id;
 
+    // Verify stored account ID exists and is accessible to our platform
+    if (accountId) {
+      try {
+        await stripe.accounts.retrieve(accountId);
+      } catch (e) {
+        // Account is invalid/stale - clear it and create fresh
+        accountId = null;
+        await supabaseAdmin.from("grants").update({ stripe_connect_account_id: null }).eq("id", grantId);
+        await supabaseAdmin.from("profiles").update({ stripe_connect_account_id: null }).eq("id", user.id);
+      }
+    }
+
     if (!accountId) {
       const account = await stripe.accounts.create({
         type: "express",
