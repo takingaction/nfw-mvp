@@ -7281,3 +7281,40 @@ if (accountId) {
 
 ### Commit
 - `ae8d79e` - fix: validate Stripe account ID exists before creating account link
+
+---
+
+## Session 2026-07-13: Hide Grant Statuses - In Review and Payment Pending
+
+### Overview
+
+Hid "In Review" and "Pmt Pending" statuses from member-facing grant pages since these statuses are not used in the current grant workflow.
+
+### Changes Made
+
+**`/app/grants/my-applications/page.tsx`:**
+- Removed `in_review` and `payment_pending` from `statusCounts`, `statusColors`, `statusLabels`
+- Removed "In Review" and "Pmt Pending" status summary cards
+- Changed grid from `grid-cols-6` to `grid-cols-4`
+
+**`/app/grants/view/[id]/page.tsx`:**
+- Removed `in_review` and `payment_pending` from `statusColors`, `statusLabels`
+- Removed "Reviewed" timeline item (displayed when `reviewed_at` exists)
+- Removed "Payment Being Processed" section (for `payment_pending` status)
+
+**`/components/dashboard/YourMicrograntsSection.tsx`:**
+- Removed `in_review` and `payment_pending` from `statusColors`, `statusLabels`
+- Added filter to exclude `in_review` and `payment_pending` grants from displayed list
+
+### Visible Statuses (Member-Facing)
+
+| Page | Visible Statuses |
+|------|-----------------|
+| `/grants/my-applications` | Submitted, Approved, Not Approved, Pmt Sent |
+| `/grants/view/[id]` | Timeline: Submitted → Approved → Payment Sent |
+| `/dashboard` | "Your Applications" filtered to 4 statuses only |
+
+### Files Modified
+- `app/grants/my-applications/page.tsx`
+- `app/grants/view/[id]/page.tsx`
+- `components/dashboard/YourMicrograntsSection.tsx`

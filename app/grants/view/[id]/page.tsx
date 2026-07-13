@@ -72,19 +72,15 @@ export default async function GrantDetailPage({
 
   const statusColors: Record<string, string> = {
     submitted: "bg-blue-100 text-blue-800",
-    in_review: "bg-yellow-100 text-yellow-800",
     approved: "bg-green-100 text-green-800",
     not_approved: "bg-red-100 text-red-800",
-    payment_pending: "bg-orange-100 text-orange-800",
     payment_sent: "bg-purple-100 text-purple-800",
   };
 
   const statusLabels: Record<string, string> = {
     submitted: "Submitted",
-    in_review: "Being Reviewed",
     approved: "Approved",
     not_approved: "Not Approved",
-    payment_pending: "Payment Processing",
     payment_sent: "Payment Sent",
   };
 
@@ -222,19 +218,7 @@ export default async function GrantDetailPage({
                   </div>
                 </div>
               )}
-              {grant.reviewed_at && (
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0" />
-                  <div>
-                    <p className="font-ui text-sm text-nfw-blackberry">
-                      Reviewed
-                    </p>
-                    <p className="font-serif text-xs text-nfw-blackberry/50">
-                      {new Date(grant.reviewed_at).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              )}
+
               {grant.funded_at && (
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-purple-500 rounded-full flex-shrink-0" />
@@ -276,17 +260,7 @@ export default async function GrantDetailPage({
           <StripeAccountStatus grantId={grant.id} hasAccountId={true} />
         )}
 
-        {grant.status === "payment_pending" && (
-          <div className="bg-nfw-citrine/20 border border-nfw-citrine p-6 mt-6">
-            <h3 className="font-ui text-sm font-black tracking-[0.03em] uppercase text-nfw-blackberry mb-2">
-              Payment Being Processed
-            </h3>
-            <p className="font-serif text-nfw-blackberry/70">
-              Your grant payment is being processed and will arrive in your bank
-              account within 1-3 business days.
-            </p>
-          </div>
-        )}
+
 
         {grant.status === "payment_sent" && (
           <div className="bg-[#d4f1ad]/20 border border-[#d4f1ad] p-6 mt-6">

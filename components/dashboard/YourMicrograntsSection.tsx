@@ -39,19 +39,15 @@ interface YourMicrograntsSectionProps {
 
 const statusColors: Record<string, string> = {
   submitted: "bg-gray-100 text-gray-600",
-  in_review: "bg-blue-100 text-blue-700",
   approved: "bg-green-100 text-green-700",
   not_approved: "bg-red-100 text-red-700",
-  payment_pending: "bg-nfw-citrine text-nfw-blackberry",
   payment_sent: "bg-green-100 text-green-700",
 };
 
 const statusLabels: Record<string, string> = {
   submitted: "Submitted",
-  in_review: "In Review",
   approved: "Approved",
   not_approved: "Not Approved",
-  payment_pending: "Payment Pending",
   payment_sent: "Paid!",
 };
 
@@ -96,7 +92,9 @@ export default function YourMicrograntsSection({ grants, availableCycles }: Your
             </div>
           ) : (
             <div className="space-y-3">
-              {grants.map((grant) => (
+              {grants
+                .filter((g) => g.status !== "in_review" && g.status !== "payment_pending")
+                .map((grant) => (
                 <Link
                   key={grant.id}
                   href={`/grants/view/${grant.id}`}

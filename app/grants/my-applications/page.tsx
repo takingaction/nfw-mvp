@@ -49,31 +49,24 @@ export default async function MyApplicationsPage() {
 
   const statusCounts = {
     submitted: grants?.filter((g) => g.status === "submitted").length || 0,
-    in_review: grants?.filter((g) => g.status === "in_review").length || 0,
     approved: grants?.filter((g) => g.status === "approved").length || 0,
     not_approved:
       grants?.filter((g) => g.status === "not_approved").length || 0,
-    payment_pending:
-      grants?.filter((g) => g.status === "payment_pending").length || 0,
     payment_sent:
       grants?.filter((g) => g.status === "payment_sent").length || 0,
   };
 
   const statusColors: Record<string, string> = {
     submitted: "bg-blue-100 text-blue-800",
-    in_review: "bg-yellow-100 text-yellow-800",
     approved: "bg-[#d4f1ad]/40 text-nfw-blackberry",
     not_approved: "bg-red-100 text-red-800",
-    payment_pending: "bg-orange-100 text-orange-800",
     payment_sent: "bg-purple-100 text-purple-800",
   };
 
   const statusLabels: Record<string, string> = {
     submitted: "Submitted",
-    in_review: "Being Reviewed",
     approved: "Approved",
     not_approved: "Not Approved",
-    payment_pending: "Payment Processing",
     payment_sent: "Payment Sent",
   };
 
@@ -103,17 +96,12 @@ export default async function MyApplicationsPage() {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Status Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
           {[
             {
               label: "Submitted",
               value: statusCounts.submitted,
               color: "text-blue-700",
-            },
-            {
-              label: "In Review",
-              value: statusCounts.in_review,
-              color: "text-yellow-700",
             },
             {
               label: "Approved",
@@ -124,11 +112,6 @@ export default async function MyApplicationsPage() {
               label: "Not Approved",
               value: statusCounts.not_approved,
               color: "text-red-500",
-            },
-            {
-              label: "Pmt Pending",
-              value: statusCounts.payment_pending,
-              color: "text-orange-600",
             },
             {
               label: "Pmt Sent",
