@@ -72,6 +72,7 @@ export default function AdminMembersClient({
   const [selfDemoteWarning, setSelfDemoteWarning] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Partial<Member>>({});
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+  const [page, setPage] = useState(currentPage || 1);
 
   // Fetch ALL members for search via pagination
   useEffect(() => {
@@ -166,7 +167,7 @@ export default function AdminMembersClient({
   });
 
   // Paginated subset of filtered results
-  const paginatedOffset = (currentPage - 1) * pageSize;
+  const paginatedOffset = (page - 1) * pageSize;
   const paginatedFiltered = filtered.slice(paginatedOffset, paginatedOffset + pageSize);
 
   const openEdit = (member: Member) => {
@@ -480,10 +481,7 @@ export default function AdminMembersClient({
                   key={f}
                   onClick={() => {
                     setFilter(f);
-                    const params = new URLSearchParams(window.location.search);
-                    params.set("page", "1");
-                    if (search) params.set("search", search);
-                    window.history.replaceState(null, "", `?${params.toString()}`);
+                    setPage(1);
                   }}
                   className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
                     filter === f
@@ -501,21 +499,21 @@ export default function AdminMembersClient({
         {/* Results count */}
         <div className="px-4 py-2 bg-nfw-dove border-b border-nfw-blackberry/5 flex items-center justify-between">
           <p className="text-xs text-nfw-blackberry/50 font-medium">
-            Showing {filtered.length === 0 ? 0 : ((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, filtered.length)} of {filtered.length} members
+            Showing {filtered.length === 0 ? 0 : ((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, filtered.length)} of {filtered.length} members
             {filtered.length !== totalCount && search && ` (filtered from ${totalCount} total)`}
           </p>
           <div className="flex items-center gap-2">
-            {currentPage > 1 && (
+            {page > 1 && (
               <button
-                onClick={() => window.location.href = `?page=${currentPage - 1}${search ? `&search=${encodeURIComponent(search)}` : ""}`}
+                onClick={() => setPage(page - 1)}
                 className="px-3 py-1 text-xs bg-nfw-aubergine/10 text-nfw-aubergine hover:bg-nfw-aubergine/20 font-medium"
               >
                 ← Previous
               </button>
             )}
-            {currentPage * pageSize < filtered.length && (
+            {page * pageSize < filtered.length && (
               <button
-                onClick={() => window.location.href = `?page=${currentPage + 1}${search ? `&search=${encodeURIComponent(search)}` : ""}`}
+                onClick={() => setPage(page + 1)}
                 className="px-3 py-1 text-xs bg-nfw-aubergine/10 text-nfw-aubergine hover:bg-nfw-aubergine/20 font-medium"
               >
                 Next →
