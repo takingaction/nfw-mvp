@@ -194,42 +194,6 @@ export async function POST(request: Request) {
             return NextResponse.json({ received: true, reason: "Invalid user" });
           }
 
-          // Check if user already has a monthly claim this month
-          const { data: existingMonthlyClaim } = await supabaseAdmin
-            .from("monthly_claims")
-            .select("id")
-            .eq("user_id", claim.user_id)
-            .eq("claim_month", claimMonth)
-            .limit(1);
-
-          if (existingMonthlyClaim && existingMonthlyClaim.length > 0) {
-            // User already completed a claim this month, reject this one
-            console.log(`Rejecting claim ${claim.id} - user ${claim.user_id} already has monthly claim for ${claimMonth}`);
-
-            // Update claim status to rejected
-            await supabaseAdmin
-              .from("zero_dollar_claims")
-              .update({ status: "rejected_monthly_limit" })
-              .eq("id", claim.id);
-
-            return NextResponse.json({ received: true, reason: "Monthly limit exceeded" });
-          }
-
-          // Record monthly claim before updating claim status
-          // Handle unique constraint violation gracefully (race condition - duplicate webhook)
-          try {
-            await supabaseAdmin.from("monthly_claims").insert({
-              user_id: claim.user_id,
-              claim_month: claimMonth,
-            });
-          } catch (insertError: any) {
-            if (insertError?.code === "23505") {
-              console.log(`Monthly claim already exists for user ${claim.user_id} in ${claimMonth}, skipping duplicate insert`);
-            } else {
-              console.error("Error recording monthly claim:", insertError);
-            }
-          }
-
           // Only set status to fulfilled if there's tracking info (meaning actually shipped)
           // Otherwise keep as "completed" (checkout done, awaiting fulfillment)
           const newStatus = trackingNumber ? "fulfilled" : "completed";
@@ -252,6 +216,13 @@ export async function POST(request: Request) {
           } else {
             console.log("Updated claim", claim.id, "with order", orderId, "status:", newStatus);
           }
+
+          // Release pending checkout lock on completion
+          await supabaseAdmin
+            .from("pending_monthly_claims")
+            .delete()
+            .eq("user_id", claim.user_id)
+            .eq("claim_month", claimMonth);
         } else {
           console.log(`[orders/create] No matching claim found. Tried: variant=${variantId}, nfwUserId=${nfwUserId}, checkoutId=${checkoutId}`);
         }
@@ -330,18 +301,18 @@ export async function POST(request: Request) {
         }
 
         if (nfwUserId) {
-          // 1. Delete monthly_claims record
-          const { error: deleteMonthlyError } = await supabaseAdmin
-            .from("monthly_claims")
+          // Release pending checkout lock on cancellation
+          const { error: deletePendingError } = await supabaseAdmin
+            .from("pending_monthly_claims")
             .delete()
             .eq("user_id", nfwUserId)
             .eq("claim_month", claimMonth);
 
-          if (deleteMonthlyError) {
-            console.error("Failed to delete monthly claim on cancellation:", deleteMonthlyError);
+          if (deletePendingError) {
+            console.error("Failed to delete pending claim on cancellation:", deletePendingError);
           }
 
-          // 2. Find and cancel user's claim for this month (match by user_id + same month)
+          // Cancel user's claim for this month
           const monthStart = `${claimMonth}T00:00:00`;
           const { error: updateClaimError } = await supabaseAdmin
             .from("zero_dollar_claims")
@@ -355,7 +326,7 @@ export async function POST(request: Request) {
           }
 
           console.log(
-            `Order cancelled. User ${nfwUserId} monthly limit reset for ${claimMonth}. Reason: ${cancelReason}`
+            `Order cancelled. User ${nfwUserId} checkout reset for ${claimMonth}. Reason: ${cancelReason}`
           );
         }
       }

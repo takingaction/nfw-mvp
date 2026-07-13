@@ -7383,3 +7383,73 @@ Ran SQL to mark existing users with valid Stripe accounts as `stripe_onboarding_
 ### Related Changes
 
 - Changed "Connect Bank Account" return page button from "View My Application →" to "Back to Dashboard →"
+
+---
+
+## Session 2026-07-13: Zero Dollar Store Concurrent Checkout Fix
+
+### Problem
+
+Users could open multiple Shopify checkout windows for different products before completing any of them. This caused:
+1. Duplicate claims being created
+2. Race conditions in webhook processing
+3. Monthly limit not being properly enforced
+
+### Solution
+
+Implemented a temporary lock using `pending_monthly_claims` table to prevent concurrent checkouts.
+
+### Database Migrations
+
+**Migration 115:** Creates `pending_monthly_claims` table with unique constraint on `(user_id, claim_month)`:
+```sql
+CREATE TABLE pending_monthly_claims (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  claim_month TEXT NOT NULL,
+  shopify_product_id TEXT NOT NULL,
+  shopify_variant_id TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT unique_user_claim_month UNIQUE (user_id, claim_month)
+);
+```
+
+**Migration 116:** Adds pg_cron job to clean up orphaned `pending_monthly_claims` entries older than 30 minutes.
+
+**Migration 117:** Drops unused `monthly_claims` table (replaced by this system).
+
+### Flow
+
+| Step | Action | Table |
+|------|--------|-------|
+| 1 | Check if user already has completed claim this month | `zero_dollar_claims` |
+| 2 | Acquire lock before creating checkout | `pending_monthly_claims` INSERT |
+| 3 | If lock fails → return error "checkout already in progress" | - |
+| 4 | Create Shopify checkout | - |
+| 5 | Order completes → INSERT `zero_dollar_claims`, DELETE `pending_monthly_claims` | `webhook: orders/create` |
+| 6 | Order cancelled → DELETE `pending_monthly_claims` | `webhook: orders/updated` |
+| 7 | Cron cleanup orphaned locks >30 min | `pg_cron` |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `app/api/shopify/checkout/route.ts` | Removed incorrect zero_dollar_claims check, INSERT pending_monthly_claims before checkout, DELETE on error |
+| `app/api/shopify/webhook/route.ts` | DELETE pending_monthly_claims on completion AND cancellation, removed all monthly_claims references |
+| `supabase/migrations/117_drop_monthly_claims.sql` | NEW - drops unused monthly_claims table |
+
+### Key Design Decisions
+
+- `pending_monthly_claims` is a TEMPORARY lock - exists only during active checkout
+- Unique constraint on `(user_id, claim_month)` prevents ANY second checkout while one is in progress
+- On any error path, lock is released via DELETE
+- On cancel, lock is released so user can retry
+- On completion, lock is released after zero_dollar_claims is updated
+- Monthly limit (1 per month) is enforced by checking `zero_dollar_claims` for completed claims
+
+### To Deploy
+
+1. Run migration 115 in Supabase SQL Editor (creates `pending_monthly_claims`)
+2. Run migration 116 in Supabase SQL Editor (schedules cron cleanup)
+3. Deploy code changes
+4. Run migration 117 in Supabase SQL Editor (drops `monthly_claims`)

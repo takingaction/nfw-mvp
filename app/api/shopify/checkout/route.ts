@@ -103,8 +103,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Monthly claim check is now done in webhook (on checkout completion)
-    // This prevents abandoned checkouts from consuming the monthly slot
+    // Acquire pending checkout lock to prevent concurrent checkouts
+    const claimMonth = new Date().toISOString().split('T')[0];
+    const { error: pendingError } = await supabaseAdmin
+      .from("pending_monthly_claims")
+      .insert({
+        user_id: userId,
+        claim_month: claimMonth,
+        shopify_product_id: productId,
+        shopify_variant_id: variantId,
+      });
+
+    if (pendingError) {
+      return NextResponse.json(
+        { error: "You have a checkout already in progress. Please complete or cancel it first." },
+        { status: 400 }
+      );
+    }
 
     // Create Shopify draft order via REST Admin API
     const checkoutTime = Date.now();
@@ -180,6 +195,13 @@ export async function POST(request: NextRequest) {
       
       console.log(`Created Shopify draft order: ${result.draft_order.id} for user ${userId}`);
     } catch (error) {
+      // Release pending checkout lock on error
+      await supabaseAdmin
+        .from("pending_monthly_claims")
+        .delete()
+        .eq("user_id", userId)
+        .eq("claim_month", claimMonth);
+
       console.error("Failed to create Shopify checkout:", error);
       return NextResponse.json(
         { error: "Failed to create Shopify checkout" },
@@ -201,6 +223,13 @@ export async function POST(request: NextRequest) {
       });
 
     if (claimError) {
+      // Release pending checkout lock on claim insert failure
+      await supabaseAdmin
+        .from("pending_monthly_claims")
+        .delete()
+        .eq("user_id", userId)
+        .eq("claim_month", claimMonth);
+
       console.error("Error creating claim:", claimError);
       return NextResponse.json(
         { error: `Failed to save claim: ${claimError.message}` },
