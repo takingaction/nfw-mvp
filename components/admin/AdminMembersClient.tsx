@@ -312,8 +312,27 @@ export default function AdminMembersClient({
     }
   };
 
-  const statusBadge = (status: string | null, membershipLevel?: string | null) => {
-    if (membershipLevel === "waitlist" || (membershipLevel === "free" && !status)) {
+  const statusBadge = (
+    status: string | null,
+    membershipLevel?: string | null,
+    isApprovedFreeMember?: boolean | null,
+    profileCompleted?: boolean | null
+  ) => {
+    if (membershipLevel === "waitlist") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/20 text-nfw-blackberry/60">
+          <XCircle className="w-3 h-3" /> None
+        </span>
+      );
+    }
+    if (membershipLevel === "free" && !status) {
+      if (isApprovedFreeMember && profileCompleted) {
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-wisteria text-white">
+            <XCircle className="w-3 h-3" /> Free
+          </span>
+        );
+      }
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/20 text-nfw-blackberry/60">
           <XCircle className="w-3 h-3" /> None
@@ -456,10 +475,16 @@ export default function AdminMembersClient({
                 admin: "Admins",
                 incomplete: "Incomplete",
               };
-              return (
+                return (
                 <button
                   key={f}
-                  onClick={() => setFilter(f)}
+                  onClick={() => {
+                    setFilter(f);
+                    const params = new URLSearchParams(window.location.search);
+                    params.set("page", "1");
+                    if (search) params.set("search", search);
+                    window.history.replaceState(null, "", `?${params.toString()}`);
+                  }}
                   className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
                     filter === f
                       ? "bg-nfw-blackberry text-white"
@@ -591,7 +616,7 @@ export default function AdminMembersClient({
                         : member.state || "—"}
                     </td>
                     <td className="px-4 py-3">
-                      {statusBadge(member.subscription_status, member.membership_level)}
+                      {statusBadge(member.subscription_status, member.membership_level, member.is_approved_free_member, member.profile_completed)}
                     </td>
                     <td className="px-4 py-3">
                       {membershipBadge(member.membership_level, member)}

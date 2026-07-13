@@ -7698,13 +7698,14 @@ window.addEventListener("nfw-admin-status-change", (e) => {
 ### Changes Made
 
 **`components/admin/AdminMembersClient.tsx`:**
-- Modified `statusBadge` function to accept `membershipLevel` as second parameter
+- Modified `statusBadge` function to accept `membershipLevel`, `isApprovedFreeMember`, `profileCompleted` parameters
 - Status now shows **"None"** for:
-  - Waitlist members (`membershipLevel === "waitlist"`)
-  - Free members without subscription status (incomplete/abandoned)
+  - Waitlist members
+  - Free members who are incomplete/abandoned (not approved)
+- **"Free"** (wisteria) = Approved free members with no subscription status
 - **"Active"** (green) = Paid member with active subscription
 - **"Canceling"** (yellow) = Paid member whose subscription is canceling
-- **"Free"** (gray) = Paid members without subscription status
+- Filter buttons now reset to page 1 when changed (fixes pagination bug)
 
 ### Status Badge Logic
 
@@ -7713,6 +7714,6 @@ window.addEventListener("nfw-admin-status-change", (e) => {
 | founding, contributing | active | Active |
 | founding, contributing | canceling | Canceling |
 | founding, contributing | null | Free |
-| free (approved) | null | None |
-| free (incomplete/abandoned) | null | None |
-| waitlist | - | None |
+| free (approved) | null | Free (wisteria) |
+| free (incomplete/abandoned) | null | None (stone) |
+| waitlist | - | None (stone) |
