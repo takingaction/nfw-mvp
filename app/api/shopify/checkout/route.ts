@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check monthly limit (1 per month, any product)
-    const monthStart = new Date().toISOString().split('T')[0];
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const { data: monthlyClaim } = await supabaseAdmin
       .from("zero_dollar_claims")
       .select("id")
