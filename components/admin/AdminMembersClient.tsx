@@ -312,7 +312,14 @@ export default function AdminMembersClient({
     }
   };
 
-  const statusBadge = (status: string | null) => {
+  const statusBadge = (status: string | null, membershipLevel?: string | null) => {
+    if (membershipLevel === "waitlist" || (membershipLevel === "free" && !status)) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/20 text-nfw-blackberry/60">
+          <XCircle className="w-3 h-3" /> None
+        </span>
+      );
+    }
     if (status === "active")
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#d4f1ad] text-nfw-blackberry">
@@ -584,7 +591,7 @@ export default function AdminMembersClient({
                         : member.state || "—"}
                     </td>
                     <td className="px-4 py-3">
-                      {statusBadge(member.subscription_status)}
+                      {statusBadge(member.subscription_status, member.membership_level)}
                     </td>
                     <td className="px-4 py-3">
                       {membershipBadge(member.membership_level, member)}

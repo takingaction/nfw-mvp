@@ -7690,3 +7690,29 @@ window.addEventListener("nfw-admin-status-change", (e) => {
 |------|--------|
 | `components/admin/AdminMembersClient.tsx` | Removed "Free (Pending)", added "Waitlist" badge, changed Contributing to citrine |
 | `components/grants/ConnectBankButton.tsx` | Changed button to lilac |
+
+---
+
+## Session 2026-07-13 (Late): Status Badge "None" for Incomplete/Waitlist
+
+### Changes Made
+
+**`components/admin/AdminMembersClient.tsx`:**
+- Modified `statusBadge` function to accept `membershipLevel` as second parameter
+- Status now shows **"None"** for:
+  - Waitlist members (`membershipLevel === "waitlist"`)
+  - Free members without subscription status (incomplete/abandoned)
+- **"Active"** (green) = Paid member with active subscription
+- **"Canceling"** (yellow) = Paid member whose subscription is canceling
+- **"Free"** (gray) = Paid members without subscription status
+
+### Status Badge Logic
+
+| membership_level | subscription_status | Badge |
+|-----------------|-------------------|-------|
+| founding, contributing | active | Active |
+| founding, contributing | canceling | Canceling |
+| founding, contributing | null | Free |
+| free (approved) | null | None |
+| free (incomplete/abandoned) | null | None |
+| waitlist | - | None |
