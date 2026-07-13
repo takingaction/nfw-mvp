@@ -341,19 +341,11 @@ export default function AdminMembersClient({
       );
     if (level === "contributing")
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#d4f1ad] text-nfw-blackberry">
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#fdf493] text-nfw-blackberry">
           Contributing
         </span>
       );
     if (level === "free") {
-      // Free (Pending) - contact submitted, not yet approved
-      if (member.free_membership_contact_submitted && member.is_approved_free_member !== true) {
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-citrine text-nfw-blackberry">
-            Free (Pending)
-          </span>
-        );
-      }
       // Incomplete free members - differentiate between Abandoned and Profile Incomplete
       if (!member.free_membership_contact_submitted && member.is_approved_free_member !== true) {
         if (member.profile_completed) {
@@ -379,6 +371,12 @@ export default function AdminMembersClient({
         </span>
       );
     }
+    if (level === "waitlist")
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-aubergine text-white">
+          Waitlist
+        </span>
+      );
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/20 text-nfw-blackberry/60">
         Free

@@ -7660,3 +7660,33 @@ window.addEventListener("nfw-admin-status-change", (e) => {
 ### Commit
 
 `0a21d39` - fix: FloatingAdminButton shows correctly after login/logout without hard refresh
+
+---
+
+## Session 2026-07-13 (Evening): Badge Cleanup + Waitlist Badge
+
+### Changes Made
+
+**`components/admin/AdminMembersClient.tsx`:**
+
+1. Removed "Free (Pending)" badge - dead code since no members are in this state
+2. Added "Waitlist" badge (aubergine) for members with `membership_level = 'waitlist'`
+3. Changed "Contributing" badge from green (`#d4f1ad`) to citrine (`#fdf493`) to match "Founding" badge
+
+### Badge Summary
+
+| Badge | Color | Hex |
+|-------|-------|-----|
+| Founding | Citrine | #fdf493 |
+| Contributing | Citrine | #fdf493 |
+| Waitlist | Aubergine | #3E145F |
+| Abandoned | Wisteria | #7786BE |
+| Profile Incomplete | Stone | #a3a3a3 |
+| Free (approved) | Stone | #a3a3a3 |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/admin/AdminMembersClient.tsx` | Removed "Free (Pending)", added "Waitlist" badge, changed Contributing to citrine |
+| `components/grants/ConnectBankButton.tsx` | Changed button to lilac |
