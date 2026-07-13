@@ -7237,3 +7237,47 @@ Centralize email sending in `lib/email.ts` to eliminate inconsistent `is_active`
 ### Build Status
 - ✅ Build passed
 - ✅ TypeScript compiled without errors
+
+---
+
+## Session 2026-07-13: Stripe Connect Account Validation Fix
+
+### Problem
+
+Users clicking "Connect Bank Account" on `/grants/view/[id]` received error "Failed to create Stripe account link" even though they had never successfully connected before.
+
+### Root Cause
+
+The `stripe_connect_account_id` stored in the database was invalid or orphaned - the account existed in Stripe but was inaccessible to the current platform. This could happen from:
+- Prior failed/dropped onboarding attempts where account was created but flow never completed
+- Test accounts with invalid/stale IDs
+- Accounts created under different Stripe platform configurations
+
+### Solution
+
+Added validation in `app/api/stripe/connect/route.ts` to verify the stored account ID exists and is accessible before using it:
+
+```typescript
+// Verify stored account ID exists and is accessible to our platform
+if (accountId) {
+  try {
+    await stripe.accounts.retrieve(accountId);
+  } catch (e) {
+    // Account is invalid/stale - clear it and create fresh
+    accountId = null;
+    await supabaseAdmin.from("grants").update({ stripe_connect_account_id: null }).eq("id", grantId);
+    await supabaseAdmin.from("profiles").update({ stripe_connect_account_id: null }).eq("id", user.id);
+  }
+}
+```
+
+### Behavior
+- Valid accounts → proceed normally
+- Invalid/stale accounts → clear stale ID and create fresh Stripe account
+- Future orphaned IDs → handled automatically
+
+### Files Modified
+- `app/api/stripe/connect/route.ts` - Added account validation before accountLink creation
+
+### Commit
+- `ae8d79e` - fix: validate Stripe account ID exists before creating account link
