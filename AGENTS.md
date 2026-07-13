@@ -7606,3 +7606,57 @@ After fix, verified new breakdown:
 |------|--------|
 | `components/admin/AdminMembersClient.tsx` | Badge labels updated to "Abandoned" / "Profile Incomplete" |
 | `components/grants/ConnectBankButton.tsx` | Button color changed to lilac |
+
+## Session 2026-07-13: FloatingAdminButton Login/Logout Fix
+
+### Problem
+
+The floating admin button showed up when logged out (stale localStorage cache) and didn't show after logging in as admin without a hard refresh (useEffect only ran once on mount).
+
+### Root Cause
+
+`FloatingAdminButton` read `is_admin` from localStorage once on mount and never re-checked. The old approach:
+1. Read from localStorage on mount only
+2. No mechanism to detect login/logout events
+3. Relied on stale cached data
+
+### Solution
+
+**`components/admin/FloatingAdminButton.tsx`:**
+- Now calls `/api/auth/profile` to get fresh admin status on mount
+- Listens to Supabase `onAuthStateChange` to detect login/logout events
+- Listens to custom event `nfw-admin-status-change` from `AuthButtonCombined`
+
+**`components/AuthButtonCombined.tsx`:**
+- Added `updateAdminStatus()` function that dispatches custom event when admin status changes
+- Both components stay in sync via the custom event system
+
+### Key Pattern
+
+```typescript
+// FloatingAdminButton listens for events from AuthButtonCombined
+window.addEventListener("nfw-admin-status-change", (e) => {
+  setIsAdmin(e.detail.isAdmin);
+});
+```
+
+### Behavior Now
+
+| Scenario | How It's Handled |
+|----------|------------------|
+| Login via Google | `onAuthStateChange` fires → re-check API |
+| Login via password | `onAuthStateChange` fires → `AuthButtonCombined` fetches profile → dispatches event → `FloatingAdminButton` receives it |
+| Logout | `onAuthStateChange` fires → both components hide admin UI |
+| Hard refresh | API call on mount gets fresh data |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/admin/FloatingAdminButton.tsx` | API-based admin check + auth state listener + custom event listener |
+| `components/AuthButtonCombined.tsx` | Dispatches admin status change event |
+| `app/api/auth/profile/route.ts` | Debug logging removed after diagnosis |
+
+### Commit
+
+`0a21d39` - fix: FloatingAdminButton shows correctly after login/logout without hard refresh
