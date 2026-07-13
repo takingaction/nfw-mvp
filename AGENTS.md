@@ -7498,7 +7498,7 @@ Added monthly limit check in checkout API after lifetime limit check, before pen
 
 ```typescript
 // Check monthly limit (1 per month, any product)
-const monthStart = new Date().toISOString().split('T')[0];
+const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
 const { data: monthlyClaim } = await supabaseAdmin
   .from("zero_dollar_claims")
   .select("id")
@@ -7514,6 +7514,8 @@ if (monthlyClaim && monthlyClaim.length > 0) {
   );
 }
 ```
+
+**Bug Found During Testing:** `monthStart` was using `new Date().toISOString().split('T')[0]` which returns today's date (e.g., `2026-07-13`) instead of first of month (e.g., `2026-07-01`). Fixed to use `new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]`.
 
 ### UI Fix: Grey Out Buttons Without Refresh
 
