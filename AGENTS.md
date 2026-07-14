@@ -7751,3 +7751,21 @@ window.addEventListener("nfw-admin-status-change", (e) => {
 | free (approved) | null | Free (wisteria) |
 | free (incomplete/abandoned) | null | None (stone) |
 | waitlist | - | None (stone) |
+
+---
+
+## Session 2026-07-14: Profile Manage Subscription Fix
+
+### Problem
+
+Free and waitlist members on `/profile` page got "No subscription found" error when clicking "Manage Subscription" button because they have no Stripe subscription.
+
+### Solution
+
+Updated `ManageSubscription` component to route free and waitlist members to `/auth/sign-up?step=3` with "Upgrade Today" button text.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/ManageSubscription.tsx` | Added waitlist to condition, changed href to `/auth/sign-up?step=3`, changed text to "Upgrade Today" |

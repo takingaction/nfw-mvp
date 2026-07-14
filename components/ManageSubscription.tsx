@@ -31,13 +31,13 @@ export default function ManageSubscription({
   };
 
   // Only show for paid members
-  if (membershipLevel === "free") {
+  if (membershipLevel === "free" || membershipLevel === "waitlist") {
     return (
       <a
-        href="/plans"
+        href="/auth/sign-up?step=3"
         className="inline-block bg-nfw-blackberry text-white px-4 py-2 hover:bg-nfw-blackberry/90 font-medium transition-colors"
       >
-        Upgrade Membership
+        Upgrade Today
       </a>
     );
   }
