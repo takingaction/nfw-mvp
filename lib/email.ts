@@ -1341,7 +1341,7 @@ export async function sendSecondReviewerNotification({
 }: {
   cycleName: string;
 }): Promise<{ success: boolean; error?: string }> {
-  const toEmail = "michelle@nationalfundforwomen.org";
+  const toEmail = "ronpassaro@gmail.com";
   const siteUrl = "https://nationalfundforwomen.org";
 
   try {
