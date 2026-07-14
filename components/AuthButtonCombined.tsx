@@ -113,7 +113,7 @@ export function AuthButtonCombined() {
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-2 w-56 bg-white shadow-xl border border-nfw-aubergine/10 py-2 z-60">
+          <div className="absolute right-0 mt-2 w-56 bg-white shadow-xl border border-nfw-aubergine/10 py-2 z-20">
             <div className="px-4 py-2 border-b border-nfw-aubergine/10">
               <p className="text-sm font-semibold text-nfw-aubergine">
                 {profile?.full_name || "Member"}
