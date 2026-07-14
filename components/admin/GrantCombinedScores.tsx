@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, AlertTriangle, Check, MessageSquare } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Loader2, AlertTriangle, Check, MessageSquare, ChevronDown } from "lucide-react";
 
 interface Grant {
   id: string;
@@ -14,10 +14,15 @@ interface Grant {
   };
   is_nominating: boolean;
   nominee_name: string;
+  who_are_you: string;
+  biggest_challenge: string;
+  fund_usage: string;
   combined_score: number;
   decision: string;
   needs_discussion: boolean;
   discussion_notes: string | null;
+  barriers_yn: boolean | null;
+  has_received_grant: boolean;
   is_tentatively_approved: boolean;
   first_score?: {
     total_score: number;
@@ -56,6 +61,7 @@ export default function GrantCombinedScores({
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const maxSelectable = cycle.grants_available;
   const selectedCount = selectedIds.size;
@@ -80,6 +86,10 @@ export default function GrantCombinedScores({
     setSaved(true);
   };
 
+  const handleToggleExpand = (grantId: string) => {
+    setExpandedId(expandedId === grantId ? null : grantId);
+  };
+
   const getDecisionStyle = (decision: string) => {
     switch (decision) {
       case "Approved":
@@ -90,6 +100,22 @@ export default function GrantCombinedScores({
         return "bg-red-100 text-red-700 border-red-200";
     }
   };
+
+  function AccordionContent({ isOpen, children }: { isOpen: boolean; children: React.ReactNode }) {
+    return (
+      <div
+        style={{
+          display: "grid",
+          gridTemplateRows: isOpen ? "1fr" : "0fr",
+          transition: "grid-template-rows 400ms cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+      >
+        <div style={{ minHeight: 0, overflow: "hidden" }}>
+          {children}
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -146,7 +172,7 @@ export default function GrantCombinedScores({
               </button>
               <button
                 onClick={onFinalize}
-                disabled={finalizing || selectedCount === 0}
+                disabled={finalizing || selectedCount !== cycle.grants_available}
                 className="px-4 py-2 bg-nfw-aubergine text-white font-bold text-sm hover:bg-nfw-aubergine/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
               >
                 {finalizing ? (
@@ -158,6 +184,18 @@ export default function GrantCombinedScores({
                   "Finalize Approvals"
                 )}
               </button>
+              {selectedCount !== cycle.grants_available && !alreadyFinalized && (
+                <span className="text-xs text-nfw-blackberry/50">
+                  {selectedCount < cycle.grants_available
+                    ? `Select ${cycle.grants_available - selectedCount} more to finalize`
+                    : `Too many selected (max: ${cycle.grants_available})`}
+                </span>
+              )}
+              {selectedCount === cycle.grants_available && !alreadyFinalized && (
+                <span className="text-xs text-green-600 font-semibold">
+                  Ready to finalize
+                </span>
+              )}
             </>
           )}
           {alreadyFinalized && (
@@ -186,76 +224,81 @@ export default function GrantCombinedScores({
         </div>
       )}
 
-      {/* Table */}
+      {/* Header Row */}
       <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-nfw-dove border-b border-nfw-blackberry/10">
-              <th className="text-left p-3 text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider w-12">
-                Rank
-              </th>
-              <th className="text-left p-3 text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
-                Applicant
-              </th>
-              <th className="text-center p-3 text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider w-24">
-                Combined
-              </th>
-              <th className="text-center p-3 text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider w-32">
-                Decision
-              </th>
-              <th className="text-center p-3 text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider w-24">
-                Discuss
-              </th>
-              <th className="text-center p-3 text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider w-20">
-                Select
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {grants.map((grant, index) => {
-              const isSelected = selectedIds.has(grant.id);
-              const isSelectable = grant.decision === "Approved" && selectedCount < maxSelectable;
+        <div className="grid grid-cols-[48px_1fr_80px_100px_80px_96px_80px_80px] gap-2 p-3 border-b border-nfw-blackberry/10">
+          <div className="text-left text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
+            Rank
+          </div>
+          <div className="text-left text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
+            Applicant
+          </div>
+          <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
+            Combined
+          </div>
+          <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
+            Decision
+          </div>
+          <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
+            Barriers
+          </div>
+          <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
+            Discuss
+          </div>
+          <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
+            Prior
+          </div>
+          <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
+            Select
+          </div>
+        </div>
 
-              return (
-                <tr
-                  key={grant.id}
-                  className={`border-b border-nfw-blackberry/5 ${
-                    isSelected
+        {/* Grant Rows */}
+        <div>
+          {grants.map((grant, index) => {
+            const isSelected = selectedIds.has(grant.id);
+            const isExpanded = expandedId === grant.id;
+
+            return (
+              <div key={grant.id}>
+                {/* Header Row */}
+                <div
+                  onClick={() => handleToggleExpand(grant.id)}
+                  className={`grid grid-cols-[48px_1fr_80px_100px_80px_96px_80px_80px] gap-2 p-3 border-b border-nfw-blackberry/5 cursor-pointer ${
+                    isExpanded
+                      ? "bg-nfw-aubergine/5 border-l-4 border-l-nfw-aubergine"
+                      : isSelected
                       ? "bg-nfw-citrine/20"
-                      : index % 2 === 0
-                      ? "bg-white"
-                      : "bg-nfw-dove/50"
+                      : "bg-gray-50"
                   }`}
                 >
-                  <td className="p-3">
+                  <div className="flex items-center gap-2">
+                    <ChevronDown
+                      className={`w-4 h-4 text-nfw-blackberry/40 transition-transform duration-500 ease-in-out ${isExpanded ? "rotate-180" : ""}`}
+                    />
                     <span className="w-8 h-8 flex items-center justify-center bg-nfw-blackberry/10 text-sm font-bold text-nfw-blackberry rounded">
                       {grant.rank}
                     </span>
-                  </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-nfw-lilac/30 flex items-center justify-center text-sm font-bold text-nfw-blackberry rounded">
-                        {grant.profiles?.full_name?.charAt(0).toUpperCase() || "U"}
-                      </div>
-                      <div>
-                        <p className="font-bold text-nfw-blackberry text-sm">
-                          {grant.profiles?.full_name || "Unknown"}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div>
+                      <p className="font-bold text-nfw-blackberry text-sm">
+                        {grant.profiles?.full_name || "Unknown"}
+                      </p>
+                      {grant.is_nominating && (
+                        <p className="text-xs text-nfw-blackberry/50">
+                          Nomination: {grant.nominee_name}
                         </p>
-                        {grant.is_nominating && (
-                          <p className="text-xs text-nfw-blackberry/50">
-                            Nomination: {grant.nominee_name}
-                          </p>
-                        )}
-                      </div>
+                      )}
                     </div>
-                  </td>
-                  <td className="p-3 text-center">
+                  </div>
+                  <div className="flex items-center justify-center">
                     <span className="text-xl font-black text-nfw-blackberry">
                       {grant.combined_score}
                       <span className="text-sm text-nfw-blackberry/50">/18</span>
                     </span>
-                  </td>
-                  <td className="p-3 text-center">
+                  </div>
+                  <div className="flex items-center justify-center">
                     <span
                       className={`inline-block px-2 py-1 text-xs font-bold rounded border ${getDecisionStyle(
                         grant.decision
@@ -263,21 +306,43 @@ export default function GrantCombinedScores({
                     >
                       {grant.decision}
                     </span>
-                  </td>
-                  <td className="p-3 text-center">
+                  </div>
+                  <div className="flex items-center justify-center">
+                    {grant.barriers_yn === true ? (
+                      <span className="inline-block px-2 py-1 text-xs font-bold rounded bg-red-100 text-red-700 border border-red-200">
+                        Y
+                      </span>
+                    ) : grant.barriers_yn === false ? (
+                      <span className="inline-block px-2 py-1 text-xs font-bold rounded bg-gray-100 text-gray-600 border border-gray-200">
+                        N
+                      </span>
+                    ) : (
+                      <span className="text-nfw-blackberry/30 text-xs">—</span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-center">
                     {grant.needs_discussion ? (
-                      <div className="flex items-center justify-center gap-1 text-yellow-600" title={grant.discussion_notes || ""}>
+                      <div className="flex items-center gap-1 text-yellow-600">
                         <MessageSquare className="w-4 h-4" />
                         <span className="text-xs font-semibold">Flagged</span>
                       </div>
                     ) : (
                       <span className="text-nfw-blackberry/30 text-xs">—</span>
                     )}
-                  </td>
-                  <td className="p-3 text-center">
+                  </div>
+                  <div className="flex items-center justify-center">
+                    {grant.has_received_grant ? (
+                      <span className="inline-block px-2 py-1 text-xs font-bold rounded bg-nfw-aubergine/20 text-nfw-aubergine border border-nfw-aubergine/30">
+                        Yes
+                      </span>
+                    ) : (
+                      <span className="text-nfw-blackberry/30 text-xs">—</span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-center">
                     {grant.decision === "Approved" && !alreadyFinalized ? (
                       <button
-                        onClick={() => handleToggle(grant.id)}
+                        onClick={(e) => { e.stopPropagation(); handleToggle(grant.id); }}
                         disabled={!isSelected && selectedCount >= maxSelectable}
                         className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${
                           isSelected
@@ -289,42 +354,49 @@ export default function GrantCombinedScores({
                       </button>
                     ) : grant.decision === "Approved" && alreadyFinalized ? (
                       isSelected ? (
-                        <Check className="w-5 h-5 text-green-600 mx-auto" />
+                        <Check className="w-5 h-5 text-green-600" />
                       ) : (
                         <span className="text-nfw-blackberry/30">—</span>
                       )
                     ) : (
                       <span className="text-nfw-blackberry/30">—</span>
                     )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Discussion Notes Modal */}
-      {grants.some((g) => g.needs_discussion && g.discussion_notes) && (
-        <div className="bg-yellow-50 border border-yellow-200 p-4">
-          <h4 className="font-bold text-yellow-800 text-sm mb-2 flex items-center gap-2">
-            <MessageSquare className="w-4 h-4" />
-            Discussion Notes
-          </h4>
-          <div className="space-y-2">
-            {grants
-              .filter((g) => g.needs_discussion && g.discussion_notes)
-              .map((grant) => (
-                <div key={grant.id} className="bg-white border border-yellow-200 p-3 rounded text-sm">
-                  <p className="font-bold text-nfw-blackberry">
-                    {grant.profiles?.full_name} (Rank #{grant.rank})
-                  </p>
-                  <p className="text-nfw-blackberry/70">{grant.discussion_notes}</p>
+                  </div>
                 </div>
-              ))}
-          </div>
+
+                {/* Accordion Content */}
+                <AccordionContent isOpen={isExpanded}>
+                  <div className="p-4 bg-white">
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="font-bold text-nfw-aubergine text-xs uppercase tracking-wider mb-1">Who Are You?</h4>
+                        <p className="text-sm text-nfw-blackberry/80 font-serif">{grant.who_are_you}</p>
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-nfw-aubergine text-xs uppercase tracking-wider mb-1">Biggest Challenge</h4>
+                        <p className="text-sm text-nfw-blackberry/80 font-serif">{grant.biggest_challenge}</p>
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-nfw-aubergine text-xs uppercase tracking-wider mb-1">Fund Usage</h4>
+                        <p className="text-sm text-nfw-blackberry/80 font-serif">{grant.fund_usage}</p>
+                      </div>
+                    </div>
+                    {grant.needs_discussion && grant.discussion_notes && (
+                      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                        <h4 className="font-bold text-yellow-800 text-xs uppercase tracking-wider mb-1 flex items-center gap-1">
+                          <MessageSquare className="w-3 h-3" />
+                          Discussion Notes
+                        </h4>
+                        <p className="text-sm text-yellow-700">{grant.discussion_notes}</p>
+                      </div>
+                    )}
+                  </div>
+                </AccordionContent>
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
     </div>
   );
 }

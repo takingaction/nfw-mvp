@@ -7162,6 +7162,35 @@ Implemented a dual-reviewer scoring system for grant applications with sequentia
 - `e1906c5` - fix: replace em dashes with regular hyphens for consistent spacing
 - `337ffb6` - fix: add flex-shrink-0 to number spans for consistent alignment
 
+## Session 2026-07-14: Combined Scores UI Enhancements
+
+### Changes to Combined Scores Page (`/admin/grants/[id]/scoring/combined`)
+
+**Accordion Implementation:**
+- Converted table-based layout to div-based grid layout to enable CSS animations
+- Accordion shows applicant answers: Who Are You, Biggest Challenge, Fund Usage
+- ChevronDown icon rotates 180° on expand with `duration-500 ease-in-out`
+- Uses `grid-template-rows: 1fr → 0fr` for animation (height animation not working in table context)
+- **Note**: Close animation still has issues - may need revisiting
+
+**Visual Changes:**
+- Header background: white (was dove)
+- Row background: gray-50 (alternating, was white/dove)
+- Expanded row: aubergine/5 left border accent
+- Selected row: citrine/20 background
+- Accordion content: white background with gray-50 row background for contrast
+- Chevron animation matches FAQ page pattern
+
+**Select Checkbox:**
+- Centered horizontally in column
+- `e.stopPropagation()` prevents accordion toggle when clicking checkbox
+
+**Removed:**
+- Avatar icon next to applicant name (name alone is sufficient)
+
+### Files Modified
+- `components/admin/GrantCombinedScores.tsx` - Complete UI rewrite with div-based accordion
+
 ## Session 2026-07-12 (Afternoon): Internal Testing Only for Grant Cycles
 
 Added `is_testing_only` flag to grant cycles so admins can create test cycles that only they can see.

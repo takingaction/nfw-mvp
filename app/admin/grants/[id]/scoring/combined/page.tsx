@@ -17,10 +17,15 @@ interface Grant {
   };
   is_nominating: boolean;
   nominee_name: string;
+  who_are_you: string;
+  biggest_challenge: string;
+  fund_usage: string;
   combined_score: number;
   decision: string;
   needs_discussion: boolean;
   discussion_notes: string | null;
+  barriers_yn: boolean | null;
+  has_received_grant: boolean;
   is_tentatively_approved: boolean;
 }
 
@@ -176,7 +181,7 @@ export default function CombinedScoresPage() {
   return (
     <div className="min-h-screen bg-nfw-dove">
       {/* Header */}
-      <div className="bg-white border-b border-nfw-blackberry/10 sticky top-0 z-50">
+      <div className="bg-white border-b border-nfw-blackberry/10">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">

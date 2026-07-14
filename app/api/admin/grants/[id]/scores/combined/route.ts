@@ -34,6 +34,32 @@ export async function GET(
       return NextResponse.json({ error: "Cycle not found" }, { status: 404 });
     }
 
+    // Get all grants to check completion status
+    const { data: grantsCheck } = await supabaseAdmin
+      .from("grants")
+      .select("id, rachel_complete, michelle_complete")
+      .eq("cycle_id", cycleId);
+
+    if (!grantsCheck || grantsCheck.length === 0) {
+      return NextResponse.json({ error: "No grants found" }, { status: 404 });
+    }
+
+    // Check if both reviews are complete
+    const allFirstComplete = grantsCheck.every((g) => g.rachel_complete === true);
+    const allSecondComplete = grantsCheck.every((g) => g.michelle_complete === true);
+
+    if (!allFirstComplete) {
+      return NextResponse.json({
+        error: "First review is not complete. Please complete all first reviews first."
+      }, { status: 400 });
+    }
+
+    if (!allSecondComplete) {
+      return NextResponse.json({
+        error: "Second review is not complete. Please complete all second reviews first."
+      }, { status: 400 });
+    }
+
     // Get all grants with all scores
     const { data: grants } = await supabaseAdmin
       .from("grants")
@@ -79,11 +105,35 @@ export async function GET(
         decision,
         needs_discussion: firstScore?.needs_discussion || false,
         discussion_notes: firstScore?.discussion_notes || null,
+        barriers_yn: firstScore?.barriers_yn || null,
         is_tentatively_approved: cycle.grant_tentative_approvals?.some(
           (t: any) => t.grant_id === g.id && t.is_approved
         ) || false,
       };
     }) || [];
+
+    // Check for previous grants for each user
+    const userIds = [...new Set(grants?.map(g => g.user_id).filter(Boolean))];
+    let previousGrantsByUser: Record<string, boolean> = {};
+
+    if (userIds.length > 0) {
+      const { data: previousGrants } = await supabaseAdmin
+        .from("grants")
+        .select("user_id")
+        .in("user_id", userIds)
+        .eq("status", "payment_sent")
+        .neq("cycle_id", cycleId); // Exclude current cycle
+
+      previousGrantsByUser = (previousGrants || []).reduce((acc: Record<string, boolean>, g: any) => {
+        acc[g.user_id] = true;
+        return acc;
+      }, {});
+    }
+
+    // Add previous grant flag to each grant
+    grantsWithCombinedScores.forEach((g: any) => {
+      g.has_received_grant = previousGrantsByUser[g.user_id] || false;
+    });
 
     // Sort by combined score descending
     grantsWithCombinedScores.sort((a, b) => b.combined_score - a.combined_score);

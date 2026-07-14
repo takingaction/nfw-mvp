@@ -58,16 +58,13 @@ export default async function AdminGrantCyclePage({
 
   // Check scoring status
   const scoringStarted = !!cycle.scoring_started_at;
-  const scoringCompleted = !!cycle.scoring_completed_at;
   const finalApproved = !!cycle.final_approved_at;
 
-  // Check if first reviewer has completed all scores
-  const firstCompleteCount = grants?.filter((g) => g.rachel_complete).length || 0;
-  const allFirstComplete = firstCompleteCount === grants?.length;
+  // Check if first reviewer has completed all scores (all grants have rachel_complete = true)
+  const allFirstComplete = grants?.every((g) => g.rachel_complete) || false;
 
-  // Check if second reviewer has completed all scores
-  const secondCompleteCount = grants?.filter((g) => g.michelle_complete).length || 0;
-  const allSecondComplete = secondCompleteCount === grants?.length;
+  // Check if second reviewer has completed all scores (all grants have michelle_complete = true)
+  const allSecondComplete = grants?.every((g) => g.michelle_complete) || false;
 
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">
@@ -92,51 +89,41 @@ export default async function AdminGrantCyclePage({
             </p>
           </div>
           <div className="text-right flex gap-6 items-center">
-            {/* Scoring Buttons */}
+            {/* Scoring Buttons - Always show all 3 */}
             <div className="flex gap-2">
-              {finalApproved ? (
-                <Link
-                  href={`/admin/grants/${id}/scoring/combined`}
-                  className="px-4 py-2 bg-nfw-green/20 border border-nfw-green text-nfw-blackberry font-ui text-sm font-medium hover:bg-nfw-green/30 transition-colors"
-                >
-                  View Finalized
-                </Link>
-              ) : scoringCompleted ? (
-                <>
-                  <Link
-                    href={`/admin/grants/${id}/scoring/combined`}
-                    className="px-4 py-2 bg-nfw-citrine border border-nfw-blackberry/20 text-nfw-blackberry font-ui text-sm font-medium hover:bg-nfw-citrine/80 transition-colors"
-                  >
-                    Combined Scores ({allSecondComplete ? "Complete" : "In Progress"})
-                  </Link>
-                </>
-              ) : scoringStarted ? (
-                <>
-                  <Link
-                    href={`/admin/grants/${id}/scoring/first`}
-                    className="px-4 py-2 bg-nfw-aubergine/10 border border-nfw-aubergine/30 text-nfw-blackberry font-ui text-sm font-medium hover:bg-nfw-aubergine/20 transition-colors"
-                  >
-                    First Review ({firstCompleteCount}/{grants?.length || 0})
-                  </Link>
-                  <Link
-                    href={`/admin/grants/${id}/scoring/second`}
-                    className={`px-4 py-2 font-ui text-sm font-medium transition-colors ${
-                      allFirstComplete
-                        ? "bg-nfw-wisteria/10 border border-nfw-wisteria/30 text-nfw-blackberry hover:bg-nfw-wisteria/20"
-                        : "bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed"
-                    }`}
-                  >
-                    Second Review {allFirstComplete ? `(${secondCompleteCount}/${grants?.length || 0})` : "(Locked)"}
-                  </Link>
-                </>
-              ) : (
-                <Link
-                  href={`/admin/grants/${id}/scoring/first`}
-                  className="px-4 py-2 bg-nfw-aubergine text-white font-ui text-sm font-medium hover:bg-nfw-aubergine/90 transition-colors"
-                >
-                  Start First Review
-                </Link>
-              )}
+              {/* First Review - Always active */}
+              <Link
+                href={`/admin/grants/${id}/scoring/first`}
+                className="px-4 py-2 bg-nfw-aubergine text-white font-ui text-sm font-medium hover:bg-nfw-aubergine/90 transition-colors"
+              >
+                First Review
+              </Link>
+
+              {/* Second Review - Locked until all first reviews complete */}
+              <Link
+                href={allFirstComplete ? `/admin/grants/${id}/scoring/second` : "#"}
+                className={`px-4 py-2 font-ui text-sm font-medium transition-colors ${
+                  allFirstComplete
+                    ? "bg-nfw-wisteria text-white hover:bg-nfw-wisteria/80"
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                Second Review
+              </Link>
+
+              {/* Combined Scores - Locked until all second reviews complete */}
+              <Link
+                href={allSecondComplete && !finalApproved ? `/admin/grants/${id}/scoring/combined` : "#"}
+                className={`px-4 py-2 font-ui text-sm font-medium transition-colors ${
+                  finalApproved
+                    ? "bg-nfw-green/20 border border-nfw-green text-nfw-blackberry hover:bg-nfw-green/30"
+                    : allSecondComplete
+                    ? "bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/80"
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                {finalApproved ? "View Finalized" : "Combined Scores"}
+              </Link>
             </div>
 
             <div>

@@ -36,6 +36,8 @@ export default function FirstReviewPage() {
   const [completing, setCompleting] = useState(false);
   const [completeSuccess, setCompleteSuccess] = useState(false);
   const [selectedGrant, setSelectedGrant] = useState<string | null>(null);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [isFirstComplete, setIsFirstComplete] = useState(false);
 
   useEffect(() => {
     fetchGrants();
@@ -59,6 +61,9 @@ export default function FirstReviewPage() {
       if (data.grants?.length > 0 && !selectedGrant) {
         setSelectedGrant(data.grants[0].id);
       }
+      // Check if all grants have rachel_complete = true
+      const allComplete = data.grants?.every((g: any) => g.rachel_complete === true) || false;
+      setIsFirstComplete(allComplete);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -121,9 +126,7 @@ export default function FirstReviewPage() {
   };
 
   const handleCompleteReview = async () => {
-    if (!confirm("Are you sure you want to mark your review as complete? You cannot edit scores after completing.")) {
-      return;
-    }
+    setShowCompleteModal(false);
 
     setCompleting(true);
     try {
@@ -172,10 +175,12 @@ export default function FirstReviewPage() {
         throw new Error(data.error || "Failed to complete review");
       }
 
+      // Show success state briefly then refresh to show updated button state
       setCompleteSuccess(true);
       setTimeout(() => {
-        router.push(`/admin/grants/${cycleId}`);
-      }, 2000);
+        // Refresh page data to show the unlock state on main page buttons
+        window.location.reload();
+      }, 1500);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -226,13 +231,10 @@ export default function FirstReviewPage() {
             <Check className="w-8 h-8 text-green-600" />
           </div>
           <h2 className="text-2xl font-bold text-nfw-blackberry mb-2">
-            Review Complete!
+            First Review Complete!
           </h2>
           <p className="text-nfw-blackberry/60">
-            Michelle has been notified to begin her review.
-          </p>
-          <p className="text-sm text-nfw-blackberry/40 mt-2">
-            Redirecting...
+            Michelle has been notified. Reloading...
           </p>
         </div>
       </div>
@@ -242,7 +244,7 @@ export default function FirstReviewPage() {
   return (
     <div className="min-h-screen bg-nfw-dove">
       {/* Header */}
-      <div className="bg-white border-b border-nfw-blackberry/10 sticky top-0 z-50">
+      <div className="bg-white border-b border-nfw-blackberry/10">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -264,21 +266,12 @@ export default function FirstReviewPage() {
             </div>
             <div className="flex items-center gap-4">
               <button
-                onClick={handleCompleteReview}
-                disabled={completing || completedCount < totalCount}
+                onClick={() => setShowCompleteModal(true)}
+                disabled={completedCount < totalCount || isFirstComplete}
                 className="px-4 py-2 bg-nfw-aubergine text-white font-bold text-sm hover:bg-nfw-aubergine/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
               >
-                {completing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Completing...
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4" />
-                    Mark Review Complete
-                  </>
-                )}
+                <Check className="w-4 h-4" />
+                {isFirstComplete ? "First Review Complete" : "Mark Review Complete"}
               </button>
             </div>
           </div>
@@ -305,7 +298,7 @@ export default function FirstReviewPage() {
                 const subtotal = (score?.urgency_score ?? 0) +
                   (score?.authenticity_score ?? 0) +
                   (score?.impact_score ?? 0);
-                const hasScore = subtotal > 0;
+                const isComplete = score?.is_complete === true;
                 const isFlagged = score?.needs_discussion;
 
                 return (
@@ -315,7 +308,7 @@ export default function FirstReviewPage() {
                     className={`w-full text-left p-4 rounded transition-all ${
                       selectedGrant === grant.id
                         ? "bg-nfw-aubergine text-white"
-                        : hasScore
+                        : isComplete
                         ? "bg-green-50 border border-green-200 hover:border-green-300"
                         : "bg-white border border-nfw-blackberry/10 hover:border-nfw-blackberry/20"
                     }`}
@@ -326,7 +319,7 @@ export default function FirstReviewPage() {
                           className={`w-8 h-8 rounded flex items-center justify-center text-sm font-bold ${
                             selectedGrant === grant.id
                               ? "bg-white/20 text-white"
-                              : hasScore
+                              : isComplete
                               ? "bg-green-500 text-white"
                               : "bg-nfw-dove text-nfw-blackberry"
                           }`}
@@ -368,7 +361,7 @@ export default function FirstReviewPage() {
                             Flagged
                           </span>
                         )}
-                        {hasScore ? (
+                        {isComplete ? (
                           <span
                             className={`text-xs px-2 py-0.5 rounded ${
                               selectedGrant === grant.id
@@ -417,6 +410,42 @@ export default function FirstReviewPage() {
           </div>
         </div>
       </div>
+
+      {/* Complete Review Confirmation Modal */}
+      {showCompleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-bold text-nfw-blackberry mb-2">
+              Mark Review Complete?
+            </h3>
+            <p className="text-nfw-blackberry/70 mb-6">
+              Ready to submit your first reviewer scores. You can continue editing after submitting if needed.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowCompleteModal(false)}
+                className="px-4 py-2 text-sm font-bold text-nfw-blackberry/60 hover:text-nfw-blackberry transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCompleteReview}
+                disabled={completing}
+                className="px-4 py-2 bg-nfw-aubergine text-white text-sm font-bold hover:bg-nfw-aubergine/90 disabled:opacity-50 flex items-center gap-2"
+              >
+                {completing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Completing...
+                  </>
+                ) : (
+                  "Mark Complete"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

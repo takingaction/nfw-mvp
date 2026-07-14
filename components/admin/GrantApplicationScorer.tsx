@@ -70,6 +70,17 @@ export default function GrantApplicationScorer({
         authenticity_score !== null ||
         impact_score !== null
       ) {
+        // Determine if application is complete:
+        // - All 3 scores filled
+        // - barriers_yn filled
+        // - If needs_discussion is true, discussion_notes must be filled
+        const isComplete =
+          urgency_score !== null &&
+          authenticity_score !== null &&
+          impact_score !== null &&
+          barriers_yn !== null &&
+          (!needs_discussion || (needs_discussion && discussion_notes.trim().length > 0));
+
         handleSave({
           urgency_score,
           authenticity_score,
@@ -77,6 +88,7 @@ export default function GrantApplicationScorer({
           barriers_yn,
           needs_discussion: reviewerType === "first" ? needs_discussion : undefined,
           discussion_notes: reviewerType === "first" ? discussion_notes : undefined,
+          is_complete: isComplete,
         });
       }
     }, 1000);
@@ -284,6 +296,7 @@ export default function GrantApplicationScorer({
               barriers_yn: null,
               needs_discussion: false,
               discussion_notes: "",
+              is_complete: false,
             });
           }}
           className="w-full py-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors"

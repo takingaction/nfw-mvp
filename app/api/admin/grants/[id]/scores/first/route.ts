@@ -55,6 +55,7 @@ export async function GET(
         nominee_email,
         status,
         submitted_at,
+        rachel_complete,
         profiles:user_id (full_name, email, city, state),
         grant_scores!left (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, is_complete, total_score)
       `)
