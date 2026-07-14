@@ -7191,6 +7191,11 @@ Implemented a dual-reviewer scoring system for grant applications with sequentia
 ### Files Modified
 - `components/admin/GrantCombinedScores.tsx` - Complete UI rewrite with div-based accordion
 
+### Dropdown Z-Index Fix
+- Changed dropdown z-index from z-20 to z-60 to appear above sticky headers
+- This broke admin dropdown links (visible but not clickable)
+- Restored dropdown z-index to z-20 in both AuthButtonCombined.tsx and auth-button.tsx
+
 ## Session 2026-07-12 (Afternoon): Internal Testing Only for Grant Cycles
 
 Added `is_testing_only` flag to grant cycles so admins can create test cycles that only they can see.
