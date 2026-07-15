@@ -7,7 +7,7 @@ const supabaseAdmin = createAdminClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-const CSV_COLUMNS = [
+const DB_COLUMNS = [
   "id",
   "email",
   "full_name",
@@ -18,6 +18,7 @@ const CSV_COLUMNS = [
   "is_admin",
   "is_approved_free_member",
   "free_membership_contact_submitted",
+  "stripe_onboarding_completed",
   "date_of_birth",
   "state",
   "city",
@@ -32,8 +33,16 @@ const CSV_COLUMNS = [
   "stripe_connect_account_id",
   "access_perks_member_id",
   "access_perks_synced_at",
+  "waitlist_joined_at",
+  "waitlist_email_sent_at",
   "joined_at",
   "updated_at",
+];
+
+const CSV_COLUMNS = [
+  ...DB_COLUMNS,
+  "category",
+  "sub_status",
 ];
 
 const COLUMN_LABELS: Record<string, string> = {
@@ -47,6 +56,7 @@ const COLUMN_LABELS: Record<string, string> = {
   is_admin: "Is Admin",
   is_approved_free_member: "Is Approved Free Member",
   free_membership_contact_submitted: "Free Membership Contact Submitted",
+  stripe_onboarding_completed: "Stripe Onboarding Completed",
   date_of_birth: "Date of Birth",
   state: "State",
   city: "City",
@@ -61,8 +71,12 @@ const COLUMN_LABELS: Record<string, string> = {
   stripe_connect_account_id: "Stripe Connect ID",
   access_perks_member_id: "Access Perks Member ID",
   access_perks_synced_at: "Access Perks Synced At",
+  waitlist_joined_at: "Joined Waitlist",
+  waitlist_email_sent_at: "Welcome Email Sent",
   joined_at: "Joined At",
   updated_at: "Updated At",
+  category: "Category",
+  sub_status: "Sub Status",
 };
 
 function escapeCsvField(value: unknown): string {
@@ -115,19 +129,70 @@ function formatJson(value: unknown): string {
   return String(value);
 }
 
+function getCategory(profile: Record<string, unknown>): string {
+  const level = profile.membership_level as string | null;
+  const isApproved = profile.is_approved_free_member as boolean | null;
+  const profileCompleted = profile.profile_completed as boolean | null;
+  const contactSubmitted = profile.free_membership_contact_submitted as boolean | null;
+  const isAdmin = profile.is_admin as boolean | null;
+
+  if (isAdmin) return "Admin";
+  if (level === "founding") return "Founding";
+  if (level === "contributing") return "Contributing";
+  if (level === "waitlist") return "Waitlist";
+  if (level === "free") {
+    // Incomplete free members - differentiate between Abandoned and Profile Incomplete
+    if (!contactSubmitted && isApproved !== true) {
+      if (profileCompleted) {
+        // Abandoned - completed profile but abandoned at step 3
+        return "Abandoned";
+      } else {
+        // Profile Incomplete - never finished profile
+        return "Profile Incomplete";
+      }
+    }
+    // Free - approved member
+    return "Free";
+  }
+  return "Unknown";
+}
+
+function getSubStatus(profile: Record<string, unknown>): string {
+  const level = profile.membership_level as string | null;
+  const isApproved = profile.is_approved_free_member as boolean | null;
+  const profileCompleted = profile.profile_completed as boolean | null;
+  const contactSubmitted = profile.free_membership_contact_submitted as boolean | null;
+  const subStatus = profile.subscription_status as string | null;
+
+  if (subStatus === "active") return "Active";
+  if (subStatus === "canceling") return "Canceling";
+  if (level === "free" && isApproved === true && profileCompleted === true && !["active", "canceling"].includes(subStatus || "")) {
+    return "Free";
+  }
+  if (level === "free" && (!isApproved || !contactSubmitted)) {
+    return "Pending";
+  }
+  if (level === "waitlist" || (level === "free" && profileCompleted !== true)) {
+    return "None";
+  }
+  return "None";
+}
+
 function formatCell(col: string, value: unknown): string {
   switch (col) {
     case "is_admin":
     case "profile_completed":
     case "is_approved_free_member":
     case "free_membership_contact_submitted":
+    case "stripe_onboarding_completed":
       return formatBoolean(value as boolean | null);
     case "date_of_birth":
       return formatDate(value as string | null);
     case "subscription_ends_at":
     case "access_perks_synced_at":
+    case "waitlist_joined_at":
+    case "waitlist_email_sent_at":
     case "joined_at":
-    case "created_at":
     case "updated_at":
       return formatDateTime(value as string | null);
     case "identities":
@@ -146,10 +211,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Select only the columns we need, explicitly named
-  const selectColumns = CSV_COLUMNS.join(",");
+  const selectColumns = DB_COLUMNS.join(",");
 
-  // Fetch ALL profiles via pagination to bypass 1000 row limit
   const pageSize = 1000;
   const allProfiles: any[] = [];
   let page = 0;
@@ -165,7 +228,10 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Failed to fetch profiles:", error);
-      return NextResponse.json({ error: "Failed to fetch members", details: error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to fetch members", details: error.message },
+        { status: 500 }
+      );
     }
 
     if (data && data.length > 0) {
@@ -179,18 +245,19 @@ export async function GET(request: NextRequest) {
 
   const profiles = allProfiles;
 
-  // Use CSV_COLUMNS as our canonical column list
   const validColumns = [...CSV_COLUMNS];
   const headers = validColumns.map((col) => COLUMN_LABELS[col] || col);
 
-  const rows = profiles?.map((profile: unknown) => {
-    const p = profile as Record<string, unknown>;
-    return validColumns.map((col) => formatCell(col, p[col]));
+  const rows = profiles.map((profile: Record<string, unknown>) => {
+    const category = getCategory(profile);
+    const subStatus = getSubStatus(profile);
+    const enrichedProfile = { ...profile, category, sub_status: subStatus } as Record<string, unknown>;
+    return validColumns.map((col) => formatCell(col, enrichedProfile[col]));
   });
 
   const csv = [
     headers.join(","),
-    ...(rows || []).map((r: string[]) => r.join(","))
+    ...rows.map((r: string[]) => r.join(","))
   ].join("\n");
 
   const today = new Date().toISOString().split("T")[0];

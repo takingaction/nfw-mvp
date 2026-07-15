@@ -7813,3 +7813,47 @@ Added CSV export functionality to `/admin/waitlist` page, mirroring the implemen
 - Filename: `nfw-waitlist-YYYY-MM-DD.csv`
 - Uses `requireAdmin()` for authentication
 - Same helper functions as members export: `escapeCsvField`, `formatDate`, `formatDateTime`, `formatBoolean`
+
+---
+
+## Session 2026-07-15 (Afternoon): Members CSV Category Columns
+
+Added explicit category breakdown columns to `/admin/members` CSV export to match the breakdown categories on the members page.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/members/export/route.ts` | Added 5 new columns: category, sub_status, stripe_onboarding_completed, waitlist_joined_at, waitlist_email_sent_at |
+
+### New CSV Columns (5 added = 31 total)
+
+| Column | Format | Description |
+|--------|--------|-------------|
+| `stripe_onboarding_completed` | Yes/No | Whether Stripe bank account onboarding is complete |
+| `waitlist_joined_at` | DateTime | When member joined waitlist |
+| `waitlist_email_sent_at` | DateTime | When welcome email was sent (blank if null) |
+| `category` | String | Founding, Contributing, Free, Abandoned, Profile Incomplete, Waitlist, Admin |
+| `sub_status` | String | Active, Canceling, Free, Pending, None |
+
+### Category Logic
+
+| Category | Condition |
+|----------|-----------|
+| Founding | `membership_level = 'founding'` |
+| Contributing | `membership_level = 'contributing'` |
+| Free | `membership_level = 'free'` AND `is_approved_free_member = true` AND `profile_completed = true` |
+| Abandoned | `membership_level = 'free'` AND `profile_completed = true` AND `is_approved_free_member != true` AND `free_membership_contact_submitted = false` |
+| Profile Incomplete | `membership_level = 'free'` AND `profile_completed != true` |
+| Waitlist | `membership_level = 'waitlist'` |
+| Admin | `is_admin = true` |
+
+### Sub Status Logic
+
+| Sub Status | Condition |
+|------------|-----------|
+| Active | `subscription_status = 'active'` |
+| Canceling | `subscription_status = 'canceling'` |
+| Free | Free member with active subscription status |
+| Pending | Free member awaiting approval or contact form submission |
+| None | Waitlist members or free members with incomplete profiles |
