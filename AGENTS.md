@@ -7769,3 +7769,47 @@ Updated `ManageSubscription` component to route free and waitlist members to `/a
 | File | Change |
 |------|--------|
 | `components/ManageSubscription.tsx` | Added waitlist to condition, changed href to `/auth/sign-up?step=3`, changed text to "Upgrade Today" |
+
+---
+
+## Session 2026-07-15: Waitlist CSV Export
+
+Added CSV export functionality to `/admin/waitlist` page, mirroring the implementation from `/admin/members`.
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `app/api/admin/waitlist/export/route.ts` | GET endpoint returning CSV of all waitlist members |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/waitlist/page.tsx` | Added "Download CSV" button in header |
+
+### CSV Columns (13 total)
+
+| Column | Source | Format |
+|--------|--------|--------|
+| ID | `id` | String |
+| Email | `email` | String |
+| Full Name | `full_name` | String |
+| Membership Level | `membership_level` | String |
+| State | `state` | String |
+| City | `city` | String |
+| ZIP Code | `zip` | String |
+| Date of Birth | `date_of_birth` | MM/DD/YYYY |
+| Profile Completed | `profile_completed` | Yes/No |
+| Joined Waitlist | `waitlist_joined_at` | DateTime |
+| Welcome Email Sent | `waitlist_email_sent_at` | DateTime (blank if null) |
+| Is Approved | `is_approved_free_member` | Yes/No |
+| Joined At | `joined_at` | DateTime |
+
+### Details
+
+- Sorted by `waitlist_joined_at` ascending (earliest at top)
+- Uses pagination (1000 rows/page) to bypass Supabase row limits
+- Filename: `nfw-waitlist-YYYY-MM-DD.csv`
+- Uses `requireAdmin()` for authentication
+- Same helper functions as members export: `escapeCsvField`, `formatDate`, `formatDateTime`, `formatBoolean`
