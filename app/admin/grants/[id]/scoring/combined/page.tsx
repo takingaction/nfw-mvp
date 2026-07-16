@@ -6,6 +6,14 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, AlertCircle, Check } from "lucide-react";
 import GrantCombinedScores from "@/components/admin/GrantCombinedScores";
 
+interface StripeCheckResult {
+  grantId: string;
+  connected: boolean;
+  details_submitted: boolean;
+  charges_enabled: boolean;
+  payouts_enabled: boolean;
+}
+
 interface Grant {
   id: string;
   rank: number;
@@ -14,6 +22,7 @@ interface Grant {
     email: string;
     city: string;
     state: string;
+    stripe_onboarding_completed?: boolean;
   };
   is_nominating: boolean;
   nominee_name: string;
@@ -29,6 +38,10 @@ interface Grant {
   barriers_yn: boolean | null;
   has_received_grant: boolean;
   is_tentatively_approved: boolean;
+  stripe_connect_account_id?: string | null;
+  funded_at?: string | null;
+  transfer_id?: string | null;
+  stripe_onboarding_completed?: boolean;
 }
 
 interface Cycle {
@@ -36,6 +49,7 @@ interface Cycle {
   cycle_name: string;
   amount_per_grant: number;
   grants_available: number;
+  total_funds: number;
   scoring_completed_at: string;
   final_approved_at: string;
 }
@@ -47,6 +61,7 @@ export default function CombinedScoresPage() {
 
   const [grants, setGrants] = useState<Grant[]>([]);
   const [cycle, setCycle] = useState<Cycle | null>(null);
+  const [totalPaid, setTotalPaid] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [finalizing, setFinalizing] = useState(false);
@@ -67,6 +82,7 @@ export default function CombinedScoresPage() {
 
       setGrants(data.grants || []);
       setCycle(data.cycle);
+      setTotalPaid(data.totalPaid || 0);
       if (data.cycle?.final_approved_at) {
         setFinalized(true);
       }
@@ -90,7 +106,6 @@ export default function CombinedScoresPage() {
         throw new Error(data.error || "Failed to save selections");
       }
 
-      // Refetch to update tentative approvals
       fetchData();
     } catch (err: any) {
       alert(err.message);
@@ -124,6 +139,36 @@ export default function CombinedScoresPage() {
     }
   };
 
+  const handleCheckStripeStatus = async (): Promise<StripeCheckResult[]> => {
+    const res = await fetch(`/api/admin/grants/${cycleId}/check-connections`, {
+      method: "POST",
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Failed to check connections");
+    }
+
+    const data = await res.json();
+    return data.results || [];
+  };
+
+  const handleSendMoney = async (grantId: string): Promise<{ error?: string; success?: boolean }> => {
+    const res = await fetch(`/api/admin/grants/${grantId}/transfer`, {
+      method: "POST",
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { error: data.error || "Failed to send money" };
+    }
+
+    // Refetch to update the grant status
+    fetchData();
+    return { success: true };
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-nfw-dove">
@@ -147,32 +192,6 @@ export default function CombinedScoresPage() {
               className="inline-flex items-center gap-2 mt-4 text-sm text-red-700 hover:text-red-800"
             >
               <ArrowLeft className="w-4 h-4" /> Back to Grants
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (finalized) {
-    return (
-      <div className="min-h-screen p-8 bg-nfw-dove">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white border border-nfw-blackberry/10 p-8 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="w-8 h-8 text-green-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-nfw-blackberry mb-2">
-              Approvals Finalized
-            </h2>
-            <p className="text-nfw-blackberry/60 mb-4">
-              All applicants have been notified via email.
-            </p>
-            <Link
-              href={`/admin/grants/${cycleId}`}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-nfw-aubergine text-white font-bold hover:bg-nfw-aubergine/90 transition-colors"
-            >
-              Back to Grant Cycle
             </Link>
           </div>
         </div>
@@ -211,8 +230,11 @@ export default function CombinedScoresPage() {
         <GrantCombinedScores
           grants={grants}
           cycle={cycle!}
+          totalPaid={totalPaid}
           onTentativeApprove={handleTentativeApprove}
           onFinalize={handleFinalize}
+          onCheckStripeStatus={handleCheckStripeStatus}
+          onSendMoney={handleSendMoney}
           loading={loading}
           finalizing={finalizing}
           alreadyFinalized={finalized}

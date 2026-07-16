@@ -407,84 +407,11 @@ export async function POST(request: Request) {
       }
 
       case "account.updated": {
+        // Auto-transfer is disabled. Transfers are now initiated manually via admin UI.
+        // See /admin/grants/[id]/scoring/combined for the manual transfer workflow.
         const account = event.data.object as Stripe.Account;
-        console.log("[webhook] Processing account.updated for:", account.id);
+        console.log("[webhook] account.updated event received for:", account.id);
         console.log("[webhook] details_submitted:", account.details_submitted, "charges_enabled:", account.charges_enabled, "payouts_enabled:", account.payouts_enabled);
-
-        if (account.details_submitted && account.charges_enabled && account.payouts_enabled) {
-          // Find grants with this Stripe Connect account that need payment (approved or payment_pending)
-          const { data: grants, error: grantError } = await supabaseAdmin
-            .from("grants")
-            .select("id, user_id, amount_approved, grant_cycles(cycle_name)")
-            .eq("stripe_connect_account_id", account.id)
-            .in("status", ["approved", "payment_pending"]);
-
-          if (grantError) {
-            console.error("[webhook] Error finding grants:", grantError);
-            break;
-          }
-
-          if (!grants || grants.length === 0) {
-            console.log("[webhook] No grants needing payment found for account:", account.id);
-            break;
-          }
-
-          for (const grant of grants) {
-            // Create transfer for this grant
-            const transfer = await stripe.transfers.create({
-              amount: Math.round((grant.amount_approved || 0) * 100),
-              currency: "usd",
-              destination: account.id,
-              metadata: {
-                grantId: grant.id,
-                userId: grant.user_id,
-              },
-            });
-
-            console.log("[webhook] Created transfer", transfer.id, "for grant", grant.id);
-
-            // Update grant status to payment_sent
-            await supabaseAdmin
-              .from("grants")
-              .update({ status: "payment_sent", funded_at: new Date().toISOString() })
-              .eq("id", grant.id);
-
-            console.log("[webhook] Updated grant", grant.id, "to payment_sent");
-
-            // Send admin and user notification emails
-            const { data: profile } = await supabaseAdmin
-              .from("profiles")
-              .select("full_name")
-              .eq("id", grant.user_id)
-              .single();
-
-            const { data: authUser } = await supabaseAdmin
-              .from("auth.users")
-              .select("email")
-              .eq("id", grant.user_id)
-              .single();
-
-            const cycleName = (grant.grant_cycles as any)?.cycle_name || "Grant";
-            const amountStr = (grant.amount_approved || 0).toLocaleString();
-
-            const { sendPaymentSentAdminEmail, sendPaymentSentUserEmail } = await import("@/lib/email");
-
-            sendPaymentSentAdminEmail({
-              memberName: profile?.full_name || "Unknown",
-              memberEmail: authUser?.email || "Unknown",
-              grantCycleName: cycleName,
-              grantId: grant.id,
-              amount: amountStr,
-            }).catch(err => console.error("[webhook] Failed to send admin email:", err));
-
-            sendPaymentSentUserEmail({
-              memberName: profile?.full_name || "Unknown",
-              memberEmail: authUser?.email || "Unknown",
-              grantCycleName: cycleName,
-              amount: amountStr,
-            }).catch(err => console.error("[webhook] Failed to send user email:", err));
-          }
-        }
         break;
       }
 

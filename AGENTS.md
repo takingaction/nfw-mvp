@@ -7929,3 +7929,77 @@ Updated delete member functionality to allow only specific admins to delete memb
 - Delete trash can icons now visible on **all** member rows for the two authorized admins
 - Self-deletion already blocked in API route (`memberId === user.id` check)
 - Other admins cannot see or use the delete functionality
+
+---
+
+## Session 2026-07-16 (Evening): Grant Payment Tracking & Limits
+
+Implemented manual Stripe transfer workflow with cycle total funds limit enforcement.
+
+### Goal
+- Manual transfer workflow after grants are finalized
+- Track total paid against cycle `total_funds`
+- Show "Paid" badge instead of "Sent"
+- Alert when transfer would exceed cycle limit
+
+### Database Changes
+
+**Migration 118:** Added `transfer_id TEXT` column to grants table
+
+### Changes Made
+
+**1. Combined Scores API (`app/api/admin/grants/[id]/scores/combined/route.ts`)**
+- Added `amount_approved` to grant data returned
+- Added `total_funds` to cycle object
+- Calculates `totalPaid` (sum of `amount_approved` where `funded_at IS NOT NULL)
+
+**2. Transfer API (`app/api/admin/grants/[id]/transfer/route.ts`)**
+- Added total_funds limit check before creating transfer
+- Calculates total paid for the cycle
+- Returns 400 error with message if transfer would exceed `total_funds`
+
+**3. Combined Scores Page (`app/admin/grants/[id]/scoring/combined/page.tsx`)**
+- Added `total_funds` to Cycle interface
+- Added `totalPaid` state to track paid amount
+- Passes `totalPaid` to GrantCombinedScores component
+
+**4. GrantCombinedScores Component (`components/admin/GrantCombinedScores.tsx`)**
+- Added **Paid tally** next to Selected:
+  - Count: `X of Y grants`
+  - Amount: `$Z of $W` (total paid vs total funds)
+- **"Paid" badge** now shows instead of "Sent" when `funded_at` exists
+- **Limit check** before opening confirmation modal - if `amount_approved > remaining_funds`, shows alert modal
+- **Limit alert modal** shows:
+  - Cannot process transfer message
+  - Total paid so far
+  - Remaining funds
+  - OK button to dismiss
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `app/api/admin/grants/[id]/scores/combined/route.ts` | Return `amount_approved`, `total_paid`, `total_funds` |
+| `app/api/admin/grants/[id]/transfer/route.ts` | Check if transfer would exceed `total_funds` |
+| `app/admin/grants/[id]/scoring/combined/page.tsx` | Added `totalPaid` state, pass to component |
+| `components/admin/GrantCombinedScores.tsx` | Paid tally, Paid badge, limit alert modal |
+
+### Workflow
+
+1. Admin clicks "Finalize Approvals" on combined scores page
+2. "Check Stripe Status" button appears per approved grant
+3. Admin clicks to verify member's Stripe account is ready
+4. "Send Money" button appears if account is ready
+5. Clicking Send checks if `amount_approved > (total_funds - totalPaid)`
+   - If exceeded: shows alert modal explaining the limit
+   - If within limit: opens confirmation modal
+6. On confirm → Stripe transfer created → `transfer_id` and `funded_at` saved → user email sent
+7. Paid tally updates to show new total
+
+### Key Decisions
+
+- Uses `amount_approved` as the transfer amount (not a separate `amount_paid` field)
+- Shows both count ("3 of 5 grants") and amount ("$15,000 of $25,000") in Paid tally
+- "Paid" badge replaces "Sent" for consistency with member-facing language
+- Alert modal appears before confirmation when limit would be exceeded
+- Transfer API returns detailed error message with current totals

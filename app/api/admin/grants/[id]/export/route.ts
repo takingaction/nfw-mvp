@@ -72,6 +72,10 @@ const CSV_COLUMNS = [
   "consent_given_at",
   "certification_consent",
   "amount_approved",
+  "stripe_onboarding_completed",
+  "stripe_connect_account_id",
+  "funded_at",
+  "transfer_id",
 ];
 
 const COLUMN_LABELS: Record<string, string> = {
@@ -93,6 +97,10 @@ const COLUMN_LABELS: Record<string, string> = {
   consent_given_at: "Consent Given At",
   certification_consent: "Certification Consent",
   amount_approved: "Amount Approved",
+  stripe_onboarding_completed: "Stripe Onboarding Completed",
+  stripe_connect_account_id: "Stripe Account ID",
+  funded_at: "Funded At",
+  transfer_id: "Transfer ID",
 };
 
 export async function GET(
@@ -126,7 +134,8 @@ export async function GET(
           city,
           state,
           date_of_birth,
-          household_income
+          household_income,
+          stripe_onboarding_completed
         )
       `)
       .eq("cycle_id", cycleId)
@@ -162,6 +171,10 @@ export async function GET(
         formatDateTime(grant.consent_given_at),
         formatBoolean(grant.certification_consent),
         formatCurrency(grant.amount_approved),
+        formatBoolean(profile.stripe_onboarding_completed),
+        grant.stripe_connect_account_id || "",
+        grant.funded_at ? formatDateTime(grant.funded_at) : "",
+        grant.transfer_id || "",
       ];
       rows.push(row.map(escapeCsvField));
     }

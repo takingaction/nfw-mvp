@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Loader2, AlertTriangle, Check, MessageSquare, ChevronDown, Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
+import { Loader2, AlertTriangle, Check, MessageSquare, ChevronDown, Eye, EyeOff, DollarSign } from "lucide-react";
 
 interface Grant {
   id: string;
@@ -11,6 +11,7 @@ interface Grant {
     email: string;
     city: string;
     state: string;
+    stripe_onboarding_completed?: boolean;
   };
   is_nominating: boolean;
   nominee_name: string;
@@ -32,6 +33,18 @@ interface Grant {
   second_score?: {
     total_score: number;
   };
+  stripe_connect_account_id?: string | null;
+  funded_at?: string | null;
+  transfer_id?: string | null;
+  amount_approved?: number;
+}
+
+interface StripeCheckResult {
+  grantId: string;
+  connected: boolean;
+  details_submitted: boolean;
+  charges_enabled: boolean;
+  payouts_enabled: boolean;
 }
 
 interface GrantCombinedScoresProps {
@@ -41,9 +54,13 @@ interface GrantCombinedScoresProps {
     cycle_name: string;
     amount_per_grant: number;
     grants_available: number;
+    total_funds: number;
   };
+  totalPaid?: number;
   onTentativeApprove: (grantIds: string[]) => Promise<void>;
   onFinalize: () => Promise<void>;
+  onCheckStripeStatus: () => Promise<StripeCheckResult[]>;
+  onSendMoney: (grantId: string) => Promise<{ error?: string }>;
   loading?: boolean;
   finalizing?: boolean;
   alreadyFinalized?: boolean;
@@ -52,8 +69,11 @@ interface GrantCombinedScoresProps {
 export default function GrantCombinedScores({
   grants,
   cycle,
+  totalPaid = 0,
   onTentativeApprove,
   onFinalize,
+  onCheckStripeStatus,
+  onSendMoney,
   loading = false,
   finalizing = false,
   alreadyFinalized = false,
@@ -63,6 +83,15 @@ export default function GrantCombinedScores({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [visibleNames, setVisibleNames] = useState<Set<string>>(new Set());
   const [localSelected, setLocalSelected] = useState<Set<string>>(new Set());
+
+  // Stripe status state
+  const [stripeResults, setStripeResults] = useState<Record<string, StripeCheckResult>>({});
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [sendingMoneyFor, setSendingMoneyFor] = useState<string | null>(null);
+  const [modalGrantId, setModalGrantId] = useState<string | null>(null);
+  const [limitExceededError, setLimitExceededError] = useState<string | null>(null);
+  const [showLimitAlert, setShowLimitAlert] = useState(false);
+  const [limitAlertDetails, setLimitAlertDetails] = useState<{amount: number; totalFunds: number; totalPaid: number; remaining: number} | null>(null);
 
   const toggleNameVisibility = (grantId: string) => {
     const newVisible = new Set(visibleNames);
@@ -121,6 +150,62 @@ export default function GrantCombinedScores({
     setExpandedId(expandedId === grantId ? null : grantId);
   };
 
+  const handleCheckStripeStatus = async () => {
+    setCheckingStatus(true);
+    try {
+      const results = await onCheckStripeStatus();
+      const resultsMap: Record<string, StripeCheckResult> = {};
+      results.forEach((r) => {
+        resultsMap[r.grantId] = r;
+      });
+      setStripeResults(resultsMap);
+    } catch (err) {
+      console.error("Failed to check stripe status:", err);
+      alert("Failed to check Stripe status");
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
+
+  const handleSendMoneyClick = (grantId: string) => {
+    const grant = grants.find((g) => g.id === grantId);
+    if (!grant) return;
+
+    const amount = grant.amount_approved || cycle.amount_per_grant;
+    const remaining = cycle.total_funds - totalPaid;
+
+    if (amount > remaining) {
+      setLimitAlertDetails({
+        amount,
+        totalFunds: cycle.total_funds,
+        totalPaid,
+        remaining,
+      });
+      setShowLimitAlert(true);
+      return;
+    }
+
+    setModalGrantId(grantId);
+  };
+
+  const handleConfirmSendMoney = async () => {
+    if (!modalGrantId) return;
+    setSendingMoneyFor(modalGrantId);
+    try {
+      const result = await onSendMoney(modalGrantId);
+      if (result?.error) {
+        alert(result.error);
+        return;
+      }
+    } catch (err) {
+      console.error("Failed to send money:", err);
+      alert("Failed to send money");
+    } finally {
+      setSendingMoneyFor(null);
+      setModalGrantId(null);
+    }
+  };
+
   const getDecisionStyle = (decision: string) => {
     switch (decision) {
       case "Approved":
@@ -130,6 +215,26 @@ export default function GrantCombinedScores({
       default:
         return "bg-red-100 text-red-700 border-red-200";
     }
+  };
+
+  // Determine if a grant's bank is connected
+  const isBankConnected = (grant: Grant): boolean => {
+    // If we've checked Stripe and it's confirmed connected
+    if (stripeResults[grant.id]?.connected) {
+      return true;
+    }
+    // Fall back to stripe_onboarding_completed from profile
+    return grant.profiles?.stripe_onboarding_completed === true;
+  };
+
+  // Determine send money button state
+  const getSendMoneyButtonState = (grant: Grant): "none" | "disabled" | "active" | "sent" => {
+    if (!alreadyFinalized) return "none";
+    if (grant.decision !== "Approved") return "none";
+    if (grant.funded_at) return "sent";
+    if (!grant.stripe_connect_account_id) return "disabled";
+    if (!isBankConnected(grant)) return "disabled";
+    return "active";
   };
 
   function AccordionContent({ isOpen, children }: { isOpen: boolean; children: React.ReactNode }) {
@@ -156,6 +261,9 @@ export default function GrantCombinedScores({
     );
   }
 
+  // Modal for confirmation
+  const modalGrant = modalGrantId ? grants.find((g) => g.id === modalGrantId) : null;
+
   return (
     <div className="space-y-4">
       {/* Header Stats */}
@@ -176,6 +284,19 @@ export default function GrantCombinedScores({
             <p className="text-2xl font-black text-nfw-aubergine">
               {selectedCount}
               <span className="text-sm text-nfw-blackberry/50">/{maxSelectable}</span>
+            </p>
+          </div>
+          <div className="border-l border-nfw-blackberry/10 pl-6">
+            <p className="text-xs text-nfw-blackberry/50 uppercase tracking-wider">
+              Paid
+            </p>
+            <p className="text-2xl font-black text-green-600">
+              {grants.filter((g) => g.funded_at).length}
+              <span className="text-sm text-nfw-blackberry/50">/{maxSelectable} grants</span>
+            </p>
+            <p className="text-sm font-bold text-green-600">
+              ${totalPaid.toLocaleString()}
+              <span className="text-nfw-blackberry/50"> of ${cycle.total_funds.toLocaleString()}</span>
             </p>
           </div>
         </div>
@@ -230,9 +351,25 @@ export default function GrantCombinedScores({
             </>
           )}
           {alreadyFinalized && (
-            <span className="px-4 py-2 bg-green-100 text-green-700 font-bold text-sm rounded">
-              ✓ Finalized
-            </span>
+            <>
+              <button
+                onClick={handleCheckStripeStatus}
+                disabled={checkingStatus}
+                className="px-4 py-2 bg-nfw-wisteria text-white font-bold text-sm hover:bg-nfw-wisteria/90 disabled:opacity-50 flex items-center gap-2 transition-colors"
+              >
+                {checkingStatus ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Checking...
+                  </>
+                ) : (
+                  "Check Stripe Status"
+                )}
+              </button>
+              <span className="px-4 py-2 bg-green-100 text-green-700 font-bold text-sm rounded">
+                ✓ Finalized
+              </span>
+            </>
           )}
         </div>
       </div>
@@ -257,7 +394,7 @@ export default function GrantCombinedScores({
 
       {/* Header Row */}
       <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
-        <div className="grid grid-cols-[48px_40px_1fr_80px_100px_80px_96px_80px_80px] gap-2 p-3 border-b border-nfw-blackberry/10">
+        <div className={`grid gap-2 p-3 border-b border-nfw-blackberry/10 ${alreadyFinalized ? "grid-cols-[48px_40px_1fr_80px_100px_80px_96px_80px_96px_80px]" : "grid-cols-[48px_40px_1fr_80px_100px_80px_96px_80px_80px]"}`}>
           <div className="text-left text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
             Rank
           </div>
@@ -282,8 +419,13 @@ export default function GrantCombinedScores({
           <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
             Prior
           </div>
+          {alreadyFinalized && (
+            <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
+              Stripe
+            </div>
+          )}
           <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
-            Select
+            {alreadyFinalized ? "Send" : "Select"}
           </div>
         </div>
 
@@ -292,19 +434,15 @@ export default function GrantCombinedScores({
           {grants.map((grant, index) => {
             const isSelected = selectedIds.has(grant.id);
             const isExpanded = expandedId === grant.id;
+            const sendMoneyState = getSendMoneyButtonState(grant);
+            const isStripeConnected = isBankConnected(grant);
 
             return (
               <div key={grant.id}>
                 {/* Header Row */}
                 <div
                   onClick={() => handleToggleExpand(grant.id)}
-                  className={`grid grid-cols-[48px_40px_1fr_80px_100px_80px_96px_80px_80px] gap-2 p-3 border-b border-nfw-blackberry/5 cursor-pointer ${
-                    isExpanded
-                      ? "bg-nfw-aubergine/5 border-l-4 border-l-nfw-aubergine"
-                      : isSelected
-                      ? "bg-nfw-citrine/20"
-                      : "bg-gray-50"
-                  }`}
+                  className={`grid gap-2 p-3 border-b border-nfw-blackberry/5 cursor-pointer ${alreadyFinalized ? "grid-cols-[48px_40px_1fr_80px_100px_80px_96px_80px_96px_80px]" : "grid-cols-[48px_40px_1fr_80px_100px_80px_96px_80px_80px]"} ${isExpanded ? "bg-nfw-aubergine/5 border-l-4 border-l-nfw-aubergine" : isSelected ? "bg-nfw-citrine/20" : "bg-gray-50"}`}
                 >
                   <div className="flex items-center gap-2">
                     <ChevronDown
@@ -347,9 +485,7 @@ export default function GrantCombinedScores({
                   </div>
                   <div className="flex items-center justify-center">
                     <span
-                      className={`inline-block px-2 py-1 text-xs font-bold rounded border ${getDecisionStyle(
-                        grant.decision
-                      )}`}
+                      className={`inline-block px-2 py-1 text-xs font-bold rounded border ${getDecisionStyle(grant.decision)}`}
                     >
                       {grant.decision}
                     </span>
@@ -388,25 +524,65 @@ export default function GrantCombinedScores({
                       <span className="text-nfw-blackberry/30 text-xs">—</span>
                     )}
                   </div>
+                  {alreadyFinalized && (
+                    <div className="flex items-center justify-center">
+                      {grant.stripe_connect_account_id ? (
+                        isStripeConnected ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold rounded bg-green-100 text-green-700 border border-green-200">
+                            <Check className="w-3 h-3" />
+                            Connected
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold rounded bg-gray-100 text-gray-500 border border-gray-200">
+                            Not Connected
+                          </span>
+                        )
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold rounded bg-gray-100 text-gray-400 border border-gray-200">
+                          No Account
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div className="flex items-center justify-center">
-                    {grant.decision === "Approved" && !alreadyFinalized ? (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleToggle(grant.id); }}
-                        disabled={!isSelected && selectedCount >= maxSelectable}
-                        className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${
-                          isSelected
-                            ? "bg-nfw-aubergine border-nfw-aubergine"
-                            : "border-nfw-blackberry/20 hover:border-nfw-blackberry/40"
-                        }`}
-                      >
-                        {isSelected && <Check className="w-4 h-4 text-white" />}
-                      </button>
-                    ) : grant.decision === "Approved" && alreadyFinalized ? (
-                      isSelected ? (
-                        <Check className="w-5 h-5 text-green-600" />
+                    {alreadyFinalized ? (
+                      sendMoneyState === "sent" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold rounded bg-green-100 text-green-700">
+                          <Check className="w-3 h-3" />
+                          Paid
+                        </span>
+                      ) : sendMoneyState === "active" ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleSendMoneyClick(grant.id); }}
+                          disabled={sendingMoneyFor === grant.id}
+                          className="px-3 py-1.5 bg-nfw-wisteria text-white font-bold text-xs hover:bg-nfw-wisteria/90 disabled:opacity-50 flex items-center gap-1 transition-colors"
+                        >
+                          {sendingMoneyFor === grant.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <DollarSign className="w-3 h-3" />
+                          )}
+                          Send
+                        </button>
+                      ) : sendMoneyState === "disabled" ? (
+                        <button
+                          disabled
+                          className="px-3 py-1.5 bg-gray-100 text-gray-400 font-bold text-xs cursor-not-allowed flex items-center gap-1"
+                        >
+                          <DollarSign className="w-3 h-3" />
+                          Send
+                        </button>
                       ) : (
                         <span className="text-nfw-blackberry/30">—</span>
                       )
+                    ) : grant.decision === "Approved" && !alreadyFinalized ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleToggle(grant.id); }}
+                        disabled={!isSelected && selectedCount >= maxSelectable}
+                        className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${isSelected ? "bg-nfw-aubergine border-nfw-aubergine" : "border-nfw-blackberry/20 hover:border-nfw-blackberry/40"}`}
+                      >
+                        {isSelected && <Check className="w-4 h-4 text-white" />}
+                      </button>
                     ) : (
                       <span className="text-nfw-blackberry/30">—</span>
                     )}
@@ -459,6 +635,69 @@ export default function GrantCombinedScores({
           })}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {modalGrant && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-bold text-nfw-blackberry mb-4">Confirm Transfer</h3>
+            <p className="text-nfw-blackberry/70 mb-6">
+              You are about to transfer <span className="font-bold">${(modalGrant.amount_approved || cycle.amount_per_grant).toLocaleString()}</span> to{" "}
+              <span className="font-bold">{modalGrant.profiles?.full_name || "this applicant"}</span>.
+            </p>
+            <p className="text-sm text-nfw-blackberry/50 mb-6">
+              This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setModalGrantId(null)}
+                disabled={sendingMoneyFor !== null}
+                className="px-4 py-2 bg-gray-100 text-nfw-blackberry font-bold text-sm hover:bg-gray-200 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmSendMoney}
+                disabled={sendingMoneyFor !== null}
+                className="px-4 py-2 bg-nfw-aubergine text-white font-bold text-sm hover:bg-nfw-aubergine/90 disabled:opacity-50 flex items-center gap-2 transition-colors"
+              >
+                {sendingMoneyFor === modalGrant.id ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  "Send Money"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Limit Exceeded Alert Modal */}
+      {showLimitAlert && limitAlertDetails && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-bold text-red-600 mb-4">Cannot Process Transfer</h3>
+            <p className="text-nfw-blackberry/70 mb-4">
+              Sending this <span className="font-bold">${limitAlertDetails.amount.toLocaleString()}</span> grant would exceed the cycle's total funds of <span className="font-bold">${limitAlertDetails.totalFunds.toLocaleString()}</span>.
+            </p>
+            <div className="bg-gray-50 rounded p-3 mb-6 text-sm space-y-1">
+              <p>Total paid so far: <span className="font-bold">${limitAlertDetails.totalPaid.toLocaleString()}</span></p>
+              <p>Remaining funds: <span className="font-bold text-red-600">${limitAlertDetails.remaining.toLocaleString()}</span></p>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => { setShowLimitAlert(false); setLimitAlertDetails(null); }}
+                className="px-4 py-2 bg-nfw-aubergine text-white font-bold text-sm hover:bg-nfw-aubergine/90 transition-colors"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

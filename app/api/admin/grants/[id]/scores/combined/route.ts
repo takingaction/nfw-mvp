@@ -88,8 +88,12 @@ export async function GET(
         nominee_email,
         status,
         submitted_at,
-        profiles:user_id (full_name, email, city, state),
-        grant_scores (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, total_score)
+        stripe_connect_account_id,
+        funded_at,
+        transfer_id,
+        profiles:user_id (full_name, email, city, state, stripe_onboarding_completed),
+        grant_scores (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, total_score),
+        amount_approved
       `)
       .eq("cycle_id", cycleId)
       .order("submitted_at", { ascending: false });
@@ -134,8 +138,18 @@ export async function GET(
         is_tentatively_approved: cycle.grant_tentative_approvals?.some(
           (t: any) => t.grant_id === g.id && t.is_approved
         ) || false,
+        stripe_connect_account_id: g.stripe_connect_account_id || null,
+        funded_at: g.funded_at || null,
+        transfer_id: g.transfer_id || null,
+        stripe_onboarding_completed: (g.profiles as any)?.stripe_onboarding_completed ?? false,
+        amount_approved: g.amount_approved || null,
       };
     }) || [];
+
+    // Calculate total paid (sum of amount_approved where funded_at IS NOT NULL)
+    const totalPaid = grantsWithCombinedScores
+      .filter((g: any) => g.funded_at && g.amount_approved)
+      .reduce((sum: number, g: any) => sum + Number(g.amount_approved), 0);
 
     // Check for previous grants for each user
     const userIds = [...new Set(grantsForDisplay.map((g: any) => g.user_id).filter(Boolean))];
@@ -175,9 +189,11 @@ export async function GET(
         cycle_name: cycle.cycle_name,
         amount_per_grant: cycle.amount_per_grant,
         grants_available: cycle.grants_available,
+        total_funds: cycle.total_funds,
         scoring_completed_at: cycle.scoring_completed_at,
         final_approved_at: cycle.final_approved_at,
       },
+      totalPaid,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
