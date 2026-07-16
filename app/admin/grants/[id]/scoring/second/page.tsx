@@ -387,6 +387,7 @@ export default function SecondReviewPage() {
 
                 return (
                   <div
+                    key={grant.id}
                     role="button"
                     tabIndex={0}
                     onClick={() => setSelectedGrant(grant.id)}
