@@ -10,6 +10,7 @@ interface GrantApplicationScorerProps {
   onSave: (grantId: string, data: ScoreData) => void;
   saving?: boolean;
   hidePersonalInfo?: boolean;
+  documents?: any[];
 }
 
 export interface ScoreData {
@@ -35,6 +36,7 @@ export default function GrantApplicationScorer({
   onSave,
   saving = false,
   hidePersonalInfo = false,
+  documents,
 }: GrantApplicationScorerProps) {
   const existingScore = grant.grant_scores?.[0];
 
@@ -58,6 +60,25 @@ export default function GrantApplicationScorer({
   );
 
   const [localSaving, setLocalSaving] = useState(false);
+  const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
+
+  const handleViewDocument = async (doc: any) => {
+    setLoadingDocId(doc.id);
+    try {
+      const res = await fetch("/api/grants/document-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filePath: doc.document_url, grantId: grant.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to get URL");
+      window.open(data.url, "_blank");
+    } catch (err: any) {
+      alert(err.message || "Failed to open document");
+    } finally {
+      setLoadingDocId(null);
+    }
+  };
 
   // Auto-save when values change
   useEffect(() => {
@@ -212,6 +233,39 @@ export default function GrantApplicationScorer({
           </p>
         </div>
       </div>
+
+      {/* Supporting Documents */}
+      {documents && documents.length > 0 && (
+        <div className="bg-nfw-dove p-3 space-y-2">
+          <p className="text-xs font-semibold text-nfw-blackberry/40 uppercase tracking-wider">
+            Supporting Documents ({documents.length})
+          </p>
+          <div className="space-y-2">
+            {documents.map((doc: any) => (
+              <div
+                key={doc.id}
+                className="flex items-center justify-between bg-white p-3"
+              >
+                <div>
+                  <p className="text-sm font-medium text-nfw-blackberry">
+                    {doc.file_name}
+                  </p>
+                  <p className="text-xs text-nfw-blackberry/40">
+                    {(doc.file_size / 1024).toFixed(1)} KB
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleViewDocument(doc)}
+                  disabled={loadingDocId === doc.id}
+                  className="text-xs font-semibold text-nfw-aubergine hover:text-nfw-aubergine/70 disabled:opacity-50"
+                >
+                  {loadingDocId === doc.id ? "Loading..." : "View →"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Scoring */}
       <div className="space-y-4 pt-2">

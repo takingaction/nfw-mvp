@@ -57,7 +57,8 @@ export async function GET(
         submitted_at,
         rachel_complete,
         profiles:user_id (full_name, email, city, state),
-        grant_scores!left (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, is_complete, total_score)
+        grant_scores!left (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, is_complete, total_score),
+        grant_documents (id, file_name, file_size, uploaded_at, document_url)
       `)
       .eq("cycle_id", cycleId)
       .order("submitted_at", { ascending: false });

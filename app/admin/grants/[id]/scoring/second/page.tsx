@@ -27,6 +27,7 @@ interface Grant {
     discussion_notes?: string;
     total_score?: number;
   };
+  documents?: any[];
 }
 
 export default function SecondReviewPage() {
@@ -44,6 +45,31 @@ export default function SecondReviewPage() {
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [isSecondComplete, setIsSecondComplete] = useState(false);
   const [visibleNames, setVisibleNames] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "runner_up" | "not_approved" | "unscored">("all");
+
+  const getCombinedStatus = (grant: Grant): "approved" | "runner_up" | "not_approved" | "unscored" => {
+    const secondScore = grant.grant_scores?.[0];
+    const isSecondComplete = secondScore?.is_complete === true;
+
+    if (!isSecondComplete) return "unscored";
+
+    const firstTotal = grant.first_score?.total_score || 0;
+    const secondSubtotal = (secondScore?.urgency_score ?? 0) +
+                          (secondScore?.authenticity_score ?? 0) +
+                          (secondScore?.impact_score ?? 0);
+    const combined = firstTotal + secondSubtotal;
+
+    if (combined >= 14) return "approved";
+    if (combined >= 8) return "runner_up";
+    return "not_approved";
+  };
+
+  const combinedStatusCounts = {
+    approved: grants.filter(g => getCombinedStatus(g) === "approved").length,
+    runner_up: grants.filter(g => getCombinedStatus(g) === "runner_up").length,
+    not_approved: grants.filter(g => getCombinedStatus(g) === "not_approved").length,
+    unscored: grants.filter(g => getCombinedStatus(g) === "unscored").length,
+  };
 
   const toggleNameVisibility = (grantId: string) => {
     const newVisible = new Set(visibleNames);
@@ -149,6 +175,8 @@ export default function SecondReviewPage() {
           authenticity_score: grant.grant_scores?.[0]?.authenticity_score ?? 0,
           impact_score: grant.grant_scores?.[0]?.impact_score ?? 0,
           barriers_yn: grant.grant_scores?.[0]?.barriers_yn ?? false,
+          needs_discussion: grant.grant_scores?.[0]?.needs_discussion ?? false,
+          discussion_notes: grant.grant_scores?.[0]?.discussion_notes ?? "",
           is_complete: true,
         };
 
@@ -255,9 +283,6 @@ export default function SecondReviewPage() {
                 <h1 className="text-xl font-bold text-nfw-blackberry font-serif">
                   Second Review
                 </h1>
-                <p className="text-xs text-nfw-blackberry/50">
-                  {completedCount} of {totalCount} applications reviewed
-                </p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -269,6 +294,26 @@ export default function SecondReviewPage() {
                 <Check className="w-4 h-4" />
                 {isSecondComplete ? "Second Review Complete" : "Mark Review Complete"}
               </button>
+            </div>
+          </div>
+          {/* Running Tally */}
+          <div className="flex items-center gap-6 text-xs">
+            <span className="text-nfw-blackberry/60 font-semibold uppercase tracking-wider">Combined Status:</span>
+            <div className="flex items-center gap-1">
+              <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded font-bold">{combinedStatusCounts.approved}</span>
+              <span className="text-nfw-blackberry/60">Approved</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded font-bold">{combinedStatusCounts.runner_up}</span>
+              <span className="text-nfw-blackberry/60">Runner Up</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="px-2 py-0.5 bg-red-100 text-red-800 rounded font-bold">{combinedStatusCounts.not_approved}</span>
+              <span className="text-nfw-blackberry/60">Not Approved</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="px-2 py-0.5 bg-nfw-stone/30 text-nfw-blackberry/60 rounded font-bold">{combinedStatusCounts.unscored}</span>
+              <span className="text-nfw-blackberry/60">Unscored</span>
             </div>
           </div>
         </div>
@@ -290,18 +335,55 @@ export default function SecondReviewPage() {
           </div>
 
           {/* Application List */}
-          <div className="col-span-12 lg:col-span-4">
-            <h2 className="text-sm font-bold text-nfw-blackberry/60 uppercase tracking-wider mb-3">
+          <div className="col-span-12 lg:col-span-4 flex flex-col">
+            <h2 className="text-sm font-bold text-nfw-blackberry/60 uppercase tracking-wider mb-3 sticky top-0 bg-nfw-dove z-10 pb-2">
               Applications
             </h2>
-            <div className="space-y-3">
-              {grants.map((grant) => {
+            {/* Filter Buttons */}
+            <div className="flex gap-2 flex-wrap mb-3 sticky top-10 bg-nfw-dove z-10 pb-2">
+              {(["all", "approved", "runner_up", "not_approved", "unscored"] as const).map((f) => {
+                const labelMap = {
+                  all: "All",
+                  approved: "Approved",
+                  runner_up: "Runner Up",
+                  not_approved: "Not Approved",
+                  unscored: "Unscored",
+                };
+                const countMap = {
+                  all: totalCount,
+                  approved: combinedStatusCounts.approved,
+                  runner_up: combinedStatusCounts.runner_up,
+                  not_approved: combinedStatusCounts.not_approved,
+                  unscored: combinedStatusCounts.unscored,
+                };
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setStatusFilter(f)}
+                    className={`px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                      statusFilter === f
+                        ? "bg-nfw-blackberry text-white"
+                        : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
+                    }`}
+                  >
+                    {labelMap[f]}
+                    <span className={`text-xs ${statusFilter === f ? "opacity-70" : "opacity-50"}`}>
+                      ({countMap[f]})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="space-y-3 overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+              {grants.filter(g => statusFilter === "all" || getCombinedStatus(g) === statusFilter).map((grant) => {
                 const score = grant.grant_scores?.[0];
                 const subtotal = (score?.urgency_score ?? 0) +
                   (score?.authenticity_score ?? 0) +
                   (score?.impact_score ?? 0);
                 const isComplete = score?.is_complete === true;
                 const isFirstFlagged = grant.first_score?.needs_discussion === true;
+                const firstTotal = grant.first_score?.total_score || 0;
+                const combinedTotal = firstTotal + subtotal;
 
                 return (
                   <div
@@ -380,6 +462,22 @@ export default function SecondReviewPage() {
                             Flagged
                           </span>
                         )}
+                        {isComplete && (() => {
+                          const combinedStatus = getCombinedStatus(grant);
+                          const statusConfig = {
+                            approved: { label: "Approved", bg: "bg-green-500", text: "text-white" },
+                            runner_up: { label: "Runner Up", bg: "bg-yellow-400", text: "text-yellow-900" },
+                            not_approved: { label: "Not Approved", bg: "bg-red-500", text: "text-white" },
+                          };
+                          const config = statusConfig[combinedStatus as keyof typeof statusConfig];
+                          return (
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded font-bold ${config.bg} ${config.text}`}
+                            >
+                              {config.label}
+                            </span>
+                          );
+                        })()}
                         {isComplete ? (
                           <span
                             className={`text-xs px-2 py-0.5 rounded ${
@@ -388,7 +486,7 @@ export default function SecondReviewPage() {
                                 : "bg-green-500 text-white"
                             }`}
                           >
-                            {subtotal}/9
+                            {combinedTotal}/18
                           </span>
                         ) : (
                           <span
@@ -419,6 +517,7 @@ export default function SecondReviewPage() {
                 onSave={handleSaveScore}
                 saving={saving}
                 hidePersonalInfo={true}
+                documents={selectedGrantData.documents}
               />
             ) : (
               <div className="bg-white border border-nfw-blackberry/10 p-8 text-center">

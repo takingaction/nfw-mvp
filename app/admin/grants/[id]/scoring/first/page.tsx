@@ -22,6 +22,7 @@ interface Grant {
   nominee_name: string;
   submitted_at: string;
   grant_scores: any[];
+  documents?: any[];
 }
 
 export default function FirstReviewPage() {
@@ -39,6 +40,23 @@ export default function FirstReviewPage() {
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [isFirstComplete, setIsFirstComplete] = useState(false);
   const [visibleNames, setVisibleNames] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "runner_up" | "not_approved" | "unscored">("all");
+
+  const getStatus = (grant: Grant): "approved" | "runner_up" | "not_approved" | "unscored" => {
+    const score = grant.grant_scores?.[0];
+    if (!score || score.is_complete !== true) return "unscored";
+    const subtotal = (score.urgency_score ?? 0) + (score.authenticity_score ?? 0) + (score.impact_score ?? 0);
+    if (subtotal >= 7) return "approved";
+    if (subtotal >= 4) return "runner_up";
+    return "not_approved";
+  };
+
+  const statusCounts = {
+    approved: grants.filter(g => getStatus(g) === "approved").length,
+    runner_up: grants.filter(g => getStatus(g) === "runner_up").length,
+    not_approved: grants.filter(g => getStatus(g) === "not_approved").length,
+    unscored: grants.filter(g => getStatus(g) === "unscored").length,
+  };
 
   const toggleNameVisibility = (grantId: string) => {
     const newVisible = new Set(visibleNames);
@@ -257,7 +275,7 @@ export default function FirstReviewPage() {
       {/* Header */}
       <div className="bg-white border-b border-nfw-blackberry/10">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-4">
               <Link
                 href={`/admin/grants/${cycleId}`}
@@ -266,14 +284,9 @@ export default function FirstReviewPage() {
                 <ArrowLeft className="w-4 h-4" />
                 Back to Grant
               </Link>
-              <div>
-                <h1 className="text-xl font-bold text-nfw-blackberry font-serif">
-                  First Review
-                </h1>
-                <p className="text-xs text-nfw-blackberry/50">
-                  {completedCount} of {totalCount} applications reviewed
-                </p>
-              </div>
+              <h1 className="text-xl font-bold text-nfw-blackberry font-serif">
+                First Review
+              </h1>
             </div>
             <div className="flex items-center gap-4">
               <button
@@ -284,6 +297,26 @@ export default function FirstReviewPage() {
                 <Check className="w-4 h-4" />
                 {isFirstComplete ? "First Review Complete" : "Mark Review Complete"}
               </button>
+            </div>
+          </div>
+          {/* Running Tally */}
+          <div className="flex items-center gap-6 text-xs">
+            <span className="text-nfw-blackberry/60 font-semibold uppercase tracking-wider">Status:</span>
+            <div className="flex items-center gap-1">
+              <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded font-bold">{statusCounts.approved}</span>
+              <span className="text-nfw-blackberry/60">Approved</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded font-bold">{statusCounts.runner_up}</span>
+              <span className="text-nfw-blackberry/60">Runner Up</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="px-2 py-0.5 bg-red-100 text-red-800 rounded font-bold">{statusCounts.not_approved}</span>
+              <span className="text-nfw-blackberry/60">Not Approved</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="px-2 py-0.5 bg-nfw-stone/30 text-nfw-blackberry/60 rounded font-bold">{statusCounts.unscored}</span>
+              <span className="text-nfw-blackberry/60">Unscored</span>
             </div>
           </div>
         </div>
@@ -299,12 +332,47 @@ export default function FirstReviewPage() {
           </div>
 
           {/* Application List */}
-          <div className="col-span-12 lg:col-span-4">
-            <h2 className="text-sm font-bold text-nfw-blackberry/60 uppercase tracking-wider mb-3">
+          <div className="col-span-12 lg:col-span-4 flex flex-col">
+            <h2 className="text-sm font-bold text-nfw-blackberry/60 uppercase tracking-wider mb-3 sticky top-0 bg-nfw-dove z-10 pb-2">
               Applications
             </h2>
-            <div className="space-y-3">
-              {grants.map((grant) => {
+            {/* Filter Buttons */}
+            <div className="flex gap-2 flex-wrap mb-3 sticky top-10 bg-nfw-dove z-10 pb-2">
+              {(["all", "approved", "runner_up", "not_approved", "unscored"] as const).map((f) => {
+                const labelMap = {
+                  all: "All",
+                  approved: "Approved",
+                  runner_up: "Runner Up",
+                  not_approved: "Not Approved",
+                  unscored: "Unscored",
+                };
+                const countMap = {
+                  all: totalCount,
+                  approved: statusCounts.approved,
+                  runner_up: statusCounts.runner_up,
+                  not_approved: statusCounts.not_approved,
+                  unscored: statusCounts.unscored,
+                };
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setStatusFilter(f)}
+                    className={`px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                      statusFilter === f
+                        ? "bg-nfw-blackberry text-white"
+                        : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
+                    }`}
+                  >
+                    {labelMap[f]}
+                    <span className={`text-xs ${statusFilter === f ? "opacity-70" : "opacity-50"}`}>
+                      ({countMap[f]})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="space-y-3 overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+              {grants.filter(g => statusFilter === "all" || getStatus(g) === statusFilter).map((grant) => {
                 const score = grant.grant_scores?.[0];
                 const subtotal = (score?.urgency_score ?? 0) +
                   (score?.authenticity_score ?? 0) +
@@ -389,6 +457,26 @@ export default function FirstReviewPage() {
                             Flagged
                           </span>
                         )}
+                        {isComplete && (() => {
+                          const status = getStatus(grant);
+                          const statusConfig = {
+                            approved: { label: "Approved", bg: "bg-green-500", text: "text-white" },
+                            runner_up: { label: "Runner Up", bg: "bg-yellow-400", text: "text-yellow-900" },
+                            not_approved: { label: "Not Approved", bg: "bg-red-500", text: "text-white" },
+                          };
+                          const config = statusConfig[status as keyof typeof statusConfig];
+                          return (
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded font-bold ${
+                                selectedGrant === grant.id
+                                  ? `${config.bg} ${config.text}`
+                                  : `${config.bg} ${config.text}`
+                              }`}
+                            >
+                              {config.label}
+                            </span>
+                          );
+                        })()}
                         {isComplete ? (
                           <span
                             className={`text-xs px-2 py-0.5 rounded ${
@@ -428,6 +516,7 @@ export default function FirstReviewPage() {
                 onSave={handleSaveScore}
                 saving={saving}
                 hidePersonalInfo={true}
+                documents={selectedGrantData.documents}
               />
             ) : (
               <div className="bg-white border border-nfw-blackberry/10 p-8 text-center">

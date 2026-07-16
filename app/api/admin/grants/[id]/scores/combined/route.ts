@@ -93,7 +93,8 @@ export async function GET(
         transfer_id,
         profiles:user_id (full_name, email, city, state, stripe_onboarding_completed),
         grant_scores (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, total_score),
-        amount_approved
+        amount_approved,
+        grant_documents (id, file_name, file_size, uploaded_at, document_url)
       `)
       .eq("cycle_id", cycleId)
       .order("submitted_at", { ascending: false });

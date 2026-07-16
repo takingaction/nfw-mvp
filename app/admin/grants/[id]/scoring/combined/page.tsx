@@ -42,6 +42,7 @@ interface Grant {
   funded_at?: string | null;
   transfer_id?: string | null;
   stripe_onboarding_completed?: boolean;
+  documents?: any[];
 }
 
 interface Cycle {

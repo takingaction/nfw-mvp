@@ -8175,3 +8175,38 @@ NOTIFY pgrst, 'reload';
 
 - `payment_pending` and `payment_sent` statuses remain intact
 - Scoring workflow (First Review → Second Review → Combined Scores) is unaffected — uses `rachel_complete`/`michelle_complete` boolean flags, not the status field
+
+---
+
+## Session 2026-07-17: Document Upload Display on Grant Scoring Pages
+
+### Overview
+
+Added document upload display to all three grant scoring pages (first review, second review, combined scores) so reviewers can view supporting documents submitted with grant applications.
+
+### Features Added
+
+- **Documents section** appears below scoring rubric on first and second review pages
+- **Documents in accordion** appear in the expandable section on combined scores page
+- Each document shows filename, file size, and "View →" button
+- View button opens document via signed URL from `/api/grants/document-url`
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/grants/[id]/scores/first/route.ts` | Added `grant_documents` to select query |
+| `app/api/admin/grants/[id]/scores/second/route.ts` | Added `grant_documents` to select query |
+| `app/api/admin/grants/[id]/scores/combined/route.ts` | Added `grant_documents` to select query |
+| `app/admin/grants/[id]/scoring/first/page.tsx` | Added `documents` to Grant interface, passed to GrantApplicationScorer |
+| `app/admin/grants/[id]/scoring/second/page.tsx` | Added `documents` to Grant interface, passed to GrantApplicationScorer |
+| `app/admin/grants/[id]/scoring/combined/page.tsx` | Added `documents` to Grant interface |
+| `components/admin/GrantApplicationScorer.tsx` | Added `documents` prop and Supporting Documents UI section |
+| `components/admin/GrantCombinedScores.tsx` | Added documents section inside accordion |
+
+### UI Details
+
+- **First/Second Review**: Documents section styled with dove background, shows below the scoring rubric
+- **Combined Scores**: Documents shown in the expandable accordion below applicant answers
+- **Document Row**: Shows file name, file size (KB), and "View →" link
+- **Loading State**: "Loading..." text while fetching signed URL

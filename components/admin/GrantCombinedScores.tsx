@@ -37,6 +37,7 @@ interface Grant {
   funded_at?: string | null;
   transfer_id?: string | null;
   amount_approved?: number;
+  documents?: any[];
 }
 
 interface StripeCheckResult {
@@ -92,6 +93,25 @@ export default function GrantCombinedScores({
   const [limitExceededError, setLimitExceededError] = useState<string | null>(null);
   const [showLimitAlert, setShowLimitAlert] = useState(false);
   const [limitAlertDetails, setLimitAlertDetails] = useState<{amount: number; totalFunds: number; totalPaid: number; remaining: number} | null>(null);
+  const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
+
+  const handleViewDocument = async (doc: any, grantId: string) => {
+    setLoadingDocId(doc.id);
+    try {
+      const res = await fetch("/api/grants/document-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filePath: doc.document_url, grantId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to get URL");
+      window.open(data.url, "_blank");
+    } catch (err: any) {
+      alert(err.message || "Failed to open document");
+    } finally {
+      setLoadingDocId(null);
+    }
+  };
 
   const toggleNameVisibility = (grantId: string) => {
     const newVisible = new Set(visibleNames);
@@ -616,6 +636,37 @@ export default function GrantCombinedScores({
                         <h4 className="font-bold text-nfw-aubergine text-xs uppercase tracking-wider mb-1">Fund Usage</h4>
                         <p className="text-sm text-nfw-blackberry/80 font-serif">{grant.fund_usage}</p>
                       </div>
+                      {grant.documents && grant.documents.length > 0 && (
+                        <div className="mt-4">
+                          <h4 className="font-bold text-nfw-aubergine text-xs uppercase tracking-wider mb-2">
+                            Supporting Documents ({grant.documents.length})
+                          </h4>
+                          <div className="space-y-2">
+                            {grant.documents.map((doc: any) => (
+                              <div
+                                key={doc.id}
+                                className="flex items-center justify-between bg-nfw-dove p-3"
+                              >
+                                <div>
+                                  <p className="text-sm font-medium text-nfw-blackberry">
+                                    {doc.file_name}
+                                  </p>
+                                  <p className="text-xs text-nfw-blackberry/40">
+                                    {(doc.file_size / 1024).toFixed(1)} KB
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => handleViewDocument(doc, grant.id)}
+                                  disabled={loadingDocId === doc.id}
+                                  className="text-xs font-semibold text-nfw-aubergine hover:text-nfw-aubergine/70 disabled:opacity-50"
+                                >
+                                  {loadingDocId === doc.id ? "Loading..." : "View →"}
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     {(grant.needs_discussion || grant.second_needs_discussion) && (
                       <div className="mt-4 space-y-3">
