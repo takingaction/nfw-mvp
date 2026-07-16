@@ -17,11 +17,9 @@ import { createClient } from "@/lib/supabase/client";
 import { FreeMembershipApprovalModal } from "@/components/admin/FreeMembershipApprovalModal";
 import { DeleteMemberModal } from "@/components/admin/DeleteMemberModal";
 
-const TEST_EMAILS = [
-  "ronpassaro@aol.com",
-  "ronpassaro@gmail.com",
-  "kelseykdriscoll@protonmail.com",
-  "kdrisco2@gmail.com",
+const ALLOWED_DELETE_EMAILS = [
+  "ron@myherodesign.com",
+  "kelsey@nationalfundforwomen.org",
 ];
 
 type Member = {
@@ -46,12 +44,14 @@ type Member = {
 export default function AdminMembersClient({
   members: initialMembers,
   currentUserId,
+  currentUserEmail,
   totalCount = 0,
   currentPage = 1,
   pageSize = 100,
 }: {
   members: Member[];
   currentUserId: string;
+  currentUserEmail: string;
   totalCount?: number;
   currentPage?: number;
   pageSize?: number;
@@ -641,11 +641,11 @@ export default function AdminMembersClient({
                       >
                         Edit
                       </button>
-                      {TEST_EMAILS.includes(member.email?.toLowerCase() || "") && (
+                      {ALLOWED_DELETE_EMAILS.includes(currentUserEmail?.toLowerCase() || "") && (
                         <button
                           onClick={() => openDelete(member)}
                           className="ml-3 text-xs font-semibold text-red-600 hover:text-red-700 transition-colors"
-                          title="Delete test member"
+                          title="Delete member"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

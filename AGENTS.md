@@ -7906,3 +7906,26 @@ Implemented various fixes to the grant scoring workflow including filtering, fla
 - Accordion shows "Reviewer 1 Notes" then "Reviewer 2 Notes" only if that reviewer flagged
 - Second review complete when all filtered grants have michelle_complete = true
 - Selected count computed directly from grants prop, merged with local pending selections
+
+---
+
+## Session 2026-07-16 (Afternoon): Delete Member Functionality Update
+
+Updated delete member functionality to allow only specific admins to delete members.
+
+### Changes Made
+
+**`app/admin/members/page.tsx`:**
+- Added `currentUserEmail={user?.email || ""}` prop to `AdminMembersClient`
+
+**`components/admin/AdminMembersClient.tsx`:**
+- Replaced `TEST_EMAILS` array with `ALLOWED_DELETE_EMAILS` containing `["ron@myherodesign.com", "kelsey@nationalfundforwomen.org"]`
+- Added `currentUserEmail: string` to component props
+- Updated delete button condition to check if `currentUserEmail` is in `ALLOWED_DELETE_EMAILS`
+- Updated button title from "Delete test member" to "Delete member"
+
+### Behavior
+
+- Delete trash can icons now visible on **all** member rows for the two authorized admins
+- Self-deletion already blocked in API route (`memberId === user.id` check)
+- Other admins cannot see or use the delete functionality

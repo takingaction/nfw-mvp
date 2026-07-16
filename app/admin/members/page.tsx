@@ -204,6 +204,7 @@ async function AdminMembersContent({ page }: { page: number }) {
         <AdminMembersClient
           members={profiles || []}
           currentUserId={user?.id || ""}
+          currentUserEmail={user?.email || ""}
           totalCount={total || 0}
           currentPage={page}
           pageSize={pageSize}
