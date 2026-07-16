@@ -403,7 +403,7 @@ export default function GrantCombinedScores({
 
       {/* Header Row */}
       <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
-        <div className={`grid gap-2 p-3 border-b border-nfw-blackberry/10 ${alreadyFinalized ? "grid-cols-[48px_40px_minmax(80px,1fr)_80px_100px_80px_96px_80px_120px_80px]" : "grid-cols-[48px_40px_minmax(80px,1fr)_80px_100px_80px_96px_80px_80px]"}`}>
+        <div className={`grid gap-2 p-3 border-b border-nfw-blackberry/10 ${alreadyFinalized ? "grid-cols-[48px_40px_60px_80px_100px_80px_96px_80px_140px_80px]" : "grid-cols-[48px_40px_minmax(80px,1fr)_80px_100px_80px_96px_80px_80px]"}`}>
           <div className="text-left text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
             Rank
           </div>
@@ -430,11 +430,11 @@ export default function GrantCombinedScores({
           </div>
           {alreadyFinalized && (
             <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
-              Stripe
+              Payment
             </div>
           )}
           <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
-            {alreadyFinalized ? "Send" : "Select"}
+            {alreadyFinalized ? "Pay" : "Select"}
           </div>
         </div>
 
@@ -451,7 +451,7 @@ export default function GrantCombinedScores({
                 {/* Header Row */}
                 <div
                   onClick={() => handleToggleExpand(grant.id)}
-                  className={`grid gap-2 p-3 border-b border-nfw-blackberry/5 cursor-pointer ${alreadyFinalized ? "grid-cols-[48px_40px_1fr_80px_100px_80px_96px_80px_96px_80px]" : "grid-cols-[48px_40px_1fr_80px_100px_80px_96px_80px_80px]"} ${isExpanded ? "bg-nfw-aubergine/5 border-l-4 border-l-nfw-aubergine" : isSelected ? "bg-nfw-citrine/20" : "bg-gray-50"}`}
+                  className={`grid gap-2 p-3 border-b border-nfw-blackberry/5 cursor-pointer ${alreadyFinalized ? "grid-cols-[48px_40px_60px_80px_100px_80px_96px_80px_140px_80px]" : "grid-cols-[48px_40px_1fr_80px_100px_80px_96px_80px_80px]"} ${isExpanded ? "bg-nfw-aubergine/5 border-l-4 border-l-nfw-aubergine" : isSelected ? "bg-nfw-citrine/20" : "bg-gray-50"}`}
                 >
                   <div className="flex items-center gap-2">
                     <ChevronDown
@@ -569,17 +569,19 @@ export default function GrantCombinedScores({
                           {sendingMoneyFor === grant.id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
                           ) : (
-                            <DollarSign className="w-3 h-3" />
+                            <>
+                              Send
+                              <DollarSign className="w-3 h-3" />
+                            </>
                           )}
-                          Send
                         </button>
                       ) : sendMoneyState === "disabled" ? (
                         <button
                           disabled
                           className="px-3 py-1.5 bg-gray-100 text-gray-400 font-bold text-xs cursor-not-allowed flex items-center gap-1"
                         >
-                          <DollarSign className="w-3 h-3" />
                           Send
+                          <DollarSign className="w-3 h-3" />
                         </button>
                       ) : (
                         <span className="text-nfw-blackberry/30">—</span>
