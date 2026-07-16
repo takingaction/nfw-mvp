@@ -61,6 +61,8 @@ function replaceTemplateVariables(
 
 /**
  * Fetch email template from database (admin access)
+ * Uses builder content (full_email_html with published status) if available,
+ * falls back to html_content for legacy templates
  */
 async function fetchTemplate(slug: string): Promise<{
   subject: string;
@@ -70,7 +72,7 @@ async function fetchTemplate(slug: string): Promise<{
   const supabase = getAdminClient();
   const { data, error } = await supabase
     .from("email_templates")
-    .select("subject, html_content, hero_image_url")
+    .select("subject, html_content, full_email_html, status, hero_image_url, is_active")
     .eq("slug", slug)
     .single();
 
@@ -79,11 +81,26 @@ async function fetchTemplate(slug: string): Promise<{
     return null;
   }
 
-  return {
-    subject: data.subject,
-    html: data.html_content,
-    hero_image_url: data.hero_image_url,
-  };
+  // Use builder content if published, otherwise fall back to html_content
+  if (data.full_email_html && data.status === "published" && data.is_active !== false) {
+    return {
+      subject: data.subject,
+      html: data.full_email_html,
+      hero_image_url: data.hero_image_url,
+    };
+  }
+
+  // Fall back to legacy html_content
+  if (data.html_content) {
+    return {
+      subject: data.subject,
+      html: data.html_content,
+      hero_image_url: data.hero_image_url,
+    };
+  }
+
+  console.error(`[email-batch] Template "${slug}" has no published content`);
+  return null;
 }
 
 /**
