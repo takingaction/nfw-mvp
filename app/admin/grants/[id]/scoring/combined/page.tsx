@@ -160,11 +160,14 @@ export default function CombinedScoresPage() {
   };
 
   const handleSendMoney = async (grantId: string): Promise<{ error?: string; success?: boolean }> => {
+    console.log(`[handleSendMoney] Starting transfer for grant ${grantId}`);
+
     const res = await fetch(`/api/admin/grants/${grantId}/transfer`, {
       method: "POST",
     });
 
     const data = await res.json();
+    console.log(`[handleSendMoney] Response:`, { status: res.status, data });
 
     if (!res.ok) {
       return { error: data.error || "Failed to send money" };

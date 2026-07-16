@@ -50,7 +50,18 @@ export async function POST(request: NextRequest) {
       updates.reviewed_at = new Date().toISOString();
       updates.reviewed_by = user.id;
     }
-    if (status === "payment_sent") updates.funded_at = new Date().toISOString();
+    if (status === "payment_sent") {
+      // Require transfer_id to be provided when marking as payment_sent
+      // This ensures the payment was actually processed through Stripe
+      const { transfer_id } = await request.json().then(b => b || {});
+      if (!transfer_id) {
+        return NextResponse.json(
+          { error: "transfer_id is required when setting status to payment_sent" },
+          { status: 400 }
+        );
+      }
+      updates.funded_at = new Date().toISOString();
+    }
 
     // TEMPORARILY DISABLED: Auto-transfer for approved grants
     // Re-enable by uncommenting this block and implementing toggle setting

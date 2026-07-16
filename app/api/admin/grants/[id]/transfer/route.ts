@@ -20,6 +20,7 @@ export async function POST(
     await requireAdmin();
 
     const { id: grantId } = await params;
+    console.log(`[transfer] POST request received for grant ${grantId}`);
 
     // Get grant with profile and cycle info
     const { data: grant, error: grantError } = await supabaseAdmin
@@ -47,6 +48,21 @@ export async function POST(
         { error: `Grant status must be 'approved', currently '${grant.status}'` },
         { status: 400 }
       );
+    }
+
+    console.log(`[transfer] Grant details:`, {
+      grantId: grant.id,
+      userId: grant.user_id,
+      amount_approved: grant.amount_approved,
+      stripe_connect_account_id: grant.stripe_connect_account_id,
+      stripe_account_id_type: typeof grant.stripe_connect_account_id,
+      stripe_account_id_length: grant.stripe_connect_account_id?.length,
+      cycle_id: grant.cycle_id,
+    });
+
+    // Verify stripe_connect_account_id looks like a valid Stripe account ID
+    if (grant.stripe_connect_account_id && !grant.stripe_connect_account_id.startsWith('acct_')) {
+      console.warn(`[transfer] WARNING: stripe_connect_account_id does not start with 'acct_': ${grant.stripe_connect_account_id}`);
     }
 
     // Verify stripe_connect_account_id exists
@@ -91,8 +107,11 @@ export async function POST(
     }
 
     // Create Stripe transfer
+    const transferAmount = Math.round(grant.amount_approved * 100);
+    console.log(`[transfer] Creating transfer of ${transferAmount} cents ($${grant.amount_approved}) to account ${grant.stripe_connect_account_id}`);
+
     const transfer = await stripe.transfers.create({
-      amount: Math.round(grant.amount_approved * 100), // Convert to cents
+      amount: transferAmount,
       currency: "usd",
       destination: grant.stripe_connect_account_id,
       metadata: {
@@ -100,6 +119,8 @@ export async function POST(
         userId: grant.user_id,
       },
     });
+
+    console.log(`[transfer] Transfer created: ${transfer.id}, amount: ${transfer.amount} cents, status: ${transfer.status}`);
 
     console.log(`[transfer] Created transfer ${transfer.id} for grant ${grant.id}`);
 
@@ -150,8 +171,15 @@ export async function POST(
     });
   } catch (err: any) {
     console.error("[transfer] Error:", err);
+    console.error("[transfer] Stripe error type:", err.type);
+    console.error("[transfer] Stripe error code:", err.code);
+    console.error("[transfer] Stripe error decline_code:", err.decline_code);
     return NextResponse.json(
-      { error: err.message || "Failed to create transfer" },
+      {
+        error: err.message || "Failed to create transfer",
+        stripe_error_type: err.type,
+        stripe_error_code: err.code,
+      },
       { status: 500 }
     );
   }

@@ -46,13 +46,8 @@ export default async function ConnectReturnPage({ searchParams }: PageProps) {
       detailsSubmitted = !!account.details_submitted;
 
       if (detailsSubmitted) {
-        // Update grant status - webhook will create transfer and payment_sent
-        await supabaseAdmin
-          .from("grants")
-          .update({ status: "payment_pending" })
-          .eq("id", grantId);
-
         // Mark user's onboarding as completed on their profile
+        // Grant status stays "approved" - admin will send payment when ready
         await supabaseAdmin
           .from("profiles")
           .update({ stripe_onboarding_completed: true })
