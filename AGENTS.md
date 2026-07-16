@@ -8101,3 +8101,39 @@ Multiple iterations to fit all columns properly:
 - Changed "Stripe" header → "Payment"
 - Changed "Send" header → "Pay"
 - Changed "$ Send" button → "Send $"
+
+## Session 2026-07-16: Fix PGRST116 Error on Profile Fetch
+
+### Problem
+
+Users were getting 500 errors with `PGRST116` ("Cannot coerce the result to a single JSON object") when fetching their profile from `/api/auth/profile`. This happened when `.single()` was called on a query that returned 0 rows.
+
+### Root Cause
+
+The code at line 67 only created a defensive profile when BOTH `profile` is null AND `error` is null:
+```typescript
+if (!profile && !error) {  // This is FALSE when .single() returns 0 rows!
+```
+
+But `.single()` on 0 rows returns `error` as truthy (PGRST116), so the defensive profile creation never triggered. Users without profile rows got 500 errors.
+
+### Fix
+
+Changed the condition to check for `PGRST116` error code specifically:
+```typescript
+if (error) {
+  if (error.code === 'PGRST116') {
+    // PGRST116: 0 rows returned by .single() - user has no profile, create defensive one
+    // ... create defensive profile ...
+  }
+  // Other errors - return 500
+  console.error("Profile fetch error:", error);
+  return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 });
+}
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/auth/profile/route.ts` | Check for PGRST116 error and create defensive profile when user has no profile row |
