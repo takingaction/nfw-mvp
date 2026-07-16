@@ -128,7 +128,7 @@ export default async function AdminGrantCyclePage({
 
               {/* Combined Scores - Locked until all second reviews complete */}
               <Link
-                href={allSecondComplete && !finalApproved ? `/admin/grants/${id}/scoring/combined` : "#"}
+                href={finalApproved ? `/admin/grants/${id}/scoring/combined` : allSecondComplete ? `/admin/grants/${id}/scoring/combined` : "#"}
                 className={`px-4 py-2 font-ui text-sm font-medium transition-colors ${
                   finalApproved
                     ? "bg-nfw-green/20 border border-nfw-green text-nfw-blackberry hover:bg-nfw-green/30"
