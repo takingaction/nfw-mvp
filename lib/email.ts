@@ -1341,7 +1341,8 @@ export async function sendSecondReviewerNotification({
 }: {
   cycleName: string;
 }): Promise<{ success: boolean; error?: string }> {
-  const toEmail = "ronpassaro@gmail.com";
+  const toEmail = "michelle@nationalfundforwomen.org";
+  const ccEmail = "ronpassaro@gmail.com";
   const siteUrl = "https://nationalfundforwomen.org";
 
   try {
@@ -1385,6 +1386,7 @@ export async function sendSecondReviewerNotification({
     await resend.emails.send({
       from: FROM,
       to: toEmail,
+      cc: ccEmail,
       subject: `Grant review ready - ${cycleName}`,
       html,
     });
