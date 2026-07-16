@@ -427,6 +427,7 @@ export default function FirstReviewPage() {
                 reviewerType="first"
                 onSave={handleSaveScore}
                 saving={saving}
+                hidePersonalInfo={true}
               />
             ) : (
               <div className="bg-white border border-nfw-blackberry/10 p-8 text-center">

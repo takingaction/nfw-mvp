@@ -9,6 +9,7 @@ interface GrantApplicationScorerProps {
   reviewerType: "first" | "second";
   onSave: (grantId: string, data: ScoreData) => void;
   saving?: boolean;
+  hidePersonalInfo?: boolean;
 }
 
 export interface ScoreData {
@@ -33,6 +34,7 @@ export default function GrantApplicationScorer({
   reviewerType,
   onSave,
   saving = false,
+  hidePersonalInfo = false,
 }: GrantApplicationScorerProps) {
   const existingScore = grant.grant_scores?.[0];
 
@@ -115,31 +117,42 @@ export default function GrantApplicationScorer({
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 bg-nfw-lilac/30 flex items-center justify-center text-sm font-black text-nfw-blackberry flex-shrink-0">
-            {(grant.profiles?.full_name || "U")
-              .charAt(0)
-              .toUpperCase()}
-          </div>
-          <div>
-            <p className="font-bold text-nfw-blackberry">
-              {grant.profiles?.full_name || "Unknown"}
-            </p>
-            {grant.profiles?.email && (
-              <p className="text-xs text-nfw-blackberry/50">
-                {grant.profiles.email}
-              </p>
-            )}
-            {grant.profiles?.city && (
-              <p className="text-xs text-nfw-blackberry/50">
-                {grant.profiles.city}, {grant.profiles.state}
-              </p>
-            )}
-            {grant.is_nominating && (
-              <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-nfw-lilac/20 text-nfw-blackberry font-medium rounded">
-                Nomination: {grant.nominee_name}
-              </span>
-            )}
-          </div>
+          {!hidePersonalInfo ? (
+            <>
+              <div className="w-10 h-10 bg-nfw-lilac/30 flex items-center justify-center text-sm font-black text-nfw-blackberry flex-shrink-0">
+                {(grant.profiles?.full_name || "U")
+                  .charAt(0)
+                  .toUpperCase()}
+              </div>
+              <div>
+                <p className="font-bold text-nfw-blackberry">
+                  {grant.profiles?.full_name || "Unknown"}
+                </p>
+                {grant.profiles?.email && (
+                  <p className="text-xs text-nfw-blackberry/50">
+                    {grant.profiles.email}
+                  </p>
+                )}
+                {grant.profiles?.city && (
+                  <p className="text-xs text-nfw-blackberry/50">
+                    {grant.profiles.city}, {grant.profiles.state}
+                  </p>
+                )}
+                {grant.is_nominating && (
+                  <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-nfw-lilac/20 text-nfw-blackberry font-medium rounded">
+                    Nomination: {grant.nominee_name}
+                  </span>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 text-nfw-blackberry/50">
+              <div className="w-8 h-8 bg-nfw-lilac/20 rounded-full flex items-center justify-center">
+                <span className="text-xs font-bold">?</span>
+              </div>
+              <span className="text-sm italic">Personal info hidden</span>
+            </div>
+          )}
         </div>
         <div className="text-right">
           {localSaving || saving ? (

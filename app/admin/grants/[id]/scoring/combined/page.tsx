@@ -66,6 +66,9 @@ export default function CombinedScoresPage() {
   const [error, setError] = useState("");
   const [finalizing, setFinalizing] = useState(false);
   const [finalized, setFinalized] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [finalizeResult, setFinalizeResult] = useState<{ approved: number; rejected: number } | null>(null);
+  const [showResultModal, setShowResultModal] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -112,11 +115,13 @@ export default function CombinedScoresPage() {
     }
   };
 
-  const handleFinalize = async () => {
-    if (!confirm("Are you sure you want to finalize approvals? This will:\n\n1. Send 'Grant: Approved' emails to selected applicants\n2. Send 'Grant: Not Approved' emails to all other applicants\n3. Update all application statuses\n\nThis action cannot be undone.")) {
-      return;
-    }
+  const handleOpenConfirmModal = (): Promise<void> => {
+    setShowConfirmModal(true);
+    return Promise.resolve();
+  };
 
+  const handleFinalize = async () => {
+    setShowConfirmModal(false);
     setFinalizing(true);
     try {
       const res = await fetch(`/api/admin/grants/${cycleId}/final-approve`, {
@@ -130,7 +135,8 @@ export default function CombinedScoresPage() {
       }
 
       setFinalized(true);
-      alert(`Finalized! ${data.approved_count} approved, ${data.rejected_count} not approved.`);
+      setFinalizeResult({ approved: data.approved_count, rejected: data.rejected_count });
+      setShowResultModal(true);
       fetchData();
     } catch (err: any) {
       alert(err.message);
@@ -232,7 +238,7 @@ export default function CombinedScoresPage() {
           cycle={cycle!}
           totalPaid={totalPaid}
           onTentativeApprove={handleTentativeApprove}
-          onFinalize={handleFinalize}
+          onFinalize={handleOpenConfirmModal}
           onCheckStripeStatus={handleCheckStripeStatus}
           onSendMoney={handleSendMoney}
           loading={loading}
@@ -240,6 +246,86 @@ export default function CombinedScoresPage() {
           alreadyFinalized={finalized}
         />
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-bold text-nfw-blackberry mb-2">
+              Finalize Approvals?
+            </h3>
+            <p className="text-nfw-blackberry/70 mb-4">
+              This will:
+            </p>
+            <ul className="text-sm text-nfw-blackberry/70 mb-6 space-y-1 list-disc list-inside">
+              <li>Send "Grant: Approved" emails to selected applicants</li>
+              <li>Send "Grant: Not Approved" emails to all other applicants</li>
+              <li>Update all application statuses</li>
+            </ul>
+            <p className="text-sm text-nfw-blackberry/50 mb-6">
+              This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                disabled={finalizing}
+                className="px-4 py-2 bg-gray-100 text-nfw-blackberry font-bold text-sm hover:bg-gray-200 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleFinalize}
+                disabled={finalizing}
+                className="px-4 py-2 bg-nfw-aubergine text-white font-bold text-sm hover:bg-nfw-aubergine/90 disabled:opacity-50 flex items-center gap-2 transition-colors"
+              >
+                {finalizing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Finalizing...
+                  </>
+                ) : (
+                  "Finalize"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Result Modal */}
+      {showResultModal && finalizeResult && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <Check className="w-6 h-6 text-green-600" />
+              </div>
+              <h3 className="text-lg font-bold text-nfw-blackberry">
+                Finalization Complete
+              </h3>
+            </div>
+            <p className="text-nfw-blackberry/70 mb-4">
+              The following actions have been completed:
+            </p>
+            <div className="bg-green-50 rounded p-4 mb-6 space-y-2">
+              <p className="text-sm text-green-700">
+                <span className="font-bold">{finalizeResult.approved}</span> applications marked as Approved
+              </p>
+              <p className="text-sm text-green-700">
+                <span className="font-bold">{finalizeResult.rejected}</span> applications marked as Not Approved
+              </p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => { setShowResultModal(false); setFinalizeResult(null); }}
+                className="px-4 py-2 bg-nfw-aubergine text-white font-bold text-sm hover:bg-nfw-aubergine/90 transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
