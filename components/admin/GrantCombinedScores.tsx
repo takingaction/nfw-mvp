@@ -124,6 +124,7 @@ export default function GrantCombinedScores({
 
   const selectedIds = getSelectedIds();
   const selectedCount = selectedIds.size;
+  const hasPendingChanges = localSelected.size > 0;
 
   const handleToggle = (grantId: string) => {
     const newSelected = new Set(localSelected);
@@ -144,6 +145,14 @@ export default function GrantCombinedScores({
     setSaving(false);
     setSaved(true);
     setLocalSelected(new Set());
+  };
+
+  const handleFinalizeClick = () => {
+    if (hasPendingChanges) {
+      alert("You have unsaved changes. Please click 'Save Selections' before finalizing.");
+      return;
+    }
+    onFinalize();
   };
 
   const handleToggleExpand = (grantId: string) => {
@@ -323,7 +332,7 @@ export default function GrantCombinedScores({
                 )}
               </button>
               <button
-                onClick={onFinalize}
+                onClick={handleFinalizeClick}
                 disabled={finalizing || selectedCount !== cycle.grants_available}
                 className="px-4 py-2 bg-nfw-aubergine text-white font-bold text-sm hover:bg-nfw-aubergine/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
               >
