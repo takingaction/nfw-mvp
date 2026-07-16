@@ -8003,3 +8003,39 @@ Implemented manual Stripe transfer workflow with cycle total funds limit enforce
 - "Paid" badge replaces "Sent" for consistency with member-facing language
 - Alert modal appears before confirmation when limit would be exceeded
 - Transfer API returns detailed error message with current totals
+
+---
+
+## Session 2026-07-17: Fix Grant Selection Bug - Decision Filter Removed
+
+### Bug
+
+On combined scores page, the wrong grants were being finalized. UI showed A and B selected, but C was approved in database instead of B.
+
+### Root Cause
+
+In `GrantCombinedScores.tsx`, the `getSelectedIds()` function incorrectly filtered by `decision === "Approved"`:
+
+```javascript
+// BEFORE (buggy) - filtered by decision score which doesn't matter
+grants.filter((g) => g.is_tentatively_approved && g.decision === "Approved")
+
+// AFTER (fixed) - only is_tentatively_approved checkbox matters
+grants.filter((g) => g.is_tentatively_approved)
+```
+
+### Key Principle
+
+**Only the `is_tentatively_approved` checkbox state matters for finalization. Score/decision does NOT matter.**
+
+The `decision` field (14-18 = Approved, 8-13 = Runner Up, 0-7 = Not Approved) is only for visual display in the UI. Only what's checked in `grant_tentative_approvals` table gets finalized.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/admin/GrantCombinedScores.tsx` | Removed `&& g.decision === "Approved"` from getSelectedIds filter |
+
+### Email Issue Note
+
+If no emails were sent after finalization, check that `grant-approved` template has `is_active = true` and has published content in `/admin/emails`.

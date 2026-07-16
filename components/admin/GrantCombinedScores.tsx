@@ -108,7 +108,7 @@ export default function GrantCombinedScores({
   // Compute from grants (what API says) OR local state (what user just toggled)
   const getSelectedIds = () => {
     const apiSelected = new Set(
-      grants.filter((g) => g.is_tentatively_approved && g.decision === "Approved").map((g) => g.id)
+      grants.filter((g) => g.is_tentatively_approved).map((g) => g.id)
     );
     // Merge with localSelected
     const merged = new Set(apiSelected);
@@ -394,7 +394,7 @@ export default function GrantCombinedScores({
 
       {/* Header Row */}
       <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
-        <div className={`grid gap-2 p-3 border-b border-nfw-blackberry/10 ${alreadyFinalized ? "grid-cols-[48px_40px_1fr_80px_100px_80px_96px_80px_96px_80px]" : "grid-cols-[48px_40px_1fr_80px_100px_80px_96px_80px_80px]"}`}>
+        <div className={`grid gap-2 p-3 border-b border-nfw-blackberry/10 ${alreadyFinalized ? "grid-cols-[48px_40px_minmax(80px,1fr)_80px_100px_80px_96px_80px_120px_80px]" : "grid-cols-[48px_40px_minmax(80px,1fr)_80px_100px_80px_96px_80px_80px]"}`}>
           <div className="text-left text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
             Rank
           </div>
