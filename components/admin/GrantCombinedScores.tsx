@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Loader2, AlertTriangle, Check, MessageSquare, ChevronDown } from "lucide-react";
+import { Loader2, AlertTriangle, Check, MessageSquare, ChevronDown, Eye, EyeOff } from "lucide-react";
 
 interface Grant {
   id: string;
@@ -21,6 +21,8 @@ interface Grant {
   decision: string;
   needs_discussion: boolean;
   discussion_notes: string | null;
+  second_needs_discussion: boolean;
+  second_discussion_notes: string | null;
   barriers_yn: boolean | null;
   has_received_grant: boolean;
   is_tentatively_approved: boolean;
@@ -56,18 +58,46 @@ export default function GrantCombinedScores({
   finalizing = false,
   alreadyFinalized = false,
 }: GrantCombinedScoresProps) {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    new Set(grants.filter((g) => g.is_tentatively_approved).map((g) => g.id))
-  );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [visibleNames, setVisibleNames] = useState<Set<string>>(new Set());
+  const [localSelected, setLocalSelected] = useState<Set<string>>(new Set());
+
+  const toggleNameVisibility = (grantId: string) => {
+    const newVisible = new Set(visibleNames);
+    if (newVisible.has(grantId)) {
+      newVisible.delete(grantId);
+    } else {
+      newVisible.add(grantId);
+    }
+    setVisibleNames(newVisible);
+  };
 
   const maxSelectable = cycle.grants_available;
+
+  // Compute from grants (what API says) OR local state (what user just toggled)
+  const getSelectedIds = () => {
+    const apiSelected = new Set(
+      grants.filter((g) => g.is_tentatively_approved && g.decision === "Approved").map((g) => g.id)
+    );
+    // Merge with localSelected
+    const merged = new Set(apiSelected);
+    localSelected.forEach((id) => {
+      if (apiSelected.has(id)) {
+        merged.delete(id);
+      } else {
+        merged.add(id);
+      }
+    });
+    return merged;
+  };
+
+  const selectedIds = getSelectedIds();
   const selectedCount = selectedIds.size;
 
   const handleToggle = (grantId: string) => {
-    const newSelected = new Set(selectedIds);
+    const newSelected = new Set(localSelected);
     if (newSelected.has(grantId)) {
       newSelected.delete(grantId);
     } else {
@@ -75,7 +105,7 @@ export default function GrantCombinedScores({
         newSelected.add(grantId);
       }
     }
-    setSelectedIds(newSelected);
+    setLocalSelected(newSelected);
     setSaved(false);
   };
 
@@ -84,6 +114,7 @@ export default function GrantCombinedScores({
     await onTentativeApprove(Array.from(selectedIds));
     setSaving(false);
     setSaved(true);
+    setLocalSelected(new Set());
   };
 
   const handleToggleExpand = (grantId: string) => {
@@ -226,9 +257,12 @@ export default function GrantCombinedScores({
 
       {/* Header Row */}
       <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
-        <div className="grid grid-cols-[48px_1fr_80px_100px_80px_96px_80px_80px] gap-2 p-3 border-b border-nfw-blackberry/10">
+        <div className="grid grid-cols-[48px_40px_1fr_80px_100px_80px_96px_80px_80px] gap-2 p-3 border-b border-nfw-blackberry/10">
           <div className="text-left text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
             Rank
+          </div>
+          <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
+            Show
           </div>
           <div className="text-left text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
             Applicant
@@ -264,7 +298,7 @@ export default function GrantCombinedScores({
                 {/* Header Row */}
                 <div
                   onClick={() => handleToggleExpand(grant.id)}
-                  className={`grid grid-cols-[48px_1fr_80px_100px_80px_96px_80px_80px] gap-2 p-3 border-b border-nfw-blackberry/5 cursor-pointer ${
+                  className={`grid grid-cols-[48px_40px_1fr_80px_100px_80px_96px_80px_80px] gap-2 p-3 border-b border-nfw-blackberry/5 cursor-pointer ${
                     isExpanded
                       ? "bg-nfw-aubergine/5 border-l-4 border-l-nfw-aubergine"
                       : isSelected
@@ -280,14 +314,27 @@ export default function GrantCombinedScores({
                       {grant.rank}
                     </span>
                   </div>
+                  <div className="flex items-center justify-center">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleNameVisibility(grant.id); }}
+                      className="p-1 hover:bg-nfw-blackberry/10 rounded transition-colors"
+                      title={visibleNames.has(grant.id) ? "Hide name" : "Show name"}
+                    >
+                      {visibleNames.has(grant.id) ? (
+                        <EyeOff className="w-4 h-4 text-nfw-blackberry/40" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-nfw-blackberry/40" />
+                      )}
+                    </button>
+                  </div>
                   <div className="flex items-center gap-2">
                     <div>
-                      <p className="font-bold text-nfw-blackberry text-sm">
-                        {grant.profiles?.full_name || "Unknown"}
+                      <p className={`font-bold text-sm ${visibleNames.has(grant.id) ? "text-nfw-blackberry" : "text-nfw-blackberry/40"}`}>
+                        {visibleNames.has(grant.id) ? (grant.profiles?.full_name || "Unknown") : "••••••"}
                       </p>
                       {grant.is_nominating && (
                         <p className="text-xs text-nfw-blackberry/50">
-                          Nomination: {grant.nominee_name}
+                          Nomination: {visibleNames.has(grant.id) ? grant.nominee_name : "••••••"}
                         </p>
                       )}
                     </div>
@@ -321,10 +368,12 @@ export default function GrantCombinedScores({
                     )}
                   </div>
                   <div className="flex items-center justify-center">
-                    {grant.needs_discussion ? (
+                    {grant.needs_discussion || grant.second_needs_discussion ? (
                       <div className="flex items-center gap-1 text-yellow-600">
                         <MessageSquare className="w-4 h-4" />
-                        <span className="text-xs font-semibold">Flagged</span>
+                        <span className="text-xs font-semibold">
+                          {grant.needs_discussion && grant.second_needs_discussion ? "Both" : "Flagged"}
+                        </span>
                       </div>
                     ) : (
                       <span className="text-nfw-blackberry/30 text-xs">—</span>
@@ -381,13 +430,26 @@ export default function GrantCombinedScores({
                         <p className="text-sm text-nfw-blackberry/80 font-serif">{grant.fund_usage}</p>
                       </div>
                     </div>
-                    {grant.needs_discussion && grant.discussion_notes && (
-                      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                        <h4 className="font-bold text-yellow-800 text-xs uppercase tracking-wider mb-1 flex items-center gap-1">
-                          <MessageSquare className="w-3 h-3" />
-                          Discussion Notes
-                        </h4>
-                        <p className="text-sm text-yellow-700">{grant.discussion_notes}</p>
+                    {(grant.needs_discussion || grant.second_needs_discussion) && (
+                      <div className="mt-4 space-y-3">
+                        {grant.needs_discussion && grant.discussion_notes && (
+                          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                            <h4 className="font-bold text-yellow-800 text-xs uppercase tracking-wider mb-1 flex items-center gap-1">
+                              <MessageSquare className="w-3 h-3" />
+                              Reviewer 1 Notes
+                            </h4>
+                            <p className="text-sm text-yellow-700">{grant.discussion_notes}</p>
+                          </div>
+                        )}
+                        {grant.second_needs_discussion && grant.second_discussion_notes && (
+                          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                            <h4 className="font-bold text-yellow-800 text-xs uppercase tracking-wider mb-1 flex items-center gap-1">
+                              <MessageSquare className="w-3 h-3" />
+                              Reviewer 2 Notes
+                            </h4>
+                            <p className="text-sm text-yellow-700">{grant.second_discussion_notes}</p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

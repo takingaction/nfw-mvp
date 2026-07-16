@@ -34,7 +34,7 @@ export async function GET(
       return NextResponse.json({ error: "First reviewer has not completed yet" }, { status: 400 });
     }
 
-    // Get all grants with second reviewer scores
+    // Get all grants with second reviewer scores AND first reviewer scores (for filtering)
     const { data: grants } = await supabaseAdmin
       .from("grants")
       .select(`
@@ -50,20 +50,34 @@ export async function GET(
         submitted_at,
         michelle_complete,
         profiles:user_id (full_name, email, city, state),
-        grant_scores!left (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, is_complete, total_score)
+        grant_scores (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, is_complete, total_score)
       `)
       .eq("cycle_id", cycleId)
       .order("submitted_at", { ascending: false });
 
-    // Filter to only second reviewer scores
-    const grantsWithSecondScores = grants?.map((g) => ({
-      ...g,
-      grant_scores: g.grant_scores?.filter((s: any) => s.reviewer_name === "second") || [],
-    }));
+    // Separate first and second reviewer scores, then filter
+    const grantsWithSeparatedScores = grants?.map((g) => {
+      const firstScore = g.grant_scores?.find((s: any) => s.reviewer_name === "first");
+      const secondScores = g.grant_scores?.filter((s: any) => s.reviewer_name === "second") || [];
+      return {
+        ...g,
+        first_score: firstScore || null,
+        grant_scores: secondScores,
+      };
+    });
+
+    // Filter: only show grants where first reviewer scored >= 7 (approved) OR first reviewer flagged them
+    const filteredGrants = grantsWithSeparatedScores?.filter((g) => {
+      const firstTotal = g.first_score?.total_score || 0;
+      const firstFlagged = g.first_score?.needs_discussion === true;
+      return firstTotal >= 7 || firstFlagged;
+    });
 
     return NextResponse.json({
-      grants: grantsWithSecondScores || [],
+      grants: filteredGrants || [],
       scoring_completed_at: cycle.scoring_completed_at,
+      totalInCycle: grants?.length || 0,
+      totalFiltered: filteredGrants?.length || 0,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -93,6 +107,8 @@ export async function POST(
       authenticity_score,
       impact_score,
       barriers_yn,
+      needs_discussion,
+      discussion_notes,
       is_complete,
     } = body;
 
@@ -111,8 +127,8 @@ export async function POST(
           authenticity_score: authenticity_score ?? null,
           impact_score: impact_score ?? null,
           barriers_yn: barriers_yn ?? null,
-          needs_discussion: false,
-          discussion_notes: null,
+          needs_discussion: needs_discussion ?? false,
+          discussion_notes: discussion_notes ?? null,
           is_complete: is_complete ?? false,
           completed_at: is_complete ? new Date().toISOString() : null,
           total_score,

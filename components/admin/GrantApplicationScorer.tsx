@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, MessageSquare } from "lucide-react";
 import GrantScoreInput from "./GrantScoreInput";
 
 interface GrantApplicationScorerProps {
@@ -86,8 +86,8 @@ export default function GrantApplicationScorer({
           authenticity_score,
           impact_score,
           barriers_yn,
-          needs_discussion: reviewerType === "first" ? needs_discussion : undefined,
-          discussion_notes: reviewerType === "first" ? discussion_notes : undefined,
+          needs_discussion,
+          discussion_notes,
           is_complete: isComplete,
         });
       }
@@ -154,6 +154,23 @@ export default function GrantApplicationScorer({
           ) : null}
         </div>
       </div>
+
+      {/* First Reviewer's Flag Notes (shown to second reviewer only) */}
+      {reviewerType === "second" && grant.first_score?.needs_discussion === true && grant.first_score?.discussion_notes && (
+        <div className="bg-yellow-50 border border-yellow-200 p-3">
+          <div className="flex items-start gap-2">
+            <MessageSquare className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-xs font-bold text-yellow-800 uppercase tracking-wider mb-1">
+                Flagged by Reviewer 1
+              </p>
+              <p className="text-sm text-yellow-700">
+                {grant.first_score.discussion_notes}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Application Content */}
       <div className="bg-nfw-dove p-3 space-y-3 text-sm">
@@ -237,8 +254,8 @@ export default function GrantApplicationScorer({
           </div>
         </div>
 
-        {/* NEEDS DISCUSSION (First reviewer only) */}
-        {reviewerType === "first" && (
+        {/* NEEDS DISCUSSION (Both reviewers can flag) */}
+        {(reviewerType === "first" || reviewerType === "second") && (
           <div className="border-t border-nfw-blackberry/10 pt-4 space-y-2">
             <div className="flex items-center gap-2">
               <input
@@ -252,7 +269,7 @@ export default function GrantApplicationScorer({
                 htmlFor={`discussion-${grant.id}`}
                 className="text-xs font-semibold text-nfw-blackberry/60 uppercase tracking-wider"
               >
-                ⚠️ NEEDS ADDITIONAL DISCUSSION
+                ⚠️ NEEDS ADDITIONAL DISCUSSION ({reviewerType === "first" ? "Reviewer 1" : "Reviewer 2"})
               </label>
             </div>
             {needs_discussion && (

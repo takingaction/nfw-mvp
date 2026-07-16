@@ -24,6 +24,8 @@ interface Grant {
   decision: string;
   needs_discussion: boolean;
   discussion_notes: string | null;
+  second_needs_discussion: boolean;
+  second_discussion_notes: string | null;
   barriers_yn: boolean | null;
   has_received_grant: boolean;
   is_tentatively_approved: boolean;

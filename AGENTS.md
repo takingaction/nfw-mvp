@@ -7857,3 +7857,52 @@ Added explicit category breakdown columns to `/admin/members` CSV export to matc
 | Free | Free member with active subscription status |
 | Pending | Free member awaiting approval or contact form submission |
 | None | Waitlist members or free members with incomplete profiles |
+
+---
+
+## Session 2026-07-16: Grant Scoring Workflow Fixes
+
+Implemented various fixes to the grant scoring workflow including filtering, flagging, and combined scores.
+
+### Issues Fixed
+
+**1. Second Review Filter** - Second page now only shows grants where first reviewer scored ≥7 OR flagged them
+
+**2. Second Reviewer Flagging** - Second reviewer can now flag applications with discussion notes (same checkbox/textbox as first reviewer)
+
+**3. Show First Reviewer's Flag** - Yellow banner appears on second review page showing first reviewer's flag notes when applicable
+
+**4. Combined Page Filter** - Combined scores page now only shows grants that passed the second review filter (first score ≥7 or flagged)
+
+**5. Completion Check Fix** - Both second-complete API and combined scores API now check completion based on filtered grants, not all grants
+
+**6. Flag Indicators** - Second review page grant cards now show "Flagged" badge when first reviewer flagged
+
+**7. Eye Icon for Names** - Eye icon added to first, second, and combined pages to hide/show applicant names (stops row click propagation)
+
+**8. Combined Page Header** - Fixed header grid to match data row grid (added Show column between Rank and Applicant)
+
+**9. Stale Selection Bug** - Fixed selected count showing stale selections from grants no longer in filtered list
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `app/api/admin/grants/[id]/scoring/second/route.ts` | POST accepts needs_discussion, discussion_notes for second reviewer |
+| `app/api/admin/grants/[id]/scoring/second-complete/route.ts` | Only check filtered grants for completion |
+| `app/api/admin/grants/[id]/scores/combined/route.ts` | Filter grants, check completion based on scope |
+| `app/api/admin/grants/[id]/scores/second/route.ts` | Filter grants to scope for second review |
+| `app/admin/grants/[id]/page.tsx` | Check second completion based on filtered grants |
+| `app/admin/grants/[id]/scoring/first/page.tsx` | Added eye icon with stopPropagation |
+| `app/admin/grants/[id]/scoring/second/page.tsx` | Added eye icon, first_score to interface, flag badge, showDiscussionFlag=true |
+| `components/admin/GrantApplicationScorer.tsx` | Allow both first and second reviewers to flag, show first reviewer's flag notes to second |
+| `components/admin/GrantCombinedScores.tsx` | Fixed header grid, show both reviewers' flagged notes in accordion |
+
+### Key Decisions
+
+- Filter for second page: `first_score.total_score >= 7` OR `first_score.needs_discussion === true`
+- Combined score bands: 14-18 Approved, 8-13 Runner Up, 0-7 Not Approved
+- Eye icon state tracked per-row with `visibleNames: Set<string>`
+- Accordion shows "Reviewer 1 Notes" then "Reviewer 2 Notes" only if that reviewer flagged
+- Second review complete when all filtered grants have michelle_complete = true
+- Selected count computed directly from grants prop, merged with local pending selections

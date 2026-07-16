@@ -37,22 +37,36 @@ export async function GET(
     // Get all grants to check completion status
     const { data: grantsCheck } = await supabaseAdmin
       .from("grants")
-      .select("id, rachel_complete, michelle_complete")
+      .select("id, rachel_complete, michelle_complete, grant_scores (reviewer_name, total_score, needs_discussion)")
       .eq("cycle_id", cycleId);
 
     if (!grantsCheck || grantsCheck.length === 0) {
       return NextResponse.json({ error: "No grants found" }, { status: 404 });
     }
 
-    // Check if both reviews are complete
+    // Check if first review is complete
     const allFirstComplete = grantsCheck.every((g) => g.rachel_complete === true);
-    const allSecondComplete = grantsCheck.every((g) => g.michelle_complete === true);
 
     if (!allFirstComplete) {
       return NextResponse.json({
         error: "First review is not complete. Please complete all first reviews first."
       }, { status: 400 });
     }
+
+    // Get grants in scope for second review (first score >= 7 OR first flagged)
+    const grantsInScope = grantsCheck.filter((g: any) => {
+      if (!g.rachel_complete) return false;
+      const firstScore = g.grant_scores?.find((s: any) => s.reviewer_name === "first");
+      if (!firstScore) return false;
+      const totalScore = firstScore.total_score || 0;
+      const wasFlagged = firstScore.needs_discussion === true;
+      return totalScore >= 7 || wasFlagged;
+    });
+
+    // Second review is complete if all grants in scope have michelle_complete = true
+    const allSecondComplete = grantsInScope.length === 0
+      ? true
+      : grantsInScope.every((g: any) => g.michelle_complete === true);
 
     if (!allSecondComplete) {
       return NextResponse.json({
@@ -80,8 +94,17 @@ export async function GET(
       .eq("cycle_id", cycleId)
       .order("submitted_at", { ascending: false });
 
+    // Filter to only grants in scope for second review (first score >= 7 OR first flagged)
+    const grantsForDisplay = grants?.filter((g: any) => {
+      const firstScore = g.grant_scores?.find((s: any) => s.reviewer_name === "first");
+      if (!firstScore) return false;
+      const totalScore = firstScore.total_score || 0;
+      const wasFlagged = firstScore.needs_discussion === true;
+      return totalScore >= 7 || wasFlagged;
+    }) || [];
+
     // Combine scores and calculate combined totals
-    const grantsWithCombinedScores = grants?.map((g) => {
+    const grantsWithCombinedScores = grantsForDisplay.map((g) => {
       const firstScore = g.grant_scores?.find((s: any) => s.reviewer_name === "first");
       const secondScore = g.grant_scores?.find((s: any) => s.reviewer_name === "second");
 
@@ -105,6 +128,8 @@ export async function GET(
         decision,
         needs_discussion: firstScore?.needs_discussion || false,
         discussion_notes: firstScore?.discussion_notes || null,
+        second_needs_discussion: secondScore?.needs_discussion || false,
+        second_discussion_notes: secondScore?.discussion_notes || null,
         barriers_yn: firstScore?.barriers_yn || null,
         is_tentatively_approved: cycle.grant_tentative_approvals?.some(
           (t: any) => t.grant_id === g.id && t.is_approved
@@ -113,7 +138,7 @@ export async function GET(
     }) || [];
 
     // Check for previous grants for each user
-    const userIds = [...new Set(grants?.map(g => g.user_id).filter(Boolean))];
+    const userIds = [...new Set(grantsForDisplay.map((g: any) => g.user_id).filter(Boolean))];
     let previousGrantsByUser: Record<string, boolean> = {};
 
     if (userIds.length > 0) {

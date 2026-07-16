@@ -31,7 +31,8 @@ export default async function AdminGrantCyclePage({
     .select(
       `
       *,
-      profiles:user_id (full_name, city, state, date_of_birth, household_income, email)
+      profiles:user_id (full_name, city, state, date_of_birth, household_income, email),
+      grant_scores (reviewer_name, total_score, needs_discussion)
     `,
     )
     .eq("cycle_id", id)
@@ -40,6 +41,23 @@ export default async function AdminGrantCyclePage({
   if (grantsError) {
     console.error("Error fetching grants:", grantsError);
   }
+
+  // Get grants in scope for second review (first score >= 7 OR first flagged)
+  const grantsInScope = grants?.filter((g: any) => {
+    if (!g.rachel_complete) return false;
+    const firstScore = g.grant_scores?.find((s: any) => s.reviewer_name === "first");
+    if (!firstScore) return false;
+    const totalScore = firstScore.total_score || 0;
+    const wasFlagged = firstScore.needs_discussion === true;
+    return totalScore >= 7 || wasFlagged;
+  }) || [];
+
+  // Second review is complete if:
+  // - No grants in scope (nothing to review), OR
+  // - All grants in scope have michelle_complete = true
+  const allSecondComplete = grantsInScope.length === 0
+    ? true
+    : grantsInScope.every((g: any) => g.michelle_complete);
 
   const { data: documents } = await supabaseAdmin
     .from("grant_documents")
@@ -62,9 +80,6 @@ export default async function AdminGrantCyclePage({
 
   // Check if first reviewer has completed all scores (all grants have rachel_complete = true)
   const allFirstComplete = grants?.every((g) => g.rachel_complete) || false;
-
-  // Check if second reviewer has completed all scores (all grants have michelle_complete = true)
-  const allSecondComplete = grants?.every((g) => g.michelle_complete) || false;
 
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">

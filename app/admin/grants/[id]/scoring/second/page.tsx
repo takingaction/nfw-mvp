@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Check, AlertCircle, Lock } from "lucide-react";
+import { ArrowLeft, Loader2, Check, AlertCircle, Lock, Eye, EyeOff } from "lucide-react";
 import GrantScoringRubric from "@/components/admin/GrantScoringRubric";
 import GrantApplicationScorer, { ScoreData } from "@/components/admin/GrantApplicationScorer";
 
@@ -22,6 +22,11 @@ interface Grant {
   nominee_name: string;
   submitted_at: string;
   grant_scores: any[];
+  first_score?: {
+    needs_discussion?: boolean;
+    discussion_notes?: string;
+    total_score?: number;
+  };
 }
 
 export default function SecondReviewPage() {
@@ -38,6 +43,17 @@ export default function SecondReviewPage() {
   const [selectedGrant, setSelectedGrant] = useState<string | null>(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [isSecondComplete, setIsSecondComplete] = useState(false);
+  const [visibleNames, setVisibleNames] = useState<Set<string>>(new Set());
+
+  const toggleNameVisibility = (grantId: string) => {
+    const newVisible = new Set(visibleNames);
+    if (newVisible.has(grantId)) {
+      newVisible.delete(grantId);
+    } else {
+      newVisible.add(grantId);
+    }
+    setVisibleNames(newVisible);
+  };
 
   useEffect(() => {
     fetchGrants();
@@ -263,7 +279,7 @@ export default function SecondReviewPage() {
           {/* Rubric Sidebar */}
           <div className="col-span-12 lg:col-span-3">
             <div className="sticky top-24">
-              <GrantScoringRubric showDiscussionFlag={false} />
+              <GrantScoringRubric showDiscussionFlag={true} />
               <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
                 <p className="text-xs text-yellow-800">
                   <strong>Note:</strong> You cannot see the first reviewer&apos;s
@@ -285,6 +301,7 @@ export default function SecondReviewPage() {
                   (score?.authenticity_score ?? 0) +
                   (score?.impact_score ?? 0);
                 const isComplete = score?.is_complete === true;
+                const isFirstFlagged = grant.first_score?.needs_discussion === true;
 
                 return (
                   <button
@@ -311,30 +328,56 @@ export default function SecondReviewPage() {
                         >
                           {grant.profiles?.full_name?.charAt(0).toUpperCase() || "U"}
                         </div>
-                        <div>
-                          <p
-                            className={`font-bold text-sm ${
-                              selectedGrant === grant.id
-                                ? "text-white"
-                                : "text-nfw-blackberry"
-                            }`}
-                          >
-                            {grant.profiles?.full_name || "Unknown"}
-                          </p>
-                          {grant.is_nominating && (
-                            <span
-                              className={`text-xs ${
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <p
+                              className={`font-bold text-sm ${
                                 selectedGrant === grant.id
-                                  ? "text-white/70"
-                                  : "text-nfw-blackberry/50"
-                              }`}
+                                  ? "text-white"
+                                  : "text-nfw-blackberry"
+                              } ${!visibleNames.has(grant.id) ? "opacity-40" : ""}`}
                             >
-                              Nomination
-                            </span>
-                          )}
+                              {visibleNames.has(grant.id) ? (grant.profiles?.full_name || "Unknown") : "••••••"}
+                            </p>
+                            {grant.is_nominating && (
+                              <span
+                                className={`text-xs ${
+                                  selectedGrant === grant.id
+                                    ? "text-white/70"
+                                    : "text-nfw-blackberry/50"
+                                }`}
+                              >
+                                Nomination
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleNameVisibility(grant.id); }}
+                            className={`p-1 rounded hover:bg-nfw-blackberry/10 ${
+                              selectedGrant === grant.id ? "text-white/60 hover:text-white" : "text-nfw-blackberry/40 hover:text-nfw-blackberry"
+                            }`}
+                            title={visibleNames.has(grant.id) ? "Hide name" : "Show name"}
+                          >
+                            {visibleNames.has(grant.id) ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </button>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex items-center gap-2">
+                        {isFirstFlagged && (
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded ${
+                              selectedGrant === grant.id
+                                ? "bg-yellow-400 text-yellow-900"
+                                : "bg-yellow-100 text-yellow-800 border border-yellow-300"
+                            }`}
+                          >
+                            Flagged
+                          </span>
+                        )}
                         {isComplete ? (
                           <span
                             className={`text-xs px-2 py-0.5 rounded ${

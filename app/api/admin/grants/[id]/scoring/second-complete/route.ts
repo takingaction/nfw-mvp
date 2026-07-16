@@ -23,30 +23,52 @@ export async function POST(
 
     const { id: cycleId } = await params;
 
-    // Check if second scoring is complete for all grants
-    const { data: grants } = await supabaseAdmin
+    // Get all grants in this cycle with their first reviewer scores
+    const { data: grantsWithScores } = await supabaseAdmin
       .from("grants")
-      .select("id")
+      .select(`
+        id,
+        rachel_complete,
+        grant_scores!left(reviewer_name, total_score, needs_discussion)
+      `)
       .eq("cycle_id", cycleId);
 
-    if (!grants || grants.length === 0) {
+    if (!grantsWithScores || grantsWithScores.length === 0) {
       return NextResponse.json({ error: "No grants found" }, { status: 404 });
     }
 
-    // Check if all grants have been scored (is_complete = true on grant_scores for second reviewer)
+    // Filter to only grants that second reviewer should score:
+    // - First reviewer completed (rachel_complete = true), AND
+    // - First score >= 7 OR first reviewer flagged
+    const filteredGrantIds = grantsWithScores
+      .filter((g: any) => {
+        if (!g.rachel_complete) return false;
+        const firstScore = g.grant_scores?.find((s: any) => s.reviewer_name === "first");
+        if (!firstScore) return false;
+        const totalScore = firstScore.total_score || 0;
+        const wasFlagged = firstScore.needs_discussion === true;
+        return totalScore >= 7 || wasFlagged;
+      })
+      .map((g: any) => g.id);
+
+    if (filteredGrantIds.length === 0) {
+      return NextResponse.json({ error: "No grants in scope for second review" }, { status: 400 });
+    }
+
+    // Check if all filtered grants have been scored by second reviewer
     const { data: scores } = await supabaseAdmin
       .from("grant_scores")
       .select("grant_id, is_complete")
       .eq("reviewer_name", "second")
-      .in("grant_id", grants.map(g => g.id));
+      .in("grant_id", filteredGrantIds);
 
-    const allScored = grants.every(g => 
-      scores?.some(s => s.grant_id === g.id && s.is_complete === true)
+    const allScored = filteredGrantIds.every((gid: string) =>
+      scores?.some((s: any) => s.grant_id === gid && s.is_complete === true)
     );
 
     if (!allScored) {
-      const incompleteCount = grants.filter(g => 
-        !scores?.some(s => s.grant_id === g.id && s.is_complete === true)
+      const incompleteCount = filteredGrantIds.filter((gid: string) =>
+        !scores?.some((s: any) => s.grant_id === gid && s.is_complete === true)
       ).length;
       return NextResponse.json({
         error: `${incompleteCount} application(s) have not been scored yet`,
