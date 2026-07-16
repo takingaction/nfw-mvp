@@ -13,6 +13,7 @@ import YourZeroDollarStoreSection from "@/components/dashboard/YourZeroDollarSto
 import { ProfileBanner } from "@/components/profile/ProfileBanner";
 import { AbandonedCheckoutBanner } from "@/components/dashboard/AbandonedCheckoutBanner";
 import { PendingFreeMembershipBanner } from "@/components/dashboard/PendingFreeMembershipBanner";
+import ConnectBankButton from "@/components/grants/ConnectBankButton";
 
 export const metadata = {
   title: "Dashboard",
@@ -301,12 +302,7 @@ export default async function DashboardPage() {
                 Connect your bank account to receive your grant payments.
               </p>
             </div>
-            <a
-              href={`/grants/connect?grantId=${latestApprovedGrantId}`}
-              className="px-6 py-3 bg-nfw-aubergine text-white font-ui text-sm font-bold tracking-[0.06em] uppercase hover:bg-nfw-aubergine/90 transition-colors whitespace-nowrap"
-            >
-              Connect Bank Account →
-            </a>
+            <ConnectBankButton grantId={latestApprovedGrantId} />
           </div>
         </div>
       )}
