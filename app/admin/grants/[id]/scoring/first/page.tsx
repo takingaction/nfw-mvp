@@ -313,10 +313,12 @@ export default function FirstReviewPage() {
                 const isFlagged = score?.needs_discussion;
 
                 return (
-                  <button
-                    key={grant.id}
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSelectedGrant(grant.id)}
-                    className={`w-full text-left p-4 rounded transition-all ${
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedGrant(grant.id); }}
+                    className={`w-full text-left p-4 rounded transition-all cursor-pointer ${
                       selectedGrant === grant.id
                         ? "bg-nfw-aubergine text-white"
                         : isComplete
@@ -410,7 +412,7 @@ export default function FirstReviewPage() {
                         )}
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>

@@ -304,10 +304,12 @@ export default function SecondReviewPage() {
                 const isFirstFlagged = grant.first_score?.needs_discussion === true;
 
                 return (
-                  <button
-                    key={grant.id}
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSelectedGrant(grant.id)}
-                    className={`w-full text-left p-4 rounded transition-all ${
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedGrant(grant.id); }}
+                    className={`w-full text-left p-4 rounded transition-all cursor-pointer ${
                       selectedGrant === grant.id
                         ? "bg-nfw-aubergine text-white"
                         : isComplete
@@ -401,7 +403,7 @@ export default function SecondReviewPage() {
                         )}
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
