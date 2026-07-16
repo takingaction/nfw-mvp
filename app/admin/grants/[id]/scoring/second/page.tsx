@@ -328,7 +328,7 @@ export default function SecondReviewPage() {
                               : "bg-nfw-dove text-nfw-blackberry"
                           }`}
                         >
-                          {grant.profiles?.full_name?.charAt(0).toUpperCase() || "U"}
+                          ?
                         </div>
                         <div className="flex items-center gap-2">
                           <div>
