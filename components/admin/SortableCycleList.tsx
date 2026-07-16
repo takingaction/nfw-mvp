@@ -46,7 +46,6 @@ export default function SortableCycleList({ cycles, grants }: Props) {
     return {
       total: cycleGrants.length,
       submitted: cycleGrants.filter((g) => g.status === "submitted").length,
-      in_review: cycleGrants.filter((g) => g.status === "in_review").length,
       approved: cycleGrants.filter((g) => g.status === "approved").length,
       not_approved: cycleGrants.filter((g) => g.status === "not_approved")
         .length,
@@ -182,17 +181,12 @@ export default function SortableCycleList({ cycles, grants }: Props) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-4">
                   {[
                     {
                       label: "Submitted",
                       value: stats.submitted,
                       color: "bg-blue-50 text-blue-700",
-                    },
-                    {
-                      label: "In Review",
-                      value: stats.in_review,
-                      color: "bg-yellow-50 text-yellow-700",
                     },
                     {
                       label: "Approved",

@@ -8137,3 +8137,41 @@ if (error) {
 | File | Change |
 |------|--------|
 | `app/api/auth/profile/route.ts` | Check for PGRST116 error and create defensive profile when user has no profile row |
+
+## Session 2026-07-16: Remove "In Review" Status
+
+### Overview
+
+Removed "In Review" (`in_review`) status from the grants flow. Admins can no longer manually set grants to this status.
+
+### Database Migration
+
+**Migration 119:** `supabase/migrations/119_remove_in_review_status.sql`
+
+Removed `in_review` from the `grants.status` CHECK constraint:
+```sql
+ALTER TABLE grants DROP CONSTRAINT IF EXISTS grants_status_check;
+ALTER TABLE grants ADD CONSTRAINT grants_status_check
+  CHECK (status IN ('submitted', 'approved', 'not_approved', 'payment_pending', 'payment_sent'));
+NOTIFY pgrst, 'reload';
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `supabase/migrations/119_remove_in_review_status.sql` | **Created** - removes `in_review` from CHECK constraint |
+| `app/api/admin/grants/update-status/route.ts` | Removed `"in_review"` from `VALID_STATUSES` array |
+| `components/admin/AdminGrantReviewer.tsx` | Removed `in_review` from `STATUS_OPTIONS` (5 options instead of 6) |
+| `components/admin/SortableCycleList.tsx` | Removed `in_review` from stats calculation + removed "In Review" stat card; changed grid from 6 cols to 5 |
+
+### What Was Removed
+
+- No more "In Review" tab/filter/button in admin grant pages
+- Admins can no longer manually set status to `in_review`
+- Cycle cards on `/admin/grants` show 5 stat columns instead of 6
+
+### What Stays
+
+- `payment_pending` and `payment_sent` statuses remain intact
+- Scoring workflow (First Review → Second Review → Combined Scores) is unaffected — uses `rachel_complete`/`michelle_complete` boolean flags, not the status field

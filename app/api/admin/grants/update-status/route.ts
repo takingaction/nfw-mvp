@@ -9,7 +9,6 @@ const supabaseAdmin = createClient(
 
 const VALID_STATUSES = [
   "submitted",
-  "in_review",
   "approved",
   "not_approved",
   "payment_pending",
