@@ -8065,3 +8065,39 @@ The banner is now displayed as a prominent citrine (`bg-nfw-citrine`) full-width
 - Max-width container (7xl) centered
 - Two-column layout: text on left, button on right (stacks on mobile)
 - Button: aubergine with white text, uppercase, bold tracking
+
+---
+
+## Session 2026-07-17: Combined Scores UI Fixes + Email Batch Bug Fix
+
+### Changes Made
+
+**1. Warning before finalize without saving**
+
+Added alert when clicking "Finalize Approvals" without saving selections first:
+```typescript
+const handleFinalizeClick = () => {
+  if (hasPendingChanges) {
+    alert("You have unsaved changes. Please click 'Save Selections' before finalizing.");
+    return;
+  }
+  onFinalize();
+};
+```
+
+**2. Email batch template content fix**
+
+`sendBatchEmails` was reading `html_content` directly, but email builder stores published content in `full_email_html` with `status = 'published'`. Fixed `fetchTemplate` to check `full_email_html` first.
+
+**3. Combined scores column layout**
+
+Multiple iterations to fit all columns properly:
+- Applicant column: `minmax(100px, 1fr)` (flexible, widest)
+- Show column: `48px` (widened to separate from Applicant)
+- Combined column: `72px` (widened to separate from Decision)
+- Decision column: `80px`
+- Payment column: `120px` (prevents "Not Connected" wrapping)
+- Pay column: `80px`
+- Changed "Stripe" header → "Payment"
+- Changed "Send" header → "Pay"
+- Changed "$ Send" button → "Send $"
