@@ -289,6 +289,28 @@ export default async function DashboardPage() {
 
       <DashboardHero heroImage={settings.hero_image_url || "/images/landing.jpg"} />
 
+      {/* You're Approved Banner - Full Width Below Hero */}
+      {hasApprovedGrant && !profile?.stripe_onboarding_completed && latestApprovedGrantId && (
+        <div className="bg-nfw-citrine py-6 px-8">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="font-serif text-2xl text-nfw-blackberry mb-1">
+                YOU&apos;RE APPROVED!
+              </h2>
+              <p className="font-serif text-nfw-blackberry/70">
+                Connect your bank account to receive your grant payments.
+              </p>
+            </div>
+            <a
+              href={`/grants/connect?grantId=${latestApprovedGrantId}`}
+              className="px-6 py-3 bg-nfw-aubergine text-white font-ui text-sm font-bold tracking-[0.06em] uppercase hover:bg-nfw-aubergine/90 transition-colors whitespace-nowrap"
+            >
+              Connect Bank Account →
+            </a>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row gap-0 mb-0">
         <div className="bg-nfw-dove p-6 w-full md:w-1/4">
           <MembershipCard
@@ -317,9 +339,6 @@ export default async function DashboardPage() {
       <YourMicrograntsSection
         grants={userGrants}
         availableCycles={availableCycles}
-        hasApprovedGrant={hasApprovedGrant}
-        stripeOnboardingCompleted={profile?.stripe_onboarding_completed ?? false}
-        latestApprovedGrantId={latestApprovedGrantId}
       />
 
       <DashboardPerksSection likedStores={likedStores} />

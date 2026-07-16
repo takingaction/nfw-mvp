@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import ConnectBankButton from "@/components/grants/ConnectBankButton";
 
 const decodeHtml = (html: string): string => {
   if (typeof document === "undefined") return html || "";
@@ -36,9 +35,6 @@ interface GrantCycle {
 interface YourMicrograntsSectionProps {
   grants: Grant[];
   availableCycles: GrantCycle[];
-  hasApprovedGrant?: boolean;
-  stripeOnboardingCompleted?: boolean;
-  latestApprovedGrantId?: string | null;
 }
 
 const statusColors: Record<string, string> = {
@@ -58,26 +54,10 @@ const statusLabels: Record<string, string> = {
 export default function YourMicrograntsSection({
   grants,
   availableCycles,
-  hasApprovedGrant = false,
-  stripeOnboardingCompleted = false,
-  latestApprovedGrantId = null,
 }: YourMicrograntsSectionProps) {
-  const showStripeConnectBanner = hasApprovedGrant && !stripeOnboardingCompleted && latestApprovedGrantId;
 
   return (
     <section className="bg-nfw-wisteria py-12 px-8">
-      {showStripeConnectBanner && (
-        <div className="bg-nfw-aubergine p-6 mb-8">
-          <h2 className="font-serif text-2xl text-white mb-2">
-            YOU&apos;RE APPROVED!
-          </h2>
-          <p className="font-serif text-white/80 mb-4">
-            Connect your bank account to receive your grant payments.
-          </p>
-          <ConnectBankButton grantId={latestApprovedGrantId} />
-        </div>
-      )}
-
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8">
         <h2 className="text-2xl font-bold text-white font-serif">
           Your Microgrants

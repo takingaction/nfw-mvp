@@ -8039,3 +8039,29 @@ The `decision` field (14-18 = Approved, 8-13 = Runner Up, 0-7 = Not Approved) is
 ### Email Issue Note
 
 If no emails were sent after finalization, check that `grant-approved` template has `is_active = true` and has published content in `/admin/emails`.
+
+---
+
+## Session 2026-07-16: Move "You're Approved" Banner to Below Hero
+
+### Overview
+
+Moved the "You're Approved!" bank account connection banner from inside `YourMicrograntsSection` to a full-width banner positioned directly below the hero section on the dashboard.
+
+### Change
+
+The banner is now displayed as a prominent citrine (`bg-nfw-citrine`) full-width banner immediately after the hero section, making it more visible upon landing on the dashboard.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/dashboard/page.tsx` | Added inline banner component after `DashboardHero`, removed props from `YourMicrograntsSection` call |
+| `components/dashboard/YourMicrograntsSection.tsx` | Removed banner, `ConnectBankButton` import, and unused props (`hasApprovedGrant`, `stripeOnboardingCompleted`, `latestApprovedGrantId`) |
+
+### Banner Styling
+
+- Full-width citrine background
+- Max-width container (7xl) centered
+- Two-column layout: text on left, button on right (stacks on mobile)
+- Button: aubergine with white text, uppercase, bold tracking
