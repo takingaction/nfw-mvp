@@ -120,7 +120,7 @@ export async function POST(
       },
     });
 
-    console.log(`[transfer] Transfer created: ${transfer.id}, amount: ${transfer.amount} cents, status: ${transfer.status}`);
+    console.log(`[transfer] Transfer created: ${transfer.id}, amount: ${transfer.amount} cents`);
 
     console.log(`[transfer] Created transfer ${transfer.id} for grant ${grant.id}`);
 
