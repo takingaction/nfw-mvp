@@ -8356,3 +8356,69 @@ return {
 | File | Change |
 |------|--------|
 | `lib/email-blocks/publish.ts` | Fixed variable replacement in subject line for `getPreRenderedHtml` and `getPreRenderedHtmlAdmin` |
+
+---
+
+## Session 2026-07-17: Admin Email Update Feature
+
+### Overview
+
+Created a safe way for admins to update member email addresses. Only two specific admins (kelsey@nationalfundforwomen.org, ron@myherodesign.com) can perform this action. Changes are immediate with no verification step.
+
+### Why Only 2 Places Need Updating
+
+After thorough analysis, confirmed that only `auth.users.email` and `profiles.email` need to be updated:
+
+| Location | Auto-Sync? | Update Needed? |
+|----------|------------|---------------|
+| `auth.users.email` | Source of truth | ✅ Yes - via Admin SDK |
+| `profiles.email` | **YES** (trigger) | No - handles automatically |
+| Access Perks | NO (idempotent) | ⏭ Skip - uses userId, not email |
+| Stripe Connect | NO (ID-based) | ⏭ Skip - uses account ID, not email |
+
+### How the Sync Works
+
+1. Update `auth.users.email` via Supabase Admin SDK (`supabaseAdmin.auth.admin.updateUserById()`)
+2. Update `profiles` row to trigger the existing `trg_sync_profile_email` database trigger
+3. The trigger automatically syncs email from `auth.users` to `profiles.email`
+
+### API Route
+
+**`POST /api/admin/members/update-email`**
+
+```typescript
+// Request
+{ memberId: string, newEmail: string }
+
+// Response
+{ success: true, message: "Email updated to new@example.com" }
+// or
+{ error: "Invalid email format" } // 400
+{ error: "Forbidden" } // 403
+```
+
+### Security
+
+- Checks requester's email against ALLOWED_EMAILS list
+- Validates email format before updating
+- Uses Supabase Admin SDK for auth.users update
+- No notifications sent (for now)
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `app/api/admin/members/update-email/route.ts` | Admin API endpoint for email updates |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/admin/AdminMembersClient.tsx` | Added email update modal and Mail icon button in Actions column |
+
+### UI
+
+- Mail icon (✉️) appears in Actions column for allowed admins only
+- Modal shows current email, new email input field
+- Confirm button disabled if email unchanged
+- Page reloads after successful update

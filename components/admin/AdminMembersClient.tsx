@@ -12,6 +12,7 @@ import {
   Copy,
   Check,
   Trash2,
+  Mail,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { FreeMembershipApprovalModal } from "@/components/admin/FreeMembershipApprovalModal";
@@ -127,6 +128,13 @@ export default function AdminMembersClient({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // Update email modal state
+  const [showEmailUpdateModal, setShowEmailUpdateModal] = useState(false);
+  const [emailUpdateMember, setEmailUpdateMember] = useState<Member | null>(null);
+  const [newEmail, setNewEmail] = useState("");
+  const [updatingEmail, setUpdatingEmail] = useState(false);
+  const [emailUpdateError, setEmailUpdateError] = useState<string | null>(null);
+
   const copyEmail = async (email: string) => {
     try {
       await navigator.clipboard.writeText(email);
@@ -201,6 +209,44 @@ export default function AdminMembersClient({
     setDeletingMember(null);
     setDeleteError(null);
     setDeleting(false);
+  };
+
+  const openEmailUpdate = (member: Member) => {
+    setEmailUpdateMember(member);
+    setNewEmail(member.email || "");
+    setEmailUpdateError(null);
+    setShowEmailUpdateModal(true);
+  };
+
+  const closeEmailUpdate = () => {
+    setShowEmailUpdateModal(false);
+    setEmailUpdateMember(null);
+    setNewEmail("");
+    setEmailUpdateError(null);
+    setUpdatingEmail(false);
+  };
+
+  const handleEmailUpdate = async () => {
+    if (!emailUpdateMember || !newEmail) return;
+    setUpdatingEmail(true);
+    setEmailUpdateError(null);
+
+    try {
+      const res = await fetch("/api/admin/members/update-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId: emailUpdateMember.id, newEmail }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to update email");
+
+      closeEmailUpdate();
+      window.location.reload();
+    } catch (err: any) {
+      setEmailUpdateError(err.message || "Failed to update email");
+    } finally {
+      setUpdatingEmail(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -645,13 +691,22 @@ export default function AdminMembersClient({
                         Edit
                       </button>
                       {ALLOWED_DELETE_EMAILS.includes(currentUserEmail?.toLowerCase() || "") && (
-                        <button
-                          onClick={() => openDelete(member)}
-                          className="ml-3 text-xs font-semibold text-red-600 hover:text-red-700 transition-colors"
-                          title="Delete member"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => openEmailUpdate(member)}
+                            className="ml-3 text-xs font-semibold text-nfw-aubergine hover:text-nfw-aubergine/70 transition-colors"
+                            title="Update email"
+                          >
+                            <Mail className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => openDelete(member)}
+                            className="ml-3 text-xs font-semibold text-red-600 hover:text-red-700 transition-colors"
+                            title="Delete member"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
                       )}
                     </td>
                   </tr>
@@ -1018,6 +1073,76 @@ export default function AdminMembersClient({
         memberEmail={deletingMember?.email || undefined}
         deleting={deleting}
       />
+
+      {/* Update Email Modal */}
+      {showEmailUpdateModal && emailUpdateMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={closeEmailUpdate} />
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-nfw-blackberry/10">
+              <h3 className="text-lg font-black text-nfw-blackberry font-ui">
+                Update Email
+              </h3>
+              <button
+                onClick={closeEmailUpdate}
+                className="p-2 hover:bg-nfw-blackberry/5 transition-colors rounded"
+              >
+                <X className="w-5 h-5 text-nfw-blackberry/50" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-4">
+                <p className="text-xs text-nfw-blackberry/50 mb-1">Current Email</p>
+                <p className="text-sm font-medium text-nfw-blackberry">
+                  {emailUpdateMember.email || "No email on file"}
+                </p>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-xs text-nfw-blackberry/50 mb-1">
+                  New Email
+                </label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-nfw-blackberry/20 focus:outline-none focus:border-nfw-blackberry transition-colors"
+                  placeholder="Enter new email address"
+                  autoFocus
+                />
+              </div>
+
+              {emailUpdateError && (
+                <div className="mb-4 bg-red-50 border border-red-200 p-3">
+                  <p className="text-xs text-red-600">{emailUpdateError}</p>
+                </div>
+              )}
+
+              <p className="text-xs text-nfw-blackberry/50">
+                This will update the member's email address in authentication.
+                The profile will sync automatically.
+              </p>
+            </div>
+
+            <div className="flex gap-3 p-6 border-t border-nfw-blackberry/10 bg-nfw-dove/30">
+              <button
+                onClick={closeEmailUpdate}
+                className="flex-1 py-2.5 border-2 border-nfw-blackberry/20 text-sm font-semibold text-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEmailUpdate}
+                disabled={updatingEmail || !newEmail || newEmail === emailUpdateMember.email}
+                className="flex-1 py-2.5 bg-nfw-aubergine text-white text-sm font-bold hover:bg-nfw-aubergine/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {updatingEmail ? "Updating..." : "Update Email"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
