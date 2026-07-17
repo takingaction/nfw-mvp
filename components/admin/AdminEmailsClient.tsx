@@ -37,11 +37,22 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
   const [seeding, setSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<{ success: boolean; message: string } | null>(null);
   const [togglingTemplate, setTogglingTemplate] = useState<string | null>(null);
+  const [editingSubject, setEditingSubject] = useState("");
+  const [savingSubject, setSavingSubject] = useState(false);
+  const [subjectSaved, setSubjectSaved] = useState(false);
   const supabase = createClient();
 
   const resendTemplates = templates.filter((t) => t.category === "resend");
   const supabaseTemplates = templates.filter((t) => t.category === "supabase");
   const displayedTemplates = activeCategory === "resend" ? resendTemplates : supabaseTemplates;
+
+  // Sync subject editing state when selected template changes
+  useEffect(() => {
+    if (selectedTemplate) {
+      setEditingSubject(selectedTemplate.subject || "");
+      setSubjectSaved(false);
+    }
+  }, [selectedTemplate?.slug]);
 
   // Fetch preview HTML when selected template changes
   useEffect(() => {
@@ -172,6 +183,37 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
       console.error("Failed to toggle template:", error);
     } finally {
       setTogglingTemplate(null);
+    }
+  };
+
+  const handleSaveSubject = async () => {
+    if (!selectedTemplate || !selectedTemplate.is_editable) return;
+
+    setSavingSubject(true);
+    setSubjectSaved(false);
+
+    try {
+      const res = await fetch(`/api/admin/emails/${selectedTemplate.slug}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: editingSubject }),
+      });
+
+      if (res.ok) {
+        const { template: updated } = await res.json();
+        // Update templates list
+        setTemplates((prev) =>
+          prev.map((t) => (t.slug === selectedTemplate.slug ? { ...t, subject: updated.subject } : t))
+        );
+        // Update selected template
+        setSelectedTemplate({ ...selectedTemplate, subject: updated.subject });
+        setSubjectSaved(true);
+        setTimeout(() => setSubjectSaved(false), 2000);
+      }
+    } catch (error) {
+      console.error("Failed to save subject:", error);
+    } finally {
+      setSavingSubject(false);
     }
   };
 
@@ -350,14 +392,33 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
                 </div>
 
                 {/* Subject */}
-                {selectedTemplate.subject && (
-                  <div className="mt-4">
-                    <label className="text-xs font-medium text-nfw-blackberry/50 uppercase">
-                      Subject Line
-                    </label>
-                    <p className="text-nfw-blackberry mt-1">{selectedTemplate.subject}</p>
-                  </div>
-                )}
+                <div className="mt-4">
+                  <label className="text-xs font-medium text-nfw-blackberry/50 uppercase">
+                    Subject Line
+                  </label>
+                  {selectedTemplate.is_editable && selectedTemplate.category === "resend" ? (
+                    <div className="flex gap-2 mt-1">
+                      <input
+                        type="text"
+                        value={editingSubject}
+                        onChange={(e) => setEditingSubject(e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm"
+                        placeholder="Enter subject line..."
+                      />
+                      <button
+                        onClick={handleSaveSubject}
+                        disabled={savingSubject || editingSubject === selectedTemplate.subject}
+                        className="px-4 py-2 bg-nfw-aubergine text-white text-sm rounded disabled:opacity-50"
+                      >
+                        {savingSubject ? "Saving..." : subjectSaved ? "Saved!" : "Save"}
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-nfw-blackberry mt-1">
+                      {selectedTemplate.subject || "(no subject)"}
+                    </p>
+                  )}
+                </div>
 
                 {/* Source File */}
                 {selectedTemplate.source_file && (

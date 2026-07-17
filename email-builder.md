@@ -327,6 +327,23 @@ Unlike React web components, email HTML must be:
 
 ---
 
+### 2026-07-16: Subject Line Editing in Admin UI
+
+**Feature Added:**
+- Subject lines are now editable directly in the `/admin/emails` UI for Resend templates
+- Input field + Save button shown under "Subject Line" label
+- Save button disabled when no changes, shows "Saving..." during save, "Saved!" briefly after
+- Updates both templates list and selected template state on save
+- Read-only for Supabase templates (shows plain text)
+
+**Files Modified:**
+- `components/admin/AdminEmailsClient.tsx` - Added subject editing state, useEffect sync, handler, and conditional UI
+
+**API Note:**
+- `app/api/admin/emails/[slug]/route.ts` already supported `subject` updates (no changes needed)
+
+---
+
 ### 2026-05-26: Debug Logging Cleanup + Publish Route Fix
 
 **Debug Logging Removed:**
