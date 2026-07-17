@@ -57,12 +57,15 @@ export default function AdminMembersClient({
   pageSize?: number;
 }) {
   const [allMembers, setAllMembers] = useState<Member[]>(initialMembers); // Start with initial, fetch all for search
-  const [search, setSearch] = useState(() => {
-    if (typeof window !== "undefined") {
-      return sessionStorage.getItem("membersSearch") || "";
+  const [search, setSearch] = useState("");
+
+  // Sync search from sessionStorage after mount
+  useEffect(() => {
+    const stored = sessionStorage.getItem("membersSearch");
+    if (stored) {
+      setSearch(stored);
     }
-    return "";
-  });
+  }, []);
   const [filter, setFilter] = useState<"all" | "paid" | "free_approved" | "waitlist" | "admin" | "incomplete">(
     "all",
   );
