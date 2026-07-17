@@ -1,11 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import Stripe from "stripe";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2026-01-28.clover",
+});
 
 export async function GET(
   request: Request,
@@ -184,6 +189,44 @@ export async function GET(
         total_available_grants: totalAvailableGrants,
       };
     }) || [];
+
+    // Fetch Stripe Connect account names for grants with funded accounts
+    const stripeAccountIds = [...new Set(
+      grantsWithCombinedScores
+        .filter((g: any) => g.stripe_connect_account_id && g.funded_at)
+        .map((g: any) => g.stripe_connect_account_id)
+    )];
+
+    const stripeAccounts: Record<string, string> = {};
+    for (const grant of grantsWithCombinedScores) {
+      const accountId = grant.stripe_connect_account_id;
+      if (!accountId || !grant.funded_at) continue;
+
+      try {
+        const account = await stripe.accounts.retrieve(accountId);
+        const name =
+          (account.business_profile as any)?.name ||
+          ((account.individual as any)?.first_name && (account.individual as any)?.last_name
+            ? `${(account.individual as any).first_name} ${(account.individual as any).last_name}`
+            : (account.individual as any)?.name) ||
+          account.email ||
+          null;
+        stripeAccounts[accountId] = name;
+      } catch (e) {
+        // Fall back to member's name from profiles table
+        stripeAccounts[accountId] = (grant.profiles as any)?.full_name || null;
+      }
+    }
+
+    // Add connect_account_name to each grant
+    grantsWithCombinedScores.forEach((g: any) => {
+      if (g.stripe_connect_account_id) {
+        // Use Stripe account name if available, otherwise fall back to profile name or null
+        g.connect_account_name = stripeAccounts[g.stripe_connect_account_id] || null;
+      } else {
+        g.connect_account_name = null;
+      }
+    });
 
     // Calculate total paid (sum of amount_approved where funded_at IS NOT NULL)
     const totalPaid = grantsWithCombinedScores

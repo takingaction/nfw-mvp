@@ -8257,3 +8257,61 @@ Added "applications per month" metric (X of Y) to all three grant scoring pages 
 
 - **Missing key prop**: Added `key={grant.id}` to map in first review page
 - **Filter toggle**: Fixed filter buttons to properly reset each other's state when clicked
+
+---
+
+## Session 2026-07-17: Stripe Payment Links for Triple Verification
+
+### Overview
+
+Added Stripe payment links to the combined scores page for triple verification of grant payments.
+
+### Features Added
+
+**API Changes (`app/api/admin/grants/[id]/scores/combined/route.ts`):**
+- Added Stripe SDK import for retrieving Connect account details
+- Fetches Stripe Connect account names for paid grants
+- Retrieves `business_profile.name`, `individual.first_name + last_name`, or `email` as fallback
+- Falls back to member's `full_name` from profiles table if Stripe account inaccessible
+- Includes `connect_account_name` in each grant's response
+
+**UI Changes (`components/admin/GrantCombinedScores.tsx`):**
+- Added `connect_account_name` to the Grant interface
+- Added 2 new icon columns after the "Pay" column:
+  - **Receipt icon** → links to Stripe transfer (`https://dashboard.stripe.com/transfers/{transfer_id}`)
+  - **User icon** → links to Stripe Connect account (`https://dashboard.stripe.com/connect/accounts/{account_id}`)
+- Icon links have `onClick={(e) => e.stopPropagation()}` to prevent accordion toggle
+- Icon columns have no headers (just icon buttons)
+- Account holder name shown as tooltip on hover
+
+### Grid Layout (Finalized View - 13 columns)
+
+| Column | Width | Content |
+|--------|-------|---------|
+| Rank | 56px | Chevron + rank number |
+| Show | 48px | Eye/eye-off button |
+| Apps | 48px | X/Y applications |
+| Applicant | `minmax(200px,1fr)` | Name + nomination info |
+| Combined | 56px | Score/18 |
+| Decision | 80px | Decision badge |
+| Barriers | 64px | Y/N badge |
+| Prior | 80px | Yes/No badge |
+| Discuss | 56px | Flagged indicator |
+| Payment | 140px | Connected status |
+| Pay | 90px | Paid badge or Send button |
+| Tfr | 28px | Receipt icon → transfer link |
+| Acct | 28px | User icon → account link |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/grants/[id]/scores/combined/route.ts` | Added Stripe account name fetching |
+| `components/admin/GrantCombinedScores.tsx` | Added icon columns, fixed grid layout, added connect_account_name |
+
+### Key Design Decisions
+
+- Transfer and Connect account links open in new tabs for triple verification
+- Account name falls back to profile name if Stripe account not accessible
+- Icon buttons are minimal (28px) to not consume too much space
+- `whitespace-nowrap` applied to Payment column badges to prevent wrapping

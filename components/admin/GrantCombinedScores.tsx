@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, AlertTriangle, Check, MessageSquare, ChevronDown, Eye, EyeOff, DollarSign } from "lucide-react";
+import { Loader2, AlertTriangle, Check, MessageSquare, ChevronDown, Eye, EyeOff, DollarSign, Receipt, User } from "lucide-react";
 
 interface Grant {
   id: string;
@@ -36,6 +36,7 @@ interface Grant {
   stripe_connect_account_id?: string | null;
   funded_at?: string | null;
   transfer_id?: string | null;
+  connect_account_name?: string | null;
   amount_approved?: number;
   documents?: any[];
   applications_this_month?: number;
@@ -453,7 +454,7 @@ export default function GrantCombinedScores({
 
       {/* Header Row */}
       <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
-        <div className={`grid gap-2 p-3 border-b border-nfw-blackberry/10 ${alreadyFinalized ? "grid-cols-[36px_48px_48px_60px_minmax(100px,1fr)_72px_80px_48px_56px_48px_120px_80px]" : "grid-cols-[48px_40px_48px_60px_minmax(100px,1fr)_80px_100px_80px_96px_80px_80px]"}`}>
+        <div className={`grid gap-2 p-3 border-b border-nfw-blackberry/10 ${alreadyFinalized ? "grid-cols-[56px_48px_48px_minmax(200px,1fr)_56px_80px_64px_80px_56px_140px_90px_28px_28px]" : "grid-cols-[56px_48px_48px_minmax(180px,1fr)_56px_80px_64px_80px_56px_90px]"}`}>
           <div className="text-left text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
             Rank
           </div>
@@ -476,10 +477,10 @@ export default function GrantCombinedScores({
             Barriers
           </div>
           <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
-            Discuss
+            Prior
           </div>
           <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
-            Prior
+            Discuss
           </div>
           {alreadyFinalized && (
             <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
@@ -489,6 +490,12 @@ export default function GrantCombinedScores({
           <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
             {alreadyFinalized ? "Pay" : "Select"}
           </div>
+          {alreadyFinalized && (
+            <>
+              <div></div>
+              <div></div>
+            </>
+          )}
         </div>
 
         {/* Grant Rows */}
@@ -511,7 +518,7 @@ export default function GrantCombinedScores({
                 {/* Header Row */}
                 <div
                   onClick={() => handleToggleExpand(grant.id)}
-                  className={`grid gap-2 p-3 border-b border-nfw-blackberry/5 cursor-pointer ${alreadyFinalized ? "grid-cols-[36px_48px_48px_60px_minmax(100px,1fr)_72px_80px_48px_56px_48px_120px_80px]" : "grid-cols-[48px_40px_48px_60px_minmax(100px,1fr)_80px_100px_80px_96px_80px_80px]"} ${isExpanded ? "bg-nfw-aubergine/5 border-l-4 border-l-nfw-aubergine" : isSelected ? "bg-nfw-citrine/20" : "bg-gray-50"}`}
+                  className={`grid gap-2 p-3 border-b border-nfw-blackberry/5 cursor-pointer ${alreadyFinalized ? "grid-cols-[56px_48px_48px_minmax(200px,1fr)_56px_80px_64px_80px_56px_140px_90px_28px_28px]" : "grid-cols-[56px_48px_48px_minmax(180px,1fr)_56px_80px_64px_80px_56px_90px]"} ${isExpanded ? "bg-nfw-aubergine/5 border-l-4 border-l-nfw-aubergine" : isSelected ? "bg-nfw-citrine/20" : "bg-gray-50"}`}
                 >
                   <div className="flex items-center gap-2">
                     <ChevronDown
@@ -539,9 +546,9 @@ export default function GrantCombinedScores({
                       {grant.applications_this_month || 1}/{grant.total_available_grants || 1}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div>
-                      <p className={`font-bold text-sm ${visibleNames.has(grant.id) ? "text-nfw-blackberry" : "text-nfw-blackberry/40"}`}>
+                  <div className="flex items-center gap-2 w-full min-w-0">
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-bold text-sm whitespace-nowrap ${visibleNames.has(grant.id) ? "text-nfw-blackberry" : "text-nfw-blackberry/40"}`}>
                         {visibleNames.has(grant.id) ? (grant.profiles?.full_name || "Unknown") : "••••••"}
                       </p>
                       {grant.is_nominating && (
@@ -602,17 +609,17 @@ export default function GrantCombinedScores({
                     <div className="flex items-center justify-center">
                       {grant.stripe_connect_account_id ? (
                         isStripeConnected ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold rounded bg-green-100 text-green-700 border border-green-200">
+                          <span className="inline-flex items-center gap-1 px-1 py-0.5 text-xs font-bold rounded bg-green-100 text-green-700 border border-green-200 whitespace-nowrap">
                             <Check className="w-3 h-3" />
                             Connected
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold rounded bg-gray-100 text-gray-500 border border-gray-200">
+                          <span className="inline-flex items-center gap-1 px-1 py-0.5 text-xs font-bold rounded bg-gray-100 text-gray-500 border border-gray-200 whitespace-nowrap">
                             Not Connected
                           </span>
                         )
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold rounded bg-gray-100 text-gray-400 border border-gray-200">
+                        <span className="inline-flex items-center gap-1 px-1 py-0.5 text-xs font-bold rounded bg-gray-100 text-gray-400 border border-gray-200 whitespace-nowrap">
                           No Account
                         </span>
                       )}
@@ -663,6 +670,42 @@ export default function GrantCombinedScores({
                       <span className="text-nfw-blackberry/30">—</span>
                     )}
                   </div>
+                  {alreadyFinalized && (
+                    <>
+                      <div className="flex items-center justify-center">
+                        {grant.transfer_id ? (
+                          <a
+                            href={`https://dashboard.stripe.com/transfers/${grant.transfer_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1.5 text-nfw-aubergine hover:bg-nfw-aubergine/10 rounded transition-colors"
+                            title="View Transfer in Stripe"
+                          >
+                            <Receipt className="w-4 h-4" />
+                          </a>
+                        ) : (
+                          <span className="text-nfw-blackberry/20">—</span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-center">
+                        {grant.stripe_connect_account_id ? (
+                          <a
+                            href={`https://dashboard.stripe.com/connect/accounts/${grant.stripe_connect_account_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1.5 text-nfw-aubergine hover:bg-nfw-aubergine/10 rounded transition-colors"
+                            title={grant.connect_account_name || "View Connect Account"}
+                          >
+                            <User className="w-4 h-4" />
+                          </a>
+                        ) : (
+                          <span className="text-nfw-blackberry/20">—</span>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Accordion Content */}
