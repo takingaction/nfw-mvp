@@ -83,13 +83,15 @@ export async function getPreRenderedHtml(
 
   if (template.full_email_html && template.status === "published" && template.is_active !== false) {
     let html = template.full_email_html;
+    let subject = template.subject || "";
     for (const [key, value] of Object.entries(variables)) {
       html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
+      subject = subject.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
     }
     return {
       html,
       useShell: false,
-      subject: template.subject || "",
+      subject,
     };
   }
 
@@ -114,13 +116,15 @@ export async function getPreRenderedHtmlAdmin(
 
   if (template.full_email_html && template.status === "published" && template.is_active !== false) {
     let html = template.full_email_html;
+    let subject = template.subject || "";
     for (const [key, value] of Object.entries(variables)) {
       html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
+      subject = subject.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
     }
     return {
       html,
       useShell: false,
-      subject: template.subject || "",
+      subject,
     };
   }
 

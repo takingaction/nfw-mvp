@@ -8315,3 +8315,44 @@ Added Stripe payment links to the combined scores page for triple verification o
 - Account name falls back to profile name if Stripe account not accessible
 - Icon buttons are minimal (28px) to not consume too much space
 - `whitespace-nowrap` applied to Payment column badges to prevent wrapping
+
+---
+
+## Session 2026-07-17: Email Template Variable Replacement Bug Fix
+
+### Bug
+
+`{{grantCycleName}}` and other variables were not being replaced in email subject lines, showing as literal text instead of the actual value.
+
+### Root Cause
+
+In `lib/email-blocks/publish.ts`, the functions `getPreRenderedHtml` and `getPreRenderedHtmlAdmin` replaced variables in the HTML body but NOT in the subject line.
+
+### Fix
+
+Updated both functions to also replace variables in the subject line:
+
+```typescript
+// Before:
+return {
+  html,
+  subject: template.subject || "",
+};
+
+// After:
+let subject = template.subject || "";
+for (const [key, value] of Object.entries(variables)) {
+  html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
+  subject = subject.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
+}
+return {
+  html,
+  subject,
+};
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `lib/email-blocks/publish.ts` | Fixed variable replacement in subject line for `getPreRenderedHtml` and `getPreRenderedHtmlAdmin` |
