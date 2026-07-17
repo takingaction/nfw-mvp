@@ -26,12 +26,48 @@ export async function GET(
     // Get cycle to check if first reviewer is complete
     const { data: cycle } = await supabaseAdmin
       .from("grant_cycles")
-      .select("scoring_started_at, scoring_completed_at")
+      .select("scoring_started_at, scoring_completed_at, end_date")
       .eq("id", cycleId)
       .single();
 
     if (!cycle?.scoring_completed_at) {
       return NextResponse.json({ error: "First reviewer has not completed yet" }, { status: 400 });
+    }
+
+    // Calculate applications per user for grants ending in the same month
+    let applicationsThisMonth: Record<string, number> = {};
+    let totalAvailableGrants = 0;
+
+    if (cycle?.end_date) {
+      const endDate = new Date(cycle.end_date);
+      const monthStart = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+      const monthEnd = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0);
+
+      // Find all non-testing cycles ending in the same month
+      const { data: cyclesInMonth } = await supabaseAdmin
+        .from("grant_cycles")
+        .select("id")
+        .gte("end_date", monthStart.toISOString().split('T')[0])
+        .lte("end_date", monthEnd.toISOString().split('T')[0])
+        .eq("is_testing_only", false);
+
+      const cycleIds = cyclesInMonth?.map((c: any) => c.id) || [];
+      totalAvailableGrants = cycleIds.length;
+
+      if (cycleIds.length > 0) {
+        // Count applications per user for those cycles
+        const { data: allGrantsInMonth } = await supabaseAdmin
+          .from("grants")
+          .select("user_id")
+          .in("cycle_id", cycleIds);
+
+        applicationsThisMonth = (allGrantsInMonth || []).reduce((acc: Record<string, number>, g: any) => {
+          if (g.user_id) {
+            acc[g.user_id] = (acc[g.user_id] || 0) + 1;
+          }
+          return acc;
+        }, {});
+      }
     }
 
     // Get all grants with second reviewer scores AND first reviewer scores (for filtering)
@@ -68,7 +104,11 @@ export async function GET(
     });
 
     // Filter: only show grants where first reviewer scored >= 7 (approved) OR first reviewer flagged them
-    const filteredGrants = grantsWithSeparatedScores?.filter((g) => {
+    const filteredGrants = grantsWithSeparatedScores?.map((g) => ({
+      ...g,
+      applications_this_month: applicationsThisMonth[g.user_id] || 1,
+      total_available_grants: totalAvailableGrants,
+    })).filter((g) => {
       const firstTotal = g.first_score?.total_score || 0;
       const firstFlagged = g.first_score?.needs_discussion === true;
       return firstTotal >= 7 || firstFlagged;

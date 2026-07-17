@@ -67,7 +67,7 @@ interface SendEmailBySlugOptions {
 
 type EmailSendResult = { success: true } | { success: false; error: string };
 
-async function sendEmailBySlug(
+export async function sendEmailBySlug(
   slug: string,
   options: SendEmailBySlugOptions
 ): Promise<EmailSendResult> {

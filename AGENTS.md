@@ -8210,3 +8210,50 @@ Added document upload display to all three grant scoring pages (first review, se
 - **Combined Scores**: Documents shown in the expandable accordion below applicant answers
 - **Document Row**: Shows file name, file size (KB), and "View →" link
 - **Loading State**: "Loading..." text while fetching signed URL
+
+## Session 2026-07-17 (Afternoon): Applications Per Month Metric
+
+### Overview
+
+Added "applications per month" metric (X of Y) to all three grant scoring pages showing how many applications a user submitted for grants ending in the current month, plus a "2+ Apps" filter button.
+
+### Features Added
+
+**API Routes:**
+- `/api/admin/grants/[id]/scores/first` - Added `applications_this_month` and `total_available_grants` calculation
+- `/api/admin/grants/[id]/scores/second` - Same calculation added
+- `/api/admin/grants/[id]/scores/combined` - Same calculation added
+
+**Calculation Logic:**
+- Finds all grant cycles ending in the same month (by `end_date`)
+- Excludes cycles where `is_testing_only = true`
+- Counts total available grants (`totalAvailableGrants`)
+- Counts applications per user for those cycles
+- Each grant gets `applications_this_month` (user's count) and `total_available_grants` (total cycles)
+
+**UI Display:**
+- "Apps" column on combined scores page showing `X/Y` metric
+- Metric colored aubergine when 2+ apps, muted otherwise
+- "2+ Apps" filter button with count of filtered grants
+
+**Filter Behavior:**
+- Status filter buttons (All, Approved, Runner Up, etc.) reset `multiAppFilter` when clicked
+- "2+ Apps" button resets `statusFilter` to "all" when clicked
+- Active state requires BOTH filters to match (no filter interference)
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/grants/[id]/scores/first/route.ts` | Added applicationsThisMonth calculation |
+| `app/api/admin/grants/[id]/scores/second/route.ts` | Added applicationsThisMonth calculation |
+| `app/api/admin/grants/[id]/scores/combined/route.ts` | Added applicationsThisMonth calculation |
+| `app/admin/grants/[id]/scoring/first/page.tsx` | Added multiAppFilter state, 2+ Apps button with count, fixed key prop |
+| `app/admin/grants/[id]/scoring/second/page.tsx` | Added multiAppFilter state, 2+ Apps button with count |
+| `app/admin/grants/[id]/scoring/combined/page.tsx` | Added applications_this_month fields to Grant interface |
+| `components/admin/GrantCombinedScores.tsx` | Added Apps column, multiAppFilter state, 2+ Apps filter button |
+
+### Bug Fixes
+
+- **Missing key prop**: Added `key={grant.id}` to map in first review page
+- **Filter toggle**: Fixed filter buttons to properly reset each other's state when clicked

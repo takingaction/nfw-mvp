@@ -27,10 +27,10 @@ export async function GET(
     const { id: cycleId } = await params;
     console.log("[scores/first GET] cycleId:", cycleId);
 
-    // Get cycle to check scoring_started_at
+    // Get cycle to check scoring_started_at and get end_date for "current month" calculation
     const { data: cycle } = await supabaseAdmin
       .from("grant_cycles")
-      .select("scoring_started_at, scoring_completed_at")
+      .select("scoring_started_at, scoring_completed_at, end_date")
       .eq("id", cycleId)
       .single();
 
@@ -39,6 +39,42 @@ export async function GET(
     if (!cycle?.scoring_started_at) {
       console.log("[scores/first GET] Scoring has not started yet");
       return NextResponse.json({ error: "Scoring has not started yet" }, { status: 400 });
+    }
+
+    // Calculate applications per user for grants ending in the same month
+    let applicationsThisMonth: Record<string, number> = {};
+    let totalAvailableGrants = 0;
+
+    if (cycle?.end_date) {
+      const endDate = new Date(cycle.end_date);
+      const monthStart = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+      const monthEnd = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0);
+
+      // Find all non-testing cycles ending in the same month
+      const { data: cyclesInMonth } = await supabaseAdmin
+        .from("grant_cycles")
+        .select("id")
+        .gte("end_date", monthStart.toISOString().split('T')[0])
+        .lte("end_date", monthEnd.toISOString().split('T')[0])
+        .eq("is_testing_only", false);
+
+      const cycleIds = cyclesInMonth?.map((c: any) => c.id) || [];
+      totalAvailableGrants = cycleIds.length;
+
+      if (cycleIds.length > 0) {
+        // Count applications per user for those cycles
+        const { data: allGrantsInMonth } = await supabaseAdmin
+          .from("grants")
+          .select("user_id")
+          .in("cycle_id", cycleIds);
+
+        applicationsThisMonth = (allGrantsInMonth || []).reduce((acc: Record<string, number>, g: any) => {
+          if (g.user_id) {
+            acc[g.user_id] = (acc[g.user_id] || 0) + 1;
+          }
+          return acc;
+        }, {});
+      }
     }
 
     // Get all grants with first reviewer scores
@@ -67,10 +103,12 @@ export async function GET(
     console.log("[scores/first GET] grants count:", grants?.length);
     console.log("[scores/first GET] sample grant scores:", grants?.[0]?.grant_scores);
 
-    // Filter to only first reviewer scores
+    // Filter to only first reviewer scores and add applications_this_month
     const grantsWithFirstScores = grants?.map((g) => ({
       ...g,
       grant_scores: g.grant_scores?.filter((s: any) => s.reviewer_name === "first") || [],
+      applications_this_month: applicationsThisMonth[g.user_id] || 1,
+      total_available_grants: totalAvailableGrants,
     }));
 
     console.log("[scores/first GET] filtered grantsWithFirstScores sample:", grantsWithFirstScores?.[0]?.grant_scores);

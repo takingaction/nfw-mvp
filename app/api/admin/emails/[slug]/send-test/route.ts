@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import supabaseAdmin from "@/lib/supabase/admin";
-import { renderAllBlocks } from "@/lib/email-blocks/renderer";
-import { buildEmailShell } from "@/lib/email-blocks/shell";
-import { sendTemplateEmail } from "@/lib/email";
-import type { EmailSection } from "@/lib/email-blocks/types";
+import { sendEmailBySlug } from "@/lib/email";
 
 export async function POST(
   request: Request,
@@ -37,10 +33,10 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get template
+    // Get template to check category
     const { data: template, error: templateError } = await supabase
       .from("email_templates")
-      .select("id, slug, name, subject, hero_image_url, category")
+      .select("id, slug, name, subject, category")
       .eq("slug", slug)
       .single();
 
@@ -56,69 +52,46 @@ export async function POST(
       );
     }
 
-    // Fetch sections using admin client (bypasses RLS)
-    const { data: sections, error: sectionsError } = await supabaseAdmin()
-      .from("email_sections")
-      .select("*")
-      .eq("email_template_id", template.id)
-      .eq("visible", true)
-      .order("order_index", { ascending: true });
-
-    if (sectionsError) {
-      return NextResponse.json({ error: "Failed to fetch sections" }, { status: 500 });
-    }
-
-    // Render all blocks
-    const sectionsHtml = renderAllBlocks(sections as EmailSection[]);
-
-    // Build full HTML with shell (same as preview route)
-    const fullHtml = buildEmailShell({
-      sectionsHtml,
-    });
-
-    // Replace variables with test values
+    // Define test variables - same variables as live emails but with test values
     const siteUrl = "https://nationalfundforwomen.org";
-    const testHtml = fullHtml
-      .replace(/\{\{\s*name\s*\}\}/gi, "Test User")
-      .replace(/\{\{\s*email\s*\}\}/gi, testEmail)
-      .replace(/\{\{\s*member_id\s*\}\}/g, "TEST-123456")
-      .replace(/\{\{\s*membership_tier\s*\}\}/gi, "Contributing")
-      .replace(/\{\{\s*renewal_date\s*\}\}/gi, "April 28, 2027")
-      .replace(/\{\{\s*site_url\s*\}\}/g, siteUrl)
-      .replace(/\{\{\s*dashboard_url\s*\}\}/g, `${siteUrl}/dashboard`)
-      .replace(/\{\{\s*perks_url\s*\}\}/g, `${siteUrl}/perks`)
-      .replace(/\{\{\s*store_url\s*\}\}/g, `${siteUrl}/store`)
-      .replace(/\{\{\s*grants_url\s*\}\}/g, `${siteUrl}/grants`)
-      .replace(/\{\{\s*grantCycleName\s*\}\}/g, "Spring 2026 Grant Cycle")
-      .replace(/\{\{\s*amount\s*\}\}/g, "5,000")
-      .replace(/\{\{\s*applicationId\s*\}\}/g, "TEST-APP-001")
-      .replace(/\{\{\s*grant_cycle_name\s*\}\}/g, "Spring 2026 Grant Cycle")
-      .replace(/\{\{\s*message\s*\}\}/g, "Thank you for your patience.")
-      .replace(/\{\{\s*application_url\s*\}\}/g, `${siteUrl}/grants/my-applications`)
-      .replace(/\{\{\s*ctaUrl\s*\}\}/g, `${siteUrl}/dashboard`)
-      .replace(/\{\{\s*signup_url\s*\}\}/g, `${siteUrl}/auth/sign-up`)
-      .replace(/\{\{\s*gift_url\s*\}\}/g, `${siteUrl}/gift-membership`)
-      .replace(/\{\{\s*faq_url\s*\}\}/g, `${siteUrl}/faq`)
-      .replace(/\{\{\s*store_url\s*\}\}/g, `${siteUrl}/store`)
-      .replace(/\{\{\s*siteUrl\s*\}\}/g, siteUrl)
-      // Remove Handlebars conditionals
-      .replace(/\{\{\#if\s+\w+\s*\}\}/g, "")
-      .replace(/\{\{\s*\/if\s*\}\}/g, "")
-      .replace(/\{\{\s*else\s*\}\}/g, "");
+    const testVariables: Record<string, string> = {
+      name: "Test User",
+      email: testEmail,
+      member_id: "TEST-123456",
+      membership_tier: "Contributing",
+      renewal_date: "April 28, 2027",
+      site_url: siteUrl,
+      dashboard_url: `${siteUrl}/dashboard`,
+      perks_url: `${siteUrl}/perks`,
+      store_url: `${siteUrl}/store`,
+      grants_url: `${siteUrl}/grants`,
+      signup_url: `${siteUrl}/auth/sign-up`,
+      gift_url: `${siteUrl}/gift-membership`,
+      faq_url: `${siteUrl}/faq`,
+      grantCycleName: "Spring 2026 Grant Cycle",
+      amount: "5,000",
+      applicationId: "TEST-APP-001",
+      grant_cycle_name: "Spring 2026 Grant Cycle",
+      message: "Thank you for your patience.",
+      application_url: `${siteUrl}/grants/my-applications`,
+      ctaUrl: `${siteUrl}/dashboard`,
+      siteUrl: siteUrl,
+      cta_text: "VISIT WEBSITE",
+      cta_url: siteUrl,
+    };
 
-    const testSubject = `[TEST] ${template.subject || template.name}`;
-
-    // Send using sendTemplateEmail (raw HTML, not branded wrapper)
-    const { success, error: sendError } = await sendTemplateEmail({
+    // Use the same sendEmailBySlug function as live emails
+    const result = await sendEmailBySlug(slug, {
       to: testEmail,
-      subject: testSubject,
-      html: testHtml,
+      name: "Test User",
+      variables: testVariables,
+      errorContext: "send-test",
     });
 
-    if (!success) {
-      console.error("Failed to send test email:", sendError);
+    if (!result.success) {
+      console.error(`Test email failed for ${slug}:`, result.error);
       return NextResponse.json(
-        { error: sendError || "Failed to send test email" },
+        { error: result.error || "Failed to send test email" },
         { status: 500 }
       );
     }

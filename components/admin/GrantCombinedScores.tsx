@@ -38,6 +38,8 @@ interface Grant {
   transfer_id?: string | null;
   amount_approved?: number;
   documents?: any[];
+  applications_this_month?: number;
+  total_available_grants?: number;
 }
 
 interface StripeCheckResult {
@@ -84,6 +86,7 @@ export default function GrantCombinedScores({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [visibleNames, setVisibleNames] = useState<Set<string>>(new Set());
   const [localSelected, setLocalSelected] = useState<Set<string>>(new Set());
+  const [multiAppFilter, setMultiAppFilter] = useState<"all" | "2plus">("all");
 
   // Stripe status state
   const [stripeResults, setStripeResults] = useState<Record<string, StripeCheckResult>>({});
@@ -403,6 +406,33 @@ export default function GrantCombinedScores({
         </div>
       </div>
 
+      {/* Filter Buttons */}
+      <div className="flex items-center gap-2 px-4 py-3 bg-white border border-nfw-blackberry/10 border-t-0">
+        <span className="text-xs text-nfw-blackberry/50 uppercase tracking-wider font-semibold">
+          Filter:
+        </span>
+        <button
+          onClick={() => setMultiAppFilter("all")}
+          className={`px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+            multiAppFilter === "all"
+              ? "bg-nfw-blackberry text-white"
+              : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
+          }`}
+        >
+          All
+        </button>
+        <button
+          onClick={() => setMultiAppFilter(m => m === "2plus" ? "all" : "2plus")}
+          className={`px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+            multiAppFilter === "2plus"
+              ? "bg-nfw-aubergine text-white"
+              : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
+          }`}
+        >
+          2+ Apps ({grants.filter((g) => (g.applications_this_month || 1) >= 2).length})
+        </button>
+      </div>
+
       {/* Decision Legend */}
       <div className="flex items-center gap-4 text-xs">
         <span className="text-nfw-blackberry/50 font-semibold uppercase tracking-wider">
@@ -423,12 +453,15 @@ export default function GrantCombinedScores({
 
       {/* Header Row */}
       <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
-        <div className={`grid gap-2 p-3 border-b border-nfw-blackberry/10 ${alreadyFinalized ? "grid-cols-[36px_48px_minmax(100px,1fr)_72px_80px_48px_56px_48px_120px_80px]" : "grid-cols-[48px_40px_minmax(100px,1fr)_80px_100px_80px_96px_80px_80px]"}`}>
+        <div className={`grid gap-2 p-3 border-b border-nfw-blackberry/10 ${alreadyFinalized ? "grid-cols-[36px_48px_48px_60px_minmax(100px,1fr)_72px_80px_48px_56px_48px_120px_80px]" : "grid-cols-[48px_40px_48px_60px_minmax(100px,1fr)_80px_100px_80px_96px_80px_80px]"}`}>
           <div className="text-left text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
             Rank
           </div>
           <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
             Show
+          </div>
+          <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
+            Apps
           </div>
           <div className="text-left text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
             Applicant
@@ -460,7 +493,14 @@ export default function GrantCombinedScores({
 
         {/* Grant Rows */}
         <div>
-          {grants.map((grant, index) => {
+          {grants
+            .filter((grant) => {
+              if (multiAppFilter === "2plus") {
+                return (grant.applications_this_month || 1) >= 2;
+              }
+              return true;
+            })
+            .map((grant, index) => {
             const isSelected = selectedIds.has(grant.id);
             const isExpanded = expandedId === grant.id;
             const sendMoneyState = getSendMoneyButtonState(grant);
@@ -471,7 +511,7 @@ export default function GrantCombinedScores({
                 {/* Header Row */}
                 <div
                   onClick={() => handleToggleExpand(grant.id)}
-                  className={`grid gap-2 p-3 border-b border-nfw-blackberry/5 cursor-pointer ${alreadyFinalized ? "grid-cols-[36px_48px_minmax(100px,1fr)_72px_80px_48px_56px_48px_120px_80px]" : "grid-cols-[48px_40px_minmax(100px,1fr)_80px_100px_80px_96px_80px_80px]"} ${isExpanded ? "bg-nfw-aubergine/5 border-l-4 border-l-nfw-aubergine" : isSelected ? "bg-nfw-citrine/20" : "bg-gray-50"}`}
+                  className={`grid gap-2 p-3 border-b border-nfw-blackberry/5 cursor-pointer ${alreadyFinalized ? "grid-cols-[36px_48px_48px_60px_minmax(100px,1fr)_72px_80px_48px_56px_48px_120px_80px]" : "grid-cols-[48px_40px_48px_60px_minmax(100px,1fr)_80px_100px_80px_96px_80px_80px]"} ${isExpanded ? "bg-nfw-aubergine/5 border-l-4 border-l-nfw-aubergine" : isSelected ? "bg-nfw-citrine/20" : "bg-gray-50"}`}
                 >
                   <div className="flex items-center gap-2">
                     <ChevronDown
@@ -493,6 +533,11 @@ export default function GrantCombinedScores({
                         <Eye className="w-4 h-4 text-nfw-blackberry/40" />
                       )}
                     </button>
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <span className={`text-xs font-bold ${(grant.applications_this_month || 1) >= 2 ? "text-nfw-aubergine" : "text-nfw-blackberry/40"}`}>
+                      {grant.applications_this_month || 1}/{grant.total_available_grants || 1}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div>

@@ -43,6 +43,8 @@ interface Grant {
   transfer_id?: string | null;
   stripe_onboarding_completed?: boolean;
   documents?: any[];
+  applications_this_month?: number;
+  total_available_grants?: number;
 }
 
 interface Cycle {

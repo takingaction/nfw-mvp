@@ -28,6 +28,8 @@ interface Grant {
     total_score?: number;
   };
   documents?: any[];
+  applications_this_month?: number;
+  total_available_grants?: number;
 }
 
 export default function SecondReviewPage() {
@@ -46,6 +48,7 @@ export default function SecondReviewPage() {
   const [isSecondComplete, setIsSecondComplete] = useState(false);
   const [visibleNames, setVisibleNames] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "runner_up" | "not_approved" | "unscored">("all");
+  const [multiAppFilter, setMultiAppFilter] = useState<"all" | "2plus">("all");
 
   const getCombinedStatus = (grant: Grant): "approved" | "runner_up" | "not_approved" | "unscored" => {
     const secondScore = grant.grant_scores?.[0];
@@ -359,23 +362,40 @@ export default function SecondReviewPage() {
                 return (
                   <button
                     key={f}
-                    onClick={() => setStatusFilter(f)}
+                    onClick={() => { setStatusFilter(f); setMultiAppFilter("all"); }}
                     className={`px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${
-                      statusFilter === f
+                      statusFilter === f && multiAppFilter === "all"
                         ? "bg-nfw-blackberry text-white"
                         : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
                     }`}
                   >
                     {labelMap[f]}
-                    <span className={`text-xs ${statusFilter === f ? "opacity-70" : "opacity-50"}`}>
+                    <span className={`text-xs ${statusFilter === f && multiAppFilter === "all" ? "opacity-70" : "opacity-50"}`}>
                       ({countMap[f]})
                     </span>
                   </button>
                 );
               })}
+              <button
+                onClick={() => { setStatusFilter("all"); setMultiAppFilter(m => m === "2plus" ? "all" : "2plus"); }}
+                className={`px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                  multiAppFilter === "2plus"
+                    ? "bg-nfw-aubergine text-white"
+                    : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
+                }`}
+              >
+                2+ Apps
+                <span className={`text-xs ${multiAppFilter === "2plus" ? "opacity-70" : "opacity-50"}`}>
+                  ({grants.filter(g => (g.applications_this_month || 1) >= 2).length})
+                </span>
+              </button>
             </div>
             <div className="space-y-3 overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 180px)' }}>
-              {grants.filter(g => statusFilter === "all" || getCombinedStatus(g) === statusFilter).map((grant) => {
+              {grants.filter(g => {
+                if (statusFilter !== "all" && getCombinedStatus(g) !== statusFilter) return false;
+                if (multiAppFilter === "2plus" && (g.applications_this_month || 1) < 2) return false;
+                return true;
+              }).map((grant) => {
                 const score = grant.grant_scores?.[0];
                 const subtotal = (score?.urgency_score ?? 0) +
                   (score?.authenticity_score ?? 0) +
@@ -464,32 +484,35 @@ export default function SecondReviewPage() {
                           </span>
                         )}
                         {isComplete && (() => {
-                          const combinedStatus = getCombinedStatus(grant);
-                          const statusConfig = {
-                            approved: { label: "Approved", bg: "bg-green-500", text: "text-white" },
-                            runner_up: { label: "Runner Up", bg: "bg-yellow-400", text: "text-yellow-900" },
-                            not_approved: { label: "Not Approved", bg: "bg-red-500", text: "text-white" },
-                          };
-                          const config = statusConfig[combinedStatus as keyof typeof statusConfig];
-                          return (
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded font-bold ${config.bg} ${config.text}`}
-                            >
-                              {config.label}
-                            </span>
-                          );
-                        })()}
-                        {isComplete ? (
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded ${
-                              selectedGrant === grant.id
-                                ? "bg-white/20 text-white"
-                                : "bg-green-500 text-white"
-                            }`}
-                          >
-                            {combinedTotal}/18
-                          </span>
-                        ) : (
+                           const combinedStatus = getCombinedStatus(grant);
+                           const statusConfig = {
+                             approved: { label: "Approved", bg: "bg-green-500", text: "text-white" },
+                             runner_up: { label: "Runner Up", bg: "bg-yellow-400", text: "text-yellow-900" },
+                             not_approved: { label: "Not Approved", bg: "bg-red-500", text: "text-white" },
+                           };
+                           const config = statusConfig[combinedStatus as keyof typeof statusConfig];
+                           return (
+                             <span
+                               className={`text-xs px-2 py-0.5 rounded font-bold ${config.bg} ${config.text}`}
+                             >
+                               {config.label}
+                             </span>
+                           );
+                         })()}
+                        <span className={`text-xs px-1 ${selectedGrant === grant.id ? "text-white/60" : "text-nfw-blackberry/40"}`}>
+                          {grant.applications_this_month || 1}/{grant.total_available_grants || 1}
+                        </span>
+                         {isComplete ? (
+                           <span
+                             className={`text-xs px-2 py-0.5 rounded ${
+                               selectedGrant === grant.id
+                                 ? "bg-white/20 text-white"
+                                 : "bg-green-500 text-white"
+                             }`}
+                           >
+                             {combinedTotal}/18
+                           </span>
+                         ) : (
                           <span
                             className={`text-xs ${
                               selectedGrant === grant.id
