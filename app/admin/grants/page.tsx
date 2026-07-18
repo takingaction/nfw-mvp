@@ -18,6 +18,13 @@ export default async function AdminGrantsPage() {
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: false });
 
+  // Mark cycles as closed if end_date has passed (belt-and-suspenders fix)
+  const now = new Date();
+  const cyclesWithClosedStatus = cycles?.map((c: any) => ({
+    ...c,
+    status: c.end_date && new Date(c.end_date) < now && c.status === 'open' ? 'closed' : c.status,
+  }));
+
   const { data: grants } = await supabaseAdmin
     .from("grants")
     .select("id, status, cycle_id");
@@ -47,7 +54,7 @@ export default async function AdminGrantsPage() {
           {[
             {
               label: "Total Cycles",
-              value: cycles?.length || 0,
+              value: cyclesWithClosedStatus?.length || 0,
               color: "bg-nfw-blackberry",
               text: "text-white",
             },
@@ -93,7 +100,7 @@ export default async function AdminGrantsPage() {
             </Link>
           </div>
         ) : (
-          <SortableCycleList cycles={cycles} grants={grants || []} />
+          <SortableCycleList cycles={cyclesWithClosedStatus || []} grants={grants || []} />
         )}
       </div>
     </main>

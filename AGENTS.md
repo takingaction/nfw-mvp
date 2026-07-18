@@ -8460,3 +8460,59 @@ Each page now:
 | `app/admin/grants/[id]/scoring/first/page.tsx` | Added ALLOWED_EMAILS, email check useEffect, Access Denied UI |
 | `app/admin/grants/[id]/scoring/second/page.tsx` | Added ALLOWED_EMAILS, email check useEffect, Access Denied UI |
 | `app/admin/grants/[id]/scoring/combined/page.tsx` | Added ALLOWED_EMAILS, email check useEffect, Access Denied UI |
+
+### Session 2026-07-18: Grant Cycle Finalization
+
+#### Overview
+
+Added ability for admins to mark grant cycles as finalized via an `is_finalized` boolean flag. Finalization is an administrative action to indicate a grant cycle has been fully processed.
+
+#### Database
+
+- Migration 120: `supabase/migrations/120_add_is_finalized_to_grant_cycles.sql`
+  - Added `is_finalized BOOLEAN DEFAULT FALSE` column to `grant_cycles` table
+
+#### API
+
+- `POST /api/admin/grants/[id]/cycle/finalize`
+  - Toggles `is_finalized` flag on the cycle
+  - Allowed emails: rachel, michelle, kelsey, ron
+  - Request: `{ is_finalized: boolean }`
+  - Response: `{ success: true, message: "Cycle finalized/unfinalized successfully" }`
+
+#### UI
+
+**Grant Cycle Detail Page (`/admin/grants/[id]`):**
+- No changes - button removed from this page
+
+**Combined Scores Page (`/admin/grants/[id]/scoring/combined`):**
+- Shows yellow "COMPLETE" badge next to "Combined Scores" heading when `is_finalized = true`
+- "Mark Complete" / "Unmark Complete" button in header, top right corner
+- Confirmation modal with ShieldAlert icon:
+  - Title: "Mark Cycle Complete?" / "Unmark Cycle Complete?"
+  - Body: "No new approvals or payments can be made after marking as complete. You can unmark later if needed."
+  - Buttons: [Cancel] [Mark Complete]
+
+#### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/120_add_is_finalized_to_grant_cycles.sql` | Database migration |
+| `app/api/admin/grants/[id]/cycle/finalize/route.ts` | API endpoint |
+| `components/admin/GrantCycleFinalizeButton.tsx` | Client component with confirmation modal |
+
+#### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/grants/[id]/page.tsx` | Removed finalize button and COMPLETE badge |
+| `app/admin/grants/[id]/scoring/combined/page.tsx` | Added COMPLETE badge and Mark Complete button |
+| `AGENTS.md` | Documented feature |
+
+#### Allowed Emails
+
+Only these 4 admins can finalize cycles:
+- rachel@nationalfundforwomen.org
+- michelle@nationalfundforwomen.org
+- kelsey@nationalfundforwomen.org
+- ron@myherodesign.com

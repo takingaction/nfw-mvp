@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, AlertCircle, Check, Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import GrantCombinedScores from "@/components/admin/GrantCombinedScores";
+import GrantCycleFinalizeButton from "@/components/admin/GrantCycleFinalizeButton";
 
 const ALLOWED_EMAILS = [
   "rachel@nationalfundforwomen.org",
@@ -63,6 +64,7 @@ interface Cycle {
   total_funds: number;
   scoring_completed_at: string;
   final_approved_at: string;
+  is_finalized: boolean;
 }
 
 export default function CombinedScoresPage() {
@@ -271,14 +273,23 @@ export default function CombinedScoresPage() {
                 Back to Grant
               </Link>
               <div>
-                <h1 className="text-xl font-bold text-nfw-blackberry font-serif">
+                <h1 className="text-xl font-bold text-nfw-blackberry font-serif flex items-center gap-2">
                   Combined Scores
+                  {cycle?.is_finalized && (
+                    <span className="inline-block px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-full font-ui">
+                      COMPLETE
+                    </span>
+                  )}
                 </h1>
                 <p className="text-xs text-nfw-blackberry/50">
                   {cycle?.cycle_name} • ${cycle?.amount_per_grant?.toLocaleString()} per grant
                 </p>
               </div>
             </div>
+            <GrantCycleFinalizeButton
+              cycleId={cycleId}
+              isFinalized={cycle?.is_finalized || false}
+            />
           </div>
         </div>
       </div>

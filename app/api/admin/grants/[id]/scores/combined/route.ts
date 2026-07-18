@@ -274,6 +274,7 @@ export async function GET(
         total_funds: cycle.total_funds,
         scoring_completed_at: cycle.scoring_completed_at,
         final_approved_at: cycle.final_approved_at,
+        is_finalized: cycle.is_finalized,
       },
       totalPaid,
     });

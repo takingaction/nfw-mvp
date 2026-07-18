@@ -21,6 +21,7 @@ interface Cycle {
   amount_per_grant: number;
   grants_available: number;
   display_order: number;
+  is_finalized: boolean;
 }
 
 interface Grant {
@@ -158,13 +159,18 @@ export default function SortableCycleList({ cycles, grants }: Props) {
                   <div>
                     <div className="flex items-center gap-3 mb-1">
                       <h2 className="text-xl font-black text-nfw-blackberry font-serif [&_sup]:text-[0.6em] [&_sup]:align-super"
-                         dangerouslySetInnerHTML={{ __html: decodeHtml(cycle.cycle_name) }}
-                       />
+                          dangerouslySetInnerHTML={{ __html: decodeHtml(cycle.cycle_name) }}
+                        />
                       <span
                         className={`text-xs px-2.5 py-1 font-semibold ${statusColor[cycle.status] || "bg-gray-100 text-gray-600"}`}
                       >
                         {cycle.status}
                       </span>
+                      {cycle.is_finalized && (
+                        <span className="text-xs px-2.5 py-1 font-semibold bg-yellow-100 text-yellow-700">
+                          COMPLETE
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm text-nfw-blackberry/50">
                       {new Date(cycle.start_date).toLocaleDateString()} —{" "}

@@ -11,14 +11,15 @@ BEGIN
   -- Open cycles where start_date has arrived and end_date hasn't passed
   UPDATE grant_cycles
   SET status = 'open'
-  WHERE start_date <= (CURRENT_DATE AT TIME ZONE 'America/New_York')
-    AND end_date >= (CURRENT_DATE AT TIME ZONE 'America/New_York')
+  WHERE start_date::date <= CURRENT_DATE
+    AND end_date::date >= CURRENT_DATE
     AND status = 'closed';
 
   -- Close cycles where end_date has passed
+  -- Using ::date comparison to handle midnight UTC edge cases
   UPDATE grant_cycles
   SET status = 'closed'
-  WHERE end_date < (CURRENT_DATE AT TIME ZONE 'America/New_York')
+  WHERE end_date::date < CURRENT_DATE
     AND status = 'open';
 END;
 $$;
