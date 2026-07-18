@@ -3,9 +3,16 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Check, AlertCircle, Lock, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Loader2, Check, AlertCircle, Lock, Eye, EyeOff, Shield } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import GrantScoringRubric from "@/components/admin/GrantScoringRubric";
 import GrantApplicationScorer, { ScoreData } from "@/components/admin/GrantApplicationScorer";
+
+const ALLOWED_EMAILS = [
+  "michelle@nationalfundforwomen.org",
+  "kelsey@nationalfundforwomen.org",
+  "ron@myherodesign.com",
+];
 
 interface Grant {
   id: string;
@@ -49,6 +56,21 @@ export default function SecondReviewPage() {
   const [visibleNames, setVisibleNames] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "runner_up" | "not_approved" | "unscored">("all");
   const [multiAppFilter, setMultiAppFilter] = useState<"all" | "2plus">("all");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
+
+  useEffect(() => {
+    const checkAccess = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email || !ALLOWED_EMAILS.includes(user.email.toLowerCase())) {
+        setAccessDenied(true);
+      } else {
+        setUserEmail(user.email);
+      }
+    };
+    checkAccess();
+  }, []);
 
   const getCombinedStatus = (grant: Grant): "approved" | "runner_up" | "not_approved" | "unscored" => {
     const secondScore = grant.grant_scores?.[0];
@@ -221,6 +243,28 @@ export default function SecondReviewPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-nfw-dove">
         <Loader2 className="w-8 h-8 animate-spin text-nfw-blackberry" />
+      </div>
+    );
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-nfw-dove">
+        <div className="bg-white border border-nfw-blackberry/10 p-8 text-center max-w-md">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-8 h-8 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-nfw-blackberry mb-2">Access Denied</h2>
+          <p className="text-nfw-blackberry/60 mb-6">
+            You don&apos;t have permission to access this page.
+          </p>
+          <Link
+            href="/admin/grants"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-nfw-blackberry text-white text-sm font-bold hover:bg-nfw-blackberry/90 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Grants
+          </Link>
+        </div>
       </div>
     );
   }

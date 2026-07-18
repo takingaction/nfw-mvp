@@ -8419,6 +8419,44 @@ After thorough analysis, confirmed that only `auth.users.email` and `profiles.em
 ### UI
 
 - Mail icon (✉️) appears in Actions column for allowed admins only
-- Modal shows current email, new email input field
+- Modal shows current email with new email input field
 - Confirm button disabled if email unchanged
 - Page reloads after successful update
+
+---
+
+## Session 2026-07-18: Grant Scoring Page Permissions
+
+### Overview
+
+Added email-based permission checks to grant scoring pages. Each page now checks if the current user's email is in an allowed list before showing content.
+
+### Page Access Matrix
+
+| Page | Allowed Emails |
+|------|---------------|
+| `/scoring/first` | rachel@nationalfundforwomen.org, kelsey@nationalfundforwomen.org, ron@myherodesign.com |
+| `/scoring/second` | michelle@nationalfundforwomen.org, kelsey@nationalfundforwomen.org, ron@myherodesign.com |
+| `/scoring/combined` | rachel@nationalfundforwomen.org, michelle@nationalfundforwomen.org, kelsey@nationalfundforwomen.org, ron@myherodesign.com |
+
+### Implementation
+
+Each page now:
+1. Fetches user's email from Supabase auth on mount
+2. Checks if email is in the allowed list (case-insensitive)
+3. Shows "Access Denied" screen with Shield icon if not authorized
+
+### Access Denied UI
+
+- Centered card with red Shield icon
+- "Access Denied" heading
+- "You don't have permission to access this page." message
+- "Back to Grants" button
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/grants/[id]/scoring/first/page.tsx` | Added ALLOWED_EMAILS, email check useEffect, Access Denied UI |
+| `app/admin/grants/[id]/scoring/second/page.tsx` | Added ALLOWED_EMAILS, email check useEffect, Access Denied UI |
+| `app/admin/grants/[id]/scoring/combined/page.tsx` | Added ALLOWED_EMAILS, email check useEffect, Access Denied UI |
