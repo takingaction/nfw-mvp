@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import getAdminClient from "@/lib/supabase/admin";
-import { sendIncompleteMemberEmail } from "@/lib/email";
+import { sendIncompleteMemberEmail, fetchTemplateWithActiveCheck } from "@/lib/email";
+import { getPreRenderedHtmlAdmin } from "@/lib/email-blocks/publish";
 
 const BATCH_DELAY_MS = 200;
 
@@ -155,6 +156,28 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // PRE-FLIGHT CHECK: Verify template is active and has content
+    const templateCheck = await fetchTemplateWithActiveCheck("incomplete-member-reengagement");
+    if (!templateCheck.template) {
+      return NextResponse.json({
+        error: "Email template not found",
+        code: "TEMPLATE_NOT_FOUND"
+      }, { status: 400 });
+    }
+    if (!templateCheck.isActive) {
+      return NextResponse.json({
+        error: "Email template is not active. Please enable it in the Email Templates admin page.",
+        code: "TEMPLATE_INACTIVE"
+      }, { status: 400 });
+    }
+    const contentCheck = await getPreRenderedHtmlAdmin("incomplete-member-reengagement", {});
+    if (!contentCheck) {
+      return NextResponse.json({
+        error: "Email template has no published content. Please publish it in the Email Templates builder.",
+        code: "NO_PUBLISHED_CONTENT"
+      }, { status: 400 });
+    }
+
     const result = {
       sent: 0,
       failed: 0,
@@ -246,6 +269,28 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { error: "Member not found" },
         { status: 404 }
+      );
+    }
+
+    // PRE-FLIGHT CHECK: Verify template is active and has content
+    const templateCheck = await fetchTemplateWithActiveCheck("incomplete-member-reengagement");
+    if (!templateCheck.template) {
+      return NextResponse.json(
+        { error: "Email template not found" },
+        { status: 400 }
+      );
+    }
+    if (!templateCheck.isActive) {
+      return NextResponse.json(
+        { error: "Email template is not active. Please enable it in the Email Templates admin page." },
+        { status: 400 }
+      );
+    }
+    const contentCheck = await getPreRenderedHtmlAdmin("incomplete-member-reengagement", {});
+    if (!contentCheck) {
+      return NextResponse.json(
+        { error: "Email template has no published content. Please publish it in the Email Templates builder." },
+        { status: 400 }
       );
     }
 

@@ -42,7 +42,7 @@ async function fetchEmailTemplateAdmin(slug: string): Promise<{ subject: string;
   return { subject: data.subject, html: data.html_content, hero_image_url: data.hero_image_url, is_active: data.is_active };
 }
 
-async function fetchTemplateWithActiveCheck(slug: string): Promise<{
+export async function fetchTemplateWithActiveCheck(slug: string): Promise<{
   template: { subject: string; html: string; hero_image_url?: string } | null;
   isActive: boolean;
 }> {

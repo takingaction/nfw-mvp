@@ -25,6 +25,8 @@ export default function AdminIncompleteMembersClient() {
   const [sending, setSending] = useState(false);
   const [sendProgress, setSendProgress] = useState(0);
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number; message: string } | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorModalMessage, setErrorModalMessage] = useState("");
 
   const fetchMembers = useCallback(async () => {
     try {
@@ -57,11 +59,21 @@ export default function AdminIncompleteMembersClient() {
         method: "POST",
       });
       const data = await response.json();
+
+      if (!response.ok) {
+        setSending(false);
+        setSendProgress(100);
+        setErrorModalMessage(data.error || "Failed to send emails");
+        setShowErrorModal(true);
+        return;
+      }
+
       setSendResult(data);
       await fetchMembers(); // Refresh the list
     } catch (error) {
       console.error("Failed to send emails:", error);
-      setSendResult({ sent: 0, failed: 0, message: "Failed to send emails" });
+      setErrorModalMessage("Failed to send emails");
+      setShowErrorModal(true);
     } finally {
       setSending(false);
       setSendProgress(100);
@@ -74,14 +86,23 @@ export default function AdminIncompleteMembersClient() {
         method: "PUT",
       });
       const data = await response.json();
+
+      if (!response.ok) {
+        setErrorModalMessage(data.error || "Failed to send email");
+        setShowErrorModal(true);
+        return;
+      }
+
       if (data.success) {
         await fetchMembers(); // Refresh the list
       } else {
-        alert(data.error || "Failed to send email");
+        setErrorModalMessage(data.error || "Failed to send email");
+        setShowErrorModal(true);
       }
     } catch (error) {
       console.error("Failed to send email:", error);
-      alert("Failed to send email");
+      setErrorModalMessage("Failed to send email");
+      setShowErrorModal(true);
     }
   };
 
@@ -296,6 +317,35 @@ export default function AdminIncompleteMembersClient() {
           </div>
         )}
       </div>
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
+            <div className="bg-red-50 px-6 py-4 border-b border-red-100">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0">
+                  <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-ui font-semibold text-red-800">Cannot Send Email</h3>
+              </div>
+            </div>
+            <div className="px-6 py-4">
+              <p className="text-nfw-blackberry font-ui text-sm">{errorModalMessage}</p>
+            </div>
+            <div className="bg-gray-50 px-6 py-3 border-t border-gray-100 flex justify-end">
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="px-4 py-2 bg-nfw-aubergine text-white font-ui text-sm rounded hover:bg-nfw-aubergine/90 transition-colors"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
