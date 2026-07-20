@@ -86,8 +86,8 @@ export async function sendEmailBySlug(
     return { success: false, error: "TEMPLATE_INACTIVE" };
   }
 
-  // Step 2: Get published content (checks status=published AND is_active !== false)
-  const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables);
+  // Step 2: Get published content (checks status=published AND is_active !== false, unless skipActiveCheck)
+  const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables, { skipActiveCheck });
   if (!preRenderedResult) {
     console.log(`[${context}] No published content for "${slug}", skipping email to ${to}`);
     return { success: false, error: "NO_PUBLISHED_CONTENT" };

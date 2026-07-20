@@ -100,7 +100,8 @@ export async function getPreRenderedHtml(
 
 export async function getPreRenderedHtmlAdmin(
   templateSlug: string,
-  variables: Record<string, string> = {}
+  variables: Record<string, string> = {},
+  options: { skipActiveCheck?: boolean } = {}
 ): Promise<PreRenderedEmailResult | null> {
   const supabase = getAdminClient();
 
@@ -114,7 +115,8 @@ export async function getPreRenderedHtmlAdmin(
     return null;
   }
 
-  if (template.full_email_html && template.status === "published" && template.is_active !== false) {
+  const isActiveCheckPasses = options.skipActiveCheck || template.is_active !== false;
+  if (template.full_email_html && template.status === "published" && isActiveCheckPasses) {
     let html = template.full_email_html;
     let subject = template.subject || "";
     for (const [key, value] of Object.entries(variables)) {
