@@ -8516,3 +8516,74 @@ Only these 4 admins can finalize cycles:
 - michelle@nationalfundforwomen.org
 - kelsey@nationalfundforwomen.org
 - ron@myherodesign.com
+
+---
+
+## Session 2026-07-20: ZDS Webhook Order Rejection Bug Fix
+
+### Problem
+
+Users were getting `rejected_invalid_user` status on legitimate ZDS claims. Investigation revealed:
+
+1. **Draft Orders don't preserve `note_attributes`** - When using Shopify Draft Orders (via Admin API), custom attributes like `nfw_user_id` are NOT transferred to resulting orders
+2. **Webhook validation was too strict** - The validation required `nfwUserId` to be present even when the claim was found via `variant_id` (the authoritative primary path)
+
+### Root Cause
+
+The webhook validation at line 186 was:
+```typescript
+if (!foundViaCheckoutId && (!nfwUserId || nfwUserId !== claim.user_id)) {
+```
+
+This rejected orders when:
+- Claim was found via `variant_id` (correct primary path)
+- `nfwUserId` was null (Draft Order didn't include the attribute)
+- `foundViaCheckoutId === false` (correctly - it WASN'T found via checkout fallback)
+
+### Fix Applied
+
+Added `foundViaVariantId` and `foundViaUserProduct` tracking variables to skip validation when claims are found via authoritative paths:
+
+```typescript
+// Track which path found the claim
+let foundViaVariantId = existingClaims && existingClaims.length > 0;
+let foundViaUserProduct = false;
+
+// ... fallback lookups set these flags ...
+
+// Updated validation - skip if found via any authoritative path
+if (!foundViaCheckoutId && !foundViaVariantId && !foundViaUserProduct && (!nfwUserId || nfwUserId !== claim.user_id)) {
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/shopify/webhook/route.ts` | Added `foundViaVariantId` and `foundViaUserProduct` tracking, updated validation condition |
+
+### Investigation Notes
+
+**Why Draft Orders were used:**
+- Created via Shopify REST Admin API (`/admin/api/2026-01/draft_orders.json`)
+- `note_attributes` passed during creation are NOT preserved on resulting orders
+- This was the only way to create checkout URLs without Storefront API
+
+**Pattern observed:**
+- Completed orders have `shopify_checkout_id = "gid://shopify/Checkout/..."` (Checkout API)
+- Rejected orders have `shopify_checkout_id = "draft_..."` (Draft Order API)
+- Draft Orders don't pass custom attributes to resulting orders
+
+### Future Fix Needed
+
+Switch from Draft Orders to Checkout API using Storefront API access token. This would properly preserve `customAttributes` through to the resulting order.
+
+### SQL to Identify Affected Claims
+
+```sql
+-- Preview July 2026 rejected claims with null claim_month
+SELECT * FROM zero_dollar_claims
+WHERE status = 'rejected_invalid_user'
+AND claim_month IS NULL
+AND claimed_at >= '2026-07-01'
+AND claimed_at < '2026-08-01';
+```

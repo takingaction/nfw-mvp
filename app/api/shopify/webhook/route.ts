@@ -98,7 +98,7 @@ export async function POST(request: Request) {
         console.log(`[orders/create] Order ${orderId} attributes:`, JSON.stringify(orderAttributes));
         console.log(`[orders/create] nfw_user_id: ${nfwUserId}, nfw_checkout_time: ${nfwCheckoutTime}`);
 
-        // First try to find claim by variant_id (correct path)
+        // First try to find claim by variant_id (correct primary path)
         let { data: existingClaims } = await supabaseAdmin
           .from("zero_dollar_claims")
           .select("*")
@@ -107,7 +107,11 @@ export async function POST(request: Request) {
           .order("claimed_at", { ascending: true })
           .limit(1);
 
-        // If no claim found by variant_id, try by user_id + product_id (handles case where wrong variant was recorded)
+        // Track which path found the claim
+        let foundViaVariantId = existingClaims && existingClaims.length > 0;
+        let foundViaUserProduct = false;
+
+        // Second fallback: try by user_id + product_id (handles case where wrong variant was recorded)
         if ((!existingClaims || existingClaims.length === 0) && nfwUserId) {
           const productId = `gid://shopify/Product/${lineItems[0].product_id}`;
           const { data: claimsByUser } = await supabaseAdmin
@@ -121,6 +125,7 @@ export async function POST(request: Request) {
           
           if (claimsByUser && claimsByUser.length > 0) {
             existingClaims = claimsByUser;
+            foundViaUserProduct = true;
           }
         }
 
@@ -182,8 +187,9 @@ export async function POST(request: Request) {
           const claim = existingClaims[0];
 
           // Validate nfw_user_id matches the claim's user_id (prevents direct Shopify checkout fraud)
-          // Skip this validation if claim was found via checkout_id fallback (nfwUserId won't be present)
-          if (!foundViaCheckoutId && (!nfwUserId || nfwUserId !== claim.user_id)) {
+          // Skip validation if claim was found via variant_id (primary path), user_id+product_id fallback,
+          // or checkout_id fallback. Draft Orders don't preserve note_attributes, so nfwUserId may be null.
+          if (!foundViaCheckoutId && !foundViaVariantId && !foundViaUserProduct && (!nfwUserId || nfwUserId !== claim.user_id)) {
             console.log(`Rejecting order ${orderId} - invalid or missing nfw_user_id attribute. Expected: ${claim.user_id}, Got: ${nfwUserId}`);
 
             await supabaseAdmin
