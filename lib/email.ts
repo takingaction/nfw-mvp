@@ -63,6 +63,7 @@ interface SendEmailBySlugOptions {
   name: string;
   variables: Record<string, string>;
   errorContext?: string;
+  skipActiveCheck?: boolean; // When true, skips is_active check (for test/manual sends)
 }
 
 type EmailSendResult = { success: true } | { success: false; error: string };
@@ -71,16 +72,16 @@ export async function sendEmailBySlug(
   slug: string,
   options: SendEmailBySlugOptions
 ): Promise<EmailSendResult> {
-  const { to, name, variables, errorContext } = options;
+  const { to, name, variables, errorContext, skipActiveCheck } = options;
   const context = errorContext || slug;
 
-  // Step 1: Check if template exists and is active
+  // Step 1: Check if template exists and is active (unless skipActiveCheck is true)
   const templateCheck = await fetchTemplateWithActiveCheck(slug);
   if (!templateCheck.template) {
     console.log(`[${context}] Template "${slug}" not found, skipping email to ${to}`);
     return { success: false, error: "TEMPLATE_NOT_FOUND" };
   }
-  if (!templateCheck.isActive) {
+  if (!skipActiveCheck && !templateCheck.isActive) {
     console.log(`[${context}] Template "${slug}" is inactive, skipping email to ${to}`);
     return { success: false, error: "TEMPLATE_INACTIVE" };
   }

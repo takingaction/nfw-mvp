@@ -86,6 +86,7 @@ export async function POST(
       name: "Test User",
       variables: testVariables,
       errorContext: "send-test",
+      skipActiveCheck: true, // Test emails should send regardless of is_active status
     });
 
     if (!result.success) {
