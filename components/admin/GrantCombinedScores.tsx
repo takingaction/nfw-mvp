@@ -12,6 +12,7 @@ interface Grant {
     city: string;
     state: string;
     stripe_onboarding_completed?: boolean;
+    stripe_connect_account_id?: string | null;
   };
   is_nominating: boolean;
   nominee_name: string;

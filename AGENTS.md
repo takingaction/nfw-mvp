@@ -8844,3 +8844,20 @@ Updated combined scores route to handle Supabase's array return for FK joins.
 |------|--------|
 | `app/api/admin/grants/[id]/scores/combined/route.ts` | Handle profiles as array from FK join |
 | `app/api/admin/grants/[id]/check-connections/route.ts` | Check connections for tentative approvals regardless of status |
+
+### Additional Fix (2026-07-21): Stripe Account ID on Profile vs Grant
+
+**Problem:** Same user appeared as "Connected" in one cycle but "Not Connected" in another cycle.
+
+**Root Cause:** 
+- The UI at line 610 checked `grant.stripe_connect_account_id` which was NULL for some cycles
+- But `profiles.stripe_connect_account_id` had the correct value
+- The check-connections API also only checked `grant.stripe_connect_account_id` without fallback
+
+**Fix Applied:**
+- `GrantCombinedScores.tsx` line 610: Changed to check `grant.profiles?.stripe_connect_account_id`
+- `check-connections/route.ts`: Added `stripe_connect_account_id` to profiles join and use as fallback when grant's is null
+
+**Key Insight:** Stripe Connect account is stored on **profiles.stripe_connect_account_id**, NOT on grants.stripe_connect_account_id. The grants table can have a stripe_connect_account_id column but it may be NULL while the user's profile has the actual account ID.
+
+**Commit:** `c7dab2d`
