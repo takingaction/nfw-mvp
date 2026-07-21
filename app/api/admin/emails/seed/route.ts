@@ -4,10 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 const EMAIL_TEMPLATES = [
   // Resend Templates (tier-specific for welcome emails)
   {
-    name: "Welcome Email - Free",
+    name: "Waitlist Approval",
     slug: "welcome-free",
     category: "resend",
-    description: "Sent to new free members after completing signup",
+    description: "Sent when a waitlist member is approved for free membership",
     subject: "Welcome to National Fund for Women",
     source_file: "lib/email.ts:sendWelcomeEmail",
     is_editable: true,

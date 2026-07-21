@@ -8932,3 +8932,21 @@ Updated combined scores route to handle Supabase's array return for FK joins.
 | File | Change |
 |------|--------|
 | `app/admin/incomplete-members/AdminIncompleteMembersClient.tsx` | Added filter buttons, sorting, fixed table column widths |
+
+## Session 2026-07-21: Rename "Welcome Email - Free" to "Waitlist Approval"
+
+### Overview
+
+Renamed the email template from "Welcome Email - Free" to "Waitlist Approval" to better reflect its purpose (sending to waitlist members when they are approved).
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/123_rename_welcome_free_template.sql` | Renames template in database |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/emails/seed/route.ts` | Updated name and description in seed data |
