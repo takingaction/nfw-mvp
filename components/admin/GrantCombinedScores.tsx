@@ -189,8 +189,10 @@ export default function GrantCombinedScores({
     setCheckingStatus(true);
     try {
       const results = await onCheckStripeStatus();
+      console.log("[stripe check] raw results:", JSON.stringify(results, null, 2));
       const resultsMap: Record<string, StripeCheckResult> = {};
       results.forEach((r) => {
+        console.log(`[stripe check] grant ${r.grantId}: connected=${r.connected}, isRestricted=${r.isRestricted}, charges=${r.charges_enabled}, payouts=${r.payouts_enabled}`);
         resultsMap[r.grantId] = r;
       });
       setStripeResults(resultsMap);
@@ -257,12 +259,14 @@ export default function GrantCombinedScores({
   
   const getBankStatus = (grant: Grant): BankStatus => {
     const accountId = grant.stripe_connect_account_id || grant.profiles?.stripe_connect_account_id;
+    console.log(`[getBankStatus] grant ${grant.id}: accountId=${accountId}, stripeResults=${JSON.stringify(stripeResults[grant.id])}`);
     
     if (!accountId) return "no_account";
     
     // If we've checked Stripe
     const result = stripeResults[grant.id];
     if (result) {
+      console.log(`[getBankStatus] grant ${grant.id}: connected=${result.connected}, isRestricted=${result.isRestricted}`);
       // not_connected: details_submitted is false (they haven't started)
       if (!result.connected) return "not_connected";
       // flagged: account exists but is restricted (charges or payouts disabled)
@@ -272,6 +276,7 @@ export default function GrantCombinedScores({
     }
     
     // Never checked - assume connected if account exists
+    console.log(`[getBankStatus] grant ${grant.id}: never checked, assuming connected`);
     return "connected";
   };
 
