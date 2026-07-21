@@ -138,7 +138,9 @@ export default function SortableCycleList({ cycles, grants }: Props) {
                 ? "border-nfw-blackberry/30 opacity-50"
                 : isDragOver
                   ? "border-nfw-aubergine"
-                  : "border-gray-200 hover:border-gray-300"
+                  : cycle.is_finalized
+                    ? "border-gray-200 hover:border-gray-300 border-l-4 border-l-nfw-aubergine"
+                    : "border-gray-200 hover:border-gray-300"
             }`}
           >
             <div className="flex items-stretch">

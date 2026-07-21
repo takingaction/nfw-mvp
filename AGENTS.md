@@ -8722,3 +8722,21 @@ curl -X POST https://nationalfundforwomen.org/api/cron/test-incomplete-reminder 
 | `app/admin/incomplete-members/AdminIncompleteMembersClient.tsx` | Admin UI for manual sends |
 | `lib/email.ts` | `sendIncompleteMemberEmail()` function |
 | `lib/email-blocks/publish.ts` | `getPreRenderedHtmlAdmin()` for template content |
+
+---
+
+## Session 2026-07-17: Aubergine Border for Finalized Cycle Cards
+
+### Overview
+
+Added visual differentiation for grant cycles marked as complete (finalized) on `/admin/grants` page.
+
+### Change
+
+Cycle cards now show a 4px aubergine left border when `is_finalized === true`.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/admin/SortableCycleList.tsx` | Added aubergine left border styling for finalized cycles |
