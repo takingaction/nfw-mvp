@@ -257,6 +257,10 @@ export default function GrantCombinedScores({
     if (stripeResults[grant.id]?.connected) {
       return true;
     }
+    // If account ID exists on grant or profile, assume connected
+    if (grant.stripe_connect_account_id || grant.profiles?.stripe_connect_account_id) {
+      return true;
+    }
     // Fall back to stripe_onboarding_completed from profile
     return grant.profiles?.stripe_onboarding_completed === true;
   };
@@ -266,7 +270,8 @@ export default function GrantCombinedScores({
     if (!alreadyFinalized) return "none";
     if (grant.decision !== "Approved") return "none";
     if (grant.funded_at) return "sent";
-    if (!grant.stripe_connect_account_id) return "disabled";
+    // Check if account ID exists on grant or profile
+    if (!grant.stripe_connect_account_id && !grant.profiles?.stripe_connect_account_id) return "disabled";
     if (!isBankConnected(grant)) return "disabled";
     return "active";
   };
@@ -608,7 +613,7 @@ export default function GrantCombinedScores({
                   </div>
                   {alreadyFinalized && (
                     <div className="flex items-center justify-center">
-                      {grant.profiles?.stripe_connect_account_id ? (
+                      {grant.stripe_connect_account_id || grant.profiles?.stripe_connect_account_id ? (
                         isStripeConnected ? (
                           <span className="inline-flex items-center gap-1 px-1 py-0.5 text-xs font-bold rounded bg-green-100 text-green-700 border border-green-200 whitespace-nowrap">
                             <Check className="w-3 h-3" />
