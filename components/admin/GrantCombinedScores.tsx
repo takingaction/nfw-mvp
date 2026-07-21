@@ -591,6 +591,15 @@ export default function GrantCombinedScores({
                     )}
                   </div>
                   <div className="flex items-center justify-center">
+                    {grant.has_received_grant ? (
+                      <span className="inline-block px-2 py-1 text-xs font-bold rounded bg-nfw-aubergine/20 text-nfw-aubergine border border-nfw-aubergine/30">
+                        Yes
+                      </span>
+                    ) : (
+                      <span className="text-nfw-blackberry/30 text-xs">—</span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-center">
                     {grant.needs_discussion || grant.second_needs_discussion ? (
                       <div className="flex items-center gap-1 text-yellow-600">
                         <MessageSquare className="w-4 h-4" />
@@ -598,15 +607,6 @@ export default function GrantCombinedScores({
                           {grant.needs_discussion && grant.second_needs_discussion ? "Both" : "Flagged"}
                         </span>
                       </div>
-                    ) : (
-                      <span className="text-nfw-blackberry/30 text-xs">—</span>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-center">
-                    {grant.has_received_grant ? (
-                      <span className="inline-block px-2 py-1 text-xs font-bold rounded bg-nfw-aubergine/20 text-nfw-aubergine border border-nfw-aubergine/30">
-                        Yes
-                      </span>
                     ) : (
                       <span className="text-nfw-blackberry/30 text-xs">—</span>
                     )}

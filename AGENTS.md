@@ -8867,3 +8867,16 @@ Updated combined scores route to handle Supabase's array return for FK joins.
 - Combined scores API: Pass through profiles object correctly so UI can access `grant.profiles?.stripe_connect_account_id`
 
 **Commit:** `49460e2`
+
+### Additional Fix (2026-07-21): isBankConnected and Send Money Button Logic
+
+**Problem:** 
+- "Send Money" button was disabled even when account was connected
+- New users with no previous grants had `grant.stripe_connect_account_id = NULL` but `profile.stripe_connect_account_id = valid`
+
+**Fix Applied:**
+- `isBankConnected`: Now checks both `grant.stripe_connect_account_id` AND `grant.profiles?.stripe_connect_account_id`
+- `getSendMoneyButtonState`: Same dual check before disabling button
+- Payment column: Same dual check for "Connected" vs "No Account" display
+
+**Commit:** `b99ec4b`
