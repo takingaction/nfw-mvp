@@ -8780,3 +8780,36 @@ Updated all 3 scoring API routes to use manual document joins instead of FK join
 | `app/api/admin/grants/[id]/scores/first/route.ts` | Removed FK join, added manual document fetch |
 | `app/api/admin/grants/[id]/scores/second/route.ts` | Removed FK join, added manual document fetch |
 | `app/api/admin/grants/[id]/scores/combined/route.ts` | Removed FK join, added manual document fetch |
+
+---
+
+## Session 2026-07-21 (Afternoon): Fix Auto-Setting rachel_complete
+
+### Problem
+
+`rachel_complete` was being set to `true` automatically during score auto-save, instead of only when the "Mark Review Complete" button was clicked. This caused new cycles to appear as already complete when they weren't.
+
+### Root Cause
+
+The POST handler in `scores/first/route.ts` had this code:
+```typescript
+if (is_complete) {
+  await supabaseAdmin
+    .from("grants")
+    .update({ rachel_complete: true })
+    .eq("id", grantId);
+}
+```
+
+When all scores were filled, `is_complete` became true and the auto-save set `rachel_complete = true` for each grant.
+
+### Fix
+
+Removed the auto-setting of `rachel_complete` from both first and second review POST handlers. The `rachel_complete`/`michelle_complete` flags should ONLY be set when the finalize button is clicked (via the `/scoring/complete` and `/scoring/second-complete` endpoints).
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/grants/[id]/scores/first/route.ts` | Removed auto-setting of rachel_complete in POST handler |
+| `app/api/admin/grants/[id]/scores/second/route.ts` | Removed auto-setting of michelle_complete in POST handler |
