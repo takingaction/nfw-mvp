@@ -287,7 +287,7 @@ export default function GrantCombinedScores({
     // No account or not connected - disable
     if (status === "no_account" || status === "not_connected") return "disabled";
     // Restricted means payments paused - disable
-    if (status === "flagged") return "disabled";
+    if (status === "restricted") return "disabled";
     // Connected - allow sending
     return "active";
   };
