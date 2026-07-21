@@ -8813,3 +8813,33 @@ Removed the auto-setting of `rachel_complete` from both first and second review 
 |------|--------|
 | `app/api/admin/grants/[id]/scores/first/route.ts` | Removed auto-setting of rachel_complete in POST handler |
 | `app/api/admin/grants/[id]/scores/second/route.ts` | Removed auto-setting of michelle_complete in POST handler |
+
+---
+
+## Session 2026-07-21 (Evening): Fix Stripe Connect Status Not Showing on Combined Scores
+
+### Problem
+
+Stripe Connect account status showed as "Not Connected" on combined scores page even when members had connected their accounts.
+
+### Root Cause
+
+Supabase returns `profiles` as an **array** when using FK join syntax (`profiles:user_id (...)`), but the code treated it as a single object:
+
+```typescript
+// Wrong - profiles is an array from FK join
+stripe_onboarding_completed: (g.profiles as any)?.stripe_onboarding_completed ?? false,
+
+// Correct - handle array
+stripe_onboarding_completed: (Array.isArray(g.profiles) ? g.profiles[0] : g.profiles)?.stripe_onboarding_completed ?? false,
+```
+
+### Fix
+
+Updated combined scores route to handle Supabase's array return for FK joins.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/grants/[id]/scores/combined/route.ts` | Handle profiles as array from FK join |
