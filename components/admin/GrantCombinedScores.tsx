@@ -607,7 +607,7 @@ export default function GrantCombinedScores({
                   </div>
                   {alreadyFinalized && (
                     <div className="flex items-center justify-center">
-                      {grant.stripe_connect_account_id ? (
+                      {grant.profiles?.stripe_connect_account_id ? (
                         isStripeConnected ? (
                           <span className="inline-flex items-center gap-1 px-1 py-0.5 text-xs font-bold rounded bg-green-100 text-green-700 border border-green-200 whitespace-nowrap">
                             <Check className="w-3 h-3" />

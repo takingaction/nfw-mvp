@@ -40,7 +40,7 @@ export async function POST(
         user_id,
         status,
         stripe_connect_account_id,
-        profiles:user_id (id, stripe_onboarding_completed)
+        profiles:user_id (id, stripe_onboarding_completed, stripe_connect_account_id)
       `)
       .eq("cycle_id", cycleId)
       .eq("status", "approved");
@@ -63,15 +63,19 @@ export async function POST(
     let notConnectedCount = 0;
 
     for (const grant of grants || []) {
-      // Check if grant has stripe account
-      if (!grant.stripe_connect_account_id) {
+      // Use grant's stripe_connect_account_id, or fall back to profile's
+      const profile = Array.isArray(grant.profiles) ? grant.profiles[0] : grant.profiles;
+      const stripeAccountId = grant.stripe_connect_account_id || profile?.stripe_connect_account_id;
+      
+      // Check if user has stripe account (either on grant or profile)
+      if (!stripeAccountId) {
         results.push({
           grantId: grant.id,
           connected: false,
           details_submitted: false,
           charges_enabled: false,
           payouts_enabled: false,
-          stripe_onboarding_completed: false,
+          stripe_onboarding_completed: !!profile?.stripe_onboarding_completed,
         });
         notConnectedCount++;
         continue;
@@ -79,7 +83,7 @@ export async function POST(
 
       try {
         // Call Stripe to get actual account status
-        const account = await stripe.accounts.retrieve(grant.stripe_connect_account_id);
+        const account = await stripe.accounts.retrieve(stripeAccountId);
 
         const isConnected = !!(account.details_submitted && account.charges_enabled && account.payouts_enabled);
 
