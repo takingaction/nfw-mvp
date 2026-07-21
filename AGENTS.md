@@ -8587,3 +8587,138 @@ AND claim_month IS NULL
 AND claimed_at >= '2026-07-01'
 AND claimed_at < '2026-08-01';
 ```
+
+---
+
+## Session 2026-07-20: Incomplete Member Reminder Cron
+
+### Overview
+
+Created a cron job that automatically sends reengagement emails to members who joined 2+ hours ago and are still incomplete (haven't completed their profile signup).
+
+### Database
+
+**Migration 122:** `supabase/migrations/122_index_for_incomplete_reminder.sql`
+- Creates index `idx_profiles_incomplete_reminder` on `profiles(joined_at, incomplete_email_sent_at)` for efficient queries
+- Index is a partial index (WHERE `incomplete_email_sent_at IS NULL`) to only index members who haven't received the email
+
+### API Routes
+
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| `/api/cron` | Simple test endpoint returning `{ ok: true }` | Bearer token |
+| `/api/cron/test-incomplete-reminder` | Test reminder emails manually | Bearer token |
+| `/api/cron/incomplete-member-reminder` | Production reminder (hourly) | Bearer token |
+
+### Cron Configuration
+
+**File:** `vercel.json`
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/incomplete-member-reminder",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
+```
+
+**Schedule:** Hourly at minute 0 (every hour)
+
+### Security
+
+All cron endpoints require `CRON_SECRET` Bearer token authorization:
+```typescript
+const authHeader = request.headers.get("Authorization");
+const cronSecret = process.env.CRON_SECRET;
+
+if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+}
+```
+
+**Setup Required:**
+1. Add `CRON_SECRET` environment variable in Vercel project settings
+2. Generate a secure random string for the value
+3. Enable cron jobs in Vercel Dashboard → Project Settings → Cron Jobs
+
+### Eligibility Criteria
+
+A member receives the reminder email if ALL of:
+- `incomplete_email_sent_at IS NULL` (hasn't received email yet)
+- Joined 2+ hours ago (`joined_at < NOW() - INTERVAL '2 hours'`)
+- Profile is incomplete OR (free member not approved AND hasn't submitted contact form)
+
+### Email Template
+
+Uses `incomplete-member-reengagement` template (slug) via `sendIncompleteMemberEmail()`:
+- Template must be active (`is_active = true`)
+- Template must have published content (`full_email_html` with `status = 'published'`)
+- If template is inactive or has no content, cron skips silently
+
+### Batch Processing
+
+| Setting | Value |
+|---------|-------|
+| Batch size | 50 members per run |
+| Delay between sends | 200ms |
+| Max duration | 300 seconds (5 minutes) |
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `app/api/cron/route.ts` | Simple test endpoint |
+| `app/api/cron/test-incomplete-reminder/route.ts` | Test endpoint with full logic |
+| `app/api/cron/incomplete-member-reminder/route.ts` | Production cron endpoint |
+| `supabase/migrations/122_index_for_incomplete_reminder.sql` | Database index |
+| `vercel.json` | Vercel cron configuration |
+
+### Testing
+
+**Local testing:**
+```bash
+curl -X POST http://localhost:3000/api/cron/test-incomplete-reminder
+```
+
+**Remote testing (after adding CRON_SECRET):**
+```bash
+curl -X POST https://nationalfundforwomen.org/api/cron/test-incomplete-reminder \
+  -H "Authorization: Bearer YOUR_CRON_SECRET"
+```
+
+**Response codes:**
+| Status | Meaning |
+|--------|---------|
+| 200 + "inactive" | Template is inactive, skipped |
+| 200 + "No published content" | Template not published, skipped |
+| 200 + "No eligible members found" | Nothing to send |
+| 200 + "Sent X emails" | Success |
+| 401 | Unauthorized (missing/invalid CRON_SECRET) |
+
+### Vercel Dashboard Setup
+
+1. Go to **Project Settings → Environment Variables**
+2. Add `CRON_SECRET` with a secure random value
+3. Go to **Project Settings → Cron Jobs**
+4. Enable `incomplete-member-reminder`
+5. Deploy is automatic after pushing to GitHub
+
+### Incomplete Member Email
+
+**Slug:** `incomplete-member-reengagement`
+**Purpose:** Re-engage members who started signup but didn't complete
+**When sent:** 2 hours after joining if still incomplete
+**Template must be:**
+- Active (`is_active = true`)
+- Published with builder content (`full_email_html` with `status = 'published'`)
+
+### Related Files
+
+| File | Purpose |
+|------|---------|
+| `app/api/admin/bulk/incomplete-members/route.ts` | Manual bulk send API (admin page) |
+| `app/admin/incomplete-members/AdminIncompleteMembersClient.tsx` | Admin UI for manual sends |
+| `lib/email.ts` | `sendIncompleteMemberEmail()` function |
+| `lib/email-blocks/publish.ts` | `getPreRenderedHtmlAdmin()` for template content |
