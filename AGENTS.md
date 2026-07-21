@@ -8908,3 +8908,27 @@ Updated combined scores route to handle Supabase's array return for FK joins.
 - `not_connected` only when `details_submitted=false`
 
 **Commit:** `fd2a9c0`
+
+## Session 2026-07-21 (Late): Incomplete Members Admin Page Improvements
+
+### Changes Made
+
+**`app/admin/incomplete-members/AdminIncompleteMembersClient.tsx`:**
+
+1. **Table column widths fixed** - Added `table-fixed` layout, `colgroup` with explicit widths to prevent "Send Email" button wrapping
+   - Name: 18%, Email: 28%, Joined: 13%, Membership: 12%, Email Status: 20%, Actions: 9%
+   - Added `truncate` class to Name and Email columns
+   - Added `whitespace-nowrap` to Actions column
+
+2. **Filter buttons added** - Added All/Sent/Pending filter buttons in the action bar:
+   - All (total) - aubergine when active
+   - Sent (emailsSent) - green when active  
+   - Pending (emailsPending) - wisteria when active
+
+3. **Sorting by newest first** - Members now sorted by `joined_at` descending (newest first)
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/incomplete-members/AdminIncompleteMembersClient.tsx` | Added filter buttons, sorting, fixed table column widths |

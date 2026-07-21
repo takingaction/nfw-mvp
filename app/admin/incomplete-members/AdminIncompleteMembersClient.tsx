@@ -27,6 +27,7 @@ export default function AdminIncompleteMembersClient() {
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number; message: string } | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState("");
+  const [emailFilter, setEmailFilter] = useState<"all" | "sent" | "pending">("all");
 
   const fetchMembers = useCallback(async () => {
     try {
@@ -126,6 +127,14 @@ export default function AdminIncompleteMembersClient() {
     });
   };
 
+  const filteredMembers = members
+    .filter((m) => {
+      if (emailFilter === "sent") return m.incomplete_email_sent_at !== null;
+      if (emailFilter === "pending") return m.incomplete_email_sent_at === null;
+      return true;
+    })
+    .sort((a, b) => new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime());
+
   if (loading) {
     return (
       <div className="min-h-screen bg-nfw-dove flex items-center justify-center">
@@ -185,14 +194,49 @@ export default function AdminIncompleteMembersClient() {
 
         {/* Action Bar */}
         <div className="bg-white rounded-lg p-4 mb-6 flex items-center justify-between border border-nfw-aubergine/20">
-          <div className="font-ui text-nfw-blackberry">
-            {stats.emailsPending > 0 ? (
-              <span>
-                <strong>{stats.emailsPending}</strong> members waiting for reengagement email
-              </span>
-            ) : (
-              <span className="text-green-600">All incomplete members have received emails</span>
-            )}
+          <div className="flex items-center gap-4">
+            <div className="font-ui text-nfw-blackberry">
+              {stats.emailsPending > 0 ? (
+                <span>
+                  <strong>{stats.emailsPending}</strong> members waiting for reengagement email
+                </span>
+              ) : (
+                <span className="text-green-600">All incomplete members have received emails</span>
+              )}
+            </div>
+            {/* Filter Buttons */}
+            <div className="flex items-center gap-2 ml-4">
+              <button
+                onClick={() => setEmailFilter("all")}
+                className={`px-3 py-1.5 text-xs font-ui rounded-full transition-colors ${
+                  emailFilter === "all"
+                    ? "bg-nfw-aubergine text-white"
+                    : "bg-gray-100 text-nfw-blackberry hover:bg-gray-200"
+                }`}
+              >
+                All ({stats.total})
+              </button>
+              <button
+                onClick={() => setEmailFilter("sent")}
+                className={`px-3 py-1.5 text-xs font-ui rounded-full transition-colors ${
+                  emailFilter === "sent"
+                    ? "bg-green-600 text-white"
+                    : "bg-gray-100 text-nfw-blackberry hover:bg-gray-200"
+                }`}
+              >
+                Sent ({stats.emailsSent})
+              </button>
+              <button
+                onClick={() => setEmailFilter("pending")}
+                className={`px-3 py-1.5 text-xs font-ui rounded-full transition-colors ${
+                  emailFilter === "pending"
+                    ? "bg-nfw-wisteria text-white"
+                    : "bg-gray-100 text-nfw-blackberry hover:bg-gray-200"
+                }`}
+              >
+                Pending ({stats.emailsPending})
+              </button>
+            </div>
           </div>
           <button
             onClick={handleSendAll}
@@ -236,19 +280,27 @@ export default function AdminIncompleteMembersClient() {
         )}
 
         {/* Members Table */}
-        {members.length === 0 ? (
+        {filteredMembers.length === 0 ? (
           <div className="bg-white rounded-lg p-12 text-center border border-nfw-aubergine/20">
             <p className="text-nfw-aubergine font-ui">No incomplete members found.</p>
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow overflow-hidden border border-nfw-aubergine/20">
-            <table className="w-full">
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col className="w-[18%]" />
+                <col className="w-[28%]" />
+                <col className="w-[13%]" />
+                <col className="w-[12%]" />
+                <col className="w-[20%]" />
+                <col className="w-[9%]" />
+              </colgroup>
               <thead>
                 <tr className="bg-nfw-aubergine/10">
-                  <th className="px-4 py-3 text-left text-sm font-ui font-semibold text-nfw-blackberry">
+                  <th className="px-4 py-3 text-left text-sm font-ui font-semibold text-nfw-blackberry truncate">
                     Name
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-ui font-semibold text-nfw-blackberry">
+                  <th className="px-4 py-3 text-left text-sm font-ui font-semibold text-nfw-blackberry truncate">
                     Email
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-ui font-semibold text-nfw-blackberry">
@@ -260,21 +312,21 @@ export default function AdminIncompleteMembersClient() {
                   <th className="px-4 py-3 text-left text-sm font-ui font-semibold text-nfw-blackberry">
                     Email Status
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-ui font-semibold text-nfw-blackberry">
+                  <th className="px-4 py-3 text-left text-sm font-ui font-semibold text-nfw-blackberry whitespace-nowrap">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {members.map((member) => (
+                {filteredMembers.map((member) => (
                   <tr
                     key={member.id}
                     className="hover:bg-gray-50 transition-colors"
                   >
-                    <td className="px-4 py-4 text-nfw-blackberry font-ui text-sm">
+                    <td className="px-4 py-4 text-nfw-blackberry font-ui text-sm truncate">
                       {member.full_name || "—"}
                     </td>
-                    <td className="px-4 py-4 text-nfw-aubergine font-ui text-sm">
+                    <td className="px-4 py-4 text-nfw-aubergine font-ui text-sm truncate">
                       {member.email}
                     </td>
                     <td className="px-4 py-4 text-nfw-aubergine font-ui text-sm">
@@ -300,7 +352,7 @@ export default function AdminIncompleteMembersClient() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-4 whitespace-nowrap">
                       {!member.incomplete_email_sent_at && (
                         <button
                           onClick={() => handleSendSingle(member.id)}
