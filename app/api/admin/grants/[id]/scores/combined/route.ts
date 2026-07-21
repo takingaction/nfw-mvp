@@ -96,7 +96,7 @@ export async function GET(
         stripe_connect_account_id,
         funded_at,
         transfer_id,
-        profiles:user_id (full_name, email, city, state, stripe_onboarding_completed),
+        profiles:user_id (full_name, email, city, state, stripe_onboarding_completed, stripe_connect_account_id),
         grant_scores (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, total_score),
         amount_approved
       `)
@@ -199,6 +199,7 @@ export async function GET(
         funded_at: g.funded_at || null,
         transfer_id: g.transfer_id || null,
         stripe_onboarding_completed: (Array.isArray(g.profiles) ? g.profiles[0] : g.profiles)?.stripe_onboarding_completed ?? false,
+        profiles: (Array.isArray(g.profiles) ? g.profiles[0] : g.profiles) || null,
         amount_approved: g.amount_approved || null,
         applications_this_month: applicationsThisMonth[g.user_id] || 1,
         total_available_grants: totalAvailableGrants,

@@ -8860,4 +8860,6 @@ Updated combined scores route to handle Supabase's array return for FK joins.
 
 **Key Insight:** Stripe Connect account is stored on **profiles.stripe_connect_account_id**, NOT on grants.stripe_connect_account_id. The grants table can have a stripe_connect_account_id column but it may be NULL while the user's profile has the actual account ID.
 
-**Commit:** `c7dab2d`
+**Build Fix:** Added `stripe_connect_account_id?: string | null` to the `profiles` interface in the `Grant` type definition.
+
+**Commit:** `67d94d5`
