@@ -9,7 +9,16 @@ export const maxDuration = 300;
 const BATCH_DELAY_MS = 200;
 const BATCH_SIZE = 50;
 
-export async function POST() {
+export async function POST(request: Request) {
+  // Check CRON_SECRET authorization
+  const authHeader = request.headers.get("Authorization");
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    console.log("[incomplete-member-reminder] Unauthorized request");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const supabaseAdmin = getAdminClient();
 
   // Pre-flight check: Verify template is active and has published content
