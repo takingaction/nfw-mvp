@@ -21,6 +21,7 @@ interface StripeCheckResult {
   details_submitted: boolean;
   charges_enabled: boolean;
   payouts_enabled: boolean;
+  isRestricted?: boolean;
 }
 
 interface Grant {

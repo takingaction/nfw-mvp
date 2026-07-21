@@ -251,18 +251,25 @@ export default function GrantCombinedScores({
     }
   };
 
-  // Determine if a grant's bank is connected
-  const isBankConnected = (grant: Grant): boolean => {
-    // If we've checked Stripe and it's confirmed connected
-    if (stripeResults[grant.id]?.connected) {
-      return true;
+  // Determine bank account status
+  type BankStatus = "connected" | "flagged" | "not_connected" | "no_account";
+  
+  const getBankStatus = (grant: Grant): BankStatus => {
+    const accountId = grant.stripe_connect_account_id || grant.profiles?.stripe_connect_account_id;
+    
+    if (!accountId) return "no_account";
+    
+    // If we've checked Stripe
+    const result = stripeResults[grant.id];
+    if (result) {
+      if (!result.connected) return "not_connected";
+      // Account exists and is connected, but check if restricted
+      if (!result.charges_enabled || !result.payouts_enabled) return "flagged";
+      return "connected";
     }
-    // If account ID exists on grant or profile, assume connected
-    if (grant.stripe_connect_account_id || grant.profiles?.stripe_connect_account_id) {
-      return true;
-    }
-    // Fall back to stripe_onboarding_completed from profile
-    return grant.profiles?.stripe_onboarding_completed === true;
+    
+    // Never checked - assume connected if account exists
+    return "connected";
   };
 
   // Determine send money button state
@@ -270,9 +277,13 @@ export default function GrantCombinedScores({
     if (!alreadyFinalized) return "none";
     if (grant.decision !== "Approved") return "none";
     if (grant.funded_at) return "sent";
-    // Check if account ID exists on grant or profile
-    if (!grant.stripe_connect_account_id && !grant.profiles?.stripe_connect_account_id) return "disabled";
-    if (!isBankConnected(grant)) return "disabled";
+    
+    const status = getBankStatus(grant);
+    // No account or not connected - disable
+    if (status === "no_account" || status === "not_connected") return "disabled";
+    // Flagged means restricted - disable
+    if (status === "flagged") return "disabled";
+    // Connected - allow sending
     return "active";
   };
 
@@ -517,7 +528,7 @@ export default function GrantCombinedScores({
             const isSelected = selectedIds.has(grant.id);
             const isExpanded = expandedId === grant.id;
             const sendMoneyState = getSendMoneyButtonState(grant);
-            const isStripeConnected = isBankConnected(grant);
+            const bankStatus = getBankStatus(grant);
 
             return (
               <div key={grant.id}>
@@ -613,18 +624,24 @@ export default function GrantCombinedScores({
                   </div>
                   {alreadyFinalized && (
                     <div className="flex items-center justify-center">
-                      {grant.stripe_connect_account_id || grant.profiles?.stripe_connect_account_id ? (
-                        isStripeConnected ? (
-                          <span className="inline-flex items-center gap-1 px-1 py-0.5 text-xs font-bold rounded bg-green-100 text-green-700 border border-green-200 whitespace-nowrap">
-                            <Check className="w-3 h-3" />
-                            Connected
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-1 py-0.5 text-xs font-bold rounded bg-gray-100 text-gray-500 border border-gray-200 whitespace-nowrap">
-                            Not Connected
-                          </span>
-                        )
-                      ) : (
+                      {bankStatus === "connected" && (
+                        <span className="inline-flex items-center gap-1 px-1 py-0.5 text-xs font-bold rounded bg-green-100 text-green-700 border border-green-200 whitespace-nowrap">
+                          <Check className="w-3 h-3" />
+                          Connected
+                        </span>
+                      )}
+                      {bankStatus === "flagged" && (
+                        <span className="inline-flex items-center gap-1 px-1 py-0.5 text-xs font-bold rounded bg-yellow-100 text-yellow-700 border border-yellow-200 whitespace-nowrap" title="Account restricted - charges or payouts disabled">
+                          <AlertTriangle className="w-3 h-3" />
+                          Flagged
+                        </span>
+                      )}
+                      {bankStatus === "not_connected" && (
+                        <span className="inline-flex items-center gap-1 px-1 py-0.5 text-xs font-bold rounded bg-gray-100 text-gray-500 border border-gray-200 whitespace-nowrap">
+                          Not Connected
+                        </span>
+                      )}
+                      {bankStatus === "no_account" && (
                         <span className="inline-flex items-center gap-1 px-1 py-0.5 text-xs font-bold rounded bg-gray-100 text-gray-400 border border-gray-200 whitespace-nowrap">
                           No Account
                         </span>
