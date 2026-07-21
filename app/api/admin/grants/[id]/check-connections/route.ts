@@ -85,20 +85,12 @@ export async function POST(
 
       try {
         // Call Stripe to get actual account status
-        console.log(`[check-connections] Retrieving Stripe account: ${stripeAccountId}`);
         const account = await stripe.accounts.retrieve(stripeAccountId);
-        console.log(`[check-connections] Account retrieved:`, {
-          id: account.id,
-          details_submitted: account.details_submitted,
-          charges_enabled: account.charges_enabled,
-          payouts_enabled: account.payouts_enabled,
-        });
 
         // connected = details_submitted (they've started the Stripe onboarding)
         const connected = !!account.details_submitted;
         // isRestricted = charges or payouts are disabled
         const isRestricted = !account.charges_enabled || !account.payouts_enabled;
-        console.log(`[check-connections] connected=${connected}, isRestricted=${isRestricted}`);
 
         // Update profiles.stripe_onboarding_completed to match reality (only if fully connected)
         const profile = Array.isArray(grant.profiles) ? grant.profiles[0] : grant.profiles;
@@ -142,8 +134,6 @@ export async function POST(
         notConnectedCount++;
       }
     }
-
-    console.log(`[check-connections] Checked ${results.length} accounts for cycle ${cycleId}: ${connectedCount} connected, ${notConnectedCount} not connected`);
 
     return NextResponse.json({
       results,

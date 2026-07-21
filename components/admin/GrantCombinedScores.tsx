@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, AlertTriangle, Check, MessageSquare, ChevronDown, Eye, EyeOff, DollarSign, Receipt, User } from "lucide-react";
 
 interface Grant {
@@ -101,6 +101,11 @@ export default function GrantCombinedScores({
   const [limitAlertDetails, setLimitAlertDetails] = useState<{amount: number; totalFunds: number; totalPaid: number; remaining: number} | null>(null);
   const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
 
+  // Auto-check Stripe status on mount
+  useEffect(() => {
+    handleCheckStripeStatus();
+  }, []);
+
   const handleViewDocument = async (doc: any, grantId: string) => {
     setLoadingDocId(doc.id);
     try {
@@ -189,15 +194,12 @@ export default function GrantCombinedScores({
     setCheckingStatus(true);
     try {
       const results = await onCheckStripeStatus();
-      console.log("[stripe check] raw results:", JSON.stringify(results, null, 2));
       const resultsMap: Record<string, StripeCheckResult> = {};
       results.forEach((r) => {
-        console.log(`[stripe check] grant ${r.grantId}: connected=${r.connected}, isRestricted=${r.isRestricted}, charges=${r.charges_enabled}, payouts=${r.payouts_enabled}`);
         resultsMap[r.grantId] = r;
       });
       setStripeResults(resultsMap);
     } catch (err) {
-      console.error("Failed to check stripe status:", err);
       alert("Failed to check Stripe status");
     } finally {
       setCheckingStatus(false);
