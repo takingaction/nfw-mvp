@@ -262,9 +262,11 @@ export default function GrantCombinedScores({
     // If we've checked Stripe
     const result = stripeResults[grant.id];
     if (result) {
+      // not_connected: details_submitted is false (they haven't started)
       if (!result.connected) return "not_connected";
-      // Account exists and is connected, but check if restricted
-      if (!result.charges_enabled || !result.payouts_enabled) return "flagged";
+      // flagged: account exists but is restricted (charges or payouts disabled)
+      if (result.isRestricted) return "flagged";
+      // connected: details_submitted = true and not restricted
       return "connected";
     }
     

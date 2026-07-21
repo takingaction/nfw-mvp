@@ -8880,3 +8880,22 @@ Updated combined scores route to handle Supabase's array return for FK joins.
 - Payment column: Same dual check for "Connected" vs "No Account" display
 
 **Commit:** `b99ec4b`
+
+### Additional Fix (2026-07-21): Flagged Status for Restricted Stripe Accounts
+
+**Problem:** Restricted accounts (charges_enabled or payouts_enabled = false) were showing as "Connected" with an active Send Money button, but payments would fail.
+
+**Solution:** Added "Flagged" status to indicate restricted accounts:
+
+**New Bank Statuses:**
+- **Connected** (green): Account exists and is fully enabled
+- **Flagged** (yellow): Account exists but is restricted (charges or payouts disabled)
+- **Not Connected** (gray): No Stripe account found
+- **No Account** (gray): No Stripe account ID on grant or profile
+
+**Changes:**
+- Added `getBankStatus()` function returning `BankStatus` type
+- Updated Payment column UI to show appropriate badge based on status
+- Send Money button remains disabled for flagged accounts
+
+**Commit:** `04d8d1f`

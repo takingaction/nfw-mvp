@@ -75,6 +75,7 @@ export async function POST(
           details_submitted: false,
           charges_enabled: false,
           payouts_enabled: false,
+          isRestricted: false,
           stripe_onboarding_completed: !!profile?.stripe_onboarding_completed,
         });
         notConnectedCount++;
@@ -85,33 +86,39 @@ export async function POST(
         // Call Stripe to get actual account status
         const account = await stripe.accounts.retrieve(stripeAccountId);
 
-        const isConnected = !!(account.details_submitted && account.charges_enabled && account.payouts_enabled);
+        // connected = details_submitted (they've started the Stripe onboarding)
+        const connected = !!account.details_submitted;
+        // isRestricted = charges or payouts are disabled
+        const isRestricted = !account.charges_enabled || !account.payouts_enabled;
 
-        // Update profiles.stripe_onboarding_completed to match reality
+        // Update profiles.stripe_onboarding_completed to match reality (only if fully connected)
         const profile = Array.isArray(grant.profiles) ? grant.profiles[0] : grant.profiles;
         if (profile?.id) {
           await supabaseAdmin
             .from("profiles")
-            .update({ stripe_onboarding_completed: isConnected })
+            .update({ stripe_onboarding_completed: connected && !isRestricted })
             .eq("id", profile.id);
         }
 
         results.push({
           grantId: grant.id,
-          connected: isConnected,
+          connected,
           details_submitted: !!account.details_submitted,
           charges_enabled: !!account.charges_enabled,
           payouts_enabled: !!account.payouts_enabled,
-          stripe_onboarding_completed: isConnected,
+          isRestricted,
+          stripe_onboarding_completed: connected && !isRestricted,
         });
 
-        if (isConnected) {
-          connectedCount++;
-        } else {
+        if (!connected) {
           notConnectedCount++;
+        } else if (isRestricted) {
+          notConnectedCount++; // Count restricted as not ready
+        } else {
+          connectedCount++;
         }
       } catch (stripeError: any) {
-        console.error(`[check-connections] Stripe error for account ${grant.stripe_connect_account_id}:`, stripeError.message);
+        console.error(`[check-connections] Stripe error for account ${stripeAccountId}:`, stripeError.message);
 
         // If Stripe account not found or error, mark as not connected
         results.push({
@@ -120,6 +127,7 @@ export async function POST(
           details_submitted: false,
           charges_enabled: false,
           payouts_enabled: false,
+          isRestricted: false,
           stripe_onboarding_completed: false,
         });
         notConnectedCount++;
