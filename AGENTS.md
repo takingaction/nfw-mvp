@@ -8843,3 +8843,4 @@ Updated combined scores route to handle Supabase's array return for FK joins.
 | File | Change |
 |------|--------|
 | `app/api/admin/grants/[id]/scores/combined/route.ts` | Handle profiles as array from FK join |
+| `app/api/admin/grants/[id]/check-connections/route.ts` | Check connections for tentative approvals regardless of status |
