@@ -32,7 +32,7 @@ export async function POST(
         amount_approved,
         stripe_connect_account_id,
         cycle_id,
-        profiles:user_id (full_name),
+        profiles:user_id (full_name, stripe_connect_account_id),
         grant_cycles (cycle_name, total_funds)
       `)
       .eq("id", grantId)
@@ -50,23 +50,12 @@ export async function POST(
       );
     }
 
-    console.log(`[transfer] Grant details:`, {
-      grantId: grant.id,
-      userId: grant.user_id,
-      amount_approved: grant.amount_approved,
-      stripe_connect_account_id: grant.stripe_connect_account_id,
-      stripe_account_id_type: typeof grant.stripe_connect_account_id,
-      stripe_account_id_length: grant.stripe_connect_account_id?.length,
-      cycle_id: grant.cycle_id,
-    });
-
-    // Verify stripe_connect_account_id looks like a valid Stripe account ID
-    if (grant.stripe_connect_account_id && !grant.stripe_connect_account_id.startsWith('acct_')) {
-      console.warn(`[transfer] WARNING: stripe_connect_account_id does not start with 'acct_': ${grant.stripe_connect_account_id}`);
-    }
+    // Get profile and resolve stripe_connect_account_id (grant OR profile)
+    const profile = Array.isArray(grant.profiles) ? grant.profiles[0] : grant.profiles;
+    const stripeAccountId = grant.stripe_connect_account_id || profile?.stripe_connect_account_id;
 
     // Verify stripe_connect_account_id exists
-    if (!grant.stripe_connect_account_id) {
+    if (!stripeAccountId) {
       return NextResponse.json(
         { error: "No Stripe Connect account found for this grant" },
         { status: 400 }
@@ -108,12 +97,11 @@ export async function POST(
 
     // Create Stripe transfer
     const transferAmount = Math.round(grant.amount_approved * 100);
-    console.log(`[transfer] Creating transfer of ${transferAmount} cents ($${grant.amount_approved}) to account ${grant.stripe_connect_account_id}`);
 
     const transfer = await stripe.transfers.create({
       amount: transferAmount,
       currency: "usd",
-      destination: grant.stripe_connect_account_id,
+      destination: stripeAccountId,
       metadata: {
         grantId: grant.id,
         userId: grant.user_id,
@@ -138,7 +126,6 @@ export async function POST(
     console.log(`[transfer] Updated grant ${grant.id} to payment_sent`);
 
     // Send user confirmation email
-    const profile = Array.isArray(grant.profiles) ? grant.profiles[0] : grant.profiles;
     const cycleName = (grant.grant_cycles as any)?.cycle_name || "Grant";
     const amountStr = grant.amount_approved.toLocaleString();
 
