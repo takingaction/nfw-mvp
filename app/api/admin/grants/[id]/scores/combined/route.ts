@@ -198,7 +198,7 @@ export async function GET(
         stripe_connect_account_id: g.stripe_connect_account_id || null,
         funded_at: g.funded_at || null,
         transfer_id: g.transfer_id || null,
-        stripe_onboarding_completed: (g.profiles as any)?.stripe_onboarding_completed ?? false,
+        stripe_onboarding_completed: (Array.isArray(g.profiles) ? g.profiles[0] : g.profiles)?.stripe_onboarding_completed ?? false,
         amount_approved: g.amount_approved || null,
         applications_this_month: applicationsThisMonth[g.user_id] || 1,
         total_available_grants: totalAvailableGrants,
