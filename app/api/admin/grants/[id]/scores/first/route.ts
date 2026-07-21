@@ -206,13 +206,8 @@ export async function POST(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // If marking complete, also update grants.rachel_complete
-    if (is_complete) {
-      await supabaseAdmin
-        .from("grants")
-        .update({ rachel_complete: true })
-        .eq("id", grantId);
-    }
+    // NOTE: rachel_complete is ONLY set when the /scoring/complete endpoint is called
+    // NOT during individual score auto-save
 
     console.log("[scores/first POST] Success! Returning total_score:", total_score);
     return NextResponse.json({ success: true, total_score });
