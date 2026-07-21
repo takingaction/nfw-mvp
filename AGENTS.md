@@ -8862,4 +8862,8 @@ Updated combined scores route to handle Supabase's array return for FK joins.
 
 **Build Fix:** Added `stripe_connect_account_id?: string | null` to the `profiles` interface in the `Grant` type definition.
 
-**Commit:** `67d94d5`
+**Additional Fixes:**
+- Combined scores API: Added `stripe_connect_account_id` to profiles join select
+- Combined scores API: Pass through profiles object correctly so UI can access `grant.profiles?.stripe_connect_account_id`
+
+**Commit:** `49460e2`

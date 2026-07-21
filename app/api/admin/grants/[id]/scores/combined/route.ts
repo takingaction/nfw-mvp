@@ -181,6 +181,8 @@ export async function GET(
         decision = "Runner Up";
       }
 
+      const profile = Array.isArray(g.profiles) ? g.profiles[0] : g.profiles;
+
       return {
         ...g,
         first_score: firstScore || null,
@@ -195,11 +197,11 @@ export async function GET(
         is_tentatively_approved: cycle.grant_tentative_approvals?.some(
           (t: any) => t.grant_id === g.id && t.is_approved
         ) || false,
-        stripe_connect_account_id: g.stripe_connect_account_id || null,
+        stripe_connect_account_id: profile?.stripe_connect_account_id || g.stripe_connect_account_id || null,
         funded_at: g.funded_at || null,
         transfer_id: g.transfer_id || null,
-        stripe_onboarding_completed: (Array.isArray(g.profiles) ? g.profiles[0] : g.profiles)?.stripe_onboarding_completed ?? false,
-        profiles: (Array.isArray(g.profiles) ? g.profiles[0] : g.profiles) || null,
+        stripe_onboarding_completed: profile?.stripe_onboarding_completed ?? false,
+        profiles: profile || null,
         amount_approved: g.amount_approved || null,
         applications_this_month: applicationsThisMonth[g.user_id] || 1,
         total_available_grants: totalAvailableGrants,
