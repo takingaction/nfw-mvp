@@ -32,28 +32,7 @@ export async function POST(
       return NextResponse.json({ error: "Grant cycle not found" }, { status: 404 });
     }
 
-    // Get all tentatively approved grants for this cycle
-    const { data: tentativeApprovals, error: tentativeError } = await supabaseAdmin
-      .from("grant_tentative_approvals")
-      .select("grant_id, is_approved")
-      .eq("cycle_id", cycleId)
-      .eq("is_approved", true);
-
-    if (tentativeError) {
-      console.error("[check-connections] Error fetching tentative approvals:", tentativeError);
-      return NextResponse.json({ error: "Failed to fetch tentative approvals" }, { status: 500 });
-    }
-
-    if (!tentativeApprovals || tentativeApprovals.length === 0) {
-      return NextResponse.json({
-        results: [],
-        summary: { checked: 0, connected: 0, notConnected: 0 }
-      });
-    }
-
-    const approvedGrantIds = tentativeApprovals.map((t: any) => t.grant_id);
-
-    // Get grants with their profiles and stripe info
+    // Get all approved grants for this cycle
     const { data: grants, error: grantsError } = await supabaseAdmin
       .from("grants")
       .select(`
@@ -63,7 +42,8 @@ export async function POST(
         stripe_connect_account_id,
         profiles:user_id (id, stripe_onboarding_completed)
       `)
-      .in("id", approvedGrantIds);
+      .eq("cycle_id", cycleId)
+      .eq("status", "approved");
 
     if (grantsError) {
       console.error("[check-connections] Error fetching grants:", grantsError);
