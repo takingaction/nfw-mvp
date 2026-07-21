@@ -8740,3 +8740,43 @@ Cycle cards now show a 4px aubergine left border when `is_finalized === true`.
 | File | Change |
 |------|--------|
 | `components/admin/SortableCycleList.tsx` | Added aubergine left border styling for finalized cycles |
+
+---
+
+## Session 2026-07-21: Grant Scoring Documents Not Showing - Manual Join Fix
+
+### Problem
+
+Grant application documents were showing on `/grants/view/[id]` but NOT on the admin scoring pages (`/admin/grants/[id]/scoring/first`, `/admin/grants/[id]/scoring/second`, `/admin/grants/[id]/scoring/combined`).
+
+### Root Cause
+
+The scoring API routes were using foreign key (FK) joins to fetch `grant_documents`:
+```typescript
+grant_documents (id, file_name, file_size, uploaded_at, document_url)
+```
+
+But FK joins can fail silently in Supabase/PostgREST. The view page used a manual join which worked correctly:
+```typescript
+const { data: documents } = await supabaseAdmin
+  .from("grant_documents")
+  .select("*")
+  .eq("grant_id", id)
+```
+
+### Solution
+
+Updated all 3 scoring API routes to use manual document joins instead of FK joins:
+
+1. Remove `grant_documents (...)` from the grants select
+2. Query `grant_documents` separately using `.in("grant_id", grantIds)`
+3. Build a `documentsByGrant` map
+4. Attach `documents: documentsByGrant[g.id] || []` to each grant
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/grants/[id]/scores/first/route.ts` | Removed FK join, added manual document fetch |
+| `app/api/admin/grants/[id]/scores/second/route.ts` | Removed FK join, added manual document fetch |
+| `app/api/admin/grants/[id]/scores/combined/route.ts` | Removed FK join, added manual document fetch |
