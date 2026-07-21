@@ -255,7 +255,7 @@ export default function GrantCombinedScores({
   };
 
   // Determine bank account status
-  type BankStatus = "connected" | "flagged" | "not_connected" | "no_account";
+  type BankStatus = "connected" | "restricted" | "not_connected" | "no_account";
   
   const getBankStatus = (grant: Grant): BankStatus => {
     const accountId = grant.stripe_connect_account_id || grant.profiles?.stripe_connect_account_id;
@@ -265,8 +265,8 @@ export default function GrantCombinedScores({
     // If we've checked Stripe
     const result = stripeResults[grant.id];
     if (result) {
-      // flagged: account exists but is restricted (charges or payouts disabled)
-      if (result.isRestricted) return "flagged";
+      // restricted: account exists but is restricted (charges or payouts disabled)
+      if (result.isRestricted) return "restricted";
       // not_connected: details_submitted is false (they haven't started)
       if (!result.connected) return "not_connected";
       // connected: details_submitted = true and not restricted
@@ -286,7 +286,7 @@ export default function GrantCombinedScores({
     const status = getBankStatus(grant);
     // No account or not connected - disable
     if (status === "no_account" || status === "not_connected") return "disabled";
-    // Flagged means restricted - disable
+    // Restricted means payments paused - disable
     if (status === "flagged") return "disabled";
     // Connected - allow sending
     return "active";
@@ -635,10 +635,10 @@ export default function GrantCombinedScores({
                           Connected
                         </span>
                       )}
-                      {bankStatus === "flagged" && (
+                      {bankStatus === "restricted" && (
                         <span className="inline-flex items-center gap-1 px-1 py-0.5 text-xs font-bold rounded bg-yellow-100 text-yellow-700 border border-yellow-200 whitespace-nowrap" title="Account restricted - charges or payouts disabled">
                           <AlertTriangle className="w-3 h-3" />
-                          Flagged
+                          Restricted
                         </span>
                       )}
                       {bankStatus === "not_connected" && (
