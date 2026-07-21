@@ -79,7 +79,7 @@ export async function GET(
       }, { status: 400 });
     }
 
-    // Get all grants with all scores
+    // Get all grants with all scores (no FK join for documents)
     const { data: grants } = await supabaseAdmin
       .from("grants")
       .select(`
@@ -98,11 +98,26 @@ export async function GET(
         transfer_id,
         profiles:user_id (full_name, email, city, state, stripe_onboarding_completed),
         grant_scores (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, total_score),
-        amount_approved,
-        grant_documents (id, file_name, file_size, uploaded_at, document_url)
+        amount_approved
       `)
       .eq("cycle_id", cycleId)
       .order("submitted_at", { ascending: false });
+
+    // Fetch documents manually for these grants
+    const grantIds = grants?.map((g) => g.id) || [];
+    let documentsByGrant: Record<string, any[]> = {};
+    if (grantIds.length > 0) {
+      const { data: allDocs } = await supabaseAdmin
+        .from("grant_documents")
+        .select("id, file_name, file_size, uploaded_at, document_url, grant_id")
+        .in("grant_id", grantIds);
+      
+      documentsByGrant = (allDocs || []).reduce((acc: Record<string, any[]>, doc: any) => {
+        if (!acc[doc.grant_id]) acc[doc.grant_id] = [];
+        acc[doc.grant_id].push(doc);
+        return acc;
+      }, {});
+    }
 
     // Calculate applications per user for grants ending in the same month
     let applicationsThisMonth: Record<string, number> = {};
@@ -187,6 +202,7 @@ export async function GET(
         amount_approved: g.amount_approved || null,
         applications_this_month: applicationsThisMonth[g.user_id] || 1,
         total_available_grants: totalAvailableGrants,
+        documents: documentsByGrant[g.id] || [],
       };
     }) || [];
 

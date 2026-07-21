@@ -70,7 +70,7 @@ export async function GET(
       }
     }
 
-    // Get all grants with second reviewer scores AND first reviewer scores (for filtering)
+    // Get all grants with second reviewer scores AND first reviewer scores (for filtering) (no FK join for documents)
     const { data: grants } = await supabaseAdmin
       .from("grants")
       .select(`
@@ -86,11 +86,26 @@ export async function GET(
         submitted_at,
         michelle_complete,
         profiles:user_id (full_name, email, city, state),
-        grant_scores (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, is_complete, total_score),
-        grant_documents (id, file_name, file_size, uploaded_at, document_url)
+        grant_scores (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, is_complete, total_score)
       `)
       .eq("cycle_id", cycleId)
       .order("submitted_at", { ascending: false });
+
+    // Fetch documents manually for these grants
+    const grantIds = grants?.map((g) => g.id) || [];
+    let documentsByGrant: Record<string, any[]> = {};
+    if (grantIds.length > 0) {
+      const { data: allDocs } = await supabaseAdmin
+        .from("grant_documents")
+        .select("id, file_name, file_size, uploaded_at, document_url, grant_id")
+        .in("grant_id", grantIds);
+      
+      documentsByGrant = (allDocs || []).reduce((acc: Record<string, any[]>, doc: any) => {
+        if (!acc[doc.grant_id]) acc[doc.grant_id] = [];
+        acc[doc.grant_id].push(doc);
+        return acc;
+      }, {});
+    }
 
     // Separate first and second reviewer scores, then filter
     const grantsWithSeparatedScores = grants?.map((g) => {
@@ -100,6 +115,7 @@ export async function GET(
         ...g,
         first_score: firstScore || null,
         grant_scores: secondScores,
+        documents: documentsByGrant[g.id] || [],
       };
     });
 

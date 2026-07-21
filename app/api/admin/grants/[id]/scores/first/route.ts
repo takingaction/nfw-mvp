@@ -77,7 +77,7 @@ export async function GET(
       }
     }
 
-    // Get all grants with first reviewer scores
+    // Get all grants with first reviewer scores (no FK join for documents)
     const { data: grants, error: grantsError } = await supabaseAdmin
       .from("grants")
       .select(`
@@ -93,20 +93,35 @@ export async function GET(
         submitted_at,
         rachel_complete,
         profiles:user_id (full_name, email, city, state),
-        grant_scores!left (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, is_complete, total_score),
-        grant_documents (id, file_name, file_size, uploaded_at, document_url)
+        grant_scores!left (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, is_complete, total_score)
       `)
       .eq("cycle_id", cycleId)
       .order("submitted_at", { ascending: false });
 
     console.log("[scores/first GET] grantsError:", grantsError);
     console.log("[scores/first GET] grants count:", grants?.length);
-    console.log("[scores/first GET] sample grant scores:", grants?.[0]?.grant_scores);
 
-    // Filter to only first reviewer scores and add applications_this_month
+    // Fetch documents manually for these grants
+    const grantIds = grants?.map((g) => g.id) || [];
+    let documentsByGrant: Record<string, any[]> = {};
+    if (grantIds.length > 0) {
+      const { data: allDocs } = await supabaseAdmin
+        .from("grant_documents")
+        .select("id, file_name, file_size, uploaded_at, document_url, grant_id")
+        .in("grant_id", grantIds);
+      
+      documentsByGrant = (allDocs || []).reduce((acc: Record<string, any[]>, doc: any) => {
+        if (!acc[doc.grant_id]) acc[doc.grant_id] = [];
+        acc[doc.grant_id].push(doc);
+        return acc;
+      }, {});
+    }
+
+    // Filter to only first reviewer scores and add applications_this_month and documents
     const grantsWithFirstScores = grants?.map((g) => ({
       ...g,
       grant_scores: g.grant_scores?.filter((s: any) => s.reviewer_name === "first") || [],
+      documents: documentsByGrant[g.id] || [],
       applications_this_month: applicationsThisMonth[g.user_id] || 1,
       total_available_grants: totalAvailableGrants,
     }));
