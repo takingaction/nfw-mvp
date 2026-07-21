@@ -9,7 +9,7 @@ export const maxDuration = 300;
 const BATCH_DELAY_MS = 200;
 const BATCH_SIZE = 50;
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   // Check CRON_SECRET authorization
   const authHeader = request.headers.get("Authorization");
   const cronSecret = process.env.CRON_SECRET;
