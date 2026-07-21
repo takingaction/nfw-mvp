@@ -63,8 +63,7 @@ export async function POST(
         stripe_connect_account_id,
         profiles:user_id (id, stripe_onboarding_completed)
       `)
-      .in("id", approvedGrantIds)
-      .eq("status", "approved"); // Only check finalized approved grants
+      .in("id", approvedGrantIds);
 
     if (grantsError) {
       console.error("[check-connections] Error fetching grants:", grantsError);
