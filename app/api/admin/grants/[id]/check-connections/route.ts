@@ -57,6 +57,7 @@ export async function POST(
       charges_enabled: boolean;
       payouts_enabled: boolean;
       stripe_onboarding_completed: boolean;
+      isRestricted: boolean;
     }> = [];
 
     let connectedCount = 0;

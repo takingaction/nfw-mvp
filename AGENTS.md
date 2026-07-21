@@ -8898,4 +8898,13 @@ Updated combined scores route to handle Supabase's array return for FK joins.
 - Updated Payment column UI to show appropriate badge based on status
 - Send Money button remains disabled for flagged accounts
 
-**Commit:** `04d8d1f`
+**Additional Fix:** Distinguish connected vs restricted accounts
+
+**Problem:** Account with `details_submitted=true` but `charges_enabled=false` was showing as "Not Connected" instead of "Flagged".
+
+**Solution:** 
+- `connected` now means `details_submitted` (they've started Stripe onboarding)
+- `isRestricted` means `charges_enabled=false OR payouts_enabled=false`
+- `not_connected` only when `details_submitted=false`
+
+**Commit:** `fd2a9c0`
