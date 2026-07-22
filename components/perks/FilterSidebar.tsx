@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, X, SlidersHorizontal, Plane } from "lucide-react";
+import { ChevronDown, ChevronRight, X, SlidersHorizontal, Plane, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -206,9 +206,7 @@ export default function FilterSidebar({
                   : "bg-nfw-dove text-nfw-blackberry hover:bg-nfw-stone/20"
               }`}
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M19 11H5M19 11C20.1046 11 21 11.8954 21 13V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V13C3 11.8954 3.89543 11 5 11M19 11V9C19 8.44772 18.5523 8 18 8M5 11V9C5 8.44772 5.44772 8 6 8M5 11V13M5 11V19M19 11V19" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <ShoppingBag className="w-5 h-5" />
               <div className="text-left">
                 <div className="font-ui font-medium text-sm">{collection.name}</div>
                 <div className={`text-xs ${selectedCollectionId === collection.id ? "text-nfw-lilac" : "text-nfw-blackberry/50"}`}>

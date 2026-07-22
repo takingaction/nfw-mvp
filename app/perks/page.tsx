@@ -428,13 +428,8 @@ export default function PerksPage() {
     const collection = collections.find((c) => c.id === collectionId);
     if (!collection) return;
 
-    console.log("[fetchCollectionPerks] Collection:", collection);
-
     const accessPerkItems = collection.items.filter((item: any) => item.item_type === "access_perk");
     const nfwPerkItems = collection.items.filter((item: any) => item.item_type === "nfw_perk");
-
-    console.log("[fetchCollectionPerks] Access perk items:", accessPerkItems);
-    console.log("[fetchCollectionPerks] NFW perk items:", nfwPerkItems);
 
     const accessPerksPromises = accessPerkItems.map(async (item: any) => {
       try {
@@ -462,7 +457,6 @@ export default function PerksPage() {
         const response = await fetch(`/api/nfw-perks/slug/${item.item_identifier}${user ? `?userId=${user.id}` : ""}`);
         if (response.ok) {
           const data = await response.json();
-          // API returns perk directly, not as { perk: ... }
           if (data && data.id) {
             return { ...data, perkSource: "nfw" };
           }
@@ -479,15 +473,24 @@ export default function PerksPage() {
         Promise.all(nfwPerksPromises),
       ]);
 
-      console.log("[fetchCollectionPerks] Access perks results:", accessPerks);
-      console.log("[fetchCollectionPerks] NFW perks results:", nfwPerksResults);
-
       const combinedPerks = [
         ...accessPerks.filter(Boolean),
         ...nfwPerksResults.filter(Boolean),
-      ];
-
-      console.log("[fetchCollectionPerks] Combined perks:", combinedPerks);
+      ].sort((a, b) => {
+        // Get the original display_order from the items array
+        // item_identifier is stored as string, but offer_key/slug may be number or string
+        const aItem = collection.items.find((item: any) =>
+          a.perkSource === "access"
+            ? String(item.item_identifier) === String(a.offer_key)
+            : String(item.item_identifier) === String(a.slug)
+        );
+        const bItem = collection.items.find((item: any) =>
+          b.perkSource === "access"
+            ? String(item.item_identifier) === String(b.offer_key)
+            : String(item.item_identifier) === String(b.slug)
+        );
+        return (aItem?.display_order ?? 0) - (bItem?.display_order ?? 0);
+      });
 
       setCollectionPerks(combinedPerks);
     } catch (err) {
@@ -1055,8 +1058,18 @@ export default function PerksPage() {
                 {selectedCollectionId && (
                   <>
                     <div className="mb-4 flex items-center justify-between">
+                      <div>
+                        <h2 className="font-serif text-xl font-bold text-nfw-blackberry">
+                          {collections.find((c) => c.id === selectedCollectionId)?.name}
+                        </h2>
+                        {collections.find((c) => c.id === selectedCollectionId)?.description && (
+                          <p className="font-serif text-sm text-nfw-blackberry/60 mt-1">
+                            {collections.find((c) => c.id === selectedCollectionId)?.description}
+                          </p>
+                        )}
+                      </div>
                       <p className="font-serif text-sm text-nfw-blackberry/50">
-                        {collectionPerks.length} offer{collectionPerks.length !== 1 ? "s" : ""} in this collection
+                        {collectionPerks.length} offer{collectionPerks.length !== 1 ? "s" : ""}
                       </p>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

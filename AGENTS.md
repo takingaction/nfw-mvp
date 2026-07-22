@@ -8979,8 +8979,8 @@ perk_collections (
 perk_collection_items (
   id UUID PK,
   collection_id UUID REFERENCES perk_collections,
-  perk_type TEXT CHECK (access_perk, nfw_perk),
-  perk_key TEXT NOT NULL,  -- offer_key for access_perk, slug for nfw_perk
+  item_type TEXT CHECK (access_perk, nfw_perk),
+  item_identifier TEXT NOT NULL,  -- offer_key for access_perk, slug for nfw_perk
   display_order INTEGER DEFAULT 0,
   created_at
 )
@@ -8997,9 +8997,9 @@ perk_collection_items (
   - "Show NFW Exclusive" toggle in page header
 
 - **Public Display** (`/perks`):
-  - Collection buttons appear in FilterSidebar when active
+  - Collection buttons appear in FilterSidebar with ShoppingBag icon
   - Each button shows collection name and offer count ("X offers")
-  - Selecting collection shows its perks inline
+  - Selecting collection shows header with name, description, and offer count
   - Hidden pagination ("Showing X of Y stores") when collection selected
   - Admin-only collections visible to logged-in admins for testing
 
@@ -9025,6 +9025,7 @@ perk_collection_items (
 - Drag-to-reorder uses `@dnd-kit/sortable` with `arrayMove` utility
 - Collection order persisted via `display_order` column
 - `show_nfw_exclusive_button` site setting controls NFW Exclusive button visibility
+- **Bug Fix:** `item_identifier` stored as string but `offer_key` from API is number - comparison uses `String()` conversion
 
 ### Files Created
 
@@ -9048,7 +9049,7 @@ perk_collection_items (
 | `app/admin/AdminHubClient.tsx` | Added Perk Collections link |
 | `app/api/site/settings/route.ts` | Added show_nfw_exclusive_button |
 | `app/dashboard/page.tsx` | Updated nav links |
-| `app/perks/page.tsx` | Fetch/display collection perks |
+| `app/perks/page.tsx` | Fetch/display collection perks, sort by display_order with String() comparison |
 | `components/admin/SiteSettingsEditor.tsx` | Removed NFW Exclusive toggle |
 | `components/grants/ConnectBankButton.tsx` | Changed button color |
-| `components/perks/FilterSidebar.tsx` | Added collection buttons |
+| `components/perks/FilterSidebar.tsx` | Added ShoppingBag icon to collection buttons |

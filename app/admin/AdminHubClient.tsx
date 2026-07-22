@@ -13,6 +13,7 @@ import {
 interface AdminLink {
   label: string;
   href: string;
+  icon?: React.ReactNode;
 }
 
 interface AdminSection {
@@ -178,8 +179,9 @@ export default function AdminHubClient() {
                     <Link
                       key={link.href}
                       href={link.href}
-                      className={`${getLinkStyles()} px-2 py-1.5 rounded font-sans font-medium text-xs text-center transition-colors`}
+                      className={`${getLinkStyles()} px-2 py-1.5 rounded font-sans font-medium text-xs text-center transition-colors flex items-center justify-center gap-1.5`}
                     >
+                      {link.icon}
                       {link.label}
                     </Link>
                   ))}
