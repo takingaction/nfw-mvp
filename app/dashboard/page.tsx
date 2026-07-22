@@ -294,12 +294,15 @@ export default async function DashboardPage() {
       {hasApprovedGrant && !profile?.stripe_onboarding_completed && latestApprovedGrantId && (
         <div className="bg-nfw-citrine py-6 px-8">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
+            <div className="w-full sm:w-1/2">
               <h2 className="font-serif text-2xl text-nfw-blackberry mb-1">
                 YOU&apos;RE APPROVED!
               </h2>
               <p className="font-serif text-nfw-blackberry/70">
                 Connect your bank account to receive your grant payments.
+              </p>
+              <p className="font-serif text-nfw-blackberry/70 mt-2">
+                <span className="font-bold">IMPORTANT:</span> If you don&apos;t have a website, just add https://www.nationalfundforwomen.org in the website field.
               </p>
             </div>
             <ConnectBankButton grantId={latestApprovedGrantId} />

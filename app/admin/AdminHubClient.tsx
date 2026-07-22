@@ -66,6 +66,7 @@ const adminSections: AdminSection[] = [
       { label: "Zero Dollar Store", href: "/admin/shopify" },
       { label: "Gift Codes", href: "/admin/gift-codes" },
       { label: "NFW Perks", href: "/admin/nfw-perks" },
+      { label: "Perk Collections", href: "/admin/perk-collections" },
     ],
   },
   {

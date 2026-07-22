@@ -34,21 +34,30 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { robots_txt } = body;
+    const { robots_txt, show_nfw_exclusive_button } = body;
 
-    if (typeof robots_txt !== "string") {
+    const updates: any = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (typeof robots_txt === "string") {
+      updates.robots_txt = robots_txt;
+    }
+
+    if (typeof show_nfw_exclusive_button === "boolean") {
+      updates.show_nfw_exclusive_button = show_nfw_exclusive_button;
+    }
+
+    if (Object.keys(updates).length === 1) {
       return NextResponse.json(
-        { error: "robots_txt is required" },
+        { error: "No valid fields to update" },
         { status: 400 }
       );
     }
 
     const { error } = await supabaseAdmin
       .from("site_settings")
-      .update({ 
-        robots_txt,
-        updated_at: new Date().toISOString()
-      })
+      .update(updates)
       .eq("id", "00000000-0000-0000-0000-000000000001");
 
     if (error) {

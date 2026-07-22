@@ -99,6 +99,10 @@ export default function PerksPage() {
   const [isNfwDetailOpen, setIsNfwDetailOpen] = useState(false);
   const [nfwLikedPerks, setNfwLikedPerks] = useState<string[]>([]);
   const [nfwLikedPartners, setNfwLikedPartners] = useState<string[]>([]);
+  const [showNfwExclusive, setShowNfwExclusive] = useState(false);
+  const [collections, setCollections] = useState<any[]>([]);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
+  const [collectionPerks, setCollectionPerks] = useState<any[]>([]);
 
   useEffect(() => {
     const storeParam = searchParams.get("store");
@@ -239,7 +243,31 @@ export default function PerksPage() {
   useEffect(() => {
     fetchCategories();
     fetchFacets();
+    fetchSiteSettings();
+    fetchCollections();
   }, []);
+
+  const fetchSiteSettings = async () => {
+    try {
+      const res = await fetch("/api/site/settings");
+      const data = await res.json();
+      setShowNfwExclusive(data.show_nfw_exclusive_button || false);
+    } catch (err) {
+      console.error("Failed to fetch site settings:", err);
+    }
+  };
+
+  const fetchCollections = async () => {
+    try {
+      const res = await fetch("/api/perk-collections");
+      const data = await res.json();
+      if (data.collections) {
+        setCollections(data.collections);
+      }
+    } catch (err) {
+      console.error("Failed to fetch collections:", err);
+    }
+  };
 
   useEffect(() => {
     // Skip if no postal code and not nationwide - wait for zip to be loaded
@@ -396,6 +424,78 @@ export default function PerksPage() {
     }
   };
 
+  const fetchCollectionPerks = async (collectionId: string) => {
+    const collection = collections.find((c) => c.id === collectionId);
+    if (!collection) return;
+
+    console.log("[fetchCollectionPerks] Collection:", collection);
+
+    const accessPerkItems = collection.items.filter((item: any) => item.item_type === "access_perk");
+    const nfwPerkItems = collection.items.filter((item: any) => item.item_type === "nfw_perk");
+
+    console.log("[fetchCollectionPerks] Access perk items:", accessPerkItems);
+    console.log("[fetchCollectionPerks] NFW perk items:", nfwPerkItems);
+
+    const accessPerksPromises = accessPerkItems.map(async (item: any) => {
+      try {
+        // Fetch the access perk directly by offer_key using the detail endpoint
+        const response = await fetch(`/api/access-perks/offers/${encodeURIComponent(item.item_identifier)}`);
+        if (response.ok) {
+          const data = await response.json();
+          // API returns { offers: [...] } - we need offers[0]
+          if (data && data.offers && data.offers[0]) {
+            return { ...data.offers[0], perkSource: "access" };
+          } else if (data.error) {
+            console.error("Access perk API error:", data.error, "for key:", item.item_identifier);
+          }
+        } else {
+          console.error("Access perk fetch failed with status:", response.status, "for key:", item.item_identifier);
+        }
+      } catch (err) {
+        console.error("Failed to fetch access perk:", item.item_identifier, err);
+      }
+      return null;
+    });
+
+    const nfwPerksPromises = nfwPerkItems.map(async (item: any) => {
+      try {
+        const response = await fetch(`/api/nfw-perks/slug/${item.item_identifier}${user ? `?userId=${user.id}` : ""}`);
+        if (response.ok) {
+          const data = await response.json();
+          // API returns perk directly, not as { perk: ... }
+          if (data && data.id) {
+            return { ...data, perkSource: "nfw" };
+          }
+        }
+      } catch {
+        console.error("Failed to fetch NFW perk:", item.item_identifier);
+      }
+      return null;
+    });
+
+    try {
+      const [accessPerks, nfwPerksResults] = await Promise.all([
+        Promise.all(accessPerksPromises),
+        Promise.all(nfwPerksPromises),
+      ]);
+
+      console.log("[fetchCollectionPerks] Access perks results:", accessPerks);
+      console.log("[fetchCollectionPerks] NFW perks results:", nfwPerksResults);
+
+      const combinedPerks = [
+        ...accessPerks.filter(Boolean),
+        ...nfwPerksResults.filter(Boolean),
+      ];
+
+      console.log("[fetchCollectionPerks] Combined perks:", combinedPerks);
+
+      setCollectionPerks(combinedPerks);
+    } catch (err) {
+      console.error("Failed to fetch collection perks:", err);
+      setCollectionPerks([]);
+    }
+  };
+
   const handleNfwPerkRedeem = async (perk: any) => {
     if (!user) return;
 
@@ -433,6 +533,14 @@ export default function PerksPage() {
       fetchNfwPerks();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (selectedCollectionId) {
+      fetchCollectionPerks(selectedCollectionId);
+    } else {
+      setCollectionPerks([]);
+    }
+  }, [selectedCollectionId, collections]);
 
   const fetchRollup = async (isOnlineOnly: boolean) => {
     setLoading(true);
@@ -807,6 +915,19 @@ export default function PerksPage() {
                 setCurrentView("stores");
                 setNfwView("partners");
                 setSelectedPartner(null);
+                setSelectedCollectionId(null);
+              }
+            }}
+            showNfwExclusive={showNfwExclusive}
+            collections={collections}
+            selectedCollectionId={selectedCollectionId}
+            onCollectionChange={(collectionId: string | null) => {
+              setSelectedCollectionId(collectionId);
+              if (collectionId) {
+                setNfwOnly(false);
+                setCurrentView("stores");
+                setNfwView("partners");
+                setSelectedPartner(null);
               }
             }}
           />
@@ -837,7 +958,7 @@ export default function PerksPage() {
               )}
             </div>
 
-            {searchInfo && !loading && !error && !nfwOnly && (
+            {searchInfo && !loading && !error && !nfwOnly && !selectedCollectionId && (
               <div className="mb-4 font-serif text-sm text-nfw-blackberry/50 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   {selectedStore && currentView === "offers" && (
@@ -929,9 +1050,56 @@ export default function PerksPage() {
               </div>
             )}
 
-            {!loading && !error && rollupGroups.length > 0 && (
+            {!loading && !error && (selectedCollectionId ? collectionPerks.length > 0 : rollupGroups.length > 0) && (
               <>
-                {nfwOnly && nfwView === "partners" && (
+                {selectedCollectionId && (
+                  <>
+                    <div className="mb-4 flex items-center justify-between">
+                      <p className="font-serif text-sm text-nfw-blackberry/50">
+                        {collectionPerks.length} offer{collectionPerks.length !== 1 ? "s" : ""} in this collection
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {collectionPerks.map((perk: any) => {
+                        if (perk.perkSource === "access") {
+                          return (
+                            <OfferCard
+                              key={perk.offer_key}
+                              offer={perk}
+                              onClick={() => {
+                                setSelectedOfferKey(perk.offer_key);
+                                setDetailPanelStoreKey(perk.store_key);
+                                setIsOfferPanelOpen(true);
+                              }}
+                            />
+                          );
+                        } else {
+                          // NFW perk
+                          return (
+                            <NfwPerkOfferCard
+                              key={perk.id}
+                              perk={perk}
+                              liked={nfwLikedPerks.includes(perk.id)}
+                              onToggleLike={(perkId, liked) => {
+                                if (liked) {
+                                  setNfwLikedPerks((prev) => [...prev, perkId]);
+                                } else {
+                                  setNfwLikedPerks((prev) => prev.filter((id) => id !== perkId));
+                                }
+                              }}
+                              onClick={() => {
+                                setSelectedNfwPerk(perk);
+                                setIsNfwDetailOpen(true);
+                              }}
+                            />
+                          );
+                        }
+                      })}
+                    </div>
+                  </>
+                )}
+
+                {!selectedCollectionId && nfwOnly && nfwView === "partners" && (
                   <>
                     <div className="mb-4 flex items-center justify-between">
                       <p className="font-serif text-sm text-nfw-blackberry/50">
@@ -982,7 +1150,7 @@ export default function PerksPage() {
                   </>
                 )}
 
-                {nfwOnly && nfwView === "perks" && selectedPartner && (
+                {!selectedCollectionId && nfwOnly && nfwView === "perks" && selectedPartner && (
                   <>
                     <button
                       onClick={() => {
@@ -1026,7 +1194,7 @@ export default function PerksPage() {
                   </>
                 )}
 
-                {!nfwOnly && currentView === "stores" && (
+                {!selectedCollectionId && !nfwOnly && currentView === "stores" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     {rollupGroups
                       .filter((group) => !EXCLUDED_STORES.includes(group.name || ""))
@@ -1055,7 +1223,7 @@ export default function PerksPage() {
                   </div>
                 )}
 
-                {!nfwOnly && currentView === "locations" && (
+                {!selectedCollectionId && !nfwOnly && currentView === "locations" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     {rollupGroups.map((group) => (
                       <LocationCard

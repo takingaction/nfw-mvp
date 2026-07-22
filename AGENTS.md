@@ -8950,3 +8950,105 @@ Renamed the email template from "Welcome Email - Free" to "Waitlist Approval" to
 | File | Change |
 |------|--------|
 | `app/api/admin/emails/seed/route.ts` | Updated name and description in seed data |
+
+## Session 2026-07-22: Perk Collections Feature
+
+### Overview
+
+Implemented perk collections allowing admins to group Access Perks and NFW Perks into named collections that appear as buttons in the FilterSidebar.
+
+### Database
+
+**Migrations:**
+- `124_create_perk_collections.sql` - Creates `perk_collections` and `perk_collection_items` tables with RLS
+- `125_add_show_nfw_exclusive_button.sql` - Adds `show_nfw_exclusive_button` to `site_settings`
+- `126_add_is_admin_only_to_perk_collections.sql` - Adds `is_admin_only` to `perk_collections`
+
+**Schema:**
+```sql
+perk_collections (
+  id UUID PK,
+  name TEXT NOT NULL,
+  description TEXT,
+  display_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  is_admin_only BOOLEAN DEFAULT false,
+  created_at, updated_at
+)
+
+perk_collection_items (
+  id UUID PK,
+  collection_id UUID REFERENCES perk_collections,
+  perk_type TEXT CHECK (access_perk, nfw_perk),
+  perk_key TEXT NOT NULL,  -- offer_key for access_perk, slug for nfw_perk
+  display_order INTEGER DEFAULT 0,
+  created_at
+)
+```
+
+### Features
+
+- **Collection Management** (`/admin/perk-collections`):
+  - Create/edit/delete collections with name and description
+  - Drag-to-reorder collections
+  - Add items by pasting perk URLs (Access Perks: `/perks/{offerKey}`, NFW Perks: `/perks/nfw/{slug}`)
+  - Drag-to-reorder items within collections
+  - Admin-only toggle to hide collections while testing
+  - "Show NFW Exclusive" toggle in page header
+
+- **Public Display** (`/perks`):
+  - Collection buttons appear in FilterSidebar when active
+  - Each button shows collection name and offer count ("X offers")
+  - Selecting collection shows its perks inline
+  - Hidden pagination ("Showing X of Y stores") when collection selected
+  - Admin-only collections visible to logged-in admins for testing
+
+- **Access Perk URL Parsing**:
+  - Supports format: `/perks/{offerKey}` or full URLs
+  - Extracts offerKey from path segments
+
+### API Routes
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/perk-collections` | GET | Public list (filters admin_only for non-admins) |
+| `/api/admin/perk-collections` | GET, POST | Admin list and create |
+| `/api/admin/perk-collections/[id]` | GET, PUT, DELETE | Admin CRUD |
+| `/api/admin/perk-collections/reorder` | PUT | Reorder collections |
+| `/api/admin/perk-collections/[id]/items/reorder` | PUT | Reorder items |
+
+### Key Implementation Details
+
+- Access Perks fetched via `/api/access-perks/offers/{offerKey}` (returns `{ offers: [...] }`)
+- NFW Perks fetched via `/api/nfw-perks/slug/{slug}` (returns perk directly)
+- Both perk types use "Copy Link" URL pattern from existing OfferDetailPanel
+- Drag-to-reorder uses `@dnd-kit/sortable` with `arrayMove` utility
+- Collection order persisted via `display_order` column
+- `show_nfw_exclusive_button` site setting controls NFW Exclusive button visibility
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/124_create_perk_collections.sql` | Database schema |
+| `supabase/migrations/125_add_show_nfw_exclusive_button.sql` | Site setting |
+| `supabase/migrations/126_add_is_admin_only_to_perk_collections.sql` | Admin-only flag |
+| `app/api/perk-collections/route.ts` | Public API |
+| `app/api/admin/perk-collections/route.ts` | Admin list/create |
+| `app/api/admin/perk-collections/[id]/route.ts` | Admin CRUD |
+| `app/api/admin/perk-collections/reorder/route.ts` | Collection reorder |
+| `app/api/admin/perk-collections/[id]/items/reorder/route.ts` | Item reorder |
+| `app/admin/perk-collections/page.tsx` | Admin page wrapper |
+| `app/admin/perk-collections/AdminPerkCollections.tsx` | Admin UI |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/AdminHubClient.tsx` | Added Perk Collections link |
+| `app/api/site/settings/route.ts` | Added show_nfw_exclusive_button |
+| `app/dashboard/page.tsx` | Updated nav links |
+| `app/perks/page.tsx` | Fetch/display collection perks |
+| `components/admin/SiteSettingsEditor.tsx` | Removed NFW Exclusive toggle |
+| `components/grants/ConnectBankButton.tsx` | Changed button color |
+| `components/perks/FilterSidebar.tsx` | Added collection buttons |

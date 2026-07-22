@@ -41,7 +41,9 @@ export default function SiteSettingsEditor() {
       const res = await fetch("/api/site/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ robots_txt: robotsTxt }),
+        body: JSON.stringify({
+          robots_txt: robotsTxt,
+        }),
       });
 
       if (!res.ok) {
