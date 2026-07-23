@@ -4682,6 +4682,23 @@ const validCycles = cycles?.filter(c => c.end_date >= todayStr) || [];
 
 This ensures closed grants never appear on the apply page regardless of database status.
 
+### Grant Date Display Fix (2026-07-23)
+
+**File:** `components/GrantApplicationForm.tsx`
+
+The deadline date was showing as one day earlier due to JavaScript's `Date` parsing treating date-only strings like `"2026-07-23"` as UTC midnight, which converts to local time EST (UTC-5) as 7pm the previous day.
+
+**Fix:** Parse the date manually to avoid timezone issues:
+
+```typescript
+{cycle.end_date ? (() => {
+  const datePart = cycle.end_date.split('T')[0];
+  const [y, m, d] = datePart.split('-');
+  const parsed = new Date(+y, +m - 1, +d);
+  return parsed.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+})() : 'TBD'}
+```
+
 #### Admin Confirmation Modal
 
 **File:** `app/admin/grants/[id]/edit/page.tsx`
