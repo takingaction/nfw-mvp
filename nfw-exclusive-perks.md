@@ -35,7 +35,7 @@ CREATE TABLE nfw_perks (
   discount_type TEXT CHECK (discount_type IN ('percent', 'fixed', 'free_item')),
   discount_value TEXT,
   codes JSONB NOT NULL DEFAULT '[]',  -- Array of available codes provided by admin
-  per_user_limit INTEGER DEFAULT 1,
+  max_redemptions_total INTEGER DEFAULT 0,  -- 0 or NULL = unlimited
   expires_at TIMESTAMPTZ,
   is_active BOOLEAN DEFAULT true,
   categories TEXT[] DEFAULT '{}',
@@ -142,7 +142,7 @@ fetch(`/api/nfw-perks?userId=${user.id}`)
 | Discount type | dropdown | percent / fixed / free_item |
 | Discount value | text | e.g., "20%" or "$10 off" |
 | Codes | textarea | One code per line (admin provides) |
-| Per-user limit | number | Default 1 |
+| Maximum Total Redemptions | number | Default 0 (0 = unlimited) |
 | Categories | tag input | For filtering |
 | Expires at | datetime | Optional |
 | Active | toggle | Default true |
@@ -157,7 +157,7 @@ fetch(`/api/nfw-perks?userId=${user.id}`)
 1. User clicks "Get Code" on NfwPerkCard
 2. POST `/api/nfw-perks/[id]/redeem` with userId
 3. API validates:
-   - User hasn't exceeded per_user_limit
+   - User hasn't exceeded max_redemptions_total (0 = unlimited)
    - Available codes remain
    - Perk not expired
 4. Pop first code from `codes` array, insert into `nfw_perk_redemptions`

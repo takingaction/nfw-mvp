@@ -58,8 +58,8 @@ export async function POST(
       .select("*", { count: "exact", head: true })
       .eq("perk_id", id);
 
-    if (redemptionCount !== null && perk.per_user_limit && redemptionCount >= perk.per_user_limit) {
-      return NextResponse.json({ error: "No more codes available" }, { status: 400 });
+    if (redemptionCount !== null && perk.max_redemptions_total && redemptionCount >= perk.max_redemptions_total) {
+      return NextResponse.json({ error: "This perk has reached its maximum number of redemptions" }, { status: 400 });
     }
 
     const { error: insertError } = await supabase

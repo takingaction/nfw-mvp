@@ -14,7 +14,7 @@ type NfwPerk = {
   landing_page_url: string | null;
   estimated_value: number | null;
   terms_and_conditions: string | null;
-  per_user_limit: number;
+  max_redemptions_total: number;
   expires_at: string | null;
   is_active: boolean;
   categories: string[];
@@ -59,7 +59,7 @@ export default function AdminNfwPerks() {
     landing_page_url: "",
     estimated_value: "" as string | number,
     terms_and_conditions: "",
-    per_user_limit: 1,
+    max_redemptions_total: 0,
     expires_at: "",
     is_active: true,
     categories: [] as string[],
@@ -94,7 +94,7 @@ export default function AdminNfwPerks() {
       landing_page_url: "",
       estimated_value: "",
       terms_and_conditions: "",
-      per_user_limit: 1,
+      max_redemptions_total: 0,
       expires_at: "",
       is_active: true,
       categories: [],
@@ -114,7 +114,7 @@ export default function AdminNfwPerks() {
       landing_page_url: perk.landing_page_url || "",
       estimated_value: perk.estimated_value || "",
       terms_and_conditions: perk.terms_and_conditions || "",
-      per_user_limit: perk.per_user_limit,
+      max_redemptions_total: perk.max_redemptions_total,
       expires_at: perk.expires_at ? perk.expires_at.split("T")[0] : "",
       is_active: perk.is_active,
       categories: perk.categories || [],
@@ -165,7 +165,7 @@ export default function AdminNfwPerks() {
       landing_page_url: formData.landing_page_url || null,
       estimated_value: formData.estimated_value ? Number(formData.estimated_value) : null,
       terms_and_conditions: formData.terms_and_conditions || null,
-      per_user_limit: formData.per_user_limit,
+      max_redemptions_total: formData.max_redemptions_total,
       expires_at: formData.expires_at ? new Date(formData.expires_at).toISOString() : null,
       is_active: formData.is_active,
       categories: formData.categories,
@@ -566,13 +566,13 @@ export default function AdminNfwPerks() {
 
                 <div>
                   <label className="block text-sm font-medium text-nfw-blackberry mb-1 font-ui">
-                    Per-User Limit
+                    Maximum Total Redemptions
                   </label>
                   <input
                     type="number"
-                    min={1}
-                    value={formData.per_user_limit}
-                    onChange={(e) => setFormData({ ...formData, per_user_limit: parseInt(e.target.value) || 1 })}
+                    min={0}
+                    value={formData.max_redemptions_total}
+                    onChange={(e) => setFormData({ ...formData, max_redemptions_total: parseInt(e.target.value) || 0 })}
                     className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry font-ui"
                   />
                 </div>
