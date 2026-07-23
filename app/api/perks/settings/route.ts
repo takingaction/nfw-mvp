@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { hero_image_url, hero_heading, hero_subheading } = body;
+    const { hero_image_url, hero_heading, hero_subheading, is_test_mode } = body;
 
     // Check if row exists
     const { data: existing } = await supabaseAdmin
@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
           hero_image_url: hero_image_url || null,
           hero_heading: hero_heading || 'Member Perks',
           hero_subheading: hero_subheading || 'Exclusive discounts and offers for NFW members',
+          is_test_mode: is_test_mode || false,
           updated_at: new Date().toISOString(),
         })
         .eq("id", existing.id);
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
           hero_image_url: hero_image_url || null,
           hero_heading: hero_heading || 'Member Perks',
           hero_subheading: hero_subheading || 'Exclusive discounts and offers for NFW members',
+          is_test_mode: is_test_mode || false,
         }])
         .select()
         .single();

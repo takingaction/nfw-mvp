@@ -107,6 +107,7 @@ export default function PerksPage() {
     hero_image_url: string | null;
     hero_heading: string;
     hero_subheading: string;
+    is_test_mode: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -884,7 +885,7 @@ export default function PerksPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {heroSettings?.hero_image_url && (
+        {heroSettings?.hero_image_url && (!heroSettings?.is_test_mode || profile?.is_admin) && (
           <div className="relative h-[150px] md:h-[200px] bg-cover bg-center bg-no-repeat rounded-lg overflow-hidden mb-6">
             <div
               className="absolute inset-0 bg-black/40"

@@ -60,6 +60,7 @@ export default function AdminPerkCollections() {
   const [heroImageUrl, setHeroImageUrl] = useState("");
   const [heroHeading, setHeroHeading] = useState("Member Perks");
   const [heroSubheading, setHeroSubheading] = useState("Exclusive discounts and offers for NFW members");
+  const [heroTestMode, setHeroTestMode] = useState(false);
   const [savingBanner, setSavingBanner] = useState(false);
   const [bannerSaved, setBannerSaved] = useState(false);
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
@@ -106,6 +107,7 @@ export default function AdminPerkCollections() {
         setHeroImageUrl(data.hero_image_url || "");
         setHeroHeading(data.hero_heading || "Member Perks");
         setHeroSubheading(data.hero_subheading || "Exclusive discounts and offers for NFW members");
+        setHeroTestMode(data.is_test_mode || false);
       }
     } catch (err) {
       console.error("Failed to fetch perks banner settings:", err);
@@ -123,6 +125,7 @@ export default function AdminPerkCollections() {
           hero_image_url: heroImageUrl || null,
           hero_heading: heroHeading,
           hero_subheading: heroSubheading,
+          is_test_mode: heroTestMode,
         }),
       });
       if (res.ok) {
@@ -564,6 +567,18 @@ export default function AdminPerkCollections() {
                   onChange={(e) => setHeroSubheading(e.target.value)}
                   className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
                 />
+              </div>
+              <div className="flex items-center gap-3 pt-4">
+                <input
+                  type="checkbox"
+                  id="heroTestMode"
+                  checked={heroTestMode}
+                  onChange={(e) => setHeroTestMode(e.target.checked)}
+                  className="w-4 h-4 rounded border-nfw-blackberry/30 text-nfw-aubergine focus:ring-nfw-aubergine"
+                />
+                <label htmlFor="heroTestMode" className="text-sm font-medium text-nfw-blackberry cursor-pointer">
+                  Test Mode (hidden from non-admin users)
+                </label>
               </div>
             </div>
           </div>
