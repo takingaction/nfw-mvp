@@ -34,6 +34,7 @@ type CollectionItem = {
 type Collection = {
   id: string;
   name: string;
+  slug: string | null;
   description: string | null;
   is_active: boolean;
   is_admin_only: boolean;
@@ -67,6 +68,7 @@ export default function AdminPerkCollections() {
 
   const [formData, setFormData] = useState({
     name: "",
+    slug: "",
     description: "",
     is_active: true,
     is_admin_only: false,
@@ -173,7 +175,7 @@ export default function AdminPerkCollections() {
 
   function openCreateModal() {
     setEditingCollection(null);
-    setFormData({ name: "", description: "", is_active: true, is_admin_only: false });
+    setFormData({ name: "", slug: "", description: "", is_active: true, is_admin_only: false });
     setError(null);
     setShowCollectionModal(true);
   }
@@ -182,6 +184,7 @@ export default function AdminPerkCollections() {
     setEditingCollection(collection);
     setFormData({
       name: collection.name,
+      slug: collection.slug || "",
       description: collection.description || "",
       is_active: collection.is_active,
       is_admin_only: collection.is_admin_only,
@@ -653,10 +656,44 @@ export default function AdminPerkCollections() {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) => {
+                    const newName = e.target.value;
+                    setFormData((prev) => {
+                      // Auto-generate slug from name if slug hasn't been manually edited
+                      const baseSlug = prev.name
+                        .toLowerCase()
+                        .replace(/[^a-z0-9\s-]/g, '')
+                        .replace(/\s+/g, '-')
+                        .replace(/-+/g, '-')
+                        .trim();
+                      const newSlug = prev.slug?.startsWith(baseSlug) || !prev.slug
+                        ? `${baseSlug}-${prev.slug?.split('-').pop() || Math.random().toString(36).substring(2, 6)}`
+                        : prev.slug;
+                      return {
+                        ...prev,
+                        name: newName,
+                        slug: prev.slug || newSlug,
+                      };
+                    });
+                  }}
                   className="w-full px-3 py-2 border border-nfw-blackberry/20 rounded-lg font-ui text-sm focus:outline-none focus:ring-2 focus:ring-nfw-aubergine/30"
                   placeholder="e.g., Summer Savings, Member Exclusive"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-ui font-medium text-nfw-blackberry mb-1">
+                  URL Slug
+                </label>
+                <input
+                  type="text"
+                  value={formData.slug}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, slug: e.target.value }))}
+                  className="w-full px-3 py-2 border border-nfw-blackberry/20 rounded-lg font-ui text-sm focus:outline-none focus:ring-2 focus:ring-nfw-aubergine/30"
+                  placeholder="e.g., summer-savings-ab12"
+                />
+                <p className="text-xs text-nfw-blackberry/50 mt-1">
+                  Auto-generated from name. Edit to customize.
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-ui font-medium text-nfw-blackberry mb-1">
@@ -875,6 +912,11 @@ function SortableCollectionCard({
           <p className="text-xs text-nfw-blackberry/40 mt-1">
             {collection.items.length} item{collection.items.length !== 1 ? "s" : ""}
           </p>
+          {collection.slug && (
+            <p className="text-xs text-nfw-wisteria mt-0.5 font-mono">
+              /perks?collection={collection.slug}
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-1">

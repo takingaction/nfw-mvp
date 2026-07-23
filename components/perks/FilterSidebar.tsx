@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronRight, X, SlidersHorizontal, Plane, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,6 +28,7 @@ interface CollectionItem {
 interface Collection {
   id: string;
   name: string;
+  slug: string | null;
   description: string | null;
   item_count: number;
 }
@@ -83,11 +85,25 @@ export default function FilterSidebar({
   selectedCollectionId = null,
   onCollectionChange,
 }: FilterSidebarProps) {
+  const searchParams = useSearchParams();
   const [expandedParents, setExpandedParents] = useState<Set<number>>(
     new Set(categories.map((c) => c.category_key))
   );
   const [expandedFacets, setExpandedFacets] = useState<Set<string>>(new Set(facets.map((f) => f.key)));
   const [expandedOfferTypes, setExpandedOfferTypes] = useState<Set<string>>(new Set(['offer_type']));
+
+  // Get current collection slug from URL
+  const currentCollectionSlug = searchParams.get("collection");
+
+  const handleCollectionClick = (collection: Collection) => {
+    if (collection.slug === currentCollectionSlug) {
+      // Deselect - update URL without navigation
+      window.history.pushState(null, "", "/perks");
+    } else if (collection.slug) {
+      // Select - update URL without navigation
+      window.history.pushState(null, "", `/perks?collection=${collection.slug}`);
+    }
+  };
 
   const toggleParent = (key: number) => {
     const newExpanded = new Set(expandedParents);
@@ -196,25 +212,28 @@ export default function FilterSidebar({
 
       {collections.length > 0 && onCollectionChange && (
         <div className="p-4 border-b border-nfw-blackberry/10 space-y-2">
-          {collections.map((collection) => (
-            <button
-              key={collection.id}
-              onClick={() => onCollectionChange(selectedCollectionId === collection.id ? null : collection.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                selectedCollectionId === collection.id
-                  ? "bg-nfw-aubergine text-white"
-                  : "bg-nfw-dove text-nfw-blackberry hover:bg-nfw-stone/20"
-              }`}
-            >
-              <ShoppingBag className="w-5 h-5" />
-              <div className="text-left">
-                <div className="font-ui font-medium text-sm">{collection.name}</div>
-                <div className={`text-xs ${selectedCollectionId === collection.id ? "text-nfw-lilac" : "text-nfw-blackberry/50"}`}>
-                  {collection.item_count} offer{collection.item_count !== 1 ? "s" : ""}
+          {collections.map((collection) => {
+            const isSelected = collection.slug === currentCollectionSlug;
+            return (
+              <button
+                key={collection.id}
+                onClick={() => handleCollectionClick(collection)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  isSelected
+                    ? "bg-nfw-aubergine text-white"
+                    : "bg-nfw-dove text-nfw-blackberry hover:bg-nfw-stone/20"
+                }`}
+              >
+                <ShoppingBag className="w-5 h-5" />
+                <div className="text-left">
+                  <div className="font-ui font-medium text-sm">{collection.name}</div>
+                  <div className={`text-xs ${isSelected ? "text-nfw-lilac" : "text-nfw-blackberry/50"}`}>
+                    {collection.item_count} offer{collection.item_count !== 1 ? "s" : ""}
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       )}
 

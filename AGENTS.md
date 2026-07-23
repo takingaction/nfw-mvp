@@ -9197,6 +9197,88 @@ The `next` param only works for password login. Google OAuth doesn't support it 
 
 ---
 
+## Session 2026-07-23 (Afternoon): Perk Collections Pretty URLs
+
+### Overview
+
+Added URL slugs to perk collections for shareable, bookmarkable links. Collections can now be linked to directly via `/perks?collection=slug`.
+
+### Database
+
+**Migration:** `131_add_slug_to_perk_collections.sql`
+
+```sql
+ALTER TABLE perk_collections ADD COLUMN slug TEXT UNIQUE;
+CREATE UNIQUE INDEX idx_perk_collections_slug ON perk_collections(slug) WHERE slug IS NOT NULL;
+```
+
+Auto-generates slugs for existing collections using kebab-case name + 4-character random suffix.
+
+### URL Structure
+
+| Link Type | URL Format | Example |
+|-----------|------------|---------|
+| Collection link | `/perks?collection=slug` | `/perks?collection=holiday-deals-abc1` |
+
+### How It Works
+
+1. **Admin UI:** Collection form has slug field (auto-generated from name, manually editable)
+2. **FilterSidebar:** Collection buttons use `window.history.pushState()` to update URL without navigation
+3. **/perks page:** Reads `?collection=` param on mount, finds collection by slug, fetches and displays
+
+### Key Implementation
+
+**URL Updates (FilterSidebar.tsx):**
+```typescript
+const handleCollectionClick = (collection: Collection) => {
+  if (collection.slug === currentCollectionSlug) {
+    window.history.pushState(null, "", "/perks");
+  } else if (collection.slug) {
+    window.history.pushState(null, "", `/perks?collection=${collection.slug}`);
+  }
+};
+```
+
+**Collection Param Reading (/perks/page.tsx):**
+```typescript
+useEffect(() => {
+  const collectionParam = searchParams.get("collection");
+  if (collectionParam && collections.length > 0) {
+    const collection = collections.find((c) => c.slug === collectionParam);
+    if (collection) {
+      setSelectedCollectionId(collection.id);
+      // Reset other filters when entering via collection link
+    }
+  }
+}, [searchParams, collections]);
+```
+
+### Features
+
+- **Auto-generate slug:** kebab-case from name + random 4-char suffix (e.g., "Holiday Deals" → "holiday-deals-abc1")
+- **Manual override:** Admins can edit slug to customize
+- **Uniqueness validation:** API rejects duplicate slugs
+- **Smooth navigation:** Uses `window.history.pushState()` - no page reload, no scroll reset
+- **URL persistence:** Links are bookmarkable and shareable
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/131_add_slug_to_perk_collections.sql` | Add slug column |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/perk-collections/route.ts` | Accept slug on create, auto-generate if not provided |
+| `app/api/admin/perk-collections/[id]/route.ts` | Accept slug on update, validate uniqueness |
+| `app/admin/perk-collections/AdminPerkCollections.tsx` | Add slug field in form, show URL preview |
+| `app/perks/page.tsx` | Read `?collection=` param, find collection by slug |
+| `components/perks/FilterSidebar.tsx` | Collection buttons update URL via `window.history.pushState()` |
+
+---
+
 ## Session 2026-07-23: Perks Page Banner + Featured Items Perk Cards
 
 ### Overview

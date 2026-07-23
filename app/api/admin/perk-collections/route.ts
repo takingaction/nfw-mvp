@@ -72,10 +72,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { name, description, is_admin_only } = await request.json();
+    const { name, description, is_admin_only, slug } = await request.json();
 
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    }
+
+    // Generate slug if not provided
+    let finalSlug = slug;
+    if (!finalSlug) {
+      const baseSlug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim();
+      const suffix = Math.random().toString(36).substring(2, 6);
+      finalSlug = `${baseSlug}-${suffix}`;
+    }
+
+    // Check slug uniqueness
+    const { data: existingSlug } = await supabaseAdmin
+      .from("perk_collections")
+      .select("id")
+      .eq("slug", finalSlug)
+      .single();
+
+    if (existingSlug) {
+      return NextResponse.json({ error: "Slug already exists. Please choose a different one." }, { status: 400 });
     }
 
     // Get max display_order
@@ -95,6 +119,7 @@ export async function POST(request: NextRequest) {
         description: description || null,
         display_order: newOrder,
         is_admin_only: is_admin_only === true,
+        slug: finalSlug,
       })
       .select()
       .single();

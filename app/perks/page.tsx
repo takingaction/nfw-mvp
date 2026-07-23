@@ -288,6 +288,24 @@ export default function PerksPage() {
     }
   };
 
+  // Handle collection slug from URL param
+  useEffect(() => {
+    const collectionParam = searchParams.get("collection");
+    if (collectionParam && collections.length > 0) {
+      const collection = collections.find((c) => c.slug === collectionParam);
+      if (collection) {
+        setSelectedCollectionId(collection.id);
+        // Reset other filters when entering via collection link
+        setNfwOnly(false);
+        setCurrentView("stores");
+        setNfwView("partners");
+        setSelectedPartner(null);
+        setSelectedStore(null);
+        setCurrentPage(1);
+      }
+    }
+  }, [searchParams, collections]);
+
   useEffect(() => {
     // Skip if no postal code and not nationwide - wait for zip to be loaded
     if (!searchPostalCode && searchDistance !== "2500mi") {

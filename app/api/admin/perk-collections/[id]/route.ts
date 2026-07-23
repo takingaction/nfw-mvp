@@ -79,13 +79,27 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { name, description, is_active, is_admin_only } = await request.json();
+    const { name, description, is_active, is_admin_only, slug } = await request.json();
 
     const updates: any = {};
     if (name !== undefined) updates.name = name;
     if (description !== undefined) updates.description = description;
     if (is_active !== undefined) updates.is_active = is_active;
     if (is_admin_only !== undefined) updates.is_admin_only = is_admin_only;
+    if (slug !== undefined) {
+      // Check slug uniqueness (exclude current collection)
+      const { data: existingSlug } = await supabaseAdmin
+        .from("perk_collections")
+        .select("id")
+        .eq("slug", slug)
+        .neq("id", id)
+        .single();
+
+      if (existingSlug) {
+        return NextResponse.json({ error: "Slug already exists. Please choose a different one." }, { status: 400 });
+      }
+      updates.slug = slug;
+    }
     updates.updated_at = new Date().toISOString();
 
     const { data: collection, error } = await supabaseAdmin
