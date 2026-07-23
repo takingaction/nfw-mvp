@@ -41,7 +41,6 @@ export default async function ApplyForGrantPage() {
     .from("grant_cycles")
     .select("*")
     .eq("status", "open")
-    .not("end_date", "gte", today)
     .order("display_order", { ascending: true })
     .order("end_date", { ascending: true });
 
@@ -51,6 +50,11 @@ export default async function ApplyForGrantPage() {
   }
 
   const { data: cycles } = await cyclesQuery;
+
+  // Server-side filter: exclude grants where end_date is in the past
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const validCycles = cycles?.filter(c => c.end_date >= todayStr) || [];
 
   return (
     <main className="min-h-screen bg-nfw-dove">
@@ -67,8 +71,8 @@ export default async function ApplyForGrantPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {cycles && cycles.length > 0 ? (
-          <GrantApplicationForm userId={user!.id} cycles={cycles} />
+        {validCycles && validCycles.length > 0 ? (
+          <GrantApplicationForm userId={user!.id} cycles={validCycles} />
         ) : (
           <div className="bg-nfw-citrine/20 border border-nfw-citrine p-6">
             <h3 className="font-serif text-lg font-semibold text-nfw-blackberry mb-2">
