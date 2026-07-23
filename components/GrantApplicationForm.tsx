@@ -205,8 +205,10 @@ export default function GrantApplicationForm({
                       <p className="text-sm font-ui text-nfw-blackberry/50 mt-0.5">
                         Deadline:{" "}
                         {cycle.end_date ? (() => {
-                          const [y, m, d] = cycle.end_date.split('-');
-                          return new Date(+y, +m - 1, +d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+                          const parts = cycle.end_date.split('-');
+                          const [y, m, d] = parts;
+                          const parsed = new Date(+y, +m - 1, +d);
+                          return parsed.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
                         })() : 'TBD'}
                       </p>
                       {cycle.description && (
