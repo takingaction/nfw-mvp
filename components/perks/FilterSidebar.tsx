@@ -97,11 +97,13 @@ export default function FilterSidebar({
 
   const handleCollectionClick = (collection: Collection) => {
     if (collection.slug === currentCollectionSlug) {
-      // Deselect - update URL without navigation
+      // Deselect - update URL and reset collection state
       window.history.pushState(null, "", "/perks");
+      onCollectionChange?.(null);
     } else if (collection.slug) {
       // Select - update URL without navigation
       window.history.pushState(null, "", `/perks?collection=${collection.slug}`);
+      onCollectionChange?.(collection.id);
     }
   };
 
