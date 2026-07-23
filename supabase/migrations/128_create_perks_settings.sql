@@ -7,6 +7,9 @@ CREATE TABLE perks_settings (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Note: RLS is enabled in migration 130
+-- Note: is_test_mode column added in migration 129
+
 -- Seed default row
 INSERT INTO perks_settings (hero_heading, hero_subheading)
 VALUES ('Member Perks', 'Exclusive discounts and offers for NFW members')
