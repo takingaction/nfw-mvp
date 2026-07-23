@@ -204,11 +204,10 @@ export default function GrantApplicationForm({
                         />
                       <p className="text-sm font-ui text-nfw-blackberry/50 mt-0.5">
                         Deadline:{" "}
-                        {cycle.end_date ? new Date(cycle.end_date + 'T00:00:00').toLocaleDateString("en-US", {
-                          month: "long",
-                          day: "numeric",
-                          year: "numeric",
-                        }) : 'TBD'}
+                        {cycle.end_date ? (() => {
+                          const [y, m, d] = cycle.end_date.split('-');
+                          return new Date(+y, +m - 1, +d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+                        })() : 'TBD'}
                       </p>
                       {cycle.description && (
                         <p className="text-sm font-serif text-nfw-blackberry/60 mt-1">
@@ -237,11 +236,10 @@ export default function GrantApplicationForm({
                  />
                  <p className="text-sm font-ui text-nfw-blackberry/60 mt-1">
                   Deadline:{" "}{" "}
-                  {selectedCycle.end_date ? new Date(selectedCycle.end_date + 'T00:00:00').toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  }) : 'TBD'}
+                  {selectedCycle.end_date ? (() => {
+                    const [y, m, d] = selectedCycle.end_date.split('-');
+                    return new Date(+y, +m - 1, +d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+                  })() : 'TBD'}
                 </p>
               </div>
               <div className="text-right">
