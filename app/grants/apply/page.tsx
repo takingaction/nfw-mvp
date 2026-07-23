@@ -35,10 +35,13 @@ export default async function ApplyForGrantPage() {
   }
 
   // Build query - admins see all cycles, non-admins don't see testing-only cycles
+  // Also filter by end_date as defense-in-depth (cron job may have wrong search_path)
+  const today = new Date().toISOString().split('T')[0];
   let cyclesQuery = supabaseAdmin
     .from("grant_cycles")
     .select("*")
     .eq("status", "open")
+    .lte("end_date", today)
     .order("display_order", { ascending: true })
     .order("end_date", { ascending: true });
 
