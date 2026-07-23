@@ -4636,6 +4636,52 @@ SELECT cron.schedule(
 );
 ```
 
+#### Bug: Wrong search_path
+
+**Problem:** The function had `SET search_path = pg_catalog` which only looks in PostgreSQL system tables, NOT the `public` schema where `grant_cycles` exists. This caused the cron job to fail silently and not update grant statuses.
+
+**Fix Applied (2026-07-23):** Updated the function to use `SET search_path = pg_catalog, public`:
+
+```sql
+CREATE OR REPLACE FUNCTION sync_grant_cycle_statuses()
+RETURNS void
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  UPDATE grant_cycles
+  SET status = 'open'
+  WHERE start_date::date <= CURRENT_DATE
+    AND end_date::date >= CURRENT_DATE
+    AND status = 'closed';
+
+  UPDATE grant_cycles
+  SET status = 'closed'
+  WHERE end_date::date < CURRENT_DATE
+    AND status = 'open';
+END;
+$$;
+
+NOTIFY pgrst, 'reload';
+```
+
+#### Defense-in-Depth Fix (2026-07-23)
+
+**File:** `app/grants/apply/page.tsx`
+
+The apply page now also filters by `end_date` in addition to `status` so closed grants never appear even if the database status is incorrect:
+
+```typescript
+const today = new Date().toISOString().split('T')[0];
+let cyclesQuery = supabaseAdmin
+  .from("grant_cycles")
+  .select("*")
+  .eq("status", "open")
+  .lte("end_date", today)
+  .order("display_order", { ascending: true })
+  .order("end_date", { ascending: true });
+```
+
 #### Admin Confirmation Modal
 
 **File:** `app/admin/grants/[id]/edit/page.tsx`
