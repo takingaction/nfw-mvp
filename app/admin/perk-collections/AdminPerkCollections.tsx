@@ -766,6 +766,16 @@ export default function AdminPerkCollections() {
           </div>
         </div>
       )}
+
+      <MediaLibraryModal
+        isOpen={mediaLibraryOpen}
+        onClose={() => setMediaLibraryOpen(false)}
+        onSelect={(url) => {
+          setHeroImageUrl(url);
+          setMediaLibraryOpen(false);
+        }}
+        bucket="page-builder"
+      />
     </div>
   );
 }
@@ -1005,13 +1015,3 @@ function SortableItemRow({
     </div>
   );
 }
-
-<MediaLibraryModal
-  isOpen={mediaLibraryOpen}
-  onClose={() => setMediaLibraryOpen(false)}
-  onSelect={(url) => {
-    setHeroImageUrl(url);
-    setMediaLibraryOpen(false);
-  }}
-  bucket="page-builder"
-/>
