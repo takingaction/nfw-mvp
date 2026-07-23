@@ -67,9 +67,11 @@ type Article = {
 function SortableFeaturedItem({
   item,
   onRemove,
+  onEdit,
 }: {
   item: FeaturedItem;
   onRemove: () => void;
+  onEdit?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id });
@@ -110,9 +112,18 @@ function SortableFeaturedItem({
             : "Perk"}
         </p>
       </div>
-      <button onClick={onRemove} className="p-1 text-nfw-blackberry/30 hover:text-red-500">
-        <X className="w-5 h-5" />
-      </button>
+      <div className="flex items-center gap-1">
+        {item.type === "perk" && onEdit && (
+          <button onClick={onEdit} className="p-1 text-nfw-blackberry/30 hover:text-nfw-aubergine">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </button>
+        )}
+        <button onClick={onRemove} className="p-1 text-nfw-blackberry/30 hover:text-red-500">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -144,6 +155,7 @@ export default function DashboardAdminClient() {
   const [grantsModalOpen, setGrantsModalOpen] = useState(false);
   const [articlesModalOpen, setArticlesModalOpen] = useState(false);
   const [perksModalOpen, setPerksModalOpen] = useState(false);
+  const [editingPerk, setEditingPerk] = useState<FeaturedItem | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -310,6 +322,26 @@ export default function DashboardAdminClient() {
     setPerksModalOpen(false);
   };
 
+  const updatePerk = (perk: { title: string; image: string; link: string; button_label: string }) => {
+    if (!editingPerk) return;
+    setSettings({
+      ...settings,
+      featured_items: settings.featured_items.map((item) =>
+        item.id === editingPerk.id
+          ? {
+              ...item,
+              title: perk.title,
+              image: perk.image,
+              link: perk.link || "/perks",
+              button_label: perk.button_label || perk.title,
+            }
+          : item
+      ),
+    });
+    setPerksModalOpen(false);
+    setEditingPerk(null);
+  };
+
   const removeFeaturedItem = (id: string) => {
     setSettings({
       ...settings,
@@ -441,6 +473,7 @@ export default function DashboardAdminClient() {
                         key={item.id}
                         item={item}
                         onRemove={() => removeFeaturedItem(item.id)}
+                        onEdit={item.type === "perk" ? () => { setEditingPerk(item); setPerksModalOpen(true); } : undefined}
                       />
                     ))}
                   </div>
@@ -674,8 +707,10 @@ export default function DashboardAdminClient() {
 
       {perksModalOpen && (
         <PerkItemModal
-          onClose={() => setPerksModalOpen(false)}
+          editingPerk={editingPerk}
+          onClose={() => { setPerksModalOpen(false); setEditingPerk(null); }}
           onAdd={addPerk}
+          onUpdate={updatePerk}
         />
       )}
     </div>
@@ -683,17 +718,21 @@ export default function DashboardAdminClient() {
 }
 
 function PerkItemModal({
+  editingPerk,
   onClose,
   onAdd,
+  onUpdate,
 }: {
+  editingPerk?: FeaturedItem | null;
   onClose: () => void;
   onAdd: (perk: { title: string; image: string; link: string; button_label: string }) => void;
+  onUpdate: (perk: { title: string; image: string; link: string; button_label: string }) => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [image, setImage] = useState("");
-  const [link, setLink] = useState("/perks");
-  const [buttonLabel, setButtonLabel] = useState("");
-  const [buttonLabelManuallyEdited, setButtonLabelManuallyEdited] = useState(false);
+  const [title, setTitle] = useState(editingPerk?.title || "");
+  const [image, setImage] = useState(editingPerk?.image || "");
+  const [link, setLink] = useState(editingPerk?.link || "/perks");
+  const [buttonLabel, setButtonLabel] = useState(editingPerk?.button_label || "");
+  const [buttonLabelManuallyEdited, setButtonLabelManuallyEdited] = useState(!!editingPerk?.button_label);
   const [imageModalOpen, setImageModalOpen] = useState(false);
 
   const handleSubmit = () => {
@@ -705,19 +744,24 @@ function PerkItemModal({
       alert("Please select an image");
       return;
     }
-    onAdd({
+    const perkData = {
       title: title.trim(),
       image,
       link: link.trim() || "/perks",
       button_label: buttonLabelManuallyEdited ? buttonLabel.trim() : title.trim(),
-    });
+    };
+    if (editingPerk) {
+      onUpdate(perkData);
+    } else {
+      onAdd(perkData);
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-hidden">
         <div className="px-6 py-4 border-b border-nfw-blackberry/10 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-nfw-blackberry">Add Perk</h3>
+          <h3 className="text-lg font-bold text-nfw-blackberry">{editingPerk ? "Edit Perk" : "Add Perk"}</h3>
           <button onClick={onClose} className="text-nfw-blackberry/50 hover:text-nfw-blackberry">
             <X className="w-6 h-6" />
           </button>
@@ -796,7 +840,7 @@ function PerkItemModal({
             onClick={handleSubmit}
             className="px-4 py-2 bg-nfw-lilac text-white text-sm font-medium hover:bg-nfw-lilac/90"
           >
-            Add Perk
+            {editingPerk ? "Save Changes" : "Add Perk"}
           </button>
         </div>
       </div>
