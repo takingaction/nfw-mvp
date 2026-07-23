@@ -204,11 +204,11 @@ export default function GrantApplicationForm({
                         />
                       <p className="text-sm font-ui text-nfw-blackberry/50 mt-0.5">
                         Deadline:{" "}
-                        {new Date(cycle.end_date + 'T00:00:00').toLocaleDateString("en-US", {
+                        {cycle.end_date ? new Date(cycle.end_date + 'T00:00:00').toLocaleDateString("en-US", {
                           month: "long",
                           day: "numeric",
                           year: "numeric",
-                        })}
+                        }) : 'TBD'}
                       </p>
                       {cycle.description && (
                         <p className="text-sm font-serif text-nfw-blackberry/60 mt-1">
@@ -235,13 +235,13 @@ export default function GrantApplicationForm({
                 <h3 className="font-serif text-xl text-nfw-blackberry [&_sup]:text-[0.6em] [&_sup]:align-super"
                    dangerouslySetInnerHTML={{ __html: decodeHtml(selectedCycle.cycle_name) }}
                  />
-                <p className="text-sm font-ui text-nfw-blackberry/60 mt-1">
+                 <p className="text-sm font-ui text-nfw-blackberry/60 mt-1">
                   Deadline:{" "}{" "}
-                  {new Date(selectedCycle.end_date + 'T00:00:00').toLocaleDateString("en-US", {
+                  {selectedCycle.end_date ? new Date(selectedCycle.end_date + 'T00:00:00').toLocaleDateString("en-US", {
                     month: "long",
                     day: "numeric",
                     year: "numeric",
-                  })}
+                  }) : 'TBD'}
                 </p>
               </div>
               <div className="text-right">
