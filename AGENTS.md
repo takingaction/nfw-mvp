@@ -4669,18 +4669,18 @@ NOTIFY pgrst, 'reload';
 
 **File:** `app/grants/apply/page.tsx`
 
-The apply page now also filters by `end_date` in addition to `status` so closed grants never appear even if the database status is incorrect:
+The apply page now filters by `end_date` after fetching grants server-side. Supabase date filters (`.lt()`, `.lte()`, `.not()`) proved unreliable for this use case, so filtering is done in JavaScript after the query:
 
 ```typescript
-const today = new Date().toISOString().split('T')[0];
-let cyclesQuery = supabaseAdmin
-  .from("grant_cycles")
-  .select("*")
-  .eq("status", "open")
-  .lte("end_date", today)
-  .order("display_order", { ascending: true })
-  .order("end_date", { ascending: true });
+const { data: cycles } = await cyclesQuery;
+
+// Server-side filter: exclude grants where end_date is in the past
+// (Supabase date filters can be unreliable, so we filter in JS after fetch)
+const todayStr = new Date().toISOString().split('T')[0];
+const validCycles = cycles?.filter(c => c.end_date >= todayStr) || [];
 ```
+
+This ensures closed grants never appear on the apply page regardless of database status.
 
 #### Admin Confirmation Modal
 
