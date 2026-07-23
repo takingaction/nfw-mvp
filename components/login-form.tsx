@@ -44,8 +44,10 @@ export function LoginForm({
         throw signInError;
       }
 
-      // Success - redirect to dashboard
-      router.push("/dashboard");
+      // Success - redirect to next param if present, otherwise dashboard
+      const searchParams = new URLSearchParams(window.location.search);
+      const nextUrl = searchParams.get("next") || "/dashboard";
+      router.push(nextUrl);
     } catch (err: any) {
       if (err.message?.includes("Email not confirmed")) {
         setError("Please confirm your email address first. Check your inbox for a confirmation link.");

@@ -9142,3 +9142,55 @@ perk_collection_items (
 | `components/admin/SiteSettingsEditor.tsx` | Removed NFW Exclusive toggle |
 | `components/grants/ConnectBankButton.tsx` | Changed button color |
 | `components/perks/FilterSidebar.tsx` | Added ShoppingBag icon to collection buttons |
+
+---
+
+## Session 2026-07-23: Perk Detail Page Auth Redirect
+
+### Problem
+
+Direct links to perk detail pages (`/perks/[offerKey]` and `/perks/nfw/[slug]`) by non-logged in users showed an "offer not found" or error page instead of redirecting to login.
+
+### Solution
+
+Added authentication checks to both perk detail pages that redirect non-logged in users to the login page with a `next` parameter for post-login redirect.
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `components/login-form.tsx` | Added `next` query param support for redirect after successful login |
+| `app/perks/[offerKey]/page.tsx` | Added auth check with membership permissions |
+| `app/perks/nfw/[slug]/page.tsx` | Added auth check with membership permissions |
+
+### Login Form Change
+
+After successful password login, the form now reads the `next` query param and redirects there instead of always going to `/dashboard`:
+
+```typescript
+const searchParams = new URLSearchParams(window.location.search);
+const nextUrl = searchParams.get("next") || "/dashboard";
+router.push(nextUrl);
+```
+
+### Auth Check Logic (Both Pages)
+
+| Condition | Redirect To |
+|-----------|-------------|
+| Not logged in | `/auth/login?next=[original URL]` |
+| Profile incomplete | `/auth/sign-up?step=1` |
+| Free member (not approved) | `/auth/sign-up?step=3` |
+| Waitlist member | `/auth/sign-up?step=3` |
+| Contributing/Founding/Approved Free | Allow access |
+
+### How It Works
+
+1. User visits `/perks/[offerKey]` directly (not through `/perks`)
+2. `useEffect` runs `checkAuthAndFetch()` on mount
+3. Auth check verifies user is logged in and has proper membership
+4. If not logged in → redirect to `/auth/login?next=/perks/[offerKey]`
+5. After login → user is redirected back to the perk page
+
+### Note
+
+The `next` param only works for password login. Google OAuth doesn't support it because the OAuth callback route doesn't pass through the `next` param.

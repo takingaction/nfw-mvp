@@ -11,6 +11,7 @@ import {
   Loader2,
   XCircle,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 type NfwPerk = {
   id: string;
@@ -33,12 +34,51 @@ export default function NfwPerkDetailPage() {
 
   const [perk, setPerk] = useState<NfwPerk | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [liked, setLiked] = useState(false);
 
   useEffect(() => {
-    if (slug) {
+    const checkAuthAndFetch = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        window.location.href = `/auth/login?next=${encodeURIComponent(window.location.pathname)}`;
+        return;
+      }
+
+      // Check profile and membership
+      try {
+        const response = await fetch("/api/auth/profile");
+        if (!response.ok) {
+          window.location.href = `/auth/login?next=${encodeURIComponent(window.location.pathname)}`;
+          return;
+        }
+        const profileData = await response.json();
+
+        // Profile incomplete
+        if (!profileData?.profile_completed) {
+          window.location.href = "/auth/sign-up?step=1";
+          return;
+        }
+
+        // Free member needs approval, waitlist cannot access
+        if ((profileData?.membership_level === "free" && profileData?.is_approved_free_member !== true) || profileData?.membership_level === "waitlist") {
+          window.location.href = "/auth/sign-up?step=3";
+          return;
+        }
+      } catch (err) {
+        window.location.href = "/auth/login";
+        return;
+      }
+
+      setAuthChecked(true);
       fetchPerk();
+    };
+
+    if (slug) {
+      checkAuthAndFetch();
     }
   }, [slug]);
 
@@ -83,7 +123,7 @@ export default function NfwPerkDetailPage() {
     })}`;
   };
 
-  if (loading) {
+  if (!authChecked || loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-nfw-lilac" />
