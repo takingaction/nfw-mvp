@@ -9194,3 +9194,89 @@ router.push(nextUrl);
 ### Note
 
 The `next` param only works for password login. Google OAuth doesn't support it because the OAuth callback route doesn't pass through the `next` param.
+
+---
+
+## Session 2026-07-23: Perks Page Banner + Featured Items Perk Cards
+
+### Overview
+
+Added configurable hero banner to `/perks` page and ability to add perk promo cards to dashboard featured items.
+
+### Database
+
+**Migrations:**
+- `128_create_perks_settings.sql` - Creates `perks_settings` table
+- `129_add_is_test_mode_to_perks_settings.sql` - Adds `is_test_mode` column
+- `130_enable_rls_perks_settings.sql` - Enables RLS on `perks_settings`
+
+**Schema:**
+```sql
+perks_settings (
+  id UUID PK,
+  hero_image_url TEXT,
+  hero_heading TEXT DEFAULT 'Member Perks',
+  hero_subheading TEXT DEFAULT 'Exclusive discounts and offers for NFW members',
+  is_test_mode BOOLEAN DEFAULT FALSE,
+  updated_at TIMESTAMPTZ
+)
+```
+
+### Perks Banner Feature
+
+**Admin UI** (`/admin/perk-collections`):
+- Banner settings section with image picker, heading, subheading, test mode checkbox
+- Test Mode: if enabled, banner only visible to admin users
+
+**Public Display** (`/perks`):
+- Banner displayed between hero and search bar
+- Styled as inset (matching search bar width/padding)
+- Height: `h-[150px]` mobile, `md:h-[200px]` desktop
+- Semi-transparent black overlay for text readability
+- Only shows if `hero_image_url` is set
+- Hidden from non-admin users when `is_test_mode` is true
+
+### Featured Items Perk Cards
+
+**FeaturedItem Type Updated:**
+```typescript
+type FeaturedItem = {
+  id: string;
+  type: "shopify_product" | "microgrant" | "article" | "perk";  // Added "perk"
+  title: string;
+  image: string;
+  slug?: string;
+  link?: string;         // NEW
+  button_label?: string;   // NEW
+};
+```
+
+**Admin UI** (`/admin/dashboard`):
+- "Add Perk" button in Featured Items section (lilac color)
+- Perk modal with: image picker, title, link URL (default `/perks`), button label (defaults to title)
+- Pencil icon on existing perk cards to edit
+- Edit modal pre-fills existing values
+
+**Public Display** (`PopularAcrossNFW`):
+- Perk items use lilac badge color
+- Custom link if provided, defaults to `/perks`
+- Custom button_label if provided, defaults to perk title
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/128_create_perks_settings.sql` | perks_settings table |
+| `supabase/migrations/129_add_is_test_mode_to_perks_settings.sql` | is_test_mode column |
+| `supabase/migrations/130_enable_rls_perks_settings.sql` | RLS policies |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/perks/settings/route.ts` | GET/POST for banner settings |
+| `app/admin/perk-collections/AdminPerkCollections.tsx` | Banner settings UI |
+| `app/admin/dashboard/DashboardAdminClient.tsx` | Add/Edit perk modal, pencil icon |
+| `app/perks/page.tsx` | Banner display with test mode check |
+| `app/dashboard/page.tsx` | Passes featured items to PopularAcrossNFW |
+| `components/dashboard/PopularAcrossNFW.tsx` | Perk type handling, link/button_label overrides |
