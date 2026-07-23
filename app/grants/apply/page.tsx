@@ -35,8 +35,6 @@ export default async function ApplyForGrantPage() {
   }
 
   // Build query - admins see all cycles, non-admins don't see testing-only cycles
-  // Also filter by end_date as defense-in-depth (cron job may have wrong search_path)
-  const today = new Date().toISOString().split('T')[0];
   let cyclesQuery = supabaseAdmin
     .from("grant_cycles")
     .select("*")
@@ -52,8 +50,8 @@ export default async function ApplyForGrantPage() {
   const { data: cycles } = await cyclesQuery;
 
   // Server-side filter: exclude grants where end_date is in the past
-  const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
+  // (Supabase date filters can be unreliable, so we filter in JS after fetch)
+  const todayStr = new Date().toISOString().split('T')[0];
   const validCycles = cycles?.filter(c => c.end_date >= todayStr) || [];
 
   return (
