@@ -4699,6 +4699,32 @@ The deadline date was showing as one day earlier due to JavaScript's `Date` pars
 })() : 'TBD'}
 ```
 
+### TEMPORARILY DISABLED: Nomination Feature (2026-07-23)
+
+**Reason:** Removed per business decision - users can now only apply for themselves, not nominate others.
+
+**What was removed from `components/GrantApplicationForm.tsx`:**
+- `isNominating` state (line 33)
+- `nomineeName` state (line 36)
+- `nomineeEmail` state (line 37)
+- Nominee validation logic in handleSubmit (lines 68-84)
+- Toggle buttons: "I'm applying for myself" / "I'm nominating someone" (lines 264-316)
+- Nominee name input field (lines 329-340)
+- Nominee email input field (lines 343-352)
+- Nominee consent checkbox (lines 367-378)
+- Conditional question text based on isNominating (lines 377-461)
+
+**What was removed from `app/api/grants/create/route.ts`:**
+- Nominee validation (lines 45-59)
+- `is_nominating`, `nominee_name`, `nominee_email` in grant insert (lines 149-150, 171-172)
+
+**Database columns preserved (NOT removed):**
+- `grants.is_nominating` - for historical data
+- `grants.nominee_name` - for historical data
+- `grants.nominee_email` - for historical data
+
+**To re-enable:** Reverse all removals, restoring the nominee state, toggle buttons, input fields, validation, and API handling.
+
 #### Admin Confirmation Modal
 
 **File:** `app/admin/grants/[id]/edit/page.tsx`

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, User, Users } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const decodeHtml = (html: string): string => {
   if (typeof document === "undefined") return html || "";
@@ -30,12 +30,8 @@ export default function GrantApplicationForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [uploadingDocs, setUploadingDocs] = useState(false);
-  const [isNominating, setIsNominating] = useState(false);
   const [documents, setDocuments] = useState<File[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
-  const [nomineeName, setNomineeName] = useState("");
-  const [nomineeEmail, setNomineeEmail] = useState("");
-  const [consentChecked, setConsentChecked] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitConsentChecked, setSubmitConsentChecked] = useState(false);
   const [certificationChecked, setCertificationChecked] = useState(false);
@@ -65,26 +61,6 @@ export default function GrantApplicationForm({
       return;
     }
 
-    if (isNominating) {
-      if (!nomineeName.trim()) {
-        setError("Please enter the nominee's name");
-        return;
-      }
-      if (!nomineeEmail.trim()) {
-        setError("Please enter the nominee's email");
-        return;
-      }
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(nomineeEmail.trim())) {
-        setError("Please enter a valid email address for the nominee");
-        return;
-      }
-      if (!consentChecked) {
-        setError("Please confirm the nominee has consented to being nominated");
-        return;
-      }
-    }
-
     setShowConfirm(true);
   };
 
@@ -99,9 +75,9 @@ export default function GrantApplicationForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          is_nominating: isNominating,
-          nominee_name: isNominating ? nomineeName.trim() : null,
-          nominee_email: isNominating ? nomineeEmail.trim() : null,
+          is_nominating: false,
+          nominee_name: null,
+          nominee_email: null,
           certification_consent: certificationChecked,
         }),
       });
@@ -255,134 +231,11 @@ export default function GrantApplicationForm({
         )}
 
         <div>
-          <p className={labelClass}>
-            Who is this application for? <span className="text-nfw-lilac">*</span>
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setIsNominating(false)}
-              className={`flex items-center gap-3 p-4 border-2 transition-all ${
-                !isNominating
-                  ? "border-nfw-blackberry bg-nfw-blackberry/5"
-                  : "border-nfw-blackberry/10 hover:border-nfw-blackberry/30"
-              }`}
-            >
-              <div
-                className={`w-8 h-8 flex items-center justify-center flex-shrink-0 ${
-                  !isNominating ? "bg-nfw-blackberry" : "bg-nfw-blackberry/10"
-                }`}
-              >
-                <User
-                  className={`w-4 h-4 ${!isNominating ? "text-white" : "text-nfw-blackberry"}`}
-                />
-              </div>
-              <div className="text-left">
-                <p className="font-ui text-nfw-blackberry text-sm">Myself</p>
-                <p className="text-sm font-serif text-nfw-blackberry/50">
-                  I'm applying for me
-                </p>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsNominating(true)}
-              className={`flex items-center gap-3 p-4 border-2 transition-all ${
-                isNominating
-                  ? "border-nfw-blackberry bg-nfw-blackberry/5"
-                  : "border-nfw-blackberry/10 hover:border-nfw-blackberry/30"
-              }`}
-            >
-              <div
-                className={`w-8 h-8 flex items-center justify-center flex-shrink-0 ${
-                  isNominating ? "bg-nfw-blackberry" : "bg-nfw-blackberry/10"
-                }`}
-              >
-                <Users
-                  className={`w-4 h-4 ${isNominating ? "text-white" : "text-nfw-blackberry"}`}
-                />
-              </div>
-              <div className="text-left">
-                <p className="font-ui text-nfw-blackberry text-sm">
-                  Someone else
-                </p>
-                <p className="text-sm font-serif text-nfw-blackberry/50">
-                  I'm nominating someone
-                </p>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {isNominating && (
-          <div className="bg-nfw-dove/50 border border-nfw-blackberry/10 p-6 space-y-4">
-            <h4 className="font-serif text-lg text-nfw-blackberry">
-              Nominee Information
-            </h4>
-
-            <div>
-              <label className={labelClass}>
-                Nominee's Name <span className="text-nfw-lilac">*</span>
-              </label>
-              <input
-                type="text"
-                value={nomineeName}
-                onChange={(e) => setNomineeName(e.target.value)}
-                placeholder="Maria Garcia"
-                className={inputClass}
-                required={isNominating}
-              />
-            </div>
-
-            <div>
-              <label className={labelClass}>
-                Nominee's Email <span className="text-nfw-lilac">*</span>
-              </label>
-              <input
-                type="email"
-                value={nomineeEmail}
-                onChange={(e) => setNomineeEmail(e.target.value)}
-                placeholder="maria@example.com"
-                className={inputClass}
-                required={isNominating}
-              />
-              <p className="text-xs font-ui text-nfw-blackberry/50 mt-1">
-                They will receive an email to create an account and add their
-                bank info if approved.
-              </p>
-            </div>
-
-            <div className="flex items-start gap-3 pt-2">
-              <input
-                type="checkbox"
-                id="consent"
-                checked={consentChecked}
-                onChange={(e) => setConsentChecked(e.target.checked)}
-                className="mt-1 w-4 h-4 accent-nfw-blackberry"
-              />
-              <label
-                htmlFor="consent"
-                className="text-sm font-serif text-nfw-blackberry/70"
-              >
-                I confirm the nominated person has consented to being nominated
-                and understands their information will be shared with National
-                Fund for Women to facilitate this grant.
-              </label>
-            </div>
-          </div>
-        )}
-
-        <div>
           <label className={labelClass}>
-            {isNominating
-              ? "Tell us about the person you're nominating."
-              : "Who are you?"}{" "}
-            <span className="text-nfw-lilac">*</span>
+            Who are you? <span className="text-nfw-lilac">*</span>
           </label>
           <p className="text-sm font-serif text-nfw-blackberry/50 mb-2">
-            {isNominating
-              ? "Share their name, background, and why you're nominating them."
-              : "Tell us a little about yourself — your situation, your life, what matters to you."}
+            Tell us a little about yourself — your situation, your life, what matters to you.
           </p>
           <textarea
             value={formData.who_are_you}
@@ -391,11 +244,7 @@ export default function GrantApplicationForm({
             }
             rows={4}
             maxLength={500}
-            placeholder={
-              isNominating
-                ? "Her name is Maria. She's a single mom of three..."
-                : "I'm a single mom living in Atlanta..."
-            }
+            placeholder="I'm a single mom living in Atlanta..."
             className={inputClass + " resize-none"}
             required
           />
@@ -406,10 +255,7 @@ export default function GrantApplicationForm({
 
         <div>
           <label className={labelClass}>
-            {isNominating
-              ? "What is their biggest challenge right now?"
-              : "What's the biggest challenge you're facing right now?"}{" "}
-            <span className="text-nfw-lilac">*</span>
+            What's the biggest challenge you're facing right now? <span className="text-nfw-lilac">*</span>
           </label>
           <p className="text-sm font-serif text-nfw-blackberry/50 mb-2">
             Be specific. The more we understand the situation, the better we
@@ -425,11 +271,7 @@ export default function GrantApplicationForm({
             }
             rows={5}
             maxLength={1000}
-            placeholder={
-              isNominating
-                ? "She lost her job last month and her car needs repairs to get to interviews..."
-                : "My car broke down last month and I can't get to work without it..."
-            }
+            placeholder="My car broke down last month and I can't get to work without it..."
             className={inputClass + " resize-none"}
             required
           />
@@ -440,15 +282,10 @@ export default function GrantApplicationForm({
 
         <div>
           <label className={labelClass}>
-            {isNominating
-              ? "How do you imagine they would use the microgrant funds?"
-              : "What would you do with the microgrant funds?"}{" "}
-            <span className="text-nfw-lilac">*</span>
+            What would you do with the microgrant funds? <span className="text-nfw-lilac">*</span>
           </label>
           <p className="text-sm font-serif text-nfw-blackberry/50 mb-2">
-            {isNominating
-              ? "Describe how you think the funds would make a difference for them."
-              : "Tell us exactly how you'd use the money and what difference it would make."}
+            Tell us exactly how you'd use the money and what difference it would make.
           </p>
           <textarea
             value={formData.fund_usage}
@@ -457,11 +294,7 @@ export default function GrantApplicationForm({
             }
             rows={4}
             maxLength={500}
-            placeholder={
-              isNominating
-                ? "The funds would cover her car repair so she can get back to work..."
-                : "I would use the funds to repair my car so I can get back to work..."
-            }
+            placeholder="I would use the funds to repair my car so I can get back to work..."
             className={inputClass + " resize-none"}
             required
           />

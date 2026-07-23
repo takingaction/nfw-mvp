@@ -29,9 +29,6 @@ export async function POST(request: Request) {
       who_are_you,
       biggest_challenge,
       fund_usage,
-      is_nominating,
-      nominee_name,
-      nominee_email,
       certification_consent,
     } = body;
 
@@ -40,22 +37,6 @@ export async function POST(request: Request) {
         { error: "Invalid cycle ID" },
         { status: 400 },
       );
-    }
-
-    // Validate nominee fields when nominating
-    if (is_nominating) {
-      if (!nominee_name || typeof nominee_name !== "string" || nominee_name.trim().length < 1) {
-        return NextResponse.json(
-          { error: "Please provide the nominee's name" },
-          { status: 400 },
-        );
-      }
-      if (!nominee_email || typeof nominee_email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nominee_email.trim())) {
-        return NextResponse.json(
-          { error: "Please provide a valid nominee email address" },
-          { status: 400 },
-        );
-      }
     }
 
     if (!who_are_you || typeof who_are_you !== "string" || who_are_you.trim().length < 10) {
@@ -117,25 +98,20 @@ export async function POST(request: Request) {
       // Admins can apply to testing-only cycles for testing purposes
     }
 
-    // For self-applications, check if user already applied as themselves
-    // Allow unlimited nominations per cycle
-    if (!is_nominating) {
-      const { data: existing } = await supabaseAdmin
-        .from("grants")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("cycle_id", cycle_id)
-        .eq("is_nominating", false)
-        .single();
+    // Check if user already applied for this cycle
+    const { data: existing } = await supabaseAdmin
+      .from("grants")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("cycle_id", cycle_id)
+      .single();
 
-      if (existing) {
-        return NextResponse.json(
-          { error: "You have already applied for this grant cycle." },
-          { status: 409 },
-        );
-      }
+    if (existing) {
+      return NextResponse.json(
+        { error: "You have already applied for this grant cycle." },
+        { status: 409 },
+      );
     }
-    // For nominations, allow unlimited - no duplicate check needed
 
     const { data: grant, error } = await supabaseAdmin
       .from("grants")
@@ -145,9 +121,9 @@ export async function POST(request: Request) {
         who_are_you: who_are_you.trim(),
         biggest_challenge: biggest_challenge.trim(),
         fund_usage: fund_usage.trim(),
-        is_nominating: Boolean(is_nominating),
-        nominee_name: is_nominating ? nominee_name.trim() : null,
-        nominee_email: is_nominating ? nominee_email.trim() : null,
+        is_nominating: false,
+        nominee_name: null,
+        nominee_email: null,
         status: "submitted",
         submitted_at: new Date().toISOString(),
         consent_version: "v1",
@@ -167,9 +143,6 @@ export async function POST(request: Request) {
       console.error("[grants/create] Insert payload:", {
         user_id: user.id,
         cycle_id,
-        is_nominating,
-        nominee_name: is_nominating ? nominee_name.trim() : null,
-        nominee_email: is_nominating ? nominee_email.trim() : null,
         status: "submitted",
       });
       return NextResponse.json(
