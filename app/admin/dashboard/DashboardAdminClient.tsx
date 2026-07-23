@@ -693,6 +693,7 @@ function PerkItemModal({
   const [image, setImage] = useState("");
   const [link, setLink] = useState("/perks");
   const [buttonLabel, setButtonLabel] = useState("");
+  const [buttonLabelManuallyEdited, setButtonLabelManuallyEdited] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false);
 
   const handleSubmit = () => {
@@ -708,7 +709,7 @@ function PerkItemModal({
       title: title.trim(),
       image,
       link: link.trim() || "/perks",
-      button_label: buttonLabel.trim() || title.trim(),
+      button_label: buttonLabelManuallyEdited ? buttonLabel.trim() : title.trim(),
     });
   };
 
@@ -751,12 +752,7 @@ function PerkItemModal({
             <input
               type="text"
               value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                if (!buttonLabel) {
-                  setButtonLabel(e.target.value);
-                }
-              }}
+              onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., 20% Off at Target"
               className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
             />
@@ -779,7 +775,10 @@ function PerkItemModal({
             <input
               type="text"
               value={buttonLabel}
-              onChange={(e) => setButtonLabel(e.target.value)}
+              onChange={(e) => {
+                setButtonLabel(e.target.value);
+                setButtonLabelManuallyEdited(true);
+              }}
               placeholder="e.g., Shop Now"
               className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
             />
