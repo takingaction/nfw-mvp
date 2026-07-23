@@ -9362,3 +9362,70 @@ type FeaturedItem = {
 | `app/perks/page.tsx` | Banner display with test mode check |
 | `app/dashboard/page.tsx` | Passes featured items to PopularAcrossNFW |
 | `components/dashboard/PopularAcrossNFW.tsx` | Perk type handling, link/button_label overrides |
+
+---
+
+## Session 2026-07-23: Login Redirect `next` Param Fix
+
+### Overview
+
+Added URL validation and `next` param support so users return to their original destination after logging in, regardless of login method (password or Google OAuth).
+
+### Problem
+
+When users clicked a perk collection link like `/perks?collection=featured-perks`, they were redirected to `/auth/login` without the original URL. After login, they went to `/dashboard` instead of back to the perks page with the collection selected.
+
+### Solution
+
+1. **Created `lib/redirect-utils.ts`** with URL validation helper that prevents open-redirect attacks by validating all `next` URLs are on `nationalfundforwomen.org`
+
+2. **Updated auth callback** (`app/auth/callback/route.ts`) to read `next` from:
+   - OAuth state param (for Google OAuth)
+   - Query param (for password login)
+
+3. **Updated login form** (`components/login-form.tsx`) to pass `next` via redirectTo URL for Google OAuth
+
+4. **Fixed all protected pages** to pass `next` param when redirecting to login
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `lib/redirect-utils.ts` | URL validation helper (`isValidRedirect`, `getLoginRedirectUrl`, `getValidatedNextUrl`) |
+
+### Files Modified (14 total)
+
+**Auth Flow (2):**
+- `app/auth/callback/route.ts` - Reads `next` from state/params, redirects to `next` after login
+- `components/login-form.tsx` - Passes `next` via redirectTo URL for Google OAuth
+
+**Client-Side Pages (3):**
+- `app/perks/page.tsx` - 6 redirects fixed
+- `app/perks/[offerKey]/page.tsx` - 5 redirects fixed
+- `app/perks/nfw/[slug]/page.tsx` - 5 redirects fixed
+
+**Server-Side Pages (9):**
+- `app/dashboard/page.tsx`
+- `app/grants/apply/page.tsx`
+- `app/grants/my-applications/page.tsx`
+- `app/grants/view/[id]/page.tsx`
+- `app/profile/page.tsx`
+- `app/profile/edit/page.tsx`
+- `app/share-your-story/page.tsx`
+- `app/store/my-claims/page.tsx`
+- `app/travel/page.tsx`
+
+### Security
+
+All `next` URLs are validated to ensure they point to `nationalfundforwomen.org` or `www.nationalfundforwomen.org`, preventing open-redirect attacks.
+
+### Login Flow After Fix
+
+| Step | Password Login | Google OAuth |
+|------|---------------|-------------|
+| 1 | Visit `/perks?collection=x` | Same |
+| 2 | Redirect to `/auth/login?next=/perks?collection=x` | Same |
+| 3 | Login with password | Click Google button |
+| 4 | `login-form` reads `next`, redirects on success | `next` passed via redirectTo URL |
+| 5 | - | `callback` reads `next` from URL param |
+| 6 | Redirect to `/perks?collection=x` | Same |

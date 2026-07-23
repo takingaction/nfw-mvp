@@ -21,7 +21,11 @@ function decodeHtml(html: string): string {
     .replace(/&#92;/g, "\\");
 }
 
-export default async function MyApplicationsPage() {
+export default async function MyApplicationsPage({
+  searchParams,
+}: {
+  searchParams: { next?: string };
+}) {
   const supabase = await createServerClient();
   const {
     data: { user },
@@ -29,7 +33,8 @@ export default async function MyApplicationsPage() {
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    redirect("/auth/login");
+    const nextUrl = searchParams?.next || "/grants/my-applications";
+    redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
   }
 
   const { data: grants } = await supabaseAdmin

@@ -15,11 +15,16 @@ async function getUser() {
   return user;
 }
 
-export default async function TravelPage() {
+export default async function TravelPage({
+  searchParams,
+}: {
+  searchParams: { next?: string };
+}) {
   const user = await getUser();
 
   if (!user) {
-    redirect("/auth/login?redirect=/travel");
+    const nextUrl = searchParams?.next || "/travel";
+    redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
   }
 
   // Fetch profile to get optional data for Access Travel

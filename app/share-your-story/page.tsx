@@ -2,7 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import ShareStoryClient from "@/components/dashboard/ShareStoryClient";
 
-export default async function ShareYourStoryPage() {
+export default async function ShareYourStoryPage({
+  searchParams,
+}: {
+  searchParams: { next?: string };
+}) {
   const supabase = await createClient();
 
   const {
@@ -10,7 +14,8 @@ export default async function ShareYourStoryPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth/login");
+    const nextUrl = searchParams?.next || "/share-your-story";
+    redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
   }
 
   const { data: profile } = await supabase

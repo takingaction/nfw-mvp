@@ -10,7 +10,11 @@ export const metadata = {
   description: "Manage your National Fund for Women member profile.",
 };
 
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams: { next?: string };
+}) {
   const supabase = await createClient();
 
   const {
@@ -19,7 +23,8 @@ export default async function ProfilePage() {
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    redirect("/auth/login");
+    const nextUrl = searchParams?.next || "/profile";
+    redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
   }
 
   const { data: profile } = await supabase

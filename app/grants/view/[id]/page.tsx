@@ -26,8 +26,10 @@ function decodeHtml(html: string): string {
 
 export default async function GrantDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: { next?: string };
 }) {
   const { id } = await params;
 
@@ -38,7 +40,8 @@ export default async function GrantDetailPage({
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    redirect("/auth/login");
+    const nextUrl = searchParams?.next || `/grants/view/${id}`;
+    redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
   }
 
   const { data: grant } = await supabaseAdmin

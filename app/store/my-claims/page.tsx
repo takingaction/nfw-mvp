@@ -9,14 +9,18 @@ export const metadata = {
   description: "Track your claimed items from the Zero Dollar Store",
 };
 
-async function MyClaimsContent() {
+async function MyClaimsContent({
+  nextUrl,
+}: {
+  nextUrl?: string;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth/login");
+    redirect(`/auth/login?next=${encodeURIComponent(nextUrl || "/store/my-claims")}`);
   }
 
   const { data: profile } = await supabase
@@ -30,7 +34,7 @@ async function MyClaimsContent() {
   }
 
   if (!profile?.profile_completed) {
-    redirect("/auth/sign-up?step=1");
+    redirect(`/auth/sign-up?step=1&next=${encodeURIComponent(nextUrl || "/store/my-claims")}`);
   }
 
   const { data: claims, error } = await supabase
@@ -97,7 +101,12 @@ async function MyClaimsContent() {
   );
 }
 
-export default function MyClaimsPage() {
+export default function MyClaimsPage({
+  searchParams,
+}: {
+  searchParams: { next?: string };
+}) {
+  const nextUrl = searchParams?.next;
   return (
     <Suspense
       fallback={
@@ -119,7 +128,7 @@ export default function MyClaimsPage() {
         </main>
       }
     >
-      <MyClaimsContent />
+      <MyClaimsContent nextUrl={nextUrl} />
     </Suspense>
   );
 }

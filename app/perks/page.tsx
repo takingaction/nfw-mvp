@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { getLoginRedirectUrl } from "@/lib/redirect-utils";
 import { AlertTriangle, SlidersHorizontal, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import PerksSearch from "@/components/perks/PerksSearch";
@@ -140,31 +141,31 @@ export default function PerksPage() {
         try {
           const response = await fetch("/api/auth/profile");
           if (!response.ok) {
-            window.location.href = "/auth/login";
+            window.location.href = getLoginRedirectUrl(window.location.href);
             return;
           }
           const profileData = await response.json();
 
           if (!profileData?.profile_completed) {
-            window.location.href = "/auth/sign-up?step=1";
+            window.location.href = `/auth/sign-up?step=1&next=${encodeURIComponent(window.location.href)}`;
             return;
           }
           // Free members need is_approved_free_member = true to access perks
           // Waitlist members also cannot access perks
           if ((profileData?.membership_level === "free" && profileData?.is_approved_free_member !== true) || profileData?.membership_level === "waitlist") {
-            window.location.href = "/auth/sign-up?step=3";
+            window.location.href = `/auth/sign-up?step=3&next=${encodeURIComponent(window.location.href)}`;
             return;
           }
           // Only redirect if membership_level is explicitly set to a non-perk plan
           if (profileData?.membership_level && !["free", "contributing", "founding", "waitlist"].includes(profileData.membership_level)) {
-            window.location.href = "/auth/sign-up?step=3";
+            window.location.href = `/auth/sign-up?step=3&next=${encodeURIComponent(window.location.href)}`;
             return;
           }
 
           setProfile(profileData);
         } catch (err) {
           console.error("Profile fetch error:", err);
-          window.location.href = "/auth/login";
+          window.location.href = getLoginRedirectUrl(window.location.href);
           return;
         }
 
@@ -188,7 +189,7 @@ export default function PerksPage() {
 
   useEffect(() => {
     if (authChecked && user === null) {
-      window.location.href = "/auth/login";
+      window.location.href = getLoginRedirectUrl(window.location.href);
     }
   }, [authChecked, user]);
 

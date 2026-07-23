@@ -12,6 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getLoginRedirectUrl } from "@/lib/redirect-utils";
 
 type NfwPerk = {
   id: string;
@@ -44,7 +45,7 @@ export default function NfwPerkDetailPage() {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-        window.location.href = `/auth/login?next=${encodeURIComponent(window.location.pathname)}`;
+        window.location.href = getLoginRedirectUrl(window.location.href);
         return;
       }
 
@@ -52,24 +53,24 @@ export default function NfwPerkDetailPage() {
       try {
         const response = await fetch("/api/auth/profile");
         if (!response.ok) {
-          window.location.href = `/auth/login?next=${encodeURIComponent(window.location.pathname)}`;
+          window.location.href = getLoginRedirectUrl(window.location.href);
           return;
         }
         const profileData = await response.json();
 
         // Profile incomplete
         if (!profileData?.profile_completed) {
-          window.location.href = "/auth/sign-up?step=1";
+          window.location.href = `/auth/sign-up?step=1&next=${encodeURIComponent(window.location.href)}`;
           return;
         }
 
         // Free member needs approval, waitlist cannot access
         if ((profileData?.membership_level === "free" && profileData?.is_approved_free_member !== true) || profileData?.membership_level === "waitlist") {
-          window.location.href = "/auth/sign-up?step=3";
+          window.location.href = `/auth/sign-up?step=3&next=${encodeURIComponent(window.location.href)}`;
           return;
         }
       } catch (err) {
-        window.location.href = "/auth/login";
+        window.location.href = getLoginRedirectUrl(window.location.href);
         return;
       }
 

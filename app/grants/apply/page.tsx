@@ -8,7 +8,11 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-export default async function ApplyForGrantPage() {
+export default async function ApplyForGrantPage({
+  searchParams,
+}: {
+  searchParams: { next?: string };
+}) {
   const supabase = await createServerClient();
   const {
     data: { user },
@@ -16,7 +20,8 @@ export default async function ApplyForGrantPage() {
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    redirect("/auth/login");
+    const nextUrl = searchParams?.next || "/grants/apply";
+    redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
   }
 
   // Check profile completion and membership level
@@ -27,11 +32,11 @@ export default async function ApplyForGrantPage() {
     .single();
 
   if (!profile?.profile_completed) {
-    redirect("/auth/sign-up?step=1");
+    redirect(`/auth/sign-up?step=1&next=${encodeURIComponent(searchParams?.next || "/grants/apply")}`);
   } else if ((profile?.membership_level === "free" && profile?.is_approved_free_member !== true) || profile?.membership_level === "waitlist") {
-    redirect("/auth/sign-up?step=3");
+    redirect(`/auth/sign-up?step=3&next=${encodeURIComponent(searchParams?.next || "/grants/apply")}`);
   } else if (profile?.membership_level && !["free", "contributing", "founding", "waitlist"].includes(profile.membership_level)) {
-    redirect("/auth/sign-up?step=3");
+    redirect(`/auth/sign-up?step=3&next=${encodeURIComponent(searchParams?.next || "/grants/apply")}`);
   }
 
   // Build query - admins see all cycles, non-admins don't see testing-only cycles

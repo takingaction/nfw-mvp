@@ -2,14 +2,19 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import ProfileClient from "@/components/ProfileClient";
 
-export default async function EditProfilePage() {
+export default async function EditProfilePage({
+  searchParams,
+}: {
+  searchParams: { next?: string };
+}) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth/login");
+    const nextUrl = searchParams?.next || "/profile/edit";
+    redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
   }
 
   // Fetch user profile

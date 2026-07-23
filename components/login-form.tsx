@@ -66,10 +66,14 @@ export function LoginForm({
     setIsGoogleLoading(true);
     setError(null);
 
+    // Get next URL from query params to pass through OAuth flow
+    const searchParams = new URLSearchParams(window.location.search);
+    const nextUrl = searchParams.get("next") || "/dashboard";
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextUrl)}`,
       },
     });
 

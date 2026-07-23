@@ -103,7 +103,11 @@ async function getSavings(userId: string) {
   };
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: { next?: string };
+}) {
   const supabase = await createClient();
 
   const {
@@ -112,7 +116,9 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    redirect("/auth/login");
+    // Redirect to login, preserving the attempted URL as next
+    const nextUrl = searchParams?.next || "/dashboard";
+    redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
   }
 
   const supabaseAdmin = createSupabaseAdminClient(

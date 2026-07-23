@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { type NextRequest } from "next/server";
+import { getValidatedNextUrl } from "@/lib/redirect-utils";
 
 const supabaseAdmin = createSupabaseAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,6 +12,8 @@ const supabaseAdmin = createSupabaseAdminClient(
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
+  const nextParam = searchParams.get("next");
+  const stateParam = searchParams.get("state");
 
   if (code) {
     const supabase = await createClient();
@@ -50,10 +53,13 @@ export async function GET(request: NextRequest) {
           }
         }
 
+        const nextUrl = getValidatedNextUrl(nextParam, stateParam);
+
         if (profile?.profile_completed) {
-          redirect("/dashboard");
+          redirect(nextUrl);
         } else {
-          redirect("/auth/sign-up?step=1");
+          // Pass next URL through to signup flow so user redirects there after completion
+          redirect(`/auth/sign-up?step=1&next=${encodeURIComponent(nextUrl)}`);
         }
       }
     }
