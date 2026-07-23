@@ -41,7 +41,7 @@ export default async function ApplyForGrantPage() {
     .from("grant_cycles")
     .select("*")
     .eq("status", "open")
-    .lt("end_date", today)
+    .not("end_date", "gte", today)
     .order("display_order", { ascending: true })
     .order("end_date", { ascending: true });
 
