@@ -103,6 +103,11 @@ export default function PerksPage() {
   const [collections, setCollections] = useState<any[]>([]);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   const [collectionPerks, setCollectionPerks] = useState<any[]>([]);
+  const [heroSettings, setHeroSettings] = useState<{
+    hero_image_url: string | null;
+    hero_heading: string;
+    hero_subheading: string;
+  } | null>(null);
 
   useEffect(() => {
     const storeParam = searchParams.get("store");
@@ -245,6 +250,7 @@ export default function PerksPage() {
     fetchFacets();
     fetchSiteSettings();
     fetchCollections();
+    fetchPerksSettings();
   }, []);
 
   const fetchSiteSettings = async () => {
@@ -254,6 +260,18 @@ export default function PerksPage() {
       setShowNfwExclusive(data.show_nfw_exclusive_button || false);
     } catch (err) {
       console.error("Failed to fetch site settings:", err);
+    }
+  };
+
+  const fetchPerksSettings = async () => {
+    try {
+      const res = await fetch("/api/perks/settings");
+      const data = await res.json();
+      if (data) {
+        setHeroSettings(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch perks settings:", err);
     }
   };
 
@@ -866,6 +884,21 @@ export default function PerksPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {heroSettings?.hero_image_url && (
+          <div className="relative h-[150px] md:h-[200px] bg-cover bg-center bg-no-repeat rounded-lg overflow-hidden mb-6">
+            <div
+              className="absolute inset-0 bg-black/40"
+            />
+            <div className="relative z-10 flex flex-col items-center justify-center h-full text-center px-4">
+              <h3 className="font-serif text-2xl md:text-3xl text-white mb-1">
+                {heroSettings.hero_heading}
+              </h3>
+              <p className="font-ui text-sm text-white/80">
+                {heroSettings.hero_subheading}
+              </p>
+            </div>
+          </div>
+        )}
         <div className="bg-white p-4 mb-6 border border-nfw-blackberry/10">
           <PerksSearch
             query={searchQuery}

@@ -19,7 +19,8 @@ import {
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Plus, Pencil, Trash2, GripVertical, X, Check, ChevronDown, ChevronUp, Link, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, GripVertical, X, Check, ChevronDown, ChevronUp, Link, ExternalLink, Save } from "lucide-react";
+import MediaLibraryModal from "@/components/admin/MediaLibraryModal";
 
 type CollectionItem = {
   id: string;
@@ -55,6 +56,14 @@ export default function AdminPerkCollections() {
   const [showNfwExclusive, setShowNfwExclusive] = useState(false);
   const [savingNfwExclusive, setSavingNfwExclusive] = useState(false);
 
+  // Banner settings state
+  const [heroImageUrl, setHeroImageUrl] = useState("");
+  const [heroHeading, setHeroHeading] = useState("Member Perks");
+  const [heroSubheading, setHeroSubheading] = useState("Exclusive discounts and offers for NFW members");
+  const [savingBanner, setSavingBanner] = useState(false);
+  const [bannerSaved, setBannerSaved] = useState(false);
+  const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -76,6 +85,7 @@ export default function AdminPerkCollections() {
   useEffect(() => {
     fetchCollections();
     fetchSiteSettings();
+    fetchPerksBannerSettings();
   }, []);
 
   async function fetchSiteSettings() {
@@ -87,6 +97,44 @@ export default function AdminPerkCollections() {
       console.error("Failed to fetch site settings:", err);
     }
   }
+
+  async function fetchPerksBannerSettings() {
+    try {
+      const res = await fetch("/api/perks/settings");
+      const data = await res.json();
+      if (data) {
+        setHeroImageUrl(data.hero_image_url || "");
+        setHeroHeading(data.hero_heading || "Member Perks");
+        setHeroSubheading(data.hero_subheading || "Exclusive discounts and offers for NFW members");
+      }
+    } catch (err) {
+      console.error("Failed to fetch perks banner settings:", err);
+    }
+  }
+
+  const handleSaveBanner = async () => {
+    setSavingBanner(true);
+    setBannerSaved(false);
+    try {
+      const res = await fetch("/api/perks/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hero_image_url: heroImageUrl || null,
+          hero_heading: heroHeading,
+          hero_subheading: heroSubheading,
+        }),
+      });
+      if (res.ok) {
+        setBannerSaved(true);
+        setTimeout(() => setBannerSaved(false), 3000);
+      }
+    } catch {
+      console.error("Failed to save banner settings");
+    } finally {
+      setSavingBanner(false);
+    }
+  };
 
   async function handleToggleNfwExclusive() {
     setSavingNfwExclusive(true);
@@ -446,6 +494,92 @@ export default function AdminPerkCollections() {
             <Plus className="w-4 h-4" />
             Create Collection
           </button>
+        </div>
+      </div>
+
+      {/* Banner Settings Section */}
+      <div className="bg-white border border-nfw-blackberry/10 overflow-hidden mb-8">
+        <div className="px-6 py-5 border-b border-nfw-blackberry/10">
+          <h2 className="text-lg font-bold text-nfw-blackberry font-ui mb-4">Banner Settings</h2>
+          <p className="text-nfw-blackberry/50 text-sm mb-4">
+            Configure the hero banner at the top of the Member Perks page.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-nfw-blackberry mb-2">
+                Background Image
+              </label>
+              <div className="border border-nfw-blackberry/20 p-4 bg-nfw-dove/50">
+                {heroImageUrl ? (
+                  <div className="relative">
+                    <img
+                      src={heroImageUrl}
+                      alt="Banner preview"
+                      className="w-full h-32 object-cover rounded"
+                    />
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={() => setMediaLibraryOpen(true)}
+                        className="text-sm text-nfw-aubergine hover:underline"
+                      >
+                        Change Image
+                      </button>
+                      <button
+                        onClick={() => setHeroImageUrl("")}
+                        className="text-sm text-red-600 hover:underline"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setMediaLibraryOpen(true)}
+                    className="w-full py-8 border-2 border-dashed border-nfw-blackberry/20 hover:border-nfw-aubergine text-nfw-blackberry/40 hover:text-nfw-aubergine transition-colors text-sm"
+                  >
+                    + Select Image from Media Library
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-nfw-blackberry mb-2">
+                  Heading Text
+                </label>
+                <input
+                  type="text"
+                  value={heroHeading}
+                  onChange={(e) => setHeroHeading(e.target.value)}
+                  className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-nfw-blackberry mb-2">
+                  Subheading Text
+                </label>
+                <input
+                  type="text"
+                  value={heroSubheading}
+                  onChange={(e) => setHeroSubheading(e.target.value)}
+                  className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-4">
+            <button
+              onClick={handleSaveBanner}
+              disabled={savingBanner}
+              className="flex items-center gap-2 px-4 py-2 bg-nfw-blackberry text-white text-sm font-medium hover:bg-nfw-blackberry/90 transition-colors disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {savingBanner ? "Saving..." : "Save Banner Settings"}
+            </button>
+            {bannerSaved && (
+              <span className="text-sm text-green-600 font-medium">Saved!</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -871,3 +1005,13 @@ function SortableItemRow({
     </div>
   );
 }
+
+<MediaLibraryModal
+  isOpen={mediaLibraryOpen}
+  onClose={() => setMediaLibraryOpen(false)}
+  onSelect={(url) => {
+    setHeroImageUrl(url);
+    setMediaLibraryOpen(false);
+  }}
+  bucket="page-builder"
+/>
