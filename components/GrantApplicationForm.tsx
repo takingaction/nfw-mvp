@@ -204,7 +204,7 @@ export default function GrantApplicationForm({
                         />
                       <p className="text-sm font-ui text-nfw-blackberry/50 mt-0.5">
                         Deadline:{" "}
-                        {new Date(cycle.end_date).toLocaleDateString("en-US", {
+                        {new Date(cycle.end_date + 'T00:00:00').toLocaleDateString("en-US", {
                           month: "long",
                           day: "numeric",
                           year: "numeric",
