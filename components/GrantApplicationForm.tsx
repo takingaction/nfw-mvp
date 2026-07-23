@@ -205,8 +205,8 @@ export default function GrantApplicationForm({
                       <p className="text-sm font-ui text-nfw-blackberry/50 mt-0.5">
                         Deadline:{" "}
                         {cycle.end_date ? (() => {
-                          const parts = cycle.end_date.split('-');
-                          const [y, m, d] = parts;
+                          const datePart = cycle.end_date.split('T')[0];
+                          const [y, m, d] = datePart.split('-');
                           const parsed = new Date(+y, +m - 1, +d);
                           return parsed.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
                         })() : 'TBD'}
@@ -239,7 +239,8 @@ export default function GrantApplicationForm({
                  <p className="text-sm font-ui text-nfw-blackberry/60 mt-1">
                   Deadline:{" "}{" "}
                   {selectedCycle.end_date ? (() => {
-                    const [y, m, d] = selectedCycle.end_date.split('-');
+                    const datePart = selectedCycle.end_date.split('T')[0];
+                    const [y, m, d] = datePart.split('-');
                     return new Date(+y, +m - 1, +d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
                   })() : 'TBD'}
                 </p>
