@@ -894,10 +894,10 @@ export default function PerksPage() {
               className="absolute inset-0 bg-black/40"
             />
             <div className="relative z-10 flex flex-col items-center justify-center h-full text-center px-4">
-              <h3 className="font-serif text-2xl md:text-3xl text-white mb-1">
+              <h3 className="font-serif text-3xl md:text-4xl text-white mb-1">
                 {heroSettings.hero_heading}
               </h3>
-              <p className="font-ui text-sm text-white/80">
+              <p className="font-ui text-base md:text-lg text-white/80">
                 {heroSettings.hero_subheading}
               </p>
             </div>
