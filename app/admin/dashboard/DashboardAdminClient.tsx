@@ -23,10 +23,12 @@ import { CSS } from "@dnd-kit/utilities";
 
 type FeaturedItem = {
   id: string;
-  type: "shopify_product" | "microgrant" | "article";
+  type: "shopify_product" | "microgrant" | "article" | "perk";
   title: string;
   image: string;
   slug?: string;
+  link?: string;
+  button_label?: string;
 };
 
 type DashboardSettings = {
@@ -103,7 +105,9 @@ function SortableFeaturedItem({
             ? "Zero Dollar Store"
             : item.type === "microgrant"
             ? "Microgrant"
-            : "Article"}
+            : item.type === "article"
+            ? "Article"
+            : "Perk"}
         </p>
       </div>
       <button onClick={onRemove} className="p-1 text-nfw-blackberry/30 hover:text-red-500">
@@ -139,6 +143,7 @@ export default function DashboardAdminClient() {
   const [productsModalOpen, setProductsModalOpen] = useState(false);
   const [grantsModalOpen, setGrantsModalOpen] = useState(false);
   const [articlesModalOpen, setArticlesModalOpen] = useState(false);
+  const [perksModalOpen, setPerksModalOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -285,6 +290,26 @@ export default function DashboardAdminClient() {
     setArticlesModalOpen(false);
   };
 
+  const addPerk = (perk: { title: string; image: string; link: string; button_label: string }) => {
+    if (settings.featured_items.length >= 5) {
+      setMessage({ type: "error", text: "Maximum 5 featured items allowed" });
+      return;
+    }
+    const newItem: FeaturedItem = {
+      id: `perk_${Date.now()}`,
+      type: "perk",
+      title: perk.title,
+      image: perk.image,
+      link: perk.link || "/perks",
+      button_label: perk.button_label || perk.title,
+    };
+    setSettings({
+      ...settings,
+      featured_items: [...settings.featured_items, newItem],
+    });
+    setPerksModalOpen(false);
+  };
+
   const removeFeaturedItem = (id: string) => {
     setSettings({
       ...settings,
@@ -395,6 +420,13 @@ export default function DashboardAdminClient() {
                   className="px-4 py-2 bg-nfw-wisteria text-white text-sm font-medium hover:bg-nfw-wisteria/90 disabled:opacity-50"
                 >
                   + Add Article
+                </button>
+                <button
+                  onClick={() => setPerksModalOpen(true)}
+                  disabled={settings.featured_items.length >= 5}
+                  className="px-4 py-2 bg-nfw-lilac text-white text-sm font-medium hover:bg-nfw-lilac/90 disabled:opacity-50"
+                >
+                  + Add Perk
                 </button>
               </div>
 
@@ -639,6 +671,146 @@ export default function DashboardAdminClient() {
           </div>
         </div>
       )}
+
+      {perksModalOpen && (
+        <PerkItemModal
+          onClose={() => setPerksModalOpen(false)}
+          onAdd={addPerk}
+        />
+      )}
+    </div>
+  );
+}
+
+function PerkItemModal({
+  onClose,
+  onAdd,
+}: {
+  onClose: () => void;
+  onAdd: (perk: { title: string; image: string; link: string; button_label: string }) => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [image, setImage] = useState("");
+  const [link, setLink] = useState("/perks");
+  const [buttonLabel, setButtonLabel] = useState("");
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+
+  const handleSubmit = () => {
+    if (!title.trim()) {
+      alert("Please enter a title");
+      return;
+    }
+    if (!image) {
+      alert("Please select an image");
+      return;
+    }
+    onAdd({
+      title: title.trim(),
+      image,
+      link: link.trim() || "/perks",
+      button_label: buttonLabel.trim() || title.trim(),
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-hidden">
+        <div className="px-6 py-4 border-b border-nfw-blackberry/10 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-nfw-blackberry">Add Perk</h3>
+          <button onClick={onClose} className="text-nfw-blackberry/50 hover:text-nfw-blackberry">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto max-h-[70vh] space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-nfw-blackberry mb-2">Image</label>
+            <div className="border-2 border-dashed border-nfw-blackberry/20 p-4 text-center bg-nfw-dove/50">
+              {image ? (
+                <div>
+                  <img src={image} alt="Preview" className="max-h-32 mx-auto rounded" />
+                  <button
+                    onClick={() => setImageModalOpen(true)}
+                    className="mt-2 text-sm text-nfw-aubergine hover:underline"
+                  >
+                    Change Image
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setImageModalOpen(true)}
+                  className="py-4 w-full text-nfw-blackberry/40 hover:text-nfw-aubergine transition-colors text-sm"
+                >
+                  + Select Image
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-nfw-blackberry mb-2">Title</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (!buttonLabel) {
+                  setButtonLabel(e.target.value);
+                }
+              }}
+              placeholder="e.g., 20% Off at Target"
+              className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-nfw-blackberry mb-2">Link URL</label>
+            <input
+              type="text"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              placeholder="/perks"
+              className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
+            />
+            <p className="text-xs text-nfw-blackberry/50 mt-1">Default: /perks</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-nfw-blackberry mb-2">Button Label</label>
+            <input
+              type="text"
+              value={buttonLabel}
+              onChange={(e) => setButtonLabel(e.target.value)}
+              placeholder="e.g., Shop Now"
+              className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry"
+            />
+            <p className="text-xs text-nfw-blackberry/50 mt-1">Default: the perk title</p>
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-nfw-blackberry/10 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-nfw-blackberry/70 hover:text-nfw-blackberry"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            className="px-4 py-2 bg-nfw-lilac text-white text-sm font-medium hover:bg-nfw-lilac/90"
+          >
+            Add Perk
+          </button>
+        </div>
+      </div>
+
+      <MediaLibraryModal
+        isOpen={imageModalOpen}
+        onClose={() => setImageModalOpen(false)}
+        onSelect={(url) => {
+          setImage(url);
+          setImageModalOpen(false);
+        }}
+        bucket="page-builder"
+      />
     </div>
   );
 }
