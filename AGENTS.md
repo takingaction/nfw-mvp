@@ -9502,3 +9502,73 @@ const handleRedeem = async () => {
 ### Commit
 
 - `f8c2a1d` - fix: record NFW perk redemption on detail page button click
+
+---
+
+## Session 2026-07-24: NFW Perk Detail Page Save Button Fix
+
+### Problem
+
+The "Save" (heart) button on the NFW perk detail page at `/perks/nfw/[slug]` only toggled local state without calling any API. The save wasn't persisted.
+
+### Root Cause
+
+1. The detail page had local `liked` state that just toggled the heart icon
+2. No API call to `/api/perks/liked-stores` to persist the like
+3. No fetch to check if user already liked this perk on page load
+
+### Fix Applied
+
+**File:** `app/perks/nfw/[slug]/page.tsx`
+
+1. **Added state for liked partners:**
+```typescript
+const [likedPartners, setLikedPartners] = useState<string[]>([]);
+const [likeAnimating, setLikeAnimating] = useState(false);
+```
+
+2. **Added `fetchLikedPartners` function:**
+```typescript
+const fetchLikedPartners = async (userId: string) => {
+  const res = await fetch("/api/perks/liked-stores");
+  if (res.ok) {
+    const data = await res.json();
+    setLikedPartners(data.stores?.map((s: any) => s.store_key || s.store_name) || []);
+  }
+};
+```
+
+3. **Added `handleToggleLike` function:**
+```typescript
+const handleToggleLike = async () => {
+  const partnerName = perk.partner_name;
+  const isCurrentlyLiked = likedPartners.includes(partnerName);
+  const newLiked = !isCurrentlyLiked;
+
+  // Optimistic update
+  if (newLiked) {
+    setLikedPartners((prev) => [...prev, partnerName]);
+  } else {
+    setLikedPartners((prev) => prev.filter((p) => p !== partnerName));
+  }
+
+  // API call
+  if (newLiked) {
+    await fetch("/api/perks/liked-stores", { method: "POST", ... });
+  } else {
+    await fetch("/api/perks/liked-stores", { method: "DELETE", ... });
+  }
+};
+```
+
+4. **Updated heart button to use `handleToggleLike` and `likedPartners.includes(partnerName)`**
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/perks/nfw/[slug]/page.tsx` | Added likedPartners state, fetchLikedPartners, handleToggleLike functions, updated heart button |
+
+### Commit
+
+- `fbd0604` - fix: save button on NFW perk detail page now calls API
