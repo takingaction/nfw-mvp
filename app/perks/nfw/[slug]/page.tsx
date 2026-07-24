@@ -10,6 +10,7 @@ import {
   Clock,
   Loader2,
   XCircle,
+  Check,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getLoginRedirectUrl } from "@/lib/redirect-utils";
@@ -38,6 +39,7 @@ export default function NfwPerkDetailPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [liked, setLiked] = useState(false);
+  const [redeeming, setRedeeming] = useState(false);
 
   useEffect(() => {
     const checkAuthAndFetch = async () => {
@@ -75,7 +77,7 @@ export default function NfwPerkDetailPage() {
       }
 
       setAuthChecked(true);
-      fetchPerk();
+      fetchPerk(user.id);
     };
 
     if (slug) {
@@ -83,9 +85,10 @@ export default function NfwPerkDetailPage() {
     }
   }, [slug]);
 
-  const fetchPerk = async () => {
+  const fetchPerk = async (userId: string) => {
     try {
-      const res = await fetch(`/api/nfw-perks/slug/${encodeURIComponent(slug)}`);
+      const url = `/api/nfw-perks/slug/${encodeURIComponent(slug)}${userId ? `?userId=${userId}` : ""}`;
+      const res = await fetch(url);
 
       if (!res.ok) {
         throw new Error("Perk not found");
@@ -101,8 +104,32 @@ export default function NfwPerkDetailPage() {
     }
   };
 
-  const handleRedeem = () => {
-    if (!perk?.landing_page_url) return;
+  const handleRedeem = async () => {
+    if (!perk?.landing_page_url || !perk?.id) return;
+
+    // If already redeemed, just open URL
+    if (perk.userHasRedeemed) {
+      window.open(perk.landing_page_url, "_blank");
+      return;
+    }
+
+    setRedeeming(true);
+    try {
+      const response = await fetch(`/api/nfw-perks/${perk.id}/redeem`, {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        // Update local state to show redeemed
+        setPerk({ ...perk, userHasRedeemed: true });
+      }
+    } catch (err) {
+      console.error("Failed to redeem perk:", err);
+    } finally {
+      setRedeeming(false);
+    }
+
+    // Open URL regardless of API result
     window.open(perk.landing_page_url, "_blank");
   };
 
@@ -285,18 +312,39 @@ export default function NfwPerkDetailPage() {
 
                 <button
                   onClick={handleRedeem}
-                  disabled={!perk.landing_page_url}
-                  className={`w-full px-4 py-3 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 ${
-                    !perk.landing_page_url ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
+                  disabled={!perk.landing_page_url || redeeming}
+                  className={`w-full px-4 py-3 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 ${
+                    perk.userHasRedeemed
+                      ? "bg-green-100 text-green-800 cursor-default"
+                      : "bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90"
+                  } disabled:opacity-50`}
                 >
-                  <ExternalLink className="w-4 h-4" />
-                  Visit Partner Site
+                  {redeeming ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Redeeming...
+                    </>
+                  ) : perk.userHasRedeemed ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Redeemed
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="w-4 h-4" />
+                      Visit Partner Site
+                    </>
+                  )}
                 </button>
 
                 {!perk.landing_page_url && (
                   <p className="text-xs text-nfw-blackberry/50 mt-2 text-center">
                     No landing page configured for this perk.
+                  </p>
+                )}
+                {perk.userHasRedeemed && perk.landing_page_url && (
+                  <p className="text-xs text-green-600 mt-2 text-center">
+                    You've already redeemed this perk. Click again to visit the partner site.
                   </p>
                 )}
               </div>

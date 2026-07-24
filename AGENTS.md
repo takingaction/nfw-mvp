@@ -9429,3 +9429,76 @@ All `next` URLs are validated to ensure they point to `nationalfundforwomen.org`
 | 4 | `login-form` reads `next`, redirects on success | `next` passed via redirectTo URL |
 | 5 | - | `callback` reads `next` from URL param |
 | 6 | Redirect to `/perks?collection=x` | Same |
+
+---
+
+## Session 2026-07-24: NFW Perk Detail Page Redemption Fix
+
+### Problem
+
+The NFW perk detail page at `/perks/nfw/[slug]` was not recording redemptions when users clicked "Visit Partner Site". The button just opened the URL directly without calling the redemption API.
+
+### Root Cause
+
+1. **Detail page didn't pass userId when fetching perk** - The `fetchPerk` function didn't include `userId` in the API call, so `userHasRedeemed` was always undefined
+2. **handleRedeem didn't call redemption API** - The button just opened the URL directly, never recording the redemption
+
+### Fix Applied
+
+**File:** `app/perks/nfw/[slug]/page.tsx`
+
+1. **Pass userId when fetching perk:**
+```typescript
+// Before:
+fetchPerk();
+
+// After:
+fetchPerk(user.id);
+
+// API call now includes userId:
+const url = `/api/nfw-perks/slug/${encodeURIComponent(slug)}${userId ? `?userId=${userId}` : ""}`;
+```
+
+2. **handleRedeem now calls the redemption API:**
+```typescript
+const handleRedeem = async () => {
+  if (!perk?.landing_page_url || !perk?.id) return;
+
+  // If already redeemed, just open URL
+  if (perk.userHasRedeemed) {
+    window.open(perk.landing_page_url, "_blank");
+    return;
+  }
+
+  setRedeeming(true);
+  try {
+    const response = await fetch(`/api/nfw-perks/${perk.id}/redeem`, {
+      method: "POST",
+    });
+
+    if (response.ok) {
+      setPerk({ ...perk, userHasRedeemed: true });
+    }
+  } finally {
+    setRedeeming(false);
+  }
+
+  // Open URL regardless of API result
+  window.open(perk.landing_page_url, "_blank");
+};
+```
+
+3. **Button shows redeemed state:**
+- Green button + "Redeemed" + checkmark when already redeemed
+- Spinner + "Redeeming..." while processing
+- Normal "Visit Partner Site" button when not yet redeemed
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/perks/nfw/[slug]/page.tsx` | Pass userId to perk fetch, call redemption API, show redeemed state |
+
+### Commit
+
+- `f8c2a1d` - fix: record NFW perk redemption on detail page button click
