@@ -38,8 +38,9 @@ export default function NfwPerkDetailPage() {
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [liked, setLiked] = useState(false);
   const [redeeming, setRedeeming] = useState(false);
+  const [likedPartners, setLikedPartners] = useState<string[]>([]);
+  const [likeAnimating, setLikeAnimating] = useState(false);
 
   useEffect(() => {
     const checkAuthAndFetch = async () => {
@@ -78,12 +79,68 @@ export default function NfwPerkDetailPage() {
 
       setAuthChecked(true);
       fetchPerk(user.id);
+      fetchLikedPartners(user.id);
     };
 
     if (slug) {
       checkAuthAndFetch();
     }
   }, [slug]);
+
+  const fetchLikedPartners = async (userId: string) => {
+    try {
+      const res = await fetch("/api/perks/liked-stores");
+      if (res.ok) {
+        const data = await res.json();
+        setLikedPartners(data.stores?.map((s: any) => s.store_key || s.store_name) || []);
+      }
+    } catch (err) {
+      console.error("Error fetching liked stores:", err);
+    }
+  };
+
+  const handleToggleLike = async () => {
+    if (!perk?.partner_name) return;
+
+    setLikeAnimating(true);
+    const partnerName = perk.partner_name;
+    const logoUrl = perk.partner_logo_url;
+    const isCurrentlyLiked = likedPartners.includes(partnerName);
+    const newLiked = !isCurrentlyLiked;
+
+    // Optimistic update
+    if (newLiked) {
+      setLikedPartners((prev) => [...prev, partnerName]);
+    } else {
+      setLikedPartners((prev) => prev.filter((p) => p !== partnerName));
+    }
+
+    try {
+      if (newLiked) {
+        await fetch("/api/perks/liked-stores", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ store_key: partnerName, store_name: partnerName, logo_url: logoUrl }),
+        });
+      } else {
+        await fetch("/api/perks/liked-stores", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ store_key: partnerName }),
+        });
+      }
+    } catch (err) {
+      console.error("Failed to toggle like:", err);
+      // Revert on error
+      if (isCurrentlyLiked) {
+        setLikedPartners((prev) => [...prev, partnerName]);
+      } else {
+        setLikedPartners((prev) => prev.filter((p) => p !== partnerName));
+      }
+    } finally {
+      setTimeout(() => setLikeAnimating(false), 300);
+    }
+  };
 
   const fetchPerk = async (userId: string) => {
     try {
@@ -257,18 +314,18 @@ export default function NfwPerkDetailPage() {
                   )}
 
                   <button
-                    onClick={() => setLiked(!liked)}
+                    onClick={handleToggleLike}
                     className="flex items-center gap-1.5 mt-3 text-xs transition-colors"
                   >
                     <Heart
                       className={`w-4 h-4 transition-all duration-200 ${
-                        liked
+                        likedPartners.includes(perk.partner_name || "")
                           ? "fill-[#B693C0] text-[#B693C0]"
                           : "fill-[#F8F19A] text-[#F8F19A]"
-                      }`}
+                      } ${likeAnimating ? "scale-125" : "scale-100"}`}
                     />
-                    <span className={liked ? "text-[#B693C0]" : "text-nfw-blackberry/60"}>
-                      {liked ? "Saved" : "Save"}
+                    <span className={likedPartners.includes(perk.partner_name || "") ? "text-[#B693C0]" : "text-nfw-blackberry/60"}>
+                      {likedPartners.includes(perk.partner_name || "") ? "Saved" : "Save"}
                     </span>
                   </button>
                 </div>
