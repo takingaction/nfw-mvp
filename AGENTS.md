@@ -9618,9 +9618,31 @@ Added a new banner for users who have an approved grant AND have already complet
 - `app/dashboard/page.tsx`
 
 **New Banner Condition:**
-- `hasApprovedGrant && profile?.stripe_onboarding_completed && latestApprovedGrantId`
+- `hasPaidOrApprovedGrant && profile?.stripe_onboarding_completed && latestGrantId`
 
 **Banner Content:**
 - Heading: "YOU'RE APPROVED!"
 - Body: "You're already connected and ready to receive payments!"
 - Indicator: "Bank Connected ✓" as simple text (no button)
+
+### 4. Include payment_sent Status in Grant Banners
+
+Updated the banner condition to include `payment_sent` status so users who have been paid also see the banners.
+
+**Files Modified:**
+- `app/dashboard/page.tsx`
+
+**Changes:**
+- Renamed `approvedGrants` → `paidOrApprovedGrants`
+- Added `g.status === "payment_sent"` to filter
+- Renamed `hasApprovedGrant` → `hasPaidOrApprovedGrant`
+- Renamed `latestApprovedGrantId` → `latestGrantId`
+
+**Updated Filter:**
+```typescript
+const paidOrApprovedGrants = (userGrants || []).filter(
+  (g: any) =>
+    (g.status === "approved" || g.status === "payment_sent") &&
+    g.grant_cycles?.end_date > '2026-07-12'
+);
+```

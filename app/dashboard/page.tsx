@@ -215,14 +215,15 @@ export default async function DashboardPage({
   const likedStores = likedStoresResult?.data || [];
   const userGrants = grantsResult?.data || [];
 
-  // Check if user has approved grants with cycle ending after July 12, 2026 (for showing bank connection banner)
-  const approvedGrants = (userGrants || []).filter(
-    (g: any) => g.status === "approved" &&
-    g.grant_cycles?.end_date > '2026-07-12'
+  // Check if user has approved or paid grants with cycle ending after July 12, 2026 (for showing bank connection banner)
+  const paidOrApprovedGrants = (userGrants || []).filter(
+    (g: any) =>
+      (g.status === "approved" || g.status === "payment_sent") &&
+      g.grant_cycles?.end_date > '2026-07-12'
   );
-  const hasApprovedGrant = approvedGrants.length > 0;
-  // Get the most recently approved grant ID for the Connect Bank Account button
-  const latestApprovedGrantId = approvedGrants[0]?.id || null;
+  const hasPaidOrApprovedGrant = paidOrApprovedGrants.length > 0;
+  // Get the most recently approved/paid grant ID for the Connect Bank Account button
+  const latestGrantId = paidOrApprovedGrants[0]?.id || null;
 
   // Filter out testing-only cycles for non-admins
   const availableCycles = (cyclesResult?.data || []).filter(
@@ -297,7 +298,7 @@ export default async function DashboardPage({
       <DashboardHero heroImage={settings.hero_image_url || "/images/landing.jpg"} />
 
       {/* You're Approved Banner - Full Width Below Hero */}
-      {hasApprovedGrant && !profile?.stripe_onboarding_completed && latestApprovedGrantId && (
+      {hasPaidOrApprovedGrant && !profile?.stripe_onboarding_completed && latestGrantId && (
         <div className="bg-nfw-citrine py-6 px-8">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="w-full sm:w-1/2">
@@ -311,13 +312,13 @@ export default async function DashboardPage({
                 <span className="font-bold">IMPORTANT:</span> If you don&apos;t have a website, please input nationalfundforwomen.org when prompted.
               </p>
             </div>
-            <ConnectBankButton grantId={latestApprovedGrantId} />
+            <ConnectBankButton grantId={latestGrantId} />
           </div>
         </div>
       )}
 
       {/* Already Connected Banner */}
-      {hasApprovedGrant && profile?.stripe_onboarding_completed && latestApprovedGrantId && (
+      {hasPaidOrApprovedGrant && profile?.stripe_onboarding_completed && latestGrantId && (
         <div className="bg-nfw-citrine py-6 px-8">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="w-full sm:w-1/2">
