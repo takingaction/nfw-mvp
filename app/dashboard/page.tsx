@@ -316,6 +316,25 @@ export default async function DashboardPage({
         </div>
       )}
 
+      {/* Already Connected Banner */}
+      {hasApprovedGrant && profile?.stripe_onboarding_completed && latestApprovedGrantId && (
+        <div className="bg-nfw-citrine py-6 px-8">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="w-full sm:w-1/2">
+              <h2 className="font-serif text-2xl text-nfw-blackberry mb-1">
+                YOU&apos;RE APPROVED!
+              </h2>
+              <p className="font-serif text-nfw-blackberry/70">
+                You&apos;re already connected and ready to receive payments!
+              </p>
+            </div>
+            <span className="text-nfw-blackberry font-ui font-bold">
+              Bank Connected ✓
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row gap-0 mb-0">
         <div className="bg-nfw-dove p-6 w-full md:w-1/4">
           <MembershipCard

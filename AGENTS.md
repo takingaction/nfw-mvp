@@ -9609,3 +9609,18 @@ If you don't have a website, just add https://www.nationalfundforwomen.org in th
 ```
 If you don't have a website, please input nationalfundforwomen.org when prompted.
 ```
+
+### 3. Dashboard Already Connected Banner
+
+Added a new banner for users who have an approved grant AND have already completed Stripe onboarding. Previously, no banner showed for these users.
+
+**Files Modified:**
+- `app/dashboard/page.tsx`
+
+**New Banner Condition:**
+- `hasApprovedGrant && profile?.stripe_onboarding_completed && latestApprovedGrantId`
+
+**Banner Content:**
+- Heading: "YOU'RE APPROVED!"
+- Body: "You're already connected and ready to receive payments!"
+- Indicator: "Bank Connected ✓" as simple text (no button)
