@@ -9572,3 +9572,40 @@ const handleToggleLike = async () => {
 ### Commit
 
 - `fbd0604` - fix: save button on NFW perk detail page now calls API
+
+## Session 2026-07-31: Grants Apply Reminder + Stripe Banner Text Updates
+
+### Overview
+
+Made two text updates to improve clarity for users.
+
+### Changes Made
+
+**1. Grants Apply Page - Quick Reminder Box**
+
+Updated the "Quick reminder before you apply" box on `/grants/apply` to always display (removed conditional based on number of cycles) and added two new bullet points.
+
+**Files Modified:**
+- `components/GrantApplicationForm.tsx`
+
+**Changes:**
+- Removed `cycles.length > 1 &&` condition so reminder always displays
+- Added bullet: "Some grants require additional documentation, please read the grant descriptions carefully."
+- Added bullet: "There are no nominations this grant cycle. Keep an eye out for future nomination-only grants!"
+
+**2. Dashboard Stripe Connect Banner**
+
+Updated the IMPORTANT notice text in the "You're Approved!" banner on `/dashboard` for users who need to connect their bank account.
+
+**Files Modified:**
+- `app/dashboard/page.tsx`
+
+**Before:**
+```
+If you don't have a website, just add https://www.nationalfundforwomen.org in the website field.
+```
+
+**After:**
+```
+If you don't have a website, please input nationalfundforwomen.org when prompted.
+```

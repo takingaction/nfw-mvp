@@ -133,22 +133,23 @@ export default function GrantApplicationForm({
   return (
     <>
       <form onSubmit={handleOpenConfirm} className="space-y-8">
-        {cycles.length > 1 && (
-          <div>
-            <div className="bg-nfw-wisteria/20 border border-nfw-wisteria/30 p-5 mb-6">
-              <p className="font-serif text-base font-bold text-nfw-blackberry mb-2">
-                Quick reminder before you apply:
-              </p>
-              <ul className="font-ui text-sm text-nfw-blackberry/70 space-y-1 list-disc list-inside">
-                <li>Applicants must be 18 or older and a U.S. citizen or permanent resident.</li>
-                <li>Applicants may apply for up to 3 grants, but can only be awarded 1 grant per cycle.</li>
-                <li>Applications cannot be edited after submission.</li>
-              </ul>
-            </div>
-            <p className={labelClass}>
-              Which grant are you applying for?{" "}
-              <span className="text-nfw-lilac">*</span>
+        <>
+          <div className="bg-nfw-wisteria/20 border border-nfw-wisteria/30 p-5 mb-6">
+            <p className="font-serif text-base font-bold text-nfw-blackberry mb-2">
+              Quick reminder before you apply:
             </p>
+            <ul className="font-ui text-sm text-nfw-blackberry/70 space-y-1 list-disc list-inside">
+              <li>Applicants must be 18 or older and a U.S. citizen or permanent resident.</li>
+              <li>Applicants may apply for up to 3 grants, but can only be awarded 1 grant per cycle.</li>
+              <li>Applications cannot be edited after submission.</li>
+              <li>Some grants require additional documentation, please read the grant descriptions carefully.</li>
+              <li>There are no nominations this grant cycle. Keep an eye out for future nomination-only grants!</li>
+            </ul>
+          </div>
+          <p className={labelClass}>
+            Which grant are you applying for?{" "}
+            <span className="text-nfw-lilac">*</span>
+          </p>
             <div className="space-y-2">
               {cycles.map((cycle) => (
                 <div
@@ -202,8 +203,7 @@ export default function GrantApplicationForm({
                 </div>
               ))}
             </div>
-          </div>
-        )}
+        </>
 
         {cycles.length === 1 && selectedCycle && (
           <div className="bg-nfw-wisteria/20 border border-nfw-wisteria/30 p-5">

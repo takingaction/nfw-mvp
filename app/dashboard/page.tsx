@@ -308,7 +308,7 @@ export default async function DashboardPage({
                 Connect your bank account to receive your grant payments.
               </p>
               <p className="font-serif text-nfw-blackberry/70 mt-2">
-                <span className="font-bold">IMPORTANT:</span> If you don&apos;t have a website, just add https://www.nationalfundforwomen.org in the website field.
+                <span className="font-bold">IMPORTANT:</span> If you don&apos;t have a website, please input nationalfundforwomen.org when prompted.
               </p>
             </div>
             <ConnectBankButton grantId={latestApprovedGrantId} />
