@@ -9646,3 +9646,41 @@ const paidOrApprovedGrants = (userGrants || []).filter(
     g.grant_cycles?.end_date > '2026-07-12'
 );
 ```
+
+## Session 2026-08-01: Grant Analytics Fixes
+
+### Overview
+
+Fixed grants analytics to properly exclude testing-only grants and corrected approval rate calculations.
+
+### Database Schema Discovery
+
+**Finding:** `grant_cycles` table has `is_testing_only` column, but `grants` table does NOT.
+
+**Solution:** Use join-based filtering - create a lookup map from `grantCycles` to determine if a grant's cycle is testing-only.
+
+### Changes Made
+
+**`app/admin/analytics/page.tsx`:**
+- Changed grants select from `is_testing_only` to `cycle_id` (the FK to grant_cycles)
+
+**`components/admin/AdminAnalyticsClient.tsx`:**
+- Removed broken `is_testing_only` from `Grant` type, added `cycle_id`
+- Added `cycleTestingMap` useMemo that creates a `Map<cycle_id, is_testing_only>` from `grantCycles`
+- Added `isGrantTestingOnly()` helper that uses the map to check if grant's cycle is testing-only
+- Updated `filteredGrants` and `totalFunded` to use the helper
+- Fixed `approvalRate` calculation:
+  - **total** = all filtered grants (any status)
+  - **approvals** = grants with status `"approved"` OR `"payment_sent"`
+  - **percentage** = approvals / total
+- "Number of Approvals" card now counts both `"approved"` and `"payment_sent"` statuses
+
+### Key Fixes
+
+1. **Testing-only filter:** Filters based on grant's `cycle_id` joined with `grant_cycles.is_testing_only`, not a non-existent column on grants
+
+2. **Approval Rate:** `approved / (approved + submitted)` where approved = "approved" + "payment_sent", submitted = all statuses
+
+3. **Number of Approvals:** Counts grants with status "approved" OR "payment_sent"
+
+4. **Disbursed:** Uses `cycleTestingMap` to exclude testing-only grants

@@ -60,9 +60,15 @@ async function AdminAnalyticsContent() {
   const { data: grants } = await supabaseAdmin
     .from("grants")
     .select(
-      "id, status, amount_approved, submitted_at, funded_at",
+      "id, cycle_id, status, amount_approved, submitted_at, funded_at",
     )
     .order("submitted_at", { ascending: true });
+
+  // Grant cycles data (use admin client to bypass RLS)
+  const { data: grantCycles } = await supabaseAdmin
+    .from("grant_cycles")
+    .select("id, start_date, end_date, is_testing_only")
+    .order("start_date", { ascending: true });
 
   // Perks redemptions (use admin client to bypass RLS)
   const { data: redemptions } = await supabaseAdmin
@@ -118,6 +124,7 @@ async function AdminAnalyticsContent() {
         <AdminAnalyticsClient
           profiles={profiles || []}
           grants={grants || []}
+          grantCycles={grantCycles || []}
           redemptions={redemptions || []}
           newsletterEmails={newsletterEmails || []}
           zdsClaims={zdsClaims || []}

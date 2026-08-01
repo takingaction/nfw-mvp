@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   LineChart,
   Line,
@@ -66,6 +66,7 @@ type Profile = {
 
 type Grant = {
   id: string;
+  cycle_id: string;
   status: string | null;
   amount_approved: number | null;
   submitted_at: string | null;
@@ -116,9 +117,17 @@ type NfwPerkRedemption = {
   redeemed_at: string | null;
 };
 
+type GrantCycle = {
+  id: string;
+  start_date: string | null;
+  end_date: string | null;
+  is_testing_only: boolean | string | null;
+};
+
 export default function AdminAnalyticsClient({
   profiles,
   grants,
+  grantCycles,
   redemptions,
   newsletterEmails,
   zdsClaims,
@@ -127,6 +136,7 @@ export default function AdminAnalyticsClient({
 }: {
   profiles: Profile[];
   grants: Grant[];
+  grantCycles: GrantCycle[];
   redemptions: Redemption[];
   newsletterEmails: NewsletterEmail[];
   zdsClaims: ZdsClaim[];
@@ -148,30 +158,60 @@ export default function AdminAnalyticsClient({
   const [freshdeskError, setFreshdeskError] = useState<string | null>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
 
-  // Fetch Freshdesk stats when support tab is active
-  useMemo(() => {
-    if (tab === "support" && !freshdeskStats && !freshdeskLoading) {
-      setFreshdeskLoading(true);
-      const params = new URLSearchParams();
+  // Fetch Freshdesk stats when support tab is active or date range changes
+  useEffect(() => {
+    if (tab !== "support") return;
+    if (freshdeskLoading) return; // Already loading, skip
+
+    setFreshdeskLoading(true);
+
+    // Calculate actual start date for Freshdesk API
+    // Freshdesk uses updated_since for date filtering
+    const params = new URLSearchParams();
+    const now = new Date();
+
+    if (dateRange === "custom") {
+      // Custom range uses explicit dates
       if (customStartDate) params.set("start_date", customStartDate);
       if (customEndDate) params.set("end_date", customEndDate);
-      const queryString = params.toString();
+    } else if (dateRange !== 9999) {
+      let startDate: Date;
 
-      fetch(`/api/admin/analytics/freshdesk${queryString ? `?${queryString}` : ""}`)
-        .then((res) => {
-          if (!res.ok) throw new Error("Failed to fetch Freshdesk stats");
-          return res.json();
-        })
-        .then((data) => {
-          setFreshdeskStats(data);
-          setFreshdeskLoading(false);
-        })
-        .catch((err) => {
-          setFreshdeskError(err.message);
-          setFreshdeskLoading(false);
-        });
+      if (dateRange === -1) {
+        // Month to date - start of current month
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      } else if (dateRange === -2) {
+        // Quarter to date - start of current quarter
+        const quarterMonth = Math.floor(now.getMonth() / 3) * 3;
+        startDate = new Date(now.getFullYear(), quarterMonth, 1);
+      } else if (dateRange === -3) {
+        // Year to date - start of current year
+        startDate = new Date(now.getFullYear(), 0, 1);
+      } else {
+        // Regular day offset (7, 30, 90, 180, 365)
+        startDate = new Date(now.getTime() - dateRange * 24 * 60 * 60 * 1000);
+      }
+
+      params.set("start_date", startDate.toISOString().split("T")[0]);
     }
-  }, [tab, customStartDate, customEndDate]);
+    // For 9999 (All Time), don't send any date params
+
+    const queryString = params.toString();
+
+    fetch(`/api/admin/analytics/freshdesk${queryString ? `?${queryString}` : ""}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch Freshdesk stats");
+        return res.json();
+      })
+      .then((data) => {
+        setFreshdeskStats(data);
+        setFreshdeskLoading(false);
+      })
+      .catch((err) => {
+        setFreshdeskError(err.message);
+        setFreshdeskLoading(false);
+      });
+  }, [tab, dateRange, customStartDate, customEndDate]);
 
   // Calculate cutoff based on selected date range
   const cutoff = useMemo(() => {
@@ -249,7 +289,7 @@ export default function AdminAnalyticsClient({
 
   const membersByLevel = useMemo(() => {
     const map: Record<string, number> = {};
-    profiles.forEach((p) => {
+    filteredProfiles.forEach((p) => {
       let level = p.membership_level || "unknown";
       // Distinguish between approved free, pending free, and started free
       if (level === "free") {
@@ -268,42 +308,42 @@ export default function AdminAnalyticsClient({
       map[level] = (map[level] || 0) + 1;
     });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
-  }, [profiles]);
+  }, [filteredProfiles]);
 
   const membersByState = useMemo(() => {
     const map: Record<string, number> = {};
-    profiles.forEach((p) => {
+    filteredProfiles.forEach((p) => {
       if (p.state) map[p.state] = (map[p.state] || 0) + 1;
     });
     return Object.entries(map)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
       .map(([state, count]) => ({ state, count }));
-  }, [profiles]);
+  }, [filteredProfiles]);
 
   const contributingCount = useMemo(() => {
-    return profiles.filter(
+    return filteredProfiles.filter(
       (p) => p.is_admin !== true && p.membership_level === "contributing"
     ).length;
-  }, [profiles]);
+  }, [filteredProfiles]);
 
   const foundingCount = useMemo(() => {
-    return profiles.filter(
+    return filteredProfiles.filter(
       (p) => p.is_admin !== true && p.membership_level === "founding"
     ).length;
-  }, [profiles]);
+  }, [filteredProfiles]);
 
   // Paid members (non-admin only) - defined early for use in upgradedPercent
   const paidCount = useMemo(() => {
-    return profiles.filter(
+    return filteredProfiles.filter(
       (p) =>
         p.is_admin !== true &&
         (p.membership_level === "contributing" || p.membership_level === "founding")
     ).length;
-  }, [profiles]);
+  }, [filteredProfiles]);
 
   const upgradedCount = useMemo(() => {
-    return profiles.filter((p) => {
+    return filteredProfiles.filter((p) => {
       if (p.is_admin) return false;
       if (!p.first_paid_at || !p.joined_at) return false;
       const daysDiff =
@@ -311,7 +351,7 @@ export default function AdminAnalyticsClient({
         (1000 * 60 * 60 * 24);
       return daysDiff >= 1;
     }).length;
-  }, [profiles]);
+  }, [filteredProfiles]);
 
   const upgradedPercent = useMemo(() => {
     return paidCount > 0 ? Math.round((upgradedCount / paidCount) * 100) : 0;
@@ -350,33 +390,33 @@ export default function AdminAnalyticsClient({
 
   // Paid members (non-admin, completed profile) - for waterfall breakdown
   const paidMembersCount = useMemo(() => {
-    return profiles.filter(
+    return filteredProfiles.filter(
       (p) =>
         p.is_admin !== true &&
         (p.membership_level === "contributing" || p.membership_level === "founding") &&
         p.profile_completed === true
     ).length;
-  }, [profiles]);
+  }, [filteredProfiles]);
 
   // Free members (approved, non-admin, completed profile)
   const freeMembersCount = useMemo(() => {
-    return profiles.filter(
+    return filteredProfiles.filter(
       (p) =>
         p.is_admin !== true &&
         p.membership_level === "free" &&
         p.is_approved_free_member === true &&
         p.profile_completed === true
     ).length;
-  }, [profiles]);
+  }, [filteredProfiles]);
 
   // Waitlist members
   const waitlistCount = useMemo(() => {
-    return profiles.filter((p) => p.membership_level === "waitlist").length;
-  }, [profiles]);
+    return filteredProfiles.filter((p) => p.membership_level === "waitlist").length;
+  }, [filteredProfiles]);
 
   // Active Profiles = Free (approved) + Contributing + Founding (excludes admins, waitlist, incomplete)
   const activeProfilesCount = useMemo(() => {
-    return profiles.filter(
+    return filteredProfiles.filter(
       (p) =>
         p.is_admin !== true &&
         p.profile_completed === true &&
@@ -386,18 +426,18 @@ export default function AdminAnalyticsClient({
           p.membership_level === "founding"
         )
     ).length;
-  }, [profiles]);
+  }, [filteredProfiles]);
 
   // Incomplete = profile not complete OR (free but never submitted contact form for free membership)
   const incompleteCount = useMemo(() => {
-    return profiles.filter(
+    return filteredProfiles.filter(
       (p) =>
         p.profile_completed !== true ||
         (p.membership_level === "free" &&
          p.is_approved_free_member !== true &&
          p.free_membership_contact_submitted === false)
     ).length;
-  }, [profiles]);
+  }, [filteredProfiles]);
 
   // Paid vs free percentage (based on filtered profiles)
   const paidPercent = useMemo(() => {
@@ -470,16 +510,33 @@ export default function AdminAnalyticsClient({
     return filteredProfiles.length + filteredNewsletterSignups.length;
   }, [filteredProfiles, filteredNewsletterSignups]);
 
-  // Total newsletter subscribers (all time)
-  const totalNewsletterSubscribers = newsletterEmails.length;
+  // Total newsletter subscribers (filtered by period)
+  const totalNewsletterSubscribers = filteredNewsletterSignups.length;
 
   // ── GRANTS ───────────────────────────────────────────────
+  // Build lookup map: cycle_id -> is_testing_only (checks both boolean and string from Supabase)
+  const cycleTestingMap = useMemo(() => {
+    const map = new Map<string, boolean>();
+    grantCycles.forEach((c) => {
+      if (c.id && c.is_testing_only !== undefined && c.is_testing_only !== null) {
+        map.set(c.id, c.is_testing_only === true || c.is_testing_only === "true");
+      }
+    });
+    return map;
+  }, [grantCycles]);
+
+  // Helper to check if grant's cycle is testing-only
+  const isGrantTestingOnly = (g: Grant) => {
+    const cycleTesting = cycleTestingMap.get(g.cycle_id);
+    return cycleTesting === true;
+  };
+
   const filteredGrants = useMemo(
     () =>
       grants.filter(
-        (g) => g.submitted_at && isInRange(g.submitted_at),
+        (g) => g.submitted_at && isInRange(g.submitted_at) && !isGrantTestingOnly(g),
       ),
-    [grants, isInRange],
+    [grants, isInRange, cycleTestingMap],
   );
 
   const grantsByDay = useMemo(() => {
@@ -510,18 +567,36 @@ export default function AdminAnalyticsClient({
   const totalFunded = useMemo(
     () =>
       grants
-        .filter((g) => g.status === "funded")
+        .filter((g) => g.status === "payment_sent" && isInRange(g.funded_at) && !isGrantTestingOnly(g))
         .reduce((sum, g) => sum + (g.amount_approved || 0), 0),
-    [grants],
+    [grants, isInRange, cycleTestingMap],
   );
 
   const approvalRate = useMemo(() => {
-    const submitted = filteredGrants.filter((g) => g.status !== "draft").length;
-    const approved = filteredGrants.filter((g) =>
-      ["approved", "funded"].includes(g.status || ""),
+    const total = filteredGrants.length;
+    const approvals = filteredGrants.filter((g) =>
+      ["approved", "payment_sent"].includes(g.status || ""),
     ).length;
-    return submitted > 0 ? Math.round((approved / submitted) * 100) : 0;
+    return total > 0 ? Math.round((approvals / total) * 100) : 0;
   }, [filteredGrants]);
+
+  // Number of grant cycles that were active during the selected date range (excluding testing-only)
+  const isCycleTestingOnly = (c: GrantCycle) =>
+    c.is_testing_only === true || c.is_testing_only === "true";
+
+  const numberOfGrants = useMemo(() => {
+    const activeCycles = grantCycles.filter((c) => !isCycleTestingOnly(c));
+    if (dateRange === 9999) return activeCycles.length;
+    return activeCycles.filter((c) => {
+      if (!c.start_date || !c.end_date) return false;
+      const cycleStart = new Date(c.start_date);
+      const cycleEnd = new Date(c.end_date);
+      const selStart = cutoff;
+      const selEnd = endDate;
+      // Cycle was active if: cycle.start <= selectedRangeEnd AND cycle.end >= selectedRangeStart
+      return cycleStart <= selEnd && cycleEnd >= selStart;
+    }).length;
+  }, [grantCycles, cutoff, endDate, dateRange]);
 
   // ── PERKS ────────────────────────────────────────────────
   const filteredRedemptions = useMemo(
@@ -925,39 +1000,32 @@ export default function AdminAnalyticsClient({
             text: "text-white",
           },
           {
-            label: "Total Profiles",
-            value: profiles.length,
-            icon: Users,
-            color: "bg-nfw-aubergine",
-            text: "text-white",
-          },
-          {
             label: "Active Profiles",
             value: activeProfilesCount,
             icon: Users,
-            color: "bg-nfw-aubergine",
+            color: "bg-nfw-wisteria",
             text: "text-white",
           },
           {
             label: "Paid Members",
             value: paidMembersCount,
             icon: TrendingUp,
-            color: "bg-nfw-aubergine",
+            color: "bg-nfw-wisteria",
             text: "text-white",
           },
           {
             label: "Free Members",
             value: freeMembersCount,
             icon: Users,
-            color: "bg-nfw-aubergine",
+            color: "bg-nfw-wisteria",
             text: "text-white",
           },
           {
             label: "Waitlist",
             value: waitlistCount,
             icon: Users,
-            color: "bg-nfw-stone/40",
-            text: "text-nfw-blackberry",
+            color: "bg-nfw-wisteria",
+            text: "text-white",
           },
           {
             label: "Incomplete",
@@ -977,28 +1045,28 @@ export default function AdminAnalyticsClient({
             label: "Contributing $15",
             value: contributingCount,
             icon: DollarSign,
-            color: "bg-nfw-aubergine",
+            color: "bg-nfw-wisteria",
             text: "text-white",
           },
           {
             label: "Founding $100",
             value: foundingCount,
             icon: DollarSign,
-            color: "bg-nfw-aubergine",
+            color: "bg-nfw-wisteria",
             text: "text-white",
           },
           {
             label: "Membership Revenue",
             value: `$${membershipRevenue.toLocaleString()}`,
             icon: DollarSign,
-            color: "bg-nfw-aubergine",
+            color: "bg-nfw-wisteria",
             text: "text-white",
           },
           {
             label: "Retention Rate",
             value: `${retentionRate}%`,
             icon: TrendingUp,
-            color: "bg-nfw-wisteria",
+            color: "bg-nfw-aubergine",
             text: "text-white",
           },
           {
@@ -1012,7 +1080,7 @@ export default function AdminAnalyticsClient({
             label: "Churn",
             value: `${churnRate}%`,
             icon: TrendingUp,
-            color: "bg-nfw-wisteria",
+            color: "bg-nfw-aubergine",
             text: "text-white",
           },
           {
@@ -1033,7 +1101,7 @@ export default function AdminAnalyticsClient({
             label: "Newsletter Subscribers",
             value: totalNewsletterSubscribers,
             icon: Users,
-            color: "bg-nfw-aubergine",
+            color: "bg-nfw-wisteria",
             text: "text-white",
           },
         ]
@@ -1054,17 +1122,24 @@ export default function AdminAnalyticsClient({
               text: "text-white",
             },
             {
-              label: "Total Funded",
+              label: "Disbursed",
               value: `$${totalFunded.toLocaleString()}`,
               icon: DollarSign,
-              color: "bg-nfw-aubergine",
+              color: "bg-nfw-wisteria",
               text: "text-white",
             },
             {
-              label: "Funded Grants",
-              value: grants.filter((g) => g.status === "funded").length,
+              label: "Number of Approvals",
+              value: filteredGrants.filter((g) => ["approved", "payment_sent"].includes(g.status || "")).length,
               icon: Gift,
-              color: "bg-nfw-aubergine",
+              color: "bg-nfw-wisteria",
+              text: "text-white",
+            },
+            {
+              label: "Number of Grants",
+              value: numberOfGrants,
+              icon: Calendar,
+              color: "bg-nfw-wisteria",
               text: "text-white",
             },
           ]
@@ -1194,43 +1269,7 @@ export default function AdminAnalyticsClient({
                     },
                   ]
               : tab === "support"
-                ? [
-                    {
-                      label: "Total Tickets",
-                      value: freshdeskStats?.total ?? "-",
-                      icon: Users,
-                      color: "bg-nfw-blackberry",
-                      text: "text-white",
-                    },
-                    {
-                      label: "Open",
-                      value: freshdeskStats?.open ?? "-",
-                      icon: TrendingUp,
-                      color: "bg-nfw-aubergine",
-                      text: "text-white",
-                    },
-                    {
-                      label: "Pending",
-                      value: freshdeskStats?.pending ?? "-",
-                      icon: TrendingUp,
-                      color: "bg-nfw-aubergine/70",
-                      text: "text-white",
-                    },
-                    {
-                      label: "Resolved",
-                      value: freshdeskStats?.resolved ?? "-",
-                      icon: TrendingUp,
-                      color: "bg-nfw-wisteria",
-                      text: "text-white",
-                    },
-                    {
-                      label: "Closed",
-                      value: freshdeskStats?.closed ?? "-",
-                      icon: TrendingUp,
-                      color: "bg-nfw-wisteria",
-                      text: "text-white",
-                    },
-                  ]
+                ? []
                 : []
 
   return (
@@ -1861,15 +1900,15 @@ export default function AdminAnalyticsClient({
               ) : freshdeskStats ? (
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                    <div className="text-center p-4 bg-nfw-aubergine/30">
-                      <div className="text-3xl font-black text-nfw-blackberry">
+                    <div className="text-center p-4 bg-nfw-wisteria">
+                      <div className="text-3xl font-black text-white">
                         {freshdeskStats.total}
                       </div>
-                      <div className="text-xs font-semibold text-nfw-blackberry/70 mt-1">
+                      <div className="text-xs font-semibold text-white/70 mt-1">
                         Total Tickets
                       </div>
                     </div>
-                    <div className="text-center p-4 bg-nfw-aubergine">
+                    <div className="text-center p-4 bg-nfw-wisteria">
                       <div className="text-3xl font-black text-white">
                         {freshdeskStats.open}
                       </div>
@@ -1877,7 +1916,7 @@ export default function AdminAnalyticsClient({
                         Open
                       </div>
                     </div>
-                    <div className="text-center p-4 bg-nfw-aubergine/70">
+                    <div className="text-center p-4 bg-nfw-wisteria">
                       <div className="text-3xl font-black text-white">
                         {freshdeskStats.pending}
                       </div>
@@ -1885,7 +1924,7 @@ export default function AdminAnalyticsClient({
                         Pending
                       </div>
                     </div>
-                    <div className="text-center p-4 bg-nfw-aubergine/50">
+                    <div className="text-center p-4 bg-nfw-wisteria">
                       <div className="text-3xl font-black text-white">
                         {freshdeskStats.resolved}
                       </div>
@@ -1893,11 +1932,11 @@ export default function AdminAnalyticsClient({
                         Resolved
                       </div>
                     </div>
-                    <div className="text-center p-4 bg-nfw-aubergine/30">
-                      <div className="text-3xl font-black text-nfw-blackberry">
+                    <div className="text-center p-4 bg-nfw-wisteria">
+                      <div className="text-3xl font-black text-white">
                         {freshdeskStats.closed}
                       </div>
-                      <div className="text-xs font-semibold text-nfw-blackberry/70 mt-1">
+                      <div className="text-xs font-semibold text-white/70 mt-1">
                         Closed
                       </div>
                     </div>
