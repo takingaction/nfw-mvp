@@ -1200,43 +1200,7 @@ export default function AdminAnalyticsClient({
                 },
               ]
             : tab === "engagement"
-              ? [
-                  {
-                    label: "Active Members",
-                    value: activeMembers,
-                    icon: Users,
-                    color: "bg-nfw-wisteria",
-                    text: "text-white",
-                  },
-                  {
-                    label: "Weekly Active",
-                    value: weeklyActive,
-                    icon: TrendingUp,
-                    color: "bg-nfw-wisteria",
-                    text: "text-white",
-                  },
-                  {
-                    label: "Monthly Active",
-                    value: monthlyActive,
-                    icon: TrendingUp,
-                    color: "bg-nfw-wisteria",
-                    text: "text-white",
-                  },
-                  {
-                    label: "Total Activities",
-                    value: totalActivities,
-                    icon: Gift,
-                    color: "bg-nfw-wisteria",
-                    text: "text-white",
-                  },
-                  {
-                    label: "Avg Actions/Member",
-                    value: avgActionsPerMember,
-                    icon: TrendingUp,
-                    color: "bg-nfw-wisteria",
-                    text: "text-white",
-                  },
-                ]
+              ? []
               : tab === "cohorts"
                 ? [
                     {
@@ -1703,6 +1667,46 @@ export default function AdminAnalyticsClient({
           <div className="space-y-6">
             <div className="bg-white border border-nfw-blackberry/10 p-6">
               <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
+                Engagement Summary
+              </h3>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-nfw-wisteria">
+                  <div className="text-3xl font-black text-white mb-1">
+                    {activeMembers}
+                  </div>
+                  <div className="text-xs font-semibold text-white/70">
+                    Total Active Members
+                  </div>
+                </div>
+                <div className="text-center p-4 bg-nfw-wisteria">
+                  <div className="text-3xl font-black text-white mb-1">
+                    {totalActivities}
+                  </div>
+                  <div className="text-xs font-semibold text-white/70">
+                    Total Activities
+                  </div>
+                </div>
+                <div className="text-center p-4 bg-nfw-wisteria">
+                  <div className="text-3xl font-black text-white mb-1">
+                    {avgActionsPerMember}
+                  </div>
+                  <div className="text-xs font-semibold text-white/70">
+                    Avg Actions per Member
+                  </div>
+                </div>
+                <div className="text-center p-4 bg-nfw-wisteria">
+                  <div className="text-3xl font-black text-white mb-1">
+                    {profiles.length > 0 ? Math.round((activeMembers / profiles.length) * 100) : 0}%
+                  </div>
+                  <div className="text-xs font-semibold text-white/70">
+                    Engagement Rate
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-nfw-blackberry/10 p-6">
+              <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
                 Activity Breakdown
               </h3>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1740,47 +1744,6 @@ export default function AdminAnalyticsClient({
                 </div>
               </div>
             </div>
-
-            <div className="bg-white border border-nfw-blackberry/10 p-6">
-              <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
-                Engagement Summary
-              </h3>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="text-center p-6 bg-nfw-aubergine">
-                  <div className="text-4xl font-black text-white mb-2">
-                    {activeMembers}
-                  </div>
-                  <div className="text-sm font-semibold text-white/70">
-                    Total Active Members
-                  </div>
-                  <div className="text-xs text-white/50 mt-2">
-                    Members with any activity in period
-                  </div>
-                </div>
-                <div className="text-center p-6 bg-nfw-wisteria">
-                  <div className="text-4xl font-black text-white mb-2">
-                    {avgActionsPerMember}
-                  </div>
-                  <div className="text-sm font-semibold text-white/70">
-                    Avg Actions per Member
-                  </div>
-                  <div className="text-xs text-white/50 mt-2">
-                    Total activities / active members
-                  </div>
-                </div>
-                <div className="text-center p-6 bg-nfw-aubergine">
-                  <div className="text-4xl font-black text-white mb-2">
-                    {profiles.length > 0 ? Math.round((activeMembers / profiles.length) * 100) : 0}%
-                  </div>
-                  <div className="text-sm font-semibold text-white/70">
-                    Engagement Rate
-                  </div>
-                  <div className="text-xs text-white/50 mt-2">
-                    Active members / total members
-                </div>
-              </div>
-            </div>
-              </div>
           </div>
         )}
 

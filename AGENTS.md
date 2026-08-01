@@ -9684,3 +9684,48 @@ Fixed grants analytics to properly exclude testing-only grants and corrected app
 3. **Number of Approvals:** Counts grants with status "approved" OR "payment_sent"
 
 4. **Disbursed:** Uses `cycleTestingMap` to exclude testing-only grants
+
+## Session 2026-08-01: Analytics Engagement Tab Updates
+
+### Overview
+
+Restructured the Engagement tab to remove the 5 stat cards at the top and reorganize the remaining sections.
+
+### Changes Made
+
+**`components/admin/AdminAnalyticsClient.tsx`:**
+
+1. **Removed 5 stat cards above Engagement Summary:**
+   - Active Members
+   - Weekly Active
+   - Monthly Active
+   - Total Activities
+   - Avg Actions/Member
+
+2. **Kept Engagement Summary section** (now the first section in Engagement tab) with 4 wisteria cards:
+   - Total Active Members
+   - Total Activities
+   - Avg Actions per Member
+   - Engagement Rate
+
+3. **Kept Activity Breakdown section** (now second) with 4 dove cards:
+   - Perk Redemptions
+   - ZDS Claims
+   - NFW Perk Redemptions
+   - Grant Applications
+
+### Layout (Final)
+
+```
+Engagement Tab:
+├── Engagement Summary (4 wisteria cards - top)
+│   ├── Total Active Members
+│   ├── Total Activities
+│   ├── Avg Actions per Member
+│   └── Engagement Rate
+└── Activity Breakdown (4 dove cards - below)
+    ├── Perk Redemptions
+    ├── ZDS Claims
+    ├── NFW Perk Redemptions
+    └── Grant Applications
+```
