@@ -291,20 +291,22 @@ export default function AdminAnalyticsClient({
   const membersByLevel = useMemo(() => {
     const map: Record<string, number> = {};
     filteredProfiles.forEach((p) => {
-      let level = p.membership_level || "unknown";
-      // Distinguish between approved free, pending free, and started free
-      if (level === "free") {
-        if (p.is_approved_free_member === true) {
-          level = "Free";
-        } else if (p.free_membership_contact_submitted === true) {
-          level = "Pending Free";
-        } else {
-          level = "Started Free";
-        }
-      } else if (level === "contributing") {
+      let level: string;
+      // Admin check first - matches adminCount
+      if (p.is_admin) {
+        level = "Admin";
+      } else if (p.profile_completed !== true || (p.membership_level === "free" && p.is_approved_free_member !== true && p.free_membership_contact_submitted === false)) {
+        level = "Incomplete";
+      } else if (p.membership_level === "free" && p.is_approved_free_member === true) {
+        level = "Free";
+      } else if (p.membership_level === "contributing") {
         level = "Contributing";
-      } else if (level === "founding") {
+      } else if (p.membership_level === "founding") {
         level = "Founding";
+      } else if (p.membership_level === "waitlist") {
+        level = "Waitlist";
+      } else {
+        level = "Other";
       }
       map[level] = (map[level] || 0) + 1;
     });
@@ -436,8 +438,8 @@ export default function AdminAnalyticsClient({
   // Waterfall categories (mutually exclusive)
   // Admin count (separate, not in other categories)
   const adminCount = useMemo(() => {
-    return profiles.filter((p) => p.is_admin === true).length;
-  }, [profiles]);
+    return filteredProfiles.filter((p) => p.is_admin === true).length;
+  }, [filteredProfiles]);
 
   // Paid members (non-admin, completed profile) - for waterfall breakdown
   const paidMembersCount = useMemo(() => {
@@ -689,7 +691,7 @@ export default function AdminAnalyticsClient({
     filteredRedemptions.forEach((r) => {
       const t = r.redeem_type || "unknown";
       // Map API names to display names
-      const displayName = t === "instore" ? "In Store" : t === "instore_print" ? "Print" : t === "link" ? "Online" : t;
+      const displayName = t === "instore" ? "In Store" : t === "instore_print" ? "Print" : t === "link" ? "Online" : t === "call" ? "Call" : t === "view" ? "View" : t;
       map[displayName] = (map[displayName] || 0) + 1;
     });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
@@ -772,6 +774,7 @@ export default function AdminAnalyticsClient({
         if (s === "completed") s = "Completed";
         else if (s === "rejected_invalid_user") s = "Rejected Invalid User";
         else if (s === "rejected_monthly_limit") s = "Rejected Monthly Limit";
+        else if (s === "cancelled") s = "Cancelled";
         map[s] = (map[s] || 0) + 1;
       }
     });
@@ -1553,33 +1556,6 @@ export default function AdminAnalyticsClient({
                   </LineChart>
                 </ResponsiveContainer>
               )}
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white border border-nfw-blackberry/10 p-6">
-                <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
-                  Applications by Status
-                </h3>
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie
-                      data={grantsByStatus}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                    >
-                      {grantsByStatus.map((_, i) => (
-                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend verticalAlign="bottom" height={36} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-
             </div>
           </div>
         )}

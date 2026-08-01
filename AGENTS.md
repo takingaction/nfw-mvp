@@ -9820,3 +9820,68 @@ Members tab in `/admin/analytics`, below the "New Members Over Time" chart:
 
 1. Run migration 132 in Supabase SQL Editor
 2. Deploy code changes
+
+## Session 2026-08-01: Analytics Pie Chart Fixes
+
+### Overview
+
+Fixed analytics pie chart labels to match stat card numbers 100%. Pie charts were showing incorrect values because they used different filtering logic than the stat cards.
+
+### Problems Fixed
+
+1. **Members pie chart**: Was showing "Pending Free", "Started Free", "Free" - didn't match stat cards
+2. **`adminCount` stat card**: Used `profiles` (all profiles) instead of `filteredProfiles`, causing mismatch
+3. **Grants pie chart**: Removed entirely (not requested)
+4. **Perks pie chart**: Added "Call" and "View" capitalization
+5. **ZDS pie chart**: Added "cancelled" → "Cancelled" mapping
+
+### Members Pie Chart Fix
+
+**Before:** `membersByLevel` used different logic than stat cards:
+- "Free" only checked `membership_level === "free"`, didn't require `is_approved_free_member === true`
+- No "Incomplete" category (was "Pending Free", "Started Free")
+- No "Admin" category (admins counted toward their membership tier)
+
+**After:** Matches stat card logic exactly:
+```typescript
+if (p.is_admin) {
+  level = "Admin";
+} else if (p.profile_completed !== true || (p.membership_level === "free" && p.is_approved_free_member !== true && p.free_membership_contact_submitted === false)) {
+  level = "Incomplete";
+} else if (p.membership_level === "free" && p.is_approved_free_member === true) {
+  level = "Free";
+} else if (p.membership_level === "contributing") {
+  level = "Contributing";
+} else if (p.membership_level === "founding") {
+  level = "Founding";
+} else if (p.membership_level === "waitlist") {
+  level = "Waitlist";
+} else {
+  level = "Other";
+}
+```
+
+### `adminCount` Fix
+
+**Before:**
+```typescript
+const adminCount = useMemo(() => {
+  return profiles.filter((p) => p.is_admin === true).length;
+}, [profiles]);
+```
+
+**After:**
+```typescript
+const adminCount = useMemo(() => {
+  return filteredProfiles.filter((p) => p.is_admin === true).length;
+}, [filteredProfiles]);
+```
+
+Now matches pie chart which uses `filteredProfiles`.
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `components/admin/AdminAnalyticsClient.tsx` | Rewrote `membersByLevel` to match stat cards, fixed `adminCount` to use `filteredProfiles`, added label capitalizations |
+
