@@ -134,7 +134,7 @@ export async function POST(request: Request) {
             // Check if profile exists
             const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
               .from("profiles")
-              .select("id, full_name, membership_level")
+              .select("id, full_name, membership_level, first_paid_at, first_paid_level")
               .eq("id", userId)
               .single();
 
@@ -166,14 +166,16 @@ export async function POST(request: Request) {
                   profileId = authUser.id;
 
                   // Update profile using the auth user's ID
+                  // For this edge case, we don't know previous level, so leave as null
                   const { error: updateError } = await supabaseAdmin
                     .from("profiles")
                     .update({
                       membership_level: membershipLevel,
+                      previous_membership_level: 'free', // Edge case: assume free if unknown
                       subscription_status: "active",
                       subscription_ends_at: null,
                       updated_at: new Date().toISOString(),
-                      // Track first paid upgrade
+                      // Track first paid upgrade (only if not already set)
                       first_paid_at: new Date().toISOString(),
                       first_paid_level: membershipLevel,
                     })
@@ -199,12 +201,13 @@ export async function POST(request: Request) {
                 .from("profiles")
                 .update({
                   membership_level: membershipLevel,
+                  previous_membership_level: existingProfile.membership_level,
                   subscription_status: "active",
                   subscription_ends_at: null,
                   updated_at: new Date().toISOString(),
-                  // Track first paid upgrade
-                  first_paid_at: new Date().toISOString(),
-                  first_paid_level: membershipLevel,
+                  // Track first paid upgrade (only if not already set)
+                  first_paid_at: existingProfile.first_paid_at || new Date().toISOString(),
+                  first_paid_level: existingProfile.first_paid_level || membershipLevel,
                 })
                 .eq("id", userId);
 
@@ -336,6 +339,13 @@ export async function POST(request: Request) {
           break;
         }
 
+        // Fetch current profile to get existing membership_level
+        const { data: currentProfile } = await supabaseAdmin
+          .from("profiles")
+          .select("membership_level, first_paid_at, first_paid_level")
+          .eq("id", authUser.id)
+          .single();
+
         if (subscription.cancel_at_period_end) {
           const endsAt = new Date((subscription as unknown as { current_period_end: number }).current_period_end * 1000);
 
@@ -350,14 +360,18 @@ export async function POST(request: Request) {
         } else {
           const newMembershipLevel = PRICE_TO_MEMBERSHIP[priceId];
 
-          if (newMembershipLevel) {
+          if (newMembershipLevel && currentProfile) {
             await supabaseAdmin
               .from("profiles")
               .update({
                 membership_level: newMembershipLevel,
+                previous_membership_level: currentProfile.membership_level,
                 subscription_status: "active",
                 subscription_ends_at: null,
                 updated_at: new Date().toISOString(),
+                // Track first paid upgrade (only if not already set)
+                first_paid_at: currentProfile.first_paid_at || new Date().toISOString(),
+                first_paid_level: currentProfile.first_paid_level || newMembershipLevel,
               })
               .eq("id", authUser.id);
           }

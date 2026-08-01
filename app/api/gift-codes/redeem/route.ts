@@ -54,10 +54,10 @@ export async function POST(request: Request) {
     const oneYearFromNow = new Date();
     oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
 
-    // Get user's name for the welcome email
+    // Get user's current profile for name and membership level
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("full_name")
+      .select("full_name, membership_level, first_paid_at, first_paid_level")
       .eq("id", user.id)
       .single();
 
@@ -66,9 +66,13 @@ export async function POST(request: Request) {
       .from("profiles")
       .update({
         membership_level: "contributing",
+        previous_membership_level: profile?.membership_level || 'free',
         subscription_status: "active",
         subscription_ends_at: oneYearFromNow.toISOString(),
         updated_at: new Date().toISOString(),
+        // Track first paid upgrade (only if not already set)
+        first_paid_at: profile?.first_paid_at || new Date().toISOString(),
+        first_paid_level: profile?.first_paid_level || "contributing",
       })
       .eq("id", user.id);
 

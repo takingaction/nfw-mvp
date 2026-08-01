@@ -54,6 +54,7 @@ type Profile = {
   subscription_ends_at: string | null;
   first_paid_at: string | null;
   first_paid_level: string | null;
+  previous_membership_level: string | null;
   is_approved_free_member: boolean | null;
   free_membership_contact_submitted: boolean | null;
   state: string | null;
@@ -356,6 +357,56 @@ export default function AdminAnalyticsClient({
   const upgradedPercent = useMemo(() => {
     return paidCount > 0 ? Math.round((upgradedCount / paidCount) * 100) : 0;
   }, [paidCount, upgradedCount]);
+
+  // Upgrade stats - counts members who upgraded from one tier to another
+  // Excludes admins, incomplete profiles, and abandoned profiles
+
+  // free → contributing (complete free member who upgraded to contributing)
+  const freeToContributingCount = useMemo(() => {
+    return filteredProfiles.filter((p) => {
+      if (p.is_admin) return false;
+      if (p.profile_completed !== true) return false;
+      if (p.free_membership_contact_submitted !== true) return false; // excludes abandoned
+      return p.previous_membership_level === "free" && p.membership_level === "contributing";
+    }).length;
+  }, [filteredProfiles]);
+
+  // free → founding (complete free member who upgraded to founding)
+  const freeToFoundingCount = useMemo(() => {
+    return filteredProfiles.filter((p) => {
+      if (p.is_admin) return false;
+      if (p.profile_completed !== true) return false;
+      if (p.free_membership_contact_submitted !== true) return false; // excludes abandoned
+      return p.previous_membership_level === "free" && p.membership_level === "founding";
+    }).length;
+  }, [filteredProfiles]);
+
+  // waitlist → contributing (waitlist member who upgraded directly to contributing without approval)
+  const waitlistToContributingCount = useMemo(() => {
+    return filteredProfiles.filter((p) => {
+      if (p.is_admin) return false;
+      if (p.profile_completed !== true) return false;
+      return p.previous_membership_level === "waitlist" && p.membership_level === "contributing";
+    }).length;
+  }, [filteredProfiles]);
+
+  // waitlist → founding (waitlist member who upgraded directly to founding without approval)
+  const waitlistToFoundingCount = useMemo(() => {
+    return filteredProfiles.filter((p) => {
+      if (p.is_admin) return false;
+      if (p.profile_completed !== true) return false;
+      return p.previous_membership_level === "waitlist" && p.membership_level === "founding";
+    }).length;
+  }, [filteredProfiles]);
+
+  // contributing → founding (member who was already paying as contributing and upgraded to founding)
+  const contributingToFoundingCount = useMemo(() => {
+    return filteredProfiles.filter((p) => {
+      if (p.is_admin) return false;
+      if (p.profile_completed !== true) return false;
+      return p.first_paid_level === "contributing" && p.membership_level === "founding";
+    }).length;
+  }, [filteredProfiles]);
 
   const estimatedMRR = useMemo(() => {
     return Math.round((contributingCount * 15 + foundingCount * 100) / 12);
@@ -1369,6 +1420,55 @@ export default function AdminAnalyticsClient({
                   </LineChart>
                 </ResponsiveContainer>
               )}
+            </div>
+
+            {/* Upgrades Section */}
+            <div className="bg-white border border-nfw-blackberry/10 p-6">
+              <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
+                Membership Upgrades
+              </h3>
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="bg-nfw-wisteria/10 p-4 text-center">
+                  <div className="text-2xl font-black text-nfw-wisteria mb-1">
+                    {freeToContributingCount}
+                  </div>
+                  <div className="text-xs font-semibold text-nfw-blackberry/60">
+                    free → contributing
+                  </div>
+                </div>
+                <div className="bg-nfw-wisteria/10 p-4 text-center">
+                  <div className="text-2xl font-black text-nfw-wisteria mb-1">
+                    {freeToFoundingCount}
+                  </div>
+                  <div className="text-xs font-semibold text-nfw-blackberry/60">
+                    free → founding
+                  </div>
+                </div>
+                <div className="bg-nfw-wisteria/10 p-4 text-center">
+                  <div className="text-2xl font-black text-nfw-wisteria mb-1">
+                    {waitlistToContributingCount}
+                  </div>
+                  <div className="text-xs font-semibold text-nfw-blackberry/60">
+                    waitlist → contributing
+                  </div>
+                </div>
+                <div className="bg-nfw-wisteria/10 p-4 text-center">
+                  <div className="text-2xl font-black text-nfw-wisteria mb-1">
+                    {waitlistToFoundingCount}
+                  </div>
+                  <div className="text-xs font-semibold text-nfw-blackberry/60">
+                    waitlist → founding
+                  </div>
+                </div>
+                <div className="bg-nfw-wisteria/10 p-4 text-center">
+                  <div className="text-2xl font-black text-nfw-wisteria mb-1">
+                    {contributingToFoundingCount}
+                  </div>
+                  <div className="text-xs font-semibold text-nfw-blackberry/60">
+                    contributing → founding
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

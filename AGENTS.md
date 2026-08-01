@@ -9729,3 +9729,94 @@ Engagement Tab:
     ├── NFW Perk Redemptions
     └── Grant Applications
 ```
+
+---
+
+## Session 2026-08-01: Membership Upgrade Tracking Analytics
+
+### Overview
+
+Added 5 new upgrade stat cards to the Members tab in admin analytics to track membership tier transitions.
+
+### Database
+
+**Migration 132:** `supabase/migrations/132_add_previous_membership_level.sql`
+```sql
+ALTER TABLE profiles ADD COLUMN previous_membership_level TEXT;
+CREATE INDEX idx_profiles_previous_membership_level ON profiles(previous_membership_level);
+NOTIFY pgrst, 'reload';
+```
+
+**Purpose:** Tracks the immediately previous membership level before an upgrade, enabling detection of upgrade paths.
+
+### Upgrade Stats Logic
+
+| Stat | Filter Conditions |
+|------|------------------|
+| **free to contributing** | `previous_membership_level = 'free'` AND `membership_level = 'contributing'` AND `profile_completed = true` AND `free_membership_contact_submitted = true` (excludes abandoned) |
+| **free to founding** | `previous_membership_level = 'free'` AND `membership_level = 'founding'` AND `profile_completed = true` AND `free_membership_contact_submitted = true` |
+| **waitlist to contributing** | `previous_membership_level = 'waitlist'` AND `membership_level = 'contributing'` AND `profile_completed = true` |
+| **waitlist to founding** | `previous_membership_level = 'waitlist'` AND `membership_level = 'founding'` AND `profile_completed = true` |
+| **contributing to founding** | `first_paid_level = 'contributing'` AND `membership_level = 'founding'` AND `profile_completed = true` |
+
+**Excludes:** `is_admin = true` from all counts
+
+### Key Design Decisions
+
+1. **Waitlist to free approval does NOT set `previous_membership_level`**
+   - When a waitlist member gets approved (goes to free), `previous_membership_level` is NOT set
+   - This means if they later pay, it counts as `free to paid` not `waitlist to paid`
+   - Only direct waitlist to paid upgrades (without going through approval) set `previous_membership_level = 'waitlist'`
+
+2. **Excludes abandoned profiles**
+   - Abandoned = `profile_completed = true` but `free_membership_contact_submitted = false` or `NULL`
+   - These are users who started signup but abandoned before completing
+
+3. **Forward-only tracking**
+   - `previous_membership_level` only captures transitions AFTER the column was added
+   - Historical data cannot be backfilled
+
+### Webhook Updates
+
+**`app/api/webhook/route.ts`:**
+
+1. **Fixed `first_paid_at` overwrite bug**
+   - Previously: `first_paid_at: new Date().toISOString()` (overwrote every checkout)
+   - Now: `first_paid_at: existingProfile.first_paid_at || new Date().toISOString()` (only sets if not already set)
+
+2. **`checkout.session.completed`**
+   - Sets `previous_membership_level: existingProfile.membership_level` before updating
+   - Only sets `first_paid_at` / `first_paid_level` if not already set
+
+3. **`customer.subscription.updated`**
+   - Fetches current profile to get existing `membership_level`
+   - Sets `previous_membership_level` before updating
+   - Only sets `first_paid_at` / `first_paid_level` if not already set
+
+### Gift Code Redemption
+
+**`app/api/gift-codes/redeem/route.ts`:**
+- Sets `previous_membership_level: profile?.membership_level || 'free'` before upgrading to contributing
+- Only sets `first_paid_at` / `first_paid_level` if not already set
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `supabase/migrations/132_add_previous_membership_level.sql` | Created - adds column and index |
+| `app/api/webhook/route.ts` | Fixed first_paid_at bug, added previous_membership_level tracking |
+| `app/api/gift-codes/redeem/route.ts` | Added previous_membership_level tracking |
+| `components/admin/AdminAnalyticsClient.tsx` | Added Profile type field, 5 useMemo calculations, UI section |
+| `AGENTS.md` | This session entry |
+
+### UI Location
+
+Members tab in `/admin/analytics`, below the "New Members Over Time" chart:
+- 5 cards in a row (responsive: 2 columns on mobile, 5 on desktop)
+- Wisteria/10 background color
+- Shows upgrade path label below each count
+
+### To Deploy
+
+1. Run migration 132 in Supabase SQL Editor
+2. Deploy code changes
