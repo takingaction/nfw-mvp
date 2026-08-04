@@ -263,7 +263,7 @@ export async function POST(request: Request) {
       needs_retry_approved: needsRetryApproved,
       needs_retry_rejected: needsRetryRejected,
       retry_list: needsRetry,
-      message: `Found ${deliveredCount} delivered, ${needsRetry.length} need retry (${needsRetryApproved} approved, ${needsRetryRejected} rejected)`,
+      message: `Found ${deliveredCount} delivered. ${needsRetry.length} need retry: ${needsRetryApproved} approved applicants will receive grant approval email, ${needsRetryRejected} rejected applicants will receive rejection email`,
     });
   } catch (err: unknown) {
     console.error("[check-resend-delivered] Error:", err);
