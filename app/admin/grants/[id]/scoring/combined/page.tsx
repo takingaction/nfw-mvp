@@ -103,6 +103,8 @@ export default function CombinedScoresPage() {
   const [dateFrom, setDateFrom] = useState("2026-07-29");
   const [dateTo, setDateTo] = useState("2026-08-02");
   const [checkResendLoading, setCheckResendLoading] = useState(false);
+  const [sampleRetryResults, setSampleRetryResults] = useState<any[]>([]);
+  const [showSampleResults, setShowSampleResults] = useState(false);
   const [checkResendResult, setCheckResendResult] = useState<{
     checked: number;
     delivered: number;
@@ -325,6 +327,26 @@ export default function CombinedScoresPage() {
     }
   };
 
+  const handleSampleRetry = async () => {
+    setRetryAllLoading(true);
+    setShowSampleResults(false);
+    try {
+      const res = await fetch(`/api/admin/grants/sample-retry?cycle_id=${cycleId}&limit=5`, {
+        method: "POST",
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error);
+
+      setSampleRetryResults(data.results || []);
+      setShowSampleResults(true);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setRetryAllLoading(false);
+    }
+  };
+
   const handleCopyRetryAllFailed = () => {
     const failedEmailsList = retryAllResults
       .filter((r: any) => r.status === "failed")
@@ -494,6 +516,25 @@ export default function CombinedScoresPage() {
                   </>
                 )}
               </button>
+              {/* Send Sample (5) Button */}
+              <button
+                onClick={handleSampleRetry}
+                disabled={retryAllLoading || !hasCheckedFailed}
+                className="px-3 py-1.5 bg-nfw-wisteria text-white text-xs font-bold rounded hover:bg-nfw-wisteria/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                title="Send a sample of 5 emails to test"
+              >
+                {retryAllLoading ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-3 h-3" />
+                    Send Sample (5)
+                  </>
+                )}
+              </button>
               {/* Retry Failed Button */}
               <button
                 onClick={handleRetryFailed}
@@ -570,6 +611,48 @@ export default function CombinedScoresPage() {
                       </span>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Sample Retry Results */}
+              {showSampleResults && sampleRetryResults.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-nfw-blackberry/10">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold text-nfw-blackberry">Sample Send Results</span>
+                    <button
+                      onClick={() => setShowSampleResults(false)}
+                      className="text-xs text-nfw-blackberry/50 hover:text-nfw-blackberry"
+                    >
+                      Collapse
+                    </button>
+                  </div>
+
+                  <div className="flex gap-4 mb-2 text-xs">
+                    <span className="text-green-600">
+                      ✓ Sent: {sampleRetryResults.filter((r: any) => r.status === "sent").length}
+                    </span>
+                    <span className="text-red-600">
+                      ✗ Failed: {sampleRetryResults.filter((r: any) => r.status === "failed").length}
+                    </span>
+                  </div>
+
+                  <div className="max-h-32 overflow-y-auto space-y-1">
+                    {sampleRetryResults.map((r: any, i: number) => (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        {r.status === "sent" ? (
+                          <Check className="w-3 h-3 text-green-600 flex-shrink-0" />
+                        ) : (
+                          <X className="w-3 h-3 text-red-600 flex-shrink-0" />
+                        )}
+                        <span className={r.status === "sent" ? "text-green-600" : "text-red-600"}>
+                          {r.email}
+                        </span>
+                        {r.error && (
+                          <span className="text-nfw-blackberry/50">({r.error})</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
