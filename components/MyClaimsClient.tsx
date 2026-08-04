@@ -241,6 +241,7 @@ export default function MyClaimsClient({
                             </span>
                           </div>
                         )}
+                        {/* TODO: SECURITY - Temporarily hidden until ZDS order matching is fixed
                         {shopifyOrderUrl && (
                           <a
                             href={shopifyOrderUrl}
@@ -252,6 +253,7 @@ export default function MyClaimsClient({
                             <ArrowRight className="w-3 h-3" />
                           </a>
                         )}
+                        */}
                       </div>
                     )}
 
@@ -259,14 +261,16 @@ export default function MyClaimsClient({
                       <span className="font-sans text-xs text-nfw-blackberry/50">
                         Claimed {new Date(claim.claimed_at).toLocaleDateString()}
                       </span>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => refreshClaim(claim.id)}
-                          disabled={loadingClaimId === claim.id}
-                          className="font-ui text-xs text-nfw-aubergine hover:underline disabled:opacity-50"
-                        >
-                          {loadingClaimId === claim.id ? "Refreshing..." : "Refresh Status"}
-                        </button>
+                        <div className="flex items-center gap-3">
+                          {/* TODO: SECURITY - Temporarily hidden until ZDS order matching is fixed
+                          <button
+                            onClick={() => refreshClaim(claim.id)}
+                            disabled={loadingClaimId === claim.id}
+                            className="font-ui text-xs text-nfw-aubergine hover:underline disabled:opacity-50"
+                          >
+                            {loadingClaimId === claim.id ? "Refreshing..." : "Refresh Status"}
+                          </button>
+                          */}
                         {claim.shopify_order_id && !shopifyOrderUrl && (
                           <span className="font-ui text-xs text-nfw-blackberry/50">
                             Order ID: {claim.shopify_order_id.split('/').pop()}

@@ -103,6 +103,7 @@ function OnlineHistoryItem({ claim }: { claim: Claim }) {
             {displayDate}
           </span>
         </div>
+        {/* TODO: SECURITY - Temporarily hidden until ZDS order matching is fixed
         {shopifyOrderUrl && (
           <a
             href={shopifyOrderUrl}
@@ -114,6 +115,7 @@ function OnlineHistoryItem({ claim }: { claim: Claim }) {
             <ArrowRight className="w-3 h-3" />
           </a>
         )}
+        */}
       </div>
     </div>
   );
