@@ -9952,3 +9952,140 @@ The July 8th bulk backfill operation incorrectly synced Stripe subscription STAT
 |------|---------|
 | None | Data fix via SQL only |
 
+---
+
+## Session 2026-08-03: Grant Email Retry System
+
+### Overview
+
+Built automated retry system for failed grant emails (especially 429 rate limit errors) with per-email result tracking, manual retry, and admin UI.
+
+### Goal
+
+- Manual retry (not automatic on failure)
+- Per-recipient success/failure tracking
+- Admin UI to see who got emails and who didn't
+- Unified logging for both approved and rejected emails
+- Paste-to-retry tool for resending failed emails
+- Check Resend API status before retrying (skip already delivered)
+- Show per-email results after retry
+
+### Constraints & Preferences
+
+- 429 errors create NO Resend log entry → safe to retry immediately
+- Must use our grant_email_log as source of truth for failed emails
+- Resend Logs API can query by ID but NOT by email address
+- For 364 past 429s: safe to retry, no Resend record exists to check
+
+### Database
+
+**Migration 133:** `supabase/migrations/133_grant_email_log.sql`
+
+Creates `grant_email_log` table to track all grant email sends:
+```sql
+grant_email_log (
+  id UUID PK,
+  grant_id UUID REFERENCES grants(id),
+  cycle_id UUID REFERENCES grant_cycles(id),
+  email_type TEXT CHECK (approved, rejected),
+  recipient_email TEXT NOT NULL,
+  status TEXT CHECK (pending, sent, failed, bounced),
+  resend_email_id TEXT,
+  error_message TEXT,
+  retry_count INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+)
+```
+
+**Migration 134:** `supabase/migrations/134_add_grant_email_retry_status.sql`
+
+Adds retry tracking columns:
+- `already_sent` status for emails already delivered
+- `last_resend_status` column to store final status after retry
+
+### API Routes Created
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/admin/grants/failed-emails` | GET | Fetch failed emails grouped by cycle |
+| `/api/admin/grants/retry-failed` | POST | Retry all failed emails with Resend status check |
+| `/api/admin/grants/[id]/retry-emails` | POST | Paste-to-retry specific emails |
+
+### Retry Logic
+
+1. **Fetch failed emails** from `grant_email_log` where `status = 'failed'`
+2. **For emails with resend_email_id**: Check Resend API first
+   - If `delivered` → mark as `already_sent`, skip
+   - If `bounced/complained` → retry
+   - If `sent/unknown` → retry
+3. **For emails without resend_email_id** (429 case): Safe to retry immediately
+4. **Send with throttling**: 110ms delay between emails (~9/sec, under 10/sec limit)
+5. **Log each attempt** with new `resend_email_id` and status
+
+### Throttling
+
+All email sending uses 110ms delay to stay under Resend's 10 req/s rate limit:
+
+| Location | Delay |
+|----------|-------|
+| Resend status check loop | 110ms per email |
+| Approved email sending (individual) | 110ms per email |
+| Rejected email sending (batch) | 110ms via `sendBatchEmails` |
+
+### Email Functions Updated
+
+**`lib/email.ts`:**
+- `sendGrantApprovedEmail()` - Returns `{ success, resendId?, error? }`
+- `sendGrantRejectedEmail()` - Returns `{ success, resendId?, error? }`
+
+**`lib/email-batch.ts`:**
+- Added `delayMs` parameter (default 110ms)
+- Sequential sending with throttling
+
+### Admin UI
+
+**Combined Scores Page (`/admin/grants/[id]/scoring/combined`):**
+
+Added "Retry Failed Emails" panel:
+- Paste-to-retry textarea
+- Send Retry button
+- Last finalization result summary
+- Retry result display with sent/failed counts
+- Copy failed emails button
+
+New "Retry All Results" collapsible section:
+- Shows ✓ Retried, ⊘ Skipped, ✗ Failed per email
+- Per-email list with status and reason
+- Collapse button
+- Copy failed emails button
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/133_grant_email_log.sql` | Tracking table |
+| `supabase/migrations/134_add_grant_email_retry_status.sql` | already_sent status + last_resend_status |
+| `app/api/admin/grants/failed-emails/route.ts` | GET failed emails by cycle |
+| `app/api/admin/grants/retry-failed/route.ts` | POST retry all with Resend check |
+| `app/api/admin/grants/[id]/retry-emails/route.ts` | Paste-to-retry API |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `lib/email-batch.ts` | Added delayMs throttle, sequential sending |
+| `lib/email.ts` | Return types include resendId |
+| `app/api/admin/grants/[id]/final-approve/route.ts` | Logging via logEmail() helper |
+| `app/admin/grants/[id]/scoring/combined/page.tsx` | Retry panel + per-email results display |
+
+### Build Status
+
+- ✅ Build passed (after fixing type errors with Resend API)
+
+### To Deploy
+
+1. Run migration 133 in Supabase SQL Editor
+2. Run migration 134 in Supabase SQL Editor
+3. Deploy the code
+4. Go to `/admin/grants/[id]/scoring/combined` to use Retry All
+

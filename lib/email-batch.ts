@@ -10,6 +10,7 @@ interface BatchRecipient {
   email: string;
   name?: string;
   variables?: Record<string, string>;
+  grantId?: string; // Optional grant ID for logging
 }
 
 interface BatchEmailOptions {
@@ -23,8 +24,13 @@ interface BatchEmailOptions {
 interface BatchEmailResult {
   sent: number;
   failed: number;
-  errors: { email: string; error: string }[];
   total: number;
+  results: {
+    email: string;
+    success: boolean;
+    resendId?: string;
+    error?: string;
+  }[];
 }
 
 /**
@@ -114,10 +120,10 @@ function getResend(): Resend {
 }
 
 /**
- * Send batch emails using Resend's batch API
- * 
- * Resend allows sending to up to 50 recipients per API call.
- * This function chunks recipients and sends in batches with configurable delays.
+ * Send batch emails sequentially with throttling to avoid 429 errors
+ *
+ * Sends emails one at a time with a delay between each to stay under
+ * Resend's rate limit of 10 requests per second.
  */
 export async function sendBatchEmails(
   options: BatchEmailOptions
@@ -126,15 +132,15 @@ export async function sendBatchEmails(
     recipients,
     templateSlug,
     fromName,
-    delayMs = DEFAULT_DELAY_MS,
+    delayMs = 110, // ~9 emails per second to stay under 10/s limit
     onProgress,
   } = options;
 
   const result: BatchEmailResult = {
     sent: 0,
     failed: 0,
-    errors: [],
     total: recipients.length,
+    results: [],
   };
 
   if (recipients.length === 0) {
@@ -147,19 +153,16 @@ export async function sendBatchEmails(
     return {
       ...result,
       failed: recipients.length,
-      errors: recipients.map((r) => ({
+      results: recipients.map((r) => ({
         email: r.email,
+        success: false,
         error: `Template "${templateSlug}" not found`,
       })),
     };
   }
 
-  // Chunk recipients into batches of 50
-  const batches = chunkArray(recipients, RESEND_BATCH_SIZE);
-  const totalBatches = batches.length;
-
   console.log(
-    `[email-batch] Sending ${recipients.length} emails in ${totalBatches} batches`
+    `[email-batch] Sending ${recipients.length} emails sequentially with ${delayMs}ms delay`
   );
 
   const resend = getResend();
@@ -167,94 +170,59 @@ export async function sendBatchEmails(
     ? `${fromName} <hello@nationalfundforwomen.org>`
     : FROM;
 
-  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-    const batch = batches[batchIndex];
-    const batchNum = batchIndex + 1;
+  // Send emails sequentially, one at a time
+  for (let i = 0; i < recipients.length; i++) {
+    const recipient = recipients[i];
+    const variables = {
+      name: recipient.name || "there",
+      ...recipient.variables,
+    };
+
+    const personalizedHtml = replaceTemplateVariables(
+      template.html,
+      variables
+    );
+
+    const personalizedSubject = replaceTemplateVariables(
+      template.subject,
+      variables
+    );
 
     try {
-      // For each recipient in batch, prepare personalized HTML
-      // Note: Resend batch send uses same HTML for all recipients in batch
-      // To personalize, we need to either:
-      // 1. Use Resend's personalization (not available in basic API)
-      // 2. Send individual emails with personalized content
-      //
-      // Since we need personalization, we'll send individually within the batch
-      // but use Promise.all for concurrency within the batch
-      const batchPromises = batch.map(async (recipient) => {
-        const variables = {
-          name: recipient.name || "there",
-          ...recipient.variables,
-        };
-
-        const personalizedHtml = replaceTemplateVariables(
-          template.html,
-          variables
-        );
-
-        // Replace name in subject too if {{name}} is present
-        const personalizedSubject = replaceTemplateVariables(
-          template.subject,
-          variables
-        );
-
-        try {
-          const emailResult = await resend.emails.send({
-            from: fromAddress,
-            to: recipient.email,
-            subject: personalizedSubject,
-            html: personalizedHtml,
-          });
-
-          if (emailResult.error) {
-            throw new Error(emailResult.error.message);
-          }
-
-          return { success: true, email: recipient.email };
-        } catch (err: any) {
-          return {
-            success: false,
-            email: recipient.email,
-            error: err?.message || "Unknown error",
-          };
-        }
+      const emailResult = await resend.emails.send({
+        from: fromAddress,
+        to: recipient.email,
+        subject: personalizedSubject,
+        html: personalizedHtml,
       });
 
-      // Send batch concurrently
-      const batchResults = await Promise.all(batchPromises);
-
-      // Process results
-      for (const res of batchResults) {
-        if (res.success) {
-          result.sent++;
-        } else {
-          result.failed++;
-          result.errors.push({ email: res.email, error: res.error });
-        }
+      if (emailResult.error) {
+        throw new Error(emailResult.error.message);
       }
 
-      console.log(
-        `[email-batch] Batch ${batchNum}/${totalBatches} complete: ${batchResults.filter((r) => r.success).length}/${batch.length} sent`
-      );
-
-      // Report progress
-      if (onProgress) {
-        onProgress(result.sent + result.failed, result.total);
-      }
-
-      // Delay between batches (except for last batch)
-      if (batchIndex < batches.length - 1) {
-        await sleep(delayMs);
-      }
+      result.sent++;
+      result.results.push({
+        email: recipient.email,
+        success: true,
+        resendId: emailResult.data?.id,
+      });
     } catch (err: any) {
-      console.error(`[email-batch] Batch ${batchNum} failed:`, err);
-      // Mark all in batch as failed
-      for (const recipient of batch) {
-        result.failed++;
-        result.errors.push({
-          email: recipient.email,
-          error: err?.message || `Batch ${batchNum} failed`,
-        });
-      }
+      result.failed++;
+      result.results.push({
+        email: recipient.email,
+        success: false,
+        error: err?.message || "Unknown error",
+      });
+    }
+
+    // Report progress
+    if (onProgress) {
+      onProgress(result.sent + result.failed, result.total);
+    }
+
+    // Delay between emails (except for last one)
+    if (i < recipients.length - 1) {
+      await sleep(delayMs);
     }
   }
 

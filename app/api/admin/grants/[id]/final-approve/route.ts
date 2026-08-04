@@ -9,6 +9,37 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
+/**
+ * Log email send result to grant_email_log table
+ */
+async function logEmail({
+  grantId,
+  cycleId,
+  emailType,
+  recipientEmail,
+  status,
+  resendEmailId,
+  errorMessage,
+}: {
+  grantId: string;
+  cycleId: string;
+  emailType: "approved" | "rejected";
+  recipientEmail: string;
+  status: "sent" | "failed";
+  resendEmailId?: string;
+  errorMessage?: string;
+}) {
+  await supabaseAdmin.from("grant_email_log").insert({
+    grant_id: grantId,
+    cycle_id: cycleId,
+    email_type: emailType,
+    recipient_email: recipientEmail,
+    status,
+    resend_email_id: resendEmailId,
+    error_message: errorMessage,
+  });
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -86,21 +117,54 @@ export async function POST(
       .update({ final_approved_at: new Date().toISOString() })
       .eq("id", cycleId);
 
-    // Send emails to approved grants
+    // Send emails to approved grants (with logging)
+    let approvedSent = 0;
+    let approvedFailed = 0;
+    const approvedFailedEmails: string[] = [];
+
     for (const grant of approvedGrants) {
       const profile = Array.isArray(grant.profiles) ? grant.profiles[0] : grant.profiles;
       if (profile?.email) {
-        await sendGrantApprovedEmail({
-          to: profile.email,
-          name: profile.full_name || "there",
-          grantCycleName: cycle.cycle_name,
-          amount: cycle.amount_per_grant,
-          ctaUrl: `https://nationalfundforwomen.org/grants/view/${grant.id}`,
-        });
+        try {
+          const result = await sendGrantApprovedEmail({
+            to: profile.email,
+            name: profile.full_name || "there",
+            grantCycleName: cycle.cycle_name,
+            amount: cycle.amount_per_grant,
+            ctaUrl: `https://nationalfundforwomen.org/grants/view/${grant.id}`,
+          });
+
+          await logEmail({
+            grantId: grant.id,
+            cycleId,
+            emailType: "approved",
+            recipientEmail: profile.email,
+            status: result.success ? "sent" : "failed",
+            resendEmailId: result.resendId,
+            errorMessage: result.error,
+          });
+
+          if (result.success) approvedSent++;
+          else {
+            approvedFailed++;
+            approvedFailedEmails.push(profile.email);
+          }
+        } catch (err: any) {
+          await logEmail({
+            grantId: grant.id,
+            cycleId,
+            emailType: "approved",
+            recipientEmail: profile.email,
+            status: "failed",
+            errorMessage: err.message,
+          });
+          approvedFailed++;
+          approvedFailedEmails.push(profile.email);
+        }
       }
     }
 
-    // Send batch emails to rejected grants (50 at a time)
+    // Send batch emails to rejected grants (with logging)
     const rejectedRecipients = rejectedGrants
       .filter((g) => {
         const profile = Array.isArray(g.profiles) ? g.profiles[0] : g.profiles;
@@ -111,6 +175,7 @@ export async function POST(
         return {
           email: profile!.email!,
           name: profile!.full_name || "there",
+          grantId: g.id,
           variables: {
             grantCycleName: cycle.cycle_name,
             ctaUrl: `https://nationalfundforwomen.org/grants/my-applications`,
@@ -118,17 +183,51 @@ export async function POST(
         };
       });
 
+    let rejectedSent = 0;
+    let rejectedFailed = 0;
+    const rejectedFailedEmails: string[] = [];
+
     if (rejectedRecipients.length > 0) {
-      await sendBatchEmails({
+      const batchResult = await sendBatchEmails({
         recipients: rejectedRecipients,
         templateSlug: "grant-not-approved",
       });
+
+      // Log each result
+      for (const result of batchResult.results) {
+        const recipient = rejectedRecipients.find((r) => r.email === result.email);
+        if (recipient?.grantId) {
+          await logEmail({
+            grantId: recipient.grantId,
+            cycleId,
+            emailType: "rejected",
+            recipientEmail: result.email,
+            status: result.success ? "sent" : "failed",
+            resendEmailId: result.resendId,
+            errorMessage: result.error,
+          });
+        }
+
+        if (result.success) rejectedSent++;
+        else {
+          rejectedFailed++;
+          rejectedFailedEmails.push(result.email);
+        }
+      }
     }
 
     return NextResponse.json({
       success: true,
-      approved_count: approvedGrants.length,
-      rejected_count: rejectedGrants.length,
+      approved: {
+        sent: approvedSent,
+        failed: approvedFailed,
+        failed_emails: approvedFailedEmails,
+      },
+      rejected: {
+        sent: rejectedSent,
+        failed: rejectedFailed,
+        failed_emails: rejectedFailedEmails,
+      },
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

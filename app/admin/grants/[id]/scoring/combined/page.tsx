@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, AlertCircle, Check, Shield } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, Check, Shield, ChevronDown, ChevronUp, Mail, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import GrantCombinedScores from "@/components/admin/GrantCombinedScores";
 import GrantCycleFinalizeButton from "@/components/admin/GrantCycleFinalizeButton";
@@ -81,10 +81,29 @@ export default function CombinedScoresPage() {
   const [finalizing, setFinalizing] = useState(false);
   const [finalized, setFinalized] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [finalizeResult, setFinalizeResult] = useState<{ approved: number; rejected: number } | null>(null);
+  const [finalizeResult, setFinalizeResult] = useState<{
+    approved: { sent: number; failed: number; failed_emails: string[] };
+    rejected: { sent: number; failed: number; failed_emails: string[] };
+  } | null>(null);
   const [showResultModal, setShowResultModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
+
+  // Retry panel state
+  const [retryExpanded, setRetryExpanded] = useState(false);
+  const [retryEmailType, setRetryEmailType] = useState<"approved" | "rejected">("rejected");
+  const [retryEmails, setRetryEmails] = useState("");
+  const [retrySending, setRetrySending] = useState(false);
+  const [retryResult, setRetryResult] = useState<{
+    sent: number;
+    failed: number;
+    failed_emails: string[];
+  } | null>(null);
+  // Retry All state
+  const [failedEmails, setFailedEmails] = useState<any[]>([]);
+  const [retryAllLoading, setRetryAllLoading] = useState(false);
+  const [showRetryResults, setShowRetryResults] = useState(false);
+  const [retryAllResults, setRetryAllResults] = useState<any[]>([]);
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -164,7 +183,18 @@ export default function CombinedScoresPage() {
       }
 
       setFinalized(true);
-      setFinalizeResult({ approved: data.approved_count, rejected: data.rejected_count });
+      setFinalizeResult({
+        approved: {
+          sent: data.approved?.sent || 0,
+          failed: data.approved?.failed || 0,
+          failed_emails: data.approved?.failed_emails || [],
+        },
+        rejected: {
+          sent: data.rejected?.sent || 0,
+          failed: data.rejected?.failed || 0,
+          failed_emails: data.rejected?.failed_emails || [],
+        },
+      });
       setShowResultModal(true);
       fetchData();
     } catch (err: any) {
@@ -205,6 +235,110 @@ export default function CombinedScoresPage() {
     // Refetch to update the grant status
     fetchData();
     return { success: true };
+  };
+
+  const handleRetryEmails = async () => {
+    if (!retryEmails.trim()) {
+      alert("Please paste emails to retry");
+      return;
+    }
+
+    // Parse emails from comma or newline separated input
+    const emails = retryEmails
+      .split(/[,\n]/)
+      .map((e) => e.trim())
+      .filter((e) => e.includes("@"));
+
+    if (emails.length === 0) {
+      alert("No valid emails found");
+      return;
+    }
+
+    setRetrySending(true);
+    try {
+      const res = await fetch(`/api/admin/grants/${cycleId}/retry-emails`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          emails,
+          emailType: retryEmailType,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to send retry emails");
+      }
+
+      setRetryResult({
+        sent: data.sent,
+        failed: data.failed,
+        failed_emails: data.results?.filter((r: any) => !r.success).map((r: any) => r.email) || [],
+      });
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setRetrySending(false);
+    }
+  };
+
+  const handleCopyRetryFailed = () => {
+    if (retryResult?.failed_emails) {
+      navigator.clipboard.writeText(retryResult.failed_emails.join(", "));
+    }
+  };
+
+  const handleFetchFailedEmails = async () => {
+    try {
+      const res = await fetch(`/api/admin/grants/failed-emails?cycle_ids=${cycleId}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setFailedEmails(data.failed_emails || []);
+      return data;
+    } catch (err: any) {
+      alert(err.message);
+      return null;
+    }
+  };
+
+  const handleRetryAll = async () => {
+    setRetryAllLoading(true);
+    setShowRetryResults(false);
+    try {
+      // First fetch failed emails for this cycle
+      const fetchData = await handleFetchFailedEmails();
+      if (!fetchData || fetchData.failed_emails.length === 0) {
+        alert("No failed emails to retry for this cycle");
+        setRetryAllLoading(false);
+        return;
+      }
+
+      // Call retry-failed API
+      const res = await fetch(`/api/admin/grants/retry-failed?cycle_ids=${cycleId}`, {
+        method: "POST",
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error);
+
+      // Store results and show
+      setRetryAllResults(data.results || []);
+      setShowRetryResults(true);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setRetryAllLoading(false);
+    }
+  };
+
+  const handleCopyRetryAllFailed = () => {
+    const failedEmailsList = retryAllResults
+      .filter((r: any) => r.status === "failed")
+      .map((r: any) => r.email);
+    if (failedEmailsList.length > 0) {
+      navigator.clipboard.writeText(failedEmailsList.join(", "));
+    }
   };
 
   if (loading) {
@@ -295,6 +429,221 @@ export default function CombinedScoresPage() {
         </div>
       </div>
 
+      {/* Retry Failed Emails Panel */}
+      <div className="bg-white border-b border-nfw-blackberry/10">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          {/* Panel Header */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setRetryExpanded(!retryExpanded)}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4 text-nfw-wisteria" />
+              <span className="text-sm font-bold text-nfw-blackberry">Retry Failed Emails</span>
+              {finalizeResult && (finalizeResult.approved.failed > 0 || finalizeResult.rejected.failed > 0) && (
+                <span className="text-xs text-red-600">
+                  ({finalizeResult.approved.failed + finalizeResult.rejected.failed} failed)
+                </span>
+              )}
+            </button>
+            <div className="flex items-center gap-2">
+              {/* Retry All Button */}
+              <button
+                onClick={handleRetryAll}
+                disabled={retryAllLoading}
+                className="px-3 py-1.5 bg-nfw-aubergine text-white text-xs font-bold rounded hover:bg-nfw-aubergine/90 disabled:opacity-50 flex items-center gap-1"
+              >
+                {retryAllLoading ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-3 h-3" />
+                    Retry All
+                  </>
+                )}
+              </button>
+              {retryExpanded ? (
+                <ChevronUp className="w-4 h-4 text-nfw-blackberry/50" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-nfw-blackberry/50" />
+              )}
+            </div>
+          </div>
+
+          {/* Panel Content */}
+          {retryExpanded && (
+            <div className="mt-3 pt-3 border-t border-nfw-blackberry/10">
+              {/* Email Type + Input Row */}
+              <div className="flex flex-col sm:flex-row gap-3 mb-3">
+                {/* Email Type Toggle */}
+                <div className="flex items-center gap-3 sm:w-48">
+                  <span className="text-xs text-nfw-blackberry/60 whitespace-nowrap">Email Type:</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setRetryEmailType("rejected")}
+                      className={`px-3 py-1.5 text-xs font-bold rounded transition-colors ${
+                        retryEmailType === "rejected"
+                          ? "bg-nfw-wisteria text-white"
+                          : "bg-gray-100 text-nfw-blackberry hover:bg-gray-200"
+                      }`}
+                    >
+                      Rejected
+                    </button>
+                    <button
+                      onClick={() => setRetryEmailType("approved")}
+                      className={`px-3 py-1.5 text-xs font-bold rounded transition-colors ${
+                        retryEmailType === "approved"
+                          ? "bg-nfw-wisteria text-white"
+                          : "bg-gray-100 text-nfw-blackberry hover:bg-gray-200"
+                      }`}
+                    >
+                      Approved
+                    </button>
+                  </div>
+                </div>
+
+                {/* Email Input */}
+                <div className="flex-1">
+                  <textarea
+                    value={retryEmails}
+                    onChange={(e) => setRetryEmails(e.target.value)}
+                    placeholder="Paste emails here (comma or newline separated)..."
+                    className="w-full text-xs border border-nfw-blackberry/20 rounded px-3 py-2 focus:outline-none focus:border-nfw-wisteria"
+                    rows={2}
+                  />
+                </div>
+
+                {/* Send Button */}
+                <button
+                  onClick={handleRetryEmails}
+                  disabled={retrySending || !retryEmails.trim()}
+                  className="px-4 py-2 bg-nfw-aubergine text-white text-xs font-bold rounded hover:bg-nfw-aubergine/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
+                >
+                  {retrySending ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-3 h-3" />
+                      Send Retry
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Last Finalization Result Summary */}
+              {finalizeResult && (
+                <div className="text-xs text-nfw-blackberry/60 mb-2">
+                  Last finalization: {finalizeResult.approved.sent} approved sent, {finalizeResult.approved.failed} failed • {finalizeResult.rejected.sent} rejected sent, {finalizeResult.rejected.failed} failed
+                </div>
+              )}
+
+              {/* Retry Result */}
+              {retryResult && (
+                <div className="bg-green-50 border border-green-200 rounded p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-600" />
+                      <span className="text-sm font-bold text-green-700">Retry Complete</span>
+                    </div>
+                    <span className="text-xs text-green-600">
+                      {retryResult.sent}/{retryResult.sent + retryResult.failed} sent
+                    </span>
+                  </div>
+                  {retryResult.failed > 0 && (
+                    <div className="flex gap-2 items-start">
+                      <textarea
+                        readOnly
+                        value={retryResult.failed_emails.join(", ")}
+                        className="flex-1 text-xs border border-red-200 rounded p-1 bg-white"
+                        rows={1}
+                      />
+                      <button
+                        onClick={handleCopyRetryFailed}
+                        className="px-2 py-1 bg-nfw-aubergine text-white text-xs rounded hover:bg-nfw-aubergine/90 whitespace-nowrap"
+                      >
+                        Copy Failed
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Retry All Results */}
+              {showRetryResults && retryAllResults.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-nfw-blackberry/10">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold text-nfw-blackberry">Retry All Results</span>
+                    <button
+                      onClick={() => setShowRetryResults(false)}
+                      className="text-xs text-nfw-blackberry/50 hover:text-nfw-blackberry"
+                    >
+                      Collapse
+                    </button>
+                  </div>
+                  
+                  {/* Summary */}
+                  <div className="flex gap-4 mb-2 text-xs">
+                    <span className="text-green-600">
+                      ✓ Retried: {retryAllResults.filter((r: any) => r.status === "retried").length}
+                    </span>
+                    <span className="text-blue-600">
+                      ⊘ Skipped: {retryAllResults.filter((r: any) => r.status === "skipped").length}
+                    </span>
+                    <span className="text-red-600">
+                      ✗ Failed: {retryAllResults.filter((r: any) => r.status === "failed").length}
+                    </span>
+                  </div>
+
+                  {/* Per-email results */}
+                  <div className="max-h-48 overflow-y-auto border border-nfw-blackberry/10 rounded">
+                    {retryAllResults.slice(0, 50).map((result: any, idx: number) => (
+                      <div key={idx} className="flex items-center gap-2 px-3 py-1.5 border-b border-nfw-blackberry/5 last:border-b-0">
+                        {result.status === "retried" && (
+                          <Check className="w-3 h-3 text-green-600 flex-shrink-0" />
+                        )}
+                        {result.status === "skipped" && (
+                          <span className="w-3 h-3 text-blue-600 flex-shrink-0 text-center">⊘</span>
+                        )}
+                        {result.status === "failed" && (
+                          <span className="w-3 h-3 text-red-600 flex-shrink-0 text-center">✗</span>
+                        )}
+                        <span className="flex-1 text-xs truncate">{result.email}</span>
+                        <span className="text-xs text-nfw-blackberry/50 capitalize">
+                          {result.status === "retried" && "sent"}
+                          {result.status === "skipped" && (result.reason || "skipped")}
+                          {result.status === "failed" && (result.error?.substring(0, 30) || "failed")}
+                        </span>
+                      </div>
+                    ))}
+                    {retryAllResults.length > 50 && (
+                      <div className="px-3 py-2 text-xs text-nfw-blackberry/50 text-center bg-gray-50">
+                        + {retryAllResults.length - 50} more...
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Copy failed button */}
+                  {retryAllResults.filter((r: any) => r.status === "failed").length > 0 && (
+                    <button
+                      onClick={handleCopyRetryAllFailed}
+                      className="mt-2 px-3 py-1.5 bg-nfw-aubergine text-white text-xs font-bold rounded hover:bg-nfw-aubergine/90"
+                    >
+                      Copy {retryAllResults.filter((r: any) => r.status === "failed").length} Failed Emails
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto p-4">
         <GrantCombinedScores
           grants={grants}
@@ -358,7 +707,7 @@ export default function CombinedScoresPage() {
       {/* Result Modal */}
       {showResultModal && finalizeResult && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                 <Check className="w-6 h-6 text-green-600" />
@@ -370,13 +719,55 @@ export default function CombinedScoresPage() {
             <p className="text-nfw-blackberry/70 mb-4">
               The following actions have been completed:
             </p>
-            <div className="bg-green-50 rounded p-4 mb-6 space-y-2">
-              <p className="text-sm text-green-700">
-                <span className="font-bold">{finalizeResult.approved}</span> applications marked as Approved
-              </p>
-              <p className="text-sm text-green-700">
-                <span className="font-bold">{finalizeResult.rejected}</span> applications marked as Not Approved
-              </p>
+            <div className="bg-green-50 rounded p-4 mb-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-green-700">
+                  <span className="font-bold">Approved</span> emails sent
+                </p>
+                <p className="text-sm font-bold text-green-700">
+                  {finalizeResult.approved.sent}/{finalizeResult.approved.sent + finalizeResult.approved.failed}
+                </p>
+              </div>
+              {finalizeResult.approved.failed > 0 && (
+                <div className="border-t border-green-200 pt-2 mt-2">
+                  <p className="text-xs text-red-600 mb-1">{finalizeResult.approved.failed} failed:</p>
+                  <textarea
+                    readOnly
+                    value={finalizeResult.approved.failed_emails.join(", ")}
+                    className="w-full text-xs border rounded p-1 bg-white"
+                    rows={2}
+                  />
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-2 border-t border-green-200">
+                <p className="text-sm text-green-700">
+                  <span className="font-bold">Rejected</span> emails sent
+                </p>
+                <p className="text-sm font-bold text-green-700">
+                  {finalizeResult.rejected.sent}/{finalizeResult.rejected.sent + finalizeResult.rejected.failed}
+                </p>
+              </div>
+              {finalizeResult.rejected.failed > 0 && (
+                <div className="border-t border-green-200 pt-2 mt-2">
+                  <p className="text-xs text-red-600 mb-1">{finalizeResult.rejected.failed} failed:</p>
+                  <div className="flex gap-2">
+                    <textarea
+                      readOnly
+                      value={finalizeResult.rejected.failed_emails.join(", ")}
+                      className="flex-1 text-xs border rounded p-1 bg-white"
+                      rows={2}
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(finalizeResult.rejected.failed_emails.join(", "));
+                      }}
+                      className="px-2 py-1 bg-nfw-aubergine text-white text-xs rounded hover:bg-nfw-aubergine/90"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex gap-3 justify-end">
               <button

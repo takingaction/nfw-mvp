@@ -66,7 +66,7 @@ interface SendEmailBySlugOptions {
   skipActiveCheck?: boolean; // When true, skips is_active check (for test/manual sends)
 }
 
-type EmailSendResult = { success: true } | { success: false; error: string };
+type EmailSendResult = { success: true; resendId?: string } | { success: false; error: string };
 
 export async function sendEmailBySlug(
   slug: string,
@@ -107,7 +107,7 @@ export async function sendEmailBySlug(
     return { success: false, error: "EMAIL_SEND_FAILED" };
   }
 
-  return { success: true };
+  return { success: true, resendId: result.resendId };
 }
 
 function replaceTemplateVariables(html: string, variables: Record<string, string>): string {
@@ -392,7 +392,7 @@ interface SendBrandedEmailOptions {
 async function sendEmailWithTimeout(
   options: { to: string; subject: string; html: string; reply_to?: string; from?: string },
   timeoutMs = 8000
-): Promise<{ success: boolean; error?: any }> {
+): Promise<{ success: boolean; error?: any; resendId?: string }> {
   return Promise.race([
     sendTemplateEmail(options),
     new Promise<{ success: boolean; error?: any }>((_, reject) =>
@@ -401,7 +401,7 @@ async function sendEmailWithTimeout(
   ]).catch(err => {
     console.error("[sendEmailWithTimeout] Error:", err);
     return { success: false, error: err };
-  }) as Promise<{ success: boolean; error?: any }>;
+  }) as Promise<{ success: boolean; error?: any; resendId?: string }>;
 }
 
 export async function sendBrandedEmail({
@@ -423,7 +423,7 @@ export async function sendBrandedEmail({
   from,
   preRenderedHtml,
   useShell,
-}: SendBrandedEmailOptions): Promise<{ success: boolean; error?: any }> {
+}: SendBrandedEmailOptions): Promise<{ success: boolean; error?: any; resendId?: string }> {
   try {
     let html: string;
     if (preRenderedHtml && useShell === false) {
@@ -465,7 +465,7 @@ export async function sendTemplateEmail({
   html: string;
   reply_to?: string;
   from?: string;
-}): Promise<{ success: boolean; error?: any }> {
+}): Promise<{ success: boolean; error?: any; resendId?: string }> {
   try {
     const resend = getResend();
     const fromAddress = from ? `${from} <hello@nationalfundforwomen.org>` : FROM;
@@ -480,7 +480,7 @@ export async function sendTemplateEmail({
       console.error("Resend API error:", result.error);
       return { success: false, error: result.error };
     }
-    return { success: true };
+    return { success: true, resendId: result.data?.id };
   } catch (err) {
     console.error("Failed to send template email:", err);
     return { success: false, error: err };
@@ -1415,7 +1415,7 @@ export async function sendGrantApprovedEmail({
   grantCycleName: string;
   amount: number;
   ctaUrl: string;
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<{ success: boolean; error?: string; resendId?: string }> {
   const slug = "grant-approved";
 
   const variables: Record<string, string> = {
