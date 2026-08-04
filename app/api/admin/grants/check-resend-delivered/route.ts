@@ -82,8 +82,9 @@ function buildDeliveredLookup(grantNameKey: string): Map<string, boolean> {
       const subject = cols[2];     // subject column
       const to = cols[4];         // to column
 
-      // Check if delivered AND subject contains our grant name (case-insensitive)
-      if (lastEvent === 'delivered' && subject.toLowerCase().includes(grantNameKey.toLowerCase())) {
+      // Check if delivered (or clicked - both mean the email was received) AND subject contains our grant name
+      const isDeliveredOrClicked = lastEvent === 'delivered' || lastEvent === 'clicked';
+      if (isDeliveredOrClicked && subject.toLowerCase().includes(grantNameKey.toLowerCase())) {
         delivered.set(to.toLowerCase(), true);
       }
     }
