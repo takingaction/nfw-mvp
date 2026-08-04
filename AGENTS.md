@@ -10093,3 +10093,106 @@ New "Retry All Results" collapsible section:
 3. Deploy the code
 4. Go to `/admin/grants/[id]/scoring/combined` to use Retry All
 
+---
+
+## Session 2026-08-04: Check Resend Delivered for Historical Cycles
+
+### Overview
+
+Built API to compare historical July cycle applicants against Resend's delivered emails, mark delivered ones as already_sent, and mark undelivered ones as pending for retry.
+
+### Problem
+
+364 emails from July 31 finalization got 429 errors. The `grant_email_log` table was created AFTER these emails were sent, so we have no records. We need to:
+
+1. Query Resend directly for emails sent July 29 - Aug 2
+2. Compare our applicants against Resend's delivered list
+3. Mark delivered as `already_sent`, undelivered as `pending`
+4. Then use existing `retry-failed` endpoint to resend the pending ones
+
+### Date Window
+**July 29 - Aug 2, 2026**
+
+### Hardcoded Cycle IDs
+```typescript
+const JULY_CYCLE_IDS = [
+  "8986067e-cfbf-4d46-b162-bc8337ac61eb",
+  "d89d63e8-7810-42e7-9ce6-91e4ca915d53",
+  "8f1467d7-d6ee-4107-ab66-f239b01ca8a8",
+];
+```
+
+### API: `POST /api/admin/grants/check-resend-delivered`
+
+**Request:**
+```json
+{
+  "date_from": "2026-07-29T00:00:00Z",
+  "date_to": "2026-08-02T23:59:59Z"
+}
+```
+
+**Logic:**
+| Step | Action |
+|------|--------|
+| 1 | Get ALL applicants (approved + rejected + not_approved) for 3 July cycles from grants table |
+| 2 | Query Resend REST API (NOT SDK) with pagination for sent_after/sent_before params |
+| 3 | Filter Resend results to only `last_event === 'delivered'` |
+| 4 | Build lookup map: `{email}_{cycleName}` → delivered |
+| 5 | For each applicant: check if delivered in Resend |
+| 6 | If YES: insert `grant_email_log` with `status: 'already_sent'` |
+| 7 | If NO: insert `grant_email_log` with `status: 'pending'`, add to retry list |
+
+**Response:**
+```json
+{
+  "success": true,
+  "checked": 450,
+  "delivered_count": 86,
+  "needs_retry_count": 364,
+  "retry_list": [
+    { "grant_id": "...", "email": "...", "cycle_name": "...", "type": "approved" | "rejected" }
+  ],
+  "message": "Found 86 delivered, 364 need retry"
+}
+```
+
+### Resend REST API Call
+
+```typescript
+const response = await fetch(
+  `https://api.resend.com/emails?sent_after=${dateFrom}&sent_before=${dateTo}&limit=100`,
+  { headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` } }
+);
+```
+
+Pagination: loop while `response.has_more` and use `response.next_cursor`.
+
+### UI Flow
+
+1. Date inputs pre-filled: July 29 - Aug 2
+2. **"Check Resend"** button (lilac) → calls check-resend-delivered API
+3. Results: "Checked X emails: Y delivered, Z need retry"
+4. **"Retry Failed"** button → calls existing retry-failed endpoint (which finds entries in grant_email_log)
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `app/api/admin/grants/check-resend-delivered/route.ts` | Check Resend for historical cycles |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `app/admin/grants/[id]/scoring/combined/page.tsx` | Added date inputs, Check Resend button, results display |
+
+### Key Implementation Details
+
+- Uses Resend REST API directly (not SDK) because SDK doesn't support date filtering
+- REST API supports `sent_after` and `sent_before` query params
+- Pagination via `has_more` + `next_cursor`
+- Throttled at 110ms between requests to avoid rate limits
+- Cycle name matching: subject contains cycle_name (e.g., "[JULY 26] Family Outing Fund")
+- Supabase returns profiles as array from FK join → use `profiles[0]` to get email
+

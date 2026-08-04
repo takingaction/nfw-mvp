@@ -99,6 +99,15 @@ export default function CombinedScoresPage() {
   const [retryAllLoading, setRetryAllLoading] = useState(false);
   const [showRetryResults, setShowRetryResults] = useState(false);
   const [retryAllResults, setRetryAllResults] = useState<any[]>([]);
+  // Check Resend Delivered state (for historical cycles)
+  const [dateFrom, setDateFrom] = useState("2026-07-29");
+  const [dateTo, setDateTo] = useState("2026-08-02");
+  const [checkResendLoading, setCheckResendLoading] = useState(false);
+  const [checkResendResult, setCheckResendResult] = useState<{
+    checked: number;
+    delivered: number;
+    needsRetry: number;
+  } | null>(null);
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -256,6 +265,37 @@ export default function CombinedScoresPage() {
     }
   };
 
+  const handleCheckResendDelivered = async () => {
+    setCheckResendLoading(true);
+    setCheckResendResult(null);
+    try {
+      const res = await fetch("/api/admin/grants/check-resend-delivered", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date_from: `${dateFrom}T00:00:00Z`,
+          date_to: `${dateTo}T23:59:59Z`,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Failed to check Resend");
+
+      setCheckResendResult({
+        checked: data.checked || 0,
+        delivered: data.delivered_count || 0,
+        needsRetry: data.needs_retry_count || 0,
+      });
+      // Also populate failedCheckCount so Retry Failed button works
+      setFailedCheckCount(data.needs_retry_count || 0);
+      setHasCheckedFailed(true);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setCheckResendLoading(false);
+    }
+  };
+
   const handleRetryFailed = async () => {
     setRetryAllLoading(true);
     setShowRetryResults(false);
@@ -393,6 +433,42 @@ export default function CombinedScoresPage() {
               )}
             </button>
             <div className="flex items-center gap-2">
+              {/* Date inputs for Check Resend Delivered */}
+              <div className="flex items-center gap-1 text-xs">
+                <label className="text-nfw-blackberry/50">From:</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="px-1 py-1 border border-nfw-blackberry/20 rounded text-xs"
+                />
+                <label className="text-nfw-blackberry/50 ml-1">To:</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="px-1 py-1 border border-nfw-blackberry/20 rounded text-xs"
+                />
+              </div>
+              {/* Check Resend Delivered Button */}
+              <button
+                onClick={handleCheckResendDelivered}
+                disabled={checkResendLoading}
+                className="px-3 py-1.5 bg-nfw-lilac text-white text-xs font-bold rounded hover:bg-nfw-lilac/90 disabled:opacity-50 flex items-center gap-1"
+                title="Check Resend for historical cycles"
+              >
+                {checkResendLoading ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-3 h-3" />
+                    Check Resend
+                  </>
+                )}
+              </button>
               {/* Check Status Button */}
               <button
                 onClick={handleCheckFailed}
@@ -457,6 +533,18 @@ export default function CombinedScoresPage() {
                   {failedCheckCount === 0 && (
                     <span className="text-green-600 font-bold">No emails need retrying</span>
                   )}
+                </div>
+              )}
+
+              {/* Check Resend Delivered Result */}
+              {checkResendResult && (
+                <div className="flex items-center gap-3 text-xs mb-2 p-2 bg-nfw-lilac/10 rounded">
+                  <Mail className="w-4 h-4 text-nfw-lilac" />
+                  <span className="text-nfw-blackberry/60">
+                    Checked <span className="font-bold">{checkResendResult.checked}</span> emails from Resend:
+                    <span className="text-green-600 ml-2">{checkResendResult.delivered}</span> delivered,
+                    <span className="text-red-600 ml-2">{checkResendResult.needsRetry}</span> need retry
+                  </span>
                 </div>
               )}
 
