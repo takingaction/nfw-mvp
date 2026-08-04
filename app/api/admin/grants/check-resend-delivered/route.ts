@@ -234,23 +234,24 @@ export async function POST(request: Request) {
         }
       }
 
-      // If has_more is true but next_cursor is undefined, use the last email's ID as cursor
+      // If has_more is true but next_cursor is undefined or "no", use the last email's ID as cursor
       // This handles cases where Resend hasn't generated the cursor yet
-      if (response.has_more) {
-        if (response.next_cursor) {
-          cursor = response.next_cursor;
-        } else if (response.data && response.data.length > 0) {
-          // Use last email's ID as cursor (cursor-based pagination)
-          cursor = response.data[response.data.length - 1].id;
-          console.log("[check-resend-delivered] Using last email ID as cursor:", cursor);
-        } else {
-          cursor = undefined;
-        }
+      const hasValidCursor = response.has_more && 
+        typeof response.next_cursor === 'string' && 
+        response.next_cursor.length > 0 &&
+        response.next_cursor !== 'no';
+      
+      if (hasValidCursor) {
+        cursor = response.next_cursor;
+      } else if (response.has_more && response.data && response.data.length > 0) {
+        // Use last email's ID as cursor (cursor-based pagination)
+        cursor = response.data[response.data.length - 1].id;
+        console.log("[check-resend-delivered] Using last email ID as cursor:", cursor);
       } else {
         cursor = undefined;
       }
       
-      console.log("[check-resend-delivered] After page", pageCount, "- cursor:", cursor ? "set" : "undefined", "- has_more:", response.has_more);
+      console.log("[check-resend-delivered] After page", pageCount, "- has_more:", response.has_more, "- cursor set:", cursor ? "yes" : "no");
 
       // Throttle to avoid rate limits
       await new Promise((r) => setTimeout(r, 110));
