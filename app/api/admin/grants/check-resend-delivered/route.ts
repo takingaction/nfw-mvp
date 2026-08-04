@@ -56,6 +56,15 @@ function extractEmailAddress(toAddr: string | { email: string; name?: string }):
   return null;
 }
 
+// Extract just the grant name portion from cycle name (remove date like "[JULY 26]" and brackets)
+function extractGrantName(cycleName: string): string {
+  // Remove patterns like "[JULY 26]", "[AUGUST 1]", etc.
+  return cycleName
+    .replace(/\[[^\]]+\]\s*/gi, '')  // Remove [anything] including brackets and trailing space
+    .replace(/^\s+|\s+$/g, '')       // Trim whitespace
+    .trim();
+}
+
 // Check if an email was delivered for a specific cycle
 async function checkEmailDelivered(
   resendApiKey: string,
@@ -63,6 +72,9 @@ async function checkEmailDelivered(
   cycleName: string
 ): Promise<{ delivered: boolean; resendId?: string; subject?: string }> {
   try {
+    // Extract just the grant name portion for matching
+    const grantNameKey = extractGrantName(cycleName);
+    
     // Query Resend for emails sent TO this address
     const url = `https://api.resend.com/emails?to=${encodeURIComponent(email)}&limit=50`;
     
@@ -80,11 +92,11 @@ async function checkEmailDelivered(
 
     const response: ResendListResponse = await res.json();
     
-    // Check if ANY email to this address was delivered with this cycle's subject
+    // Check if ANY email to this address was delivered with matching grant name
     for (const emailRecord of response.data || []) {
       if (emailRecord.last_event === "delivered") {
-        // Check if subject contains our cycle name (case-insensitive)
-        if (cycleName && emailRecord.subject.toLowerCase().includes(cycleName.toLowerCase())) {
+        // Check if subject contains our grant name key phrase (case-insensitive)
+        if (grantNameKey && emailRecord.subject.toLowerCase().includes(grantNameKey.toLowerCase())) {
           return { 
             delivered: true, 
             resendId: emailRecord.id,
@@ -181,8 +193,10 @@ export async function POST(request: Request) {
       .single();
 
     const cycleName = cycleData?.cycle_name || "";
+    const grantNameKey = extractGrantName(cycleName);
     console.log("[check-resend-delivered] ============================================");
     console.log("[check-resend-delivered] Checking cycle:", cycleName);
+    console.log("[check-resend-delivered] Matching on key phrase:", grantNameKey);
     console.log("[check-resend-delivered] Number of applicants:", grants.length);
     console.log("[check-resend-delivered] Profiles fetched:", profilesData?.length || 0);
 
