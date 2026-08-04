@@ -7,6 +7,51 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
+// Get Shopify order by order ID (numeric)
+async function getShopifyOrderById(orderId: string): Promise<{ name: string; email: string | null; id: string } | null> {
+  const storeDomain = process.env.SHOPIFY_SHOP_DOMAIN;
+  const token = process.env.SHOPIFY_ACCESS_TOKEN;
+
+  if (!token || !storeDomain) {
+    console.error("[lookup-order-numbers] Missing Shopify credentials");
+    return null;
+  }
+
+  try {
+    const numericId = orderId.split('/').pop();
+
+    const response = await fetch(
+      `https://${storeDomain}/admin/api/2026-01/orders/${numericId}.json`,
+      {
+        headers: {
+          'X-Shopify-Access-Token': token,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error(`[lookup-order-numbers] Shopify API error: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+
+    if (!data.order) {
+      return null;
+    }
+
+    return {
+      id: data.order.id,
+      name: data.order.name, // This is the order number like "#1001"
+      email: data.order.email, // Customer email on the order
+    };
+  } catch (error) {
+    console.error("[lookup-order-numbers] Fetch error:", error);
+    return null;
+  }
+}
+
 // Get Shopify order by checkout ID
 async function getShopifyOrderByCheckout(checkoutId: string): Promise<{ name: string; email: string | null; id: string } | null> {
   const storeDomain = process.env.SHOPIFY_SHOP_DOMAIN;
@@ -18,7 +63,6 @@ async function getShopifyOrderByCheckout(checkoutId: string): Promise<{ name: st
   }
 
   try {
-    // Extract numeric checkout ID from gid://shopify/Checkout/123456
     const numericId = checkoutId.split('/').pop();
 
     const response = await fetch(
@@ -46,7 +90,7 @@ async function getShopifyOrderByCheckout(checkoutId: string): Promise<{ name: st
     // Return the first matching order
     return {
       id: orders[0].id,
-      name: orders[0].name, // This is the order number like "#1001"
+      name: orders[0].name,
       email: orders[0].email,
     };
   } catch (error) {
@@ -143,14 +187,15 @@ export async function GET() {
       let shopifyEmail = null;
 
       if (shopifyOrderId) {
-        // We have a shopify_order_id - use it directly
-        const orderInfo = await getShopifyOrderByCheckout(claim.shopify_checkout_id || shopifyOrderId);
+        // We have a shopify_order_id - query directly by order ID
+        const orderInfo = await getShopifyOrderById(shopifyOrderId);
         if (orderInfo) {
           orderNumber = orderInfo.name;
           shopifyEmail = orderInfo.email;
         } else {
           // Fallback: extract number from gid if direct lookup fails
           orderNumber = shopifyOrderId.split('/').pop() || shopifyOrderId;
+          shopifyErrorCount++;
         }
       } else if (claim.shopify_checkout_id) {
         // No shopify_order_id, try checkout ID
