@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { getShopifyOrder } from "@/lib/shopify";
-import { writeFileSync } from "fs";
-import { join } from "path";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -365,7 +363,7 @@ export async function GET() {
     const report = {
       generated_at: new Date().toISOString(),
       generated_by: user.email,
-      
+
       summary: {
         total_compromised_orders: compromisedOrders.length,
         total_users_with_wrong_links: usersWithWrongLinks.length,
@@ -373,20 +371,14 @@ export async function GET() {
       },
 
       compromised_orders: compromisedOrders,
-      
+
       users_with_wrong_links: usersWithWrongLinks,
-      
+
       manual_review_needed: manualReviewNeeded,
     };
 
-    // Save to file
-    const fileName = `Aug-4-2026-ZDC-report.json`;
-    const filePath = join(process.cwd(), fileName);
-    writeFileSync(filePath, JSON.stringify(report, null, 2));
-    
     console.log("[zdc-repair-report] ============================================");
     console.log("[zdc-repair-report] REPORT GENERATED");
-    console.log("[zdc-repair-report] File:", filePath);
     console.log("[zdc-repair-report] Compromised orders:", compromisedOrders.length);
     console.log("[zdc-repair-report] Users with wrong links:", usersWithWrongLinks.length);
     console.log("[zdc-repair-report] Manual review needed:", manualReviewNeeded.length);
@@ -395,11 +387,8 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       message: `Report generated successfully`,
-      file_name: fileName,
       summary: report.summary,
-      compromised_orders_preview: compromisedOrders.slice(0, 3),
-      users_with_wrong_links_preview: usersWithWrongLinks.slice(0, 5),
-      manual_review_preview: manualReviewNeeded.slice(0, 3),
+      report: report,
     });
   } catch (err: unknown) {
     console.error("[zdc-repair-report] Error:", err);
