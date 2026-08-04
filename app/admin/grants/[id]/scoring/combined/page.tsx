@@ -92,15 +92,7 @@ export default function CombinedScoresPage() {
   // Retry panel state
   const [retryExpanded, setRetryExpanded] = useState(false);
   const [retryEmailType, setRetryEmailType] = useState<"approved" | "rejected">("rejected");
-  const [retryEmails, setRetryEmails] = useState("");
-  const [retrySending, setRetrySending] = useState(false);
-  const [retryResult, setRetryResult] = useState<{
-    sent: number;
-    failed: number;
-    failed_emails: string[];
-  } | null>(null);
   // Retry All state
-  const [failedEmails, setFailedEmails] = useState<any[]>([]);
   const [retryAllLoading, setRetryAllLoading] = useState(false);
   const [showRetryResults, setShowRetryResults] = useState(false);
   const [retryAllResults, setRetryAllResults] = useState<any[]>([]);
@@ -237,64 +229,11 @@ export default function CombinedScoresPage() {
     return { success: true };
   };
 
-  const handleRetryEmails = async () => {
-    if (!retryEmails.trim()) {
-      alert("Please paste emails to retry");
-      return;
-    }
-
-    // Parse emails from comma or newline separated input
-    const emails = retryEmails
-      .split(/[,\n]/)
-      .map((e) => e.trim())
-      .filter((e) => e.includes("@"));
-
-    if (emails.length === 0) {
-      alert("No valid emails found");
-      return;
-    }
-
-    setRetrySending(true);
-    try {
-      const res = await fetch(`/api/admin/grants/${cycleId}/retry-emails`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          emails,
-          emailType: retryEmailType,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to send retry emails");
-      }
-
-      setRetryResult({
-        sent: data.sent,
-        failed: data.failed,
-        failed_emails: data.results?.filter((r: any) => !r.success).map((r: any) => r.email) || [],
-      });
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setRetrySending(false);
-    }
-  };
-
-  const handleCopyRetryFailed = () => {
-    if (retryResult?.failed_emails) {
-      navigator.clipboard.writeText(retryResult.failed_emails.join(", "));
-    }
-  };
-
   const handleFetchFailedEmails = async () => {
     try {
       const res = await fetch(`/api/admin/grants/failed-emails?cycle_ids=${cycleId}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setFailedEmails(data.failed_emails || []);
       return data;
     } catch (err: any) {
       alert(err.message);
@@ -476,101 +415,10 @@ export default function CombinedScoresPage() {
           {/* Panel Content */}
           {retryExpanded && (
             <div className="mt-3 pt-3 border-t border-nfw-blackberry/10">
-              {/* Email Type + Input Row */}
-              <div className="flex flex-col sm:flex-row gap-3 mb-3">
-                {/* Email Type Toggle */}
-                <div className="flex items-center gap-3 sm:w-48">
-                  <span className="text-xs text-nfw-blackberry/60 whitespace-nowrap">Email Type:</span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setRetryEmailType("rejected")}
-                      className={`px-3 py-1.5 text-xs font-bold rounded transition-colors ${
-                        retryEmailType === "rejected"
-                          ? "bg-nfw-wisteria text-white"
-                          : "bg-gray-100 text-nfw-blackberry hover:bg-gray-200"
-                      }`}
-                    >
-                      Rejected
-                    </button>
-                    <button
-                      onClick={() => setRetryEmailType("approved")}
-                      className={`px-3 py-1.5 text-xs font-bold rounded transition-colors ${
-                        retryEmailType === "approved"
-                          ? "bg-nfw-wisteria text-white"
-                          : "bg-gray-100 text-nfw-blackberry hover:bg-gray-200"
-                      }`}
-                    >
-                      Approved
-                    </button>
-                  </div>
-                </div>
-
-                {/* Email Input */}
-                <div className="flex-1">
-                  <textarea
-                    value={retryEmails}
-                    onChange={(e) => setRetryEmails(e.target.value)}
-                    placeholder="Paste emails here (comma or newline separated)..."
-                    className="w-full text-xs border border-nfw-blackberry/20 rounded px-3 py-2 focus:outline-none focus:border-nfw-wisteria"
-                    rows={2}
-                  />
-                </div>
-
-                {/* Send Button */}
-                <button
-                  onClick={handleRetryEmails}
-                  disabled={retrySending || !retryEmails.trim()}
-                  className="px-4 py-2 bg-nfw-aubergine text-white text-xs font-bold rounded hover:bg-nfw-aubergine/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
-                >
-                  {retrySending ? (
-                    <>
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <Mail className="w-3 h-3" />
-                      Send Retry
-                    </>
-                  )}
-                </button>
-              </div>
-
               {/* Last Finalization Result Summary */}
               {finalizeResult && (
                 <div className="text-xs text-nfw-blackberry/60 mb-2">
                   Last finalization: {finalizeResult.approved.sent} approved sent, {finalizeResult.approved.failed} failed • {finalizeResult.rejected.sent} rejected sent, {finalizeResult.rejected.failed} failed
-                </div>
-              )}
-
-              {/* Retry Result */}
-              {retryResult && (
-                <div className="bg-green-50 border border-green-200 rounded p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-600" />
-                      <span className="text-sm font-bold text-green-700">Retry Complete</span>
-                    </div>
-                    <span className="text-xs text-green-600">
-                      {retryResult.sent}/{retryResult.sent + retryResult.failed} sent
-                    </span>
-                  </div>
-                  {retryResult.failed > 0 && (
-                    <div className="flex gap-2 items-start">
-                      <textarea
-                        readOnly
-                        value={retryResult.failed_emails.join(", ")}
-                        className="flex-1 text-xs border border-red-200 rounded p-1 bg-white"
-                        rows={1}
-                      />
-                      <button
-                        onClick={handleCopyRetryFailed}
-                        className="px-2 py-1 bg-nfw-aubergine text-white text-xs rounded hover:bg-nfw-aubergine/90 whitespace-nowrap"
-                      >
-                        Copy Failed
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
 

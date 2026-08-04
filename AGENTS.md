@@ -10022,6 +10022,8 @@ Adds retry tracking columns:
 4. **Send with throttling**: 110ms delay between emails (~9/sec, under 10/sec limit)
 5. **Log each attempt** with new `resend_email_id` and status
 
+**UI:** Only "Retry All" button - auto-fetches failed emails from database and retries them. Removed paste-to-retry textarea as redundant.
+
 ### Throttling
 
 All email sending uses 110ms delay to stay under Resend's 10 req/s rate limit:
@@ -10076,7 +10078,7 @@ New "Retry All Results" collapsible section:
 | `lib/email-batch.ts` | Added delayMs throttle, sequential sending |
 | `lib/email.ts` | Return types include resendId |
 | `app/api/admin/grants/[id]/final-approve/route.ts` | Logging via logEmail() helper |
-| `app/admin/grants/[id]/scoring/combined/page.tsx` | Retry panel + per-email results display |
+| `app/admin/grants/[id]/scoring/combined/page.tsx` | Simplified UI - removed paste-to-retry, kept only "Retry All" button |
 
 ### Build Status
 
