@@ -9885,3 +9885,70 @@ Now matches pie chart which uses `filteredProfiles`.
 |------|---------|
 | `components/admin/AdminAnalyticsClient.tsx` | Rewrote `membersByLevel` to match stat cards, fixed `adminCount` to use `filteredProfiles`, added label capitalizations |
 
+## Session 2026-08-03: Subscription Status Data Investigation
+
+### Problem Discovered
+
+Investigation into member `nuurightnow@gmail.com` (Jacqueline Santiago) revealed inconsistent data:
+- `membership_level = 'free'`
+- `subscription_status = 'active'`
+- `first_paid_at = '2026-07-07'` (she DID pay)
+- `first_paid_level = 'contributing'`
+
+Her Stripe account confirmed she had an active contributing subscription, but her `membership_level` was incorrectly set to 'free'.
+
+### Investigation Findings
+
+**Query Results:**
+
+| membership_level | subscription_status | count |
+|----------------|-------------------|-------|
+| founding | active | 106 |
+| contributing | active | 637 |
+| free | active | 212 |
+| waitlist | active | 69 |
+
+**July 8th Backfill Issue:**
+- A bulk operation on July 8, 2026 incorrectly set `subscription_status = 'active'` for 280 members who never paid
+- Of the 281 members with `free + active` or `waitlist + active`:
+  - **280 had `first_paid_at = NULL`** - never paid
+  - **Only 1 had actual payment history** (Michelle Howell - admin)
+
+**SQL to verify:**
+```sql
+SELECT COUNT(*) FROM profiles
+WHERE membership_level IN ('free', 'waitlist')
+  AND first_paid_at IS NULL
+  AND first_paid_level IS NULL
+  AND subscription_status = 'active';
+-- Result: 280
+```
+
+### Fix Applied
+
+Corrected 280 profiles that never paid but had incorrect `subscription_status = 'active'`:
+
+```sql
+UPDATE profiles
+SET subscription_status = NULL
+WHERE membership_level IN ('free', 'waitlist')
+  AND first_paid_at IS NULL
+  AND first_paid_level IS NULL
+  AND subscription_status = 'active';
+```
+
+Also corrected Jacqueline Santiago:
+```sql
+UPDATE profiles SET membership_level = 'contributing' WHERE email = 'nuurightnow@gmail.com';
+```
+
+### Root Cause
+
+The July 8th bulk backfill operation incorrectly synced Stripe subscription STATUS (active/cancelled) without verifying actual payment history. Members who never paid had `subscription_status` set to 'active' based on Stripe data that wasn't actually a subscription.
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| None | Data fix via SQL only |
+
