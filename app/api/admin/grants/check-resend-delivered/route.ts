@@ -212,6 +212,20 @@ export async function POST(request: Request) {
       // Check if this email was delivered (found in CSV lookup)
       const isDelivered = deliveredLookup.get(profile.email.toLowerCase()) || false;
 
+      // Check if already exists in grant_email_log
+      const { data: existingLog } = await supabaseAdmin
+        .from("grant_email_log")
+        .select("id, status")
+        .eq("grant_id", grant.id)
+        .eq("email_type", emailType)
+        .limit(1);
+
+      if (existingLog && existingLog.length > 0) {
+        // Already processed - skip
+        console.log(`[check-resend-delivered] [${checkedCount}/${grants.length}] ALREADY EXISTS: ${profile.email} (status: ${existingLog[0].status})`);
+        continue;
+      }
+
       if (isDelivered) {
         // Mark as already_sent in grant_email_log
         await supabaseAdmin.from("grant_email_log").insert({
@@ -224,7 +238,7 @@ export async function POST(request: Request) {
           last_resend_status: "delivered",
         });
         deliveredCount++;
-        
+
         console.log(`[check-resend-delivered] [${checkedCount}/${grants.length}] DELIVERED: ${profile.email}`);
       } else {
         // Needs retry - insert with failed status (meaning "needs to be sent")
@@ -241,13 +255,13 @@ export async function POST(request: Request) {
           cycle_name: cycleName,
           type: emailType,
         });
-        
+
         if (emailType === "approved") {
           needsRetryApproved++;
         } else {
           needsRetryRejected++;
         }
-        
+
         console.log(`[check-resend-delivered] [${checkedCount}/${grants.length}] NEEDS RETRY (inserted as failed): ${profile.email} (${emailType})`);
       }
     }
