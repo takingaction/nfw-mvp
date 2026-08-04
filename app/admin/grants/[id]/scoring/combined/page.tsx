@@ -91,8 +91,11 @@ export default function CombinedScoresPage() {
 
   // Retry panel state
   const [retryExpanded, setRetryExpanded] = useState(false);
-  const [retryEmailType, setRetryEmailType] = useState<"approved" | "rejected">("rejected");
-  // Retry All state
+  // Check failed count state
+  const [hasCheckedFailed, setHasCheckedFailed] = useState(false);
+  const [failedCheckCount, setFailedCheckCount] = useState(0);
+  const [checkLoading, setCheckLoading] = useState(false);
+  // Retry Failed state
   const [retryAllLoading, setRetryAllLoading] = useState(false);
   const [showRetryResults, setShowRetryResults] = useState(false);
   const [retryAllResults, setRetryAllResults] = useState<any[]>([]);
@@ -241,18 +244,22 @@ export default function CombinedScoresPage() {
     }
   };
 
-  const handleRetryAll = async () => {
+  const handleCheckFailed = async () => {
+    setCheckLoading(true);
+    try {
+      const result = await handleFetchFailedEmails();
+      if (!result) return;
+      setFailedCheckCount(result.failed_emails?.length || 0);
+      setHasCheckedFailed(true);
+    } finally {
+      setCheckLoading(false);
+    }
+  };
+
+  const handleRetryFailed = async () => {
     setRetryAllLoading(true);
     setShowRetryResults(false);
     try {
-      // First fetch failed emails for this cycle
-      const fetchData = await handleFetchFailedEmails();
-      if (!fetchData || fetchData.failed_emails.length === 0) {
-        alert("No failed emails to retry for this cycle");
-        setRetryAllLoading(false);
-        return;
-      }
-
       // Call retry-failed API
       const res = await fetch(`/api/admin/grants/retry-failed?cycle_ids=${cycleId}`, {
         method: "POST",
@@ -386,13 +393,13 @@ export default function CombinedScoresPage() {
               )}
             </button>
             <div className="flex items-center gap-2">
-              {/* Retry All Button */}
+              {/* Check Status Button */}
               <button
-                onClick={handleRetryAll}
-                disabled={retryAllLoading}
-                className="px-3 py-1.5 bg-nfw-aubergine text-white text-xs font-bold rounded hover:bg-nfw-aubergine/90 disabled:opacity-50 flex items-center gap-1"
+                onClick={handleCheckFailed}
+                disabled={checkLoading}
+                className="px-3 py-1.5 bg-nfw-wisteria text-white text-xs font-bold rounded hover:bg-nfw-wisteria/90 disabled:opacity-50 flex items-center gap-1"
               >
-                {retryAllLoading ? (
+                {checkLoading ? (
                   <>
                     <Loader2 className="w-3 h-3 animate-spin" />
                     Checking...
@@ -400,14 +407,33 @@ export default function CombinedScoresPage() {
                 ) : (
                   <>
                     <RefreshCw className="w-3 h-3" />
-                    Retry All
+                    Check Status
+                  </>
+                )}
+              </button>
+              {/* Retry Failed Button */}
+              <button
+                onClick={handleRetryFailed}
+                disabled={retryAllLoading || !hasCheckedFailed}
+                className="px-3 py-1.5 bg-nfw-aubergine text-white text-xs font-bold rounded hover:bg-nfw-aubergine/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                title={!hasCheckedFailed ? "Click Check Status first to see how many emails will be retried" : undefined}
+              >
+                {retryAllLoading ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Retrying...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-3 h-3" />
+                    Retry Failed
                   </>
                 )}
               </button>
               {retryExpanded ? (
-                <ChevronUp className="w-4 h-4 text-nfw-blackberry/50" />
+                <ChevronUp className="w-4 h-4 text-nfw-blackberry/50 cursor-pointer" onClick={() => setRetryExpanded(false)} />
               ) : (
-                <ChevronDown className="w-4 h-4 text-nfw-blackberry/50" />
+                <ChevronDown className="w-4 h-4 text-nfw-blackberry/50 cursor-pointer" onClick={() => setRetryExpanded(true)} />
               )}
             </div>
           </div>
@@ -419,6 +445,18 @@ export default function CombinedScoresPage() {
               {finalizeResult && (
                 <div className="text-xs text-nfw-blackberry/60 mb-2">
                   Last finalization: {finalizeResult.approved.sent} approved sent, {finalizeResult.approved.failed} failed • {finalizeResult.rejected.sent} rejected sent, {finalizeResult.rejected.failed} failed
+                </div>
+              )}
+
+              {/* Check Status Result */}
+              {hasCheckedFailed && (
+                <div className="flex items-center gap-3 text-xs mb-2">
+                  <span className="text-nfw-blackberry/60">
+                    Found <span className="font-bold text-red-600">{failedCheckCount}</span> failed email{failedCheckCount !== 1 ? "s" : ""} to retry
+                  </span>
+                  {failedCheckCount === 0 && (
+                    <span className="text-green-600 font-bold">No emails need retrying</span>
+                  )}
                 </div>
               )}
 

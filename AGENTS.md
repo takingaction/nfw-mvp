@@ -10022,7 +10022,9 @@ Adds retry tracking columns:
 4. **Send with throttling**: 110ms delay between emails (~9/sec, under 10/sec limit)
 5. **Log each attempt** with new `resend_email_id` and status
 
-**UI:** Only "Retry All" button - auto-fetches failed emails from database and retries them. Removed paste-to-retry textarea as redundant.
+**UI:** Two-step process:
+1. Click "Check Status" - shows count of failed emails that will be retried
+2. Click "Retry Failed" - retries the failed emails (disabled until checked)
 
 ### Throttling
 
