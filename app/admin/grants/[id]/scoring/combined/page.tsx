@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, AlertCircle, Check, Shield, ChevronDown, ChevronUp, Mail, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, Check, Shield, ChevronDown, ChevronUp, Mail, RefreshCw, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import GrantCombinedScores from "@/components/admin/GrantCombinedScores";
 import GrantCycleFinalizeButton from "@/components/admin/GrantCycleFinalizeButton";
@@ -107,6 +107,9 @@ export default function CombinedScoresPage() {
     checked: number;
     delivered: number;
     needsRetry: number;
+    needsRetryApproved: number;
+    needsRetryRejected: number;
+    message: string;
   } | null>(null);
 
   useEffect(() => {
@@ -286,6 +289,9 @@ export default function CombinedScoresPage() {
         checked: data.checked || 0,
         delivered: data.delivered_count || 0,
         needsRetry: data.needs_retry_count || 0,
+        needsRetryApproved: data.needs_retry_approved || 0,
+        needsRetryRejected: data.needs_retry_rejected || 0,
+        message: data.message || "",
       });
       // Also populate failedCheckCount so Retry Failed button works
       setFailedCheckCount(data.needs_retry_count || 0);
@@ -539,13 +545,31 @@ export default function CombinedScoresPage() {
 
               {/* Check Resend Delivered Result */}
               {checkResendResult && (
-                <div className="flex items-center gap-3 text-xs mb-2 p-2 bg-nfw-lilac/10 rounded">
-                  <Mail className="w-4 h-4 text-nfw-lilac" />
-                  <span className="text-nfw-blackberry/60">
-                    Checked <span className="font-bold">{checkResendResult.checked}</span> emails from Resend:
-                    <span className="text-green-600 ml-2">{checkResendResult.delivered}</span> delivered,
-                    <span className="text-red-600 ml-2">{checkResendResult.needsRetry}</span> need retry
-                  </span>
+                <div className="flex flex-col gap-1 text-xs mb-2 p-3 bg-nfw-lilac/10 rounded">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-nfw-lilac" />
+                    <span className="text-nfw-blackberry/60">
+                      Checked <span className="font-bold">{checkResendResult.checked}</span> emails:
+                      <span className="text-green-600 ml-2">{checkResendResult.delivered}</span> already delivered,
+                      <span className="text-red-600 ml-2">{checkResendResult.needsRetry}</span> need retry
+                    </span>
+                  </div>
+                  {checkResendResult.needsRetryApproved > 0 && (
+                    <div className="flex items-center gap-2 pl-6">
+                      <Check className="w-3 h-3 text-green-600" />
+                      <span className="text-nfw-blackberry/60">
+                        <span className="font-bold text-green-600">{checkResendResult.needsRetryApproved}</span> approved applicants will receive grant approval email
+                      </span>
+                    </div>
+                  )}
+                  {checkResendResult.needsRetryRejected > 0 && (
+                    <div className="flex items-center gap-2 pl-6">
+                      <X className="w-3 h-3 text-red-600" />
+                      <span className="text-nfw-blackberry/60">
+                        <span className="font-bold text-red-600">{checkResendResult.needsRetryRejected}</span> rejected applicants will receive rejection email
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
