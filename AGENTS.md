@@ -10189,10 +10189,11 @@ Pagination: loop while `response.has_more` and use `response.next_cursor`.
 
 ### Key Implementation Details
 
-- Uses Resend REST API directly (not SDK) because SDK doesn't support date filtering
-- REST API supports `sent_after` and `sent_before` query params
-- Pagination via `has_more` + `next_cursor`
-- Throttled at 110ms between requests to avoid rate limits
+- **Uses CSV instead of Resend API** - Reads `check-this.csv` from project root for delivered email lookup
+- CSV contains exported Resend data with columns: id, created_at, subject, from, to, cc, bcc, reply_to, last_event, sent_at, etc.
+- For each applicant: check if email appears in CSV with `last_event=delivered` AND subject contains grant name key
+- CSV is source of truth for these 3 July cycles; can be updated/exported fresh from Resend as needed
+- No Resend API calls during check phase - only used when actually sending retry emails
 - Cycle name matching: subject contains cycle_name (e.g., "[JULY 26] Family Outing Fund")
 - Supabase returns profiles as array from FK join → use `profiles[0]` to get email
 

@@ -1,29 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
+import { readFileSync } from "fs";
+import { resolve } from "path";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
-
-interface ResendEmail {
-  id: string;
-  from: string;
-  to: string | string[] | { email: string; name?: string }[];
-  subject: string;
-  last_event: string;
-  created_at: string;
-  delivered_at?: string;
-  bounced_at?: string;
-  complained_at?: string;
-}
-
-interface ResendListResponse {
-  data: ResendEmail[];
-  has_more: boolean;
-  next_cursor?: string;
-}
 
 interface GrantProfile {
   full_name: string;
@@ -38,79 +22,78 @@ interface GrantApplicant {
   profiles: GrantProfile[] | null;
 }
 
-// Helper to extract email address from various to formats
-function extractEmailAddress(toAddr: string | { email: string; name?: string }): string | null {
-  if (!toAddr) return null;
-  
-  // Handle object format: {email: "test@test.com", name: "Name"}
-  if (typeof toAddr === 'object' && 'email' in toAddr) {
-    return (toAddr as { email: string }).email?.toLowerCase() || null;
-  }
-  
-  // Handle string format: "Name <test@test.com>" or just "test@test.com"
-  if (typeof toAddr === 'string') {
-    const emailMatch = toAddr.match(/<(.+?)>/);
-    return emailMatch ? emailMatch[1].toLowerCase() : toAddr.toLowerCase();
-  }
-  
-  return null;
-}
-
 // Extract just the grant name portion from cycle name (remove date like "[JULY 26]" and brackets)
 function extractGrantName(cycleName: string): string {
-  // Remove patterns like "[JULY 26]", "[AUGUST 1]", etc.
   return cycleName
-    .replace(/\[[^\]]+\]\s*/gi, '')  // Remove [anything] including brackets and trailing space
-    .replace(/^\s+|\s+$/g, '')       // Trim whitespace
+    .replace(/\[[^\]]+\]\s*/gi, '')
+    .replace(/^\s+|\s+$/g, '')
     .trim();
 }
 
-// Check if an email was delivered for a specific cycle
-async function checkEmailDelivered(
-  resendApiKey: string,
-  email: string,
-  cycleName: string
-): Promise<{ delivered: boolean; resendId?: string; subject?: string }> {
-  try {
-    // Extract just the grant name portion for matching
-    const grantNameKey = extractGrantName(cycleName);
-    
-    // Query Resend for emails sent TO this address
-    const url = `https://api.resend.com/emails?to=${encodeURIComponent(email)}&limit=50`;
-    
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-      },
-    });
+// Parse a single CSV line handling quoted fields
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
 
-    if (!res.ok) {
-      console.log(`[check-resend-delivered] Resend API error for ${email}:`, res.status);
-      return { delivered: false };
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
     }
+  }
+  result.push(current.trim());
+  return result;
+}
 
-    const response: ResendListResponse = await res.json();
+// Build a lookup map from check-this.csv: email -> true if delivered for this grant
+function buildDeliveredLookup(grantNameKey: string): Map<string, boolean> {
+  const delivered = new Map<string, boolean>();
+
+  try {
+    const csvPath = resolve(process.cwd(), 'check-this.csv');
+    console.log(`[check-resend-delivered] Reading CSV from: ${csvPath}`);
     
-    // Check if ANY email to this address was delivered with matching grant name
-    for (const emailRecord of response.data || []) {
-      if (emailRecord.last_event === "delivered") {
-        // Check if subject contains our grant name key phrase (case-insensitive)
-        if (grantNameKey && emailRecord.subject.toLowerCase().includes(grantNameKey.toLowerCase())) {
-          return { 
-            delivered: true, 
-            resendId: emailRecord.id,
-            subject: emailRecord.subject
-          };
-        }
+    const csvContent = readFileSync(csvPath, 'utf-8');
+    const lines = csvContent.split('\n');
+    
+    console.log(`[check-resend-delivered] CSV has ${lines.length} lines`);
+    
+    // Skip header row
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const cols = parseCSVLine(line);
+      
+      // CSV columns: id, created_at, subject, from, to, cc, bcc, reply_to, last_event, ...
+      const lastEvent = cols[8];  // last_event column
+      const subject = cols[2];     // subject column
+      const to = cols[4];         // to column
+
+      // Check if delivered AND subject contains our grant name (case-insensitive)
+      if (lastEvent === 'delivered' && subject.toLowerCase().includes(grantNameKey.toLowerCase())) {
+        delivered.set(to.toLowerCase(), true);
       }
     }
-
-    return { delivered: false };
+    
+    console.log(`[check-resend-delivered] Found ${delivered.size} unique delivered emails for "${grantNameKey}"`);
   } catch (err) {
-    console.error(`[check-resend-delivered] Error checking email ${email}:`, err);
-    return { delivered: false };
+    console.error('[check-resend-delivered] Error reading CSV:', err);
   }
+
+  return delivered;
 }
 
 export async function POST(request: Request) {
@@ -200,11 +183,8 @@ export async function POST(request: Request) {
     console.log("[check-resend-delivered] Number of applicants:", grants.length);
     console.log("[check-resend-delivered] Profiles fetched:", profilesData?.length || 0);
 
-    // Step 2: Check each applicant email one at a time
-    const resendApiKey = process.env.RESEND_API_KEY;
-    if (!resendApiKey) {
-      return NextResponse.json({ error: "RESEND_API_KEY not configured" }, { status: 500 });
-    }
+    // Step 2: Build lookup from CSV
+    const deliveredLookup = buildDeliveredLookup(grantNameKey);
 
     const needsRetry: {
       grant_id: string;
@@ -226,10 +206,10 @@ export async function POST(request: Request) {
       const emailType: "approved" | "rejected" =
         grant.status === "approved" || grant.status === "payment_sent" ? "approved" : "rejected";
 
-      // Check this email against Resend
-      const result = await checkEmailDelivered(resendApiKey, profile.email, cycleName);
+      // Check if this email was delivered (found in CSV lookup)
+      const isDelivered = deliveredLookup.get(profile.email.toLowerCase()) || false;
 
-      if (result.delivered) {
+      if (isDelivered) {
         // Mark as already_sent in grant_email_log
         await supabaseAdmin.from("grant_email_log").insert({
           grant_id: grant.id,
@@ -237,12 +217,12 @@ export async function POST(request: Request) {
           email_type: emailType,
           recipient_email: profile.email,
           status: "already_sent",
-          resend_email_id: result.resendId || null,
+          resend_email_id: null,
           last_resend_status: "delivered",
         });
         deliveredCount++;
         
-        console.log(`[check-resend-delivered] [${checkedCount}/${grants.length}] DELIVERED: ${profile.email} - "${result.subject}"`);
+        console.log(`[check-resend-delivered] [${checkedCount}/${grants.length}] DELIVERED: ${profile.email}`);
       } else {
         // Needs retry - insert with pending status
         await supabaseAdmin.from("grant_email_log").insert({
@@ -259,11 +239,8 @@ export async function POST(request: Request) {
           type: emailType,
         });
         
-        console.log(`[check-resend-delivered] [${checkedCount}/${grants.length}] NEEDS RETRY: ${profile.email} (not found as delivered)`);
+        console.log(`[check-resend-delivered] [${checkedCount}/${grants.length}] NEEDS RETRY: ${profile.email}`);
       }
-
-      // Throttle to avoid rate limits (110ms = ~9 calls per second)
-      await new Promise((r) => setTimeout(r, 110));
     }
 
     console.log("[check-resend-delivered] ============================================");
