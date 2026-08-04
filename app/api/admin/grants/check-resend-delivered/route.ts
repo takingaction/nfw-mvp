@@ -112,6 +112,8 @@ export async function POST(request: Request) {
     cyclesData?.forEach((c: CycleInfo) => {
       cycleNameMap[c.id] = c.cycle_name;
     });
+    
+    console.log("[check-resend-delivered] Cycle names from DB:", JSON.stringify(cycleNameMap, null, 2));
 
     // Step 2: Query Resend REST API for emails sent in the date window
     const resendApiKey = process.env.RESEND_API_KEY;
@@ -199,6 +201,10 @@ export async function POST(request: Request) {
     } while (cursor);
 
     console.log(`[check-resend-delivered] Found ${deliveredEmailsMap.size} delivered emails in Resend`);
+    
+    // Debug: show first 5 entries in deliveredEmailsMap
+    const mapEntries = Array.from(deliveredEmailsMap.entries()).slice(0, 5);
+    console.log("[check-resend-delivered] Sample delivered emails map:", JSON.stringify(mapEntries, null, 2));
 
     // Step 3: Compare applicants against Resend delivered emails
     const needsRetry: {
@@ -218,6 +224,11 @@ export async function POST(request: Request) {
 
       const emailKey = `${profile.email.toLowerCase()}_${cycleName}`;
       const wasDelivered = deliveredEmailsMap.has(emailKey);
+      
+      // Debug: log first few lookups
+      if (needsRetry.length < 3 && !wasDelivered) {
+        console.log(`[check-resend-delivered] NOT delivered - looking for key: "${emailKey}"`);
+      }
 
       const emailType: "approved" | "rejected" =
         grant.status === "approved" || grant.status === "payment_sent" ? "approved" : "rejected";
