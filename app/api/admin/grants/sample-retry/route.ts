@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "cycle_id is required" }, { status: 400 });
     }
 
-    // Get pending emails (status='pending') for this cycle, limited
+    // Get failed emails (status='failed') for this cycle, limited
     const { data: pendingLogs, error: logsError } = await supabaseAdmin
       .from("grant_email_log")
       .select(`
@@ -46,8 +46,8 @@ export async function POST(request: Request) {
         retry_count
       `)
       .eq("cycle_id", cycleId)
-      .eq("status", "pending")
-      .order("created_at", { ascending: true })
+      .eq("status", "failed")
+      .order("sent_at", { ascending: true })
       .limit(limit);
 
     if (logsError) {

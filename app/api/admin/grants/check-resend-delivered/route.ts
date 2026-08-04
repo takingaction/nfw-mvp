@@ -227,13 +227,13 @@ export async function POST(request: Request) {
         
         console.log(`[check-resend-delivered] [${checkedCount}/${grants.length}] DELIVERED: ${profile.email}`);
       } else {
-        // Needs retry - insert with pending status
+        // Needs retry - insert with failed status (meaning "needs to be sent")
         await supabaseAdmin.from("grant_email_log").insert({
           grant_id: grant.id,
           cycle_id: grant.cycle_id,
           email_type: emailType,
           recipient_email: profile.email,
-          status: "pending",
+          status: "failed",
         });
         needsRetry.push({
           grant_id: grant.id,
@@ -248,7 +248,7 @@ export async function POST(request: Request) {
           needsRetryRejected++;
         }
         
-        console.log(`[check-resend-delivered] [${checkedCount}/${grants.length}] NEEDS RETRY: ${profile.email} (${emailType})`);
+        console.log(`[check-resend-delivered] [${checkedCount}/${grants.length}] NEEDS RETRY (inserted as failed): ${profile.email} (${emailType})`);
       }
     }
 
