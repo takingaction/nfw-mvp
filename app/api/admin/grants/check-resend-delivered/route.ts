@@ -82,14 +82,14 @@ export async function POST(request: Request) {
     }
 
     // Step 1: Get all applicants (approved + rejected) for this specific cycle
+    // Query grants and profiles separately, then join in JavaScript
     const { data: grants, error: grantsError } = await supabaseAdmin
       .from("grants")
       .select(`
         id,
         user_id,
         cycle_id,
-        status,
-        profiles:user_id (full_name, email)
+        status
       `)
       .eq("cycle_id", cycleId)
       .in("status", ["approved", "payment_sent", "not_approved"]);
@@ -110,6 +110,25 @@ export async function POST(request: Request) {
       });
     }
 
+    // Fetch profiles separately for all user_ids
+    const userIds = grants.map((g: any) => g.user_id).filter(Boolean);
+    const { data: profilesData } = await supabaseAdmin
+      .from("profiles")
+      .select("id, email, full_name")
+      .in("id", userIds);
+
+    // Build a map of user_id -> profile
+    const profileMap = new Map<string, GrantProfile>();
+    profilesData?.forEach((p: GrantProfile & { id: string }) => {
+      profileMap.set(p.id, { email: p.email, full_name: p.full_name });
+    });
+
+    // Combine grants with their profiles
+    const grantsWithProfiles = grants.map((g: any) => ({
+      ...g,
+      profiles: profileMap.has(g.user_id) ? [profileMap.get(g.user_id)] : null
+    }));
+
     // Get this cycle's name for building subject pattern
     const { data: cycleData } = await supabaseAdmin
       .from("grant_cycles")
@@ -121,9 +140,10 @@ export async function POST(request: Request) {
     console.log("[check-resend-delivered] ============================================");
     console.log("[check-resend-delivered] Checking cycle:", cycleName);
     console.log("[check-resend-delivered] Number of applicants:", grants.length);
+    console.log("[check-resend-delivered] Profiles fetched:", profilesData?.length || 0);
+    console.log("[check-resend-delivered] Sample grant with profile:", JSON.stringify(grantsWithProfiles[0], null, 2));
 
     // Step 2: Query Resend REST API for ALL emails using pagination
-    // Don't filter by date - fetch all and filter by cycle name in subject
     const resendApiKey = process.env.RESEND_API_KEY;
     if (!resendApiKey) {
       return NextResponse.json({ error: "RESEND_API_KEY not configured" }, { status: 500 });
@@ -136,7 +156,7 @@ export async function POST(request: Request) {
     let totalDeliveredFound = 0;
     let totalCyclesMatched = 0;
     let pageCount = 0;
-    const maxPages = 200; // Safety limit - increased to catch more emails
+    const maxPages = 200;
 
     do {
       pageCount++;
@@ -150,7 +170,7 @@ export async function POST(request: Request) {
         url += `&cursor=${cursor}`;
       }
       
-      console.log("[check-resend-delivered] Fetching page", pageCount, "- URL:", url);
+      console.log("[check-resend-delivered] Fetching page", pageCount);
 
       const res = await fetch(url, {
         headers: {
@@ -172,7 +192,7 @@ export async function POST(request: Request) {
       const emailsOnPage = response.data?.length || 0;
       totalEmailsFetched += emailsOnPage;
       
-      console.log("[check-resend-delivered] Page", pageCount, "returned", emailsOnPage, "emails, has_more:", response.has_more);
+      console.log("[check-resend-delivered] Page", pageCount, "returned", emailsOnPage, "emails, has_more:", response.has_more, "next_cursor:", response.next_cursor ? "yes" : "no");
 
       // Process each email on this page
       for (const email of response.data || []) {
@@ -193,7 +213,7 @@ export async function POST(request: Request) {
               
               const key = `${emailAddress}_${cycleName}`;
               
-              // Only store first match (in case of duplicates)
+              // Only store first match
               if (!deliveredEmailsMap.has(key)) {
                 deliveredEmailsMap.set(key, {
                   email_id: email.id,
@@ -215,6 +235,7 @@ export async function POST(request: Request) {
       }
 
       cursor = response.has_more ? response.next_cursor : undefined;
+      console.log("[check-resend-delivered] After page", pageCount, "- cursor:", cursor ? "set" : "undefined");
 
       // Throttle to avoid rate limits
       await new Promise((r) => setTimeout(r, 110));
@@ -240,7 +261,7 @@ export async function POST(request: Request) {
     }[] = [];
     let deliveredCount = 0;
 
-    for (const grant of grants as GrantApplicant[]) {
+    for (const grant of grantsWithProfiles as GrantApplicant[]) {
       const profile = grant.profiles?.[0];
       if (!profile?.email) {
         console.log("[check-resend-delivered] Skipping grant - no profile email:", grant.id);
@@ -292,12 +313,12 @@ export async function POST(request: Request) {
       }
     }
 
-    console.log("[check-resend-delivered] FINAL RESULT - Checked:", grants.length, "delivered:", deliveredCount, "needRetry:", needsRetry.length);
+    console.log("[check-resend-delivered] FINAL RESULT - Checked:", grantsWithProfiles.length, "delivered:", deliveredCount, "needRetry:", needsRetry.length);
     console.log("[check-resend-delivered] ============================================");
 
     return NextResponse.json({
       success: true,
-      checked: grants.length,
+      checked: grantsWithProfiles.length,
       delivered_count: deliveredCount,
       needs_retry_count: needsRetry.length,
       retry_list: needsRetry,
