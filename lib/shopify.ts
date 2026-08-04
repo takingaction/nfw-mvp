@@ -280,3 +280,51 @@ export const CHECKOUT_QUERY = `
     }
   }
 `;
+
+export type ShopifyOrder = {
+  id: string;
+  name: string;
+  email: string | null;
+  customer: {
+    id: string;
+    email: string | null;
+    first_name: string | null;
+    last_name: string | null;
+  } | null;
+};
+
+export async function getShopifyOrder(orderGid: string): Promise<ShopifyOrder | null> {
+  const { storeDomain } = getShopifyConfig();
+  const token = await getShopifyAccessToken();
+
+  if (!token) {
+    console.error("[getShopifyOrder] No Shopify access token available");
+    return null;
+  }
+
+  // Extract numeric ID from gid://shopify/Order/123456
+  const numericId = orderGid.split('/').pop();
+
+  try {
+    const response = await fetch(
+      `https://${storeDomain}/admin/api/2026-01/orders/${numericId}.json`,
+      {
+        headers: {
+          'X-Shopify-Access-Token': token,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error(`[getShopifyOrder] Shopify API error: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.order as ShopifyOrder;
+  } catch (error) {
+    console.error("[getShopifyOrder] Fetch error:", error);
+    return null;
+  }
+}
