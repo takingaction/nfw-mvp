@@ -253,6 +253,13 @@ export async function POST(request: Request) {
       
       console.log("[check-resend-delivered] After page", pageCount, "- has_more:", response.has_more, "- cursor set:", cursor ? "yes" : "no");
 
+      // Log sample of subjects on first few pages to debug cycle matching
+      if (pageCount <= 3) {
+        for (const email of (response.data || []).slice(0, 5)) {
+          console.log("[check-resend-delivered] Page", pageCount, "subject:", email.subject.substring(0, 100));
+        }
+      }
+
       // Throttle to avoid rate limits
       await new Promise((r) => setTimeout(r, 110));
     } while (cursor);
