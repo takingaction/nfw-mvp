@@ -160,9 +160,19 @@ export async function POST(request: Request) {
 
       const response: ResendListResponse = await res.json();
 
+      // DEBUG: Log sample of what Resend returns
+      if (totalPages === 1) {
+        console.log("[check-resend-delivered] Sample email from Resend:", JSON.stringify(response.data?.[0], null, 2));
+      }
+
       // Filter to only delivered emails and build lookup map
       // Key format: emailAddress_cycleName -> { email_id, last_event }
       for (const email of response.data) {
+        // DEBUG: Log actual last_event value
+        if (totalPages === 1 && response.data.indexOf(email) < 3) {
+          console.log(`[check-resend-delivered] Email last_event: "${email.last_event}", subject: "${email.subject}"`);
+        }
+        
         // Only process delivered emails
         if (email.last_event === "delivered") {
           // email.to can be a string "Name <email>" or an array ["Name <email>"]
