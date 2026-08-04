@@ -77,6 +77,32 @@ export async function POST(request: Request) {
       amount_per_grant: cycleData?.amount_per_grant || 0,
     };
 
+    // Fetch grant IDs to get user profiles for actual names
+    const grantIds = pendingLogs.map((e: any) => e.grant_id);
+    const { data: grantsData } = await supabaseAdmin
+      .from("grants")
+      .select("id, user_id")
+      .in("id", grantIds);
+
+    // Build user_id -> grant_id map
+    const grantToUser: Record<string, string> = {};
+    grantsData?.forEach((g: any) => {
+      grantToUser[g.id] = g.user_id;
+    });
+
+    // Fetch profiles to get full_name
+    const userIds = [...new Set(Object.values(grantToUser))];
+    const { data: profilesData } = await supabaseAdmin
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", userIds);
+
+    // Build user_id -> full_name map
+    const userToName: Record<string, string> = {};
+    profilesData?.forEach((p: any) => {
+      userToName[p.id] = p.full_name || "there";
+    });
+
     // Separate by email type
     const approvedEmails = pendingLogs.filter((e: any) => e.email_type === "approved");
     const rejectedEmails = pendingLogs.filter((e: any) => e.email_type === "rejected");
@@ -93,9 +119,12 @@ export async function POST(request: Request) {
     // Send approved emails one by one
     for (const email of approvedEmails) {
       try {
+        const userId = grantToUser[email.grant_id];
+        const memberName = userToName[userId] || "there";
+
         const result = await sendGrantApprovedEmail({
           to: email.recipient_email,
-          name: "there",
+          name: memberName,
           grantCycleName: cycleInfo.cycle_name,
           amount: cycleInfo.amount_per_grant,
           ctaUrl: `https://nationalfundforwomen.org/grants/view/${email.grant_id}`,
@@ -131,15 +160,19 @@ export async function POST(request: Request) {
 
     // Send rejected emails in batch
     if (rejectedEmails.length > 0) {
-      const recipients = rejectedEmails.map((e: any) => ({
-        email: e.recipient_email,
-        name: "there",
-        grantId: e.grant_id,
-        variables: {
-          grantCycleName: cycleInfo.cycle_name,
-          ctaUrl: "https://nationalfundforwomen.org/grants/my-applications",
-        },
-      }));
+      const recipients = rejectedEmails.map((e: any) => {
+        const userId = grantToUser[e.grant_id];
+        const memberName = userToName[userId] || "there";
+        return {
+          email: e.recipient_email,
+          name: memberName,
+          grantId: e.grant_id,
+          variables: {
+            grantCycleName: cycleInfo.cycle_name,
+            ctaUrl: "https://nationalfundforwomen.org/grants/my-applications",
+          },
+        };
+      });
 
       const batchResult = await sendBatchEmails({
         recipients,

@@ -137,6 +137,32 @@ export async function POST(request: Request) {
       cycleInfo[c.id] = { cycle_name: c.cycle_name, amount_per_grant: c.amount_per_grant };
     });
 
+    // Fetch grant IDs to get user profiles for actual names
+    const grantIds = [...new Set(failedLogs.map((l: any) => l.grant_id))];
+    const { data: grantsData } = await supabaseAdmin
+      .from("grants")
+      .select("id, user_id")
+      .in("id", grantIds);
+
+    // Build grant_id -> user_id map
+    const grantToUser: Record<string, string> = {};
+    grantsData?.forEach((g: any) => {
+      grantToUser[g.id] = g.user_id;
+    });
+
+    // Fetch profiles to get full_name
+    const userIds = [...new Set(Object.values(grantToUser))];
+    const { data: profilesData } = await supabaseAdmin
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", userIds);
+
+    // Build user_id -> full_name map
+    const userToName: Record<string, string> = {};
+    profilesData?.forEach((p: any) => {
+      userToName[p.id] = p.full_name || "there";
+    });
+
     // Group emails by type for batch sending
     const emailsToRetry: RetryEmail[] = [];
     const skippedAlreadySent: { email: string; reason: string }[] = [];
@@ -200,9 +226,12 @@ export async function POST(request: Request) {
       }
 
       try {
+        const userId = grantToUser[email.grant_id];
+        const memberName = userToName[userId] || "there";
+
         const result = await sendGrantApprovedEmail({
           to: email.recipient_email,
-          name: "there", // We don't have name in this context, but template handles it
+          name: memberName,
           grantCycleName: cycle.cycle_name,
           amount: cycle.amount_per_grant,
           ctaUrl: `https://nationalfundforwomen.org/grants/view/${email.grant_id}`,
@@ -241,9 +270,11 @@ export async function POST(request: Request) {
     if (rejectedEmails.length > 0) {
       const recipients = rejectedEmails.map((e) => {
         const cycle = cycleInfo[e.cycle_id];
+        const userId = grantToUser[e.grant_id];
+        const memberName = userToName[userId] || "there";
         return {
           email: e.recipient_email,
-          name: "there",
+          name: memberName,
           grantId: e.grant_id,
           variables: {
             grantCycleName: cycle?.cycle_name || "the grant cycle",
