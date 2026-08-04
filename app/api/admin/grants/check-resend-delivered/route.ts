@@ -10,7 +10,7 @@ const supabaseAdmin = createClient(
 interface ResendEmail {
   id: string;
   from: string;
-  to: string;
+  to: string | string[] | { email: string; name?: string }[];
   subject: string;
   last_event: string;
   created_at: string;
@@ -38,6 +38,24 @@ interface GrantApplicant {
   profiles: GrantProfile[] | null;
 }
 
+// Helper to extract email address from various to formats
+function extractEmailAddress(toAddr: string | { email: string; name?: string }): string | null {
+  if (!toAddr) return null;
+  
+  // Handle object format: {email: "test@test.com", name: "Name"}
+  if (typeof toAddr === 'object' && 'email' in toAddr) {
+    return (toAddr as { email: string }).email?.toLowerCase() || null;
+  }
+  
+  // Handle string format: "Name <test@test.com>" or just "test@test.com"
+  if (typeof toAddr === 'string') {
+    const emailMatch = toAddr.match(/<(.+?)>/);
+    return emailMatch ? emailMatch[1].toLowerCase() : toAddr.toLowerCase();
+  }
+  
+  return null;
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createServerClient();
@@ -50,14 +68,10 @@ export async function POST(request: Request) {
     }
 
     // Parse request body
-    let dateFrom = "2026-07-29T00:00:00Z";
-    let dateTo = "2026-08-02T23:59:59Z";
     let cycleId: string | null = null;
 
     try {
       const body = await request.json();
-      if (body.date_from) dateFrom = body.date_from;
-      if (body.date_to) dateTo = body.date_to;
       if (body.cycle_id) cycleId = body.cycle_id;
     } catch {
       // Use defaults if body parsing fails
@@ -104,33 +118,39 @@ export async function POST(request: Request) {
       .single();
 
     const cycleName = cycleData?.cycle_name || "";
+    console.log("[check-resend-delivered] ============================================");
     console.log("[check-resend-delivered] Checking cycle:", cycleName);
+    console.log("[check-resend-delivered] Number of applicants:", grants.length);
 
-    // Step 2: Query Resend REST API for emails sent in the date window
+    // Step 2: Query Resend REST API for ALL emails using pagination
+    // Don't filter by date - fetch all and filter by cycle name in subject
     const resendApiKey = process.env.RESEND_API_KEY;
     if (!resendApiKey) {
       return NextResponse.json({ error: "RESEND_API_KEY not configured" }, { status: 500 });
     }
-    console.log("[check-resend-delivered] RESEND_API_KEY starts with:", resendApiKey?.substring(0, 5));
 
-    // Fetch ALL emails from Resend in the date window using pagination
     const deliveredEmailsMap = new Map<string, { email_id: string; last_event: string }>();
-
+    
     let cursor: string | undefined = undefined;
-    let totalPages = 0;
-    const maxPages = 100; // Safety limit
+    let totalEmailsFetched = 0;
+    let totalDeliveredFound = 0;
+    let totalCyclesMatched = 0;
+    let pageCount = 0;
+    const maxPages = 200; // Safety limit - increased to catch more emails
 
     do {
-      totalPages++;
-      if (totalPages > maxPages) {
+      pageCount++;
+      if (pageCount > maxPages) {
         console.warn("[check-resend-delivered] Hit max pages limit, stopping pagination");
         break;
       }
 
-      let url = `https://api.resend.com/emails?sent_after=${dateFrom}&sent_before=${dateTo}&limit=100`;
+      let url = `https://api.resend.com/emails?limit=100`;
       if (cursor) {
         url += `&cursor=${cursor}`;
       }
+      
+      console.log("[check-resend-delivered] Fetching page", pageCount, "- URL:", url);
 
       const res = await fetch(url, {
         headers: {
@@ -142,7 +162,6 @@ export async function POST(request: Request) {
       if (!res.ok) {
         const errorText = await res.text();
         console.error("[check-resend-delivered] Resend API error:", res.status, errorText);
-        console.error("[check-resend-delivered] Full response:", res);
         return NextResponse.json(
           { error: `Resend API error: ${res.status} - ${errorText}` },
           { status: 500 }
@@ -150,41 +169,45 @@ export async function POST(request: Request) {
       }
 
       const response: ResendListResponse = await res.json();
+      const emailsOnPage = response.data?.length || 0;
+      totalEmailsFetched += emailsOnPage;
+      
+      console.log("[check-resend-delivered] Page", pageCount, "returned", emailsOnPage, "emails, has_more:", response.has_more);
 
-      // DEBUG: Log sample of what Resend returns
-      if (totalPages === 1) {
-        console.log("[check-resend-delivered] Sample email from Resend:", JSON.stringify(response.data?.[0], null, 2));
-      }
-
-      // Filter to only delivered emails and build lookup map
-      // Key format: emailAddress_cycleName -> { email_id, last_event }
-      for (const email of response.data) {
-        // DEBUG: Log actual last_event value
-        if (totalPages === 1 && response.data.indexOf(email) < 3) {
-          console.log(`[check-resend-delivered] Email last_event: "${email.last_event}", subject: "${email.subject}"`);
-        }
-        
+      // Process each email on this page
+      for (const email of response.data || []) {
         // Only process delivered emails
         if (email.last_event === "delivered") {
-          // email.to can be a string "Name <email>" or an array ["Name <email>"]
-          const toAddresses = Array.isArray(email.to) ? email.to : [email.to];
+          totalDeliveredFound++;
           
-          for (const toAddr of toAddresses) {
-            if (!toAddr) continue;
+          // Check if subject contains our cycle name
+          if (cycleName && email.subject.includes(cycleName)) {
+            totalCyclesMatched++;
             
-            // Extract email address from "Name <email@domain>" format
-            const emailMatch = toAddr.match(/<(.+?)>/);
-            const emailAddress = emailMatch ? emailMatch[1] : toAddr;
-
-            // Check if this email's subject matches our cycle name
-            if (cycleName && email.subject.includes(cycleName)) {
-              const key = `${emailAddress.toLowerCase()}_${cycleName}`;
-              // Only store if not already present (first occurrence wins)
+            // Extract all email addresses from the to field
+            const toAddresses = Array.isArray(email.to) ? email.to : [email.to];
+            
+            for (const toAddr of toAddresses) {
+              const emailAddress = extractEmailAddress(toAddr);
+              if (!emailAddress) continue;
+              
+              const key = `${emailAddress}_${cycleName}`;
+              
+              // Only store first match (in case of duplicates)
               if (!deliveredEmailsMap.has(key)) {
                 deliveredEmailsMap.set(key, {
                   email_id: email.id,
                   last_event: email.last_event,
                 });
+                
+                // Debug: log first few matches
+                if (deliveredEmailsMap.size <= 5) {
+                  console.log("[check-resend-delivered] MATCHED delivered email:", {
+                    to: emailAddress,
+                    subject: email.subject,
+                    last_event: email.last_event
+                  });
+                }
               }
             }
           }
@@ -197,11 +220,16 @@ export async function POST(request: Request) {
       await new Promise((r) => setTimeout(r, 110));
     } while (cursor);
 
-    console.log(`[check-resend-delivered] Found ${deliveredEmailsMap.size} delivered emails in Resend`);
+    console.log("[check-resend-delivered] ============================================");
+    console.log("[check-resend-delivered] TOTAL EMAILS FETCHED:", totalEmailsFetched);
+    console.log("[check-resend-delivered] TOTAL DELIVERED EMAILS:", totalDeliveredFound);
+    console.log("[check-resend-delivered] TOTAL MATCHING CYCLE:", totalCyclesMatched);
+    console.log("[check-resend-delivered] DELIVERED MAP SIZE:", deliveredEmailsMap.size);
     
-    // Debug: show first 5 entries in deliveredEmailsMap
+    // Show sample of delivered map
     const mapEntries = Array.from(deliveredEmailsMap.entries()).slice(0, 5);
-    console.log("[check-resend-delivered] Sample delivered emails map:", JSON.stringify(mapEntries, null, 2));
+    console.log("[check-resend-delivered] Sample delivered map entries:", JSON.stringify(mapEntries, null, 2));
+    console.log("[check-resend-delivered] ============================================");
 
     // Step 3: Compare applicants against Resend delivered emails
     const needsRetry: {
@@ -214,15 +242,13 @@ export async function POST(request: Request) {
 
     for (const grant of grants as GrantApplicant[]) {
       const profile = grant.profiles?.[0];
-      if (!profile?.email) continue;
+      if (!profile?.email) {
+        console.log("[check-resend-delivered] Skipping grant - no profile email:", grant.id);
+        continue;
+      }
 
       const emailKey = `${profile.email.toLowerCase()}_${cycleName}`;
       const wasDelivered = deliveredEmailsMap.has(emailKey);
-      
-      // Debug: log first few lookups
-      if (needsRetry.length < 3 && !wasDelivered) {
-        console.log(`[check-resend-delivered] NOT delivered - looking for key: "${emailKey}"`);
-      }
 
       const emailType: "approved" | "rejected" =
         grant.status === "approved" || grant.status === "payment_sent" ? "approved" : "rejected";
@@ -254,10 +280,20 @@ export async function POST(request: Request) {
           cycle_name: cycleName,
           type: emailType,
         });
+        
+        // Debug: log first few that need retry
+        if (needsRetry.length <= 5) {
+          console.log("[check-resend-delivered] NEEDS RETRY:", {
+            email: profile.email,
+            status: grant.status,
+            lookingForKey: emailKey
+          });
+        }
       }
     }
 
-    console.log(`[check-resend-delivered] Checked ${grants.length} emails - ${deliveredCount} delivered, ${needsRetry.length} need retry`);
+    console.log("[check-resend-delivered] FINAL RESULT - Checked:", grants.length, "delivered:", deliveredCount, "needRetry:", needsRetry.length);
+    console.log("[check-resend-delivered] ============================================");
 
     return NextResponse.json({
       success: true,
