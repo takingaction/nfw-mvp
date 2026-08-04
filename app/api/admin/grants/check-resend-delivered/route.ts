@@ -7,13 +7,6 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-// Hardcoded July cycle IDs - these are the cycles from July 2026
-const JULY_CYCLE_IDS = [
-  "8986067e-cfbf-4d46-b162-bc8337ac61eb",
-  "d89d63e8-7810-42e7-9ce6-91e4ca915d53",
-  "8f1467d7-d6ee-4107-ab66-f239b01ca8a8",
-];
-
 interface ResendEmail {
   id: string;
   from: string;
@@ -45,11 +38,6 @@ interface GrantApplicant {
   profiles: GrantProfile[] | null;
 }
 
-interface CycleInfo {
-  id: string;
-  cycle_name: string;
-}
-
 export async function POST(request: Request) {
   try {
     const supabase = await createServerClient();
@@ -61,19 +49,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Parse request body for date range
+    // Parse request body
     let dateFrom = "2026-07-29T00:00:00Z";
     let dateTo = "2026-08-02T23:59:59Z";
+    let cycleId: string | null = null;
 
     try {
       const body = await request.json();
       if (body.date_from) dateFrom = body.date_from;
       if (body.date_to) dateTo = body.date_to;
+      if (body.cycle_id) cycleId = body.cycle_id;
     } catch {
       // Use defaults if body parsing fails
     }
 
-    // Step 1: Get all applicants (approved + rejected) for the 3 July cycles
+    if (!cycleId) {
+      return NextResponse.json({ error: "cycle_id is required" }, { status: 400 });
+    }
+
+    // Step 1: Get all applicants (approved + rejected) for this specific cycle
     const { data: grants, error: grantsError } = await supabaseAdmin
       .from("grants")
       .select(`
@@ -83,7 +77,7 @@ export async function POST(request: Request) {
         status,
         profiles:user_id (full_name, email)
       `)
-      .in("cycle_id", JULY_CYCLE_IDS)
+      .eq("cycle_id", cycleId)
       .in("status", ["approved", "payment_sent", "not_approved"]);
 
     if (grantsError) {
@@ -98,22 +92,19 @@ export async function POST(request: Request) {
         delivered_count: 0,
         needs_retry_count: 0,
         retry_list: [],
-        message: "No applicants found for July cycles",
+        message: "No applicants found for this cycle",
       });
     }
 
-    // Get cycle names for building subject patterns
-    const { data: cyclesData } = await supabaseAdmin
+    // Get this cycle's name for building subject pattern
+    const { data: cycleData } = await supabaseAdmin
       .from("grant_cycles")
       .select("id, cycle_name")
-      .in("id", JULY_CYCLE_IDS);
+      .eq("id", cycleId)
+      .single();
 
-    const cycleNameMap: Record<string, string> = {};
-    cyclesData?.forEach((c: CycleInfo) => {
-      cycleNameMap[c.id] = c.cycle_name;
-    });
-    
-    console.log("[check-resend-delivered] Cycle names from DB:", JSON.stringify(cycleNameMap, null, 2));
+    const cycleName = cycleData?.cycle_name || "";
+    console.log("[check-resend-delivered] Checking cycle:", cycleName);
 
     // Step 2: Query Resend REST API for emails sent in the date window
     const resendApiKey = process.env.RESEND_API_KEY;
@@ -185,19 +176,15 @@ export async function POST(request: Request) {
             const emailMatch = toAddr.match(/<(.+?)>/);
             const emailAddress = emailMatch ? emailMatch[1] : toAddr;
 
-            // Find which cycle this belongs to by checking subject for cycle name
-            for (const cycleId of JULY_CYCLE_IDS) {
-              const cycleName = cycleNameMap[cycleId];
-              if (cycleName && email.subject.includes(cycleName)) {
-                const key = `${emailAddress.toLowerCase()}_${cycleName}`;
-                // Only store if not already present (first occurrence wins)
-                if (!deliveredEmailsMap.has(key)) {
-                  deliveredEmailsMap.set(key, {
-                    email_id: email.id,
-                    last_event: email.last_event,
-                  });
-                }
-                break;
+            // Check if this email's subject matches our cycle name
+            if (cycleName && email.subject.includes(cycleName)) {
+              const key = `${emailAddress.toLowerCase()}_${cycleName}`;
+              // Only store if not already present (first occurrence wins)
+              if (!deliveredEmailsMap.has(key)) {
+                deliveredEmailsMap.set(key, {
+                  email_id: email.id,
+                  last_event: email.last_event,
+                });
               }
             }
           }
@@ -228,9 +215,6 @@ export async function POST(request: Request) {
     for (const grant of grants as GrantApplicant[]) {
       const profile = grant.profiles?.[0];
       if (!profile?.email) continue;
-
-      const cycleName = cycleNameMap[grant.cycle_id];
-      if (!cycleName) continue;
 
       const emailKey = `${profile.email.toLowerCase()}_${cycleName}`;
       const wasDelivered = deliveredEmailsMap.has(emailKey);

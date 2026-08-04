@@ -275,6 +275,7 @@ export default function CombinedScoresPage() {
         body: JSON.stringify({
           date_from: `${dateFrom}T00:00:00Z`,
           date_to: `${dateTo}T23:59:59Z`,
+          cycle_id: cycleId,
         }),
       });
       const data = await res.json();
