@@ -118,6 +118,7 @@ export async function POST(request: Request) {
     if (!resendApiKey) {
       return NextResponse.json({ error: "RESEND_API_KEY not configured" }, { status: 500 });
     }
+    console.log("[check-resend-delivered] RESEND_API_KEY starts with:", resendApiKey?.substring(0, 5));
 
     // Fetch ALL emails from Resend in the date window using pagination
     const deliveredEmailsMap = new Map<string, { email_id: string; last_event: string }>();
@@ -148,8 +149,9 @@ export async function POST(request: Request) {
       if (!res.ok) {
         const errorText = await res.text();
         console.error("[check-resend-delivered] Resend API error:", res.status, errorText);
+        console.error("[check-resend-delivered] Full response:", res);
         return NextResponse.json(
-          { error: `Resend API error: ${res.status}` },
+          { error: `Resend API error: ${res.status} - ${errorText}` },
           { status: 500 }
         );
       }
