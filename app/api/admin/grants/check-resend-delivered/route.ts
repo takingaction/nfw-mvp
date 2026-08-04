@@ -163,23 +163,30 @@ export async function POST(request: Request) {
       for (const email of response.data) {
         // Only process delivered emails
         if (email.last_event === "delivered") {
-          // Extract email address from "Name <email@domain>" format
-          const emailMatch = email.to.match(/<(.+?)>/) || [null, email.to];
-          const emailAddress = emailMatch[1] || email.to;
+          // email.to can be a string "Name <email>" or an array ["Name <email>"]
+          const toAddresses = Array.isArray(email.to) ? email.to : [email.to];
+          
+          for (const toAddr of toAddresses) {
+            if (!toAddr) continue;
+            
+            // Extract email address from "Name <email@domain>" format
+            const emailMatch = toAddr.match(/<(.+?)>/);
+            const emailAddress = emailMatch ? emailMatch[1] : toAddr;
 
-          // Find which cycle this belongs to by checking subject for cycle name
-          for (const cycleId of JULY_CYCLE_IDS) {
-            const cycleName = cycleNameMap[cycleId];
-            if (cycleName && email.subject.includes(cycleName)) {
-              const key = `${emailAddress.toLowerCase()}_${cycleName}`;
-              // Only store if not already present (first occurrence wins)
-              if (!deliveredEmailsMap.has(key)) {
-                deliveredEmailsMap.set(key, {
-                  email_id: email.id,
-                  last_event: email.last_event,
-                });
+            // Find which cycle this belongs to by checking subject for cycle name
+            for (const cycleId of JULY_CYCLE_IDS) {
+              const cycleName = cycleNameMap[cycleId];
+              if (cycleName && email.subject.includes(cycleName)) {
+                const key = `${emailAddress.toLowerCase()}_${cycleName}`;
+                // Only store if not already present (first occurrence wins)
+                if (!deliveredEmailsMap.has(key)) {
+                  deliveredEmailsMap.set(key, {
+                    email_id: email.id,
+                    last_event: email.last_event,
+                  });
+                }
+                break;
               }
-              break;
             }
           }
         }
