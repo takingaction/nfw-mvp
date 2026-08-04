@@ -194,6 +194,8 @@ export async function POST(request: Request) {
     }[] = [];
     let deliveredCount = 0;
     let checkedCount = 0;
+    let needsRetryApproved = 0;
+    let needsRetryRejected = 0;
 
     for (const grant of grantsWithProfiles as GrantApplicant[]) {
       const profile = grant.profiles?.[0];
@@ -239,12 +241,18 @@ export async function POST(request: Request) {
           type: emailType,
         });
         
-        console.log(`[check-resend-delivered] [${checkedCount}/${grants.length}] NEEDS RETRY: ${profile.email}`);
+        if (emailType === "approved") {
+          needsRetryApproved++;
+        } else {
+          needsRetryRejected++;
+        }
+        
+        console.log(`[check-resend-delivered] [${checkedCount}/${grants.length}] NEEDS RETRY: ${profile.email} (${emailType})`);
       }
     }
 
     console.log("[check-resend-delivered] ============================================");
-    console.log("[check-resend-delivered] FINAL RESULT - Checked:", checkedCount, "delivered:", deliveredCount, "needRetry:", needsRetry.length);
+    console.log("[check-resend-delivered] FINAL RESULT - Checked:", checkedCount, "delivered:", deliveredCount, "needRetry:", needsRetry.length, "(approved:", needsRetryApproved, "rejected:", needsRetryRejected, ")");
     console.log("[check-resend-delivered] ============================================");
 
     return NextResponse.json({
@@ -252,8 +260,10 @@ export async function POST(request: Request) {
       checked: checkedCount,
       delivered_count: deliveredCount,
       needs_retry_count: needsRetry.length,
+      needs_retry_approved: needsRetryApproved,
+      needs_retry_rejected: needsRetryRejected,
       retry_list: needsRetry,
-      message: `Found ${deliveredCount} delivered, ${needsRetry.length} need retry`,
+      message: `Found ${deliveredCount} delivered, ${needsRetry.length} need retry (${needsRetryApproved} approved, ${needsRetryRejected} rejected)`,
     });
   } catch (err: unknown) {
     console.error("[check-resend-delivered] Error:", err);
