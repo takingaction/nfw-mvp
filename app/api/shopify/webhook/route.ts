@@ -442,14 +442,13 @@ export async function POST(request: Request) {
           console.error("[orders/updated] Failed to delete pending claim:", deletePendingError);
         }
 
-        // Cancel the user's claim
-        const monthStart = `${claimMonth}T00:00:00`;
+        // Cancel the user's claim - match by user_id and claim_month regardless of status
+        // (cancelled orders may still show as 'completed' in zero_dollar_claims)
         const { error: updateClaimError } = await supabaseAdmin
           .from("zero_dollar_claims")
           .update({ status: "cancelled" })
           .eq("user_id", nfwUserId)
-          .in("status", ["created", "pending"])
-          .gte("claimed_at", monthStart);
+          .eq("claim_month", claimMonth);
 
         if (updateClaimError) {
           console.error("[orders/updated] Failed to cancel claim:", updateClaimError);
