@@ -15,7 +15,7 @@ async function shopifyGraphQL(query: string, variables: Record<string, any>) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Shopify-Storefront-Access-Token": process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN!,
+      "Shopify-Storefront-Private-Token": process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN!,
     },
     body: JSON.stringify({ query, variables }),
   });
