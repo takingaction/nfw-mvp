@@ -197,11 +197,7 @@ export async function POST(request: NextRequest) {
         lines: [{
           merchandiseId: variantId,
           quantity: 1
-        }],
-        customAttributes: [
-          { key: "nfw_user_id", value: userId },
-          { key: "nfw_claim_id", value: claimId }
-        ]
+        }]
       };
 
       const result = await shopifyGraphQL(cartCreateMutation, { input });
