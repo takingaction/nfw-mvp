@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const SHOPIFY_STOREFRONT_API_URL = `https://${process.env.SHOPIFY_SHOP_DOMAIN}/api/2026-01/graphql.json`;
+const SHOPIFY_STOREFRONT_API_URL = `https://${process.env.SHOPIFY_SHOP_DOMAIN}/api/2026-04/graphql.json`;
 
 async function shopifyGraphQL(query: string, variables: Record<string, any>) {
   const response = await fetch(SHOPIFY_STOREFRONT_API_URL, {
