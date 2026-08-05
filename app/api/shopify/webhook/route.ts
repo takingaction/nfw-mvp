@@ -295,18 +295,18 @@ export async function POST(request: Request) {
           console.log(`[orders/create] Updated claim ${claim.id} to ${newStatus}`);
         }
 
-        // Release pending checkout lock
-        if (claim.user_id) {
+        // Release pending checkout lock using the shopify_checkout_id we stored (draft_xxx format)
+        // Use claim.shopify_checkout_id which contains the draft_xxx we inserted, not the webhook's gid://shopify/Checkout/xxx
+        if (claim.shopify_checkout_id) {
           const { error: deletePendingError } = await supabaseAdmin
             .from("pending_monthly_claims")
             .delete()
-            .eq("user_id", claim.user_id)
-            .eq("claim_month", claimMonth);
+            .eq("shopify_checkout_id", claim.shopify_checkout_id);
 
           if (deletePendingError) {
             console.error("[orders/create] Failed to delete pending claim:", deletePendingError);
           } else {
-            console.log(`[orders/create] Deleted pending claim for user ${claim.user_id}`);
+            console.log(`[orders/create] Deleted pending claim for user ${claim.user_id}, checkout_id ${claim.shopify_checkout_id}`);
           }
         }
 
