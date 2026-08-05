@@ -28,6 +28,24 @@ function verifyShopifyWebhook(body: Buffer, signature: string | null): boolean {
   return crypto.timingSafeEqual(signatureBuffer, digestBuffer);
 }
 
+function parseDraftOrderNote(note: string | null): Record<string, string> | null {
+  if (!note) return null;
+
+  const result: Record<string, string> = {};
+  const parts = note.split('|');
+
+  for (const part of parts) {
+    const colonIndex = part.indexOf(':');
+    if (colonIndex > 0) {
+      const key = part.substring(0, colonIndex);
+      const value = part.substring(colonIndex + 1);
+      result[key] = value;
+    }
+  }
+
+  return Object.keys(result).length > 0 ? result : null;
+}
+
 export async function GET() {
   return NextResponse.json({ received: true });
 }
@@ -81,6 +99,11 @@ export async function POST(request: Request) {
       
       console.log(`[orders/create] Variant ID: ${variantId}`);
 
+      // Parse note for claim identification (Draft Orders use note field)
+      const noteData = parseDraftOrderNote(order.note);
+      const claimIdFromNote = noteData?.claim_id;
+      console.log(`[orders/create] Note: ${order.note}, claimIdFromNote: ${claimIdFromNote}`);
+
       // Get tracking info if available
       const fulfillment = order.fulfillments?.[0];
       const trackingNumber = fulfillment?.tracking_number || null;
@@ -114,6 +137,26 @@ export async function POST(request: Request) {
       // FALLBACK: shopify_checkout_id exact match (for Cart API orders)
       // Cart API creates checkout_id that survives to the order
       // =====================================================================
+
+      // =====================================================================
+      // PRIMARY: claim_id from note (most reliable for Draft Orders)
+      // Note format: claim_id:xxx|user_id:xxx|checkout_time:xxx
+      // =====================================================================
+      if (!existingClaim && claimIdFromNote) {
+        const { data: claimByNoteId } = await supabaseAdmin
+          .from("zero_dollar_claims")
+          .select("*")
+          .eq("id", claimIdFromNote)
+          .eq("status", "created")
+          .limit(1);
+
+        if (claimByNoteId && claimByNoteId.length > 0) {
+          existingClaim = claimByNoteId[0];
+          matchMethod = "claim_id_from_note";
+          console.log(`[orders/create] Found claim ${existingClaim.id} via claim_id from note`);
+        }
+      }
+
       if (!existingClaim && checkoutId) {
         const { data: claimByCheckout } = await supabaseAdmin
           .from("zero_dollar_claims")
@@ -291,13 +334,37 @@ export async function POST(request: Request) {
       console.log(`[orders/updated] Order ${orderId} cancelled. Reason: ${cancelReason}`);
 
       // Get checkout_id to find the claim
-      const checkoutId = order.checkout_id 
-        ? `gid://shopify/Checkout/${order.checkout_id}` 
+      const checkoutId = order.checkout_id
+        ? `gid://shopify/Checkout/${order.checkout_id}`
         : null;
+
+      // Parse note for claim identification (Draft Orders use note field)
+      const noteData = parseDraftOrderNote(order.note);
+      const claimIdFromNote = noteData?.claim_id;
+      const userIdFromNote = noteData?.user_id;
+      console.log(`[orders/updated] Note: ${order.note}, claimIdFromNote: ${claimIdFromNote}, userIdFromNote: ${userIdFromNote}`);
 
       // Try to find claim by checkout_id first
       let nfwUserId = null;
       let claimMonth: string | null = null;
+
+      // =====================================================================
+      // PRIMARY: claim_id from note (most reliable for Draft Orders)
+      // Note format: claim_id:xxx|user_id:xxx|checkout_time:xxx
+      // =====================================================================
+      if (claimIdFromNote) {
+        const { data: claimById } = await supabaseAdmin
+          .from("zero_dollar_claims")
+          .select("user_id, claim_month")
+          .eq("id", claimIdFromNote)
+          .limit(1);
+
+        if (claimById && claimById.length > 0) {
+          nfwUserId = claimById[0].user_id;
+          claimMonth = claimById[0].claim_month;
+          console.log(`[orders/updated] Found claim via claim_id from note: user=${nfwUserId}`);
+        }
+      }
 
       if (checkoutId) {
         const { data: claimByCheckout } = await supabaseAdmin
