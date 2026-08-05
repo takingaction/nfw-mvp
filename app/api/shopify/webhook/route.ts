@@ -432,12 +432,11 @@ export async function POST(request: Request) {
       }
 
       if (nfwUserId) {
-        // Release pending checkout lock
+        // Release pending checkout lock using shopify_checkout_id (the draft_xxx or checkout_xxx we stored)
         const { error: deletePendingError } = await supabaseAdmin
           .from("pending_monthly_claims")
           .delete()
-          .eq("user_id", nfwUserId)
-          .eq("claim_month", claimMonth);
+          .eq("shopify_checkout_id", checkoutId);
 
         if (deletePendingError) {
           console.error("[orders/updated] Failed to delete pending claim:", deletePendingError);

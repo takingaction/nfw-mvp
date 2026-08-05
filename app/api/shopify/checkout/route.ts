@@ -9,20 +9,24 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-async function createDraftOrderShopify(variantId: string, quantity: number, claimId: string) {
+async function createDraftOrderShopify(variantId: string, quantity: number, claimId: string, userId: string) {
   const accessToken = await getShopifyAccessToken();
   if (!accessToken) {
     throw new Error("No Shopify access token available");
   }
 
   const storeDomain = process.env.SHOPIFY_SHOP_DOMAIN;
-  
+
   // Extract numeric variant ID from GID format
   const variantIdMatch = variantId.match(/gid:\/\/shopify\/ProductVariant\/(\d+)/);
   if (!variantIdMatch) {
     throw new Error("Invalid variant ID format");
   }
   const numericVariantId = variantIdMatch[1];
+
+  // Build note with all tracking info
+  const checkoutTime = Date.now();
+  const note = `claim_id:${claimId}|user_id:${userId}|checkout_time:${checkoutTime}`;
 
   const response = await fetch(
     `https://${storeDomain}/admin/api/2026-01/draft_orders.json`,
@@ -40,7 +44,7 @@ async function createDraftOrderShopify(variantId: string, quantity: number, clai
               quantity: quantity,
             }
           ],
-          note: `claim_id:${claimId}`,
+          note: note,
         }
       })
     }
@@ -201,7 +205,7 @@ export async function POST(request: NextRequest) {
     let checkoutUrl: string;
 
     try {
-      const draftOrder = await createDraftOrderShopify(variantId, 1, claimId);
+      const draftOrder = await createDraftOrderShopify(variantId, 1, claimId, userId);
       
       // draftOrder.id is the Shopify draft order ID (numeric string)
       // We prefix with "draft_" to distinguish from cart IDs
