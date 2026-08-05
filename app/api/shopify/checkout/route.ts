@@ -209,6 +209,7 @@ export async function POST(request: NextRequest) {
       console.log('[checkout] DEBUG - SHOPIFY_STOREFRONT_API_URL:', SHOPIFY_STOREFRONT_API_URL);
       console.log('[checkout] DEBUG - token exists:', !!process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN);
       console.log('[checkout] DEBUG - token length:', process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN?.length);
+      console.log('[checkout] DEBUG - token full:', process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN);
       console.log('[checkout] DEBUG - token prefix:', process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN?.substring(0, 10));
 
       const result = await shopifyGraphQL(checkoutCreateMutation, { input });
