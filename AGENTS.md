@@ -10304,3 +10304,122 @@ ALTER TABLE pending_monthly_claims DROP COLUMN IF EXISTS shopify_checkout_id;
 DROP INDEX IF EXISTS idx_pending_monthly_claims_checkout_id;
 ```
 
+---
+
+## Session 2026-08-05: ZDC Cancellation Bug Fixes
+
+### Overview
+
+Fixed multiple critical bugs in the Zero Dollar Store checkout and cancellation flow.
+
+### Bugs Found & Fixed
+
+#### Bug 1: Draft Order Note Missing Fields
+
+**Problem:** Draft Order `note` only contained `claim_id:xxx`, missing `user_id` and `checkout_time`.
+
+**File:** `app/api/shopify/checkout/route.ts`
+
+**Fix:** Updated note format to pipe-delimited:
+```
+claim_id:xxx|user_id:xxx|checkout_time:xxx
+```
+
+#### Bug 2: Webhook DELETE Wrong Criteria
+
+**Problem:** Cancellation webhook DELETE from `pending_monthly_claims` used `user_id + claim_month` instead of `shopify_checkout_id`.
+
+**File:** `app/api/shopify/webhook/route.ts`
+
+**Fix:** DELETE using `shopify_checkout_id`:
+```typescript
+.delete().eq("shopify_checkout_id", checkoutId)
+```
+
+#### Bug 3: Completion DELETE Wrong ID Format
+
+**Problem:** Completion webhook DELETE tried using `checkoutId` (format: `gid://shopify/Checkout/xxx`) but `pending_monthly_claims` stored `draft_xxx` format.
+
+**File:** `app/api/shopify/webhook/route.ts`
+
+**Fix:** Use `claim.shopify_checkout_id` (contains `draft_xxx`):
+```typescript
+.delete().eq("shopify_checkout_id", claim.shopify_checkout_id)
+```
+
+#### Bug 4: Cancellation Status Filter Too Narrow
+
+**Problem:** Cancellation webhook only updated claims with status `created` or `pending`, but completed orders have status `completed`. The UPDATE silently failed.
+
+**File:** `app/api/shopify/webhook/route.ts`
+
+**Fix:** Match by `user_id + claim_month` only, regardless of current status:
+```typescript
+// Before (bug):
+.eq("user_id", nfwUserId)
+.in("status", ["created", "pending"])
+
+// After (fixed):
+.eq("user_id", nfwUserId)
+.eq("claim_month", claimMonth)
+```
+
+#### Bug 5: Cron Cleanup Type Mismatch
+
+**Problem:** Cleanup cron job failed with `ERROR: operator does not exist: date = text`.
+
+**Fix (SQL):**
+```sql
+CREATE OR REPLACE FUNCTION cleanup_orphaned_pending_claims()
+RETURNS void
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  DELETE FROM pending_monthly_claims p
+  WHERE p.created_at < (NOW() - INTERVAL '30 minutes')
+  AND NOT EXISTS (
+    SELECT 1 FROM zero_dollar_claims z
+    WHERE z.user_id = p.user_id
+    AND z.claim_month::text = p.claim_month::text
+    AND z.status = 'created'
+  );
+END;
+$$;
+```
+
+### Commits
+
+| Commit | Description |
+|--------|-------------|
+| `de4ef57` | fix: add user_id and checkout_time to Draft Order note, fix pending claim deletion |
+| `e8553a2` | fix: use shopify_checkout_id to delete pending_monthly_claims |
+| `cd1640a` | fix: cancel claim regardless of current status |
+
+### Order Flow Summary
+
+**Checkout:**
+1. INSERT `zero_dollar_claims` (status: 'pending')
+2. CREATE Draft Order via Shopify API
+3. UPDATE `zero_dollar_claims` (status: 'created', shopify_checkout_id: 'draft_xxx')
+4. INSERT `pending_monthly_claims` (shopify_checkout_id: 'draft_xxx')
+
+**Order Completes:**
+1. `orders/create` webhook fires
+2. Match by `claim_id` from note (primary)
+3. UPDATE `zero_dollar_claims` (status: 'completed')
+4. DELETE from `pending_monthly_claims` using `claim.shopify_checkout_id`
+
+**Order Cancels:**
+1. `orders/updated` webhook fires
+2. Match by `claim_id` from note (primary)
+3. UPDATE `zero_dollar_claims` (status: 'cancelled') - matches by user_id + claim_month
+4. DELETE from `pending_monthly_claims` using `shopify_checkout_id`
+
+### Note Format
+
+All Draft Orders use pipe-delimited note for tracking:
+```
+claim_id:62c56f88-4af5-42a0-ae3a-81647d5dc3c9|user_id:12a5c412-26f2-419d-aa2b-99a08e9bc202|checkout_time:1722841010638
+```
+
