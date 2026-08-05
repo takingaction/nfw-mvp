@@ -152,6 +152,7 @@ export default async function DashboardPage({
       .from("zero_dollar_claims")
       .select("*, shopify_product_id, order_status_url, shopify_order_id")
       .eq("user_id", user.id)
+      .order("claimed_at", { ascending: false })
       .limit(10),
     supabaseAdmin
       .from("grant_cycles")
