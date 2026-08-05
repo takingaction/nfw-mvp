@@ -10197,3 +10197,110 @@ Pagination: loop while `response.has_more` and use `response.next_cursor`.
 - Cycle name matching: subject contains cycle_name (e.g., "[JULY 26] Family Outing Fund")
 - Supabase returns profiles as array from FK join → use `profiles[0]` to get email
 
+---
+
+## Session 2026-08-05: ZDC Checkout API Security Fix
+
+### Problem
+
+Zero Dollar Store was vulnerable to PII exposure because:
+1. Draft Orders don't preserve `note_attributes` when converted to orders
+2. Webhook fell back to `variant_id` matching which assigned orders to wrong users
+3. Fraudsters could complete others' checkout URLs to claim items
+
+### Root Cause
+
+Draft Orders API (`/admin/api/2026-01/draft_orders.json`) creates checkout sessions, but when converted to completed orders, Shopify does NOT copy custom `note_attributes` (like `nfw_user_id`) to the resulting order. The webhook couldn't validate users.
+
+### Solution
+
+Switch from **Draft Orders API** to **Checkout API (Storefront GraphQL)**:
+- Checkout API preserves `customAttributes` through to resulting orders
+- Returns the actual `checkout.id` that appears in webhook `orders/create`
+- Enables exact match on `shopify_checkout_id`
+
+### Database Migration
+
+**`supabase/migrations/135_zdc_checkout_api_migration.sql`:**
+
+```sql
+-- 1. Update status CHECK constraint with ALL valid status values
+ALTER TABLE zero_dollar_claims DROP CONSTRAINT IF EXISTS zero_dollar_claims_status_check;
+ALTER TABLE zero_dollar_claims ADD CONSTRAINT zero_dollar_claims_status_check 
+  CHECK (status IN (
+    'pending', 'created', 'completed', 'fulfilled', 'delivered',
+    'cancelled', 'rejected_invalid_user', 'rejected_monthly_limit', 'paid'
+  ));
+
+-- 2. Add index on shopify_checkout_id for fast lookups
+CREATE INDEX IF NOT EXISTS idx_zero_dollar_claims_checkout_id 
+  ON zero_dollar_claims(shopify_checkout_id) WHERE shopify_checkout_id IS NOT NULL;
+
+-- 3. Add checkout_completed_at timestamp
+ALTER TABLE zero_dollar_claims ADD COLUMN IF NOT EXISTS checkout_completed_at TIMESTAMPTZ;
+
+-- 4. Add shopify_checkout_id to pending_monthly_claims
+ALTER TABLE pending_monthly_claims ADD COLUMN IF NOT EXISTS shopify_checkout_id TEXT;
+
+-- 5. Create index on pending_monthly_claims.shopify_checkout_id
+CREATE INDEX IF NOT EXISTS idx_pending_monthly_claims_checkout_id 
+  ON pending_monthly_claims(shopify_checkout_id) WHERE shopify_checkout_id IS NOT NULL;
+```
+
+### Checkout API Flow (New)
+
+1. Insert `zero_dollar_claims` with `status = 'pending'`
+2. Call Shopify **Checkout API** (Storefront GraphQL):
+```graphql
+mutation checkoutCreate($input: CheckoutCreateInput!) {
+  checkoutCreate(input: $input) {
+    checkout { id, webUrl }
+    checkoutUserErrors { code, field, message }
+  }
+}
+```
+3. Get `checkout.id` from response
+4. Update `zero_dollar_claims` with `shopify_checkout_id = checkout.id`, `status = 'created'`
+5. Insert `pending_monthly_claims` with `shopify_checkout_id`
+6. Return checkout URL to user
+
+### Webhook Matching (New Priority)
+
+1. **Primary**: `shopify_checkout_id` exact match ← uses real checkout ID
+2. **Fallback**: `variant_id` match (less reliable)
+3. **Fallback**: `claim_id` from `nfw_claim_id` customAttribute
+4. **Fallback**: `user_id + product_id` from `nfw_user_id` customAttribute
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `app/api/shopify/checkout/route.ts` | Replaced Draft Order REST → Storefront GraphQL Checkout API |
+| `app/api/shopify/webhook/route.ts` | Made `shopify_checkout_id` primary match, simplified fallback chain |
+| `.env.local` | Added `SHOPIFY_STOREFRONT_ACCESS_TOKEN` |
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/135_zdc_checkout_api_migration.sql` | Schema changes |
+
+### Credentials Used
+
+- **Storefront Private Token**: Added to Vercel env vars: `SHOPIFY_STOREFRONT_ACCESS_TOKEN`
+
+### Rollback
+
+If needed, create `supabase/migrations/136_zdc_checkout_api_rollback.sql`:
+```sql
+-- Reverse all 5 changes from migration 135
+ALTER TABLE zero_dollar_claims DROP CONSTRAINT IF EXISTS zero_dollar_claims_status_check;
+-- Recreate with original statuses from migration 079
+ALTER TABLE zero_dollar_claims ADD CONSTRAINT zero_dollar_claims_status_check 
+  CHECK (status IN ('pending', 'created', 'completed', 'fulfilled', 'delivered', 'cancelled', 'rejected_invalid_user', 'rejected_monthly_limit'));
+DROP INDEX IF EXISTS idx_zero_dollar_claims_checkout_id;
+ALTER TABLE zero_dollar_claims DROP COLUMN IF EXISTS checkout_completed_at;
+ALTER TABLE pending_monthly_claims DROP COLUMN IF EXISTS shopify_checkout_id;
+DROP INDEX IF EXISTS idx_pending_monthly_claims_checkout_id;
+```
+

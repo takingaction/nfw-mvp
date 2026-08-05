@@ -46,13 +46,21 @@ export async function POST(request: Request) {
 
     const event = JSON.parse(body.toString());
 
-    // Debug: Log when webhook is received
     console.log(`[webhook] Received ${topic} at ${new Date().toISOString()}`);
 
+    // =====================================================================
+    // ORDERS/CREATE - New order completed
+    // =====================================================================
     if (topic === "orders/create") {
       const order = event;
       const orderId = `gid://shopify/Order/${order.id}`;
-      const checkoutId = order.checkout_id ? `gid://shopify/Checkout/${order.checkout_id}` : null;
+      
+      // Get checkout_id from order - this is the PRIMARY match key
+      // With Checkout API (Storefront), checkout_id survives to the order
+      const checkoutId = order.checkout_id 
+        ? `gid://shopify/Checkout/${order.checkout_id}` 
+        : null;
+      
       const lineItems = order.line_items || [];
       
       console.log(`[orders/create] Order ID: ${orderId}, checkout_id: ${checkoutId}`);
@@ -68,53 +76,90 @@ export async function POST(request: Request) {
       
       console.log(`[orders/create] Variant ID: ${variantId}`);
 
+      // Get tracking info if available
       const fulfillment = order.fulfillments?.[0];
       const trackingNumber = fulfillment?.tracking_number || null;
       const trackingUrl = fulfillment?.tracking_url || null;
       const orderCreatedAt = order.created_at ? new Date(order.created_at) : new Date();
-      const claimMonth = new Date(orderCreatedAt.getFullYear(), orderCreatedAt.getMonth(), 1).toISOString().split('T')[0];
+      const claimMonth = `${orderCreatedAt.getFullYear()}-${String(orderCreatedAt.getMonth() + 1).padStart(2, "0")}-01`;
 
-      if (variantId) {
-        // Shopify uses different field names depending on how the order was created:
-        // - Draft Orders: order.attributes (attr.name)
-        // - Cart API / standard checkout: order.note_attributes (attr.key)
-        const orderAttributes = [
-          ...(order.attributes || []),
-          ...(order.note_attributes || [])
-        ];
+      // =====================================================================
+      // PRIMARY MATCH: shopify_checkout_id exact match
+      // With Checkout API, this should match exactly
+      // =====================================================================
+      let existingClaim = null;
+      let matchMethod = "none";
 
-        const nfwUserIdAttr = orderAttributes.find(
-          (attr: { key?: string; name?: string; value: string }) =>
-            attr.key === "nfw_user_id" || attr.name === "nfw_user_id"
-        );
-        const nfwCheckoutTimeAttr = orderAttributes.find(
-          (attr: { key?: string; name?: string; value: string }) =>
-            attr.key === "nfw_checkout_time" || attr.name === "nfw_checkout_time"
-        );
-        const nfwUserId = nfwUserIdAttr?.value || null;
-        const nfwCheckoutTime = nfwCheckoutTimeAttr ? parseInt(nfwCheckoutTimeAttr.value, 10) : null;
+      if (checkoutId) {
+        const { data: claimByCheckout } = await supabaseAdmin
+          .from("zero_dollar_claims")
+          .select("*")
+          .eq("shopify_checkout_id", checkoutId)
+          .eq("status", "created")
+          .limit(1);
+        
+        if (claimByCheckout && claimByCheckout.length > 0) {
+          existingClaim = claimByCheckout[0];
+          matchMethod = "checkout_id";
+          console.log(`[orders/create] Found claim ${existingClaim.id} via checkout_id exact match`);
+        }
+      }
 
-        // Debug: Log all order attributes to see what Shopify is sending
-        console.log(`[orders/create] Order ${orderId} attributes:`, JSON.stringify(orderAttributes));
-        console.log(`[orders/create] nfw_user_id: ${nfwUserId}, nfw_checkout_time: ${nfwCheckoutTime}`);
-
-        // First try to find claim by variant_id (correct primary path)
-        let { data: existingClaims } = await supabaseAdmin
+      // =====================================================================
+      // FALLBACK: Try variant_id match (less reliable - same variant can be claimed by multiple users)
+      // =====================================================================
+      if (!existingClaim && variantId) {
+        const { data: claimByVariant } = await supabaseAdmin
           .from("zero_dollar_claims")
           .select("*")
           .eq("shopify_variant_id", variantId)
           .eq("status", "created")
           .order("claimed_at", { ascending: true })
           .limit(1);
+        
+        if (claimByVariant && claimByVariant.length > 0) {
+          existingClaim = claimByVariant[0];
+          matchMethod = "variant_id";
+          console.log(`[orders/create] Found claim ${existingClaim.id} via variant_id fallback`);
+        }
+      }
 
-        // Track which path found the claim
-        let foundViaVariantId = existingClaims && existingClaims.length > 0;
-        let foundViaUserProduct = false;
+      // =====================================================================
+      // FALLBACK: Try by user_id + product_id using customAttributes
+      // =====================================================================
+      if (!existingClaim) {
+        // Try to extract nfw_user_id from customAttributes (Checkout API preserves these)
+        const customAttributes = order.custom_attributes || [];
+        const nfwUserIdAttr = customAttributes.find(
+          (attr: { key?: string; value: string }) => attr.key === "nfw_user_id"
+        );
+        const nfwClaimIdAttr = customAttributes.find(
+          (attr: { key?: string; value: string }) => attr.key === "nfw_claim_id"
+        );
+        
+        const nfwUserId = nfwUserIdAttr?.value || null;
+        const nfwClaimId = nfwClaimIdAttr?.value || null;
 
-        // Second fallback: try by user_id + product_id (handles case where wrong variant was recorded)
-        if ((!existingClaims || existingClaims.length === 0) && nfwUserId) {
+        // Try direct claim ID match first (most reliable when available)
+        if (nfwClaimId) {
+          const { data: claimById } = await supabaseAdmin
+            .from("zero_dollar_claims")
+            .select("*")
+            .eq("id", nfwClaimId)
+            .eq("status", "created")
+            .limit(1);
+          
+          if (claimById && claimById.length > 0) {
+            existingClaim = claimById[0];
+            matchMethod = "claim_id";
+            console.log(`[orders/create] Found claim ${existingClaim.id} via claim_id from customAttributes`);
+          }
+        }
+        
+        // Try user_id + product_id match
+        if (!existingClaim && nfwUserId) {
           const productId = `gid://shopify/Product/${lineItems[0].product_id}`;
-          const { data: claimsByUser } = await supabaseAdmin
+          const { data: claimByUser } = await supabaseAdmin
             .from("zero_dollar_claims")
             .select("*")
             .eq("user_id", nfwUserId)
@@ -123,74 +168,31 @@ export async function POST(request: Request) {
             .order("claimed_at", { ascending: true })
             .limit(1);
           
-          if (claimsByUser && claimsByUser.length > 0) {
-            existingClaims = claimsByUser;
-            foundViaUserProduct = true;
+          if (claimByUser && claimByUser.length > 0) {
+            existingClaim = claimByUser[0];
+            matchMethod = "user_product";
+            console.log(`[orders/create] Found claim ${existingClaim.id} via user_id+product_id fallback`);
           }
         }
+      }
 
-        // Third fallback: try by shopify_checkout_id (checkout ID stored when claim created)
-        let foundViaCheckoutId = false;
-        if ((!existingClaims || existingClaims.length === 0) && checkoutId) {
-          // First try exact match (should rarely work since formats differ)
-          const { data: claimsByCheckout } = await supabaseAdmin
-            .from("zero_dollar_claims")
-            .select("*")
-            .eq("shopify_checkout_id", checkoutId)
-            .eq("status", "created")
-            .limit(1);
-          
-          if (claimsByCheckout && claimsByCheckout.length > 0) {
-            existingClaims = claimsByCheckout;
-            foundViaCheckoutId = true;
-            console.log(`Found claim ${existingClaims[0].id} via checkout_id exact match`);
-            
-            // Update shopify_checkout_id to the real Shopify GID format
-            await supabaseAdmin
-              .from("zero_dollar_claims")
-              .update({ shopify_checkout_id: checkoutId })
-              .eq("id", existingClaims[0].id);
-            console.log(`Updated shopify_checkout_id to ${checkoutId}`);
-          }
-        }
+      // =====================================================================
+      // Process matched claim
+      // =====================================================================
+      if (existingClaim) {
+        const claim = existingClaim;
 
-        // Fourth fallback: try by extracting numeric part from checkout ID
-        // Shopify sends: gid://shopify/Checkout/1234567890
-        // We store: checkout_1781130242614
-        if ((!existingClaims || existingClaims.length === 0) && checkoutId) {
-          const shopifyCheckoutNumeric = checkoutId.split('/').pop();
-          if (shopifyCheckoutNumeric) {
-            // Try to find claim where shopify_checkout_id ends with the numeric ID
-            const { data: claimsByNumeric } = await supabaseAdmin
-              .from("zero_dollar_claims")
-              .select("*")
-              .like("shopify_checkout_id", `%${shopifyCheckoutNumeric}`)
-              .eq("status", "created")
-              .limit(1);
-            
-            if (claimsByNumeric && claimsByNumeric.length > 0) {
-              existingClaims = claimsByNumeric;
-              foundViaCheckoutId = true;
-              console.log(`Found claim ${existingClaims[0].id} via checkout_id numeric fallback (${shopifyCheckoutNumeric})`);
-              
-              // Update shopify_checkout_id to the real Shopify GID format
-              await supabaseAdmin
-                .from("zero_dollar_claims")
-                .update({ shopify_checkout_id: checkoutId })
-                .eq("id", existingClaims[0].id);
-              console.log(`Updated shopify_checkout_id to ${checkoutId}`);
-            }
-          }
-        }
+        // Validate user if we have nfw_user_id (defense in depth)
+        // Skip validation if found via checkout_id (primary path)
+        if (matchMethod !== "checkout_id") {
+          const customAttributes = order.custom_attributes || [];
+          const nfwUserIdAttr = customAttributes.find(
+            (attr: { key?: string; value: string }) => attr.key === "nfw_user_id"
+          );
+          const nfwUserId = nfwUserIdAttr?.value || null;
 
-        if (existingClaims && existingClaims.length > 0) {
-          const claim = existingClaims[0];
-
-          // Validate nfw_user_id matches the claim's user_id (prevents direct Shopify checkout fraud)
-          // Skip validation if claim was found via variant_id (primary path), user_id+product_id fallback,
-          // or checkout_id fallback. Draft Orders don't preserve note_attributes, so nfwUserId may be null.
-          if (!foundViaCheckoutId && !foundViaVariantId && !foundViaUserProduct && (!nfwUserId || nfwUserId !== claim.user_id)) {
-            console.log(`Rejecting order ${orderId} - invalid or missing nfw_user_id attribute. Expected: ${claim.user_id}, Got: ${nfwUserId}`);
+          if (nfwUserId && nfwUserId !== claim.user_id) {
+            console.log(`[orders/create] REJECTING order ${orderId} - user mismatch. Claim user: ${claim.user_id}, Order user: ${nfwUserId}`);
 
             await supabaseAdmin
               .from("zero_dollar_claims")
@@ -199,160 +201,176 @@ export async function POST(request: Request) {
 
             return NextResponse.json({ received: true, reason: "Invalid user" });
           }
+        }
 
-          // Only set status to fulfilled if there's tracking info (meaning actually shipped)
-          // Otherwise keep as "completed" (checkout done, awaiting fulfillment)
-          const newStatus = trackingNumber ? "fulfilled" : "completed";
+        // Determine new status
+        const newStatus = trackingNumber ? "fulfilled" : "completed";
+        const completedAt = new Date().toISOString();
 
-          const { error: updateError } = await supabaseAdmin
-            .from("zero_dollar_claims")
-            .update({
-              status: newStatus,
-              shopify_order_id: orderId,
-              shopify_checkout_id: checkoutId || orderId,
-              tracking_number: trackingNumber,
-              tracking_url: trackingUrl,
-              order_status_url: order.order_status_url || null,
-              claim_month: claimMonth,
-            })
-            .eq("id", claim.id);
+        // Update claim
+        const { error: updateError } = await supabaseAdmin
+          .from("zero_dollar_claims")
+          .update({
+            status: newStatus,
+            shopify_order_id: orderId,
+            shopify_checkout_id: checkoutId || orderId,
+            tracking_number: trackingNumber,
+            tracking_url: trackingUrl,
+            order_status_url: order.order_status_url || null,
+            claim_month: claimMonth,
+            checkout_completed_at: completedAt,
+          })
+          .eq("id", claim.id);
 
-          if (updateError) {
-            console.error("Failed to update claim:", updateError);
-          } else {
-            console.log("Updated claim", claim.id, "with order", orderId, "status:", newStatus);
-          }
-
-          // Release pending checkout lock on completion
-          // Query pending_monthly_claims to get the correct claim_month (stored as YYYY-MM-01)
-          const { data: pendingClaim } = await supabaseAdmin
-            .from("pending_monthly_claims")
-            .select("claim_month")
-            .eq("user_id", claim.user_id)
-            .limit(1);
-
-          if (pendingClaim && pendingClaim.length > 0) {
-            const { error: deletePendingError } = await supabaseAdmin
-              .from("pending_monthly_claims")
-              .delete()
-              .eq("user_id", claim.user_id)
-              .eq("claim_month", pendingClaim[0].claim_month);
-
-            if (deletePendingError) {
-              console.error("Failed to delete pending claim:", deletePendingError);
-            } else {
-              console.log("Deleted pending claim for user", claim.user_id);
-            }
-          } else {
-            console.log("No pending claim found for user", claim.user_id);
-          }
+        if (updateError) {
+          console.error("[orders/create] Failed to update claim:", updateError);
         } else {
-          console.log(`[orders/create] No matching claim found. Tried: variant=${variantId}, nfwUserId=${nfwUserId}, checkoutId=${checkoutId}`);
-        }
-      } else {
-        console.log("[orders/create] No variant ID in order");
-      }
-    }
-
-    if (topic === "orders/updated") {
-      const order = event;
-      const cancelReason = order.cancel_reason;
-
-      // Only process if order was cancelled (any cancellation - including fulfilled orders)
-      if (cancelReason) {
-        // Shopify uses different field names depending on how the order was created:
-        // - Draft Orders: order.attributes (attr.name)
-        // - Cart API / standard checkout: order.note_attributes (attr.key)
-        const orderAttributes = [
-          ...(order.attributes || []),
-          ...(order.note_attributes || [])
-        ];
-
-        const nfwUserIdAttr = orderAttributes.find(
-          (attr: { key?: string; name?: string; value: string }) =>
-            attr.key === "nfw_user_id" || attr.name === "nfw_user_id"
-        );
-        let nfwUserId = nfwUserIdAttr?.value || null;
-        let claimMonth: string | null = null;
-
-        // Fallback: if nfw_user_id not in attributes, look up by shopify_order_id
-        if (!nfwUserId) {
-          const orderId = `gid://shopify/Order/${order.id}`;
-          console.log(`[orders/updated] nfw_user_id not in attributes, looking up by shopify_order_id: ${orderId}`);
-
-          const { data: claimByOrderId } = await supabaseAdmin
-            .from("zero_dollar_claims")
-            .select("user_id, claim_month")
-            .eq("shopify_order_id", orderId)
-            .limit(1);
-
-          if (claimByOrderId && claimByOrderId.length > 0) {
-            nfwUserId = claimByOrderId[0].user_id;
-            claimMonth = claimByOrderId[0].claim_month;
-            console.log(`[orders/updated] Fallback lookup found user ${nfwUserId} with claim_month ${claimMonth}`);
-          } else {
-            console.log(`[orders/updated] No claim found for order ${orderId}`);
-            
-            // Second fallback: try by checkout_id from the order
-            const orderCheckoutId = order.checkout_id ? `gid://shopify/Checkout/${order.checkout_id}` : null;
-            if (orderCheckoutId) {
-              const { data: claimByCheckoutId } = await supabaseAdmin
-                .from("zero_dollar_claims")
-                .select("user_id, claim_month")
-                .eq("shopify_checkout_id", orderCheckoutId)
-                .limit(1);
-              
-              if (claimByCheckoutId && claimByCheckoutId.length > 0) {
-                nfwUserId = claimByCheckoutId[0].user_id;
-                claimMonth = claimByCheckoutId[0].claim_month;
-                console.log(`[orders/updated] Checkout fallback found user ${nfwUserId} with claim_month ${claimMonth}`);
-              } else {
-                console.log(`[orders/updated] No claim found for checkout_id ${orderCheckoutId}`);
-              }
-            }
-          }
+          console.log(`[orders/create] Updated claim ${claim.id} to ${newStatus}`);
         }
 
-        // Also compute claimMonth from order date as fallback
-        if (!claimMonth) {
-          const orderCreatedAt = order.created_at ? new Date(order.created_at) : new Date();
-          claimMonth = new Date(
-            orderCreatedAt.getFullYear(),
-            orderCreatedAt.getMonth(),
-            1
-          ).toISOString().split("T")[0];
-        }
-
-        if (nfwUserId) {
-          // Release pending checkout lock on cancellation
+        // Release pending checkout lock
+        if (claim.user_id) {
           const { error: deletePendingError } = await supabaseAdmin
             .from("pending_monthly_claims")
             .delete()
-            .eq("user_id", nfwUserId)
+            .eq("user_id", claim.user_id)
             .eq("claim_month", claimMonth);
 
           if (deletePendingError) {
-            console.error("Failed to delete pending claim on cancellation:", deletePendingError);
+            console.error("[orders/create] Failed to delete pending claim:", deletePendingError);
+          } else {
+            console.log(`[orders/create] Deleted pending claim for user ${claim.user_id}`);
           }
+        }
 
-          // Cancel user's claim for this month
-          const monthStart = `${claimMonth}T00:00:00`;
-          const { error: updateClaimError } = await supabaseAdmin
-            .from("zero_dollar_claims")
-            .update({ status: "cancelled" })
-            .eq("user_id", nfwUserId)
-            .in("status", ["created", "completed", "fulfilled"])
-            .gte("claimed_at", monthStart);
+        return NextResponse.json({ received: true });
+      }
 
-          if (updateClaimError) {
-            console.error("Failed to cancel claim on order cancellation:", updateClaimError);
-          }
+      // No matching claim found
+      console.log(`[orders/create] No matching claim found for order ${orderId}. checkout_id=${checkoutId}, variant=${variantId}`);
+      return NextResponse.json({ received: true, reason: "No matching claim" });
+    }
 
-          console.log(
-            `Order cancelled. User ${nfwUserId} checkout reset for ${claimMonth}. Reason: ${cancelReason}`
-          );
+    // =====================================================================
+    // ORDERS/UPDATED - Order cancelled or fulfilled
+    // =====================================================================
+    if (topic === "orders/updated") {
+      const order = event;
+      const cancelReason = order.cancel_reason;
+      const orderId = `gid://shopify/Order/${order.id}`;
+
+      // Only process if order was cancelled
+      if (!cancelReason) {
+        return NextResponse.json({ received: true });
+      }
+
+      console.log(`[orders/updated] Order ${orderId} cancelled. Reason: ${cancelReason}`);
+
+      // Get checkout_id to find the claim
+      const checkoutId = order.checkout_id 
+        ? `gid://shopify/Checkout/${order.checkout_id}` 
+        : null;
+
+      // Try to find claim by checkout_id first
+      let nfwUserId = null;
+      let claimMonth: string | null = null;
+
+      if (checkoutId) {
+        const { data: claimByCheckout } = await supabaseAdmin
+          .from("zero_dollar_claims")
+          .select("user_id, claim_month")
+          .eq("shopify_checkout_id", checkoutId)
+          .limit(1);
+
+        if (claimByCheckout && claimByCheckout.length > 0) {
+          nfwUserId = claimByCheckout[0].user_id;
+          claimMonth = claimByCheckout[0].claim_month;
+          console.log(`[orders/updated] Found claim via checkout_id: user=${nfwUserId}`);
         }
       }
+
+      // Fallback: try by order_id
+      if (!nfwUserId) {
+        const { data: claimByOrder } = await supabaseAdmin
+          .from("zero_dollar_claims")
+          .select("user_id, claim_month")
+          .eq("shopify_order_id", orderId)
+          .limit(1);
+
+        if (claimByOrder && claimByOrder.length > 0) {
+          nfwUserId = claimByOrder[0].user_id;
+          claimMonth = claimByOrder[0].claim_month;
+          console.log(`[orders/updated] Found claim via order_id: user=${nfwUserId}`);
+        }
+      }
+
+      // Fallback: try by variant_id + most recent pending claim for user
+      if (!nfwUserId && order.line_items?.[0]?.variant_id) {
+        const variantId = `gid://shopify/ProductVariant/${order.line_items[0].variant_id}`;
+        const productId = `gid://shopify/Product/${order.line_items[0].product_id}`;
+        
+        // Get nfw_user_id from custom attributes if available
+        const customAttributes = order.custom_attributes || [];
+        const nfwUserIdAttr = customAttributes.find(
+          (attr: { key?: string; value: string }) => attr.key === "nfw_user_id"
+        );
+        
+        if (nfwUserIdAttr) {
+          nfwUserId = nfwUserIdAttr.value;
+          
+          const { data: claimByUser } = await supabaseAdmin
+            .from("zero_dollar_claims")
+            .select("user_id, claim_month")
+            .eq("user_id", nfwUserId)
+            .eq("shopify_product_id", productId)
+            .in("status", ["created", "pending"])
+            .order("claimed_at", { ascending: false })
+            .limit(1);
+
+          if (claimByUser && claimByUser.length > 0) {
+            claimMonth = claimByUser[0].claim_month;
+            console.log(`[orders/updated] Found claim via user_id fallback: user=${nfwUserId}`);
+          }
+        }
+      }
+
+      // Compute claimMonth from order date as fallback
+      if (!claimMonth) {
+        const orderCreatedAt = order.created_at ? new Date(order.created_at) : new Date();
+        claimMonth = `${orderCreatedAt.getFullYear()}-${String(orderCreatedAt.getMonth() + 1).padStart(2, "0")}-01`;
+      }
+
+      if (nfwUserId) {
+        // Release pending checkout lock
+        const { error: deletePendingError } = await supabaseAdmin
+          .from("pending_monthly_claims")
+          .delete()
+          .eq("user_id", nfwUserId)
+          .eq("claim_month", claimMonth);
+
+        if (deletePendingError) {
+          console.error("[orders/updated] Failed to delete pending claim:", deletePendingError);
+        }
+
+        // Cancel the user's claim
+        const monthStart = `${claimMonth}T00:00:00`;
+        const { error: updateClaimError } = await supabaseAdmin
+          .from("zero_dollar_claims")
+          .update({ status: "cancelled" })
+          .eq("user_id", nfwUserId)
+          .in("status", ["created", "pending"])
+          .gte("claimed_at", monthStart);
+
+        if (updateClaimError) {
+          console.error("[orders/updated] Failed to cancel claim:", updateClaimError);
+        }
+
+        console.log(`[orders/updated] Cancelled claim for user ${nfwUserId}, month ${claimMonth}`);
+      } else {
+        console.log(`[orders/updated] Could not find claim to cancel for order ${orderId}`);
+      }
+
+      return NextResponse.json({ received: true });
     }
 
     return NextResponse.json({ received: true });

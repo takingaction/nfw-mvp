@@ -8,6 +8,30 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const SHOPIFY_STOREFRONT_API_URL = `https://${process.env.SHOPIFY_SHOP_DOMAIN}/api/2026-01/graphql.json`;
+
+async function shopifyGraphQL(query: string, variables: Record<string, any>) {
+  const response = await fetch(SHOPIFY_STOREFRONT_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Storefront-Access-Token": process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN!,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Shopify API error: ${response.status} ${response.statusText}`);
+  }
+
+  const json = await response.json();
+  if (json.errors) {
+    throw new Error(`Shopify GraphQL error: ${JSON.stringify(json.errors)}`);
+  }
+
+  return json.data;
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Rate limiting
@@ -76,7 +100,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse variant ID to numeric form for Shopify API
+    // Parse variant ID - ensure it's in GID format
     const variantIdMatch = variantId.match(/gid:\/\/shopify\/ProductVariant\/(\d+)/);
     if (!variantIdMatch) {
       return NextResponse.json(
@@ -84,10 +108,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const numericVariantId = parseInt(variantIdMatch[1], 10);
 
     // Check lifetime claim limit (1 per product per user)
-    // Only block if there's a COMPLETED claim - allow re-claim if previous attempt was abandoned (status="created")
+    // Only block if there's a COMPLETED claim - allow re-claim if previous attempt was abandoned
     const { data: existingClaim } = await supabaseAdmin
       .from("zero_dollar_claims")
       .select("id, status")
@@ -104,12 +127,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Check monthly limit (1 per month, any product)
-    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    const now = new Date();
+    const claimMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    
     const { data: monthlyClaim } = await supabaseAdmin
       .from("zero_dollar_claims")
       .select("id")
       .eq("user_id", userId)
-      .eq("claim_month", monthStart)
+      .eq("claim_month", claimMonth)
       .in("status", ["completed", "fulfilled", "paid"])
       .limit(1);
 
@@ -120,10 +145,108 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Acquire pending checkout lock to prevent concurrent checkouts
-    // claim_month stored as YYYY-MM-01 (first of month) for consistency with webhook
-    const now = new Date();
-    const claimMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    // Step 1: Insert zero_dollar_claims with status='pending' (no checkout_id yet)
+    const { data: claimData, error: claimInsertError } = await supabaseAdmin
+      .from("zero_dollar_claims")
+      .insert({
+        user_id: userId,
+        shopify_product_id: productId,
+        shopify_variant_id: variantId,
+        shopify_checkout_id: null, // Will be updated after Shopify creates checkout
+        status: "pending",
+        shipping_address: { placeholder: true },
+        claimed_at: now.toISOString(),
+        claim_month: claimMonth,
+      })
+      .select("id")
+      .single();
+
+    if (claimInsertError) {
+      console.error("Error inserting claim:", claimInsertError);
+      return NextResponse.json(
+        { error: "Failed to create claim" },
+        { status: 500 }
+      );
+    }
+
+    const claimId = claimData.id;
+
+    console.log(`[checkout] Created pending claim ${claimId} for user ${userId}`);
+
+    // Step 2: Create Shopify Checkout via Storefront GraphQL API
+    let checkoutId: string;
+    let checkoutUrl: string;
+
+    try {
+      const checkoutCreateMutation = `
+        mutation checkoutCreate($input: CheckoutCreateInput!) {
+          checkoutCreate(input: $input) {
+            checkout {
+              id
+              webUrl
+            }
+            checkoutUserErrors {
+              code
+              field
+              message
+            }
+          }
+        }
+      `;
+
+      const input = {
+        lineItems: [{
+          variantId: variantId,
+          quantity: 1
+        }],
+        customAttributes: [
+          { key: "nfw_user_id", value: userId },
+          { key: "nfw_claim_id", value: claimId }
+        ]
+      };
+
+      const result = await shopifyGraphQL(checkoutCreateMutation, { input });
+
+      if (result.checkoutCreate.checkoutUserErrors?.length > 0) {
+        const error = result.checkoutCreate.checkoutUserErrors[0];
+        throw new Error(`Checkout error: ${error.message}`);
+      }
+
+      const checkout = result.checkoutCreate.checkout;
+      checkoutId = checkout.id;
+      checkoutUrl = checkout.webUrl;
+
+      console.log(`[checkout] Created Shopify checkout ${checkoutId} for claim ${claimId}`);
+
+    } catch (shopifyError) {
+      // Clean up the pending claim on Shopify error
+      await supabaseAdmin
+        .from("zero_dollar_claims")
+        .delete()
+        .eq("id", claimId);
+
+      console.error("[checkout] Shopify error:", shopifyError);
+      return NextResponse.json(
+        { error: shopifyError instanceof Error ? shopifyError.message : "Failed to create Shopify checkout" },
+        { status: 500 }
+      );
+    }
+
+    // Step 3: Update claim with checkout_id and status='created'
+    const { error: claimUpdateError } = await supabaseAdmin
+      .from("zero_dollar_claims")
+      .update({
+        shopify_checkout_id: checkoutId,
+        status: "created"
+      })
+      .eq("id", claimId);
+
+    if (claimUpdateError) {
+      console.error("[checkout] Error updating claim with checkout_id:", claimUpdateError);
+      // Non-fatal - checkout was created, we can still look up by checkout_id in webhook
+    }
+
+    // Step 4: Insert pending_monthly_claims with checkout_id for monthly limit lock
     const { error: pendingError } = await supabaseAdmin
       .from("pending_monthly_claims")
       .insert({
@@ -131,151 +254,22 @@ export async function POST(request: NextRequest) {
         claim_month: claimMonth,
         shopify_product_id: productId,
         shopify_variant_id: variantId,
+        shopify_checkout_id: checkoutId,
       });
 
     if (pendingError) {
-      console.error("Failed to insert pending claim:", pendingError);
-      return NextResponse.json(
-        { error: "You have a checkout already in progress. Please complete or cancel it first." },
-        { status: 400 }
-      );
+      console.error("[checkout] Error inserting pending claim:", pendingError);
+      // Non-fatal - we have the claim in zero_dollar_claims
     }
 
-    console.log("Inserted pending claim for user", userId);
-
-    // Create Shopify draft order via REST Admin API
-    const checkoutTime = Date.now();
-    
-    let checkoutUrl: string;
-    let shopifyCheckoutId: string;
-    
-    try {
-      // Get admin token from Supabase
-      const { data: tokenData } = await supabaseAdmin
-        .from("shopify_tokens")
-        .select("access_token")
-        .eq("shop", process.env.SHOPIFY_SHOP_DOMAIN)
-        .single();
-
-      if (!tokenData?.access_token) {
-        console.error("No Shopify admin token found");
-        return NextResponse.json(
-          { error: "Shopify not configured. Please reconnect." },
-          { status: 500 }
-        );
-      }
-
-      const adminToken = tokenData.access_token;
-
-      // Create draft order via REST Admin API
-      const response = await fetch(
-        `https://${process.env.SHOPIFY_SHOP_DOMAIN}/admin/api/2026-01/draft_orders.json`,
-        {
-          method: "POST",
-          headers: {
-            "X-Shopify-Access-Token": adminToken,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            draft_order: {
-              line_items: [
-                {
-                  variant_id: numericVariantId,
-                  quantity: 1
-                }
-              ],
-              note_attributes: [
-                { name: "nfw_user_id", value: userId },
-                { name: "nfw_checkout_time", value: String(checkoutTime) }
-              ]
-            }
-          })
-        }
-      );
-
-      if (!response.ok) {
-        const err = await response.text();
-        console.error("Shopify draft order error:", err);
-        return NextResponse.json(
-          { error: "Failed to create Shopify checkout" },
-          { status: 500 }
-        );
-      }
-
-      const result = await response.json();
-      
-      if (!result.draft_order) {
-        console.error("No draft_order in response:", result);
-        return NextResponse.json(
-          { error: "Invalid response from Shopify" },
-          { status: 500 }
-        );
-      }
-
-      checkoutUrl = result.draft_order.invoice_url;
-      shopifyCheckoutId = `draft_${result.draft_order.id}`;
-      
-      console.log(`Created Shopify draft order: ${result.draft_order.id} for user ${userId}`);
-    } catch (error) {
-      // Release pending checkout lock on error
-      const { error: deletePendingError } = await supabaseAdmin
-        .from("pending_monthly_claims")
-        .delete()
-        .eq("user_id", userId)
-        .eq("claim_month", claimMonth);
-
-      if (deletePendingError) {
-        console.error("Failed to delete pending claim on error:", deletePendingError);
-      } else {
-        console.log("Deleted pending claim for user", userId, "on checkout error");
-      }
-
-      console.error("Failed to create Shopify checkout:", error);
-      return NextResponse.json(
-        { error: "Failed to create Shopify checkout" },
-        { status: 500 }
-      );
-    }
-
-    // Create claim record
-    const { error: claimError } = await supabaseAdmin
-      .from("zero_dollar_claims")
-      .insert({
-        user_id: userId,
-        shopify_product_id: productId,
-        shopify_variant_id: variantId,
-        shopify_checkout_id: shopifyCheckoutId,
-        status: "created",
-        shipping_address: { placeholder: true },
-        claimed_at: new Date().toISOString(),
-      });
-
-    if (claimError) {
-      // Release pending checkout lock on claim insert failure
-      const { error: deletePendingError } = await supabaseAdmin
-        .from("pending_monthly_claims")
-        .delete()
-        .eq("user_id", userId)
-        .eq("claim_month", claimMonth);
-
-      if (deletePendingError) {
-        console.error("Failed to delete pending claim on claim error:", deletePendingError);
-      } else {
-        console.log("Deleted pending claim for user", userId, "on claim insert error");
-      }
-
-      console.error("Error creating claim:", claimError);
-      return NextResponse.json(
-        { error: `Failed to save claim: ${claimError.message}` },
-        { status: 500 }
-      );
-    }
+    console.log(`[checkout] Completed for claim ${claimId}, checkout ${checkoutId}`);
 
     return NextResponse.json({
       checkoutUrl,
-      checkoutId: shopifyCheckoutId,
+      checkoutId,
       remainingThisMonth: 0,
     });
+
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Error creating checkout:", message);
