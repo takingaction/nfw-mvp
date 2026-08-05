@@ -178,15 +178,14 @@ export async function POST(request: NextRequest) {
     let checkoutUrl: string;
 
     try {
-      const checkoutCreateMutation = `
-        mutation checkoutCreate($input: CheckoutCreateInput!) {
-          checkoutCreate(input: $input) {
-            checkout {
+      const cartCreateMutation = `
+        mutation CreateCart($input: CartInput!) {
+          cartCreate(input: $input) {
+            cart {
               id
-              webUrl
+              checkoutUrl
             }
-            checkoutUserErrors {
-              code
+            userErrors {
               field
               message
             }
@@ -195,8 +194,8 @@ export async function POST(request: NextRequest) {
       `;
 
       const input = {
-        lineItems: [{
-          variantId: variantId,
+        lines: [{
+          merchandiseId: variantId,
           quantity: 1
         }],
         customAttributes: [
@@ -205,25 +204,18 @@ export async function POST(request: NextRequest) {
         ]
       };
 
-      // DEBUG: Log env vars and URL
-      console.log('[checkout] DEBUG - SHOPIFY_STOREFRONT_API_URL:', SHOPIFY_STOREFRONT_API_URL);
-      console.log('[checkout] DEBUG - token exists:', !!process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN);
-      console.log('[checkout] DEBUG - token length:', process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN?.length);
-      console.log('[checkout] DEBUG - token full:', process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN);
-      console.log('[checkout] DEBUG - token prefix:', process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN?.substring(0, 10));
+      const result = await shopifyGraphQL(cartCreateMutation, { input });
 
-      const result = await shopifyGraphQL(checkoutCreateMutation, { input });
-
-      if (result.checkoutCreate.checkoutUserErrors?.length > 0) {
-        const error = result.checkoutCreate.checkoutUserErrors[0];
-        throw new Error(`Checkout error: ${error.message}`);
+      if (result.cartCreate.userErrors?.length > 0) {
+        const error = result.cartCreate.userErrors[0];
+        throw new Error(`Cart error: ${error.message}`);
       }
 
-      const checkout = result.checkoutCreate.checkout;
-      checkoutId = checkout.id;
-      checkoutUrl = checkout.webUrl;
+      const cart = result.cartCreate.cart;
+      checkoutId = cart.id;
+      checkoutUrl = cart.checkoutUrl;
 
-      console.log(`[checkout] Created Shopify checkout ${checkoutId} for claim ${claimId}`);
+      console.log(`[checkout] Created Shopify cart ${checkoutId} for claim ${claimId}`);
 
     } catch (shopifyError) {
       // Clean up the pending claim on Shopify error
@@ -269,7 +261,7 @@ export async function POST(request: NextRequest) {
       // Non-fatal - we have the claim in zero_dollar_claims
     }
 
-    console.log(`[checkout] Completed for claim ${claimId}, checkout ${checkoutId}`);
+    console.log(`[checkout] Completed for claim ${claimId}, cart ${checkoutId}`);
 
     return NextResponse.json({
       checkoutUrl,
