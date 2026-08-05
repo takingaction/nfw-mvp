@@ -63,7 +63,12 @@ export async function POST(request: Request) {
       
       const lineItems = order.line_items || [];
       
-      console.log(`[orders/create] Order ID: ${orderId}, checkout_id: ${checkoutId}`);
+      // Get draft_order_id if present (from Draft Orders API)
+      const draftOrderId = order.draft_order_id 
+        ? `draft_${order.draft_order_id}` 
+        : null;
+      
+      console.log(`[orders/create] Order ID: ${orderId}, draft_order_id: ${draftOrderId}, checkout_id: ${checkoutId}`);
 
       if (lineItems.length === 0) {
         console.log(`[orders/create] No line items, skipping`);
@@ -84,13 +89,32 @@ export async function POST(request: Request) {
       const claimMonth = `${orderCreatedAt.getFullYear()}-${String(orderCreatedAt.getMonth() + 1).padStart(2, "0")}-01`;
 
       // =====================================================================
-      // PRIMARY MATCH: shopify_checkout_id exact match
-      // With Checkout API, this should match exactly
+      // PRIMARY MATCH: draft_order_id exact match (most reliable)
+      // With Draft Orders API, draft_order_id persists to the order
       // =====================================================================
       let existingClaim = null;
       let matchMethod = "none";
 
-      if (checkoutId) {
+      if (draftOrderId) {
+        const { data: claimByDraftOrder } = await supabaseAdmin
+          .from("zero_dollar_claims")
+          .select("*")
+          .eq("shopify_checkout_id", draftOrderId)
+          .eq("status", "created")
+          .limit(1);
+        
+        if (claimByDraftOrder && claimByDraftOrder.length > 0) {
+          existingClaim = claimByDraftOrder[0];
+          matchMethod = "draft_order_id";
+          console.log(`[orders/create] Found claim ${existingClaim.id} via draft_order_id exact match`);
+        }
+      }
+
+      // =====================================================================
+      // FALLBACK: shopify_checkout_id exact match (for Cart API orders)
+      // Cart API creates checkout_id that survives to the order
+      // =====================================================================
+      if (!existingClaim && checkoutId) {
         const { data: claimByCheckout } = await supabaseAdmin
           .from("zero_dollar_claims")
           .select("*")

@@ -2,34 +2,57 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
+import { getShopifyAccessToken } from "@/lib/shopify";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const SHOPIFY_STOREFRONT_API_URL = `https://${process.env.SHOPIFY_SHOP_DOMAIN}/api/2026-04/graphql.json`;
+async function createDraftOrderShopify(variantId: string, quantity: number, claimId: string) {
+  const accessToken = await getShopifyAccessToken();
+  if (!accessToken) {
+    throw new Error("No Shopify access token available");
+  }
 
-async function shopifyGraphQL(query: string, variables: Record<string, any>) {
-  const response = await fetch(SHOPIFY_STOREFRONT_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Shopify-Storefront-Access-Token": process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN!,
-    },
-    body: JSON.stringify({ query, variables }),
-  });
+  const storeDomain = process.env.SHOPIFY_SHOP_DOMAIN;
+  
+  // Extract numeric variant ID from GID format
+  const variantIdMatch = variantId.match(/gid:\/\/shopify\/ProductVariant\/(\d+)/);
+  if (!variantIdMatch) {
+    throw new Error("Invalid variant ID format");
+  }
+  const numericVariantId = variantIdMatch[1];
+
+  const response = await fetch(
+    `https://${storeDomain}/admin/api/2026-01/draft_orders.json`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": accessToken,
+      },
+      body: JSON.stringify({
+        draft_order: {
+          line_items: [
+            {
+              variant_id: parseInt(numericVariantId, 10),
+              quantity: quantity,
+            }
+          ],
+          note: `claim_id:${claimId}`,
+        }
+      })
+    }
+  );
 
   if (!response.ok) {
-    throw new Error(`Shopify API error: ${response.status} ${response.statusText}`);
+    const text = await response.text();
+    throw new Error(`Shopify Draft Order error: ${response.status} ${text}`);
   }
 
-  const json = await response.json();
-  if (json.errors) {
-    throw new Error(`Shopify GraphQL error: ${JSON.stringify(json.errors)}`);
-  }
-
-  return json.data;
+  const data = await response.json();
+  return data.draft_order;
 }
 
 export async function POST(request: NextRequest) {
@@ -152,7 +175,7 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         shopify_product_id: productId,
         shopify_variant_id: variantId,
-        shopify_checkout_id: null, // Will be updated after Shopify creates checkout
+        shopify_checkout_id: null, // Will be updated after Draft Order is created
         status: "pending",
         shipping_address: { placeholder: true },
         claimed_at: now.toISOString(),
@@ -173,45 +196,19 @@ export async function POST(request: NextRequest) {
 
     console.log(`[checkout] Created pending claim ${claimId} for user ${userId}`);
 
-    // Step 2: Create Shopify Checkout via Storefront GraphQL API
-    let checkoutId: string;
+    // Step 2: Create Shopify Draft Order via Admin API
+    let draftOrderId: string;
     let checkoutUrl: string;
 
     try {
-      const cartCreateMutation = `
-        mutation CreateCart($input: CartInput!) {
-          cartCreate(input: $input) {
-            cart {
-              id
-              checkoutUrl
-            }
-            userErrors {
-              field
-              message
-            }
-          }
-        }
-      `;
+      const draftOrder = await createDraftOrderShopify(variantId, 1, claimId);
+      
+      // draftOrder.id is the Shopify draft order ID (numeric string)
+      // We prefix with "draft_" to distinguish from cart IDs
+      draftOrderId = `draft_${draftOrder.id}`;
+      checkoutUrl = draftOrder.invoice_url;
 
-      const input = {
-        lines: [{
-          merchandiseId: variantId,
-          quantity: 1
-        }]
-      };
-
-      const result = await shopifyGraphQL(cartCreateMutation, { input });
-
-      if (result.cartCreate.userErrors?.length > 0) {
-        const error = result.cartCreate.userErrors[0];
-        throw new Error(`Cart error: ${error.message}`);
-      }
-
-      const cart = result.cartCreate.cart;
-      checkoutId = cart.id;
-      checkoutUrl = cart.checkoutUrl;
-
-      console.log(`[checkout] Created Shopify cart ${checkoutId} for claim ${claimId}`);
+      console.log(`[checkout] Created Shopify draft order ${draftOrderId} for claim ${claimId}`);
 
     } catch (shopifyError) {
       // Clean up the pending claim on Shopify error
@@ -227,21 +224,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Step 3: Update claim with checkout_id and status='created'
+    // Step 3: Update claim with draft_order_id and status='created'
     const { error: claimUpdateError } = await supabaseAdmin
       .from("zero_dollar_claims")
       .update({
-        shopify_checkout_id: checkoutId,
+        shopify_checkout_id: draftOrderId,
         status: "created"
       })
       .eq("id", claimId);
 
     if (claimUpdateError) {
-      console.error("[checkout] Error updating claim with checkout_id:", claimUpdateError);
-      // Non-fatal - checkout was created, we can still look up by checkout_id in webhook
+      console.error("[checkout] Error updating claim with draft_order_id:", claimUpdateError);
+      // Non-fatal - draft order was created, we can still look up by draft_order_id in webhook
     }
 
-    // Step 4: Insert pending_monthly_claims with checkout_id for monthly limit lock
+    // Step 4: Insert pending_monthly_claims with draft_order_id for monthly limit lock
     const { error: pendingError } = await supabaseAdmin
       .from("pending_monthly_claims")
       .insert({
@@ -249,7 +246,7 @@ export async function POST(request: NextRequest) {
         claim_month: claimMonth,
         shopify_product_id: productId,
         shopify_variant_id: variantId,
-        shopify_checkout_id: checkoutId,
+        shopify_checkout_id: draftOrderId,
       });
 
     if (pendingError) {
@@ -257,11 +254,11 @@ export async function POST(request: NextRequest) {
       // Non-fatal - we have the claim in zero_dollar_claims
     }
 
-    console.log(`[checkout] Completed for claim ${claimId}, cart ${checkoutId}`);
+    console.log(`[checkout] Completed for claim ${claimId}, draft order ${draftOrderId}`);
 
     return NextResponse.json({
       checkoutUrl,
-      checkoutId,
+      checkoutId: draftOrderId,
       remainingThisMonth: 0,
     });
 
