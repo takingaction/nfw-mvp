@@ -10474,3 +10474,62 @@ if (!claim.claim_month) {
 |--------|-------------|
 | `14c2570` | fix: skip cancelled claims in orders/create, preserve claim_month |
 
+---
+
+## Session 2026-08-06: Dashboard Order History Fix
+
+### Problem
+
+Dashboard "Your Order History" was showing all claims including abandoned checkouts with `status = 'created'`. Users saw "Order Placed" for checkouts they never completed.
+
+### Root Cause
+
+The query in `app/dashboard/page.tsx` fetched all claims without filtering by status:
+```javascript
+// Before:
+supabaseAdmin
+  .from("zero_dollar_claims")
+  .select("*, ...")
+  .eq("user_id", user.id)
+  .order("claimed_at", { ascending: false })
+  .limit(10),
+```
+
+### Fix
+
+Added `.in("status", ["completed", "fulfilled", "paid"])` to only show completed orders.
+
+```javascript
+// After:
+supabaseAdmin
+  .from("zero_dollar_claims")
+  .select("*, ...")
+  .eq("user_id", user.id)
+  .in("status", ["completed", "fulfilled", "paid"])
+  .order("claimed_at", { ascending: false })
+  .limit(10),
+```
+
+### ZDC Monthly Limit Behavior
+
+| Status | Blocks New Checkout? | Auto-Cleanup |
+|--------|-------------------|--------------|
+| `pending` | ❌ No | N/A |
+| `created` | ❌ No | ❌ No (stays forever) |
+| `completed/fulfilled/paid` | ✅ Yes | N/A |
+| `pending_monthly_claims` | ❌ No | ✅ Cron (30 min) |
+
+Users can have multiple abandoned checkouts (`created` status) without being blocked. The pending_monthly_claims UNIQUE constraint prevents duplicate pending entries but fails silently, allowing checkout to continue.
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `app/dashboard/page.tsx` | Added status filter to only show completed/fulfilled/paid claims |
+
+### Commit
+
+| Commit | Description |
+|--------|-------------|
+| `d8c27f4` | fix: dashboard only show completed/fulfilled/paid claims |
+
