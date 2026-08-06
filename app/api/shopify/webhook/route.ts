@@ -360,6 +360,9 @@ export async function POST(request: Request) {
       let nfwUserId = null;
       let claimMonth: string | null = null;
 
+      // Store the claim's shopify_checkout_id for deleting from pending_monthly_claims
+      let claimCheckoutId: string | null = null;
+
       // =====================================================================
       // PRIMARY: claim_id from note (most reliable for Draft Orders)
       // Note format: claim_id:xxx|user_id:xxx|checkout_time:xxx
@@ -367,27 +370,30 @@ export async function POST(request: Request) {
       if (claimIdFromNote) {
         const { data: claimById } = await supabaseAdmin
           .from("zero_dollar_claims")
-          .select("user_id, claim_month")
+          .select("user_id, claim_month, shopify_checkout_id")
           .eq("id", claimIdFromNote)
           .limit(1);
 
         if (claimById && claimById.length > 0) {
           nfwUserId = claimById[0].user_id;
           claimMonth = claimById[0].claim_month;
-          console.log(`[orders/updated] Found claim via claim_id from note: user=${nfwUserId}`);
+          claimCheckoutId = claimById[0].shopify_checkout_id;
+          console.log(`[orders/updated] Found claim via claim_id from note: user=${nfwUserId}, checkout=${claimCheckoutId}`);
         }
       }
 
-      if (checkoutId) {
+      // Try checkout_id if we haven't found the claim yet
+      if (!nfwUserId && checkoutId) {
         const { data: claimByCheckout } = await supabaseAdmin
           .from("zero_dollar_claims")
-          .select("user_id, claim_month")
+          .select("user_id, claim_month, shopify_checkout_id")
           .eq("shopify_checkout_id", checkoutId)
           .limit(1);
 
         if (claimByCheckout && claimByCheckout.length > 0) {
           nfwUserId = claimByCheckout[0].user_id;
           claimMonth = claimByCheckout[0].claim_month;
+          claimCheckoutId = claimByCheckout[0].shopify_checkout_id;
           console.log(`[orders/updated] Found claim via checkout_id: user=${nfwUserId}`);
         }
       }
@@ -396,13 +402,14 @@ export async function POST(request: Request) {
       if (!nfwUserId) {
         const { data: claimByOrder } = await supabaseAdmin
           .from("zero_dollar_claims")
-          .select("user_id, claim_month")
+          .select("user_id, claim_month, shopify_checkout_id")
           .eq("shopify_order_id", orderId)
           .limit(1);
 
         if (claimByOrder && claimByOrder.length > 0) {
           nfwUserId = claimByOrder[0].user_id;
           claimMonth = claimByOrder[0].claim_month;
+          claimCheckoutId = claimByOrder[0].shopify_checkout_id;
           console.log(`[orders/updated] Found claim via order_id: user=${nfwUserId}`);
         }
       }
@@ -423,7 +430,7 @@ export async function POST(request: Request) {
           
           const { data: claimByUser } = await supabaseAdmin
             .from("zero_dollar_claims")
-            .select("user_id, claim_month")
+            .select("user_id, claim_month, shopify_checkout_id")
             .eq("user_id", nfwUserId)
             .eq("shopify_product_id", productId)
             .in("status", ["created", "pending"])
@@ -432,6 +439,7 @@ export async function POST(request: Request) {
 
           if (claimByUser && claimByUser.length > 0) {
             claimMonth = claimByUser[0].claim_month;
+            claimCheckoutId = claimByUser[0].shopify_checkout_id;
             console.log(`[orders/updated] Found claim via user_id fallback: user=${nfwUserId}`);
           }
         }
@@ -444,14 +452,20 @@ export async function POST(request: Request) {
       }
 
       if (nfwUserId) {
-        // Release pending checkout lock using shopify_checkout_id (the draft_xxx or checkout_xxx we stored)
-        const { error: deletePendingError } = await supabaseAdmin
-          .from("pending_monthly_claims")
-          .delete()
-          .eq("shopify_checkout_id", checkoutId);
+        // Release pending checkout lock using the claim's shopify_checkout_id (the draft_xxx or checkout_xxx we stored)
+        // NOT the webhook's checkoutId (gid://shopify/Checkout/xxx)
+        const pendingCheckoutId = claimCheckoutId || checkoutId;
+        if (pendingCheckoutId) {
+          const { error: deletePendingError } = await supabaseAdmin
+            .from("pending_monthly_claims")
+            .delete()
+            .eq("shopify_checkout_id", pendingCheckoutId);
 
-        if (deletePendingError) {
-          console.error("[orders/updated] Failed to delete pending claim:", deletePendingError);
+          if (deletePendingError) {
+            console.error("[orders/updated] Failed to delete pending claim:", deletePendingError);
+          } else {
+            console.log(`[orders/updated] Deleted pending claim for user ${nfwUserId}, checkout_id ${pendingCheckoutId}`);
+          }
         }
 
         // Cancel the user's claim - match by user_id and claim_month regardless of status
