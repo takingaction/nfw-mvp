@@ -10574,3 +10574,59 @@ Add User ID display below email in `/admin/members` table with copy icon, and en
 
 - (pending) - feat: add User ID display and search to admin members page
 
+## Session 2026-08-06: ZDC Webhook Security Fix - Remove Dangerous variant_id Fallback
+
+### Goal
+
+Fix critical ZDC webhook bug causing ~7-10% data corruption (19/250 claims) where `variant_id` fallback matches wrong user's claim.
+
+### Problem
+
+The `orders/create` and `orders/updated` webhook handlers used `variant_id` as a fallback match mechanism. This was dangerous because:
+- Multiple users can claim the same product (same variant)
+- The fallback had no user validation
+- Wrong user's claim could be overwritten
+
+### Root Cause
+
+The `variant_id` fallback in `orders/create` would match ANY user's claim with the same variant, without verifying the user ID. Example:
+- User A claims variant 6925386252332 → gets claim assigned
+- User B claims same variant later
+- When User B's order completed, `variant_id` fallback matched User A's claim and overwrote it
+
+### Fix Applied
+
+**`app/api/shopify/webhook/route.ts`:**
+
+#### `orders/create` handler:
+1. **Removed `variant_id` fallback** - Too dangerous, matches wrong user
+2. **Removed `status = 'created'` filters** - Caused false negatives when claims already completed
+3. **Removed `user_id + product_id` fallback** - Same issue as variant_id
+4. **Added user validation** - If `nfw_user_id` from custom_attributes doesn't match `existingClaim.user_id`, reject the order as `rejected_invalid_user`
+5. **Preserved `claim_month`** - Only set from order date if not already set (prevents July claims being overwritten with August date)
+
+#### `orders/updated` handler:
+1. **Removed `variant_id` fallback** - Too dangerous
+2. **Kept only specific matchers**: claim_id from note, checkout_id, order_id
+3. **Same user validation approach** - If nfw_user_id present, validate before cancelling
+
+### Match Priority (After Fix)
+
+| Priority | Match Method | User Validation |
+|----------|-------------|----------------|
+| 1 | `claim_id` from note | Required if nfw_user_id present |
+| 2 | `checkout_id` exact match | Required if nfw_user_id present |
+| 3 | `draft_order_id` match | Required if nfw_user_id present |
+
+### Key Security Principle
+
+- **`variant_id` alone is NEVER sufficient** to identify a claim - it can match any user who claimed that variant
+- User validation via `nfw_user_id` from custom_attributes is REQUIRED when present
+- If we can't securely identify the claim via specific IDs, we don't touch it
+
+### Commit
+
+| Commit | Description |
+|--------|-------------|
+| `xxxxxx` | fix: remove variant_id fallback, add user validation in ZDC webhook |
+
