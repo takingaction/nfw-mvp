@@ -157,6 +157,12 @@ export async function POST(request: Request) {
         }
       }
 
+      // Skip if claim is already cancelled
+      if (existingClaim?.status === "cancelled") {
+        console.log(`[orders/create] Claim ${existingClaim.id} is cancelled, skipping`);
+        return NextResponse.json({ received: true });
+      }
+
       if (!existingClaim && checkoutId) {
         const { data: claimByCheckout } = await supabaseAdmin
           .from("zero_dollar_claims")
@@ -274,19 +280,25 @@ export async function POST(request: Request) {
         const newStatus = trackingNumber ? "fulfilled" : "completed";
         const completedAt = new Date().toISOString();
 
-        // Update claim
+        // Update claim - preserve existing claim_month if already set (don't overwrite with order date)
+        const updateData: Record<string, unknown> = {
+          status: newStatus,
+          shopify_order_id: orderId,
+          shopify_checkout_id: checkoutId || orderId,
+          tracking_number: trackingNumber,
+          tracking_url: trackingUrl,
+          order_status_url: order.order_status_url || null,
+          checkout_completed_at: completedAt,
+        };
+        
+        // Only set claim_month if not already set (preserves original checkout month)
+        if (!claim.claim_month) {
+          updateData.claim_month = claimMonth;
+        }
+        
         const { error: updateError } = await supabaseAdmin
           .from("zero_dollar_claims")
-          .update({
-            status: newStatus,
-            shopify_order_id: orderId,
-            shopify_checkout_id: checkoutId || orderId,
-            tracking_number: trackingNumber,
-            tracking_url: trackingUrl,
-            order_status_url: order.order_status_url || null,
-            claim_month: claimMonth,
-            checkout_completed_at: completedAt,
-          })
+          .update(updateData)
           .eq("id", claim.id);
 
         if (updateError) {
