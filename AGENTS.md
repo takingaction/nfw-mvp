@@ -10533,3 +10533,44 @@ Users can have multiple abandoned checkouts (`created` status) without being blo
 |--------|-------------|
 | `d8c27f4` | fix: dashboard only show completed/fulfilled/paid claims |
 
+## Session 2026-08-06: Admin Members User ID Display and Search
+
+### Goal
+
+Add User ID display below email in `/admin/members` table with copy icon, and enable searching members by User ID.
+
+### Constraints & Preferences
+
+- User ID must appear below email in the Member cell (not as a separate column)
+- Copy icon style must match the email copy icon pattern
+- Search bar placeholder should indicate "name, email, or ID" searching
+
+### Changes Made
+
+**`components/admin/AdminMembersClient.tsx`:**
+
+1. **Added `copyId` function** - Similar to `copyEmail` but copies `m.id` to clipboard with 2-second checkmark confirmation
+
+2. **Added User ID row below email in Member cell:**
+   - Smaller text (`text-xs`), muted color (`text-nfw-blackberry/30`)
+   - Monospace font for readability (`font-mono`)
+   - Copy icon button matching email copy pattern
+   - Truncates with `truncate` and `max-w-[180px]` to prevent overflow
+
+3. **Updated search filter** - Included `m.id` in the search logic:
+   ```typescript
+   const matchesSearch =
+     !search ||
+     (m.full_name?.toLowerCase() || "").includes(search.toLowerCase()) ||
+     (m.email?.toLowerCase() || "").includes(search.toLowerCase()) ||
+     (m.state?.toLowerCase() || "").includes(search.toLowerCase()) ||
+     (m.city?.toLowerCase() || "").includes(search.toLowerCase()) ||
+     m.id.toLowerCase().includes(search.toLowerCase());
+   ```
+
+4. **Updated search placeholder** - Changed to `"Search by name, email, or ID..."`
+
+### Commit
+
+- (pending) - feat: add User ID display and search to admin members page
+

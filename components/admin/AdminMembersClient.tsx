@@ -76,6 +76,7 @@ export default function AdminMembersClient({
   const [selfDemoteWarning, setSelfDemoteWarning] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Partial<Member>>({});
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [page, setPage] = useState(currentPage || 1);
 
   // Fetch ALL members for search via pagination
@@ -145,6 +146,16 @@ export default function AdminMembersClient({
     }
   };
 
+  const copyId = async (id: string) => {
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy ID:", err);
+    }
+  };
+
   // Client-side search across ALL members, then apply filter
   const filtered = allMembers.filter((m) => {
     const matchesSearch =
@@ -152,7 +163,8 @@ export default function AdminMembersClient({
       (m.full_name?.toLowerCase() || "").includes(search.toLowerCase()) ||
       (m.email?.toLowerCase() || "").includes(search.toLowerCase()) ||
       (m.state?.toLowerCase() || "").includes(search.toLowerCase()) ||
-      (m.city?.toLowerCase() || "").includes(search.toLowerCase());
+      (m.city?.toLowerCase() || "").includes(search.toLowerCase()) ||
+      m.id.toLowerCase().includes(search.toLowerCase());
 
     const matchesFilter =
       filter === "all" ||
@@ -491,7 +503,7 @@ export default function AdminMembersClient({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-nfw-blackberry/30" />
             <input
               type="text"
-              placeholder="Search by name or email..."
+              placeholder="Search by name, email, or ID..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -654,6 +666,22 @@ export default function AdminMembersClient({
                           ) : (
                             <p className="text-xs text-nfw-blackberry/40">No email</p>
                           )}
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-nfw-blackberry/30 font-mono truncate max-w-[180px]">
+                              {member.id}
+                            </span>
+                            <button
+                              onClick={() => copyId(member.id)}
+                              className="p-1 hover:bg-nfw-blackberry/5 rounded flex-shrink-0"
+                              title="Copy ID"
+                            >
+                              {copiedId === member.id ? (
+                                <Check className="w-3 h-3 text-green-600" />
+                              ) : (
+                                <Copy className="w-3 h-3 text-nfw-blackberry/40" />
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </td>
