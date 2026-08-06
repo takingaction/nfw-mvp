@@ -166,26 +166,30 @@ export async function POST(request: Request) {
                   profileId = authUser.id;
 
                   // Update profile using the auth user's ID
-                  // For this edge case, we don't know previous level, so leave as null
-                  const { error: updateError } = await supabaseAdmin
-                    .from("profiles")
-                    .update({
-                      membership_level: membershipLevel,
-                      previous_membership_level: 'free', // Edge case: assume free if unknown
-                      subscription_status: "active",
-                      subscription_ends_at: null,
-                      updated_at: new Date().toISOString(),
-                      // Track first paid upgrade (only if not already set)
-                      first_paid_at: new Date().toISOString(),
-                      first_paid_level: membershipLevel,
-                    })
-                    .eq("id", authUser.id);
+                  // Only update subscription if payment was actually successful
+                  if (session.payment_status === 'paid') {
+                    const { error: updateError } = await supabaseAdmin
+                      .from("profiles")
+                      .update({
+                        membership_level: membershipLevel,
+                        previous_membership_level: 'free', // Edge case: assume free if unknown
+                        subscription_status: "active",
+                        subscription_ends_at: null,
+                        updated_at: new Date().toISOString(),
+                        // Track first paid upgrade (only if not already set)
+                        first_paid_at: new Date().toISOString(),
+                        first_paid_level: membershipLevel,
+                      })
+                      .eq("id", authUser.id);
 
-                  if (updateError) {
-                    console.error("[webhook] Failed to update membership via email lookup:", updateError);
+                    if (updateError) {
+                      console.error("[webhook] Failed to update membership via email lookup:", updateError);
+                    } else {
+                      console.log("[webhook] Profile updated successfully via email lookup to:", membershipLevel);
+                      profileUpdated = true;
+                    }
                   } else {
-                    console.log("[webhook] Profile updated successfully via email lookup to:", membershipLevel);
-                    profileUpdated = true;
+                    console.log("[webhook] Payment not completed (payment_status:", session.payment_status, "), skipping profile update via email lookup");
                   }
                 } else {
                   console.error("[webhook] Auth user not found by email:", customerEmail);
@@ -197,25 +201,30 @@ export async function POST(request: Request) {
               console.log("[webhook] Current membership_level:", existingProfile.membership_level);
               profileName = existingProfile.full_name || "";
 
-              const { error } = await supabaseAdmin
-                .from("profiles")
-                .update({
-                  membership_level: membershipLevel,
-                  previous_membership_level: existingProfile.membership_level,
-                  subscription_status: "active",
-                  subscription_ends_at: null,
-                  updated_at: new Date().toISOString(),
-                  // Track first paid upgrade (only if not already set)
-                  first_paid_at: existingProfile.first_paid_at || new Date().toISOString(),
-                  first_paid_level: existingProfile.first_paid_level || membershipLevel,
-                })
-                .eq("id", userId);
+              // Only set subscription to active if payment was actually successful
+              if (session.payment_status === 'paid') {
+                const { error } = await supabaseAdmin
+                  .from("profiles")
+                  .update({
+                    membership_level: membershipLevel,
+                    previous_membership_level: existingProfile.membership_level,
+                    subscription_status: "active",
+                    subscription_ends_at: null,
+                    updated_at: new Date().toISOString(),
+                    // Track first paid upgrade (only if not already set)
+                    first_paid_at: existingProfile.first_paid_at || new Date().toISOString(),
+                    first_paid_level: existingProfile.first_paid_level || membershipLevel,
+                  })
+                  .eq("id", userId);
 
-              if (error) {
-                console.error("[webhook] Failed to update membership:", error);
+                if (error) {
+                  console.error("[webhook] Failed to update membership:", error);
+                } else {
+                  console.log("[webhook] Profile updated successfully to:", membershipLevel);
+                  profileUpdated = true;
+                }
               } else {
-                console.log("[webhook] Profile updated successfully to:", membershipLevel);
-                profileUpdated = true;
+                console.log("[webhook] Payment not completed (payment_status:", session.payment_status, "), skipping profile update");
               }
             }
 
