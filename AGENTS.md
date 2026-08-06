@@ -10423,3 +10423,54 @@ All Draft Orders use pipe-delimited note for tracking:
 claim_id:62c56f88-4af5-42a0-ae3a-81647d5dc3c9|user_id:12a5c412-26f2-419d-aa2b-99a08e9bc202|checkout_time:1722841010638
 ```
 
+---
+
+## Session 2026-08-06: ZDC orders/create Cancelled Claim Bug Fix
+
+### Problem
+
+A user's July 23rd claim was marked as `completed` on Aug 5 at 22:50, even though:
+1. The user had cancelled the order earlier that day (08:44 and 08:42)
+2. The `orders/updated` webhook for cancellation was fired
+
+### Root Cause
+
+Two bugs combined:
+
+**Bug 1:** `orders/create` webhook didn't check if claim was already cancelled before upgrading to `completed`. When a stale/delayed `orders/create` webhook arrived, it found the claim (which was still `status = 'created'` because the cancellation query didn't match it due to wrong `claim_month`), and overwrote it to `completed`.
+
+**Bug 2:** `orders/create` was overwriting `claim_month` with the order's creation date. So even though the claim was created in July, it got `claim_month = '2026-08-01'` because the webhook processed in August.
+
+### Fixes Applied
+
+**1. Skip cancelled claims in `orders/create`:**
+
+```typescript
+// Skip if claim is already cancelled
+if (existingClaim?.status === "cancelled") {
+  console.log(`[orders/create] Claim ${existingClaim.id} is cancelled, skipping`);
+  return NextResponse.json({ received: true });
+}
+```
+
+**2. Preserve `claim_month` if already set:**
+
+```typescript
+// Only set claim_month if not already set (preserves original checkout month)
+if (!claim.claim_month) {
+  updateData.claim_month = claimMonth;
+}
+```
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `app/api/shopify/webhook/route.ts` | Added cancelled check, preserve claim_month |
+
+### Commit
+
+| Commit | Description |
+|--------|-------------|
+| `14c2570` | fix: skip cancelled claims in orders/create, preserve claim_month |
+
