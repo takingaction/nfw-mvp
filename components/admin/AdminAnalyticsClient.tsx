@@ -94,6 +94,17 @@ const COLORS = [
   "#9580b4",
 ];
 
+const PIE_COLORS: Record<string, string> = {
+  Admin: "#3E145F",
+  Founding: "#5a3d7a",
+  Contributing: "#9580b4",
+  Waitlist: "#9CA3AF",
+  Abandoned: "#6B7280",
+  "Profile Incomplete": "#D1D5DB",
+  Free: "#B693C0",
+  Other: "#E5E7EB",
+};
+
 type NewsletterEmail = {
   id: string;
   created_at: string | null;
@@ -1500,8 +1511,8 @@ export default function AdminAnalyticsClient({
                       cy="50%"
                       outerRadius={80}
                     >
-                      {membersByLevel.map((_, i) => (
-                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      {membersByLevel.map((entry) => (
+                        <Cell key={entry.name} fill={PIE_COLORS[entry.name] || "#E5E7EB"} />
                       ))}
                     </Pie>
                     <Tooltip />
