@@ -1082,8 +1082,8 @@ export default function AdminAnalyticsClient({
             label: "Waitlist",
             value: waitlistCount,
             icon: Users,
-            color: "bg-nfw-wisteria",
-            text: "text-white",
+            color: "bg-nfw-stone/40",
+            text: "text-nfw-blackberry",
           },
           {
             label: "Abandoned",
