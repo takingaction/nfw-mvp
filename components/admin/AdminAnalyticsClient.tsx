@@ -25,6 +25,7 @@ import {
   TrendingUp,
   Calendar,
 } from "lucide-react";
+import { getCategory } from "@/lib/member-categories";
 
 type DateRangeOption = {
   label: string;
@@ -291,23 +292,7 @@ export default function AdminAnalyticsClient({
   const membersByLevel = useMemo(() => {
     const map: Record<string, number> = {};
     filteredProfiles.forEach((p) => {
-      let level: string;
-      // Admin check first - matches adminCount
-      if (p.is_admin) {
-        level = "Admin";
-      } else if (p.profile_completed !== true || (p.membership_level === "free" && p.is_approved_free_member !== true && p.free_membership_contact_submitted === false)) {
-        level = "Incomplete";
-      } else if (p.membership_level === "free" && p.is_approved_free_member === true) {
-        level = "Free";
-      } else if (p.membership_level === "contributing") {
-        level = "Contributing";
-      } else if (p.membership_level === "founding") {
-        level = "Founding";
-      } else if (p.membership_level === "waitlist") {
-        level = "Waitlist";
-      } else {
-        level = "Other";
-      }
+      const level = getCategory(p as Record<string, unknown>);
       map[level] = (map[level] || 0) + 1;
     });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
@@ -489,6 +474,25 @@ export default function AdminAnalyticsClient({
         (p.membership_level === "free" &&
          p.is_approved_free_member !== true &&
          p.free_membership_contact_submitted === false)
+    ).length;
+  }, [filteredProfiles]);
+
+  // Abandoned = free member who completed profile but abandoned at step 3
+  const abandonedCount = useMemo(() => {
+    return filteredProfiles.filter(
+      (p) =>
+        p.membership_level === "free" &&
+        p.profile_completed === true &&
+        p.is_approved_free_member !== true &&
+        p.free_membership_contact_submitted === false
+    ).length;
+  }, [filteredProfiles]);
+
+  // Profile Incomplete = free member who never finished profile
+  const profileIncompleteCount = useMemo(() => {
+    return filteredProfiles.filter(
+      (p) =>
+        p.profile_completed !== true
     ).length;
   }, [filteredProfiles]);
 
@@ -1082,8 +1086,15 @@ export default function AdminAnalyticsClient({
             text: "text-white",
           },
           {
-            label: "Incomplete",
-            value: incompleteCount,
+            label: "Abandoned",
+            value: abandonedCount,
+            icon: Users,
+            color: "bg-nfw-stone/40",
+            text: "text-nfw-blackberry",
+          },
+          {
+            label: "Profile Incomplete",
+            value: profileIncompleteCount,
             icon: Users,
             color: "bg-nfw-stone/40",
             text: "text-nfw-blackberry",

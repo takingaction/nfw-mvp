@@ -17,6 +17,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { FreeMembershipApprovalModal } from "@/components/admin/FreeMembershipApprovalModal";
 import { DeleteMemberModal } from "@/components/admin/DeleteMemberModal";
+import { getCategory } from "@/lib/member-categories";
 
 const ALLOWED_DELETE_EMAILS = [
   "ron@myherodesign.com",
@@ -40,6 +41,7 @@ type Member = {
   profile_completed: boolean | null;
   is_approved_free_member: boolean | null;
   free_membership_contact_submitted: boolean | null;
+  previous_membership_level: string | null;
 };
 
 export default function AdminMembersClient({
@@ -93,7 +95,7 @@ export default function AdminMembersClient({
         const { data, error } = await supabase
           .from("profiles")
           .select(
-            "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted",
+            "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted, previous_membership_level",
           )
           .order("joined_at", { ascending: false })
           .range(from, from + pageSize - 1);
@@ -420,56 +422,58 @@ export default function AdminMembersClient({
     );
   };
 
-  const membershipBadge = (level: string | null, member: Member) => {
-    if (level === "founding")
-      return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#fdf493] text-nfw-blackberry">
-          Founding
-        </span>
-      );
-    if (level === "contributing")
-      return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#fdf493] text-nfw-blackberry">
-          Contributing
-        </span>
-      );
-    if (level === "free") {
-      // Incomplete free members - differentiate between Abandoned and Profile Incomplete
-      if (!member.free_membership_contact_submitted && member.is_approved_free_member !== true) {
-        if (member.profile_completed) {
-          // Abandoned - completed profile but abandoned at step 3
-          return (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-wisteria text-white">
-              Abandoned
-            </span>
-          );
-        } else {
-          // Profile Incomplete - never finished profile
-          return (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/40 text-nfw-blackberry">
-              Profile Incomplete
-            </span>
-          );
-        }
-      }
-      // Free - approved member
-      return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/20 text-nfw-blackberry/60">
-          Free
-        </span>
-      );
+  const membershipBadge = (member: Member) => {
+    const category = getCategory(member as Record<string, unknown>);
+    switch (category) {
+      case "Admin":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-aubergine text-white">
+            Admin
+          </span>
+        );
+      case "Founding":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#fdf493] text-nfw-blackberry">
+            Founding
+          </span>
+        );
+      case "Contributing":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#fdf493] text-nfw-blackberry">
+            Contributing
+          </span>
+        );
+      case "Abandoned":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-wisteria text-white">
+            Abandoned
+          </span>
+        );
+      case "Profile Incomplete":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/40 text-nfw-blackberry">
+            Profile Incomplete
+          </span>
+        );
+      case "Free":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/20 text-nfw-blackberry/60">
+            Free
+          </span>
+        );
+      case "Waitlist":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-aubergine text-white">
+            Waitlist
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/20 text-nfw-blackberry/60">
+            {category}
+          </span>
+        );
     }
-    if (level === "waitlist")
-      return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-aubergine text-white">
-          Waitlist
-        </span>
-      );
-    return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/20 text-nfw-blackberry/60">
-        Free
-      </span>
-    );
   };
 
   const formatDate = (date: string | null) => {
@@ -694,7 +698,7 @@ export default function AdminMembersClient({
                       {statusBadge(member.subscription_status, member.membership_level, member.is_approved_free_member, member.profile_completed)}
                     </td>
                     <td className="px-4 py-3">
-                      {membershipBadge(member.membership_level, member)}
+                      {membershipBadge(member)}
                     </td>
                     <td className="px-4 py-3 text-nfw-blackberry/60 text-xs">
                       {member.household_income || "—"}

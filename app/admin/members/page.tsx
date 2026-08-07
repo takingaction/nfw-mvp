@@ -1,10 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createAdminClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
 import { requireAdmin } from "@/middleware/adminCheck";
 import { Suspense } from "react";
 import AdminMembersClient from "@/components/admin/AdminMembersClient";
@@ -51,14 +45,20 @@ async function AdminMembersContent({ page }: { page: number }) {
     .select("*", { count: "exact", head: true })
     .eq("membership_level", "waitlist");
 
-  // Incomplete = profile not complete OR (free but never submitted contact form for free membership)
-  const { count: incompleteAll } = await supabase
+  // Abandoned = free member who completed profile but abandoned at step 3
+  const { count: abandoned } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
-    .or(
-      "profile_completed.is.null,profile_completed.eq.false," +
-      "and(membership_level.eq.free,is_approved_free_member.eq.false,free_membership_contact_submitted.eq.false)"
-    );
+    .eq("membership_level", "free")
+    .eq("profile_completed", true)
+    .eq("is_approved_free_member", false)
+    .eq("free_membership_contact_submitted", false);
+
+  // Profile Incomplete = free member who never finished profile
+  const { count: profileIncomplete } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .neq("profile_completed", true);
 
   // Active Profiles = Free (approved) + Contributing + Founding (excludes admins, waitlist, incomplete)
   // Query separately and sum to avoid complex OR logic issues
@@ -91,7 +91,7 @@ async function AdminMembersContent({ page }: { page: number }) {
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select(
-      "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted",
+      "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted, previous_membership_level",
     )
     .order("joined_at", { ascending: false })
     .range(offset, offset + pageSize - 1);
@@ -169,7 +169,7 @@ async function AdminMembersContent({ page }: { page: number }) {
           ))}
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
             {
               label: "Free",
@@ -184,8 +184,14 @@ async function AdminMembersContent({ page }: { page: number }) {
               text: "text-nfw-blackberry",
             },
             {
-              label: "Incomplete",
-              value: `${incompleteAll} (${percent(incompleteAll)}%)`,
+              label: "Abandoned",
+              value: `${abandoned} (${percent(abandoned)}%)`,
+              color: "bg-nfw-wisteria",
+              text: "text-white",
+            },
+            {
+              label: "Profile Incomplete",
+              value: `${profileIncomplete} (${percent(profileIncomplete)}%)`,
               color: "bg-nfw-stone/40",
               text: "text-nfw-blackberry",
             },

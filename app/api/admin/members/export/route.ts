@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/adminCheck";
+import { getCategory, getSubStatus } from "@/lib/member-categories";
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -127,55 +128,6 @@ function formatJson(value: unknown): string {
     return escapeCsvField(JSON.stringify(value));
   }
   return String(value);
-}
-
-function getCategory(profile: Record<string, unknown>): string {
-  const level = profile.membership_level as string | null;
-  const isApproved = profile.is_approved_free_member as boolean | null;
-  const profileCompleted = profile.profile_completed as boolean | null;
-  const contactSubmitted = profile.free_membership_contact_submitted as boolean | null;
-  const isAdmin = profile.is_admin as boolean | null;
-
-  if (isAdmin) return "Admin";
-  if (level === "founding") return "Founding";
-  if (level === "contributing") return "Contributing";
-  if (level === "waitlist") return "Waitlist";
-  if (level === "free") {
-    // Incomplete free members - differentiate between Abandoned and Profile Incomplete
-    if (!contactSubmitted && isApproved !== true) {
-      if (profileCompleted) {
-        // Abandoned - completed profile but abandoned at step 3
-        return "Abandoned";
-      } else {
-        // Profile Incomplete - never finished profile
-        return "Profile Incomplete";
-      }
-    }
-    // Free - approved member
-    return "Free";
-  }
-  return "Unknown";
-}
-
-function getSubStatus(profile: Record<string, unknown>): string {
-  const level = profile.membership_level as string | null;
-  const isApproved = profile.is_approved_free_member as boolean | null;
-  const profileCompleted = profile.profile_completed as boolean | null;
-  const contactSubmitted = profile.free_membership_contact_submitted as boolean | null;
-  const subStatus = profile.subscription_status as string | null;
-
-  if (subStatus === "active") return "Active";
-  if (subStatus === "canceling") return "Canceling";
-  if (level === "free" && isApproved === true && profileCompleted === true && !["active", "canceling"].includes(subStatus || "")) {
-    return "Free";
-  }
-  if (level === "free" && (!isApproved || !contactSubmitted)) {
-    return "Pending";
-  }
-  if (level === "waitlist" || (level === "free" && profileCompleted !== true)) {
-    return "None";
-  }
-  return "None";
 }
 
 function formatCell(col: string, value: unknown): string {

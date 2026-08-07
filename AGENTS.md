@@ -10630,3 +10630,63 @@ The `variant_id` fallback in `orders/create` would match ANY user's claim with t
 |--------|-------------|
 | `xxxxxx` | fix: remove variant_id fallback, add user validation in ZDC webhook |
 
+
+---
+
+## Session 2026-08-07: Shared Membership Category Utility
+
+### Overview
+
+Created shared utility module for membership category calculations to ensure 100% consistency between CSV export, analytics page, and admin members page.
+
+### Problem
+
+The `/admin/analytics` stats and CSV export were calculating membership categories differently:
+- CSV used `getCategory()` with: Admin, Founding, Contributing, Waitlist, **Abandoned**, **Profile Incomplete**, Free, Unknown
+- Analytics pie chart used inline logic with: Admin, Founding, Contributing, Waitlist, **Incomplete** (combined), Free, Other
+
+This caused the numbers to not match when comparing analytics stats to CSV breakdowns.
+
+### Solution
+
+Created `lib/member-categories.ts` as single source of truth for category calculations.
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `lib/member-categories.ts` | Shared utility with `getCategory()` and `getSubStatus()` functions |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/members/export/route.ts` | Removed local `getCategory()`/`getSubStatus()`, imports from shared utility |
+| `components/admin/AdminAnalyticsClient.tsx` | `membersByLevel` now uses `getCategory()`; Added separate `abandonedCount` and `profileIncompleteCount` stat cards |
+| `app/admin/members/page.tsx` | Added `previous_membership_level` to query; Split "Incomplete" into "Abandoned" and "Profile Incomplete" stat cards |
+| `components/admin/AdminMembersClient.tsx` | `membershipBadge()` now uses `getCategory()`; Added `previous_membership_level` to Member type and select query |
+
+### Category Logic (Shared)
+
+| Category | Condition |
+|----------|-----------|
+| Admin | `is_admin === true` |
+| Founding | `membership_level === "founding"` |
+| Contributing | `membership_level === "contributing"` |
+| Waitlist | `membership_level === "waitlist"` |
+| Abandoned | `free` + `profile_completed=true` + `!contactSubmitted` + `!isApproved` |
+| Profile Incomplete | `free` + `profile_completed=false` |
+| Free | `free` + approved |
+| Unknown | fallback |
+
+### Alignment Achieved
+
+- CSV `getCategory()` breakdown = Analytics `membersByLevel` pie chart exactly
+- `/admin/members` stat cards (Abandoned + Profile Incomplete) = Analytics `abandonedCount` + `profileIncompleteCount`
+- All three places use the same `getCategory()` function from shared utility
+
+### Commit
+
+| Commit | Description |
+|--------|-------------|
+| `xxxxxx` | feat: shared membership category utility for aligned stats across admin pages |
