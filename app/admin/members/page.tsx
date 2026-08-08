@@ -186,8 +186,8 @@ async function AdminMembersContent({ page }: { page: number }) {
             {
               label: "Abandoned",
               value: `${abandoned} (${percent(abandoned)}%)`,
-              color: "bg-nfw-wisteria",
-              text: "text-white",
+              color: "bg-nfw-stone/40",
+              text: "text-nfw-blackberry",
             },
             {
               label: "Profile Incomplete",
