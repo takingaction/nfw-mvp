@@ -38,11 +38,41 @@ const DB_COLUMNS = [
   "waitlist_email_sent_at",
   "joined_at",
   "updated_at",
+  "gift_code_redeemed",
 ];
 
 const CSV_COLUMNS = [
-  ...DB_COLUMNS,
+  "id",
+  "email",
+  "full_name",
   "category",
+  "membership_level",
+  "subscription_status",
+  "subscription_ends_at",
+  "profile_completed",
+  "is_admin",
+  "is_approved_free_member",
+  "free_membership_contact_submitted",
+  "stripe_onboarding_completed",
+  "date_of_birth",
+  "state",
+  "city",
+  "zip",
+  "phone_number",
+  "household_income",
+  "avatar_url",
+  "address_line1",
+  "address_line2",
+  "identities",
+  "social_handles",
+  "stripe_connect_account_id",
+  "access_perks_member_id",
+  "access_perks_synced_at",
+  "waitlist_joined_at",
+  "waitlist_email_sent_at",
+  "joined_at",
+  "updated_at",
+  "gift_code_redeemed",
   "sub_status",
 ];
 
@@ -50,7 +80,8 @@ const COLUMN_LABELS: Record<string, string> = {
   id: "ID",
   email: "Email",
   full_name: "Full Name",
-  membership_level: "Membership Level",
+  category: "Category",
+  membership_level: "Stripe Level",
   subscription_status: "Subscription Status",
   subscription_ends_at: "Subscription Ends At",
   profile_completed: "Profile Completed",
@@ -76,7 +107,7 @@ const COLUMN_LABELS: Record<string, string> = {
   waitlist_email_sent_at: "Welcome Email Sent",
   joined_at: "Joined At",
   updated_at: "Updated At",
-  category: "Category",
+  gift_code_redeemed: "Gift Card",
   sub_status: "Sub Status",
 };
 
@@ -137,6 +168,7 @@ function formatCell(col: string, value: unknown): string {
     case "is_approved_free_member":
     case "free_membership_contact_submitted":
     case "stripe_onboarding_completed":
+    case "gift_code_redeemed":
       return formatBoolean(value as boolean | null);
     case "date_of_birth":
       return formatDate(value as string | null);

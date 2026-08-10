@@ -73,6 +73,8 @@ export async function POST(request: Request) {
         // Track first paid upgrade (only if not already set)
         first_paid_at: profile?.first_paid_at || new Date().toISOString(),
         first_paid_level: profile?.first_paid_level || "contributing",
+        // Mark as gift card redemption
+        gift_code_redeemed: true,
       })
       .eq("id", user.id);
 
