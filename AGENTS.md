@@ -10762,3 +10762,9 @@ NOTIFY pgrst, 'reload';
 | `app/admin/members/page.tsx` | Made Abandoned card grey |
 | `app/api/gift-codes/redeem/route.ts` | Set `gift_code_redeemed: true` on gift code redemption |
 | `supabase/migrations/136_add_gift_code_redeemed_to_profiles.sql` | Created migration |
+
+### Commit
+
+| Commit | Description |
+|--------|-------------|
+| `ee02fed` | feat: remove Stripe Level and Sub Status columns from CSV, reorder Gift Card |
