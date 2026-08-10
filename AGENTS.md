@@ -10685,8 +10685,80 @@ Created `lib/member-categories.ts` as single source of truth for category calcul
 - `/admin/members` stat cards (Abandoned + Profile Incomplete) = Analytics `abandonedCount` + `profileIncompleteCount`
 - All three places use the same `getCategory()` function from shared utility
 
-### Commit
+### Commits
 
 | Commit | Description |
 |--------|-------------|
-| `xxxxxx` | feat: shared membership category utility for aligned stats across admin pages |
+| `545cc4a` | feat: shared membership category utility for aligned stats across admin pages |
+| `0f68556` | fix: make waitlist card grey on analytics page |
+| `78aea3a` | fix: use grey shades for Abandoned, Waitlist, Profile Incomplete in members pie chart |
+| `cc90d6b` | fix: add previous_membership_level and first_paid_level to analytics profiles select |
+| `9b4a810` | fix: make Abandoned card grey on admin members page |
+| `5ec186a` | feat: add gift card column to CSV export, move category column, create gift_code_redeemed migration |
+
+---
+
+## Session 2026-08-07: Grey Card Colors + CSV Export Enhancements
+
+### Grey Card Colors
+
+Made Abandoned, Waitlist, and Profile Incomplete cards grey on analytics and admin/members pages to visually distinguish non-paying members:
+
+| Category | Color |
+|----------|-------|
+| Waitlist | `bg-nfw-stone/40` |
+| Abandoned | `bg-nfw-stone/40` |
+| Profile Incomplete | `bg-nfw-stone/40` |
+
+### Analytics Upgrade Stats Fix
+
+Fixed analytics to properly count membership upgrades. The `previous_membership_level` and `first_paid_level` fields were missing from the profiles select query, causing all 5 upgrade counts to show 0.
+
+**Added to profiles select in `app/admin/analytics/page.tsx`:**
+- `previous_membership_level`
+- `first_paid_level`
+
+### CSV Export Enhancements
+
+| Change | Description |
+|--------|-------------|
+| "Gift Card" column | Yes/No - indicates if member used a gift code to sign up as contributing or founding |
+| Category column move | Moved to right of Full Name |
+| Rename | "Membership Level" → "Stripe Level" |
+
+### Database Migration 136
+
+```sql
+-- Migration: 136_add_gift_code_redeemed_to_profiles.sql
+-- Adds gift_code_redeemed boolean to profiles table and backfills from gift_membership_codes
+
+-- 1. Add gift_code_redeemed column to profiles
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS gift_code_redeemed BOOLEAN DEFAULT FALSE;
+
+-- 2. Create index for efficient lookups
+CREATE INDEX IF NOT EXISTS idx_profiles_gift_code_redeemed ON profiles(gift_code_redeemed) WHERE gift_code_redeemed = TRUE;
+
+-- 3. Backfill: Set gift_code_redeemed = TRUE for profiles where id exists in gift_membership_codes with redeemed_at
+UPDATE profiles
+SET gift_code_redeemed = TRUE
+WHERE id IN (
+  SELECT DISTINCT redeemed_by_user_id
+  FROM gift_membership_codes
+  WHERE redeemed_by_user_id IS NOT NULL
+    AND redeemed_at IS NOT NULL
+);
+
+-- 4. Notify PostgREST to reload schema cache
+NOTIFY pgrst, 'reload';
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/analytics/page.tsx` | Added `previous_membership_level` and `first_paid_level` to profiles select |
+| `app/api/admin/members/export/route.ts` | Added gift_card column, moved category, renamed membership_level to stripe_level |
+| `components/admin/AdminAnalyticsClient.tsx` | Made Waitlist, Abandoned, Profile Incomplete cards grey |
+| `app/admin/members/page.tsx` | Made Abandoned card grey |
+| `app/api/gift-codes/redeem/route.ts` | Set `gift_code_redeemed: true` on gift code redemption |
+| `supabase/migrations/136_add_gift_code_redeemed_to_profiles.sql` | Created migration |
