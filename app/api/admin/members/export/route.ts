@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/adminCheck";
-import { getCategory, getSubStatus } from "@/lib/member-categories";
+import { getCategory } from "@/lib/member-categories";
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -46,9 +46,9 @@ const CSV_COLUMNS = [
   "email",
   "full_name",
   "category",
-  "membership_level",
   "subscription_status",
   "subscription_ends_at",
+  "gift_code_redeemed",
   "profile_completed",
   "is_admin",
   "is_approved_free_member",
@@ -72,8 +72,6 @@ const CSV_COLUMNS = [
   "waitlist_email_sent_at",
   "joined_at",
   "updated_at",
-  "gift_code_redeemed",
-  "sub_status",
 ];
 
 const COLUMN_LABELS: Record<string, string> = {
@@ -81,9 +79,9 @@ const COLUMN_LABELS: Record<string, string> = {
   email: "Email",
   full_name: "Full Name",
   category: "Category",
-  membership_level: "Stripe Level",
   subscription_status: "Subscription Status",
   subscription_ends_at: "Subscription Ends At",
+  gift_code_redeemed: "Gift Card",
   profile_completed: "Profile Completed",
   is_admin: "Is Admin",
   is_approved_free_member: "Is Approved Free Member",
@@ -107,8 +105,6 @@ const COLUMN_LABELS: Record<string, string> = {
   waitlist_email_sent_at: "Welcome Email Sent",
   joined_at: "Joined At",
   updated_at: "Updated At",
-  gift_code_redeemed: "Gift Card",
-  sub_status: "Sub Status",
 };
 
 function escapeCsvField(value: unknown): string {
@@ -234,8 +230,7 @@ export async function GET(request: NextRequest) {
 
   const rows = profiles.map((profile: Record<string, unknown>) => {
     const category = getCategory(profile);
-    const subStatus = getSubStatus(profile);
-    const enrichedProfile = { ...profile, category, sub_status: subStatus } as Record<string, unknown>;
+    const enrichedProfile = { ...profile, category } as Record<string, unknown>;
     return validColumns.map((col) => formatCell(col, enrichedProfile[col]));
   });
 
