@@ -78,7 +78,7 @@ const COLUMN_LABELS: Record<string, string> = {
   id: "ID",
   email: "Email",
   full_name: "Full Name",
-  category: "Category",
+  category: "Membership Category",
   subscription_status: "Subscription Status",
   subscription_ends_at: "Subscription Ends At",
   gift_code_redeemed: "Gift Card",

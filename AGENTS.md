@@ -10768,3 +10768,4 @@ NOTIFY pgrst, 'reload';
 | Commit | Description |
 |--------|-------------|
 | `ee02fed` | feat: remove Stripe Level and Sub Status columns from CSV, reorder Gift Card |
+| `xxxxxx` | feat: rename Category to Membership Category in CSV |
