@@ -184,11 +184,49 @@ function formatCell(col: string, value: unknown): string {
   }
 }
 
+// Parse M/D/YYYY date string to UTC timestamp
+function parseCustomDate(dateStr: string, isStart: boolean): string {
+  const parts = dateStr.split("/");
+  const year = Number(parts[2]);
+  const month = Number(parts[0]) - 1;
+  const day = Number(parts[1]);
+
+  let date: Date;
+  if (isStart) {
+    // Start of day in local time -> UTC
+    date = new Date(year, month, day, 0, 0, 0, 0);
+    const tzOffset = date.getTimezoneOffset();
+    date = new Date(date.getTime() + tzOffset * 60 * 1000);
+  } else {
+    // End of day in local time -> UTC
+    date = new Date(year, month, day, 23, 59, 59, 999);
+    const tzOffset = date.getTimezoneOffset();
+    date = new Date(date.getTime() + tzOffset * 60 * 1000);
+  }
+
+  return date.toISOString();
+}
+
 export async function GET(request: NextRequest) {
   try {
     await requireAdmin();
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Parse date range params for filtering
+  const { searchParams } = new URL(request.url);
+  const startDateParam = searchParams.get("start_date");
+  const endDateParam = searchParams.get("end_date");
+
+  let startISO: string | null = null;
+  let endISO: string | null = null;
+
+  if (startDateParam) {
+    startISO = parseCustomDate(startDateParam, true);
+  }
+  if (endDateParam) {
+    endISO = parseCustomDate(endDateParam, false);
   }
 
   const selectColumns = DB_COLUMNS.join(",");
@@ -200,11 +238,21 @@ export async function GET(request: NextRequest) {
 
   while (hasMore) {
     const from = page * pageSize;
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from("profiles")
       .select(selectColumns)
       .order("joined_at", { ascending: false })
       .range(from, from + pageSize - 1);
+
+    // Apply date filtering if provided
+    if (startISO) {
+      query = query.gte("joined_at", startISO);
+    }
+    if (endISO) {
+      query = query.lte("joined_at", endISO);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Failed to fetch profiles:", error);
@@ -239,8 +287,13 @@ export async function GET(request: NextRequest) {
     ...rows.map((r: string[]) => r.join(","))
   ].join("\n");
 
-  const today = new Date().toISOString().split("T")[0];
-  const filename = `nfw-members-${today}.csv`;
+  let filename: string;
+  if (startDateParam && endDateParam) {
+    filename = `nfw-members-${startDateParam}-to-${endDateParam}.csv`;
+  } else {
+    const today = new Date().toISOString().split("T")[0];
+    filename = `nfw-members-${today}.csv`;
+  }
 
   return new NextResponse(csv, {
     headers: {

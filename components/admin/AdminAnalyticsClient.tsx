@@ -248,10 +248,10 @@ export default function AdminAnalyticsClient({
         0,
         0
       );
-      // Adjust for timezone: getTimezoneOffset returns negative for UTC+x (ahead of UTC)
-      // We need to subtract it to get UTC equivalent of local midnight
+      // Adjust for timezone: getTimezoneOffset returns positive for UTC-x (behind UTC)
+      // We need to add it to get UTC equivalent of local midnight
       const tzOffset = start.getTimezoneOffset();
-      return new Date(start.getTime() - tzOffset * 60 * 1000);
+      return new Date(start.getTime() + tzOffset * 60 * 1000);
     }
 
     if (dateRange === -1) {
@@ -288,10 +288,10 @@ export default function AdminAnalyticsClient({
       59,
       999
     );
-    // Adjust for timezone: getTimezoneOffset returns negative for UTC+x (ahead of UTC)
-    // We need to subtract it to get UTC equivalent of local end-of-day
+    // Adjust for timezone: getTimezoneOffset returns positive for UTC-x (behind UTC)
+    // We need to add it to get UTC equivalent of local end-of-day
     const tzOffset = end.getTimezoneOffset();
-    return new Date(end.getTime() - tzOffset * 60 * 1000);
+    return new Date(end.getTime() + tzOffset * 60 * 1000);
   }, [dateRange, customEndDate]);
 
   // Helper to check if a date is within range
@@ -1051,6 +1051,23 @@ export default function AdminAnalyticsClient({
     URL.revokeObjectURL(url);
   };
 
+  // ── EXPORT FULL CSV (Members Data) ──────────────────────────
+  const exportFullCSV = () => {
+    let url = "/api/admin/members/export";
+    const params = new URLSearchParams();
+
+    if (dateRange === "custom" && customStartDate && customEndDate) {
+      params.set("start_date", customStartDate);
+      params.set("end_date", customEndDate);
+    }
+
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+
+    window.open(url, "_blank");
+  };
+
   // Get date range label for exports
   const getDateRangeLabel = (): string => {
     if (dateRange === "custom") {
@@ -1411,6 +1428,15 @@ export default function AdminAnalyticsClient({
           >
             <Download className="w-4 h-4" />
             CSV
+          </button>
+
+          {/* Export Full CSV */}
+          <button
+            onClick={exportFullCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-nfw-aubergine text-white text-sm font-semibold hover:bg-nfw-aubergine/90 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Full CSV
           </button>
 
           {/* Export PDF */}
