@@ -10792,16 +10792,16 @@ For example, in EDT (UTC-4):
 
 1. Parse M/D/YYYY dates explicitly instead of relying on Date constructor
 2. Adjust for timezone offset using `getTimezoneOffset()`:
-   - For start date: subtract offset to get UTC equivalent of local midnight
+   - For start date: add offset (not subtract) to get UTC equivalent of local midnight
    - For end date: same adjustment applied
 
 ```typescript
 // Parse M/D/YYYY explicitly
 const parts = customStartDate.split("/");
 const start = new Date(Number(parts[2]), Number(parts[0]) - 1, Number(parts[1]), 0, 0, 0, 0);
-// Adjust for timezone: subtract getTimezoneOffset() to get UTC equivalent
+// Adjust for timezone: getTimezoneOffset() returns positive for UTC-x, ADD to get UTC equivalent
 const tzOffset = start.getTimezoneOffset();
-return new Date(start.getTime() - tzOffset * 60 * 1000);
+return new Date(start.getTime() + tzOffset * 60 * 1000);
 ```
 
 ### Commit
@@ -10809,3 +10809,82 @@ return new Date(start.getTime() - tzOffset * 60 * 1000);
 | Commit | Description |
 |--------|-------------|
 | `2380cec` | fix: correct timezone handling for custom date range filtering |
+
+## Session 2026-08-11: Full CSV Export from Analytics
+
+### Problem
+Analytics page had a "Export CSV" button that only exported summary/aggregation data, not actual member records. The `/admin/members` export had no date filtering capability, so it couldn't match the analytics date range.
+
+### Solution
+
+**1. Members Export API with Date Filtering**
+
+**`app/api/admin/members/export/route.ts`:**
+
+Added optional `start_date` and `end_date` query params:
+- If params provided, filter profiles by `joined_at >= startDate AND joined_at <= endDate`
+- Uses same UTC timezone handling as analytics
+- Filename includes date range when filtering: `nfw-members-6/1/2026-to-6/15/2026.csv`
+
+```typescript
+// Parse M/D/YYYY date string to UTC timestamp
+function parseCustomDate(dateStr: string, isStart: boolean): string {
+  const parts = dateStr.split("/");
+  const year = Number(parts[2]);
+  const month = Number(parts[0]) - 1;
+  const day = Number(parts[1]);
+
+  let date: Date;
+  if (isStart) {
+    date = new Date(year, month, day, 0, 0, 0, 0);
+    const tzOffset = date.getTimezoneOffset();
+    date = new Date(date.getTime() + tzOffset * 60 * 1000);
+  } else {
+    date = new Date(year, month, day, 23, 59, 59, 999);
+    const tzOffset = date.getTimezoneOffset();
+    date = new Date(date.getTime() + tzOffset * 60 * 1000);
+  }
+
+  return date.toISOString();
+}
+```
+
+**2. Analytics "Full CSV" Button**
+
+**`components/admin/AdminAnalyticsClient.tsx`:**
+
+Added "Full CSV" button (aubergine) next to existing "CSV" button:
+- Calls `/api/admin/members/export` with date params if custom range is set
+- Opens in new tab for download
+- Same columns as `/admin/members` export
+
+```typescript
+const exportFullCSV = () => {
+  let url = "/api/admin/members/export";
+  const params = new URLSearchParams();
+
+  if (dateRange === "custom" && customStartDate && customEndDate) {
+    params.set("start_date", customStartDate);
+    params.set("end_date", customEndDate);
+  }
+
+  if (params.toString()) {
+    url += `?${params.toString()}`;
+  }
+
+  window.open(url, "_blank");
+};
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/members/export/route.ts` | Added date filtering via query params |
+| `components/admin/AdminAnalyticsClient.tsx` | Added Full CSV export function and button |
+
+### Commit
+
+| Commit | Description |
+|--------|-------------|
+| `dc106f7` | fix: timezone bug in date filtering and add full CSV export |
