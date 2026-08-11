@@ -237,9 +237,9 @@ export default function AdminAnalyticsClient({
 
     if (dateRange === "custom") {
       if (!customStartDate) return new Date(0);
-      // Parse M/D/YYYY explicitly to avoid timezone issues with new Date()
+      // Parse M/D/YYYY and create date in UTC
       const parts = customStartDate.split("/");
-      const start = new Date(
+      const utcMs = Date.UTC(
         Number(parts[2]),
         Number(parts[0]) - 1,
         Number(parts[1]),
@@ -248,10 +248,7 @@ export default function AdminAnalyticsClient({
         0,
         0
       );
-      // Adjust for timezone: getTimezoneOffset returns positive for UTC-x (behind UTC)
-      // We need to add it to get UTC equivalent of local midnight
-      const tzOffset = start.getTimezoneOffset();
-      return new Date(start.getTime() + tzOffset * 60 * 1000);
+      return new Date(utcMs);
     }
 
     if (dateRange === -1) {
@@ -277,9 +274,9 @@ export default function AdminAnalyticsClient({
   // Get end date for custom range (end of end date day)
   const endDate = useMemo(() => {
     if (dateRange !== "custom" || !customEndDate) return new Date();
-    // Parse M/D/YYYY explicitly to avoid timezone issues with new Date()
+    // Parse M/D/YYYY and create end-of-day in UTC
     const parts = customEndDate.split("/");
-    const end = new Date(
+    const utcMs = Date.UTC(
       Number(parts[2]),
       Number(parts[0]) - 1,
       Number(parts[1]),
@@ -288,10 +285,7 @@ export default function AdminAnalyticsClient({
       59,
       999
     );
-    // Adjust for timezone: getTimezoneOffset returns positive for UTC-x (behind UTC)
-    // We need to add it to get UTC equivalent of local end-of-day
-    const tzOffset = end.getTimezoneOffset();
-    return new Date(end.getTime() + tzOffset * 60 * 1000);
+    return new Date(utcMs);
   }, [dateRange, customEndDate]);
 
   // Helper to check if a date is within range

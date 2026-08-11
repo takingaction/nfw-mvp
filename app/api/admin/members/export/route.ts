@@ -191,20 +191,14 @@ function parseCustomDate(dateStr: string, isStart: boolean): string {
   const month = Number(parts[0]) - 1;
   const day = Number(parts[1]);
 
-  let date: Date;
+  let utcMs: number;
   if (isStart) {
-    // Start of day in local time -> UTC
-    date = new Date(year, month, day, 0, 0, 0, 0);
-    const tzOffset = date.getTimezoneOffset();
-    date = new Date(date.getTime() + tzOffset * 60 * 1000);
+    utcMs = Date.UTC(year, month, day, 0, 0, 0, 0);
   } else {
-    // End of day in local time -> UTC
-    date = new Date(year, month, day, 23, 59, 59, 999);
-    const tzOffset = date.getTimezoneOffset();
-    date = new Date(date.getTime() + tzOffset * 60 * 1000);
+    utcMs = Date.UTC(year, month, day, 23, 59, 59, 999);
   }
 
-  return date.toISOString();
+  return new Date(utcMs).toISOString();
 }
 
 export async function GET(request: NextRequest) {
