@@ -10769,3 +10769,43 @@ NOTIFY pgrst, 'reload';
 |--------|-------------|
 | `ee02fed` | feat: remove Stripe Level and Sub Status columns from CSV, reorder Gift Card |
 | `d00bacd` | feat: rename Category to Membership Category in CSV |
+
+## Session 2026-08-11: Analytics Date Range Timezone Fix
+
+### Problem
+Custom date range filtering (e.g., 8/1/2026 - 8/11/2026) was including dates outside the selected range due to JavaScript Date timezone issues.
+
+### Root Cause
+- `new Date("8/1/2026")` parses the date as midnight in the **user's local timezone**
+- Database `joined_at` timestamps are stored as **UTC**
+- When comparing UTC timestamp against local midnight, the timezone offset caused incorrect inclusions/exclusions
+
+For example, in EDT (UTC-4):
+- User selects "8/1/2026" local midnight
+- JavaScript interprets this as "8/1/2026 00:00:00 EDT" = "8/1/2026 04:00:00 UTC"
+- Database has "2026-08-01T00:00:00.000Z" = "8/1/2026 00:00:00 UTC"
+- Comparison: `00:00 UTC < 04:00 UTC` → incorrectly excludes Aug 1 UTC dates
+
+### Fix Applied
+
+**`components/admin/AdminAnalyticsClient.tsx`:**
+
+1. Parse M/D/YYYY dates explicitly instead of relying on Date constructor
+2. Adjust for timezone offset using `getTimezoneOffset()`:
+   - For start date: subtract offset to get UTC equivalent of local midnight
+   - For end date: same adjustment applied
+
+```typescript
+// Parse M/D/YYYY explicitly
+const parts = customStartDate.split("/");
+const start = new Date(Number(parts[2]), Number(parts[0]) - 1, Number(parts[1]), 0, 0, 0, 0);
+// Adjust for timezone: subtract getTimezoneOffset() to get UTC equivalent
+const tzOffset = start.getTimezoneOffset();
+return new Date(start.getTime() - tzOffset * 60 * 1000);
+```
+
+### Commit
+
+| Commit | Description |
+|--------|-------------|
+| `2380cec` | fix: correct timezone handling for custom date range filtering |
