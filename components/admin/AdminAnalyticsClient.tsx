@@ -237,12 +237,12 @@ export default function AdminAnalyticsClient({
 
     if (dateRange === "custom") {
       if (!customStartDate) return new Date(0);
-      // Parse M/D/YYYY and create date in UTC
-      const parts = customStartDate.split("/");
+      // Parse YYYY-MM-DD and create date in UTC (date input returns YYYY-MM-DD)
+      const parts = customStartDate.split("-");
       const utcMs = Date.UTC(
+        Number(parts[0]),
+        Number(parts[1]) - 1,
         Number(parts[2]),
-        Number(parts[0]) - 1,
-        Number(parts[1]),
         0,
         0,
         0,
@@ -274,12 +274,12 @@ export default function AdminAnalyticsClient({
   // Get end date for custom range (end of end date day)
   const endDate = useMemo(() => {
     if (dateRange !== "custom" || !customEndDate) return new Date();
-    // Parse M/D/YYYY and create end-of-day in UTC
-    const parts = customEndDate.split("/");
+    // Parse YYYY-MM-DD and create end-of-day in UTC (date input returns YYYY-MM-DD)
+    const parts = customEndDate.split("-");
     const utcMs = Date.UTC(
+      Number(parts[0]),
+      Number(parts[1]) - 1,
       Number(parts[2]),
-      Number(parts[0]) - 1,
-      Number(parts[1]),
       23,
       59,
       59,

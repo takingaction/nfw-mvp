@@ -10790,18 +10790,21 @@ For example, in EDT (UTC-4):
 
 **`components/admin/AdminAnalyticsClient.tsx`:**
 
-1. Parse M/D/YYYY dates explicitly instead of relying on Date constructor
-2. Adjust for timezone offset using `getTimezoneOffset()`:
-   - For start date: add offset (not subtract) to get UTC equivalent of local midnight
-   - For end date: same adjustment applied
+Use `Date.UTC()` to create dates directly in UTC, avoiding local timezone conversion issues:
 
 ```typescript
-// Parse M/D/YYYY explicitly
+// Parse M/D/YYYY and create date in UTC
 const parts = customStartDate.split("/");
-const start = new Date(Number(parts[2]), Number(parts[0]) - 1, Number(parts[1]), 0, 0, 0, 0);
-// Adjust for timezone: getTimezoneOffset() returns positive for UTC-x, ADD to get UTC equivalent
-const tzOffset = start.getTimezoneOffset();
-return new Date(start.getTime() + tzOffset * 60 * 1000);
+const utcMs = Date.UTC(
+  Number(parts[2]),
+  Number(parts[0]) - 1,
+  Number(parts[1]),
+  0,
+  0,
+  0,
+  0
+);
+return new Date(utcMs);
 ```
 
 ### Commit
@@ -10809,6 +10812,7 @@ return new Date(start.getTime() + tzOffset * 60 * 1000);
 | Commit | Description |
 |--------|-------------|
 | `2380cec` | fix: correct timezone handling for custom date range filtering |
+| `185bab7` | fix: use Date.UTC for unambiguous UTC date parsing |
 
 ## Session 2026-08-11: Full CSV Export from Analytics
 

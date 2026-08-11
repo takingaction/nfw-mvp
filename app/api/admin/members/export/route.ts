@@ -184,12 +184,12 @@ function formatCell(col: string, value: unknown): string {
   }
 }
 
-// Parse M/D/YYYY date string to UTC timestamp
+// Parse YYYY-MM-DD date string to UTC timestamp (date input returns YYYY-MM-DD)
 function parseCustomDate(dateStr: string, isStart: boolean): string {
-  const parts = dateStr.split("/");
-  const year = Number(parts[2]);
-  const month = Number(parts[0]) - 1;
-  const day = Number(parts[1]);
+  const parts = dateStr.split("-");
+  const year = Number(parts[0]);
+  const month = Number(parts[1]) - 1;
+  const day = Number(parts[2]);
 
   let utcMs: number;
   if (isStart) {
