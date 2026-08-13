@@ -10892,3 +10892,32 @@ const exportFullCSV = () => {
 | Commit | Description |
 |--------|-------------|
 | `dc106f7` | fix: timezone bug in date filtering and add full CSV export |
+
+## Session 2026-08-13: Waitlist Filter Bug Fix
+
+### Problem
+The waitlist page at `/admin/waitlist` was showing members who upgraded to paid tiers (contributing/founding) because the GET query only filtered on `waitlist_joined_at IS NOT NULL`, but didn't filter by `membership_level = 'waitlist'`.
+
+### Root Cause
+When a waitlist member upgrades via gift code or Stripe checkout, their `membership_level` changes from `'waitlist'` to `'contributing'` or `'founding'`, but `waitlist_joined_at` is not cleared. The GET query at line 29 in `app/api/admin/bulk/waitlist/route.ts` only checked `.not("waitlist_joined_at", "is", null)`.
+
+### Fix
+
+**`app/api/admin/bulk/waitlist/route.ts`:**
+
+Added `.eq("membership_level", "waitlist")` to the GET query to ensure only members with current `membership_level = 'waitlist'` appear:
+
+```typescript
+const { data: members, error } = await supabase
+  .from("profiles")
+  .select(`...`)
+  .eq("membership_level", "waitlist")     // ← ADD THIS
+  .not("waitlist_joined_at", "is", null)
+  .order("waitlist_joined_at", { ascending: true });
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/bulk/waitlist/route.ts` | Added `.eq("membership_level", "waitlist")` to GET query |

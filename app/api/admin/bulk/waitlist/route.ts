@@ -26,6 +26,7 @@ export async function GET() {
         membership_level,
         joined_at
       `)
+      .eq("membership_level", "waitlist")
       .not("waitlist_joined_at", "is", null)
       .order("waitlist_joined_at", { ascending: true });
 
