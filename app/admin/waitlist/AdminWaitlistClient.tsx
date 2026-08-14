@@ -113,21 +113,37 @@ export default function AdminWaitlistClient() {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "—";
-    return new Date(dateString).toLocaleDateString("en-US", {
+    const date = new Date(dateString);
+    const utcDate = new Date(Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate()
+    ));
+    return utcDate.toLocaleDateString("en-US", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
+      timeZone: "UTC",
     });
   };
 
   const formatDateTime = (dateString: string | null) => {
     if (!dateString) return "—";
-    return new Date(dateString).toLocaleDateString("en-US", {
+    const date = new Date(dateString);
+    const utcDate = new Date(Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      date.getUTCHours(),
+      date.getUTCMinutes()
+    ));
+    return utcDate.toLocaleDateString("en-US", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "UTC",
     });
   };
 

@@ -10940,3 +10940,29 @@ This ensures Avg Dues = `Membership Revenue / Total Legitimate Members` (paid + 
 | File | Change |
 |------|--------|
 | `components/admin/AdminAnalyticsClient.tsx` | Changed averageDues denominator to use paidMembersCount + freeMembersCount |
+
+## Session 2026-08-14: Waitlist Page & CSV UTC Timezone Fix
+
+### Problem
+
+The `/admin/waitlist` page and CSV export were using local timezone methods (`toLocaleDateString()`, `getMonth()`, `getDate()`) which could display incorrect dates depending on the browser/server timezone. This was inconsistent with the analytics page and `/admin/members` which had been fixed to use UTC.
+
+### Solution
+
+Updated both files to use UTC-safe date formatting:
+
+**`app/admin/waitlist/AdminWaitlistClient.tsx`:**
+- `formatDate()` - now uses `Date.UTC()` + `timeZone: "UTC"`
+- `formatDateTime()` - now uses `Date.UTC()` + `timeZone: "UTC"`
+
+**`app/api/admin/waitlist/export/route.ts`:**
+- `formatDate()` - now uses `getUTCMonth()`, `getUTCDate()`, `getUTCFullYear()`
+
+Note: `formatDateTime()` in the export route was already correct (uses `toISOString()` which is always UTC).
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/waitlist/AdminWaitlistClient.tsx` | `formatDate` and `formatDateTime` now use UTC methods |
+| `app/api/admin/waitlist/export/route.ts` | `formatDate` now uses UTC methods |
