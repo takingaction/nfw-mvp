@@ -433,22 +433,6 @@ export default function AdminAnalyticsClient({
     return contributingCount * 15 + foundingCount * 100;
   }, [contributingCount, foundingCount]);
 
-  // Average membership dues per paid member (filtered)
-  const averageDues = useMemo(() => {
-    const paidFiltered = filteredProfiles.filter(
-      (p) => p.membership_level === "contributing" || p.membership_level === "founding"
-    ).length;
-    if (paidFiltered === 0) return 0;
-    const contributingFiltered = filteredProfiles.filter(
-      (p) => p.membership_level === "contributing"
-    ).length;
-    const foundingFiltered = filteredProfiles.filter(
-      (p) => p.membership_level === "founding"
-    ).length;
-    const totalAnnual = contributingFiltered * 15 + foundingFiltered * 100;
-    return Math.round(totalAnnual / paidFiltered);
-  }, [filteredProfiles]);
-
   // Waterfall categories (mutually exclusive)
   // Admin count (separate, not in other categories)
   const adminCount = useMemo(() => {
@@ -475,6 +459,13 @@ export default function AdminAnalyticsClient({
         p.profile_completed === true
     ).length;
   }, [filteredProfiles]);
+
+  // Average membership dues per total legitimate member (paid + approved free)
+  const averageDues = useMemo(() => {
+    const denominator = paidMembersCount + freeMembersCount;
+    if (denominator === 0) return 0;
+    return Math.round(membershipRevenue / denominator);
+  }, [membershipRevenue, paidMembersCount, freeMembersCount]);
 
   // Waitlist members
   const waitlistCount = useMemo(() => {

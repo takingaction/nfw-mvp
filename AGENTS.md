@@ -10921,3 +10921,22 @@ const { data: members, error } = await supabase
 | File | Change |
 |------|--------|
 | `app/api/admin/bulk/waitlist/route.ts` | Added `.eq("membership_level", "waitlist")` to GET query |
+
+## Session 2026-08-13: Analytics Avg Dues Calculation Fix
+
+### Problem
+The "Avg Dues" card on `/admin/analytics` was calculating `Membership Revenue / Paid Members` where the denominator was all contributing + founding members without checking `profile_completed`.
+
+### Solution
+
+Changed `averageDues` to use `(paidMembersCount + freeMembersCount)` as the denominator:
+- `paidMembersCount` = non-admin + contributing/founding + `profile_completed === true`
+- `freeMembersCount` = non-admin + free + approved + `profile_completed === true`
+
+This ensures Avg Dues = `Membership Revenue / Total Legitimate Members` (paid + approved free).
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/admin/AdminAnalyticsClient.tsx` | Changed averageDues denominator to use paidMembersCount + freeMembersCount |
