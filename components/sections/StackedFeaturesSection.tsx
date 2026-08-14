@@ -69,7 +69,7 @@ export default function StackedFeaturesSection({ content }: Props) {
                     {col.eyebrow}
                   </p>
                 )}
-                <div className="flex-1 flex flex-col justify-center py-8">
+                <div className="flex-1 flex flex-col py-8">
                   {col.heading && (
                     <h3 className={`font-serif italic text-2xl lg:text-3xl mb-4 leading-snug ${textColor}`}>
                       {col.heading}

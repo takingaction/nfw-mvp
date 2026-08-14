@@ -10994,3 +10994,22 @@ Deleted the static `/grants` landing page and replaced with a redirect to `/micr
 ### Note
 
 The `/microgrants` page is managed via the page builder (database CMS), not as a static page in the codebase.
+
+---
+
+## Session 2026-08-14: Stacked Features Section Top Alignment
+
+### Change
+
+Updated the Stacked Features section template to top-align heading, body, and bullets content instead of center-aligning.
+
+**Files Modified:**
+
+| File | Change |
+|------|--------|
+| `components/sections/StackedFeaturesSection.tsx` | Removed `justify-center` from content container to top-align heading/body/bullets |
+
+**What changed:**
+- Removed `justify-center` from the content wrapper div so heading, body, and bullets align to top of column
+- Eyebrow stays at top (unchanged)
+- Link stays at bottom via `mt-auto` (unchanged)
