@@ -35,7 +35,7 @@ interface FooterData {
 const defaultLinks: FooterLink[] = [
   { label: "Become a Member", url: "/auth/sign-up" },
   { label: "Perks & Discounts", url: "/perks/info" },
-  { label: "Microgrants", url: "/grants" },
+  { label: "Microgrants", url: "/microgrants" },
   { label: "Zero Dollar Store", url: "/store" },
 ];
 

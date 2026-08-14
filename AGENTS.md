@@ -10966,3 +10966,31 @@ Note: `formatDateTime()` in the export route was already correct (uses `toISOStr
 |------|--------|
 | `app/admin/waitlist/AdminWaitlistClient.tsx` | `formatDate` and `formatDateTime` now use UTC methods |
 | `app/api/admin/waitlist/export/route.ts` | `formatDate` now uses UTC methods |
+
+## Session 2026-08-14: Redirect /grants to /microgrants
+
+### Overview
+
+Deleted the static `/grants` landing page and replaced with a redirect to `/microgrants` (page builder). Also deleted duplicate `/grants/view` page.
+
+### Changes Made
+
+| File | Change |
+|------|--------|
+| `app/grants/page.tsx` | Replaced static landing page content with redirect to `/microgrants` |
+| `app/grants/view/page.tsx` | Deleted duplicate static landing page |
+| `components/Navigation.tsx` | Default nav links updated from `/grants` → `/microgrants` |
+| `components/landing/Footer.tsx` | Default footer links updated from `/grants` → `/microgrants` |
+| `components/admin/FooterEditorClient.tsx` | Default footer editor links updated from `/grants` → `/microgrants` |
+
+### Routing
+
+- `/grants` → redirects to `/microgrants` (page builder CMS page)
+- `/grants/apply` → continues to work (application form)
+- `/grants/my-applications` → continues to work
+- `/grants/view/[id]` → continues to work
+- `/grants/connect/*` → continues to work
+
+### Note
+
+The `/microgrants` page is managed via the page builder (database CMS), not as a static page in the codebase.
