@@ -1662,10 +1662,12 @@ export default function AdminAnalyticsClient({
                       type="category"
                       tick={{ fontSize: 10 }}
                       width={200}
+                      interval={0}
                     />
                     <Tooltip
-                      formatter={(value, name, props) => [props.payload.offer, `${props.payload.count} redemptions`]}
-                      contentStyle={{ maxWidth: '200px', wordBreak: 'break-word', whiteSpace: 'normal' }}
+                      formatter={(value) => [`${value} redemptions`]}
+                      labelFormatter={(label, payload) => payload?.[0]?.payload?.offer || label}
+                      contentStyle={{ maxWidth: '300px', wordBreak: 'break-word', whiteSpace: 'normal' }}
                     />
                     <Bar
                       dataKey="count"
@@ -1753,10 +1755,12 @@ export default function AdminAnalyticsClient({
                         type="category"
                         tick={{ fontSize: 10 }}
                         width={200}
+                        interval={0}
                       />
                       <Tooltip
-                        formatter={(value, name, props) => [props.payload.product, `${props.payload.count} claims`]}
-                        contentStyle={{ maxWidth: '200px', wordBreak: 'break-word', whiteSpace: 'normal' }}
+                        formatter={(value) => [`${value} claims`]}
+                        labelFormatter={(label, payload) => payload?.[0]?.payload?.product || label}
+                        contentStyle={{ maxWidth: '300px', wordBreak: 'break-word', whiteSpace: 'normal' }}
                       />
                       <Bar
                         dataKey="count"
