@@ -703,9 +703,9 @@ export default function AdminAnalyticsClient({
     });
     return Object.entries(map)
       .sort(([, a], [, b]) => b - a)
-      .slice(0, 8)
+      .slice(0, 25)
       .map(([offer, count]) => ({
-        offer: offer.length > 30 ? offer.slice(0, 30) + "…" : offer,
+        offer,
         count,
       }));
   }, [filteredRedemptions]);
@@ -781,9 +781,9 @@ export default function AdminAnalyticsClient({
     });
     return Object.entries(map)
       .sort(([, a], [, b]) => b - a)
-      .slice(0, 8)
+      .slice(0, 25)
       .map(([product, count]) => ({
-        product: product.length > 30 ? product.slice(0, 30) + "…" : product,
+        product,
         count,
       }));
   }, [filteredZdsClaims, shopifyProducts]);
@@ -1661,9 +1661,12 @@ export default function AdminAnalyticsClient({
                       dataKey="offer"
                       type="category"
                       tick={{ fontSize: 10 }}
-                      width={120}
+                      width={200}
                     />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value, name, props) => [props.payload.offer, `${props.payload.count} redemptions`]}
+                      contentStyle={{ maxWidth: '300px', wordBreak: 'break-word' }}
+                    />
                     <Bar
                       dataKey="count"
                       fill="#b2d1ee"
@@ -1749,9 +1752,12 @@ export default function AdminAnalyticsClient({
                         dataKey="product"
                         type="category"
                         tick={{ fontSize: 10 }}
-                        width={120}
+                        width={200}
                       />
-                      <Tooltip />
+                      <Tooltip
+                        formatter={(value, name, props) => [props.payload.product, `${props.payload.count} claims`]}
+                        contentStyle={{ maxWidth: '300px', wordBreak: 'break-word' }}
+                      />
                       <Bar
                         dataKey="count"
                         fill="#B693C0"
