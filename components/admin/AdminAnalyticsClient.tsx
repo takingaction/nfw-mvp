@@ -707,7 +707,7 @@ export default function AdminAnalyticsClient({
       map[key].count++;
     });
     return Object.entries(map)
-      .sort(([, a], [, b]) => b[1].count - a[1].count)
+      .sort(([, a], [, b]) => b.count - a.count)
       .slice(0, 25)
       .map(([key, { store, offer, count }]) => ({
         store,
