@@ -1653,7 +1653,7 @@ export default function AdminAnalyticsClient({
                 <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
                   Top Offers Redeemed
                 </h3>
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer width="100%" height={560}>
                   <BarChart data={topOffers} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis type="number" tick={{ fontSize: 11 }} />
@@ -1746,7 +1746,7 @@ export default function AdminAnalyticsClient({
                     No claims in this period.
                   </p>
                 ) : (
-                  <ResponsiveContainer width="100%" height={280}>
+                  <ResponsiveContainer width="100%" height={560}>
                     <BarChart data={topZdsProducts} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                       <XAxis type="number" tick={{ fontSize: 11 }} />
@@ -1781,7 +1781,7 @@ export default function AdminAnalyticsClient({
                     No claims in this period.
                   </p>
                 ) : (
-                  <ResponsiveContainer width="100%" height={280}>
+                  <ResponsiveContainer width="100%" height={560}>
                     <PieChart>
                       <Pie
                         data={zdsClaimsByStatus}
