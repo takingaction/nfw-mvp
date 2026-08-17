@@ -698,7 +698,7 @@ export default function AdminAnalyticsClient({
   const topOffers = useMemo(() => {
     const map: Record<string, number> = {};
     filteredRedemptions.forEach((r) => {
-      const key = r.offer_title || r.offer_key || "Unknown";
+      const key = r.store_name ? `${r.store_name}: ${r.offer_title || r.offer_key}` : (r.offer_title || r.offer_key || "Unknown");
       map[key] = (map[key] || 0) + 1;
     });
     return Object.entries(map)
@@ -1629,7 +1629,7 @@ export default function AdminAnalyticsClient({
                   No redemptions in this period.
                 </p>
               ) : (
-                <ResponsiveContainer width="100%" height={260}>
+                <ResponsiveContainer width="100%" height={320}>
                   <LineChart data={redemptionsByDay}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="date" tick={{ fontSize: 11 }} />
@@ -1653,7 +1653,7 @@ export default function AdminAnalyticsClient({
                 <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
                   Top Offers Redeemed
                 </h3>
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={topOffers} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis type="number" tick={{ fontSize: 11 }} />
@@ -1665,7 +1665,7 @@ export default function AdminAnalyticsClient({
                     />
                     <Tooltip
                       formatter={(value, name, props) => [props.payload.offer, `${props.payload.count} redemptions`]}
-                      contentStyle={{ maxWidth: '300px', wordBreak: 'break-word' }}
+                      contentStyle={{ maxWidth: '200px', wordBreak: 'break-word', whiteSpace: 'normal' }}
                     />
                     <Bar
                       dataKey="count"
@@ -1756,7 +1756,7 @@ export default function AdminAnalyticsClient({
                       />
                       <Tooltip
                         formatter={(value, name, props) => [props.payload.product, `${props.payload.count} claims`]}
-                        contentStyle={{ maxWidth: '300px', wordBreak: 'break-word' }}
+                        contentStyle={{ maxWidth: '200px', wordBreak: 'break-word', whiteSpace: 'normal' }}
                       />
                       <Bar
                         dataKey="count"
