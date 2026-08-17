@@ -695,10 +695,17 @@ export default function AdminAnalyticsClient({
       .map(([date, count]) => ({ date: date.slice(5), count }));
   }, [filteredRedemptions]);
 
+  const stripHtml = (html: string): string => {
+    if (typeof window === "undefined") return html;
+    const div = document.createElement("div");
+    div.innerHTML = html;
+    return div.textContent || html;
+  };
+
   const topOffers = useMemo(() => {
     const map: Record<string, { store: string; offer: string; count: number }> = {};
     filteredRedemptions.forEach((r) => {
-      const store = r.store_name || "Unknown";
+      const store = stripHtml(r.store_name || "Unknown");
       const offer = r.store_name ? `${r.store_name}: ${r.offer_title || r.offer_key}` : (r.offer_title || r.offer_key || "Unknown");
       const key = offer;
       if (!map[key]) {
