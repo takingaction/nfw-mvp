@@ -696,15 +696,21 @@ export default function AdminAnalyticsClient({
   }, [filteredRedemptions]);
 
   const topOffers = useMemo(() => {
-    const map: Record<string, number> = {};
+    const map: Record<string, { store: string; offer: string; count: number }> = {};
     filteredRedemptions.forEach((r) => {
-      const key = r.store_name ? `${r.store_name}: ${r.offer_title || r.offer_key}` : (r.offer_title || r.offer_key || "Unknown");
-      map[key] = (map[key] || 0) + 1;
+      const store = r.store_name || "Unknown";
+      const offer = r.store_name ? `${r.store_name}: ${r.offer_title || r.offer_key}` : (r.offer_title || r.offer_key || "Unknown");
+      const key = offer;
+      if (!map[key]) {
+        map[key] = { store, offer, count: 0 };
+      }
+      map[key].count++;
     });
     return Object.entries(map)
-      .sort(([, a], [, b]) => b - a)
+      .sort(([, a], [, b]) => b[1].count - a[1].count)
       .slice(0, 25)
-      .map(([offer, count]) => ({
+      .map(([key, { store, offer, count }]) => ({
+        store,
         offer,
         count,
       }));
@@ -1658,10 +1664,10 @@ export default function AdminAnalyticsClient({
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis type="number" tick={{ fontSize: 11 }} />
                     <YAxis
-                      dataKey="offer"
+                      dataKey="store"
                       type="category"
                       tick={{ fontSize: 10 }}
-                      width={200}
+                      width={150}
                       interval={0}
                     />
                     <Tooltip
