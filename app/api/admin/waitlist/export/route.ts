@@ -111,6 +111,7 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from("profiles")
       .select(selectColumns)
+      .eq("membership_level", "waitlist")
       .not("waitlist_joined_at", "is", null)
       .order("waitlist_joined_at", { ascending: true })
       .range(from, from + pageSize - 1);
