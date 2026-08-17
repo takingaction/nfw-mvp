@@ -10967,6 +10967,22 @@ Note: `formatDateTime()` in the export route was already correct (uses `toISOStr
 | `app/admin/waitlist/AdminWaitlistClient.tsx` | `formatDate` and `formatDateTime` now use UTC methods |
 | `app/api/admin/waitlist/export/route.ts` | `formatDate` now uses UTC methods |
 
+## Session 2026-08-14: Waitlist CSV Export Missing Membership Level Filter
+
+### Problem
+
+The `/admin/waitlist` CSV export was including contributing and free members in addition to waitlist members. This happened because the export query only checked `.not("waitlist_joined_at", "is", null)` but didn't filter by `.eq("membership_level", "waitlist")`.
+
+### Solution
+
+Added `.eq("membership_level", "waitlist")` to the export query to match the logic used in the waitlist display page and API.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/waitlist/export/route.ts` | Added `.eq("membership_level", "waitlist")` to export query |
+
 ## Session 2026-08-14: Redirect /grants to /microgrants
 
 ### Overview
