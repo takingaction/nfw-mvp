@@ -1684,7 +1684,7 @@ export default function AdminAnalyticsClient({
                     />
                     <Bar
                       dataKey="count"
-                      fill="#b2d1ee"
+                      fill="#3E145F"
                       name=""
                     />
                   </BarChart>
@@ -1777,7 +1777,7 @@ export default function AdminAnalyticsClient({
                       />
                       <Bar
                         dataKey="count"
-                        fill="#B693C0"
+                        fill="#3E145F"
                         name=""
                       />
                     </BarChart>
