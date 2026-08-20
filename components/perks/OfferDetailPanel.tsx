@@ -250,7 +250,7 @@ export default function OfferDetailPanel({
             if (redemptionRes.ok) {
               const redemptionData = await redemptionRes.json();
               if (redemptionData.redeemed) {
-                setRedeemedMethod(method);
+                setRedeemedMethod(redemptionData.redeem_type || null);
                 if (redemptionData.coupon_code) {
                   setCouponCode(redemptionData.coupon_code);
                 }
