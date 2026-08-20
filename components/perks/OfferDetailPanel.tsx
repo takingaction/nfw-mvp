@@ -167,7 +167,7 @@ export default function OfferDetailPanel({
     uses_remaining: string | number;
     number_of_uses_remaining: number;
   } | null>(null);
-  const [hasRedeemed, setHasRedeemed] = useState(false);
+  const [redeemedMethod, setRedeemedMethod] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState<string | null>(null);
   const [showCoupon, setShowCoupon] = useState(false);
 
@@ -209,7 +209,7 @@ export default function OfferDetailPanel({
     setLoading(true);
     setError(null);
     setUsesRemaining(null);
-    setHasRedeemed(false);
+    setRedeemedMethod(null);
     setCouponCode(null);
     try {
       const response = await fetch(`/api/access-perks/offers/${key}`);
@@ -250,7 +250,7 @@ export default function OfferDetailPanel({
             if (redemptionRes.ok) {
               const redemptionData = await redemptionRes.json();
               if (redemptionData.redeemed) {
-                setHasRedeemed(true);
+                setRedeemedMethod(method);
                 if (redemptionData.coupon_code) {
                   setCouponCode(redemptionData.coupon_code);
                 }
@@ -420,7 +420,7 @@ export default function OfferDetailPanel({
           redemptionUrl: finalUrl,
           couponCode: promoCode,
         });
-        setHasRedeemed(true);
+        setRedeemedMethod(method);
       } else if (method === "instore_print") {
         const details = data.details || {};
         const displayContent = data.display_message || details.display;
@@ -433,7 +433,7 @@ export default function OfferDetailPanel({
             redemptionUrl: details.link || data.redemption_url,
             method: 'instore_print'
           });
-          setHasRedeemed(true);
+          setRedeemedMethod(method);
           return;
         }
 
@@ -456,7 +456,7 @@ export default function OfferDetailPanel({
             redemptionUrl: printUrl,
             couponCode: couponCode,
           });
-          setHasRedeemed(true);
+          setRedeemedMethod(method);
         } else {
           throw new Error("No print URL received from API");
         }
@@ -472,7 +472,7 @@ export default function OfferDetailPanel({
             redemptionUrl: details.link || data.redemption_url,
             method: 'instore'
           });
-          setHasRedeemed(true);
+          setRedeemedMethod(method);
           return;
         }
 
@@ -491,7 +491,7 @@ export default function OfferDetailPanel({
             instructions:
               "Show the coupon from the new tab at checkout to redeem your offer.",
           });
-          setHasRedeemed(true);
+          setRedeemedMethod(method);
         } else {
           throw new Error("No coupon URL received from API");
         }
@@ -525,7 +525,7 @@ export default function OfferDetailPanel({
             data.display_message ||
             "Call the number above and mention the promo code",
         });
-        setHasRedeemed(true);
+        setRedeemedMethod(method);
       }
     } catch (err: any) {
       setRedemptionResult({
@@ -1137,7 +1137,7 @@ export default function OfferDetailPanel({
                   </div>
                 )}
 
-                {hasRedeemed && couponCode && (
+                {!!redeemedMethod && couponCode && (
                   <>
                     <button
                       onClick={() => {
@@ -1188,7 +1188,7 @@ export default function OfferDetailPanel({
                   </>
                 )}
 
-                {!hasRedeemed && offer.redemption_methods && offer.redemption_methods.length > 0 && (
+                {offer.redemption_methods && offer.redemption_methods.length > 0 && (
                   <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
                     <h3 className="text-base font-semibold text-nfw-blackberry mb-4">
                       Redeem This Offer
@@ -1206,7 +1206,11 @@ export default function OfferDetailPanel({
                             setShowCoupon(true);
                           }}
                           disabled={!!redeemingLink || !!(usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
-                          className="w-full px-4 py-2.5 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                          className={`w-full px-4 py-2.5 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 text-sm disabled:opacity-50 ${
+                            redeemedMethod === "link"
+                              ? "bg-green-100 text-green-800 hover:bg-green-100"
+                              : "bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90"
+                          }`}
                         >
                           {redeemingLink ? (
                             <>
@@ -1215,6 +1219,11 @@ export default function OfferDetailPanel({
                             </>
                           ) : usesRemaining && usesRemaining.number_of_uses_remaining === 0 ? (
                             "Offer Limit Reached"
+                          ) : !!redeemedMethod ? (
+                            <>
+                              <Check className="w-4 h-4" />
+                              Redeemed (Online)
+                            </>
                           ) : (
                             <>
                               <Globe className="w-4 h-4" />
@@ -1228,7 +1237,11 @@ export default function OfferDetailPanel({
                         <button
                           onClick={() => handleRedeem("instore", selectedLocation?.key)}
                           disabled={!!redeemingInstore || !!(usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
-                          className="w-full px-4 py-2.5 bg-nfw-lilac text-nfw-blackberry rounded-xl hover:bg-nfw-lilac/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                          className={`w-full px-4 py-2.5 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 text-sm disabled:opacity-50 ${
+                            redeemedMethod === "instore"
+                              ? "bg-green-100 text-green-800 hover:bg-green-100"
+                              : "bg-nfw-lilac text-nfw-blackberry hover:bg-nfw-lilac/80"
+                          }`}
                         >
                           {redeemingInstore ? (
                             <>
@@ -1237,6 +1250,11 @@ export default function OfferDetailPanel({
                             </>
                           ) : usesRemaining && usesRemaining.number_of_uses_remaining === 0 ? (
                             "Offer Limit Reached"
+                          ) : !!redeemedMethod ? (
+                            <>
+                              <Check className="w-4 h-4" />
+                              Redeemed (In-Store)
+                            </>
                           ) : (
                             <>
                               <Store className="w-4 h-4" />
@@ -1250,7 +1268,11 @@ export default function OfferDetailPanel({
                         <button
                           onClick={() => handleRedeem("instore_print", selectedLocation?.key)}
                           disabled={!!redeemingPrint || !!(usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
-                          className="w-full px-4 py-2.5 bg-[#b2d1ee] text-nfw-blackberry rounded-xl hover:bg-[#b2d1ee]/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                          className={`w-full px-4 py-2.5 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 text-sm disabled:opacity-50 ${
+                            redeemedMethod === "instore_print"
+                              ? "bg-green-100 text-green-800 hover:bg-green-100"
+                              : "bg-[#b2d1ee] text-nfw-blackberry hover:bg-[#b2d1ee]/80"
+                          }`}
                         >
                           {redeemingPrint ? (
                             <>
@@ -1259,6 +1281,11 @@ export default function OfferDetailPanel({
                             </>
                           ) : usesRemaining && usesRemaining.number_of_uses_remaining === 0 ? (
                             "Offer Limit Reached"
+                          ) : !!redeemedMethod ? (
+                            <>
+                              <Check className="w-4 h-4" />
+                              Redeemed (Print)
+                            </>
                           ) : (
                             <>
                               <Printer className="w-4 h-4" />
@@ -1272,7 +1299,11 @@ export default function OfferDetailPanel({
                         <button
                           onClick={() => handleRedeem("call")}
                           disabled={!!redeemingCall || !!(usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
-                          className="w-full px-4 py-2.5 bg-nfw-citrine text-nfw-blackberry rounded-xl hover:bg-nfw-citrine/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                          className={`w-full px-4 py-2.5 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 text-sm disabled:opacity-50 ${
+                            redeemedMethod === "call"
+                              ? "bg-green-100 text-green-800 hover:bg-green-100"
+                              : "bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/80"
+                          }`}
                         >
                           {redeemingCall ? (
                             <>
@@ -1281,6 +1312,11 @@ export default function OfferDetailPanel({
                             </>
                           ) : usesRemaining && usesRemaining.number_of_uses_remaining === 0 ? (
                             "Offer Limit Reached"
+                          ) : !!redeemedMethod ? (
+                            <>
+                              <Check className="w-4 h-4" />
+                              Redeemed (Call)
+                            </>
                           ) : (
                             <>
                               <Phone className="w-4 h-4" />

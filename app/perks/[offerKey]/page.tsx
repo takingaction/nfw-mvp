@@ -40,7 +40,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
   const [redeemingCall, setRedeemingCall] = useState(false);
   const [redeemingPrint, setRedeemingPrint] = useState(false);
   const [redemptionResult, setRedemptionResult] = useState<any>(null);
-  const [hasRedeemed, setHasRedeemed] = useState(false);
+  const [redeemedMethod, setRedeemedMethod] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -115,14 +115,14 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
         if (user) {
           const { data: existingRedemption } = await supabase
             .from("offer_redemptions")
-            .select("coupon_code")
+            .select("coupon_code, redeem_type")
             .eq("user_id", user.id)
             .eq("offer_key", offerKey)
             .eq("status", "active")
             .maybeSingle();
 
           if (existingRedemption) {
-            setHasRedeemed(true);
+            setRedeemedMethod(existingRedemption.redeem_type || "link");
             if (existingRedemption.coupon_code) {
               setCouponCode(existingRedemption.coupon_code);
             }
@@ -207,7 +207,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
           redemptionUrl: finalUrl,
           couponCode: promoCode,
         });
-        setHasRedeemed(true);
+        setRedeemedMethod(method);
         if (promoCode) setCouponCode(promoCode);
       } else if (method === "instore_print") {
         const printUrl =
@@ -229,7 +229,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
             redemptionUrl: printUrl,
             couponCode: couponCode,
           });
-          setHasRedeemed(true);
+          setRedeemedMethod(method);
           if (couponCode) setCouponCode(couponCode);
         } else {
           throw new Error("No print URL received from API");
@@ -250,7 +250,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
             instructions:
               "Show the coupon from the new tab at checkout to redeem your offer.",
           });
-          setHasRedeemed(true);
+          setRedeemedMethod(method);
         } else {
           throw new Error("No coupon URL received from API");
         }
@@ -284,7 +284,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
             data.display_message ||
             "Call the number above and mention the promo code",
         });
-        setHasRedeemed(true);
+        setRedeemedMethod(method);
         if (data.promotion_code || data.coupon_code) {
           setCouponCode(data.promotion_code || data.coupon_code);
         }
@@ -360,7 +360,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
           redemptionUrl: finalUrl,
           couponCode: promoCode,
         });
-        setHasRedeemed(true);
+        setRedeemedMethod(method);
         if (promoCode) setCouponCode(promoCode);
       } else if (method === "instore_print") {
         const printUrl =
@@ -380,7 +380,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
             redemptionUrl: printUrl,
             couponCode: couponCode,
           });
-          setHasRedeemed(true);
+          setRedeemedMethod(method);
           if (couponCode) setCouponCode(couponCode);
         } else {
           throw new Error("No print URL received from API");
@@ -399,7 +399,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
             instructions:
               "Show the coupon from the new tab at checkout to redeem your offer.",
           });
-          setHasRedeemed(true);
+          setRedeemedMethod(method);
         } else {
           throw new Error("No coupon URL received from API");
         }
@@ -435,7 +435,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
             data.display_message ||
             "Call the number above and mention the promo code",
         });
-        setHasRedeemed(true);
+        setRedeemedMethod(method);
         if (data.promotion_code || data.coupon_code) {
           setCouponCode(data.promotion_code || data.coupon_code);
         }
@@ -844,7 +844,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
                         onClick={() => handleRedeem("link")}
                         disabled={redeemingLink}
                         className={`w-full px-4 py-2.5 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 text-sm ${
-                          hasRedeemed
+                          !!redeemedMethod
                             ? "bg-green-100 text-green-800 cursor-pointer hover:bg-green-100"
                             : "bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90"
                         } disabled:opacity-50`}
@@ -854,10 +854,10 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
                             <Loader2 className="w-4 h-4 animate-spin" />
                             Redeeming...
                           </>
-                        ) : hasRedeemed ? (
+                        ) : !!redeemedMethod ? (
                           <>
                             <Check className="w-4 h-4" />
-                            Redeemed
+                            Redeemed (Online)
                           </>
                         ) : (
                           <>
@@ -873,7 +873,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
                         onClick={() => handleRedeem("instore")}
                         disabled={redeemingInstore}
                         className={`w-full px-4 py-2.5 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 text-sm ${
-                          hasRedeemed
+                          !!redeemedMethod
                             ? "bg-green-100 text-green-800 cursor-pointer hover:bg-green-100"
                             : "bg-nfw-lilac text-nfw-blackberry hover:bg-nfw-lilac/80"
                         } disabled:opacity-50`}
@@ -883,10 +883,10 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
                             <Loader2 className="w-4 h-4 animate-spin" />
                             Redeeming...
                           </>
-                        ) : hasRedeemed ? (
+                        ) : !!redeemedMethod ? (
                           <>
                             <Check className="w-4 h-4" />
-                            Redeemed
+                            Redeemed (In-Store)
                           </>
                         ) : (
                           <>
@@ -902,7 +902,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
                         onClick={() => handleRedeem("instore_print")}
                         disabled={redeemingPrint}
                         className={`w-full px-4 py-2.5 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 text-sm ${
-                          hasRedeemed
+                          !!redeemedMethod
                             ? "bg-green-100 text-green-800 cursor-pointer hover:bg-green-100"
                             : "bg-[#b2d1ee] text-nfw-blackberry hover:bg-[#b2d1ee]/80"
                         } disabled:opacity-50`}
@@ -912,10 +912,10 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
                             <Loader2 className="w-4 h-4 animate-spin" />
                             Redeeming...
                           </>
-                        ) : hasRedeemed ? (
+                        ) : !!redeemedMethod ? (
                           <>
                             <Check className="w-4 h-4" />
-                            Redeemed
+                            Redeemed (Print)
                           </>
                         ) : (
                           <>
@@ -931,7 +931,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
                         onClick={() => handleRedeem("call")}
                         disabled={redeemingCall}
                         className={`w-full px-4 py-2.5 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 text-sm ${
-                          hasRedeemed
+                          !!redeemedMethod
                             ? "bg-green-100 text-green-800 cursor-pointer hover:bg-green-100"
                             : "bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/80"
                         } disabled:opacity-50`}
@@ -941,10 +941,10 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
                             <Loader2 className="w-4 h-4 animate-spin" />
                             Redeeming...
                           </>
-                        ) : hasRedeemed ? (
+                        ) : !!redeemedMethod ? (
                           <>
                             <Check className="w-4 h-4" />
-                            Redeemed
+                            Redeemed (Call)
                           </>
                         ) : (
                           <>
@@ -956,7 +956,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
                     )}
                   </div>
 
-                  {hasRedeemed && (
+                  {!!redeemedMethod && (
                     <p className="text-xs text-green-600 mt-3 text-center">
                       You've already redeemed this perk. Click again to visit the partner site.
                     </p>

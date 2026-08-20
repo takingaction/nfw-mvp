@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 
     const { data: redemption, error } = await supabase
       .from("offer_redemptions")
-      .select("coupon_code, status")
+      .select("coupon_code, status, redeem_type")
       .eq("user_id", user.id)
       .eq("offer_key", offerKey)
       .eq("status", "active")
@@ -35,6 +35,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       redeemed: !!redemption,
       coupon_code: redemption?.coupon_code || null,
+      redeem_type: redemption?.redeem_type || null,
     });
   } catch (error: any) {
     console.error("Check redemption API error:", error);
