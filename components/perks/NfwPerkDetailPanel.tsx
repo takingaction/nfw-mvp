@@ -61,6 +61,7 @@ export default function NfwPerkDetailPanel({
   const [linkCopied, setLinkCopied] = useState(false);
   const [copied, setCopied] = useState(false);
   const [redeeming, setRedeeming] = useState(false);
+  const [showCoupon, setShowCoupon] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -250,7 +251,9 @@ export default function NfwPerkDetailPanel({
             <div className="space-y-3">
               <button
                 onClick={() => {
-                  if (onRedeem && perk) {
+                  if (perk.userHasRedeemed) {
+                    setShowCoupon(true);
+                  } else if (onRedeem && perk) {
                     onRedeem(perk);
                   } else if (perk.landing_page_url) {
                     window.open(perk.landing_page_url, "_blank");
@@ -288,7 +291,7 @@ export default function NfwPerkDetailPanel({
               </p>
             )}
 
-            {perk.coupon_code && (
+            {perk.userHasRedeemed && perk.coupon_code && showCoupon && (
               <div className="mt-3 p-3 bg-nfw-citrine/20 border border-nfw-citrine rounded-lg">
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
@@ -313,14 +316,16 @@ export default function NfwPerkDetailPanel({
               </div>
             )}
 
-            <div className="mt-4 p-2.5 bg-[#fdf493]/20 rounded-lg">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-3.5 h-3.5 text-nfw-blackberry flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-nfw-blackberry/60">
-                  Online redemptions open in a new tab.
-                </p>
+            {perk.userHasRedeemed && (
+              <div className="mt-4 p-2.5 bg-[#fdf493]/20 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-3.5 h-3.5 text-nfw-blackberry flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-nfw-blackberry/60">
+                    Online redemptions open in a new tab.
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
