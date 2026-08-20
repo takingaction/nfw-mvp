@@ -11115,3 +11115,41 @@ Fixed redeemed state and coupon display to conform across NFW detail, Access det
 - Access Perks don't need "About This Perk" card (only NFW perks)
 - NFW perks use `perk.coupon_code` from API, Access perks query local `offer_redemptions` table
 - There are TWO NFW components: `NfwPerkDetailPanel.tsx` (slideout) and `/perks/nfw/[slug]` (detail page)
+
+## Session 2026-08-20: Perk Redemption State Bug Fix
+
+### Overview
+
+Fixed bug where redeemed state did not persist for Access Perks in the slideout (`OfferDetailPanel.tsx`). After redeeming, the state was not being set to `hasRedeemed(true)`, causing the redeemed button to not show on subsequent views.
+
+### Bug Analysis
+
+**Problem:**
+- `OfferDetailPanel.tsx` (Access Perks slideout) never called `setHasRedeemed(true)` after successful redemption
+- The initial redemption check required BOTH `redeemed: true` AND `coupon_code` to exist
+- For non-coupon offers (instore, call), there was no `coupon_code`, so state was lost on reload
+
+**What Worked:**
+- NFW slideout: Called `onRedeem` callback → parent updates state → worked correctly
+- NFW detail page: Called `setPerk({ ...perk, userHasRedeemed: true })` → worked correctly
+- Access detail page: Called `setHasRedeemed(true)` for all methods → worked correctly
+
+### Changes Made
+
+**`components/perks/OfferDetailPanel.tsx`:**
+
+1. **Fixed initial redemption check** (line 252):
+   - Changed from requiring BOTH `redeemed` AND `coupon_code`
+   - To only requiring `redeemed` (non-coupon offers now properly show as redeemed)
+
+2. **Added `setHasRedeemed(true)` after successful API response for all 4 methods:**
+   - `link` method (after `setRedemptionResult`)
+   - `instore_print` method (after both `setCustomRedemption` and `setRedemptionResult`)
+   - `instore` method (after both `setCustomRedemption` and `setRedemptionResult`)
+   - `call` method (after `setRedemptionResult`)
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/perks/OfferDetailPanel.tsx` | Added `setHasRedeemed(true)` after all redemption methods, fixed initial check to not require coupon_code |

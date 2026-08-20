@@ -249,9 +249,11 @@ export default function OfferDetailPanel({
             const redemptionRes = await fetch(`/api/perks/redemptions/check?offer_key=${key}`);
             if (redemptionRes.ok) {
               const redemptionData = await redemptionRes.json();
-              if (redemptionData.redeemed && redemptionData.coupon_code) {
+              if (redemptionData.redeemed) {
                 setHasRedeemed(true);
-                setCouponCode(redemptionData.coupon_code);
+                if (redemptionData.coupon_code) {
+                  setCouponCode(redemptionData.coupon_code);
+                }
               }
             }
           }
@@ -418,6 +420,7 @@ export default function OfferDetailPanel({
           redemptionUrl: finalUrl,
           couponCode: promoCode,
         });
+        setHasRedeemed(true);
       } else if (method === "instore_print") {
         const details = data.details || {};
         const displayContent = data.display_message || details.display;
@@ -430,6 +433,7 @@ export default function OfferDetailPanel({
             redemptionUrl: details.link || data.redemption_url,
             method: 'instore_print'
           });
+          setHasRedeemed(true);
           return;
         }
 
@@ -452,6 +456,7 @@ export default function OfferDetailPanel({
             redemptionUrl: printUrl,
             couponCode: couponCode,
           });
+          setHasRedeemed(true);
         } else {
           throw new Error("No print URL received from API");
         }
@@ -467,6 +472,7 @@ export default function OfferDetailPanel({
             redemptionUrl: details.link || data.redemption_url,
             method: 'instore'
           });
+          setHasRedeemed(true);
           return;
         }
 
@@ -485,6 +491,7 @@ export default function OfferDetailPanel({
             instructions:
               "Show the coupon from the new tab at checkout to redeem your offer.",
           });
+          setHasRedeemed(true);
         } else {
           throw new Error("No coupon URL received from API");
         }
@@ -518,6 +525,7 @@ export default function OfferDetailPanel({
             data.display_message ||
             "Call the number above and mention the promo code",
         });
+        setHasRedeemed(true);
       }
     } catch (err: any) {
       setRedemptionResult({
