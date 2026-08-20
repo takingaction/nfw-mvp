@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, ArrowLeft, Globe, Heart, Clock, Copy, Check } from "lucide-react";
+import { X, ArrowLeft, Globe, Heart, Clock, Copy, Check, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 
 type NfwPerk = {
   id: string;
@@ -16,6 +16,7 @@ type NfwPerk = {
   categories: string[];
   expires_at: string | null;
   userHasRedeemed?: boolean;
+  coupon_code?: string | null;
 };
 
 type NfwPerkDetailPanelProps = {
@@ -26,6 +27,7 @@ type NfwPerkDetailPanelProps = {
   onToggleLike?: (partnerName: string, logoUrl: string | null, liked: boolean) => void;
   isAdmin?: boolean;
   onRedeem?: (perk: NfwPerk) => void;
+  redeemedCouponCode?: string | null;
 };
 
 function formatExpiry(date: string | null): string {
@@ -51,11 +53,14 @@ export default function NfwPerkDetailPanel({
   onToggleLike,
   isAdmin = false,
   onRedeem,
+  redeemedCouponCode = null,
 }: NfwPerkDetailPanelProps) {
   const [likeAnimating, setLikeAnimating] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [redeeming, setRedeeming] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -242,20 +247,80 @@ export default function NfwPerkDetailPanel({
           </div>
 
           <div className="p-4 border-t border-nfw-blackberry/10 bg-white">
-            <button
-              onClick={() => {
-                if (onRedeem && perk) {
-                  onRedeem(perk);
-                } else if (perk.landing_page_url) {
-                  window.open(perk.landing_page_url, "_blank");
-                }
-              }}
-              disabled={!perk.landing_page_url}
-              className="w-full px-4 py-2.5 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
-            >
-              <Globe className="w-4 h-4" />
-              Visit Partner Site
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  if (onRedeem && perk) {
+                    onRedeem(perk);
+                  } else if (perk.landing_page_url) {
+                    window.open(perk.landing_page_url, "_blank");
+                  }
+                }}
+                disabled={!perk.landing_page_url || redeeming}
+                className={`w-full px-4 py-2.5 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 text-sm ${
+                  perk.userHasRedeemed
+                    ? "bg-green-100 text-green-800 cursor-pointer hover:bg-green-100"
+                    : "bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90"
+                } disabled:opacity-50`}
+              >
+                {redeeming ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Redeeming...
+                  </>
+                ) : perk.userHasRedeemed ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Redeemed
+                  </>
+                ) : (
+                  <>
+                    <Globe className="w-4 h-4" />
+                    Redeem Online
+                  </>
+                )}
+              </button>
+            </div>
+
+            {perk.userHasRedeemed && (
+              <p className="text-xs text-green-600 mt-3 text-center">
+                You've already redeemed this perk. Click again to visit the partner site.
+              </p>
+            )}
+
+            {perk.coupon_code && (
+              <div className="mt-3 p-3 bg-nfw-citrine/20 border border-nfw-citrine rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <p className="text-xs text-nfw-blackberry/50 mb-1">
+                      Promo Code:
+                    </p>
+                    <p className="text-base font-mono font-bold text-nfw-blackberry">
+                      {perk.coupon_code}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(perk.coupon_code!);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    className="px-3 py-2 bg-nfw-blackberry text-white text-xs font-medium rounded-lg hover:bg-nfw-blackberry/90 transition-colors"
+                  >
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 p-2.5 bg-[#fdf493]/20 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-3.5 h-3.5 text-nfw-blackberry flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-nfw-blackberry/60">
+                  Online redemptions open in a new tab.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

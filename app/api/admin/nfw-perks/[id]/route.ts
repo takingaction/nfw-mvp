@@ -61,6 +61,8 @@ export async function PUT(
       is_active,
       categories,
       slug,
+      coupon_code,
+      is_admin_only,
     } = body;
 
     if (!landing_page_url) {
@@ -89,6 +91,8 @@ export async function PUT(
         is_active,
         categories,
         slug: generatedSlug,
+        coupon_code: coupon_code || null,
+        is_admin_only: is_admin_only === true,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)

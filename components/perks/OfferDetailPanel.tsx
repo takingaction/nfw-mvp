@@ -18,6 +18,7 @@ import {
   Heart,
   Check,
   Copy,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -166,6 +167,9 @@ export default function OfferDetailPanel({
     uses_remaining: string | number;
     number_of_uses_remaining: number;
   } | null>(null);
+  const [hasRedeemed, setHasRedeemed] = useState(false);
+  const [couponCode, setCouponCode] = useState<string | null>(null);
+  const [showCoupon, setShowCoupon] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -187,6 +191,7 @@ export default function OfferDetailPanel({
         setError(null);
         setRedemptionResult(null);
         setSelectedLocation(null);
+        setShowCoupon(false);
       }, 300);
       return () => clearTimeout(timer);
     }
@@ -204,6 +209,8 @@ export default function OfferDetailPanel({
     setLoading(true);
     setError(null);
     setUsesRemaining(null);
+    setHasRedeemed(false);
+    setCouponCode(null);
     try {
       const response = await fetch(`/api/access-perks/offers/${key}`);
 
@@ -231,6 +238,26 @@ export default function OfferDetailPanel({
         }
       } catch {
         // Silently fail - uses remaining is not critical
+      }
+
+      // Check for existing redemption
+      try {
+        const profileRes = await fetch('/api/auth/profile');
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          if (profileData.id) {
+            const redemptionRes = await fetch(`/api/perks/redemptions/check?offer_key=${key}`);
+            if (redemptionRes.ok) {
+              const redemptionData = await redemptionRes.json();
+              if (redemptionData.redeemed && redemptionData.coupon_code) {
+                setHasRedeemed(true);
+                setCouponCode(redemptionData.coupon_code);
+              }
+            }
+          }
+        }
+      } catch {
+        // Silently fail - redemption check is not critical
       }
     } catch (err: any) {
       setError(err.message || "Failed to load offer");
@@ -355,10 +382,12 @@ export default function OfferDetailPanel({
         const details = data.details || {};
 
         if (details.display) {
+          const promoCode = details.promotion_code || data.promotion_code || data.coupon_code;
+          const simplifiedDisplay = simplifyRedemptionMessage(details.display, promoCode);
           setCustomRedemption({
-            display: details.display,
+            display: simplifiedDisplay,
             termsOfUse: details.terms_of_use,
-            promoCode: details.promotion_code,
+            promoCode: promoCode,
             redemptionUrl: details.link || data.redemption_url,
             method: 'link'
           });
@@ -381,10 +410,11 @@ export default function OfferDetailPanel({
 
         const promoCode = data.promotion_code || data.coupon_code;
         const displayMessage = data.display_message || data.instructions;
+        const simplifiedMessage = simplifyRedemptionMessage(displayMessage, promoCode);
 
         setRedemptionResult({
           success: true,
-          message: displayMessage || "Click 'Open Website' to visit the offer page.",
+          message: simplifiedMessage || "Click 'Open Website' to visit the offer page.",
           redemptionUrl: finalUrl,
           couponCode: promoCode,
         });
@@ -522,6 +552,33 @@ export default function OfferDetailPanel({
     const div = document.createElement("div");
     div.innerHTML = html || "";
     return div.textContent || "";
+  };
+
+  const simplifyRedemptionMessage = (message: string, promoCode?: string | null): string => {
+    if (!message) return message;
+    // Replace patterns like "To redeem this offer, click here and enter promotion code X at checkout."
+    // with "Enter promotion code X at checkout."
+    const patterns = [
+      /To redeem this offer[,\s]*(?:<[^>]+>)?click here(?:<\/[^>]+>)?[\s,]*(?:and\s*)?enter(?:<[^>]+>)?\s*promo(?:tion)?\s*code[^0-9]*([A-Z0-9-]+)[^.]*\.?/gi,
+      /To redeem this offer[,\s]*(?:<[^>]+>)?click here(?:<\/[^>]+>)?[\s,]*(?:and\s*)?enter(?:<[^>]+>)?\s*promo(?:tion)?\s*code[^.]*\.?/gi,
+    ];
+
+    let simplified = message;
+    for (const pattern of patterns) {
+      if (pattern.test(simplified)) {
+        if (promoCode) {
+          simplified = `Enter promotion code ${promoCode} at checkout.`;
+        } else {
+          // Still try to extract the promo code from the message
+          const match = simplified.match(/promo(?:tion)?\s*code[^0-9]*([A-Z0-9-]+)/i);
+          simplified = match
+            ? `Enter promotion code ${match[1]} at checkout.`
+            : simplified.replace(/To redeem this offer[,\s]*(?:<[^>]+>)?click here(?:<\/[^>]+>)?[\s,]*(?:and\s*)?enter(?:<[^>]+>)?\s*promo(?:tion)?\s*code[^.]*\.?/gi, '');
+        }
+        break;
+      }
+    }
+    return simplified;
   };
 
   if (!isVisible) return null;
@@ -1072,7 +1129,58 @@ export default function OfferDetailPanel({
                   </div>
                 )}
 
-                {offer.redemption_methods && offer.redemption_methods.length > 0 && (
+                {hasRedeemed && couponCode && (
+                  <>
+                    <button
+                      onClick={() => {
+                        if (redemptionResult?.redemptionUrl) {
+                          window.open(redemptionResult.redemptionUrl, "_blank");
+                        }
+                      }}
+                      className="w-full px-4 py-2.5 bg-green-100 text-green-800 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 text-sm cursor-pointer hover:bg-green-100"
+                    >
+                      <Check className="w-4 h-4" />
+                      Redeemed
+                    </button>
+                    <p className="text-xs text-green-600 mt-3 text-center">
+                      You've already redeemed this perk. Click again to visit the partner site.
+                    </p>
+                    {showCoupon && (
+                      <div className="mt-3 p-3 bg-nfw-citrine/20 border border-nfw-citrine rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <p className="text-xs text-nfw-blackberry/50 mb-1">
+                              Promo Code:
+                            </p>
+                            <p className="text-base font-mono font-bold text-nfw-blackberry">
+                              {couponCode}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(couponCode);
+                              setLinkCopied(true);
+                              setTimeout(() => setLinkCopied(false), 2000);
+                            }}
+                            className="px-3 py-2 bg-nfw-blackberry text-white text-xs font-medium rounded-lg hover:bg-nfw-blackberry/90 transition-colors"
+                          >
+                            {linkCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="mt-4 p-2.5 bg-[#fdf493]/20 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-3.5 h-3.5 text-nfw-blackberry flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-nfw-blackberry/60">
+                          Online redemptions open in a new tab.
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {!hasRedeemed && offer.redemption_methods && offer.redemption_methods.length > 0 && (
                   <div className="bg-white rounded-xl border border-nfw-blackberry/10 p-5">
                     <h3 className="text-base font-semibold text-nfw-blackberry mb-4">
                       Redeem This Offer
@@ -1085,7 +1193,10 @@ export default function OfferDetailPanel({
                     <div className="space-y-3">
                       {offer.redemption_methods.includes("link") && (
                         <button
-                          onClick={() => handleRedeem("link")}
+                          onClick={() => {
+                            handleRedeem("link");
+                            setShowCoupon(true);
+                          }}
                           disabled={!!redeemingLink || !!(usesRemaining && usesRemaining.number_of_uses_remaining === 0)}
                           className="w-full px-4 py-2.5 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
                         >

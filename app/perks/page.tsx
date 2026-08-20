@@ -553,8 +553,13 @@ export default function PerksPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        if (data.landingPageUrl) {
-          window.open(data.landingPageUrl, "_blank");
+        // Update selected perk with redemption info and coupon code
+        if (selectedNfwPerk?.id === perk.id) {
+          setSelectedNfwPerk({
+            ...selectedNfwPerk,
+            userHasRedeemed: true,
+            coupon_code: data.couponCode || selectedNfwPerk.coupon_code,
+          });
         }
         fetchNfwPerks();
       } else {

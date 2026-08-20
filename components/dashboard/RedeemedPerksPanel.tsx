@@ -94,7 +94,7 @@ export default function RedeemedPerksPanel({
           logo_url: r.logo_url,
           redeem_type: "landing_page",
           redemption_url: r.landing_page_url,
-          coupon_code: null,
+          coupon_code: r.coupon_code || null,
           phone_number: null,
           instructions: null,
           status: "active",

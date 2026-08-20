@@ -11,6 +11,8 @@ import {
   Loader2,
   XCircle,
   Check,
+  Copy,
+  AlertCircle,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getLoginRedirectUrl } from "@/lib/redirect-utils";
@@ -28,6 +30,7 @@ type NfwPerk = {
   categories: string[];
   expires_at: string | null;
   userHasRedeemed?: boolean;
+  coupon_code?: string | null;
 };
 
 export default function NfwPerkDetailPage() {
@@ -41,6 +44,9 @@ export default function NfwPerkDetailPage() {
   const [redeeming, setRedeeming] = useState(false);
   const [likedPartners, setLikedPartners] = useState<string[]>([]);
   const [likeAnimating, setLikeAnimating] = useState(false);
+  const [redeemedCouponCode, setRedeemedCouponCode] = useState<string | null>(null);
+  const [showCoupon, setShowCoupon] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const checkAuthAndFetch = async () => {
@@ -177,17 +183,20 @@ export default function NfwPerkDetailPage() {
       });
 
       if (response.ok) {
+        const data = await response.json();
         // Update local state to show redeemed
-        setPerk({ ...perk, userHasRedeemed: true });
+        setPerk({ ...perk, userHasRedeemed: true, coupon_code: data.couponCode || perk.coupon_code });
+        // Store coupon code if returned
+        if (data.couponCode) {
+          setRedeemedCouponCode(data.couponCode);
+          setShowCoupon(true);
+        }
       }
     } catch (err) {
       console.error("Failed to redeem perk:", err);
     } finally {
       setRedeeming(false);
     }
-
-    // Open URL regardless of API result
-    window.open(perk.landing_page_url, "_blank");
   };
 
   const formatExpiry = (date: string | null) => {
@@ -366,44 +375,74 @@ export default function NfwPerkDetailPage() {
                 <h3 className="text-base font-semibold text-nfw-blackberry mb-4">
                   Redeem This Offer
                 </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={handleRedeem}
+                    disabled={!perk.landing_page_url || redeeming}
+                    className={`w-full px-4 py-2.5 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 text-sm ${
+                      perk.userHasRedeemed
+                        ? "bg-green-100 text-green-800 cursor-pointer hover:bg-green-100"
+                        : "bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90"
+                    } disabled:opacity-50`}
+                  >
+                    {redeeming ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Redeeming...
+                      </>
+                    ) : perk.userHasRedeemed ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        Redeemed
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="w-4 h-4" />
+                        Redeem Online
+                      </>
+                    )}
+                  </button>
+                </div>
 
-                <button
-                  onClick={handleRedeem}
-                  disabled={!perk.landing_page_url || redeeming}
-                  className={`w-full px-4 py-3 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 ${
-                    perk.userHasRedeemed
-                      ? "bg-green-100 text-green-800 cursor-default"
-                      : "bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90"
-                  } disabled:opacity-50`}
-                >
-                  {redeeming ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Redeeming...
-                    </>
-                  ) : perk.userHasRedeemed ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Redeemed
-                    </>
-                  ) : (
-                    <>
-                      <ExternalLink className="w-4 h-4" />
-                      Visit Partner Site
-                    </>
-                  )}
-                </button>
-
-                {!perk.landing_page_url && (
-                  <p className="text-xs text-nfw-blackberry/50 mt-2 text-center">
-                    No landing page configured for this perk.
-                  </p>
-                )}
-                {perk.userHasRedeemed && perk.landing_page_url && (
-                  <p className="text-xs text-green-600 mt-2 text-center">
+                {perk.userHasRedeemed && (
+                  <p className="text-xs text-green-600 mt-3 text-center">
                     You've already redeemed this perk. Click again to visit the partner site.
                   </p>
                 )}
+
+                {(redeemedCouponCode || perk.coupon_code) && (
+                  <div className="mt-3 p-3 bg-nfw-citrine/20 border border-nfw-citrine rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <p className="text-xs text-nfw-blackberry/50 mb-1">
+                          Promo Code:
+                        </p>
+                        <p className="text-base font-mono font-bold text-nfw-blackberry">
+                          {redeemedCouponCode || perk.coupon_code}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(redeemedCouponCode || perk.coupon_code || "");
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        }}
+                        className="px-3 py-2 bg-nfw-blackberry text-white text-xs font-medium rounded-lg hover:bg-nfw-blackberry/90 transition-colors"
+                      >
+                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4 p-2.5 bg-[#fdf493]/20 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 text-nfw-blackberry flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-nfw-blackberry/60">
+                      Online redemptions open in a new tab.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Perk Info */}

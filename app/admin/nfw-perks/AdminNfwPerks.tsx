@@ -20,6 +20,8 @@ type NfwPerk = {
   categories: string[];
   redemptionCount: number;
   created_at: string;
+  coupon_code: string | null;
+  is_admin_only: boolean;
 };
 
 const PERK_CATEGORIES = [
@@ -63,6 +65,8 @@ export default function AdminNfwPerks() {
     expires_at: "",
     is_active: true,
     categories: [] as string[],
+    coupon_code: "",
+    is_admin_only: false,
   });
 
   useEffect(() => {
@@ -98,6 +102,8 @@ export default function AdminNfwPerks() {
       expires_at: "",
       is_active: true,
       categories: [],
+      coupon_code: "",
+      is_admin_only: false,
     });
     setSlugManuallyEdited(false);
     setShowModal(true);
@@ -118,6 +124,8 @@ export default function AdminNfwPerks() {
       expires_at: perk.expires_at ? perk.expires_at.split("T")[0] : "",
       is_active: perk.is_active,
       categories: perk.categories || [],
+      coupon_code: perk.coupon_code || "",
+      is_admin_only: perk.is_admin_only || false,
     });
     setSlugManuallyEdited(true);
     setShowModal(true);
@@ -169,6 +177,8 @@ export default function AdminNfwPerks() {
       expires_at: formData.expires_at ? new Date(formData.expires_at).toISOString() : null,
       is_active: formData.is_active,
       categories: formData.categories,
+      coupon_code: formData.coupon_code || null,
+      is_admin_only: formData.is_admin_only,
     };
 
     try {
@@ -314,6 +324,11 @@ export default function AdminNfwPerks() {
                       >
                         {perk.is_active ? "Active" : "Inactive"}
                       </span>
+                      {perk.is_admin_only && (
+                        <span className="inline-flex px-2 py-1 text-xs font-medium font-ui ml-1 bg-nfw-wisteria/20 text-nfw-wisteria">
+                          Admin
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-nfw-blackberry/70 font-ui text-sm">
                       {perk.redemptionCount}
@@ -375,6 +390,11 @@ export default function AdminNfwPerks() {
                   >
                     {perk.is_active ? "Active" : "Inactive"}
                   </span>
+                  {perk.is_admin_only && (
+                    <span className="inline-flex px-2 py-1 text-xs font-medium font-ui ml-1 bg-nfw-wisteria/20 text-nfw-wisteria">
+                      Admin
+                    </span>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-sm mb-3">
@@ -548,6 +568,22 @@ export default function AdminNfwPerks() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-nfw-blackberry mb-1 font-ui">
+                  Coupon Code
+                </label>
+                <input
+                  type="text"
+                  value={formData.coupon_code}
+                  onChange={(e) => setFormData({ ...formData, coupon_code: e.target.value.toUpperCase() })}
+                  className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm focus:outline-none focus:border-nfw-blackberry font-ui font-mono"
+                  placeholder="e.g., SAVE20"
+                />
+                <p className="text-xs text-nfw-blackberry/50 mt-1 font-ui">
+                  Optional promo code shown to members after redemption
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-nfw-blackberry mb-1 font-ui">
@@ -642,6 +678,24 @@ export default function AdminNfwPerks() {
                 <label htmlFor="is_active" className="text-sm text-nfw-blackberry font-ui">
                   Active
                 </label>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="is_admin_only"
+                  checked={formData.is_admin_only}
+                  onChange={(e) => setFormData({ ...formData, is_admin_only: e.target.checked })}
+                  className="w-4 h-4 accent-[#3E145F]"
+                />
+                <div>
+                  <label htmlFor="is_admin_only" className="text-sm font-medium text-nfw-blackberry font-ui">
+                    Admin Only
+                  </label>
+                  <p className="text-xs text-nfw-blackberry/50 font-ui">
+                    Hidden from non-admin users
+                  </p>
+                </div>
               </div>
             </div>
 

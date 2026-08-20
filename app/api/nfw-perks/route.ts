@@ -14,9 +14,20 @@ export async function GET(request: Request) {
 
     // Get user from session if userId not provided
     let userId = userIdParam;
+    let isAdmin = false;
     if (!userId) {
       const { data: { user } } = await supabase.auth.getUser();
       userId = user?.id || null;
+
+      // Check if user is admin
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("is_admin")
+          .eq("id", user.id)
+          .maybeSingle();
+        isAdmin = profile?.is_admin === true;
+      }
     }
 
     let query = supabase
@@ -26,6 +37,11 @@ export async function GET(request: Request) {
       .order("featured_order", { nullsFirst: false })
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
+
+    // Non-admins cannot see admin-only perks
+    if (!isAdmin) {
+      query = query.eq("is_admin_only", false);
+    }
 
     if (categories) {
       const categoryList = categories.split(",");
@@ -59,10 +75,17 @@ export async function GET(request: Request) {
       }));
     }
 
-    const { count } = await supabase
+    // Count query - non-admins don't see admin-only perks
+    let countQuery = supabase
       .from("nfw_perks")
       .select("*", { count: "exact", head: true })
       .eq("is_active", true);
+
+    if (!isAdmin) {
+      countQuery = countQuery.eq("is_admin_only", false);
+    }
+
+    const { count } = await countQuery;
 
     return NextResponse.json({
       perks: perksWithRedemptionStatus,

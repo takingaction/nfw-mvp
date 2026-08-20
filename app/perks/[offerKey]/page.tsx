@@ -11,8 +11,10 @@ import {
   Printer,
   Loader2,
   CheckCircle,
+  Check,
   XCircle,
   AlertCircle,
+  Copy,
 } from "lucide-react";
 import Link from "next/link";
 import LocationSelector from "@/components/LocationSelector";
@@ -38,6 +40,9 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
   const [redeemingCall, setRedeemingCall] = useState(false);
   const [redeemingPrint, setRedeemingPrint] = useState(false);
   const [redemptionResult, setRedemptionResult] = useState<any>(null);
+  const [hasRedeemed, setHasRedeemed] = useState(false);
+  const [couponCode, setCouponCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Location selector state
   const [showLocationSelector, setShowLocationSelector] = useState(false);
@@ -103,6 +108,26 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
 
       if (data.offers && data.offers.length > 0) {
         setOffer(data.offers[0]);
+
+        // Check if user has already redeemed this offer
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: existingRedemption } = await supabase
+            .from("offer_redemptions")
+            .select("coupon_code")
+            .eq("user_id", user.id)
+            .eq("offer_key", offerKey)
+            .eq("status", "active")
+            .maybeSingle();
+
+          if (existingRedemption) {
+            setHasRedeemed(true);
+            if (existingRedemption.coupon_code) {
+              setCouponCode(existingRedemption.coupon_code);
+            }
+          }
+        }
       } else {
         throw new Error("Offer not found");
       }
@@ -182,6 +207,8 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
           redemptionUrl: finalUrl,
           couponCode: promoCode,
         });
+        setHasRedeemed(true);
+        if (promoCode) setCouponCode(promoCode);
       } else if (method === "instore_print") {
         const printUrl =
           data.print_url ||
@@ -202,6 +229,8 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
             redemptionUrl: printUrl,
             couponCode: couponCode,
           });
+          setHasRedeemed(true);
+          if (couponCode) setCouponCode(couponCode);
         } else {
           throw new Error("No print URL received from API");
         }
@@ -221,6 +250,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
             instructions:
               "Show the coupon from the new tab at checkout to redeem your offer.",
           });
+          setHasRedeemed(true);
         } else {
           throw new Error("No coupon URL received from API");
         }
@@ -254,6 +284,10 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
             data.display_message ||
             "Call the number above and mention the promo code",
         });
+        setHasRedeemed(true);
+        if (data.promotion_code || data.coupon_code) {
+          setCouponCode(data.promotion_code || data.coupon_code);
+        }
       }
     } catch (err: any) {
       setRedemptionResult({
@@ -326,6 +360,8 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
           redemptionUrl: finalUrl,
           couponCode: promoCode,
         });
+        setHasRedeemed(true);
+        if (promoCode) setCouponCode(promoCode);
       } else if (method === "instore_print") {
         const printUrl =
           data.print_url ||
@@ -344,6 +380,8 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
             redemptionUrl: printUrl,
             couponCode: couponCode,
           });
+          setHasRedeemed(true);
+          if (couponCode) setCouponCode(couponCode);
         } else {
           throw new Error("No print URL received from API");
         }
@@ -361,6 +399,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
             instructions:
               "Show the coupon from the new tab at checkout to redeem your offer.",
           });
+          setHasRedeemed(true);
         } else {
           throw new Error("No coupon URL received from API");
         }
@@ -396,6 +435,10 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
             data.display_message ||
             "Call the number above and mention the promo code",
         });
+        setHasRedeemed(true);
+        if (data.promotion_code || data.coupon_code) {
+          setCouponCode(data.promotion_code || data.coupon_code);
+        }
       }
     } catch (err: any) {
       setRedemptionResult({
@@ -800,12 +843,21 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
                       <button
                         onClick={() => handleRedeem("link")}
                         disabled={redeemingLink}
-                        className="w-full px-4 py-2.5 bg-nfw-blackberry text-white rounded-xl hover:bg-nfw-blackberry/90 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                        className={`w-full px-4 py-2.5 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 text-sm ${
+                          hasRedeemed
+                            ? "bg-green-100 text-green-800 cursor-pointer hover:bg-green-100"
+                            : "bg-nfw-blackberry text-white hover:bg-nfw-blackberry/90"
+                        } disabled:opacity-50`}
                       >
                         {redeemingLink ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
                             Redeeming...
+                          </>
+                        ) : hasRedeemed ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            Redeemed
                           </>
                         ) : (
                           <>
@@ -820,12 +872,21 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
                       <button
                         onClick={() => handleRedeem("instore")}
                         disabled={redeemingInstore}
-                        className="w-full px-4 py-2.5 bg-nfw-lilac text-nfw-blackberry rounded-xl hover:bg-nfw-lilac/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                        className={`w-full px-4 py-2.5 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 text-sm ${
+                          hasRedeemed
+                            ? "bg-green-100 text-green-800 cursor-pointer hover:bg-green-100"
+                            : "bg-nfw-lilac text-nfw-blackberry hover:bg-nfw-lilac/80"
+                        } disabled:opacity-50`}
                       >
                         {redeemingInstore ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
                             Redeeming...
+                          </>
+                        ) : hasRedeemed ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            Redeemed
                           </>
                         ) : (
                           <>
@@ -840,12 +901,21 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
                       <button
                         onClick={() => handleRedeem("instore_print")}
                         disabled={redeemingPrint}
-                        className="w-full px-4 py-2.5 bg-[#b2d1ee] text-nfw-blackberry rounded-xl hover:bg-[#b2d1ee]/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                        className={`w-full px-4 py-2.5 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 text-sm ${
+                          hasRedeemed
+                            ? "bg-green-100 text-green-800 cursor-pointer hover:bg-green-100"
+                            : "bg-[#b2d1ee] text-nfw-blackberry hover:bg-[#b2d1ee]/80"
+                        } disabled:opacity-50`}
                       >
                         {redeemingPrint ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
                             Redeeming...
+                          </>
+                        ) : hasRedeemed ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            Redeemed
                           </>
                         ) : (
                           <>
@@ -860,12 +930,21 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
                       <button
                         onClick={() => handleRedeem("call")}
                         disabled={redeemingCall}
-                        className="w-full px-4 py-2.5 bg-nfw-citrine text-nfw-blackberry rounded-xl hover:bg-nfw-citrine/80 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                        className={`w-full px-4 py-2.5 rounded-xl transition-colors font-medium flex items-center justify-center gap-2 text-sm ${
+                          hasRedeemed
+                            ? "bg-green-100 text-green-800 cursor-pointer hover:bg-green-100"
+                            : "bg-nfw-citrine text-nfw-blackberry hover:bg-nfw-citrine/80"
+                        } disabled:opacity-50`}
                       >
                         {redeemingCall ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
                             Redeeming...
+                          </>
+                        ) : hasRedeemed ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            Redeemed
                           </>
                         ) : (
                           <>
@@ -876,6 +955,37 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
                       </button>
                     )}
                   </div>
+
+                  {hasRedeemed && (
+                    <p className="text-xs text-green-600 mt-3 text-center">
+                      You've already redeemed this perk. Click again to visit the partner site.
+                    </p>
+                  )}
+
+                  {couponCode && (
+                    <div className="mt-3 p-3 bg-nfw-citrine/20 border border-nfw-citrine rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <p className="text-xs text-nfw-blackberry/50 mb-1">
+                            Promo Code:
+                          </p>
+                          <p className="text-base font-mono font-bold text-nfw-blackberry">
+                            {couponCode}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(couponCode);
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                          }}
+                          className="px-3 py-2 bg-nfw-blackberry text-white text-xs font-medium rounded-lg hover:bg-nfw-blackberry/90 transition-colors"
+                        >
+                          {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mt-4 p-2.5 bg-[#fdf493]/20 rounded-lg">
                     <div className="flex items-start gap-2">

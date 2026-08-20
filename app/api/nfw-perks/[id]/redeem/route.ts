@@ -79,6 +79,7 @@ export async function POST(
       landingPageUrl: perk.landing_page_url,
       discountDescription: perk.discount_value || perk.description,
       partnerName: perk.partner_name,
+      couponCode: perk.coupon_code || null,
     });
   } catch (error) {
     console.error("Error in POST /api/nfw-perks/[id]/redeem:", error);

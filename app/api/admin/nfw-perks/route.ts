@@ -62,6 +62,8 @@ export async function POST(request: Request) {
       is_active,
       categories,
       slug,
+      coupon_code,
+      is_admin_only,
     } = body;
 
     if (!title) {
@@ -94,6 +96,8 @@ export async function POST(request: Request) {
         categories: categories || [],
         discount_type: "landing_page",
         slug: generatedSlug,
+        coupon_code: coupon_code || null,
+        is_admin_only: is_admin_only === true,
       })
       .select()
       .single();

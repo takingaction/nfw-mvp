@@ -11029,3 +11029,89 @@ Updated the Stacked Features section template to top-align heading, body, and bu
 - Removed `justify-center` from the content wrapper div so heading, body, and bullets align to top of column
 - Eyebrow stays at top (unchanged)
 - Link stays at bottom via `mt-auto` (unchanged)
+
+## Session 2026-08-19: Perk Redemption UI Conformance
+
+### Overview
+
+Fixed redeemed state and coupon display to conform across NFW detail, Access detail, NFW slideout, and Access slideout.
+
+### Database Migrations
+
+**Migration 138:** `supabase/migrations/138_add_coupon_code_to_nfw_perks.sql`
+- Added `coupon_code TEXT` column to `nfw_perks` table
+
+**Migration 139:** `supabase/migrations/139_add_is_admin_only_to_nfw_perks.sql`
+- Added `is_admin_only BOOLEAN DEFAULT FALSE` column to `nfw_perks` table
+
+### Goal
+- Coupon code shown ONLY after redemption (not before)
+- "Reveal Coupon Code" button to reveal coupon after redemption
+- "Click here" opens partner website after coupon revealed
+- Conform Access Perks UI to match NFW Perks UI
+
+### Changes Made
+
+**NFW Perk Detail Page (`/perks/nfw/[slug]`):**
+- Added `coupon_code` from API to state after redemption
+- Restructured redeem card to match Access Perks pattern:
+  - "Redeem Online" button (aubergine) when not redeemed
+  - "Redeemed" button (green) when redeemed
+  - "You've already redeemed this perk..." message when redeemed
+  - Promo Code section with Copy button
+  - "Online redemptions open in a new tab." info box
+
+**Access Perk Detail Page (`/perks/[offerKey]`):**
+- Added query to `offer_redemptions` table on page load to check for existing redemption
+- Simplified redemption message to "Enter promotion code X at checkout"
+
+**NFW Slideout (`NfwPerkDetailPanel.tsx`):**
+- Added `showCoupon` state for reveal button flow
+- Restructured to match Access Perks pattern:
+  - Single "Redeem Online" / "Redeemed" button
+  - "You've already redeemed..." message
+  - Coupon code with Copy button (shown after reveal)
+  - AlertCircle info box
+
+**Access Slideout (`OfferDetailPanel.tsx`):**
+- Added `showCoupon` state
+- Added `AlertCircle` import
+- Restructured redeemed section:
+  - "Redeemed" button (green) when redeemed
+  - "You've already redeemed..." message
+  - Coupon code section (revealed after clicking Redeem Online)
+  - "Online redemptions open in a new tab." info box
+- "Redeem Online" button now sets `showCoupon` when clicked
+
+**New API Route:**
+- `app/api/perks/redemptions/check/route.ts` - checks if user already redeemed an offer
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `supabase/migrations/138_add_coupon_code_to_nfw_perks.sql` | Added coupon_code column |
+| `supabase/migrations/139_add_is_admin_only_to_nfw_perks.sql` | Added is_admin_only column |
+| `app/api/nfw-perks/[id]/route.ts` | Accept coupon_code |
+| `app/api/admin/nfw-perks/[id]/route.ts` | Accept coupon_code, is_admin_only |
+| `app/api/admin/nfw-perks/route.ts` | Accept coupon_code |
+| `app/api/nfw-perks/[id]/redeem/route.ts` | Return coupon_code |
+| `app/api/nfw-perks/redemptions/route.ts` | Return coupon_code |
+| `app/api/nfw-perks/route.ts` | Return coupon_code |
+| `app/api/nfw-perks/slug/[slug]/route.ts` | Return coupon_code |
+| `app/api/perks/redemptions/check/route.ts` | NEW - check redemption status |
+| `app/admin/nfw-perks/AdminNfwPerks.tsx` | Admin UI with coupon_code field |
+| `app/perks/nfw/[slug]/page.tsx` | Restructured redeem card |
+| `app/perks/[offerKey]/page.tsx` | Added redemption check on load |
+| `app/perks/page.tsx` | Pass coupon_code to slideouts |
+| `components/perks/NfwPerkDetailPanel.tsx` | Restructured redeem section |
+| `components/perks/OfferDetailPanel.tsx` | Restructured redeem section with reveal flow |
+| `components/dashboard/RedeemedPerksPanel.tsx` | Show coupon_code for NFW perks |
+
+### Key Design Decisions
+
+- Coupon code revealed ONLY after redemption to ensure users go through the redemption flow
+- `offer_redemptions` table stores redemptions - queried to check if user already redeemed
+- Access Perks don't need "About This Perk" card (only NFW perks)
+- NFW perks use `perk.coupon_code` from API, Access perks query local `offer_redemptions` table
+- There are TWO NFW components: `NfwPerkDetailPanel.tsx` (slideout) and `/perks/nfw/[slug]` (detail page)

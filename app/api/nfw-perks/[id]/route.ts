@@ -12,12 +12,29 @@ export async function GET(
 
     const supabase = await createClient();
 
-    const { data: perk, error } = await supabase
+    // Check if user is admin
+    let isAdmin = false;
+    if (userId) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("is_admin")
+        .eq("id", userId)
+        .maybeSingle();
+      isAdmin = profile?.is_admin === true;
+    }
+
+    // Non-admins cannot see admin-only perks
+    let query = supabase
       .from("nfw_perks")
       .select("*")
       .eq("id", id)
-      .eq("is_active", true)
-      .maybeSingle();
+      .eq("is_active", true);
+
+    if (!isAdmin) {
+      query = query.eq("is_admin_only", false);
+    }
+
+    const { data: perk, error } = await query.maybeSingle();
 
     if (error) {
       console.error("Error fetching NFW perk:", error);

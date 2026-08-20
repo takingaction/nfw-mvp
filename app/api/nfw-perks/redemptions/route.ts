@@ -25,7 +25,8 @@ export async function GET() {
           slug,
           partner_name,
           partner_logo_url,
-          landing_page_url
+          landing_page_url,
+          coupon_code
         )
       `)
       .eq("user_id", user.id)
@@ -45,6 +46,7 @@ export async function GET() {
       partner_name: r.nfw_perks?.partner_name || null,
       logo_url: r.nfw_perks?.partner_logo_url || null,
       landing_page_url: r.nfw_perks?.landing_page_url || null,
+      coupon_code: r.nfw_perks?.coupon_code || null,
     }));
 
     return NextResponse.json({ redemptions: formattedRedemptions });
