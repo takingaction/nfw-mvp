@@ -35,7 +35,7 @@ async function AdminAnalyticsContent() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, joined_at, subscription_status, membership_level, subscription_ends_at, first_paid_at, first_paid_level, is_approved_free_member, free_membership_contact_submitted, state, city, household_income, date_of_birth, is_admin, profile_completed, previous_membership_level",
+        "id, joined_at, subscription_status, membership_level, subscription_ends_at, first_paid_at, first_paid_level, is_approved_free_member, free_membership_contact_submitted, state, city, household_income, date_of_birth, is_admin, profile_completed, previous_membership_level, stripe_customer_id, lifetime_value, signup_source",
       )
       .order("joined_at", { ascending: true })
       .range(from, from + pageSize - 1);
@@ -55,6 +55,18 @@ async function AdminAnalyticsContent() {
   }
 
   const profiles = allProfiles;
+
+  // Membership payments for period revenue calculation
+  const { data: membershipPayments } = await supabaseAdmin
+    .from("membership_payments")
+    .select("id, user_id, amount, payment_type, created_at")
+    .order("created_at", { ascending: true });
+
+  // Membership upgrades for upgrade stats
+  const { data: membershipUpgrades } = await supabaseAdmin
+    .from("membership_upgrades")
+    .select("id, user_id, from_level, to_level, amount, created_at")
+    .order("created_at", { ascending: true });
 
   // Grants data (use admin client to bypass RLS)
   const { data: grants } = await supabaseAdmin
@@ -130,6 +142,8 @@ async function AdminAnalyticsContent() {
           zdsClaims={zdsClaims || []}
           shopifyProducts={shopifyProducts || []}
           nfwPerkRedemptions={nfwPerkRedemptions || []}
+          membershipPayments={membershipPayments || []}
+          membershipUpgrades={membershipUpgrades || []}
         />
       </div>
     </main>

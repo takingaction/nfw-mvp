@@ -64,6 +64,9 @@ type Profile = {
   date_of_birth: string | null;
   is_admin: boolean | null;
   profile_completed: boolean | null;
+  stripe_customer_id: string | null;
+  lifetime_value: number | null;
+  signup_source: string | null;
 };
 
 type Grant = {
@@ -130,6 +133,23 @@ type NfwPerkRedemption = {
   redeemed_at: string | null;
 };
 
+type MembershipPayment = {
+  id: string;
+  user_id: string | null;
+  amount: number | null;
+  payment_type: string | null;
+  created_at: string | null;
+};
+
+type MembershipUpgrade = {
+  id: string;
+  user_id: string | null;
+  from_level: string | null;
+  to_level: string | null;
+  amount: number | null;
+  created_at: string | null;
+};
+
 type GrantCycle = {
   id: string;
   start_date: string | null;
@@ -146,6 +166,8 @@ export default function AdminAnalyticsClient({
   zdsClaims,
   shopifyProducts,
   nfwPerkRedemptions,
+  membershipPayments,
+  membershipUpgrades,
 }: {
   profiles: Profile[];
   grants: Grant[];
@@ -155,6 +177,8 @@ export default function AdminAnalyticsClient({
   zdsClaims: ZdsClaim[];
   shopifyProducts: ShopifyProduct[];
   nfwPerkRedemptions: NfwPerkRedemption[];
+  membershipPayments: MembershipPayment[];
+  membershipUpgrades: MembershipUpgrade[];
 }) {
   const [tab, setTab] = useState<"members" | "grants" | "perks" | "zds" | "engagement" | "cohorts" | "support">("members");
   const [dateRange, setDateRange] = useState<number | "custom">(9999);
@@ -169,7 +193,29 @@ export default function AdminAnalyticsClient({
   } | null>(null);
   const [freshdeskLoading, setFreshdeskLoading] = useState(false);
   const [freshdeskError, setFreshdeskError] = useState<string | null>(null);
+
+  // Stripe live stats
+  const [stripeLiveStats, setStripeLiveStats] = useState<{
+    contributing: { count: number; revenue: number };
+    founding: { count: number; revenue: number };
+    total: { count: number; revenue: number };
+  } | null>(null);
+
   const dashboardRef = useRef<HTMLDivElement>(null);
+
+  // Fetch Stripe live stats on mount
+  useEffect(() => {
+    fetch("/api/admin/backfill/stripe/live-stats")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.contributing && data.founding && data.total) {
+          setStripeLiveStats(data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch Stripe live stats:", err);
+      });
+  }, []);
 
   // Fetch Freshdesk stats when support tab is active or date range changes
   useEffect(() => {
@@ -415,6 +461,15 @@ export default function AdminAnalyticsClient({
     }).length;
   }, [filteredProfiles]);
 
+  // waitlist → free (waitlist member approved by admin)
+  const waitlistToFreeCount = useMemo(() => {
+    return filteredProfiles.filter((p) => {
+      if (p.is_admin) return false;
+      if (p.profile_completed !== true) return false;
+      return p.previous_membership_level === "waitlist" && p.membership_level === "free";
+    }).length;
+  }, [filteredProfiles]);
+
   // contributing → founding (member who was already paying as contributing and upgraded to founding)
   const contributingToFoundingCount = useMemo(() => {
     return filteredProfiles.filter((p) => {
@@ -432,6 +487,34 @@ export default function AdminAnalyticsClient({
   const membershipRevenue = useMemo(() => {
     return contributingCount * 15 + foundingCount * 100;
   }, [contributingCount, foundingCount]);
+
+  // Verified revenue from membership_payments table (actual Stripe data)
+  const verifiedPeriodRevenue = useMemo(() => {
+    if (!membershipPayments || membershipPayments.length === 0) return 0;
+    return membershipPayments
+      .filter((p) => {
+        if (!p.created_at) return false;
+        const paymentDate = new Date(p.created_at);
+        return paymentDate >= cutoff && paymentDate <= endDate;
+      })
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+  }, [membershipPayments, cutoff, endDate]);
+
+  // Verified lifetime revenue from membership_payments table (actual Stripe data)
+  const verifiedLifetimeRevenue = useMemo(() => {
+    if (!membershipPayments || membershipPayments.length === 0) return 0;
+    return membershipPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+  }, [membershipPayments]);
+
+  // Period upgrades count
+  const periodUpgradesCount = useMemo(() => {
+    if (!membershipUpgrades || membershipUpgrades.length === 0) return 0;
+    return membershipUpgrades.filter((u) => {
+      if (!u.created_at) return false;
+      const upgradeDate = new Date(u.created_at);
+      return upgradeDate >= cutoff && upgradeDate <= endDate;
+    }).length;
+  }, [membershipUpgrades, cutoff, endDate]);
 
   // Waterfall categories (mutually exclusive)
   // Admin count (separate, not in other categories)
@@ -1171,8 +1254,15 @@ export default function AdminAnalyticsClient({
             text: "text-white",
           },
           {
-            label: "Membership Revenue",
-            value: `$${membershipRevenue.toLocaleString()}`,
+            label: "Verified Revenue (All Time)",
+            value: `$${verifiedLifetimeRevenue.toLocaleString()}`,
+            icon: DollarSign,
+            color: "bg-nfw-aubergine",
+            text: "text-white",
+          },
+          {
+            label: "Verified Revenue (Period)",
+            value: `$${Math.round(verifiedPeriodRevenue).toLocaleString()}`,
             icon: DollarSign,
             color: "bg-nfw-wisteria",
             text: "text-white",
@@ -1217,6 +1307,20 @@ export default function AdminAnalyticsClient({
             value: totalNewsletterSubscribers,
             icon: Users,
             color: "bg-nfw-wisteria",
+            text: "text-white",
+          },
+          {
+            label: "Stripe Active",
+            value: stripeLiveStats?.total.count ?? "—",
+            icon: DollarSign,
+            color: "bg-nfw-aubergine",
+            text: "text-white",
+          },
+          {
+            label: "DB vs Stripe Diff",
+            value: paidMembersCount - (stripeLiveStats?.total.count ?? 0),
+            icon: TrendingUp,
+            color: paidMembersCount - (stripeLiveStats?.total.count ?? 0) === 0 ? "bg-green-500" : "bg-red-500",
             text: "text-white",
           },
         ]
@@ -1500,7 +1604,7 @@ export default function AdminAnalyticsClient({
               <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
                 Membership Upgrades
               </h3>
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
                 <div className="bg-nfw-wisteria/10 p-4 text-center">
                   <div className="text-2xl font-black text-nfw-wisteria mb-1">
                     {freeToContributingCount}
@@ -1531,6 +1635,14 @@ export default function AdminAnalyticsClient({
                   </div>
                   <div className="text-xs font-semibold text-nfw-blackberry/60">
                     waitlist → founding
+                  </div>
+                </div>
+                <div className="bg-nfw-wisteria/10 p-4 text-center">
+                  <div className="text-2xl font-black text-nfw-wisteria mb-1">
+                    {waitlistToFreeCount}
+                  </div>
+                  <div className="text-xs font-semibold text-nfw-blackberry/60">
+                    waitlist → free
                   </div>
                 </div>
                 <div className="bg-nfw-wisteria/10 p-4 text-center">

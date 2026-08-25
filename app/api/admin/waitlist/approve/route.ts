@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
     const { error: updateError } = await supabase
       .from("profiles")
       .update({
+        previous_membership_level: "waitlist",
         membership_level: "free",
         is_approved_free_member: true,
         free_membership_contact_submitted: true,

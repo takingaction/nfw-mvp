@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/incomplete-member-reminder",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/backfill-sync",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/sync-all-stripe-payments",
+      "schedule": "0 * * * *"
     }
   ]
 }

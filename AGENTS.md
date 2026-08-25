@@ -11153,3 +11153,114 @@ Fixed bug where redeemed state did not persist for Access Perks in the slideout 
 | File | Change |
 |------|--------|
 | `components/perks/OfferDetailPanel.tsx` | Added `setHasRedeemed(true)` after all redemption methods, fixed initial check to not require coupon_code |
+
+## Session 2026-08-21: Stripe Revenue Tracking & Reconciliation
+
+### Overview
+
+Built Stripe revenue tracking system to reconcile membership revenue between Stripe live data and the database. Created infrastructure to track lifetime value, payments, and upgrades.
+
+### Database
+
+**Migration 140:** `supabase/migrations/140_stripe_revenue_tracking.sql`
+
+Creates infrastructure for revenue tracking:
+
+**New columns on `profiles`:**
+- `stripe_customer_id TEXT` - Stripe customer ID
+- `lifetime_value NUMERIC(10,2) DEFAULT 0` - Total lifetime revenue from this member
+- `signup_source TEXT DEFAULT 'unknown'` - How they signed up (stripe, gift_code, etc.)
+
+**New table `membership_upgrades`:**
+- Tracks tier transitions (free→contributing, contributing→founding, etc.)
+- Columns: id, user_id, from_level, to_level, amount, stripe_payment_id, created_at
+
+**New table `membership_payments`:**
+- Individual payment records for reconciliation
+- Columns: id, user_id, amount, payment_type (signup/renewal/upgrade/refund), stripe_payment_id, stripe_invoice_id, created_at
+
+**New table `stripe_backfill_status`:**
+- Tracks backfill reconciliation status per user
+- Columns: id, user_id, stripe_customer_id, stripe_subscription_id, status (pending/matched/mismatched/not_found), mismatch_reason, last_checked_at
+
+### API Routes Created
+
+**Stripe Backfill Routes (`/api/admin/backfill/stripe/`):**
+| Route | Purpose |
+|-------|---------|
+| `status/route.ts` | GET overall match/mismatch counts |
+| `reconcile/route.ts` | Real-time comparison: Stripe vs DB revenue |
+| `live-stats/route.ts` | Stripe live revenue stats by tier |
+| `payments/[id]/route.ts` | DELETE single payment record |
+| `payments/bulk-delete/route.ts` | Bulk delete payments for a user |
+| `unmatched-subscribers/route.ts` | Stripe customers not in our DB |
+| `unmatched-profiles/route.ts` | Our profiles not matched to Stripe |
+
+### Admin UI
+
+**Backfill Page (`/admin/backfill/stripe`):**
+- **BackfillClient.tsx** - Main admin UI component
+- Reconciliation comparison table showing:
+  - Stripe live revenue vs Database revenue
+  - Matched count, mismatched count
+  - Per-tier breakdown (Contributing $15, Founding $100)
+- Problematic payments table showing:
+  - User info, payment amount, payment type
+  - Delete single / Bulk delete actions
+- Status tracking showing pending, matched, mismatched, not_found counts
+
+### Key Design Decisions
+
+| Decision | Value |
+|----------|-------|
+| Revenue comparison | Compares Stripe live $ vs membership_payments.sum |
+| Match criteria | stripe_customer_id matches OR email matches |
+| Mismatch detection | Compares Stripe subscription amount against expected tier |
+| Payment types | signup, renewal, upgrade, refund |
+| Refund handling | Negative amounts stored in membership_payments |
+
+### Stripe Live Stats (as of 2026-08-21)
+
+| Tier | Amount | Subscribers |
+|------|--------|-------------|
+| Contributing ($15) | $10,740 | 716 |
+| Founding ($100) | $10,455 | 105 |
+| **Total** | **$21,195** | **821** |
+
+### Discrepancy Found
+
+| Source | Amount | Difference |
+|--------|--------|------------|
+| Stripe Live | $21,195 | - |
+| Analytics (DB) | $21,240 | +$45 |
+| Difference | ~3 $15 payments | - |
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/140_stripe_revenue_tracking.sql` | Schema creation |
+| `app/api/admin/backfill/stripe/status/route.ts` | Overall status counts |
+| `app/api/admin/backfill/stripe/reconcile/route.ts` | Real-time comparison |
+| `app/api/admin/backfill/stripe/live-stats/route.ts` | Stripe live data |
+| `app/api/admin/backfill/stripe/payments/[id]/route.ts` | Delete single payment |
+| `app/api/admin/backfill/stripe/payments/bulk-delete/route.ts` | Bulk delete |
+| `app/api/admin/backfill/stripe/unmatched-subscribers/route.ts` | Unmatched Stripe |
+| `app/api/admin/backfill/stripe/unmatched-profiles/route.ts` | Unmatched DB profiles |
+| `app/admin/backfill/stripe/page.tsx` | Admin page wrapper |
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Admin UI component |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/webhook/route.ts` | Store stripe_customer_id on checkout.session.completed |
+| `components/admin/AdminAnalyticsClient.tsx` | Fixed TypeScript errors in export |
+
+### Next Phase
+
+**Phase 2:** Implement $85 upgrade from Contributing → Founding
+- Always prorated (~$85 for remaining time on subscription)
+- Dashboard, profile, and step 3 show "Upgrade to Founding" for contributing members
+- Free members see full $100 Founding price
+- Stripe subscription update with `proration_behavior: 'create_prorations'`

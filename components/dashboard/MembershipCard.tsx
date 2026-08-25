@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 
 type MembershipCardProps = {
   memberName: string;
@@ -21,6 +22,8 @@ export default function MembershipCard({
   badgeContributingUrl,
   badgeFoundingUrl,
 }: MembershipCardProps) {
+  const [upgrading, setUpgrading] = useState(false);
+
   const joinedDate = joinedAt ? new Date(joinedAt) : null;
   const joinedMonth = joinedDate ? joinedDate.toLocaleDateString("en-US", { month: "short" }) : "";
   const joinedYear = joinedDate ? joinedDate.getFullYear() : "";
@@ -49,6 +52,35 @@ export default function MembershipCard({
 
   const badgeUrl = membershipLevel === "founding" ? badgeFoundingUrl : null;
   const showUpgrade = membershipLevel !== "founding";
+
+  const handleUpgrade = async () => {
+    if (membershipLevel === "free") {
+      // Free members go to step 3
+      window.location.href = "/auth/sign-up?step=3";
+      return;
+    }
+
+    // Contributing members go directly to Stripe via API (prorated upgrade)
+    setUpgrading(true);
+    try {
+      const response = await fetch("/api/membership/upgrade", {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (data.success) {
+        // Upgrade was successful - reload page to show new status
+        alert(`Congratulations! You've upgraded to Founding Member. Amount charged: $${data.amountDue.toFixed(2)}`);
+        window.location.reload();
+      } else {
+        alert(data.error || "Failed to create upgrade session");
+        setUpgrading(false);
+      }
+    } catch (err) {
+      console.error("Upgrade error:", err);
+      alert("Failed to upgrade. Please try again.");
+      setUpgrading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col items-center">
@@ -93,12 +125,13 @@ export default function MembershipCard({
         </span>
 
         {showUpgrade && (
-          <Link
-            href="/profile"
-            className="px-4 py-2 text-sm font-bold font-ui bg-[#7786BE] text-white hover:bg-[#7786BE]/90 uppercase"
+          <button
+            onClick={handleUpgrade}
+            disabled={upgrading}
+            className="px-4 py-2 text-sm font-bold font-ui bg-[#7786BE] text-white hover:bg-[#7786BE]/90 uppercase disabled:opacity-50"
           >
-            Upgrade
-          </Link>
+            {upgrading ? "Redirecting..." : "Become a Founding Member"}
+          </button>
         )}
       </div>
 
