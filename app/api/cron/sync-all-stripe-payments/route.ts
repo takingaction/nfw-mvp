@@ -73,7 +73,7 @@ async function syncPaymentsForCustomer(
     let totalAmount = 0;
     let hasFailed = false;
     let hasRefunded = false;
-    let latestSucceededPayment: { date: string; amount: number; status: string } | null = null;
+    let latestSucceededPayment: { date: string; amount: number; status: string; payment_type: string } | null = null;
 
     for (const invoice of invoices) {
       const amount = invoice.amount_paid / 100;
@@ -92,8 +92,11 @@ async function syncPaymentsForCustomer(
 
       if (status === "paid") {
         totalAmount += amount;
+        const paymentType = invoice.billing_reason === "subscription_create" ? "signup" :
+                           invoice.billing_reason === "subscription_cycle" ? "renewal" :
+                           invoice.billing_reason === "subscription_update" ? "upgrade" : "renewal";
         if (!latestSucceededPayment || new Date(date) > new Date(latestSucceededPayment.date)) {
-          latestSucceededPayment = { date, amount, status };
+          latestSucceededPayment = { date, amount, status, payment_type: paymentType };
         }
       }
 
@@ -116,7 +119,7 @@ async function syncPaymentsForCustomer(
       has_failed: hasFailed,
       has_refunded: hasRefunded,
       latest_payment_date: latestSucceededPayment?.date || null,
-      latest_payment_status: latestSucceededPayment?.status || null,
+      latest_payment_status: latestSucceededPayment?.payment_type || null,
       latest_payment_amount: latestSucceededPayment?.amount || null,
       latest_payment_error: null,
       all_payments_json: allPayments,
