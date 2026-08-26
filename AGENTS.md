@@ -11390,3 +11390,63 @@ All payments were true first-time signups (free→contributing, free→founding,
 **Fix:** Changed status check from `"succeeded"` to `"paid"` in:
 - `app/api/cron/sync-all-stripe-payments/route.ts`
 - `app/api/admin/backfill/stripe/sync-customer/[id]/route.ts`
+
+## Session 2026-08-26: Admin Grants Page 1000 Row Limit Fix
+
+### Problem
+
+The `/admin/grants` page was showing incorrect grant counts due to Supabase's default 1000 row limit. The SQL showed 146 grants for a cycle, but the UI displayed 138.
+
+### Root Cause
+
+The page was fetching all grants with `select("id, status, cycle_id")` but Supabase PostgREST capped results at 1000 rows. The code was filtering client-side with `.filter()`, which couldn't count grants beyond the 1000-row limit.
+
+### Solution
+
+Created an RPC function that performs aggregation in PostgreSQL, bypassing the row limit entirely.
+
+**Database Migration (`supabase/migrations/146_create_get_grant_stats_function.sql`):**
+
+```sql
+CREATE OR REPLACE FUNCTION get_grant_counts_by_cycle()
+RETURNS TABLE (
+  cycle_id UUID,
+  total BIGINT,
+  submitted BIGINT,
+  approved BIGINT,
+  not_approved BIGINT,
+  payment_pending BIGINT,
+  payment_sent BIGINT
+) LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    g.cycle_id,
+    COUNT(*)::BIGINT as total,
+    COUNT(*) FILTER (WHERE g.status = 'submitted')::BIGINT as submitted,
+    COUNT(*) FILTER (WHERE g.status = 'approved')::BIGINT as approved,
+    COUNT(*) FILTER (WHERE g.status = 'not_approved')::BIGINT as not_approved,
+    COUNT(*) FILTER (WHERE g.status = 'payment_pending')::BIGINT as payment_pending,
+    COUNT(*) FILTER (WHERE g.status = 'payment_sent')::BIGINT as payment_sent
+  FROM grants g
+  WHERE g.cycle_id IS NOT NULL
+  GROUP BY g.cycle_id
+  ORDER BY g.cycle_id;
+END;
+$$;
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/grants/page.tsx` | Replaced raw grants query with RPC call to `get_grant_counts_by_cycle()`, pre-aggregates stats in JS |
+| `components/admin/SortableCycleList.tsx` | Changed interface from `grants: Grant[]` to `cycleStats: Record<string, CycleStats>`, removed `getCycleStats()` function |
+| `supabase/migrations/146_create_get_grant_stats_function.sql` | New - creates RPC function |
+
+### Key Design Decisions
+
+- **SQL aggregation over client-side**: GROUP BY in PostgreSQL is more efficient than fetching all rows and filtering in JavaScript
+- **Pre-aggregated stats**: Stats are computed server-side and passed as a map to the component, avoiding client-side filtering
+- **SECURITY DEFINER**: Function uses service role to bypass RLS for admin page

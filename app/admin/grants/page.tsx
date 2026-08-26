@@ -9,6 +9,15 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
+interface CycleStats {
+  total: number;
+  submitted: number;
+  approved: number;
+  not_approved: number;
+  payment_pending: number;
+  payment_sent: number;
+}
+
 export default async function AdminGrantsPage() {
   await requireAdmin();
 
@@ -25,14 +34,33 @@ export default async function AdminGrantsPage() {
     status: c.end_date && new Date(c.end_date) < now && c.status === 'open' ? 'closed' : c.status,
   }));
 
-  const { data: grants } = await supabaseAdmin
-    .from("grants")
-    .select("id, status, cycle_id");
+  // Get per-cycle grant stats via RPC - bypasses 1000 row limit
+  const { data: cycleStatsData } = await supabaseAdmin.rpc("get_grant_counts_by_cycle");
+
+  // Aggregate into a map: cycleId -> CycleStats
+  const cycleStats: Record<string, CycleStats> = {};
+  let totalApplications = 0;
+  let totalApproved = 0;
+  let totalPaymentSent = 0;
+
+  for (const row of cycleStatsData || []) {
+    cycleStats[row.cycle_id] = {
+      total: Number(row.total) || 0,
+      submitted: Number(row.submitted) || 0,
+      approved: Number(row.approved) || 0,
+      not_approved: Number(row.not_approved) || 0,
+      payment_pending: Number(row.payment_pending) || 0,
+      payment_sent: Number(row.payment_sent) || 0,
+    };
+    totalApplications += Number(row.total) || 0;
+    totalApproved += Number(row.approved) || 0;
+    totalPaymentSent += Number(row.payment_sent) || 0;
+  }
 
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-start justify-between mb-8">
           <div>
             <h1 className="text-4xl font-bold text-nfw-blackberry mb-2 font-serif">
               Manage Grants
@@ -60,20 +88,19 @@ export default async function AdminGrantsPage() {
             },
             {
               label: "Total Applications",
-              value: grants?.length || 0,
+              value: totalApplications,
               color: "bg-nfw-wisteria/40",
               text: "text-nfw-blackberry",
             },
             {
               label: "Approved",
-              value: grants?.filter((g) => g.status === "approved").length || 0,
+              value: totalApproved,
               color: "bg-[#b2d1ee]",
               text: "text-nfw-blackberry",
             },
             {
               label: "Payment Sent",
-              value:
-                grants?.filter((g) => g.status === "payment_sent").length || 0,
+              value: totalPaymentSent,
               color: "bg-nfw-citrine",
               text: "text-nfw-blackberry",
             },
@@ -100,7 +127,7 @@ export default async function AdminGrantsPage() {
             </Link>
           </div>
         ) : (
-          <SortableCycleList cycles={cyclesWithClosedStatus || []} grants={grants || []} />
+          <SortableCycleList cycles={cyclesWithClosedStatus || []} cycleStats={cycleStats} />
         )}
       </div>
     </main>

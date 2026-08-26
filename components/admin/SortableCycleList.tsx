@@ -24,38 +24,26 @@ interface Cycle {
   is_finalized: boolean;
 }
 
-interface Grant {
-  id: string;
-  status: string;
-  cycle_id: string;
+interface CycleStats {
+  total: number;
+  submitted: number;
+  approved: number;
+  not_approved: number;
+  payment_pending: number;
+  payment_sent: number;
 }
 
 interface Props {
   cycles: Cycle[];
-  grants: Grant[];
+  cycleStats: Record<string, CycleStats>;
 }
 
-export default function SortableCycleList({ cycles, grants }: Props) {
+export default function SortableCycleList({ cycles, cycleStats }: Props) {
   const [orderedCycles, setOrderedCycles] = useState(cycles);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [savedIndex, setSavedIndex] = useState<number | null>(null);
-
-  const getCycleStats = (cycleId: string) => {
-    const cycleGrants = grants?.filter((g) => g.cycle_id === cycleId) || [];
-    return {
-      total: cycleGrants.length,
-      submitted: cycleGrants.filter((g) => g.status === "submitted").length,
-      approved: cycleGrants.filter((g) => g.status === "approved").length,
-      not_approved: cycleGrants.filter((g) => g.status === "not_approved")
-        .length,
-      payment_pending: cycleGrants.filter((g) => g.status === "payment_pending")
-        .length,
-      payment_sent: cycleGrants.filter((g) => g.status === "payment_sent")
-        .length,
-    };
-  };
 
   const statusColor: Record<string, string> = {
     open: "bg-[#d4f1ad] text-nfw-blackberry",
@@ -120,7 +108,7 @@ export default function SortableCycleList({ cycles, grants }: Props) {
   return (
     <div className="space-y-4">
       {orderedCycles.map((cycle, index) => {
-        const stats = getCycleStats(cycle.id);
+        const stats = cycleStats[cycle.id] || { total: 0, submitted: 0, approved: 0, not_approved: 0, payment_pending: 0, payment_sent: 0 };
         const isDragging = draggedIndex === index;
         const isDragOver = dragOverIndex === index;
 
