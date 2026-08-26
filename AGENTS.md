@@ -11490,3 +11490,15 @@ $$;
 - **SQL aggregation over client-side**: GROUP BY in PostgreSQL is more efficient than fetching all rows and filtering in JavaScript
 - **Pre-aggregated stats**: Stats are computed server-side and passed as a map to the component, avoiding client-side filtering
 - **SECURITY DEFINER**: Function uses service role to bypass RLS for admin page
+
+## Session 2026-08-26: Contact Form Dropdown - Donations or Matriarch Program
+
+### Overview
+
+Added "Donations or Matriarch Program" option to the contact form dropdown at `/contact`.
+
+### Changes Made
+
+| File | Change |
+|------|--------|
+| `components/contact/ContactClient.tsx` | Added new `<option value="donations-matriarch">Donations or Matriarch Program</option>` after "Partnership inquiry" |

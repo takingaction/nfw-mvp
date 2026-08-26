@@ -311,6 +311,9 @@ export default function ContactClient({ contactData }: { contactData: ContactDat
                           <option value="partnership">
                             Partnership inquiry
                           </option>
+                          <option value="donations-matriarch">
+                            Donations or Matriarch Program
+                          </option>
                           <option value="press">Press and media</option>
                           <option value="other">Something else</option>
                         </select>
