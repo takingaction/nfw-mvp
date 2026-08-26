@@ -11395,6 +11395,42 @@ All payments were true first-time signups (free→contributing, free→founding,
 
 **Recovery:** After code deploy, click individual update button OR re-run cron to INSERT missing payments. Existing `stripe_backfill_status` data is already correct - only `membership_payments` INSERT was broken.
 
+### Bug Fix: Add payment_type to all_payments_json
+
+**Problem:** `all_payments_json` stored `billing_reason` but not `payment_type`. The UI fell back to displaying `billing_reason` (e.g., "subscription_create") instead of the short format ("signup").
+
+**Fix:** Updated both sync routes to also store `payment_type` in `all_payments_json`:
+- `app/api/cron/sync-all-stripe-payments/route.ts`
+- `app/api/admin/backfill/stripe/sync-customer/[id]/route.ts`
+
+**New SQL to backfill existing data:**
+```sql
+UPDATE stripe_backfill_status
+SET all_payments_json = (
+  SELECT jsonb_agg(
+    jsonb_build_object(
+      'id', obj->>'id',
+      'amount', (obj->>'amount')::numeric,
+      'status', obj->>'status',
+      'date', obj->>'date',
+      'error_message', obj->>'error_message',
+      'billing_reason', obj->>'billing_reason',
+      'stripe_invoice_id', obj->>'stripe_invoice_id',
+      'payment_type',
+        CASE
+          WHEN obj->>'billing_reason' = 'subscription_create' THEN 'signup'
+          WHEN obj->>'billing_reason' = 'subscription_cycle' THEN 'renewal'
+          WHEN obj->>'billing_reason' = 'subscription_update' THEN 'upgrade'
+          ELSE 'renewal'
+        END
+    )
+  )
+  FROM jsonb_array_elements(all_payments_json) AS obj
+)
+WHERE all_payments_json IS NOT NULL
+  AND (all_payments_json->0->>'payment_type') IS NULL;
+```
+
 ## Session 2026-08-26: Admin Grants Page 1000 Row Limit Fix
 
 ### Problem
