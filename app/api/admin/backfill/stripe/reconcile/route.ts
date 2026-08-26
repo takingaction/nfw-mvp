@@ -167,12 +167,36 @@ export async function GET(request: Request) {
       }
 
       try {
-        const charge = await stripe.charges.retrieve(payment.stripe_payment_id);
-        const chargeStatus = charge.status as string;
+        const paymentId = payment.stripe_payment_id;
+        let status: string | null = null;
 
-        if (chargeStatus === "succeeded") {
+        if (paymentId?.startsWith("in_")) {
+          // It's an invoice ID - use invoices API
+          const invoice = await stripe.invoices.retrieve(paymentId);
+          status = invoice.status === "paid" ? "succeeded" : invoice.status;
+        } else if (paymentId?.startsWith("ch_")) {
+          // It's a charge ID - use charges API
+          const charge = await stripe.charges.retrieve(paymentId);
+          status = charge.status;
+        } else {
+          // Unknown format - can't verify
+          verifiedCount.not_found++;
+          problematicPayments.push({
+            id: payment.id,
+            stripe_payment_id: payment.stripe_payment_id,
+            amount: payment.amount,
+            email: (payment.profiles as any)?.email || "unknown",
+            user_id: payment.user_id,
+            created_at: payment.created_at,
+            issue: "unknown_id_format",
+            stripe_status: null,
+          });
+          continue;
+        }
+
+        if (status === "succeeded") {
           verifiedCount.valid++;
-        } else if (chargeStatus === "refunded") {
+        } else if (status === "refunded") {
           verifiedCount.refunded++;
           problematicPayments.push({
             id: payment.id,
@@ -184,7 +208,7 @@ export async function GET(request: Request) {
             issue: "refunded",
             stripe_status: "refunded",
           });
-        } else if (chargeStatus === "failed") {
+        } else if (status === "failed") {
           verifiedCount.failed++;
           problematicPayments.push({
             id: payment.id,
@@ -196,9 +220,22 @@ export async function GET(request: Request) {
             issue: "failed",
             stripe_status: "failed",
           });
+        } else {
+          // Any other status (e.g., "open" for invoices with failed payments)
+          verifiedCount.not_found++;
+          problematicPayments.push({
+            id: payment.id,
+            stripe_payment_id: payment.stripe_payment_id,
+            amount: payment.amount,
+            email: (payment.profiles as any)?.email || "unknown",
+            user_id: payment.user_id,
+            created_at: payment.created_at,
+            issue: status || "unknown",
+            stripe_status: status,
+          });
         }
       } catch (stripeError: any) {
-        // Charge not found in Stripe
+        // Payment not found in Stripe
         verifiedCount.not_found++;
         problematicPayments.push({
           id: payment.id,
