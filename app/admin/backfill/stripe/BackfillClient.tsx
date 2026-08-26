@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 
 interface PaymentRecord {
@@ -311,6 +311,56 @@ export default function BackfillClient() {
     window.open("/api/admin/backfill/stripe/export", "_blank");
   };
 
+  const handleExportFilteredCSV = () => {
+    const headers = [
+      "Email",
+      "Full Name",
+      "Tier",
+      "Status",
+      "# Payments",
+      "Last Payment Date",
+      "Lifetime Value"
+    ];
+
+    const csvRows = [headers.join(",")];
+
+    for (const row of filteredRows) {
+      const values = [
+        row.email || "",
+        row.profiles?.full_name || "",
+        row.profiles?.membership_level || "",
+        row.status || "",
+        row.payment_count != null ? row.payment_count.toString() : "",
+        row.latest_payment_date ? new Date(row.latest_payment_date).toLocaleDateString() : "",
+        row.lifetime_value != null ? row.lifetime_value.toFixed(2) : ""
+      ];
+      const escaped = values.map(v => {
+        const str = String(v);
+        if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+          return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+      });
+      csvRows.push(escaped.join(","));
+    }
+
+    const csv = csvRows.join("\n");
+    const dateStr = new Date().toISOString().split("T")[0];
+    const filterNames = {
+      all: "all",
+      database_only: "database-only",
+      succeeded: "succeeded",
+      no_payment: "no-payment"
+    };
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `stripe-backfill-${filterNames[paymentFilter]}-${dateStr}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Sync all payments from Stripe
   const handleSyncAllPayments = async () => {
     if (!confirm("This will sync payment details from Stripe for all matched customers. This may take ~2 minutes. Continue?")) {
@@ -535,6 +585,17 @@ export default function BackfillClient() {
 
   // Get problematic payments for bulk delete
   const refundedPayments = reconciliation?.problematic_payments.filter(p => p.issue === "refunded" || p.issue === "failed") || [];
+
+  // Compute filtered rows based on paymentFilter
+  const filteredRows = useMemo(() => {
+    return rows.filter(row => {
+      if (paymentFilter === 'all') return true;
+      if (paymentFilter === 'database_only') return row.status === 'not_found';
+      if (paymentFilter === 'succeeded') return (row.payment_count || 0) > 0 && !row.has_failed;
+      if (paymentFilter === 'no_payment') return row.has_failed && row.total_amount === 0;
+      return true;
+    });
+  }, [rows, paymentFilter]);
 
   return (
     <div className="space-y-6">
@@ -1256,15 +1317,7 @@ export default function BackfillClient() {
       )}
 
       {/* Results Table */}
-      {(() => {
-        const filteredRows = rows.filter(row => {
-          if (paymentFilter === 'all') return true;
-          if (paymentFilter === 'database_only') return row.status === 'not_found';
-          if (paymentFilter === 'succeeded') return (row.payment_count || 0) > 0 && !row.has_failed;
-          if (paymentFilter === 'no_payment') return row.has_failed && row.total_amount === 0;
-          return true;
-        });
-        return initialized && filteredRows.length > 0 && (
+      {initialized && filteredRows.length > 0 && (
         <div className="bg-white rounded-lg border border-nfw-aubergine/20 overflow-hidden">
           {/* Payment Filter Buttons */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-nfw-dove bg-nfw-dove/20">
@@ -1296,6 +1349,12 @@ export default function BackfillClient() {
                 </button>
               );
             })}
+            <button
+              onClick={handleExportFilteredCSV}
+              className="ml-auto px-3 py-1.5 text-xs font-semibold bg-nfw-aubergine/10 text-nfw-aubergine hover:bg-nfw-aubergine/20"
+            >
+              Download CSV
+            </button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -1488,8 +1547,7 @@ export default function BackfillClient() {
             </table>
           </div>
         </div>
-      );
-      })()}
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteModalOpen && deleteTarget && (
