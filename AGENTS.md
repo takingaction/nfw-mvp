@@ -11373,3 +11373,20 @@ Queried existing `membership_payments` - all 866 payments correctly marked as `"
 | 100.00 | signup | 107 |
 
 All payments were true first-time signups (free→contributing, free→founding, or waitlist→contributing/founding). No renewals or upgrades had occurred yet.
+
+### Bug Fix: Invoice Status vs Payment Type Display
+
+**Problem:** After switching to invoices API, the BackfillClient UI was showing `payment.status` which is `"paid"` for invoices, not meaningful payment types.
+
+**Fix:** Changed UI to display `payment.payment_type` (signup/renewal/upgrade) instead of `payment.status` (paid/succeeded):
+- Green badge for signup
+- Blue badge for renewal
+- Purple badge for upgrade
+
+### Bug Fix: Invoice Status Check in Insert Logic
+
+**Problem:** `insertMembershipPaymentsIfNeeded` was checking `payment.status !== "succeeded"` but invoices have status `"paid"`, not `"succeeded"`. This caused all invoice payments to be skipped during sync.
+
+**Fix:** Changed status check from `"succeeded"` to `"paid"` in:
+- `app/api/cron/sync-all-stripe-payments/route.ts`
+- `app/api/admin/backfill/stripe/sync-customer/[id]/route.ts`
