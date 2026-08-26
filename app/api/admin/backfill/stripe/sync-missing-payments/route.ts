@@ -8,6 +8,19 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export const dynamic = "force-dynamic";
 
+function mapBillingReasonToPaymentType(billingReason: string | null): string {
+  switch (billingReason) {
+    case "subscription_create":
+      return "signup";
+    case "subscription_cycle":
+      return "renewal";
+    case "subscription_update":
+      return "upgrade";
+    default:
+      return "renewal";
+  }
+}
+
 export async function POST(request: Request) {
   try {
     // Admin auth check
@@ -27,44 +40,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get all profiles that are contributing, matched in Stripe with lifetime_value > 0, but missing from membership_payments
+    // Get all contributing and founding profiles that have stripe_customer_id
     const { data: profilesToSync, error: profilesError } = await supabase
       .from("profiles")
       .select(`
         id,
         email,
         stripe_customer_id,
+        membership_level,
         first_paid_at
       `)
-      .eq("membership_level", "contributing");
+      .in("membership_level", ["contributing", "founding"]);
 
     if (profilesError) {
       console.error("[sync-missing-payments] Profiles query error:", profilesError);
       return NextResponse.json({ error: profilesError.message }, { status: 500 });
     }
 
-    // Get profiles that are matched in stripe_backfill_status with lifetime_value > 0
-    const { data: backfillData, error: backfillError } = await supabase
-      .from("stripe_backfill_status")
-      .select("profile_id, stripe_customer_id, lifetime_value, processed_at")
-      .eq("status", "matched")
-      .gt("lifetime_value", 0);
-
-    if (backfillError) {
-      console.error("[sync-missing-payments] Backfill query error:", backfillError);
-      return NextResponse.json({ error: backfillError.message }, { status: 500 });
-    }
-
-    // Create a map for quick lookup
-    const backfillMap = new Map(
-      backfillData?.map(b => [b.profile_id, b]) || []
-    );
-
     // Get existing payments to avoid duplicates
     const { data: existingPayments, error: existingError } = await supabase
       .from("membership_payments")
-      .select("user_id, payment_type")
-      .in("payment_type", ["signup", "renewal", "upgrade"]);
+      .select("user_id, stripe_payment_id");
 
     if (existingError) {
       console.error("[sync-missing-payments] Existing payments query error:", existingError);
@@ -72,15 +68,13 @@ export async function POST(request: Request) {
     }
 
     const existingPaymentsSet = new Set(
-      existingPayments?.map(p => `${p.user_id}-${p.payment_type}`) || []
+      existingPayments?.map(p => p.stripe_payment_id) || []
     );
 
-    // Filter profiles that need syncing (use stripe_customer_id from backfill, not profiles)
+    // Filter profiles that need syncing - have stripe_customer_id and no existing payment
     const profilesNeedingSync = profilesToSync?.filter(p => {
-      const backfill = backfillMap.get(p.id);
-      if (!backfill?.stripe_customer_id || backfill.stripe_customer_id.trim() === "") return false;
-      if (!backfill || backfill.lifetime_value <= 0) return false;
-      if (existingPaymentsSet.has(`${p.id}-signup`)) return false;
+      if (!p.stripe_customer_id || p.stripe_customer_id.trim() === "") return false;
+      if (existingPaymentsSet.has(p.stripe_customer_id)) return false;
       return true;
     }) || [];
 
@@ -95,41 +89,40 @@ export async function POST(request: Request) {
 
     for (const profile of profilesNeedingSync) {
       try {
-        const backfill = backfillMap.get(profile.id);
-        const stripeCustomerId = backfill?.stripe_customer_id;
+        const stripeCustomerId = profile.stripe_customer_id;
 
-        // Skip if no Stripe customer ID in backfill
-        if (!stripeCustomerId || stripeCustomerId.trim() === "") {
-          console.error(`[sync-missing-payments] No stripe_customer_id in backfill for ${profile.email}`);
-          results.failed++;
-          results.errors.push(`No Stripe customer ID in backfill for ${profile.email}`);
-          continue;
-        }
-
-        // Query Stripe for this customer's charges
-        const charges = await stripe.charges.list({
+        // Query Stripe for this customer's invoices (invoices have billing_reason)
+        const invoices = await stripe.invoices.list({
           customer: stripeCustomerId,
-          limit: 1,
+          limit: 10,
         });
 
-        if (!charges.data || charges.data.length === 0) {
-          console.error(`[sync-missing-payments] No charges found for customer ${stripeCustomerId}`);
+        // Find the first paid invoice (subscription_create or subscription_cycle)
+        const paidInvoice = invoices.data.find(inv => inv.status === "paid");
+
+        if (!paidInvoice) {
+          console.error(`[sync-missing-payments] No paid invoice found for customer ${stripeCustomerId}`);
           results.failed++;
-          results.errors.push(`No charges found for ${profile.email}`);
+          results.errors.push(`No paid invoice found for ${profile.email}`);
           continue;
         }
 
-        const charge = charges.data[0];
+        // Determine payment type from billing_reason
+        const paymentType = mapBillingReasonToPaymentType(paidInvoice.billing_reason);
+
+        // Determine amount from invoice amount_paid (in cents)
+        const amount = paidInvoice.amount_paid / 100;
 
         // Insert the payment record
         const { error: insertError } = await supabase
           .from("membership_payments")
           .insert({
             user_id: profile.id,
-            amount: 15,
-            payment_type: "signup",
-            stripe_payment_id: charge.id,
-            created_at: profile.first_paid_at || new Date().toISOString(),
+            amount: amount,
+            payment_type: paymentType,
+            stripe_payment_id: paidInvoice.id,
+            stripe_invoice_id: paidInvoice.id,
+            created_at: new Date(paidInvoice.created * 1000).toISOString(),
           });
 
         if (insertError) {
@@ -137,7 +130,7 @@ export async function POST(request: Request) {
           results.failed++;
           results.errors.push(`Insert error for ${profile.email}: ${insertError.message}`);
         } else {
-          console.log(`[sync-missing-payments] Synced payment for ${profile.email}: charge ${charge.id}`);
+          console.log(`[sync-missing-payments] Synced payment for ${profile.email}: invoice ${paidInvoice.id}, type=${paymentType}, amount=${amount}`);
           results.success++;
         }
 
