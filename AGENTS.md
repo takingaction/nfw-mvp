@@ -11313,3 +11313,63 @@ Simplify payment tracking: `membership_payments` is single source of truth; drop
 
 - ✅ TypeScript compiles without errors
 - ✅ Build passes successfully
+
+## Session 2026-08-26: Fix Stripe Invoice Sync - Query Invoices for billing_reason
+
+### Problem
+
+All three Stripe payment sync routes were querying `stripe.charges.list()` but `billing_reason` lives on **Invoices**, not Charges. This caused:
+- `billing_reason` to always be `null` 
+- All payments defaulted to `"renewal"` payment type
+
+### Root Cause
+
+```typescript
+// BEFORE (broken):
+const charges = await stripe.charges.list({ customer: stripeCustomerId });
+// billing_reason: (charge as any).billing_reason || null  // Always null!
+
+// AFTER (fixed):
+const invoices = await stripe.invoices.list({ customer: stripeCustomerId });
+// billing_reason: invoice.billing_reason  // Works!
+```
+
+### Routes Fixed
+
+| Route | File | Changes |
+|-------|------|---------|
+| sync-missing-payments | `app/api/admin/backfill/stripe/sync-missing-payments/route.ts` | Removed contributing-only filter, use invoice billing_reason |
+| sync-customer/[id] | `app/api/admin/backfill/stripe/sync-customer/[id]/route.ts` | Use invoice data for billing_reason and stripe_invoice_id |
+| sync-all-stripe-payments | `app/api/cron/sync-all-stripe-payments/route.ts` | Use invoice data for accurate payment types |
+
+### Key Changes
+
+1. **Replaced `stripe.charges.list()` with `stripe.invoices.list()`** in all three routes
+2. **Added `stripe_invoice_id`** to PaymentRecord interface (invoices use `invoice.id`)
+3. **Updated PaymentRecord interface:** `status: string | null` to handle invoice status types
+4. **Removed `has_refunded` detection** for invoices (requires charge lookups, skipped for simplicity)
+5. **Updated invoice processing loop:** Uses `invoice.amount_paid`, `invoice.status`, `invoice.billing_reason`
+
+### Invoice vs Charge Fields
+
+| Field | Charge | Invoice |
+|-------|--------|---------|
+| billing_reason | ❌ None | ✅ subscription_create/cycle/update |
+| amount | charge.amount | invoice.amount_paid |
+| status | succeeded/failed | paid/open |
+| id | charge.id | invoice.id |
+
+### Build Status
+
+- ✅ TypeScript compiles without errors
+- ✅ Build passes successfully
+
+### Data Verification
+
+Queried existing `membership_payments` - all 866 payments correctly marked as `"signup"`:
+| amount | payment_type | count |
+|--------|-------------|-------|
+| 15.00 | signup | 759 |
+| 100.00 | signup | 107 |
+
+All payments were true first-time signups (free→contributing, free→founding, or waitlist→contributing/founding). No renewals or upgrades had occurred yet.
