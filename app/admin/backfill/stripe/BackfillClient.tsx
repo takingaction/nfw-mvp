@@ -1582,11 +1582,12 @@ export default function BackfillClient() {
                                 }`}>
                                   <div className="flex items-center gap-3">
                                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
-                                      payment.status === "succeeded" ? "bg-green-100 text-green-700" :
-                                      payment.status === "failed" ? "bg-red-100 text-red-700" :
+                                      payment.payment_type === "signup" ? "bg-green-100 text-green-700" :
+                                      payment.payment_type === "renewal" ? "bg-blue-100 text-blue-700" :
+                                      payment.payment_type === "upgrade" ? "bg-purple-100 text-purple-700" :
                                       "bg-gray-100 text-gray-700"
                                     }`}>
-                                      {payment.status}
+                                      {payment.payment_type}
                                     </span>
                                     <span className="font-ui text-sm font-bold">${payment.amount.toFixed(2)}</span>
                                     <span className="font-ui text-xs text-nfw-blackberry/60">
