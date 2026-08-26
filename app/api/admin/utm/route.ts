@@ -51,7 +51,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { destination_url, utm_source, utm_medium, utm_campaign, utm_content, utm_term, channel_id, channel_name } = body;
+  const { destination_url, utm_source, utm_medium, utm_campaign, utm_content, utm_term, channel_id, channel_name, campaign_title } = body;
 
   if (!destination_url || !utm_source || !utm_medium || !utm_campaign) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -64,6 +64,7 @@ export async function POST(request: Request) {
       utm_source,
       utm_medium,
       utm_campaign,
+      campaign_title: campaign_title || null,
       utm_content: utm_content || null,
       utm_term: utm_term || null,
       channel_id: channel_id || null,

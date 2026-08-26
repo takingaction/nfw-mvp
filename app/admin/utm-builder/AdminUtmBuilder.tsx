@@ -18,6 +18,7 @@ interface UtmLink {
   utm_source: string;
   utm_medium: string;
   utm_campaign: string;
+  campaign_title: string | null;
   utm_content: string | null;
   utm_term: string | null;
   channel_name: string | null;
@@ -49,13 +50,21 @@ export default function AdminUtmBuilder({ userEmail }: AdminUtmBuilderProps) {
   const [configSavedMsg, setConfigSavedMsg] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [editingLink, setEditingLink] = useState<UtmLink | null>(null);
+  const [editForm, setEditForm] = useState({ destination_url: "", utm_source: "", utm_medium: "", utm_campaign: "", campaign_title: "", utm_content: "", utm_term: "", channel_id: "", channel_name: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Form state
   const [baseUrl, setBaseUrl] = useState("");
   const [selectedSource, setSelectedSource] = useState("");
   const [customSource, setCustomSource] = useState("");
   const [selectedMedium, setSelectedMedium] = useState("");
-  const [campaign, setCampaign] = useState("");
+  const [campaignTitle, setCampaignTitle] = useState("");
+  const [campaignSlug, setCampaignSlug] = useState("");
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const [showSlugWarning, setShowSlugWarning] = useState(false);
+  const [pendingSlugValue, setPendingSlugValue] = useState("");
+  const [slugWarningCallback, setSlugWarningCallback] = useState<(() => void) | null>(null);
   const [content, setContent] = useState("");
   const [term, setTerm] = useState("");
 
@@ -112,7 +121,6 @@ export default function AdminUtmBuilder({ userEmail }: AdminUtmBuilderProps) {
     const url = baseUrl.trim();
     const source = getSource();
     const medium = selectedMedium;
-    const campaignSlug = slugify(campaign);
     const contentSlug = slugify(content);
     const termSlug = slugify(term);
 
@@ -142,6 +150,12 @@ export default function AdminUtmBuilder({ userEmail }: AdminUtmBuilderProps) {
     const data = buildUrl();
     if (!data || !data.campaign) return;
 
+    // Check for spaces in slug
+    if (campaignSlug.includes(" ")) {
+      setShowSlugWarning(true);
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch("/api/admin/utm", {
@@ -152,6 +166,7 @@ export default function AdminUtmBuilder({ userEmail }: AdminUtmBuilderProps) {
           utm_source: data.source,
           utm_medium: data.medium,
           utm_campaign: data.campaign,
+          campaign_title: campaignTitle || null,
           utm_content: data.content || null,
           utm_term: data.term || null,
           channel_id: activeChannel,
@@ -163,7 +178,9 @@ export default function AdminUtmBuilder({ userEmail }: AdminUtmBuilderProps) {
         await fetchLinks();
         // Clear form
         setBaseUrl("");
-        setCampaign("");
+        setCampaignTitle("");
+        setCampaignSlug("");
+        setSlugManuallyEdited(false);
         setContent("");
         setTerm("");
       }
@@ -183,6 +200,60 @@ export default function AdminUtmBuilder({ userEmail }: AdminUtmBuilderProps) {
     } finally {
       setDeleting(null);
     }
+  };
+
+  const handleEditClick = (link: UtmLink) => {
+    setEditingLink(link);
+    setEditForm({
+      destination_url: link.destination_url,
+      utm_source: link.utm_source,
+      utm_medium: link.utm_medium,
+      utm_campaign: link.utm_campaign,
+      campaign_title: link.campaign_title || "",
+      utm_content: link.utm_content || "",
+      utm_term: link.utm_term || "",
+      channel_id: (link as any).channel_id || "",
+      channel_name: link.channel_name || "",
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editingLink) return;
+
+    // Check for spaces in slug
+    if (editForm.utm_campaign.includes(" ")) {
+      setShowSlugWarning(true);
+      return;
+    }
+
+    setSavingEdit(true);
+    try {
+      const res = await fetch(`/api/admin/utm/${editingLink.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          destination_url: editForm.destination_url,
+          utm_source: editForm.utm_source,
+          utm_medium: editForm.utm_medium,
+          utm_campaign: editForm.utm_campaign,
+          campaign_title: editForm.campaign_title || null,
+          utm_content: editForm.utm_content || null,
+          utm_term: editForm.utm_term || null,
+          channel_id: editForm.channel_id || null,
+          channel_name: editForm.channel_name || null,
+        }),
+      });
+      if (res.ok) {
+        setEditingLink(null);
+        await fetchLinks();
+      }
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleExportCsv = () => {
+    window.open("/api/admin/utm/export", "_blank");
   };
 
   const handleCopyLink = async (url: string) => {
@@ -511,19 +582,40 @@ export default function AdminUtmBuilder({ userEmail }: AdminUtmBuilderProps) {
             </select>
           </div>
 
-          {/* Campaign */}
+          {/* Campaign Title */}
           <div className="md:col-span-2">
             <label className="block text-xs font-mono uppercase text-nfw-aubergine mb-2">
-              Campaign name
+              Campaign Title
             </label>
             <input
               type="text"
-              value={campaign}
-              onChange={(e) => setCampaign(e.target.value)}
+              value={campaignTitle}
+              onChange={(e) => {
+                setCampaignTitle(e.target.value);
+                if (!slugManuallyEdited) {
+                  setCampaignSlug(slugify(e.target.value));
+                }
+              }}
               placeholder="e.g. Back to School 2026"
               className="w-full px-4 py-2.5 border border-nfw-blackberry/20 rounded-lg text-sm font-mono focus:outline-none focus:border-nfw-aubergine"
             />
-            <p className="text-xs text-nfw-blackberry/40 mt-1">Auto-formatted to snake_case — try to include the initiative + timing (product_launch_aug26)</p>
+          </div>
+
+          {/* Campaign Slug */}
+          <div className="md:col-span-2">
+            <label className="block text-xs font-mono uppercase text-nfw-aubergine mb-2">
+              Campaign Slug
+            </label>
+            <input
+              type="text"
+              value={campaignSlug}
+              onChange={(e) => {
+                setCampaignSlug(e.target.value);
+                setSlugManuallyEdited(true);
+              }}
+              placeholder="e.g. back_to_school_2026"
+              className="w-full px-4 py-2.5 border border-nfw-blackberry/20 rounded-lg text-sm font-mono focus:outline-none focus:border-nfw-aubergine"
+            />
           </div>
 
           {/* Content */}
@@ -589,11 +681,149 @@ export default function AdminUtmBuilder({ userEmail }: AdminUtmBuilderProps) {
         </div>
       </div>
 
+      {/* Slug Space Warning Modal */}
+      {showSlugWarning && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-nfw-aubergine mb-2">Spaces Not Allowed</h3>
+                <p className="text-sm text-nfw-blackberry/70 mb-4">
+                  Campaign slugs cannot contain spaces. Use underscores or hyphens instead (e.g., "back_to_school_2026" or "back-to-school-2026").
+                </p>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => {
+                      setShowSlugWarning(false);
+                      setPendingSlugValue("");
+                      setSlugWarningCallback(null);
+                    }}
+                    className="px-6 py-2 bg-nfw-aubergine text-white text-sm font-semibold rounded-lg hover:brightness-110"
+                  >
+                    OK
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingLink && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg">
+            <h3 className="text-lg font-semibold text-nfw-aubergine mb-4">Edit UTM Link</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono uppercase text-nfw-aubergine mb-1">Destination URL</label>
+                <input
+                  type="text"
+                  value={editForm.destination_url}
+                  onChange={(e) => setEditForm({ ...editForm, destination_url: e.target.value })}
+                  className="w-full px-3 py-2 border border-nfw-blackberry/20 rounded-lg text-sm font-mono focus:outline-none focus:border-nfw-aubergine"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono uppercase text-amber-700 mb-1">Source</label>
+                  <input
+                    type="text"
+                    value={editForm.utm_source}
+                    onChange={(e) => setEditForm({ ...editForm, utm_source: e.target.value })}
+                    className="w-full px-3 py-2 border border-nfw-blackberry/20 rounded-lg text-sm font-mono focus:outline-none focus:border-nfw-aubergine"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono uppercase text-purple-600 mb-1">Medium</label>
+                  <input
+                    type="text"
+                    value={editForm.utm_medium}
+                    onChange={(e) => setEditForm({ ...editForm, utm_medium: e.target.value })}
+                    className="w-full px-3 py-2 border border-nfw-blackberry/20 rounded-lg text-sm font-mono focus:outline-none focus:border-nfw-aubergine"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono uppercase text-nfw-aubergine mb-1">Campaign Title</label>
+                  <input
+                    type="text"
+                    value={editForm.campaign_title}
+                    onChange={(e) => setEditForm({ ...editForm, campaign_title: e.target.value })}
+                    placeholder="e.g. Back to School 2026"
+                    className="w-full px-3 py-2 border border-nfw-blackberry/20 rounded-lg text-sm font-mono focus:outline-none focus:border-nfw-aubergine"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono uppercase text-nfw-aubergine mb-1">Campaign Slug</label>
+                  <input
+                    type="text"
+                    value={editForm.utm_campaign}
+                    onChange={(e) => setEditForm({ ...editForm, utm_campaign: e.target.value })}
+                    placeholder="e.g. back_to_school_2026"
+                    className="w-full px-3 py-2 border border-nfw-blackberry/20 rounded-lg text-sm font-mono focus:outline-none focus:border-nfw-aubergine"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono uppercase text-teal-600 mb-1">Content <span className="text-nfw-blackberry/40 normal-case tracking-normal">optional</span></label>
+                  <input
+                    type="text"
+                    value={editForm.utm_content}
+                    onChange={(e) => setEditForm({ ...editForm, utm_content: e.target.value })}
+                    className="w-full px-3 py-2 border border-nfw-blackberry/20 rounded-lg text-sm font-mono focus:outline-none focus:border-nfw-aubergine"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono uppercase text-red-700 mb-1">Term <span className="text-nfw-blackberry/40 normal-case tracking-normal">optional</span></label>
+                  <input
+                    type="text"
+                    value={editForm.utm_term}
+                    onChange={(e) => setEditForm({ ...editForm, utm_term: e.target.value })}
+                    className="w-full px-3 py-2 border border-nfw-blackberry/20 rounded-lg text-sm font-mono focus:outline-none focus:border-nfw-aubergine"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 mt-6">
+              <button
+                onClick={handleEditSave}
+                disabled={savingEdit}
+                className="px-5 py-2.5 bg-nfw-aubergine text-white text-sm font-semibold rounded-lg hover:brightness-110 disabled:opacity-50"
+              >
+                {savingEdit ? "Saving..." : "Save changes"}
+              </button>
+              <button
+                onClick={() => setEditingLink(null)}
+                className="px-5 py-2.5 border border-nfw-blackberry/20 text-sm font-semibold rounded-lg hover:border-nfw-aubergine hover:text-nfw-aubergine"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Campaign Log */}
       <div className="bg-white border border-nfw-blackberry/20 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold">Campaign log</h2>
-          <span className="text-xs font-mono text-nfw-blackberry/60">{links.length} saved</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleExportCsv}
+              className="px-3 py-1.5 text-xs font-mono border border-nfw-blackberry/20 text-nfw-blackberry/60 rounded-lg hover:text-nfw-aubergine hover:border-nfw-aubergine transition-colors"
+            >
+              Download CSV
+            </button>
+            <span className="text-xs font-mono text-nfw-blackberry/60">{links.length} saved</span>
+          </div>
         </div>
 
         {links.length === 0 ? (
@@ -607,7 +837,7 @@ export default function AdminUtmBuilder({ userEmail }: AdminUtmBuilderProps) {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <span className="inline-block text-xs font-mono uppercase px-2 py-0.5 bg-nfw-blackberry/5 border border-nfw-blackberry/10 text-nfw-blackberry/60 rounded-full mb-2">
-                      {link.channel_name || "Unknown"} · {formatDate(link.created_at)}
+                      {(link as any).campaign_title || link.utm_campaign} · {formatDate(link.created_at)}
                     </span>
                     <p className="text-xs font-mono text-nfw-blackberry/60 break-all">{link.destination_url}</p>
                     <p className="text-xs font-mono text-nfw-blackberry/40 mt-1 break-all">
@@ -620,6 +850,13 @@ export default function AdminUtmBuilder({ userEmail }: AdminUtmBuilderProps) {
                     )}
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => handleEditClick(link)}
+                      className="w-8 h-8 flex items-center justify-center border border-nfw-blackberry/20 text-nfw-blackberry/60 rounded hover:text-nfw-aubergine hover:border-nfw-aubergine text-sm"
+                      title="Edit"
+                    >
+                      ✎
+                    </button>
                     <button
                       onClick={() => {
                         const url = `${link.destination_url}?utm_source=${link.utm_source}&utm_medium=${link.utm_medium}&utm_campaign=${link.utm_campaign}${link.utm_content ? `&utm_content=${link.utm_content}` : ""}${link.utm_term ? `&utm_term=${link.utm_term}` : ""}`;

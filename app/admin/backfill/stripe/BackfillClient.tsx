@@ -171,7 +171,6 @@ interface MissingProfile {
 }
 
 export default function BackfillClient() {
-  const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [message, setMessage] = useState<string>("");
   const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
@@ -202,11 +201,6 @@ export default function BackfillClient() {
   // Missing from backfill
   const [missingFromBackfill, setMissingFromBackfill] = useState<MissingProfile[]>([]);
   const [missingLoading, setMissingLoading] = useState(false);
-
-  // Unmatched Stripe subscribers
-  const [unmatchedSubscribers, setUnmatchedSubscribers] = useState<any[]>([]);
-  const [unmatchedLoading, setUnmatchedLoading] = useState(false);
-  const [unmatchedTotal, setUnmatchedTotal] = useState(0);
 
   // Gift code signups
   const [giftCodeProfiles, setGiftCodeProfiles] = useState<any[]>([]);
@@ -362,28 +356,6 @@ export default function BackfillClient() {
     }
   };
 
-  const handleUnmatchedSubscribers = async () => {
-    setLoading(true);
-    setMessage("Finding unmatched Stripe subscribers...");
-    try {
-      const res = await fetch("/api/admin/backfill/stripe/unmatched-subscribers", { method: "POST" });
-      const data = await res.json();
-      if (res.ok) {
-        setMessage(`Found ${data.count} unmatched active subscribers totaling $${data.total_amount.toFixed(2)}`);
-      } else {
-        setMessage(data.error || "Failed to find unmatched subscribers");
-      }
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "An error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleExportUnmatchedCSV = () => {
-    window.open("/api/admin/backfill/stripe/unmatched-subscribers/export", "_blank");
-  };
-
   // Fetch duplicates
   const fetchDuplicates = useCallback(async () => {
     setDuplicatesLoading(true);
@@ -453,23 +425,6 @@ export default function BackfillClient() {
       setBackfillLoading(false);
     }
   };
-
-  // Fetch unmatched Stripe subscribers
-  const fetchUnmatchedSubscribers = useCallback(async () => {
-    setUnmatchedLoading(true);
-    try {
-      const res = await fetch("/api/admin/backfill/stripe/unmatched-subscribers", { method: "POST" });
-      if (res.ok) {
-        const data = await res.json();
-        setUnmatchedSubscribers(data.subscriptions || []);
-        setUnmatchedTotal(data.count || 0);
-      }
-    } catch (error) {
-      console.error("Failed to fetch unmatched subscribers:", error);
-    } finally {
-      setUnmatchedLoading(false);
-    }
-  }, []);
 
   // Fetch gift code signups
   const fetchGiftCodes = useCallback(async () => {
@@ -577,9 +532,6 @@ export default function BackfillClient() {
     rows: [],
     initialized: false,
   };
-
-  const processedCount = counts.matched + counts.not_found + counts.error;
-  const progressPercent = counts.total > 0 ? (processedCount / counts.total) * 100 : 0;
 
   // Get problematic payments for bulk delete
   const refundedPayments = reconciliation?.problematic_payments.filter(p => p.issue === "refunded" || p.issue === "failed") || [];
@@ -978,20 +930,6 @@ export default function BackfillClient() {
           Export CSV
         </button>
         <button
-          onClick={handleUnmatchedSubscribers}
-          disabled={loading}
-          className="bg-nfw-aubergine text-white font-ui font-bold px-6 py-3 rounded-lg hover:bg-nfw-aubergine/90 disabled:opacity-50"
-        >
-          View Unmatched Subscribers
-        </button>
-        <button
-          onClick={handleExportUnmatchedCSV}
-          disabled={loading}
-          className="bg-nfw-blackberry text-white font-ui font-bold px-6 py-3 rounded-lg hover:bg-nfw-blackberry/90 disabled:opacity-50"
-        >
-          Export Unmatched CSV
-        </button>
-        <button
           onClick={handleSyncAllPayments}
           disabled={syncingPayments}
           className="bg-nfw-citrine text-nfw-blackberry font-ui font-bold px-6 py-3 rounded-lg hover:bg-nfw-citrine/90 disabled:opacity-50"
@@ -1313,75 +1251,6 @@ export default function BackfillClient() {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Unmatched Stripe Subscribers Section */}
-      {unmatchedSubscribers.length > 0 && (
-        <div className="bg-white rounded-lg border border-blue-200 overflow-hidden">
-          <div className="p-4 border-b border-nfw-dove bg-blue-50">
-            <h3 className="font-ui font-bold text-blue-700">Unmatched Stripe Subscribers ({unmatchedTotal})</h3>
-            <p className="text-xs text-blue-600 mt-1">
-              Active Stripe subscriptions NOT in our database. These may be duplicates or need manual review.
-            </p>
-          </div>
-          <div className="p-4 max-h-96 overflow-y-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-nfw-dove/30 sticky top-0">
-                <tr>
-                  <th className="text-left p-2">Email</th>
-                  <th className="text-left p-2">Name</th>
-                  <th className="text-right p-2">Amount</th>
-                  <th className="text-left p-2">Status</th>
-                  <th className="text-left p-2">Customer ID</th>
-                  <th className="text-left p-2">Since</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-nfw-dove/50">
-                {unmatchedSubscribers.map((sub) => (
-                  <tr key={sub.subscription_id}>
-                    <td className="p-2 font-mono">{sub.email || "—"}</td>
-                    <td className="p-2">{sub.name || "—"}</td>
-                    <td className="p-2 text-right font-bold">${sub.amount.toFixed(2)}</td>
-                    <td className="p-2">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
-                        sub.status === "active" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-                      }`}>
-                        {sub.status}
-                      </span>
-                    </td>
-                    <td className="p-2 font-mono">
-                      <a
-                        href={`https://dashboard.stripe.com/customers/${sub.customer_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-nfw-aubergine hover:underline"
-                      >
-                        {sub.customer_id.slice(0, 14)}...
-                      </a>
-                    </td>
-                    <td className="p-2">{sub.current_period_start?.split("T")[0] || "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Progress Bar */}
-      {initialized && counts.total > 0 && (
-        <div className="bg-white rounded-lg p-4 border border-nfw-aubergine/20">
-          <div className="flex justify-between text-sm font-ui mb-2">
-            <span>Progress</span>
-            <span>{processedCount} / {counts.total} ({progressPercent.toFixed(1)}%)</span>
-          </div>
-          <div className="h-3 bg-nfw-dove rounded-full overflow-hidden">
-            <div
-              className="h-full bg-nfw-aubergine transition-all duration-300"
-              style={{ width: `${progressPercent}%` }}
-            />
           </div>
         </div>
       )}
