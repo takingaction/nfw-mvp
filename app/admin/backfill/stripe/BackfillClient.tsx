@@ -1571,7 +1571,7 @@ export default function BackfillClient() {
                     </tr>
                     {expandedPayments?.id === row.id && (
                       <tr key={`${row.id}-accordion`} className="bg-nfw-dove/20">
-                        <td colSpan={7} className="px-4 py-3">
+                        <td colSpan={8} className="px-4 py-3">
                           <div className="space-y-2">
                             {(() => {
                               const raw = expandedPayments?.all_payments_json;
@@ -1584,20 +1584,27 @@ export default function BackfillClient() {
                                 }`}>
                                   <div className="flex items-center gap-3">
                                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
-                                      payment.payment_type === "signup" ? "bg-green-100 text-green-700" :
-                                      payment.payment_type === "renewal" ? "bg-blue-100 text-blue-700" :
-                                      payment.payment_type === "upgrade" ? "bg-purple-100 text-purple-700" :
+                                      (payment.payment_type || payment.billing_reason) === "signup" || payment.billing_reason === "subscription_create" ? "bg-green-100 text-green-700" :
+                                      (payment.payment_type || payment.billing_reason) === "renewal" || payment.billing_reason === "subscription_cycle" ? "bg-blue-100 text-blue-700" :
+                                      (payment.payment_type || payment.billing_reason) === "upgrade" || payment.billing_reason === "subscription_update" ? "bg-purple-100 text-purple-700" :
                                       "bg-gray-100 text-gray-700"
                                     }`}>
-                                      {payment.payment_type}
+                                      {payment.payment_type || payment.billing_reason || (payment.id?.startsWith("ch_") ? "charge" : "payment")}
                                     </span>
                                     <span className="font-ui text-sm font-bold">${payment.amount.toFixed(2)}</span>
                                     <span className="font-ui text-xs text-nfw-blackberry/60">
                                       {new Date(payment.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                                     </span>
+                                    {payment.status && payment.status !== "paid" && (
+                                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
+                                        payment.status === "failed" ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
+                                      }`}>
+                                        {payment.status}
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="text-xs font-mono text-nfw-blackberry/40">
-                                    {payment.id.slice(0, 12)}...
+                                    {payment.stripe_invoice_id || payment.id}
                                   </div>
                                 </div>
                               ));
