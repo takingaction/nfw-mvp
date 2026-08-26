@@ -11385,11 +11385,15 @@ All payments were true first-time signups (free→contributing, free→founding,
 
 ### Bug Fix: Invoice Status Check in Insert Logic
 
-**Problem:** `insertMembershipPaymentsIfNeeded` was checking `payment.status !== "succeeded"` but invoices have status `"paid"`, not `"succeeded"`. This caused all invoice payments to be skipped during sync.
+**Problem:** `insertMembershipPaymentsIfNeeded` was checking `payment.status !== "succeeded"` but invoices have status `"paid"`, not `"succeeded"` (which is for charges). This caused **all invoice payments to be skipped** during INSERT into `membership_payments`.
+
+**Impact:** New paid members had `stripe_backfill_status` updated but NO rows were inserted into `membership_payments` table. The cron ran successfully but silently skipped every payment.
 
 **Fix:** Changed status check from `"succeeded"` to `"paid"` in:
-- `app/api/cron/sync-all-stripe-payments/route.ts`
-- `app/api/admin/backfill/stripe/sync-customer/[id]/route.ts`
+- `app/api/cron/sync-all-stripe-payments/route.ts` (line 158)
+- `app/api/admin/backfill/stripe/sync-customer/[id]/route.ts` (line 160)
+
+**Recovery:** After code deploy, click individual update button OR re-run cron to INSERT missing payments. Existing `stripe_backfill_status` data is already correct - only `membership_payments` INSERT was broken.
 
 ## Session 2026-08-26: Admin Grants Page 1000 Row Limit Fix
 
