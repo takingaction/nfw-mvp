@@ -257,32 +257,6 @@ export async function POST(request: Request) {
                     } else {
                       console.log("[webhook] Profile updated successfully via email lookup to:", membershipLevel);
                       profileUpdated = true;
-
-                      // Insert membership_payment record (backup for invoice.paid, handles missing stripe_customer_id)
-                      if (authUser.id && amountPaid > 0 && paymentIntentId) {
-                        const { data: existingPayment } = await supabaseAdmin
-                          .from("membership_payments")
-                          .select("id")
-                          .eq("stripe_payment_id", paymentIntentId)
-                          .maybeSingle();
-
-                        if (!existingPayment) {
-                          const { error: paymentError } = await supabaseAdmin
-                            .from("membership_payments")
-                            .insert({
-                              user_id: authUser.id,
-                              amount: amountPaid,
-                              payment_type: "signup",
-                              stripe_payment_id: paymentIntentId,
-                            });
-
-                          if (paymentError) {
-                            console.error("[webhook] Failed to insert membership_payment via email lookup:", paymentError);
-                          } else {
-                            console.log("[webhook] Inserted membership_payment via email lookup:", amountPaid);
-                          }
-                        }
-                      }
                     }
                   } else {
                     console.log("[webhook] Payment not completed (payment_status:", session.payment_status, "), skipping profile update via email lookup");
@@ -318,38 +292,6 @@ export async function POST(request: Request) {
                 } else {
                   console.log("[webhook] Profile updated successfully to:", membershipLevel);
                   profileUpdated = true;
-
-                  // Insert membership_payment record (backup for invoice.paid, handles missing stripe_customer_id)
-                  if (userId && amountPaid > 0 && paymentIntentId) {
-                    const { data: existingPayment } = await supabaseAdmin
-                      .from("membership_payments")
-                      .select("id")
-                      .eq("stripe_payment_id", paymentIntentId)
-                      .maybeSingle();
-
-                    if (!existingPayment) {
-                      // Determine payment type
-                      let paymentType: "signup" | "upgrade" = "signup";
-                      if (existingProfile.membership_level && existingProfile.membership_level !== "free") {
-                        paymentType = "upgrade";
-                      }
-
-                      const { error: paymentError } = await supabaseAdmin
-                        .from("membership_payments")
-                        .insert({
-                          user_id: userId,
-                          amount: amountPaid,
-                          payment_type: paymentType,
-                          stripe_payment_id: paymentIntentId,
-                        });
-
-                      if (paymentError) {
-                        console.error("[webhook] Failed to insert membership_payment:", paymentError);
-                      } else {
-                        console.log("[webhook] Inserted membership_payment:", paymentType, "amount:", amountPaid);
-                      }
-                    }
-                  }
                 }
               } else {
                 console.log("[webhook] Payment not completed (payment_status:", session.payment_status, "), skipping profile update");
@@ -539,7 +481,7 @@ export async function POST(request: Request) {
                 console.error("[webhook] customer.subscription.updated: Failed to get invoice:", err);
               }
 
-              // Insert into membership_upgrades
+              // Insert into membership_upgrades (kept - this tracks tier changes, not payment records)
               await supabaseAdmin
                 .from("membership_upgrades")
                 .insert({
@@ -549,34 +491,6 @@ export async function POST(request: Request) {
                   amount: actualAmount,
                   stripe_payment_id: stripePaymentId,
                 });
-
-              // Insert into membership_payments for the upgrade amount
-              await supabaseAdmin
-                .from("membership_payments")
-                .insert({
-                  user_id: authUser.id,
-                  amount: actualAmount,
-                  payment_type: "upgrade",
-                  stripe_payment_id: stripePaymentId,
-                  stripe_invoice_id: stripeInvoiceId,
-                });
-
-              // Update lifetime_value on profile
-              try {
-                await supabaseAdmin.rpc("increment_lifetime_value", {
-                  user_id: authUser.id,
-                  increment_amount: actualAmount,
-                });
-              } catch (rpcErr) {
-                console.error("[webhook] customer.subscription.updated: Failed to update lifetime_value:", rpcErr);
-                // Fallback: direct update if RPC fails
-                await supabaseAdmin
-                  .from("profiles")
-                  .update({
-                    lifetime_value: (currentProfile?.lifetime_value || 0) + actualAmount,
-                  })
-                  .eq("id", authUser.id);
-              }
 
               console.log("[webhook] customer.subscription.updated: Recorded upgrade from", previousLevel, "to", newMembershipLevel, "amount:", actualAmount);
             }
@@ -668,111 +582,6 @@ export async function POST(request: Request) {
         }
 
         console.log("[webhook] customer.subscription.created completed for:", customer.email);
-        break;
-      }
-
-      case "invoice.paid": {
-        const invoice = event.data.object as Stripe.Invoice;
-        const customerId = invoice.customer as string;
-        const amountPaid = invoice.amount_paid / 100; // Convert from cents
-
-        console.log("[webhook] Processing invoice.paid for customer:", customerId, "amount:", amountPaid);
-
-        // Skip if this is a draft or uncollectible invoice
-        if (invoice.status === "draft" || invoice.status === "uncollectible") {
-          console.log("[webhook] Skipping invoice.paid - draft or uncollectible:", invoice.status);
-          break;
-        }
-
-        // Skip zero amount invoices
-        if (amountPaid <= 0) {
-          console.log("[webhook] Skipping invoice.paid - zero or negative amount:", amountPaid);
-          break;
-        }
-
-        const stripeInvoiceId = invoice.id;
-        const stripePaymentId = (invoice as any).payment_intent as string || null;
-
-        // Check if this invoice/payment was already recorded (avoid duplicate from subscription.updated)
-        const { data: existingPayment } = await supabaseAdmin
-          .from("membership_payments")
-          .select("id")
-          .eq("stripe_invoice_id", stripeInvoiceId)
-          .maybeSingle();
-
-        if (existingPayment) {
-          console.log("[webhook] Skipping invoice.paid - already recorded:", stripeInvoiceId);
-          break;
-        }
-
-        // Look up profile by stripe_customer_id
-        const { data: profile } = await supabaseAdmin
-          .from("profiles")
-          .select("id, membership_level, previous_membership_level")
-          .eq("stripe_customer_id", customerId)
-          .single();
-
-        if (!profile) {
-          console.log("[webhook] invoice.paid: No profile found for stripe_customer_id:", customerId);
-          break;
-        }
-
-        const userId = profile.id;
-        const invoiceCreatedAt = new Date(invoice.created * 1000).toISOString();
-
-        // Determine payment type
-        let paymentType: "signup" | "renewal" | "upgrade" | "refund" = "renewal";
-
-        // Check if this is a refund (credit note)
-        const billingReason = (invoice as any).billing_reason as string | null;
-        if (billingReason === "credit_note") {
-          paymentType = "refund";
-        }
-
-        // Check if this is a proration/upgrade (subscription_update with proration)
-        const subscriptionProration = (invoice as any).subscription_proration as boolean | null;
-        if (subscriptionProration === true || billingReason === "subscription_update") {
-          paymentType = "upgrade";
-        }
-
-        // Determine if this is a signup based on previous_membership_level
-        if (!profile.previous_membership_level) {
-          paymentType = "signup";
-        }
-
-        // Insert into membership_payments
-        const { data: paymentRecord, error: paymentError } = await supabaseAdmin
-          .from("membership_payments")
-          .insert({
-            user_id: userId,
-            amount: amountPaid,
-            payment_type: paymentType,
-            stripe_payment_id: stripePaymentId,
-            stripe_invoice_id: stripeInvoiceId,
-            created_at: invoiceCreatedAt,
-          })
-          .select("id")
-          .single();
-
-        if (paymentError) {
-          console.error("[webhook] invoice.paid: Failed to insert payment record:", paymentError);
-        } else {
-          console.log("[webhook] invoice.paid: Inserted payment record:", paymentRecord.id, "type:", paymentType);
-
-          // Update lifetime_value on profile for successful payments (not refunds)
-          if (paymentType !== "refund" && amountPaid > 0) {
-            try {
-              await supabaseAdmin.rpc("increment_lifetime_value", {
-                user_id: userId,
-                increment_amount: amountPaid,
-              });
-              console.log("[webhook] invoice.paid: Updated lifetime_value for user:", userId, "amount:", amountPaid);
-            } catch (rpcError) {
-              console.error("[webhook] invoice.paid: Failed to update lifetime_value via RPC:", rpcError);
-            }
-          }
-        }
-
         break;
       }
 

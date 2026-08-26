@@ -92,7 +92,10 @@ export async function POST(request: Request) {
     }[] = [];
 
     for (const c of allCharges) {
-      if (knownIds.has(c.id)) continue; // Already in membership_payments
+      if (knownIds.has(c.id)) {
+        console.log(`[insert-missing] Skipping already-recorded payment: ${c.id}`);
+        continue; // Already in membership_payments
+      }
       const customerId = typeof c.customer === 'string' ? c.customer : c.customer?.id;
       if (!customerId || !customerToProfile.has(customerId)) continue; // Not from our matched customers
 
@@ -107,6 +110,8 @@ export async function POST(request: Request) {
         created_at: new Date(c.created * 1000).toISOString(),
       });
     }
+
+    console.log(`[insert-missing] Found ${toInsert.length} payments to insert out of ${allCharges.length} total charges`);
 
     if (toInsert.length === 0) {
       return NextResponse.json({
@@ -137,6 +142,25 @@ export async function POST(request: Request) {
     }
 
     const totalAmount = toInsert.reduce((s, p) => s + p.amount, 0);
+
+    // Update profiles.lifetime_value for inserted users (compute from membership_payments)
+    const insertedUserIds = [...new Set(toInsert.map(p => p.user_id))];
+    for (const userId of insertedUserIds) {
+      // Compute SUM from membership_payments for this user
+      const { data: payments } = await supabaseAdmin
+        .from("membership_payments")
+        .select("amount")
+        .eq("user_id", userId);
+
+      const lifetimeValue = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+
+      await supabaseAdmin
+        .from("profiles")
+        .update({ lifetime_value: lifetimeValue })
+        .eq("id", userId);
+
+      console.log(`[insert-missing] Updated lifetime_value for user ${userId}: ${lifetimeValue}`);
+    }
 
     return NextResponse.json({
       success: true,
