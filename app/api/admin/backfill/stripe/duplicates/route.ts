@@ -36,7 +36,7 @@ export async function GET(request: Request) {
         email,
         status,
         stripe_customer_id,
-        lifetime_value,
+        profile_id,
         processed_at,
         error_message,
         profiles!inner(
@@ -49,6 +49,18 @@ export async function GET(request: Request) {
     if (error) {
       console.error("[duplicates] Error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Get all payments to compute lifetime_value per user
+    const { data: allPayments } = await supabaseAdmin
+      .from("membership_payments")
+      .select(`user_id, amount`);
+
+    // Compute lifetime_value per user_id
+    const lifetimeValueByUserId = new Map<string, number>();
+    for (const payment of allPayments || []) {
+      const current = lifetimeValueByUserId.get(payment.user_id) || 0;
+      lifetimeValueByUserId.set(payment.user_id, current + (payment.amount || 0));
     }
 
     // Group by email and find duplicates
@@ -86,7 +98,7 @@ export async function GET(request: Request) {
             id: r.id,
             status: r.status,
             stripe_customer_id: r.stripe_customer_id,
-            lifetime_value: r.lifetime_value,
+            lifetime_value: lifetimeValueByUserId.get(r.profile_id) || 0,
             processed_at: r.processed_at,
             error_message: r.error_message,
             full_name: (r as any).profiles?.full_name || null,

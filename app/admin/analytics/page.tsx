@@ -35,7 +35,7 @@ async function AdminAnalyticsContent() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, joined_at, subscription_status, membership_level, subscription_ends_at, first_paid_at, first_paid_level, is_approved_free_member, free_membership_contact_submitted, state, city, household_income, date_of_birth, is_admin, profile_completed, previous_membership_level, stripe_customer_id, lifetime_value, signup_source",
+        "id, joined_at, subscription_status, membership_level, subscription_ends_at, first_paid_at, first_paid_level, is_approved_free_member, free_membership_contact_submitted, state, city, household_income, date_of_birth, is_admin, profile_completed, previous_membership_level, stripe_customer_id, signup_source",
       )
       .order("joined_at", { ascending: true })
       .range(from, from + pageSize - 1);

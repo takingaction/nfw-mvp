@@ -11264,3 +11264,52 @@ Creates infrastructure for revenue tracking:
 - Dashboard, profile, and step 3 show "Upgrade to Founding" for contributing members
 - Free members see full $100 Founding price
 - Stripe subscription update with `proration_behavior: 'create_prorations'`
+
+## Session 2026-08-26: Simplify Payment Tracking - Drop Stored lifetime_value
+
+### Goal
+
+Simplify payment tracking: `membership_payments` is single source of truth; drop `lifetime_value` from `profiles` and `stripe_backfill_status`, compute from `membership_payments`.
+
+### Constraints & Preferences
+
+- Only successful Stripe payments insert into membership_payments
+- Use Stripe's billing_reason for payment type (signup/renewal/upgrade)
+- Drop lifetime_value from both profiles and stripe_backfill_status
+- Compute lifetime_value from SUM(membership_payments.amount) for successful payments only
+
+### Changes Made
+
+**INSERT logic with billing_reason** (2 files):
+- `app/api/admin/backfill/stripe/sync-customer/[id]/route.ts` - INSERT into membership_payments using billing_reason
+- `app/api/cron/sync-all-stripe-payments/route.ts` - INSERT into membership_payments using billing_reason
+
+**Migration 145:** `supabase/migrations/145_drop_lifetime_value_columns.sql`
+- Drops `lifetime_value` from `profiles` table
+- Drops `lifetime_value` from `stripe_backfill_status` table
+
+**Routes computing lifetime_value from membership_payments** (4 files):
+- `app/api/admin/backfill/stripe/member/[email]/route.ts` - computes for individual member lookup
+- `app/api/admin/backfill/stripe/status/route.ts` - computes per user for status dashboard
+- `app/api/admin/backfill/stripe/duplicates/route.ts` - computes per user for duplicate analysis
+- `app/admin/analytics/page.tsx` - removed from profiles select
+
+**Routes no longer writing lifetime_value** (4 files):
+- `app/api/admin/backfill/stripe/insert-missing/route.ts` - removed profile update after INSERT
+- `app/api/admin/backfill/stripe/backfill-existing/route.ts` - removed Stripe subscription fetch and lifetime_value writes
+- `app/api/admin/backfill/stripe/process/route.ts` - removed Stripe charges fetch and lifetime_value writes
+- `app/api/cron/backfill-sync/route.ts` - removed Stripe subscription fetch and lifetime_value writes
+
+### Key Design Decisions
+
+| Decision | Value |
+|----------|-------|
+| Stripe billing_reason mapping | subscription_create → signup, subscription_cycle → renewal, subscription_update → upgrade |
+| Drop both lifetime_value columns | Option A - profiles.lifetime_value AND stripe_backfill_status.lifetime_value |
+| membership_payments is source of truth | All payment financial data computed from this table |
+| Successful payments only | Only count successful payments (not failed/rejected/cancelled) in lifetime_value |
+
+### Build Status
+
+- ✅ TypeScript compiles without errors
+- ✅ Build passes successfully

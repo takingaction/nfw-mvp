@@ -143,25 +143,6 @@ export async function POST(request: Request) {
 
     const totalAmount = toInsert.reduce((s, p) => s + p.amount, 0);
 
-    // Update profiles.lifetime_value for inserted users (compute from membership_payments)
-    const insertedUserIds = [...new Set(toInsert.map(p => p.user_id))];
-    for (const userId of insertedUserIds) {
-      // Compute SUM from membership_payments for this user
-      const { data: payments } = await supabaseAdmin
-        .from("membership_payments")
-        .select("amount")
-        .eq("user_id", userId);
-
-      const lifetimeValue = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
-
-      await supabaseAdmin
-        .from("profiles")
-        .update({ lifetime_value: lifetimeValue })
-        .eq("id", userId);
-
-      console.log(`[insert-missing] Updated lifetime_value for user ${userId}: ${lifetimeValue}`);
-    }
-
     return NextResponse.json({
       success: true,
       message: `Inserted ${inserted?.length || 0} missing payments`,

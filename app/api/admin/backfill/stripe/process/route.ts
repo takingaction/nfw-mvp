@@ -91,29 +91,12 @@ export async function POST(request: Request) {
           continue;
         }
 
-        // Fetch payment history to calculate lifetime_value
-        let lifetimeValue = 0;
-        try {
-          const charges = await stripe.charges.list({
-            customer: stripeCustomerId,
-            limit: 100,
-          });
-
-          lifetimeValue = charges.data
-            .filter(c => c.status === "succeeded")
-            .reduce((sum, c) => sum + (c.amount / 100), 0);
-        } catch (stripeError: any) {
-          console.error(`[backfill] Stripe error for ${pending.email}:`, stripeError.message);
-          // Continue with lifetimeValue = 0 if Stripe fails
-        }
-
         // Update backfill status
         await supabaseAdmin
           .from("stripe_backfill_status")
           .update({
             status: "matched",
             stripe_customer_id: stripeCustomerId,
-            lifetime_value: lifetimeValue,
             processed_at: new Date().toISOString(),
           })
           .eq("id", pending.id);
@@ -123,7 +106,6 @@ export async function POST(request: Request) {
           .from("profiles")
           .update({
             stripe_customer_id: stripeCustomerId,
-            lifetime_value: lifetimeValue,
           })
           .eq("id", pending.profile_id);
 

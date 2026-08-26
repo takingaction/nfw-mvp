@@ -82,9 +82,9 @@ export async function GET(request: Request) {
       .select(`
         id,
         email,
+        profile_id,
         status,
         stripe_customer_id,
-        lifetime_value,
         error_message,
         processed_at,
         payment_count,
@@ -154,6 +154,19 @@ export async function GET(request: Request) {
     // The reconciliation API (/reconcile) is the proper place to compare Stripe vs DB payments.
     // Here we only show actual data quality issues.
 
+    // Compute lifetime_value for each row from membership_payments
+    const paymentsByUserId = new Map<string, number>();
+    for (const payment of payments || []) {
+      const current = paymentsByUserId.get(payment.user_id) || 0;
+      paymentsByUserId.set(payment.user_id, current + (payment.amount || 0));
+    }
+
+    // Add lifetime_value to each row
+    const rowsWithLifetimeValue = (rows || []).map(row => ({
+      ...row,
+      lifetime_value: paymentsByUserId.get(row.profile_id) || 0,
+    }));
+
     return NextResponse.json({
       // Row counts (includes duplicates - for debugging)
       rowCounts: counts,
@@ -167,7 +180,7 @@ export async function GET(request: Request) {
       },
       // Detailed problem account lists
       unmatchedPaymentsList,
-      rows: rows || [],
+      rows: rowsWithLifetimeValue,
       totalToBackfill: totalToBackfill || 0,
       initialized: distinctCounts.total > 0 || distinctCounts.total === 0 && totalToBackfill === 0,
     });

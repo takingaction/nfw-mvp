@@ -22,6 +22,7 @@ interface PaymentRecord {
   status: string;
   date: string;
   error_message: string | null;
+  billing_reason: string | null;
 }
 
 async function sleep(ms: number): Promise<void> {
@@ -100,6 +101,7 @@ async function syncPaymentsForCustomer(
         status,
         date,
         error_message: errorMessage,
+        billing_reason: (charge as any).billing_reason || null,
       });
     }
 
@@ -120,6 +122,74 @@ async function syncPaymentsForCustomer(
     console.error(`[sync-all-stripe-payments] Error for customer ${stripeCustomerId}:`, error.message);
     return null;
   }
+}
+
+function mapBillingReasonToPaymentType(billingReason: string | null): string {
+  switch (billingReason) {
+    case "subscription_create":
+      return "signup";
+    case "subscription_cycle":
+      return "renewal";
+    case "subscription_update":
+      return "upgrade";
+    default:
+      return "renewal"; // fallback for manual or unknown
+  }
+}
+
+async function insertMembershipPaymentsIfNeeded(
+  profileId: string | null,
+  allPaymentsJson: PaymentRecord[]
+): Promise<{ inserted: number; skipped: number }> {
+  if (!profileId) {
+    return { inserted: 0, skipped: 0 };
+  }
+
+  let inserted = 0;
+  let skipped = 0;
+
+  for (const payment of allPaymentsJson) {
+    if (payment.status !== "succeeded") {
+      skipped++;
+      continue;
+    }
+
+    // Check if already exists
+    const { data: existing } = await supabaseAdmin
+      .from("membership_payments")
+      .select("id")
+      .eq("stripe_payment_id", payment.id)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      skipped++;
+      continue;
+    }
+
+    // Determine payment type from billing_reason
+    const paymentType = mapBillingReasonToPaymentType(payment.billing_reason);
+
+    // Insert new record
+    const { error: insertError } = await supabaseAdmin
+      .from("membership_payments")
+      .insert({
+        user_id: profileId,
+        amount: payment.amount,
+        payment_type: paymentType,
+        stripe_payment_id: payment.id,
+        stripe_invoice_id: payment.id,
+        created_at: payment.date,
+      });
+
+    if (insertError) {
+      console.error(`[sync-all-stripe-payments] Failed to insert payment ${payment.id}:`, insertError.message);
+      skipped++;
+    } else {
+      inserted++;
+    }
+  }
+
+  return { inserted, skipped };
 }
 
 export async function GET(request: Request): Promise<NextResponse> {
@@ -207,7 +277,17 @@ export async function GET(request: Request): Promise<NextResponse> {
             return { id: row.id, success: false, error: updateError.message };
           }
 
-          return { id: row.id, success: true };
+          // Insert succeeded payments into membership_payments if they don't exist
+          const { inserted, skipped } = await insertMembershipPaymentsIfNeeded(
+            row.profile_id,
+            paymentData.all_payments_json
+          );
+
+          if (inserted > 0) {
+            console.log(`[sync-all-stripe-payments] Inserted ${inserted} payments for customer ${row.id}`);
+          }
+
+          return { id: row.id, success: true, inserted, skipped };
         })
       );
 

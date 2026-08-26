@@ -87,11 +87,6 @@ export async function GET(request: Request) {
             status: "active",
           });
 
-          const sub = subscriptions.data[0];
-          const lifetimeValue = sub?.items?.data[0]?.price?.unit_amount
-            ? (sub.items.data[0].price.unit_amount / 100)
-            : 0;
-
           // Insert into stripe_backfill_status
           const { error: insertError } = await supabaseAdmin
             .from("stripe_backfill_status")
@@ -100,7 +95,6 @@ export async function GET(request: Request) {
               email: profile.email,
               stripe_customer_id: customer.id,
               status: "matched",
-              lifetime_value: lifetimeValue,
               processed_at: new Date().toISOString(),
             });
 

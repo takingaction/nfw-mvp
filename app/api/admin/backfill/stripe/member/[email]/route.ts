@@ -53,7 +53,6 @@ export async function GET(
         membership_level,
         subscription_status,
         stripe_customer_id,
-        lifetime_value,
         joined_at
       `)
       .ilike("email", email)
@@ -65,6 +64,13 @@ export async function GET(
       .select("*")
       .eq("user_id", profile?.id || "")
       .order("created_at", { ascending: false });
+
+    // Compute lifetime_value from membership_payments (only successful payments)
+    const lifetimeValue = payments
+      ? payments
+          .filter((p: any) => p.status !== "failed" && p.status !== "rejected" && p.status !== "cancelled")
+          .reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
+      : 0;
 
     // Get backfill status for this email
     const { data: backfillRows } = await supabaseAdmin
@@ -107,7 +113,7 @@ export async function GET(
         membership_level: profile.membership_level,
         subscription_status: profile.subscription_status,
         stripe_customer_id: profile.stripe_customer_id,
-        lifetime_value: profile.lifetime_value,
+        lifetime_value: lifetimeValue,
         joined_at: profile.joined_at,
       } : null,
       payments: payments || [],
