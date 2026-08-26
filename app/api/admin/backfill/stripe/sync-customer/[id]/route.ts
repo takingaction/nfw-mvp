@@ -157,7 +157,7 @@ async function insertMembershipPaymentsIfNeeded(
   let skipped = 0;
 
   for (const payment of allPaymentsJson) {
-    if (payment.status !== "succeeded") {
+    if (payment.status !== "paid") {
       skipped++;
       continue;
     }
