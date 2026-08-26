@@ -22,6 +22,7 @@ interface PaymentRecord {
   error_message: string | null;
   billing_reason: string | null;
   stripe_invoice_id: string;
+  payment_type: string;
 }
 
 async function sleep(ms: number): Promise<void> {
@@ -91,11 +92,12 @@ async function syncPaymentsForCustomer(
       // Note: Refund detection on invoices requires looking at related charges
       // For simplicity, we skip refund tracking on invoices
 
+      const paymentType = invoice.billing_reason === "subscription_create" ? "signup" :
+                         invoice.billing_reason === "subscription_cycle" ? "renewal" :
+                         invoice.billing_reason === "subscription_update" ? "upgrade" : "renewal";
+
       if (status === "paid") {
         totalAmount += amount;
-        const paymentType = invoice.billing_reason === "subscription_create" ? "signup" :
-                           invoice.billing_reason === "subscription_cycle" ? "renewal" :
-                           invoice.billing_reason === "subscription_update" ? "upgrade" : "renewal";
         if (!latestSucceededPayment || new Date(date) > new Date(latestSucceededPayment.date)) {
           latestSucceededPayment = { date, amount, status, payment_type: paymentType };
         }
@@ -109,6 +111,7 @@ async function syncPaymentsForCustomer(
         error_message: errorMessage,
         billing_reason: invoice.billing_reason,
         stripe_invoice_id: invoice.id,
+        payment_type: paymentType,
       });
     }
 
