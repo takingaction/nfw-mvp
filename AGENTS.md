@@ -11604,3 +11604,46 @@ if (status === "cancelled")
 | `app/admin/backfill/stripe/BackfillClient.tsx` | Line 1223: `filteredRows.length > 0` → `rows.length > 0`; Lines 1285-1293: Added ternary with "No results" row |
 
 **Commit:** `941124c` - fix: show table with no-results message instead of hiding when search has no matches
+
+### Session 2026-08-27: Grant Scoring Rubric Update
+
+**Overview**
+
+Updated the grant scoring rubric criteria to better reflect the evaluation process for grant applications.
+
+**Changes Made**
+
+**`components/admin/GrantScoringRubric.tsx`:**
+- Replaced "URGENCY (0-3)" with "Criteria 1: Intent & Feasibility – Use of Funds"
+  - Description: "Does the applicant present a clear, realistic plan for how the grant funds will be spent and executed?"
+  - Score 3: High Clarity – clear, well-defined plan with itemized costs/dates/practical steps
+  - Score 2: Medium Clarity – intended use clear but execution details general
+  - Score 1: Low Clarity – states what but minimal detail on application/management
+  - Score 0: Unclear – vague, missing, or no concrete plan
+
+- Replaced "AUTHENTICITY OF NEED (0-3)" with "Criteria 2: Authenticity of Need – Applicant's Story/Personal Context"
+  - Description: Does the applicant provide a clear, personal narrative of their need? Do they include a "who", "what", and "why"?
+  - Added examples showing before/after of generic vs. specific narratives
+  - Score 3: High Clarity – links who they are to specific current hurdle, genuine "hand-raise" moment
+  - Score 2: Medium Clarity – need clear but "who"/"why now" is thin
+  - Score 1: Low Clarity – vague or generic language
+  - Score 0: No Clarity – no explanation of who they are or why they want funds
+
+- Replaced "IMPACT (0-3)" with "Criteria 3: Impact – Outcome"
+  - Description: Does the applicant detail how this grant will meaningfully benefit their life?
+  - Score 3: High Clarity – grant directly addresses financial gaps, reduces stress, fosters connection
+  - Score 2: Medium Clarity – desire for funds clear but connection to outcome general
+  - Score 1: Low Clarity – funds will help but benefit unclear
+  - Score 0: Unclear – benefit not stated or unclear
+
+- Moved Urgency to "Additional Consideration" section (dove background callout box)
+  - Not scored, noted as "*Urgency does not guarantee approval, but should be considered holistically"
+
+**`components/admin/GrantApplicationScorer.tsx`:**
+- Updated scoring input labels and descriptions on first/second review pages:
+  - "URGENCY" → "Criteria 1: Intent & Feasibility"
+  - "AUTHENTICITY OF NEED" → "Criteria 2: Authenticity of Need"
+  - "IMPACT" → "Criteria 3: Impact"
+- Updated descriptions to match new rubric criteria
+
+**Commit:** `958edb7` - feat: update grant scoring rubric criteria names and descriptions
