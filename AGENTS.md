@@ -11566,3 +11566,24 @@ UPDATE membership_payments
 SET stripe_payment_id = NULL
 WHERE stripe_payment_id LIKE 'in_%';
 ```
+
+### Session 2026-08-27: Cancelled Status Badge
+
+**Problem:** Members with `subscription_status = 'cancelled'` were showing a grey "None" badge in the STATUS column, making it unclear why they had no subscription.
+
+**Solution:** Added a red "Cancelled" badge for cancelled subscriptions.
+
+**Files Modified:**
+| File | Change |
+|------|--------|
+| `components/admin/AdminMembersClient.tsx` | Added `status === "cancelled"` condition with red `bg-red-500` badge |
+
+**Change:**
+```typescript
+if (status === "cancelled")
+  return (
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-red-500 text-white">
+      <XCircle className="w-3 h-3" /> Cancelled
+    </span>
+  );
+```

@@ -415,6 +415,12 @@ export default function AdminMembersClient({
           <Clock className="w-3 h-3" /> Canceling
         </span>
       );
+    if (status === "cancelled")
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-red-500 text-white">
+          <XCircle className="w-3 h-3" /> Cancelled
+        </span>
+      );
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/20 text-nfw-blackberry/60">
         <XCircle className="w-3 h-3" /> Free
