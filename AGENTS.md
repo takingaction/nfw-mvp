@@ -11502,3 +11502,67 @@ Added "Donations or Matriarch Program" option to the contact form dropdown at `/
 | File | Change |
 |------|--------|
 | `components/contact/ContactClient.tsx` | Added new `<option value="donations-matriarch">Donations or Matriarch Program</option>` after "Partnership inquiry" |
+
+## Session 2026-08-26: Fix stripe_payment_id for Automatic Payments
+
+### Problem
+
+9 records in `membership_payments` had `stripe_payment_id` incorrectly set to invoice ID (`in_xxx`) instead of `null`. This happened because the code fell back to `invoice.id` when `invoice.charge` was not available.
+
+### Root Cause
+
+For automatic payments (`collection_method: "charge_automatically"`), Stripe's Invoice API doesn't expose the charge ID. When `invoice.charge` is `null`, the code was incorrectly falling back to `invoice.id`.
+
+### Investigation
+
+- Examined Stripe Invoice API response for `in_1U8moWJOPvaPuV9pj8xB91N9`
+- Confirmed `charge` field doesn't exist on the Invoice object for automatic payments
+- Older records from `insert-missing` route had `stripe_payment_id = null` (correct pattern)
+
+### Solution
+
+1. **Changed insert logic** to set `stripe_payment_id = null` when `invoice.charge` is not a string
+2. **Added fallback duplicate check** using `user_id + amount + created_at` when `stripe_payment_id` is `null`
+3. **Applied fix to both sync routes** that use Invoices API
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/backfill/stripe/sync-customer/[id]/route.ts` | Use `stripe_payment_id` as-is, add fallback duplicate check |
+| `app/api/cron/sync-all-stripe-payments/route.ts` | Same fix |
+| `app/api/admin/backfill/stripe/sync-missing-payments/route.ts` | Same fix |
+
+### Code Changes
+
+**Before (wrong):**
+```typescript
+const stripePaymentId = payment.stripe_payment_id || payment.id;
+```
+
+**After (correct):**
+```typescript
+const stripePaymentId = payment.stripe_payment_id;
+// Fallback duplicate check when stripe_payment_id is null
+if (stripePaymentId) {
+  // Check by stripe_payment_id
+} else {
+  // Check by user_id + amount + created_at
+}
+```
+
+### Final Data Pattern
+
+| stripe_payment_id | stripe_invoice_id | Correct? |
+|-----------------|-----------------|----------|
+| `null` | `in_xxx` | ✅ For automatic payments |
+| `ch_xxx` | `null` | ✅ For charge-based records |
+
+### SQL Applied
+
+```sql
+-- Fix existing wrong records
+UPDATE membership_payments
+SET stripe_payment_id = NULL
+WHERE stripe_payment_id LIKE 'in_%';
+```

@@ -22,6 +22,7 @@ interface PaymentRecord {
   error_message: string | null;
   billing_reason: string | null;
   stripe_invoice_id: string;
+  stripe_payment_id: string | null; // actual charge ID (from invoice.charge)
   payment_type: string;
 }
 
@@ -103,6 +104,11 @@ async function syncPaymentsForCustomer(
         }
       }
 
+      // Access charge ID - Stripe Invoice has charge as string | Charge | null
+      // For automatic payments, charge may be null - set stripe_payment_id to null in that case
+      const chargeId = (invoice as any).charge;
+      const stripePaymentId = typeof chargeId === 'string' ? chargeId : null;
+
       allPayments.push({
         id: invoice.id,
         amount,
@@ -111,6 +117,7 @@ async function syncPaymentsForCustomer(
         error_message: errorMessage,
         billing_reason: invoice.billing_reason,
         stripe_invoice_id: invoice.id,
+        stripe_payment_id: stripePaymentId,
         payment_type: paymentType,
       });
     }
@@ -165,12 +172,29 @@ async function insertMembershipPaymentsIfNeeded(
       continue;
     }
 
-    // Check if already exists
-    const { data: existing } = await supabaseAdmin
-      .from("membership_payments")
-      .select("id")
-      .eq("stripe_payment_id", payment.id)
-      .limit(1);
+    // Use stripe_payment_id as-is (null if not available from Stripe)
+    const stripePaymentId = payment.stripe_payment_id;
+
+    // Check if already exists (only if stripe_payment_id is not null)
+    let existing: any = null;
+    if (stripePaymentId) {
+      const { data } = await supabaseAdmin
+        .from("membership_payments")
+        .select("id")
+        .eq("stripe_payment_id", stripePaymentId)
+        .limit(1);
+      existing = data;
+    } else {
+      // If stripe_payment_id is null, check by user_id + amount + created_at as fallback
+      const { data } = await supabaseAdmin
+        .from("membership_payments")
+        .select("id")
+        .eq("user_id", profileId)
+        .eq("amount", payment.amount)
+        .eq("created_at", payment.date)
+        .limit(1);
+      existing = data;
+    }
 
     if (existing && existing.length > 0) {
       skipped++;
@@ -187,13 +211,13 @@ async function insertMembershipPaymentsIfNeeded(
         user_id: profileId,
         amount: payment.amount,
         payment_type: paymentType,
-        stripe_payment_id: payment.id,
+        stripe_payment_id: stripePaymentId,
         stripe_invoice_id: payment.stripe_invoice_id,
         created_at: payment.date,
       });
 
     if (insertError) {
-      console.error(`[sync-customer] Failed to insert payment ${payment.id}:`, insertError.message);
+      console.error(`[sync-customer] Failed to insert payment ${stripePaymentId}:`, insertError.message);
       skipped++;
     } else {
       inserted++;

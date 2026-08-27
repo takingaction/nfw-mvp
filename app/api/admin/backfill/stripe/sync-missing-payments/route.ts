@@ -113,6 +113,11 @@ export async function POST(request: Request) {
         // Determine amount from invoice amount_paid (in cents)
         const amount = paidInvoice.amount_paid / 100;
 
+        // Use charge ID if available, otherwise set to null
+        // For automatic payments, charge may be null - set stripe_payment_id to null in that case
+        const chargeId = (paidInvoice as any).charge;
+        const stripePaymentId = typeof chargeId === 'string' ? chargeId : null;
+
         // Insert the payment record
         const { error: insertError } = await supabase
           .from("membership_payments")
@@ -120,7 +125,7 @@ export async function POST(request: Request) {
             user_id: profile.id,
             amount: amount,
             payment_type: paymentType,
-            stripe_payment_id: paidInvoice.id,
+            stripe_payment_id: stripePaymentId,
             stripe_invoice_id: paidInvoice.id,
             created_at: new Date(paidInvoice.created * 1000).toISOString(),
           });
@@ -130,7 +135,7 @@ export async function POST(request: Request) {
           results.failed++;
           results.errors.push(`Insert error for ${profile.email}: ${insertError.message}`);
         } else {
-          console.log(`[sync-missing-payments] Synced payment for ${profile.email}: invoice ${paidInvoice.id}, type=${paymentType}, amount=${amount}`);
+          console.log(`[sync-missing-payments] Synced payment for ${profile.email}: charge ${stripePaymentId}, type=${paymentType}, amount=${amount}`);
           results.success++;
         }
 
