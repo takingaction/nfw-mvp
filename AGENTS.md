@@ -11587,3 +11587,20 @@ if (status === "cancelled")
     </span>
   );
 ```
+
+### Session 2026-08-27: Backfill Stripe Page Search Fix
+
+**Problem:** When searching the backfill stripe page results table, if the search returned 0 matches, the entire table (including headers and filter bar) would disappear.
+
+**Root Cause:** Line 1223 had condition `{initialized && filteredRows.length > 0 && (`, which short-circuits to `false` when search filters to zero results.
+
+**Fix Applied:**
+1. Changed condition from `filteredRows.length > 0` to `rows.length > 0` — table always renders when data exists
+2. Added "No results" row inside `<tbody>` when `filteredRows.length === 0` showing `"No results for \"xyz\""`
+
+**Files Modified:**
+| File | Change |
+|------|--------|
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Line 1223: `filteredRows.length > 0` → `rows.length > 0`; Lines 1285-1293: Added ternary with "No results" row |
+
+**Commit:** `941124c` - fix: show table with no-results message instead of hiding when search has no matches
