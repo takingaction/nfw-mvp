@@ -270,24 +270,24 @@ export default function GrantApplicationScorer({
       {/* Scoring */}
       <div className="space-y-4 pt-2">
         <GrantScoreInput
-          label="URGENCY"
+          label="Criteria 1: Intent & Feasibility"
           value={urgency_score}
           onChange={setUrgency_score}
-          description="Is the applicant facing an immediate threat?"
+          description="Does the applicant present a clear, realistic plan for how the grant funds will be spent and executed?"
         />
 
         <GrantScoreInput
-          label="AUTHENTICITY OF NEED"
+          label="Criteria 2: Authenticity of Need"
           value={authenticity_score}
           onChange={setAuthenticity_score}
-          description="Does the applicant provide a clear, personal narrative?"
+          description="Does the applicant provide a clear, personal narrative of their need? Do they include a 'who', 'what', and 'why' in the context of their individual current circumstances?"
         />
 
         <GrantScoreInput
-          label="IMPACT"
+          label="Criteria 3: Impact"
           value={impact_score}
           onChange={setImpact_score}
-          description="Will this grant transform their circumstances?"
+          description="Does the applicant detail how this grant will meaningfully benefit their life?"
         />
 
         {/* BARRIERS */}
