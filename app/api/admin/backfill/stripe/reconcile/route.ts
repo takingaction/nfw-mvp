@@ -87,6 +87,7 @@ export async function GET(request: Request) {
         id,
         amount,
         stripe_payment_id,
+        stripe_invoice_id,
         created_at,
         user_id,
         profiles!inner(email, full_name)
@@ -151,11 +152,17 @@ export async function GET(request: Request) {
     const verifiedCount = { valid: 0, refunded: 0, failed: 0, not_found: 0 };
 
     for (const payment of payments || []) {
-      if (!payment.stripe_payment_id) {
-        // Missing Stripe ID - can't verify
+      // stripe_payment_id can be null for automatic payments (Stripe doesn't expose charge ID)
+      // stripe_invoice_id is the fallback verification for automatic payments
+      const hasStripeId = !!payment.stripe_payment_id;
+      const hasInvoiceId = !!payment.stripe_invoice_id;
+
+      if (!hasStripeId && !hasInvoiceId) {
+        // Missing both Stripe IDs - can't verify
         problematicPayments.push({
           id: payment.id,
           stripe_payment_id: null,
+          stripe_invoice_id: null,
           amount: payment.amount,
           email: (payment.profiles as any)?.email || "unknown",
           user_id: payment.user_id,
@@ -167,7 +174,8 @@ export async function GET(request: Request) {
       }
 
       try {
-        const paymentId = payment.stripe_payment_id;
+        // Use stripe_payment_id if available, otherwise fall back to stripe_invoice_id
+        const paymentId = payment.stripe_payment_id || payment.stripe_invoice_id;
         let status: string | null = null;
 
         if (paymentId?.startsWith("in_")) {
