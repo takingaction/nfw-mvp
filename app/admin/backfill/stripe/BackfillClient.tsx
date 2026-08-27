@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 
 interface PaymentRecord {
@@ -194,9 +194,15 @@ export default function BackfillClient() {
   const [expandedDuplicate, setExpandedDuplicate] = useState<string | null>(null);
 
   // Member search
-  const [memberSearchEmail, setMemberSearchEmail] = useState("");
-  const [memberSearchResult, setMemberSearchResult] = useState<MemberSearchResult | null>(null);
-  const [memberSearchLoading, setMemberSearchLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Debounce search input
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    // Debounce the actual filter by 300ms
+    setTimeout(() => setDebouncedSearch(value), 300);
+  };
 
   // Missing from backfill
   const [missingFromBackfill, setMissingFromBackfill] = useState<MissingProfile[]>([]);
@@ -492,30 +498,6 @@ export default function BackfillClient() {
     }
   }, []);
 
-  // Fetch member by email
-  const handleMemberSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!memberSearchEmail.trim()) return;
-
-    setMemberSearchLoading(true);
-    try {
-      const encodedEmail = encodeURIComponent(memberSearchEmail.trim());
-      const res = await fetch(`/api/admin/backfill/stripe/member/${encodedEmail}`);
-      if (res.ok) {
-        const data = await res.json();
-        setMemberSearchResult(data);
-      } else if (res.status === 404) {
-        setMemberSearchResult({ error: "Member not found" } as any);
-      } else {
-        setMemberSearchResult({ error: "Failed to fetch member" } as any);
-      }
-    } catch (error) {
-      setMemberSearchResult({ error: "Network error" } as any);
-    } finally {
-      setMemberSearchLoading(false);
-    }
-  };
-
   // Check if initialized on mount
   useEffect(() => {
     fetchStatus();
@@ -586,16 +568,25 @@ export default function BackfillClient() {
   // Get problematic payments for bulk delete
   const refundedPayments = reconciliation?.problematic_payments.filter(p => p.issue === "refunded" || p.issue === "failed") || [];
 
-  // Compute filtered rows based on paymentFilter
-  const filteredRows = useMemo(() => {
-    return rows.filter(row => {
-      if (paymentFilter === 'all') return true;
-      if (paymentFilter === 'database_only') return row.status === 'not_found';
-      if (paymentFilter === 'succeeded') return (row.payment_count || 0) > 0 && !row.has_failed;
-      if (paymentFilter === 'no_payment') return row.has_failed && row.total_amount === 0;
-      return true;
-    });
-  }, [rows, paymentFilter]);
+  // Compute filtered rows - require at least 2 chars for search
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const filteredRows = safeRows.filter(row => {
+    if (paymentFilter === 'database_only' && row.status !== 'not_found') return false;
+    if (paymentFilter === 'succeeded' && ((row.payment_count || 0) === 0 || row.has_failed)) return false;
+    if (paymentFilter === 'no_payment' && (!row.has_failed || row.total_amount !== 0)) return false;
+    if (debouncedSearch && debouncedSearch.length >= 2) {
+      const q = debouncedSearch.toLowerCase();
+      const profileName = (row.profiles && typeof row.profiles === 'object' && row.profiles.full_name)
+        ? String(row.profiles.full_name).toLowerCase()
+        : "";
+      if (
+        !(row.email || "").toLowerCase().includes(q) &&
+        !profileName.includes(q) &&
+        !String(row.id).toLowerCase().includes(q)
+      ) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -1065,94 +1056,6 @@ export default function BackfillClient() {
         </div>
       )}
 
-      {/* Member Search Section */}
-      <div className="bg-white rounded-lg border border-nfw-aubergine/20 p-4">
-        <h3 className="font-ui font-bold text-nfw-aubergine mb-4">Search Member by Email</h3>
-        <form onSubmit={handleMemberSearch} className="flex gap-2">
-          <input
-            type="email"
-            value={memberSearchEmail}
-            onChange={(e) => setMemberSearchEmail(e.target.value)}
-            placeholder="member@example.com"
-            className="flex-1 border border-nfw-aubergine/20 rounded px-3 py-2 font-ui text-sm"
-          />
-          <button
-            type="submit"
-            disabled={memberSearchLoading}
-            className="bg-nfw-aubergine text-white font-ui font-bold px-4 py-2 rounded hover:bg-nfw-aubergine/90 disabled:opacity-50"
-          >
-            {memberSearchLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Search"}
-          </button>
-        </form>
-
-        {memberSearchResult && !memberSearchResult.error && (
-          <div className="mt-4 p-4 bg-nfw-dove/50 rounded-lg">
-            {memberSearchResult.profile ? (
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="font-bold">Name:</span>
-                  <span>{memberSearchResult.profile.full_name || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Tier:</span>
-                  <span>{memberSearchResult.profile.membership_level || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Status:</span>
-                  <span>{memberSearchResult.profile.subscription_status || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Stripe Customer:</span>
-                  <span className="font-mono text-xs">{memberSearchResult.profile.stripe_customer_id || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Lifetime Value:</span>
-                  <span>${(memberSearchResult.profile.lifetime_value || 0).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Backfill Status:</span>
-                  <span>{memberSearchResult.backfillStatus?.[0]?.status || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">Stripe Subscription:</span>
-                  <span>{memberSearchResult.stripeSubscription?.status || "—"}</span>
-                </div>
-                <div className="flex gap-2 mt-4">
-                  {memberSearchResult.stripeDashboardUrl && (
-                    <a
-                      href={memberSearchResult.stripeDashboardUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs bg-nfw-aubergine text-white px-3 py-1 rounded hover:bg-nfw-aubergine/90"
-                    >
-                      Stripe Customer →
-                    </a>
-                  )}
-                  {memberSearchResult.subscriptionDashboardUrl && (
-                    <a
-                      href={memberSearchResult.subscriptionDashboardUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs bg-nfw-wisteria text-white px-3 py-1 rounded hover:bg-nfw-wisteria/90"
-                    >
-                      Stripe Subscription →
-                    </a>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <p className="text-nfw-blackberry/70">No profile found for this email.</p>
-            )}
-          </div>
-        )}
-
-        {memberSearchResult?.error && (
-          <div className="mt-4 p-4 bg-red-50 rounded-lg">
-            <p className="text-red-600 text-sm">{memberSearchResult.error}</p>
-          </div>
-        )}
-      </div>
-
       {/* Missing from Backfill Section */}
       {missingFromBackfill.length > 0 && (
         <div className="bg-white rounded-lg border border-orange-200 overflow-hidden">
@@ -1317,10 +1220,10 @@ export default function BackfillClient() {
       )}
 
       {/* Results Table */}
-      {initialized && filteredRows.length > 0 && (
+      {initialized && rows.length > 0 && (
         <div className="bg-white rounded-lg border border-nfw-aubergine/20 overflow-hidden">
           {/* Payment Filter Buttons */}
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-nfw-dove bg-nfw-dove/20">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-nfw-dove bg-nfw-dove/20 flex-wrap">
             <span className="text-xs text-nfw-blackberry/60 font-ui mr-1">Filter:</span>
             {(['all', 'database_only', 'succeeded', 'no_payment'] as const).map((f) => {
               const labelMap = {
@@ -1349,12 +1252,21 @@ export default function BackfillClient() {
                 </button>
               );
             })}
-            <button
-              onClick={handleExportFilteredCSV}
-              className="ml-auto px-3 py-1.5 text-xs font-semibold bg-nfw-aubergine/10 text-nfw-aubergine hover:bg-nfw-aubergine/20"
-            >
-              Download CSV
-            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => handleSearchChange(e.target.value)}
+                placeholder="Search email, name, or ID..."
+                className="border border-nfw-aubergine/20 rounded px-2 py-1.5 text-xs font-ui w-48"
+              />
+              <button
+                onClick={handleExportFilteredCSV}
+                className="px-3 py-1.5 text-xs font-semibold bg-nfw-aubergine/10 text-nfw-aubergine hover:bg-nfw-aubergine/20"
+              >
+                Download CSV
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -1370,18 +1282,29 @@ export default function BackfillClient() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-nfw-dove">
-                {filteredRows.map((row) => (
-                  <React.Fragment key={row.id}>
+                {filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-nfw-blackberry/60">
+                      {debouncedSearch.length >= 2
+                        ? `No results for "${debouncedSearch}"`
+                        : "No matching records"}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRows.map((row) => (
+                    <React.Fragment key={row.id}>
                     <tr className={`hover:bg-nfw-dove/50 ${row.has_failed && row.total_amount === 0 ? "border-l-4 border-red-500" : ""}`}>
                       <td className="px-4 py-3 font-ui text-sm">{row.email}</td>
-                      <td className="px-4 py-3 font-ui text-sm">{row.profiles?.full_name || "—"}</td>
+                      <td className="px-4 py-3 font-ui text-sm">
+                        {(row.profiles && typeof row.profiles === 'object' && row.profiles.full_name) || "—"}
+                      </td>
                       <td className="px-4 py-3 font-ui text-sm">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
                           row.profiles?.membership_level === "founding"
                             ? "bg-nfw-citrine text-nfw-blackberry"
                             : "bg-nfw-wisteria/20 text-nfw-wisteria"
                         }`}>
-                          {row.profiles?.membership_level || "—"}
+                          {(row.profiles && typeof row.profiles === 'object' && row.profiles.membership_level) || "—"}
                         </span>
                       </td>
                       <td className="px-4 py-3 font-ui text-sm">
@@ -1542,7 +1465,8 @@ export default function BackfillClient() {
                       </tr>
                     )}
                   </React.Fragment>
-                ))}
+                ))
+                )}
               </tbody>
             </table>
           </div>
