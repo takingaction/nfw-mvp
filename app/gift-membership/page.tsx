@@ -79,7 +79,7 @@ export default function GiftMembershipPage() {
             </h1>
 
             <p className="text-lg text-nfw-blackberry/70 mb-8 leading-relaxed">
-              membership gives you access to an ecosystem of support, including exclusive perks and discounts, giveaways from the Zero Dollar Store, and microgrants to help you get by and get ahead.
+              Membership gives you access to an ecosystem of support, including exclusive perks and discounts, giveaways from the Zero Dollar Store, and microgrants to help you get by and get ahead.
             </p>
 
             <div className="space-y-4 mb-8">
