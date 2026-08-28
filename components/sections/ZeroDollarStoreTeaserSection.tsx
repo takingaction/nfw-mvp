@@ -52,8 +52,8 @@ export default async function ZeroDollarStoreTeaserSection({ content }: Props) {
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {products.slice(0, 3).map((product: { shopifyProductId: string; title: string; imageUrl: string }) => (
-                  <div key={product.shopifyProductId}>
-                    <div className="relative aspect-[3/4] overflow-hidden bg-nfw-stone/10">
+                  <Link href="/store" key={product.shopifyProductId} className="block">
+                    <div className="relative aspect-square overflow-hidden bg-nfw-stone/10">
                       {product.imageUrl ? (
                         <Image
                           src={product.imageUrl}
@@ -71,17 +71,16 @@ export default async function ZeroDollarStoreTeaserSection({ content }: Props) {
                         {product.title}
                       </p>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
 
-              <div className="flex justify-end mt-6">
+              <div className="flex justify-center mt-8">
                 <Link
                   href={c.cta_url}
-                  className="inline-flex items-center gap-2 font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-blackberry border border-nfw-blackberry/30 px-6 py-3 hover:border-nfw-blackberry transition-colors"
+                  className="inline-flex items-center justify-center px-20 py-6 text-xl font-black tracking-[0.06em] uppercase bg-nfw-citrine text-nfw-blackberry hover:opacity-90 transition-opacity font-ui"
                 >
                   {c.cta_label}
-                  <span>→</span>
                 </Link>
               </div>
             </>
