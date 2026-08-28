@@ -59,8 +59,8 @@ export default function BenefitsCheckmarksSection({ content }: Props) {
             {c.benefits?.map((benefit, i) => (
               <div
                 key={i}
-                className="flex items-start gap-4 p-6 border border-nfw-blackberry/10"
-                style={{ backgroundColor: `${CHECK_COLORS[benefit.check_color]}25` }}
+                className="flex items-start gap-4 p-6 border border-white/20"
+                style={{ backgroundColor: "#3E145F" }}
               >
                 <div
                   className="flex-shrink-0 w-8 h-8 flex items-center justify-center mt-0.5"
@@ -69,10 +69,10 @@ export default function BenefitsCheckmarksSection({ content }: Props) {
                   <Check className="w-5 h-5 text-nfw-blackberry" />
                 </div>
                 <div>
-                  <p className={`font-serif text-lg font-black ${cardTextColor} mb-1`}>
+                  <p className="font-serif text-lg font-black text-white mb-1">
                     {benefit.title}
                   </p>
-                  <p className={`font-serif text-sm ${mutedTextColor}`}>
+                  <p className="font-serif text-sm text-white/80">
                     {benefit.description}
                   </p>
                 </div>

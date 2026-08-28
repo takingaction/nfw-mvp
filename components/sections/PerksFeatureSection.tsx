@@ -25,8 +25,8 @@ export default function PerksFeatureSection({ content }: Props) {
   const logos = c.logos ?? [];
 
   return (
-    <section className={`py-20 lg:py-28 ${bgClass}`}>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
+    <section className={`py-16 lg:py-20 ${bgClass}`}>
+      <div className="max-w-4xl mx-auto px-2 sm:px-4 lg:px-6 mb-16">
         <div className="items-center">
           <div className="space-y-7 flex flex-col items-center">
             {c.eyebrow && (
