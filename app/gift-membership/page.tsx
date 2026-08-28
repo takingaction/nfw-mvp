@@ -6,10 +6,9 @@ import { Loader2, Check, Gift, Users, Heart } from "lucide-react";
 import Link from "next/link";
 
 const BENEFITS = [
-  "Unlimited applications to monthly microgrants",
   "Access to hundreds of perks & discounts saving you thousands annually",
   "Shop surprise & delight giveaways via the Zero Dollar Store",
-  "Access to NFW community supporting women across the country",
+  "Unlimited applications to monthly microgrants",
 ];
 
 export default function GiftMembershipPage() {
@@ -80,9 +79,7 @@ export default function GiftMembershipPage() {
             </h1>
 
             <p className="text-lg text-nfw-blackberry/70 mb-8 leading-relaxed">
-              Share the power of community and empowerment with the women in your life.
-              A National Fund for Women membership opens doors to financial grants,
-              exclusive perks, and a network of support.
+              membership gives you access to an ecosystem of support, including exclusive perks and discounts, giveaways from the Zero Dollar Store, and microgrants to help you get by and get ahead.
             </p>
 
             <div className="space-y-4 mb-8">
