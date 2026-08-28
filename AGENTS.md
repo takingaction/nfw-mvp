@@ -11647,3 +11647,27 @@ Updated the grant scoring rubric criteria to better reflect the evaluation proce
 - Updated descriptions to match new rubric criteria
 
 **Commit:** `958edb7` - feat: update grant scoring rubric criteria names and descriptions
+
+---
+
+## Session 2026-08-27: Page Builder Template Styling Updates
+
+### Perks Feature + Brand Logos (`perks_feature`)
+
+**Changes to `components/sections/PerksFeatureSection.tsx`:**
+- Reduced vertical padding: `py-20 lg:py-28` → `py-16 lg:py-20`
+- Reduced horizontal padding: `px-4 sm:px-6 lg:px-8` → `px-2 sm:px-4 lg:px-6`
+
+### Benefits with Checkmarks (`benefits_checkmarks`)
+
+**Changes to `components/sections/BenefitsCheckmarksSection.tsx`:**
+- Benefit cards now have solid aubergine (`#3E145F`) background instead of transparent tinted backgrounds
+- Text changed to white (`text-white` for title, `text-white/80` for description)
+- Border changed to `border-white/20` for subtle definition
+- Checkmark circles retain their original check colors (yellow, blue, lilac, wisteria)
+
+**Before:** Cards had subtle colored tint at 15% opacity (e.g., `#fdf49325`) which made text hard to read on dark backgrounds
+
+**After:** Cards have solid aubergine background with white text for maximum readability across all background colors
+
+**Commit:** `144b73f` - fix: BenefitsCheckmarks card backgrounds to aubergine with white text; reduce PerksFeature padding
