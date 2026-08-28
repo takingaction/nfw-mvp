@@ -11676,3 +11676,135 @@ Updated the grant scoring rubric criteria to better reflect the evaluation proce
 **After:** Cards have solid aubergine background with white text for maximum readability across all background colors
 
 **Commit:** `144b73f` - fix: BenefitsCheckmarks card backgrounds to aubergine with white text; reduce PerksFeature padding
+
+---
+
+## Session 2026-08-28: Shopify Checkout Health Monitoring
+
+### Overview
+
+Implemented Shopify checkout health monitoring and manual disable system for Zero Dollar Store with admin controls and user-facing modal.
+
+### Goal
+- Health check: Manual only (admin clicks button), no cron/auto-run
+- Image fallback: Accept mock products when Shopify is down (no DB image caching)
+- Admin-only visibility (health status not public)
+- New "Operations" section in admin dashboard
+- Nice modal for unavailable message (not alert/toast)
+- Hybrid health monitoring: Admin API check + Shopify Status public API
+
+### Database
+
+**Migration 148:** `supabase/migrations/148_create_system_settings.sql`
+
+Created `system_settings` table with fields:
+- `id` (UUID PK, default gen_random_uuid)
+- `shopify_checkout_enabled` (BOOLEAN, default TRUE)
+- `shopify_health_status` (TEXT: "unknown", "healthy", "unhealthy")
+- `shopify_health_message` (TEXT)
+- `shopify_last_health_check` (TIMESTAMPTZ)
+- `shopify_external_status` (TEXT)
+- `shopify_external_description` (TEXT)
+- `shopify_external_updated_at` (TIMESTAMPTZ)
+- `updated_at` (TIMESTAMPTZ)
+
+### API Routes Created
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/system-settings` | GET | Public - returns checkout enabled flag |
+| `/api/system-settings` | POST | Admin only - update any setting |
+| `/api/system-settings/health-check` | GET | Admin only - tests Shopify Admin API connectivity |
+| `/api/system-settings/external-status` | GET | Public - fetches Shopify Status API (shopifystatus.com) |
+
+### Admin Page
+
+**`/admin/system-settings`** - Operations panel with:
+- "Disable Checkout" toggle switch (red when disabled)
+- "Run Health Check" button - tests Shopify Admin API connectivity
+- Health status display: Operational (green) / Issues Detected (yellow) / Unreachable (red)
+- Response time display
+- Last checked timestamp
+- External Shopify Status: operational / degraded / major_outage
+- External status description and last updated time
+
+### System Settings Health Check
+
+**Health Check Endpoint (`/api/system-settings/health-check`):**
+- Calls Shopify Admin API `GET /admin/api/2026-01/shop.json`
+- Returns: `{status, message, timestamp, responseTime}`
+- Timeout: 5 seconds
+- Status values: "healthy", "unhealthy", "timeout", "error"
+
+**External Status Endpoint (`/api/system-settings/external-status`):**
+- Fetches `https://shopifystatus.com/api/v2/status.json`
+- Returns: `{status, description, components[], updated_at}`
+- Cache: 5 minutes
+- Maps to simple status: operational → "operational", else → status value
+
+### Checkout API Guard
+
+**`/api/shopify/checkout/route.ts`:**
+- Added check at start of handler for `shopify_checkout_enabled` flag
+- If disabled: returns 503 with `{error, shopify_unavailable: true}`
+- Frontend shows ShopifyUnavailableModal when this error is received
+
+### User-Facing Modal
+
+**`components/ui/ShopifyUnavailableModal.tsx`:**
+- Centered modal with AlertTriangle icon in citrine circle
+- "Store Temporarily Unavailable" heading
+- Friendly message: "We're sorry, the Zero Dollar Store is temporarily unavailable. Please check back in a few minutes."
+- "If you continue to experience issues, please contact support."
+- "OK" button to dismiss
+- Escape key and overlay click to close
+
+### StoreClient Integration
+
+**`components/StoreClient.tsx`:**
+- Added `shopifyUnavailable` state
+- Passes `onShopifyUnavailable` callback to `ClaimItemModal`
+- When checkout API returns 503 with `shopify_unavailable: true`, modal is shown
+
+### ClaimItemModal Update
+
+**`components/ClaimItemModal.tsx`:**
+- Added `onShopifyUnavailable?: () => void` prop
+- On checkout API error with `shopify_unavailable: true`:
+  - Calls `onShopifyUnavailable()`
+  - Closes modal via `onClose()`
+
+### Admin Hub Update
+
+**`app/admin/AdminHubClient.tsx`:**
+- Added Operations section with ShoppingBag icon
+- Single link: "System Settings" → `/admin/system-settings`
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/148_create_system_settings.sql` | system_settings table |
+| `app/api/system-settings/route.ts` | GET/POST system settings |
+| `app/api/system-settings/health-check/route.ts` | Shopify Admin API health check |
+| `app/api/system-settings/external-status/route.ts` | Shopify Status public API |
+| `app/admin/system-settings/page.tsx` | Admin page wrapper |
+| `app/admin/system-settings/SystemSettingsClient.tsx` | Admin UI component |
+| `components/ui/ShopifyUnavailableModal.tsx` | User-facing unavailable modal |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/shopify/checkout/route.ts` | Added checkout enabled flag check |
+| `components/StoreClient.tsx` | Added ShopifyUnavailableModal integration |
+| `components/ClaimItemModal.tsx` | Added onShopifyUnavailable prop |
+| `app/admin/AdminHubClient.tsx` | Added Operations section |
+
+### Key Design Decisions
+
+- Health check uses Admin API `shop.json` endpoint (lightweight, reliable)
+- External status uses shopifystatus.com public API (no auth needed)
+- Checkout flag stored in system_settings table (already has infrastructure)
+- Display both internal health (our store) + external status (Shopify infrastructure)
+- Mock products fallback uses Unsplash images when Shopify unreachable

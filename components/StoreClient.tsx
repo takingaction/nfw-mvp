@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ClaimItemModal from "./ClaimItemModal";
 import ProductDetailPanel from "./ProductDetailPanel";
+import ShopifyUnavailableModal from "@/components/ui/ShopifyUnavailableModal";
 import Link from "next/link";
 
 type StoreProduct = {
@@ -55,6 +56,7 @@ export default function StoreClient({
   const [monthlyClaimed, setMonthlyClaimed] = useState(false);
   const [profileCompleted, setProfileCompleted] = useState(true);
   const [detailsProduct, setDetailsProduct] = useState<StoreProduct | null>(null);
+  const [shopifyUnavailable, setShopifyUnavailable] = useState(false);
   const [heroSettings, setHeroSettings] = useState<{
     hero_image_url: string | null;
     hero_heading: string;
@@ -348,8 +350,14 @@ export default function StoreClient({
           item={claimingItem}
           userId={userId}
           onClose={() => setClaimingItem(null)}
+          onShopifyUnavailable={() => setShopifyUnavailable(true)}
         />
       )}
+
+      <ShopifyUnavailableModal
+        isOpen={shopifyUnavailable}
+        onClose={() => setShopifyUnavailable(false)}
+      />
 
       <ProductDetailPanel
         product={detailsProduct}

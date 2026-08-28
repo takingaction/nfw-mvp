@@ -8,6 +8,7 @@ import {
   Mail,
   BarChart3,
   ChevronRight,
+  Settings,
 } from "lucide-react";
 
 interface AdminLink {
@@ -83,6 +84,16 @@ const adminSections: AdminSection[] = [
       { label: "Newsletter Signups", href: "/admin/newsletter-signups" },
       { label: "Contact Submissions", href: "/admin/contact-submissions" },
       { label: "Story Submissions", href: "/admin/story-submissions" },
+    ],
+  },
+  {
+    title: "Operations",
+    icon: <Settings className="w-5 h-5" />,
+    bgColor: "bg-white",
+    headerBgColor: "bg-nfw-blackberry",
+    headerTextColor: "text-white",
+    links: [
+      { label: "System Settings", href: "/admin/system-settings" },
     ],
   },
 ];
@@ -206,6 +217,29 @@ export default function AdminHubClient() {
                       key={link.href}
                       href={link.href}
                       className={`${getLinkStyles()} px-2 py-1.5 rounded font-sans font-medium text-xs text-center transition-colors`}
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Operations */}
+            <div className={`${adminSections[4].bgColor} rounded-lg overflow-hidden border border-nfw-blackberry/10`}>
+              <div className={`${adminSections[4].headerBgColor} ${adminSections[4].headerTextColor} px-4 py-2 flex items-center gap-2`}>
+                {adminSections[4].icon}
+                <h2 className="font-sans text-xs font-bold uppercase tracking-wide">
+                  {adminSections[4].title}
+                </h2>
+              </div>
+              <div className="p-3">
+                <div className="grid grid-cols-1 gap-2">
+                  {adminSections[4].links.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`${getLinkStyles()} px-3 py-2 rounded font-sans font-medium text-xs text-center transition-colors`}
                     >
                       {link.label}
                     </Link>

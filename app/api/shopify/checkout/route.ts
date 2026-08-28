@@ -82,6 +82,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check if Shopify checkout is enabled via system_settings
+    const { data: systemSettings } = await supabaseAdmin
+      .from("system_settings")
+      .select("shopify_checkout_enabled")
+      .eq("id", "00000000-0000-0000-0000-000000000002")
+      .single();
+
+    if (systemSettings?.shopify_checkout_enabled === false) {
+      return NextResponse.json(
+        {
+          error: "Store is temporarily unavailable. Please try again later.",
+          shopify_unavailable: true
+        },
+        { status: 503 }
+      );
+    }
+
     const { variantId, productId, userId } = await request.json();
 
     // Verify userId matches authenticated user

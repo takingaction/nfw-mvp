@@ -54,6 +54,7 @@ export default function ClaimItemModal({
   item,
   userId,
   onClose,
+  onShopifyUnavailable,
 }: {
   item: {
     productId: string;
@@ -64,6 +65,7 @@ export default function ClaimItemModal({
   };
   userId: string;
   onClose: () => void;
+  onShopifyUnavailable?: () => void;
 }) {
   const [claiming, setClaiming] = useState(false);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
@@ -135,6 +137,11 @@ export default function ClaimItemModal({
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.shopify_unavailable) {
+          onShopifyUnavailable?.();
+          onClose();
+          return;
+        }
         throw new Error(data.error || "Failed to create checkout");
       }
 

@@ -140,15 +140,32 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const shop = searchParams.get("shop");
 
+  console.log("[OAuth] Callback received:", {
+    hasCode: !!code,
+    hasShop: !!shop,
+    shop: shop,
+    shopDomainEnv: SHOPIFY_SHOP_DOMAIN,
+  });
+
   if (!code || !shop) {
+    console.error("[OAuth] Missing code or shop param");
     return NextResponse.redirect(new URL("/admin/shopify?error=missing_params", request.url));
   }
 
   if (shop !== SHOPIFY_SHOP_DOMAIN) {
+    console.error("[OAuth] Shop mismatch:", { received: shop, expected: SHOPIFY_SHOP_DOMAIN });
     return NextResponse.redirect(new URL("/admin/shopify?error=shop_mismatch", request.url));
   }
 
   try {
+    // Log the token exchange attempt (sanitized - don't log actual secret)
+    console.log("[OAuth] Token exchange attempt:", {
+      shop: SHOPIFY_SHOP_DOMAIN,
+      clientId: SHOPIFY_CLIENT_ID ? "SET" : "MISSING",
+      clientSecretLength: SHOPIFY_CLIENT_SECRET?.length || 0,
+      codePrefix: code ? code.substring(0, 10) + "..." : "MISSING",
+    });
+
     // Exchange code for access token
     const tokenRes = await fetch(
       `https://${SHOPIFY_SHOP_DOMAIN}/admin/oauth/access_token`,
@@ -165,7 +182,10 @@ export async function GET(request: Request) {
 
     if (!tokenRes.ok) {
       const err = await tokenRes.text();
-      console.error("Token exchange failed:", err);
+      console.error("[OAuth] Token exchange failed:", {
+        status: tokenRes.status,
+        error: err,
+      });
       return NextResponse.redirect(new URL(`/admin/shopify?error=token_exchange_failed`, request.url));
     }
 
@@ -203,6 +223,7 @@ export async function GET(request: Request) {
       );
     }
 
+    console.log("[OAuth] Success! Redirecting to /admin/shopify?connected=true");
     return NextResponse.redirect(new URL("/admin/shopify?connected=true", request.url));
   } catch (err) {
     console.error("OAuth callback error:", err);
