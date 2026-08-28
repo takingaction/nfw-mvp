@@ -36,7 +36,7 @@ const defaultData: ContactData = {
   hero_headline: "We'd love to hear from you.",
   hero_subheadline: "Whether you have a question, need support, or just want to say hi — we're here and we're listening.",
   help_heading: "How can we help?",
-  help_intro: "Our team is made up of women like you who care deeply about this community and are here to help. We read every message and do our best to respond within 48 hours M-F.",
+  help_intro: "Our team is made up of real women who care deeply about this community. We read every message and do our best to respond within one business day.",
   help_cards: [
     {
       icon: "mail",
@@ -59,6 +59,7 @@ const defaultData: ContactData = {
     { label: "Microgrant FAQs", url: "/faq" },
     { label: "Pricing and Plans", url: "/pricing" },
     { label: "Perks and Discounts", url: "/perks/info" },
+    { label: "Apply for a Grant", url: "/grants/apply" },
   ],
   not_member_heading: "Not a member yet?",
   not_member_subheading: "Join thousands of women who have already found relief, connection, and real support through NFW. It's free to get started.",
