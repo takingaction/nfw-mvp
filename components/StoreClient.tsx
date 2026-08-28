@@ -98,6 +98,8 @@ export default function StoreClient({
         const data = await res.json();
         if (data && data.shopify_checkout_enabled === false) {
           setShopifyUnavailable(true);
+        } else {
+          setShopifyUnavailable(false);
         }
       } catch (error) {
         console.error("Error fetching system settings:", error);
