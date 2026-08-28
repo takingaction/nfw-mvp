@@ -11652,6 +11652,11 @@ Updated the grant scoring rubric criteria to better reflect the evaluation proce
 
 ## Session 2026-08-27: Page Builder Template Styling Updates
 
+### Pricing Hero (`pricing_hero`)
+
+**Changes to `components/sections/PricingHeroSection.tsx`:**
+- Reduced vertical padding: `py-20 lg:py-24` → `py-16 lg:py-20`
+
 ### Perks Feature + Brand Logos (`perks_feature`)
 
 **Changes to `components/sections/PerksFeatureSection.tsx`:**
