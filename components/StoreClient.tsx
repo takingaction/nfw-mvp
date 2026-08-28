@@ -369,7 +369,7 @@ export default function StoreClient({
         />
       )}
 
-      <ShopifyUnavailableModal />
+      {shopifyUnavailable && <ShopifyUnavailableModal />}
 
       <ProductDetailPanel
         product={detailsProduct}
