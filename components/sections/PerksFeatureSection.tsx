@@ -57,14 +57,14 @@ export default function PerksFeatureSection({ content }: Props) {
         </div>
       )}
 
-      {c.logo_strip_eyebrow && (
-        <p className={`font-ui text-xs font-black tracking-[0.06em] uppercase text-center ${eyebrowColor} mb-8`}>
-          {c.logo_strip_eyebrow}
-        </p>
-      )}
-
       {logos.length > 0 && (
-        <div className={c.headline ? "border-t border-white/20 pt-12" : ""}>
+        <div>
+          {c.headline && <div className="border-t border-white/20 mb-12" />}
+          {c.logo_strip_eyebrow && (
+            <p className={`font-ui text-xs font-black tracking-[0.06em] uppercase text-center ${eyebrowColor} mb-8`}>
+              {c.logo_strip_eyebrow}
+            </p>
+          )}
           <Marquee
             speed={50}
             gradient={false}
