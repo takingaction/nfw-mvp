@@ -722,6 +722,10 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       subheadline: "Every membership level helps fund the NFW mission. Choose the level that works for you — and unlock benefits that make a real difference in your everyday life.",
       trust_badges: ["Cancel anytime", "Funds go directly to women in need", "Join in minutes"],
       background: "aubergine",
+      cta_primary_label: "",
+      cta_primary_url: "",
+      cta_secondary_label: "",
+      cta_secondary_url: "",
     },
     editorFields: [
       { key: "eyebrow", label: "Eyebrow", type: "text" },
@@ -729,6 +733,10 @@ export const SECTION_REGISTRY: Record<SectionType, SectionDefinition> = {
       { key: "headline", label: "Headline", type: "text" },
       { key: "subheadline", label: "Subheadline", type: "textarea" },
       { key: "trust_badges", label: "Trust badges", type: "string-array", itemLabel: "Badge" },
+      { key: "cta_primary_label", label: "Primary CTA label", type: "text" },
+      { key: "cta_primary_url", label: "Primary CTA URL", type: "url" },
+      { key: "cta_secondary_label", label: "Secondary CTA label", type: "text" },
+      { key: "cta_secondary_url", label: "Secondary CTA URL", type: "url" },
     ],
   },
 

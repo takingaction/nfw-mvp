@@ -388,6 +388,10 @@ export interface PricingHeroContent {
   subheadline: string;
   trust_badges: string[];
   background?: BackgroundColor;
+  cta_primary_label?: string;
+  cta_primary_url?: string;
+  cta_secondary_label?: string;
+  cta_secondary_url?: string;
 }
 
 // ── pricing_cards ────────────────────────────────────────────

@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { PricingHeroContent } from "@/lib/sections/types";
-import { getBackgroundClass, getTextColorForBackground, getEyebrowColorForBackground } from "@/lib/colors";
+import { getBackgroundClass, getTextColorForBackground, getEyebrowColorForBackground, getPrimaryButtonClass } from "@/lib/colors";
 
 interface Props {
   content: Record<string, unknown>;
@@ -30,6 +31,20 @@ export default function PricingHeroSection({ content }: Props) {
             {c.trust_badges.map((badge, i) => (
               <span key={i} className={textColor}>{badge}</span>
             ))}
+          </div>
+        )}
+        {c.cta_primary_label && (
+          <div className="flex flex-wrap justify-center gap-4 mt-8">
+            {c.cta_primary_label && c.cta_primary_url && (
+              <Link href={c.cta_primary_url} className={getPrimaryButtonClass(c.background)}>
+                {c.cta_primary_label}
+              </Link>
+            )}
+            {c.cta_secondary_label && c.cta_secondary_url && (
+              <Link href={c.cta_secondary_url} className={getPrimaryButtonClass(c.background)}>
+                {c.cta_secondary_label}
+              </Link>
+            )}
           </div>
         )}
       </div>
