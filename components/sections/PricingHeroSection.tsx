@@ -12,7 +12,7 @@ export default function PricingHeroSection({ content }: Props) {
   const eyebrowColor = getEyebrowColorForBackground(c.background);
 
   return (
-    <section className={`${bgClass} py-20 lg:py-24`}>
+    <section className={`${bgClass} py-16 lg:py-20`}>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         {c.eyebrow && (
           <p className={`font-ui text-xs font-black tracking-[0.06em] uppercase ${eyebrowColor} mb-6`}>
