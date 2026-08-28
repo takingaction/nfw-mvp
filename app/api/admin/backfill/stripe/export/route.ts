@@ -31,27 +31,41 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get all backfill status rows with profile info
-    const { data: rows, error } = await supabaseAdmin
-      .from("stripe_backfill_status")
-      .select(`
-        id,
-        email,
-        status,
-        stripe_customer_id,
-        lifetime_value,
-        error_message,
-        processed_at,
-        profiles!inner(
-          full_name,
-          membership_level
-        )
-      `)
-      .order("processed_at", { ascending: false });
+    // Get all backfill status rows with profile info - PAGINATED
+    const allRows: any[] = [];
+    let pageStart = 0;
+    const pageSize = 1000;
+    let hasMore = true;
 
-    if (error) {
-      console.error("[backfill/export] Error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    while (hasMore) {
+      const { data: rowsPage, error } = await supabaseAdmin
+        .from("stripe_backfill_status")
+        .select(`
+          id,
+          email,
+          status,
+          stripe_customer_id,
+          lifetime_value,
+          error_message,
+          processed_at,
+          profiles!inner(
+            full_name,
+            membership_level
+          )
+        `)
+        .order("processed_at", { ascending: false })
+        .range(pageStart, pageStart + pageSize - 1);
+
+      if (error) {
+        console.error("[backfill/export] Error:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      if (rowsPage && rowsPage.length > 0) {
+        allRows.push(...rowsPage);
+        pageStart += pageSize;
+      }
+      hasMore = rowsPage && rowsPage.length === pageSize;
     }
 
     // Build CSV
@@ -68,7 +82,7 @@ export async function GET(request: Request) {
 
     const csvRows = [headers.join(",")];
 
-    for (const row of rows || []) {
+    for (const row of allRows) {
       const profiles = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
       const values = [
         row.email || "",

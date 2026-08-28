@@ -172,29 +172,20 @@ async function insertMembershipPaymentsIfNeeded(
       continue;
     }
 
-    // Use stripe_payment_id as-is (null if not available from Stripe)
-    const stripePaymentId = payment.stripe_payment_id;
+    // ALWAYS use stripe_invoice_id for duplicate detection
+    const invoiceId = payment.stripe_invoice_id;
 
-    // Check if already exists (only if stripe_payment_id is not null)
-    let existing: any = null;
-    if (stripePaymentId) {
-      const { data } = await supabaseAdmin
-        .from("membership_payments")
-        .select("id")
-        .eq("stripe_payment_id", stripePaymentId)
-        .limit(1);
-      existing = data;
-    } else {
-      // If stripe_payment_id is null, check by user_id + amount + created_at as fallback
-      const { data } = await supabaseAdmin
-        .from("membership_payments")
-        .select("id")
-        .eq("user_id", profileId)
-        .eq("amount", payment.amount)
-        .eq("created_at", payment.date)
-        .limit(1);
-      existing = data;
+    if (!invoiceId) {
+      console.warn(`[sync-customer] Skipping payment with no invoice ID for user ${profileId}`);
+      skipped++;
+      continue;
     }
+
+    const { data: existing } = await supabaseAdmin
+      .from("membership_payments")
+      .select("id")
+      .eq("stripe_invoice_id", invoiceId)
+      .limit(1);
 
     if (existing && existing.length > 0) {
       skipped++;
@@ -211,13 +202,13 @@ async function insertMembershipPaymentsIfNeeded(
         user_id: profileId,
         amount: payment.amount,
         payment_type: paymentType,
-        stripe_payment_id: stripePaymentId,
-        stripe_invoice_id: payment.stripe_invoice_id,
+        stripe_payment_id: payment.stripe_payment_id,
+        stripe_invoice_id: invoiceId,
         created_at: payment.date,
       });
 
     if (insertError) {
-      console.error(`[sync-customer] Failed to insert payment ${stripePaymentId}:`, insertError.message);
+      console.error(`[sync-customer] Failed to insert payment ${invoiceId}:`, insertError.message);
       skipped++;
     } else {
       inserted++;

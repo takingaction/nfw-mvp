@@ -35,31 +35,63 @@ export async function POST(request: Request) {
 
     console.log("[backfill-existing] Starting one-time backfill of missing paid members...");
 
-    // Get all profile IDs that are already in stripe_backfill_status
-    const { data: existingBackfill } = await supabaseAdmin
-      .from("stripe_backfill_status")
-      .select("profile_id")
-      .not("profile_id", "is", null);
+    // Get all profile IDs that are already in stripe_backfill_status - PAGINATED
+    const allExistingBackfill: Array<{profile_id: string | null}> = [];
+    let backfillPageStart = 0;
+    const backfillPageSize = 1000;
+    let backfillHasMore = true;
 
-    const existingIds = new Set(
-      (existingBackfill || []).map(r => r.profile_id).filter(Boolean)
-    );
+    while (backfillHasMore) {
+      const { data: backfillPage } = await supabaseAdmin
+        .from("stripe_backfill_status")
+        .select("profile_id")
+        .not("profile_id", "is", null)
+        .range(backfillPageStart, backfillPageStart + backfillPageSize - 1);
 
-    // Get all paid profiles NOT in stripe_backfill_status
-    const { data: paidProfiles, error: profilesError } = await supabaseAdmin
-      .from("profiles")
-      .select("id, email, full_name, membership_level, stripe_customer_id")
-      .in("membership_level", ["contributing", "founding"])
-      .eq("profile_completed", true)
-      .neq("is_admin", true);
-
-    if (profilesError) {
-      console.error("[backfill-existing] Error fetching profiles:", profilesError);
-      return NextResponse.json({ error: profilesError.message }, { status: 500 });
+      if (backfillPage && backfillPage.length > 0) {
+        allExistingBackfill.push(...backfillPage);
+        backfillPageStart += backfillPageSize;
+      }
+      backfillHasMore = !!(backfillPage && backfillPage.length === backfillPageSize);
     }
 
-    // Filter to only NEW paid profiles (not already in backfill)
-    const missingProfiles = (paidProfiles || []).filter(p => !existingIds.has(p.id));
+    const existingIds = new Set(
+      allExistingBackfill.map(r => r.profile_id).filter(Boolean)
+    );
+
+    // Get all profiles NOT in stripe_backfill_status - PAGINATED
+    const allPaidProfiles: Array<{
+      id: string;
+      email: string | null;
+      full_name: string | null;
+      membership_level: string | null;
+      stripe_customer_id: string | null;
+    }> = [];
+    let profilesPageStart = 0;
+    const profilesPageSize = 1000;
+    let profilesHasMore = true;
+
+    while (profilesHasMore) {
+      const { data: profilesPage, error: profilesError } = await supabaseAdmin
+        .from("profiles")
+        .select("id, email, full_name, membership_level, stripe_customer_id")
+        .not("email", "is", null)
+        .range(profilesPageStart, profilesPageStart + profilesPageSize - 1);
+
+      if (profilesError) {
+        console.error("[backfill-existing] Error fetching profiles:", profilesError);
+        return NextResponse.json({ error: profilesError.message }, { status: 500 });
+      }
+
+      if (profilesPage && profilesPage.length > 0) {
+        allPaidProfiles.push(...profilesPage);
+        profilesPageStart += profilesPageSize;
+      }
+      profilesHasMore = !!(profilesPage && profilesPage.length === profilesPageSize);
+    }
+
+    // Filter to only NEW profiles (not already in backfill)
+    const missingProfiles = allPaidProfiles.filter(p => !existingIds.has(p.id));
 
     console.log(`[backfill-existing] Found ${missingProfiles.length} paid profiles to backfill`);
 
@@ -106,7 +138,7 @@ export async function POST(request: Request) {
         // If no valid stripe_customer_id, search by email
         if (!stripeCustomerId && profile.email) {
           const customers = await stripe.customers.list({
-            email: profile.email,
+            email: profile.email || "",
             limit: 1,
           });
 
@@ -123,33 +155,35 @@ export async function POST(request: Request) {
             status: "active",
           });
 
-          // Insert into stripe_backfill_status
-          const { error: insertError } = await supabaseAdmin
+          // Insert into stripe_backfill_status (upsert to prevent duplicates if run twice)
+          const { error: upsertError } = await supabaseAdmin
             .from("stripe_backfill_status")
-            .insert({
+            .upsert({
               profile_id: profile.id,
-              email: profile.email,
+              email: profile.email || "",
               stripe_customer_id: stripeCustomerId,
               status: "matched",
               processed_at: new Date().toISOString(),
+            }, {
+              onConflict: "profile_id",
             });
 
-          if (insertError) {
-            console.error(`[backfill-existing] Error inserting for ${profile.email}:`, insertError);
+          if (upsertError) {
+            console.error(`[backfill-existing] Error upserting for ${profile.email}:`, upsertError);
             errors++;
             results.push({
-              email: profile.email,
+              email: profile.email || "",
               profile_id: profile.id,
               status: "error",
               stripe_customer_id: stripeCustomerId,
-              error: insertError.message,
+              error: upsertError.message,
             });
           } else {
             matched++;
             if (profile.stripe_customer_id) withStripeId++;
             console.log(`[backfill-existing] Matched: ${profile.email} -> ${stripeCustomerId}`);
             results.push({
-              email: profile.email,
+              email: profile.email || "",
               profile_id: profile.id,
               status: "matched",
               stripe_customer_id: stripeCustomerId,
@@ -161,7 +195,7 @@ export async function POST(request: Request) {
             .from("stripe_backfill_status")
             .insert({
               profile_id: profile.id,
-              email: profile.email,
+              email: profile.email || "",
               status: "not_found",
               processed_at: new Date().toISOString(),
             });
@@ -170,7 +204,7 @@ export async function POST(request: Request) {
             console.error(`[backfill-existing] Error inserting not_found for ${profile.email}:`, insertError);
             errors++;
             results.push({
-              email: profile.email,
+              email: profile.email || "",
               profile_id: profile.id,
               status: "error",
               error: insertError.message,
@@ -179,7 +213,7 @@ export async function POST(request: Request) {
             notFound++;
             console.log(`[backfill-existing] Not found in Stripe: ${profile.email}`);
             results.push({
-              email: profile.email,
+              email: profile.email || "",
               profile_id: profile.id,
               status: "not_found",
             });
@@ -193,7 +227,7 @@ export async function POST(request: Request) {
         console.error(`[backfill-existing] Error processing ${profile.email}:`, err);
         errors++;
         results.push({
-          email: profile.email,
+          email: profile.email || "",
           profile_id: profile.id,
           status: "error",
           error: err instanceof Error ? err.message : "Unknown error",

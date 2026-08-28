@@ -28,33 +28,65 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get all duplicate emails (emails that appear more than once)
-    const { data: allRows, error } = await supabaseAdmin
-      .from("stripe_backfill_status")
-      .select(`
-        id,
-        email,
-        status,
-        stripe_customer_id,
-        profile_id,
-        processed_at,
-        error_message,
-        profiles!inner(
-          full_name,
-          membership_level
-        )
-      `)
-      .order("processed_at", { ascending: false });
+    // Get all duplicate emails (emails that appear more than once) - with pagination
+    const allRows: any[] = [];
+    let drPage = 0;
+    const drPageSize = 1000;
+    let drHasMore = true;
 
-    if (error) {
-      console.error("[duplicates] Error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    while (drHasMore) {
+      const { data: batch, error } = await supabaseAdmin
+        .from("stripe_backfill_status")
+        .select(`
+          id,
+          email,
+          status,
+          stripe_customer_id,
+          profile_id,
+          processed_at,
+          error_message,
+          profiles!inner(
+            full_name,
+            membership_level
+          )
+        `)
+        .order("processed_at", { ascending: false })
+        .range(drPage * drPageSize, (drPage + 1) * drPageSize - 1);
+
+      if (error) {
+        console.error("[duplicates] Error:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      if (batch && batch.length > 0) {
+        allRows.push(...batch);
+        drPage++;
+        drHasMore = batch.length === drPageSize;
+      } else {
+        drHasMore = false;
+      }
     }
 
-    // Get all payments to compute lifetime_value per user
-    const { data: allPayments } = await supabaseAdmin
-      .from("membership_payments")
-      .select(`user_id, amount`);
+    // Get all payments to compute lifetime_value per user - with pagination
+    const allPayments: { user_id: string; amount: number }[] = [];
+    let apPage = 0;
+    const apPageSize = 1000;
+    let apHasMore = true;
+
+    while (apHasMore) {
+      const { data: paymentBatch } = await supabaseAdmin
+        .from("membership_payments")
+        .select(`user_id, amount`)
+        .range(apPage * apPageSize, (apPage + 1) * apPageSize - 1);
+
+      if (paymentBatch && paymentBatch.length > 0) {
+        allPayments.push(...paymentBatch);
+        apPage++;
+        apHasMore = paymentBatch.length === apPageSize;
+      } else {
+        apHasMore = false;
+      }
+    }
 
     // Compute lifetime_value per user_id
     const lifetimeValueByUserId = new Map<string, number>();

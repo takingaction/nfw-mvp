@@ -33,28 +33,42 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get all payments from membership_payments with amount 15 or 100
-    const { data: payments, error: paymentsError } = await supabaseAdmin
-      .from("membership_payments")
-      .select(`
-        id,
-        stripe_payment_id,
-        amount,
-        created_at,
-        user_id,
-        profiles!inner(email, full_name)
-      `)
-      .in("amount", [15, 100]);
+    // Get all payments from membership_payments with amount 15 or 100 - PAGINATED
+    const allPayments: any[] = [];
+    let paymentsPageStart = 0;
+    const paymentsPageSize = 1000;
+    let paymentsHasMore = true;
 
-    if (paymentsError) {
-      console.error("[database-only] Payments query error:", paymentsError);
-      return NextResponse.json({ error: paymentsError.message }, { status: 500 });
+    while (paymentsHasMore) {
+      const { data: paymentsPage, error: paymentsError } = await supabaseAdmin
+        .from("membership_payments")
+        .select(`
+          id,
+          stripe_payment_id,
+          amount,
+          created_at,
+          user_id,
+          profiles!inner(email, full_name)
+        `)
+        .in("amount", [15, 100])
+        .range(paymentsPageStart, paymentsPageStart + paymentsPageSize - 1);
+
+      if (paymentsError) {
+        console.error("[database-only] Payments query error:", paymentsError);
+        return NextResponse.json({ error: paymentsError.message }, { status: 500 });
+      }
+
+      if (paymentsPage && paymentsPage.length > 0) {
+        allPayments.push(...paymentsPage);
+        paymentsPageStart += paymentsPageSize;
+      }
+      paymentsHasMore = !!(paymentsPage && paymentsPage.length === paymentsPageSize);
     }
 
     const databaseOnlyPayments: any[] = [];
 
     // Check each payment against Stripe
-    for (const payment of payments || []) {
+    for (const payment of allPayments) {
       // Skip if no stripe_payment_id
       if (!payment.stripe_payment_id) {
         databaseOnlyPayments.push({

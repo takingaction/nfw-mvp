@@ -36,21 +36,49 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get all known payment IDs from membership_payments
-    const { data: payments } = await supabaseAdmin
-      .from("membership_payments")
-      .select("stripe_payment_id");
+    // Get all known payment IDs from membership_payments - PAGINATED
+    const allPayments: Array<{stripe_payment_id: string | null}> = [];
+    let paymentsPageStart = 0;
+    const paymentsPageSize = 1000;
+    let paymentsHasMore = true;
 
-    const knownIds = new Set(payments?.map(p => p.stripe_payment_id) || []);
+    while (paymentsHasMore) {
+      const { data: paymentsPage } = await supabaseAdmin
+        .from("membership_payments")
+        .select("stripe_payment_id")
+        .range(paymentsPageStart, paymentsPageStart + paymentsPageSize - 1);
 
-    // Get all matched Stripe customer IDs from backfill
-    const { data: backfillMatched } = await supabaseAdmin
-      .from("stripe_backfill_status")
-      .select("stripe_customer_id, email")
-      .eq("status", "matched");
+      if (paymentsPage && paymentsPage.length > 0) {
+        allPayments.push(...paymentsPage);
+        paymentsPageStart += paymentsPageSize;
+      }
+      paymentsHasMore = !!(paymentsPage && paymentsPage.length === paymentsPageSize);
+    }
+
+    const knownIds = new Set(allPayments.map(p => p.stripe_payment_id).filter(Boolean));
+
+    // Get all matched Stripe customer IDs from backfill - PAGINATED
+    const allBackfillMatched: Array<{stripe_customer_id: string | null; email: string}> = [];
+    let backfillPageStart = 0;
+    const backfillPageSize = 1000;
+    let backfillHasMore = true;
+
+    while (backfillHasMore) {
+      const { data: backfillPage } = await supabaseAdmin
+        .from("stripe_backfill_status")
+        .select("stripe_customer_id, email")
+        .eq("status", "matched")
+        .range(backfillPageStart, backfillPageStart + backfillPageSize - 1);
+
+      if (backfillPage && backfillPage.length > 0) {
+        allBackfillMatched.push(...backfillPage);
+        backfillPageStart += backfillPageSize;
+      }
+      backfillHasMore = !!(backfillPage && backfillPage.length === backfillPageSize);
+    }
 
     const matchedCustomerIds = new Set(
-      backfillMatched?.map(b => b.stripe_customer_id).filter(Boolean) || []
+      allBackfillMatched.map(b => b.stripe_customer_id).filter(Boolean)
     );
 
     // Get ALL Stripe charges
@@ -89,7 +117,8 @@ export async function GET(request: Request) {
 
     for (const c of allCharges) {
       if (knownIds.has(c.id)) continue; // Already in membership_payments
-      if (!matchedCustomerIds.has(c.customer)) continue; // Not from our matched customers
+      const customerId = typeof c.customer === 'string' ? c.customer : null;
+      if (!customerId || !matchedCustomerIds.has(customerId)) continue; // Not from our matched customers
 
       unmatchedFromMatched.push({
         charge_id: c.id,

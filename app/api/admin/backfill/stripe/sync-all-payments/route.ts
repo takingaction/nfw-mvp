@@ -154,16 +154,32 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get all matched rows with stripe_customer_id
-    const { data: rows, error: rowsError } = await supabaseAdmin
-      .from("stripe_backfill_status")
-      .select("id, stripe_customer_id, profile_id, email")
-      .eq("status", "matched")
-      .not("stripe_customer_id", "is", null);
+    // Get all matched rows with stripe_customer_id - with pagination
+    const rows: { id: string; stripe_customer_id: string; profile_id: string | null; email: string }[] = [];
+    let sapPage = 0;
+    const sapPageSize = 1000;
+    let sapHasMore = true;
 
-    if (rowsError) {
-      console.error("[sync-payments] Error fetching rows:", rowsError);
-      return NextResponse.json({ error: rowsError.message }, { status: 500 });
+    while (sapHasMore) {
+      const { data: batch, error: rowsError } = await supabaseAdmin
+        .from("stripe_backfill_status")
+        .select("id, stripe_customer_id, profile_id, email")
+        .eq("status", "matched")
+        .not("stripe_customer_id", "is", null)
+        .range(sapPage * sapPageSize, (sapPage + 1) * sapPageSize - 1);
+
+      if (rowsError) {
+        console.error("[sync-payments] Error fetching rows:", rowsError);
+        return NextResponse.json({ error: rowsError.message }, { status: 500 });
+      }
+
+      if (batch && batch.length > 0) {
+        rows.push(...batch);
+        sapPage++;
+        sapHasMore = batch.length === sapPageSize;
+      } else {
+        sapHasMore = false;
+      }
     }
 
     if (!rows || rows.length === 0) {

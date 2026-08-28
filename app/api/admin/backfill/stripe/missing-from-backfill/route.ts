@@ -28,39 +28,65 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get all profile IDs that are in stripe_backfill_status
-    const { data: backfillProfiles } = await supabaseAdmin
-      .from("stripe_backfill_status")
-      .select("profile_id")
-      .not("profile_id", "is", null);
+    // Get all profile IDs that are in stripe_backfill_status (with pagination to bypass PostgREST max-rows cap)
+    const backfillProfileIds = new Set<string>();
+    let bpPage = 0;
+    const bpPageSize = 1000;
+    let bpHasMore = true;
 
-    const backfillProfileIds = new Set(
-      (backfillProfiles || []).map(r => r.profile_id).filter(Boolean)
-    );
+    while (bpHasMore) {
+      const { data: backfillBatch } = await supabaseAdmin
+        .from("stripe_backfill_status")
+        .select("profile_id")
+        .not("profile_id", "is", null)
+        .range(bpPage * bpPageSize, (bpPage + 1) * bpPageSize - 1);
 
-    // Get all paid profiles
-    const { data: paidProfiles, error } = await supabaseAdmin
-      .from("profiles")
-      .select(`
-        id,
-        email,
-        full_name,
-        membership_level,
-        stripe_customer_id,
-        joined_at
-      `)
-      .in("membership_level", ["contributing", "founding"])
-      .eq("profile_completed", true)
-      .neq("is_admin", true)
-      .order("joined_at", { ascending: false });
+      if (backfillBatch && backfillBatch.length > 0) {
+        backfillBatch.forEach(r => { if (r.profile_id) backfillProfileIds.add(r.profile_id); });
+        bpPage++;
+        bpHasMore = backfillBatch.length === bpPageSize;
+      } else {
+        bpHasMore = false;
+      }
+    }
 
-    if (error) {
-      console.error("[missing-from-backfill] Error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    // Get all profiles NOT in stripe_backfill_status - with pagination
+    const allProfiles: any[] = [];
+    let pPage = 0;
+    const pPageSize = 1000;
+    let pHasMore = true;
+
+    while (pHasMore) {
+      const { data: profileBatch, error } = await supabaseAdmin
+        .from("profiles")
+        .select(`
+          id,
+          email,
+          full_name,
+          membership_level,
+          stripe_customer_id,
+          joined_at
+        `)
+        .not("email", "is", null)
+        .order("joined_at", { ascending: false })
+        .range(pPage * pPageSize, (pPage + 1) * pPageSize - 1);
+
+      if (error) {
+        console.error("[missing-from-backfill] Error:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      if (profileBatch && profileBatch.length > 0) {
+        allProfiles.push(...profileBatch);
+        pPage++;
+        pHasMore = profileBatch.length === pPageSize;
+      } else {
+        pHasMore = false;
+      }
     }
 
     // Filter to only profiles NOT in backfill
-    const missing = (paidProfiles || []).filter(p => !backfillProfileIds.has(p.id));
+    const missing = allProfiles.filter(p => !backfillProfileIds.has(p.id));
 
     return NextResponse.json({
       success: true,

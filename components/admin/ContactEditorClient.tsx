@@ -71,7 +71,6 @@ const defaultData: ContactData = {
     { label: "Microgrant FAQs", url: "/faq" },
     { label: "Pricing and Plans", url: "/pricing" },
     { label: "Perks and Discounts", url: "/perks/info" },
-    { label: "Apply for a Grant", url: "/grants/apply" },
   ],
   not_member_heading: "Not a member yet?",
   not_member_subheading: "Join thousands of women who have already found relief, connection, and real support through NFW. It's free to get started.",

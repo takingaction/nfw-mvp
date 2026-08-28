@@ -28,26 +28,42 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get sync status from stripe_backfill_status
-    const { data: rows, error } = await supabaseAdmin
-      .from("stripe_backfill_status")
-      .select(`
-        id,
-        stripe_customer_id,
-        payment_sync_at,
-        customer_processed_at,
-        payment_count,
-        total_amount,
-        has_failed,
-        has_refunded,
-        latest_payment_status
-      `)
-      .eq("status", "matched")
-      .not("stripe_customer_id", "is", null);
+    // Get sync status from stripe_backfill_status - with pagination
+    const rows: any[] = [];
+    let ssPage = 0;
+    const ssPageSize = 1000;
+    let ssHasMore = true;
 
-    if (error) {
-      console.error("[sync-status] Error fetching rows:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    while (ssHasMore) {
+      const { data: batch, error } = await supabaseAdmin
+        .from("stripe_backfill_status")
+        .select(`
+          id,
+          stripe_customer_id,
+          payment_sync_at,
+          customer_processed_at,
+          payment_count,
+          total_amount,
+          has_failed,
+          has_refunded,
+          latest_payment_status
+        `)
+        .eq("status", "matched")
+        .not("stripe_customer_id", "is", null)
+        .range(ssPage * ssPageSize, (ssPage + 1) * ssPageSize - 1);
+
+      if (error) {
+        console.error("[sync-status] Error fetching rows:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      if (batch && batch.length > 0) {
+        rows.push(...batch);
+        ssPage++;
+        ssHasMore = batch.length === ssPageSize;
+      } else {
+        ssHasMore = false;
+      }
     }
 
     // Calculate stats

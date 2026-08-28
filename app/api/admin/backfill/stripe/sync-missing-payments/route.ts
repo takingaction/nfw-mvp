@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
 });
+
+const supabaseAdmin = createAdminClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
 export const dynamic = "force-dynamic";
 
@@ -40,56 +46,57 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get all contributing and founding profiles that have stripe_customer_id
-    const { data: profilesToSync, error: profilesError } = await supabase
-      .from("profiles")
-      .select(`
-        id,
-        email,
-        stripe_customer_id,
-        membership_level,
-        first_paid_at
-      `)
-      .in("membership_level", ["contributing", "founding"]);
+    // Get all stripe_backfill_status rows with stripe_customer_id - with pagination
+    const rowsToSync: { id: string; profile_id: string | null; email: string; stripe_customer_id: string }[] = [];
+    let smpPage = 0;
+    const smpPageSize = 1000;
+    let smpHasMore = true;
 
-    if (profilesError) {
-      console.error("[sync-missing-payments] Profiles query error:", profilesError);
-      return NextResponse.json({ error: profilesError.message }, { status: 500 });
+    while (smpHasMore) {
+      const { data: batch, error: rowsError } = await supabaseAdmin
+        .from("stripe_backfill_status")
+        .select(`
+          id,
+          profile_id,
+          email,
+          stripe_customer_id
+        `)
+        .not("stripe_customer_id", "is", null)
+        .range(smpPage * smpPageSize, (smpPage + 1) * smpPageSize - 1);
+
+      if (rowsError) {
+        console.error("[sync-missing-payments] Rows query error:", rowsError);
+        return NextResponse.json({ error: rowsError.message }, { status: 500 });
+      }
+
+      if (batch && batch.length > 0) {
+        rowsToSync.push(...batch);
+        smpPage++;
+        smpHasMore = batch.length === smpPageSize;
+      } else {
+        smpHasMore = false;
+      }
     }
 
-    // Get existing payments to avoid duplicates
-    const { data: existingPayments, error: existingError } = await supabase
-      .from("membership_payments")
-      .select("user_id, stripe_payment_id");
+    console.log(`[sync-missing-payments] Found ${rowsToSync?.length || 0} rows to sync`);
 
-    if (existingError) {
-      console.error("[sync-missing-payments] Existing payments query error:", existingError);
-      return NextResponse.json({ error: existingError.message }, { status: 500 });
+    if (!rowsToSync || rowsToSync.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: "No rows with stripe_customer_id found in stripe_backfill_status",
+      });
     }
 
-    const existingPaymentsSet = new Set(
-      existingPayments?.map(p => p.stripe_payment_id) || []
-    );
-
-    // Filter profiles that need syncing - have stripe_customer_id and no existing payment
-    const profilesNeedingSync = profilesToSync?.filter(p => {
-      if (!p.stripe_customer_id || p.stripe_customer_id.trim() === "") return false;
-      if (existingPaymentsSet.has(p.stripe_customer_id)) return false;
-      return true;
-    }) || [];
-
-    console.log(`[sync-missing-payments] Found ${profilesNeedingSync.length} profiles to sync`);
-
-    // Process each profile
+    // Process each row
     const results = {
       success: 0,
       failed: 0,
       errors: [] as string[],
     };
 
-    for (const profile of profilesNeedingSync) {
+    for (const row of rowsToSync) {
       try {
-        const stripeCustomerId = profile.stripe_customer_id;
+        const stripeCustomerId = row.stripe_customer_id;
 
         // Query Stripe for this customer's invoices (invoices have billing_reason)
         const invoices = await stripe.invoices.list({
@@ -101,9 +108,8 @@ export async function POST(request: Request) {
         const paidInvoice = invoices.data.find(inv => inv.status === "paid");
 
         if (!paidInvoice) {
-          console.error(`[sync-missing-payments] No paid invoice found for customer ${stripeCustomerId}`);
+          console.log(`[sync-missing-payments] No paid invoice found for customer ${stripeCustomerId} (${row.email})`);
           results.failed++;
-          results.errors.push(`No paid invoice found for ${profile.email}`);
           continue;
         }
 
@@ -118,11 +124,23 @@ export async function POST(request: Request) {
         const chargeId = (paidInvoice as any).charge;
         const stripePaymentId = typeof chargeId === 'string' ? chargeId : null;
 
+        // Check if payment already exists by stripe_invoice_id
+        const { data: existingPayment } = await supabaseAdmin
+          .from("membership_payments")
+          .select("id")
+          .eq("stripe_invoice_id", paidInvoice.id)
+          .limit(1);
+
+        if (existingPayment && existingPayment.length > 0) {
+          console.log(`[sync-missing-payments] Payment already exists for ${row.email} (invoice ${paidInvoice.id}), skipping`);
+          continue;
+        }
+
         // Insert the payment record
-        const { error: insertError } = await supabase
+        const { error: insertError } = await supabaseAdmin
           .from("membership_payments")
           .insert({
-            user_id: profile.id,
+            user_id: row.profile_id,
             amount: amount,
             payment_type: paymentType,
             stripe_payment_id: stripePaymentId,
@@ -131,11 +149,11 @@ export async function POST(request: Request) {
           });
 
         if (insertError) {
-          console.error(`[sync-missing-payments] Insert error for ${profile.email}:`, insertError);
+          console.error(`[sync-missing-payments] Insert error for ${row.email}:`, insertError);
           results.failed++;
-          results.errors.push(`Insert error for ${profile.email}: ${insertError.message}`);
+          results.errors.push(`Insert error for ${row.email}: ${insertError.message}`);
         } else {
-          console.log(`[sync-missing-payments] Synced payment for ${profile.email}: charge ${stripePaymentId}, type=${paymentType}, amount=${amount}`);
+          console.log(`[sync-missing-payments] Synced payment for ${row.email}: charge ${stripePaymentId}, type=${paymentType}, amount=${amount}`);
           results.success++;
         }
 
@@ -143,9 +161,9 @@ export async function POST(request: Request) {
         await new Promise(r => setTimeout(r, 100));
 
       } catch (stripeError: any) {
-        console.error(`[sync-missing-payments] Stripe error for ${profile.email}:`, stripeError.message);
+        console.error(`[sync-missing-payments] Stripe error for ${row.email}:`, stripeError.message);
         results.failed++;
-        results.errors.push(`Stripe error for ${profile.email}: ${stripeError.message}`);
+        results.errors.push(`Stripe error for ${row.email}: ${stripeError.message}`);
       }
     }
 

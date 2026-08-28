@@ -54,7 +54,7 @@ export async function GET(request: Request) {
       await new Promise(r => setTimeout(r, 25));
     }
 
-    // Calculate Stripe live totals
+    // Calculate Stripe live totals (assumed based on count × price)
     let stripeContributingCount = 0;
     let stripeContributingTotal = 0;
     let stripeFoundingCount = 0;
@@ -71,12 +71,51 @@ export async function GET(request: Request) {
       }
     }
 
+    // Step 1b: Get TRUE totals from actual invoice amounts
+    let trueContributingTotal = 0;
+    let trueFoundingTotal = 0;
+
+    for (const sub of allSubscriptions) {
+      try {
+        const customerId = typeof sub.customer === 'string' ? sub.customer : null;
+        if (!customerId) continue;
+        
+        const invoices = await stripe.invoices.list({
+          customer: customerId,
+          limit: 100,
+        });
+
+        for (const invoice of invoices.data) {
+          if (invoice.status === "paid") {
+            const priceAmount = sub.items.data[0]?.price?.unit_amount;
+            if (priceAmount === 1500) {
+              trueContributingTotal += invoice.amount_paid / 100;
+            } else if (priceAmount === 10000) {
+              trueFoundingTotal += invoice.amount_paid / 100;
+            }
+          }
+        }
+      } catch (e) {
+        console.error(`[reconcile] Error fetching invoices for customer ${sub.customer}:`, e);
+      }
+      await new Promise(r => setTimeout(r, 25));
+    }
+
     const stripeLive = {
-      contributing: { count: stripeContributingCount, total: stripeContributingTotal },
-      founding: { count: stripeFoundingCount, total: stripeFoundingTotal },
+      contributing: { 
+        count: stripeContributingCount, 
+        total: stripeContributingTotal,
+        true_total: trueContributingTotal 
+      },
+      founding: { 
+        count: stripeFoundingCount, 
+        total: stripeFoundingTotal,
+        true_total: trueFoundingTotal 
+      },
       total: { 
         count: stripeContributingCount + stripeFoundingCount, 
-        total: stripeContributingTotal + stripeFoundingTotal 
+        total: stripeContributingTotal + stripeFoundingTotal,
+        true_total: trueContributingTotal + trueFoundingTotal
       },
     };
 

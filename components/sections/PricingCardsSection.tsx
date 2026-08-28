@@ -35,11 +35,11 @@ export default function PricingCardsSection({ content }: Props) {
   const mutedTextColor = getMutedTextColorForBackground(c.background);
   const cardTextColor = getCardTextColorForBackground(c.background);
   const cardBorderColor = getCardBorderColorForBackground(c.background);
-  const cardBgClass = c.background === "dove" ? "bg-white" : "bg-white/10";
+  const cardBgClass = c.background === "dove" ? "bg-white" : "bg-white/20";
   const checkedBg = CHECKED_COLORS[c.checkbox_checked] || CHECKED_COLORS.aubergine;
   const isDarkChecked = DARK_CHECKED_COLORS.includes(c.checkbox_checked);
   const checkIconColor = isDarkChecked ? "#ffffff" : "#1a1a1a";
-  const cardSubtextColor = c.background === "dove" ? "text-nfw-blackberry/60" : "text-white/60";
+  const cardSubtextColor = c.background === "dove" ? "text-nfw-blackberry/60" : "text-white/80";
   const cardHighlightedBg = c.background === "dove" ? "bg-nfw-aubergine" : "bg-nfw-aubergine/80";
   const ctaClass = getPrimaryButtonClass(c.background);
   const innerCardBorder = c.background === "dove" ? "border-nfw-blackberry/10" : "border-white/20";
@@ -83,7 +83,7 @@ export default function PricingCardsSection({ content }: Props) {
 
               <h3
                 className={`font-ui text-sm font-black tracking-[0.06em] uppercase mb-2 ${
-                  plan.highlighted ? "text-nfw-dove" : cardTextColor
+                  plan.highlighted ? "text-white" : cardTextColor
                 }`}
               >
                 {plan.name}
@@ -99,7 +99,7 @@ export default function PricingCardsSection({ content }: Props) {
                 </span>
                 <span
                   className={`text-sm ml-1 ${
-                    plan.highlighted ? "text-nfw-lilac" : cardSubtextColor
+                    plan.highlighted ? "text-white" : cardSubtextColor
                   }`}
                 >
                   {plan.period}
@@ -107,8 +107,8 @@ export default function PricingCardsSection({ content }: Props) {
               </div>
 
               <p
-                className={`font-serif text-sm mb-6 ${
-                  plan.highlighted ? "text-nfw-lilac" : cardSubtextColor
+                className={`font-serif text-base mb-6 ${
+                  plan.highlighted ? "text-white" : cardSubtextColor
                 }`}
               >
                 {plan.description}
@@ -121,8 +121,8 @@ export default function PricingCardsSection({ content }: Props) {
                       <Check className="w-3 h-3" style={{ color: checkIconColor }} />
                     </div>
                     <span
-                      className={`font-serif text-sm ${
-                        plan.highlighted ? "text-nfw-dove" : cardSubtextColor
+                      className={`font-serif text-base ${
+                        plan.highlighted ? "text-white" : cardSubtextColor
                       }`}
                     >
                       {feature}
@@ -145,12 +145,12 @@ export default function PricingCardsSection({ content }: Props) {
             <h3 className={`font-serif text-2xl ${textColor} mb-3`}>
               {c.cta_headline || "Ready to join?"}
             </h3>
-            <p className={`font-serif ${mutedTextColor} mb-6 max-w-md mx-auto`}>
+            <p className={`font-serif ${mutedTextColor} mb-6 max-w-lg mx-auto`}>
               {c.cta_body || "Create your free account to get started."}
             </p>
             <Link
               href={c.cta_url || "/auth/sign-up"}
-              className={`inline-flex items-center justify-center px-10 py-4 ${ctaClass} font-ui font-black text-sm tracking-[0.06em] uppercase hover:opacity-90 transition-opacity`}
+              className={`inline-flex items-center justify-center px-20 py-6 text-xl font-black tracking-[0.06em] uppercase bg-nfw-citrine text-nfw-blackberry hover:opacity-90 transition-opacity font-ui`}
             >
               {c.cta_label || "Join Now"}
             </Link>
