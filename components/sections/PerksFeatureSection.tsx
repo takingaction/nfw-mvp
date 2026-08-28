@@ -26,42 +26,45 @@ export default function PerksFeatureSection({ content }: Props) {
 
   return (
     <section className={`py-16 lg:py-20 ${bgClass}`}>
-      <div className="max-w-4xl mx-auto px-2 sm:px-4 lg:px-6 mb-16">
-        <div className="items-center">
-          <div className="space-y-7 flex flex-col items-center">
-            {c.eyebrow && (
-              <p className={`font-ui text-xs font-black tracking-[0.06em] text-center uppercase ${eyebrowColor}`}>
-                {c.eyebrow}
+      {c.headline && (
+        <div className="max-w-4xl mx-auto px-2 sm:px-4 lg:px-6 mb-16">
+          <div className="items-center">
+            <div className="space-y-7 flex flex-col items-center">
+              {c.eyebrow && (
+                <p className={`font-ui text-xs font-black tracking-[0.06em] text-center uppercase ${eyebrowColor}`}>
+                  {c.eyebrow}
+                </p>
+              )}
+              <h2 className={`font-serif text-4xl lg:text-6xl text-center ${textColor} !leading-[1.1]`}>
+                {parts[0]}
+                <em className="italic">{c.headline_italic_phrase}</em>
+                {parts[1]}
+              </h2>
+              <p className={`font-serif text-2xl text-center ${textColor} opacity-80`}>
+                {c.body}
               </p>
-            )}
-            <h2 className={`font-serif text-4xl lg:text-6xl text-center ${textColor} !leading-[1.1]`}>
-              {parts[0]}
-              <em className="italic">{c.headline_italic_phrase}</em>
-              {parts[1]}
-            </h2>
-            <p className={`font-serif text-2xl text-center ${textColor} opacity-80`}>
-              {c.body}
-            </p>
-            {c.cta_label && (
-              <Link
-                href={c.cta_url}
-                className={`inline-flex items-center justify-center px-8 py-4 ${ctaClass} font-ui font-black text-sm tracking-[0.06em] uppercase hover:opacity-90 transition-opacity`}
-              >
-                {c.cta_label}
-              </Link>
-            )}
+              {c.cta_label && (
+                <Link
+                  href={c.cta_url}
+                  className={`inline-flex items-center justify-center px-8 py-4 ${ctaClass} font-ui font-black text-sm tracking-[0.06em] uppercase hover:opacity-90 transition-opacity`}
+                >
+                  {c.cta_label}
+                </Link>
+              )}
+            </div>
+            <div />
           </div>
-          <div />
         </div>
-      </div>
+      )}
+
+      {c.logo_strip_eyebrow && (
+        <p className={`font-ui text-xs font-black tracking-[0.06em] uppercase text-center ${eyebrowColor} mb-8`}>
+          {c.logo_strip_eyebrow}
+        </p>
+      )}
 
       {logos.length > 0 && (
-        <div className="border-t border-white/20 pt-12">
-          {c.logo_strip_eyebrow && (
-            <p className={`font-ui text-xs font-black tracking-[0.06em] uppercase text-center ${eyebrowColor} mb-8`}>
-              {c.logo_strip_eyebrow}
-            </p>
-          )}
+        <div className={c.headline ? "border-t border-white/20 pt-12" : ""}>
           <Marquee
             speed={50}
             gradient={false}
