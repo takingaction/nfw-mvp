@@ -92,8 +92,21 @@ export default function StoreClient({
       }
     }
 
+    async function checkSystemSettings() {
+      try {
+        const res = await fetch("/api/system-settings");
+        const data = await res.json();
+        if (data && data.shopify_checkout_enabled === false) {
+          setShopifyUnavailable(true);
+        }
+      } catch (error) {
+        console.error("Error fetching system settings:", error);
+      }
+    }
+
     fetchProducts();
     fetchHeroSettings();
+    checkSystemSettings();
   }, []);
 
   useEffect(() => {
@@ -354,10 +367,7 @@ export default function StoreClient({
         />
       )}
 
-      <ShopifyUnavailableModal
-        isOpen={shopifyUnavailable}
-        onClose={() => setShopifyUnavailable(false)}
-      />
+      <ShopifyUnavailableModal />
 
       <ProductDetailPanel
         product={detailsProduct}

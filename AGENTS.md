@@ -11808,3 +11808,38 @@ Created `system_settings` table with fields:
 - Checkout flag stored in system_settings table (already has infrastructure)
 - Display both internal health (our store) + external status (Shopify infrastructure)
 - Mock products fallback uses Unsplash images when Shopify unreachable
+
+## Session 2026-08-28: Shopify Checkout Health Monitoring (Continued)
+
+### Bug: Modal Not Showing on Page Load
+
+**Problem:** When toggle was OFF, visiting `/store` did not show the unavailable modal immediately.
+
+**Root Cause:** The `ShopifyUnavailableModal` was only triggered when clicking "Claim Item" button, not on page load.
+
+**Fix:** Added `checkSystemSettings()` to `StoreClient.tsx` useEffect that fetches `/api/system-settings` on mount and sets `shopifyUnavailable` state if `shopify_checkout_enabled === false`.
+
+### Bug: Modal Could Be Closed
+
+**Problem:** Modal had X button, click-outside-to-close, and Escape key that allowed users to dismiss the unavailable modal.
+
+**Solution:** Simplified `ShopifyUnavailableModal.tsx` to be non-dismissable:
+- Removed `isOpen`, `onClose` props
+- Removed X button, Escape key handler, click-outside-to-close
+- Removed `useEffect` for body overflow management
+- Modal always renders when component mounts (no conditional return)
+- Only "Visit Homepage" button which links to `/`
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/ui/ShopifyUnavailableModal.tsx` | Simplified to non-dismissable modal |
+| `components/StoreClient.tsx` | Added `checkSystemSettings()` to show modal on page load |
+
+### Behavior
+
+1. Admin toggles "Disable Checkout" OFF at `/admin/system-settings`
+2. Any user visiting `/store` sees the unavailable modal immediately
+3. No way to dismiss - user must click "Visit Homepage" or navigate away
+4. Modal stays until admin toggles checkout back ON
