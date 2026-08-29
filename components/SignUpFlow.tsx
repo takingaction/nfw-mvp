@@ -1263,21 +1263,14 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
           </div>
           {data.testimonial_text && (
             <div className="bg-white/5 border border-white/10 p-5">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-nfw-lilac/30 flex items-center justify-center text-lg flex-shrink-0">
-                  T
-                </div>
-                <div>
-                  <p className="text-nfw-dove text-sm leading-relaxed italic">
-                    &ldquo;{data.testimonial_text}&rdquo;
-                  </p>
-                  {data.testimonial_author && (
-                    <p className="text-nfw-lilac text-xs mt-2 font-semibold">
-                      — {data.testimonial_author}
-                    </p>
-                  )}
-                </div>
-              </div>
+              <p className="text-nfw-dove text-sm leading-relaxed italic">
+                &ldquo;{data.testimonial_text}&rdquo;
+              </p>
+              {data.testimonial_author && (
+                <p className="text-nfw-lilac text-xs mt-2 font-semibold">
+                  — {data.testimonial_author}
+                </p>
+              )}
             </div>
           )}
         </div>
