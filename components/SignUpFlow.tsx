@@ -158,18 +158,39 @@ interface GiftCodeState {
   success: boolean;
 }
 
-const BENEFITS = [
-  "Microgrants from $100-$5,000",
-  "Thousands of perks & discounts",
-  "Zero Dollar Store giveaways",
-  "Feel-good support that is simple, fast and low stress",
-  "A community that gets it",
-  "A mission-driven community supporting women",
-];
-
 const STEPS = ["Account", "Personal Info", "Identity", "Membership"];
 
-export default function SignUpFlow() {
+export interface SignupData {
+  eyebrow: string;
+  headline: string;
+  body_text: string;
+  benefits: string[];
+  testimonial_text: string;
+  testimonial_author: string;
+}
+
+interface SignUpFlowProps {
+  signupData?: SignupData | null;
+}
+
+const defaultSignupData: SignupData = {
+  eyebrow: "JOIN WOMEN NATIONWIDE",
+  headline: "Become a Member",
+  body_text: "NFW membership helps you get relief for yourself while helping other women at the same time. Membership includes:",
+  benefits: [
+    "Microgrants from $100-$5,000",
+    "Thousands of perks & discounts",
+    "Zero Dollar Store giveaways",
+    "Feel-good support that is simple, fast and low stress",
+    "A community that gets it",
+    "A mission-driven community supporting women",
+  ],
+  testimonial_text: "\"NFW is a safe space where we can trust that the women here have one another's back. We support one another's growth, hopes, and dreams even though they aren't our own. We know that when one of us rises, the rest of us are right there supporting her. NFW is the space all women have been looking for.\"",
+  testimonial_author: "Tiana, 29 — Retail Manager",
+};
+
+export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
+  const data = signupData ? { ...defaultSignupData, ...signupData } : defaultSignupData;
   const searchParams = useSearchParams();
   const initialStep = parseInt(searchParams.get("step") || "0");
   const [step, setStep] = useState(initialStep);
@@ -1220,17 +1241,19 @@ export default function SignUpFlow() {
       <div className="hidden lg:flex w-[420px] xl:w-[480px] bg-nfw-aubergine flex-col justify-center px-12 py-16 relative overflow-hidden flex-shrink-0">
         <div className="relative">
           <p className="font-ui text-xs font-black tracking-[0.06em] uppercase text-nfw-dove mb-6">
-            JOIN WOMEN NATIONWIDE
+            {data.eyebrow}
           </p>
           <h1 className="font-serif text-4xl lg:text-6xl text-white mb-4 leading-tight">
-            Become a Member
+            {data.headline}
           </h1>
-          <p className="text-white text-sm mb-10 leading-relaxed">
-            NFW membership helps you get relief for yourself while helping other women at the same time. Membership includes:
-          </p>
-          <div className="space-y-4 mb-10">
-            {BENEFITS.map((b) => (
-              <div key={b} className="flex items-center gap-3">
+          <div className="text-white text-sm mb-6 leading-relaxed whitespace-pre-wrap">
+            {data.body_text.split('\n\n').map((para, i) => (
+              <p key={i} className={i > 0 ? "mt-4" : ""}>{para}</p>
+            ))}
+          </div>
+          <div className="space-y-3 mb-8">
+            {data.benefits.map((b, i) => (
+              <div key={i} className="flex items-center gap-3">
                 <div className="w-5 h-5 bg-nfw-wisteria/30 flex items-center justify-center flex-shrink-0">
                   <Check className="w-3 h-3 text-white" />
                 </div>
@@ -1238,26 +1261,25 @@ export default function SignUpFlow() {
               </div>
             ))}
           </div>
-          <div className="bg-white/5 border border-white/10 p-5">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-nfw-lilac/30 flex items-center justify-center text-lg flex-shrink-0">
-                T
-              </div>
-              <div>
-                <p className="text-nfw-dove text-sm leading-relaxed italic">
-                  &ldquo;NFW is a safe space where we can trust that the women
-                  here have one another&rsquo;s back. We support one
-                  another&rsquo;s growth, hopes, and dreams even though they
-                  aren&rsquo;t our own. We know that when one of us rises, the
-                  rest of us are right there supporting her. NFW is the space
-                  all women have been looking for.&rdquo;
-                </p>
-                {/* <p className="text-nfw-lilac text-xs mt-2 font-semibold">
-                  Tiana, 29 — Retail Manager
-                </p> */}
+          {data.testimonial_text && (
+            <div className="bg-white/5 border border-white/10 p-5">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-nfw-lilac/30 flex items-center justify-center text-lg flex-shrink-0">
+                  T
+                </div>
+                <div>
+                  <p className="text-nfw-dove text-sm leading-relaxed italic">
+                    &ldquo;{data.testimonial_text}&rdquo;
+                  </p>
+                  {data.testimonial_author && (
+                    <p className="text-nfw-lilac text-xs mt-2 font-semibold">
+                      — {data.testimonial_author}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

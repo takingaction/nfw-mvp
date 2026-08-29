@@ -11843,3 +11843,89 @@ Created `system_settings` table with fields:
 2. Any user visiting `/store` sees the unavailable modal immediately
 3. No way to dismiss - user must click "Visit Homepage" or navigate away
 4. Modal stays until admin toggles checkout back ON
+
+---
+
+## Session 2026-08-28: Signup Page Sidebar Editor
+
+### Goal
+
+Make signup page sidebar content editable via `/admin/signup` page (eyebrow, headline, body text, benefits list, testimonial with optional author).
+
+### Database Migration
+
+**Migration 149:** `supabase/migrations/149_create_site_signup.sql`
+
+Creates `site_signup` table with columns:
+- `id` (UUID, PK)
+- `eyebrow` (TEXT) - default "JOIN WOMEN NATIONWIDE"
+- `headline` (TEXT) - default "Become a Member"
+- `body_text` (TEXT) - intro text with paragraph support via `\n\n`
+- `benefits` (JSONB) - array of benefit strings
+- `testimonial_text` (TEXT)
+- `testimonial_author` (TEXT)
+- `updated_at` (TIMESTAMPTZ)
+
+RLS: public read, admin write. Seeded with default row.
+
+### API Route
+
+**`app/api/signup/route.ts`:**
+- GET: Fetch signup content (public)
+- POST: Save signup content (admin only)
+
+### Admin Page
+
+**`app/admin/signup/page.tsx`:**
+- Server wrapper with `requireAdmin()`
+- Fetches initial data server-side
+
+**`components/admin/SignupEditorClient.tsx`:**
+- Eyebrow, headline, body text inputs
+- Benefits: add/remove/reorder with up/down arrows
+- Testimonial text and author (author hidden if blank)
+- Saves to `/api/signup`
+
+### Public Page
+
+**`app/auth/sign-up/page.tsx`:**
+- Server-side fetch of signup data
+- Passes to `SignUpFlow` component via `signupData` prop
+
+**`components/SignUpFlow.tsx`:**
+- Accepts optional `signupData` prop
+- Uses dynamic data or falls back to defaults
+- Body text renders paragraphs (split on `\n\n`)
+- Benefits list with wisteria checkmarks
+- Testimonial section (author hidden if blank)
+
+### Features
+
+- Benefits: individual add/remove/reorder (up/down arrows, no drag)
+- Testimonial author: optional, hidden when blank
+- Body text: supports paragraphs via `\n\n` separator
+- Reduced spacing between body text and benefits list
+- Admin link at `/admin/signup` under Content & Website section
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/149_create_site_signup.sql` | Table schema |
+| `app/api/signup/route.ts` | GET/POST API |
+| `app/admin/signup/page.tsx` | Admin page wrapper |
+| `components/admin/SignupEditorClient.tsx` | Admin editor UI |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/auth/sign-up/page.tsx` | Server-side fetch, pass signupData |
+| `components/SignUpFlow.tsx` | Dynamic data support, paragraph rendering |
+| `app/admin/AdminHubClient.tsx` | Added "Edit Signup Page" link |
+
+### To Deploy
+
+1. Run migration 149 in Supabase SQL Editor
+2. Visit `/admin/signup` to edit sidebar content
+3. Visit `/auth/sign-up` to preview changes
