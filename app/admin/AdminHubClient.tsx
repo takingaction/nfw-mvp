@@ -38,7 +38,7 @@ const adminSections: AdminSection[] = [
       { label: "Edit Header", href: "/admin/header" },
       { label: "Edit Footer", href: "/admin/footer" },
       { label: "Edit FAQ", href: "/admin/faq" },
-      { label: "Edit Contact", href: "/admin/contact" },
+      { label: "Edit Contact Page", href: "/admin/contact" },
       { label: "Legal Pages", href: "/admin/legal" },
       { label: "Manage Articles", href: "/admin/articles" },
       { label: "Manage Dashboard", href: "/admin/dashboard" },
