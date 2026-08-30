@@ -12009,3 +12009,32 @@ Server-side tracking (Option A) was chosen over client-side because:
 1. Server-side is more reliable - no dependency on client passing the field correctly
 2. Single source of truth - ANY gift code redemption path automatically gets the correct source
 3. Defense in depth - even if someone bypasses the UI and calls the API directly, it still gets set correctly
+
+## Session 2026-08-30 (Evening): Fix Analytics Active Member Count Bug
+
+### Overview
+
+Fixed bug where analytics showed 933 paid members but admin/members showed 934. The discrepancy was caused by analytics incorrectly requiring `profile_completed === true` for contributing and founding members.
+
+### Root Cause
+
+`AdminAnalyticsClient.tsx` had a bug in `activeProfilesCount` useMemo that required `profile_completed === true` for ALL member tiers (free, contributing, founding). However, `/admin/members` does NOT require `profile_completed` for contributing and founding members - only for free members.
+
+The single discrepancy member was `ch@christyhaubegger.com` - a contributing member who paid via Stripe but never completed their profile signup (date_of_birth='1900-01-01', identities=[], all other fields null).
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/admin/AdminAnalyticsClient.tsx` | Fixed `activeProfilesCount` to not require `profile_completed` for contributing/founding tiers |
+
+### SQL to Find Affected Members
+
+```sql
+-- Find contributing/founding members with profile_completed != true
+SELECT email, membership_level, profile_completed, signup_source
+FROM profiles
+WHERE is_admin = false
+  AND membership_level IN ('contributing', 'founding')
+  AND profile_completed != true;
+```

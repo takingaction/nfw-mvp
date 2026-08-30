@@ -558,14 +558,17 @@ export default function AdminAnalyticsClient({
   // Active Profiles = Free (approved) + Contributing + Founding (excludes admins, waitlist, incomplete)
   const activeProfilesCount = useMemo(() => {
     return filteredProfiles.filter(
-      (p) =>
-        p.is_admin !== true &&
-        p.profile_completed === true &&
-        (
-          (p.membership_level === "free" && p.is_approved_free_member === true) ||
-          p.membership_level === "contributing" ||
-          p.membership_level === "founding"
-        )
+      (p) => {
+        if (p.is_admin) return false;
+        if (p.membership_level === "free") {
+          return p.is_approved_free_member === true && p.profile_completed === true;
+        }
+        // Contributing and Founding don't need profile_completed check
+        if (p.membership_level === "contributing" || p.membership_level === "founding") {
+          return true;
+        }
+        return false;
+      }
     ).length;
   }, [filteredProfiles]);
 
