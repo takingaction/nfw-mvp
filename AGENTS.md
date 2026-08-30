@@ -12129,3 +12129,37 @@ The backfill analytics page had no way to filter for gift code members (`signup_
 |------|--------|
 | `app/admin/backfill/stripe/BackfillClient.tsx` | Added gift_card filter, expanded no_payment, added signup_source to interface |
 | `app/api/admin/backfill/stripe/status/route.ts` | Added signup_source to profiles select |
+
+---
+
+## Session 2026-08-30: Backfill Stripe Hydration Fix
+
+### Problem
+
+`/admin/backfill/stripe` page crashed with React error #418 (hydration mismatch) on load.
+
+### Root Cause
+
+`toLocaleString()` was used without a locale argument in 15 places throughout `BackfillClient.tsx`. This produces **different results based on the user's locale settings** - if the server renders with one locale and the client has a different locale, React detects a mismatch and throws error #418.
+
+### Fix Applied
+
+Changed all 15 `toLocaleString()` calls to use `toLocaleString('en-US')` to force consistent US locale formatting:
+
+```typescript
+// Before (bug):
+reconciliation.summary.stripe_live.contributing.total.toLocaleString()
+
+// After (fixed):
+reconciliation.summary.stripe_live.contributing.total.toLocaleString('en-US')
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Changed 15 `toLocaleString()` calls to `toLocaleString('en-US')` |
+
+### Commit
+
+- `335486e` - fix: use toLocaleString('en-US') to prevent hydration mismatch
