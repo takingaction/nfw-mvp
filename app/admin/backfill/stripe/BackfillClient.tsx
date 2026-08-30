@@ -787,10 +787,53 @@ export default function BackfillClient() {
                 <thead className="bg-nfw-aubergine/5">
                   <tr>
                     <th className="text-left px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Metric</th>
-                    <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Stripe Live</th>
+                    <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">
+                      <div className="flex flex-col items-center gap-1">
+                        <span>Stripe Live</span>
+                        <a
+                          href="/api/admin/backfill/stripe/export/stripe-live?tier=contributing"
+                          download
+                          className="text-xs font-normal text-nfw-wisteria hover:text-nfw-wisteria/80 underline"
+                        >
+                          CSV
+                        </a>
+                      </div>
+                    </th>
                     <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">True $</th>
-                    <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Our DB</th>
-                    <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Difference</th>
+                    <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">
+                      <div className="flex flex-col items-center gap-1">
+                        <span>Our DB</span>
+                        <a
+                          href="/api/admin/backfill/stripe/export/our-db?tier=contributing"
+                          download
+                          className="text-xs font-normal text-nfw-wisteria hover:text-nfw-wisteria/80 underline"
+                        >
+                          CSV
+                        </a>
+                      </div>
+                    </th>
+                    <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">
+                      <div className="flex flex-col items-center gap-1">
+                        <span>Difference</span>
+                        <div className="flex gap-1">
+                          <a
+                            href="/api/admin/backfill/stripe/export/difference?tier=contributing&direction=stripe"
+                            download
+                            className="text-xs font-normal text-nfw-wisteria hover:text-nfw-wisteria/80 underline"
+                          >
+                            Stripe
+                          </a>
+                          <span className="text-nfw-blackberry/30">/</span>
+                          <a
+                            href="/api/admin/backfill/stripe/export/difference?tier=contributing&direction=db"
+                            download
+                            className="text-xs font-normal text-nfw-wisteria hover:text-nfw-wisteria/80 underline"
+                          >
+                            DB
+                          </a>
+                        </div>
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-nfw-dove">
