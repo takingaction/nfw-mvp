@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { sendGiftCodesEmail, sendWelcomeEmail } from "@/lib/email";
+import { recordPaymentReversal, findPaymentByStripeId } from "@/lib/membership-tier";
 
 export const dynamic = "force-dynamic";
 
@@ -765,6 +766,73 @@ export async function POST(request: Request) {
           .eq("id", userId);
 
         console.log("[webhook] invoice.payment_succeeded: Successfully upgraded user", userId, "to founding");
+        break;
+      }
+
+      case "charge.refunded": {
+        console.log("[webhook] Processing charge.refunded event");
+        const charge = event.data.object as Stripe.Charge;
+        const chargeId = charge.id;
+
+        console.log(`[webhook] charge.refunded: Processing charge ${chargeId}`);
+
+        // Find the original payment by stripe_payment_id (which is the charge ID)
+        const payment = await findPaymentByStripeId(chargeId);
+
+        if (!payment) {
+          console.log(`[webhook] charge.refunded: No matching payment found for charge ${chargeId}`);
+          break;
+        }
+
+        const reversalId = await recordPaymentReversal(
+          payment.id,  // Pass internal payment ID, not charge ID
+          "refunded",
+          `Full refund received`
+        );
+
+        if (reversalId) {
+          console.log(`[webhook] charge.refunded: Recorded reversal ${reversalId} for charge ${chargeId}`);
+        }
+        break;
+      }
+
+      case "charge.dispute.closed": {
+        console.log("[webhook] Processing charge.dispute.closed event");
+        const dispute = event.data.object as Stripe.Dispute;
+        // dispute.charge can be string or Charge object
+        const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+
+        if (!chargeId) {
+          console.log("[webhook] charge.dispute.closed: No charge ID found in dispute");
+          break;
+        }
+
+        console.log(`[webhook] charge.dispute.closed: Processing dispute for charge ${chargeId}, status: ${dispute.status}`);
+
+        // Only process if the dispute was lost (customer won)
+        if (dispute.status === "lost") {
+          console.log(`[webhook] charge.dispute.closed: Dispute lost, recording reversal for charge ${chargeId}`);
+
+          // Find the original payment by stripe_payment_id (which is the charge ID)
+          const payment = await findPaymentByStripeId(chargeId);
+
+          if (!payment) {
+            console.log(`[webhook] charge.dispute.closed: No matching payment found for charge ${chargeId}`);
+            break;
+          }
+
+          const reversalId = await recordPaymentReversal(
+            payment.id,  // Pass internal payment ID, not charge ID
+            "disputed",
+            `Dispute lost: ${dispute.reason || "customer dispute"}`
+          );
+
+          if (reversalId) {
+            console.log(`[webhook] charge.dispute.closed: Recorded reversal ${reversalId} for charge ${chargeId}`);
+          }
+        } else {
+          console.log(`[webhook] charge.dispute.closed: Dispute status is ${dispute.status}, not processing`);
+        }
         break;
       }
     }

@@ -12199,3 +12199,76 @@ The cron used `INSERT` into `stripe_backfill_status` for profiles that were alre
 | File | Change |
 |------|--------|
 | `app/api/cron/backfill-sync/route.ts` | Changed INSERT to UPSERT, added pagination limit(100) |
+
+## Session 2026-08-30: Payment Reversal Handling
+
+### Overview
+
+Implemented automatic payment reversal tracking and member tier recalculation when payments are refunded or disputed. The system now correctly downgrades members when their payment is reversed.
+
+### Problem
+
+When a member's payment was refunded or disputed, the system didn't track this and the member remained at their paid tier even though they had lost their payment.
+
+### Solution
+
+Added webhook handlers for Stripe payment reversal events that:
+1. Record the reversal in `membership_payments` table
+2. Recalculate the member's tier based on remaining successful payments
+3. Update `profiles.membership_level` and `profiles.subscription_status`
+
+### Database Migration
+
+**File:** `supabase/migrations/150_add_payment_status_and_reversals.sql`
+
+```sql
+ALTER TABLE membership_payments 
+ADD COLUMN status TEXT DEFAULT 'succeeded' 
+CHECK (status IN ('succeeded', 'refunded', 'disputed'));
+
+UPDATE membership_payments SET status = 'succeeded' WHERE status IS NULL;
+
+ALTER TABLE membership_payments 
+ADD COLUMN original_payment_id UUID REFERENCES membership_payments(id);
+
+ALTER TABLE membership_payments 
+ADD COLUMN reversal_reason TEXT;
+```
+
+### New Files Created
+
+| File | Purpose |
+|------|---------|
+| `lib/membership-tier.ts` | Tier recalculation utility with `recalculateMembershipTier()`, `recordPaymentReversal()`, `findPaymentByStripeId()` functions |
+| `supabase/migrations/150_add_payment_status_and_reversals.sql` | Database migration for payment status columns |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/webhook/route.ts` | Added handlers for `charge.refunded` and `charge.dispute.closed` events |
+
+### Tier Recalculation Logic
+
+When a payment is reversed, the system:
+1. Finds the most recent **successful** payment for the member
+2. Determines tier based on payment type:
+   - founding payment ($100) → founding
+   - contributing payment ($15) → contributing
+   - signup/renewal → free (or waitlist if `waitlist_joined_at` IS NOT NULL)
+3. Updates `profiles.membership_level` and `profiles.subscription_status`
+
+### Webhook Events Handled
+
+| Event | Action |
+|-------|--------|
+| `charge.refunded` | Records full refund, recalculates member tier |
+| `charge.dispute.closed` (status: lost) | Records dispute reversal, recalculates member tier |
+
+### Design Decisions
+
+- Reversal records have negative `amount` to distinguish from successful payments
+- Original payment ID is tracked for audit trail
+- `reversal_reason` captures why the reversal happened
+- Webhook signature verification already exists in the route (was handling other Stripe events)
+- Cron remains as gap-filler for missed webhook events
