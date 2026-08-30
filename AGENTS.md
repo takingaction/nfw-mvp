@@ -12038,3 +12038,49 @@ WHERE is_admin = false
   AND membership_level IN ('contributing', 'founding')
   AND profile_completed != true;
 ```
+
+## Session 2026-08-30: Checkout Bypass Security Fix
+
+### Overview
+
+Fixed critical security vulnerability where users with incomplete profiles could bypass signup steps and pay via Stripe without completing their profile.
+
+### Problem
+
+ch@christyhaubegger.com joined, received the 2-hour incomplete reminder email (linking to step 3), but instead of completing steps 1-2, she clicked a paid membership button and paid via Stripe without ever completing her profile. The checkout API didn't validate profile completion.
+
+### Solution
+
+**Server-side validation + blocking modal (Option B1)**
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/checkout/route.ts` | Added `profile_completed` check before creating Stripe session |
+| `components/SignUpFlow.tsx` | Added blocking modal for incomplete profiles on step 3 |
+
+### Checkout API Validation
+
+```typescript
+// Check if profile is complete before allowing checkout
+const { data: profile } = await supabase
+  .from("profiles")
+  .select("profile_completed")
+  .eq("id", session.user.id)
+  .single();
+
+if (profile && profile.profile_completed !== true) {
+  return NextResponse.json(
+    { error: "profile_incomplete", message: "Please complete your profile before continuing with payment." },
+    { status: 400 }
+  );
+}
+```
+
+### Modal Behavior
+
+- **Non-dismissable**: No X button, no click-outside, no Escape key
+- Shows when checkout API returns `profile_incomplete` error
+- Single button: "Complete Your Profile" → navigates to step 1
+- User must complete steps 1 and 2 before returning to step 3 to pay

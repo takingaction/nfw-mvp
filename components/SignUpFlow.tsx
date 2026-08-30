@@ -219,6 +219,7 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
   });
   const [showGiftCodeInput, setShowGiftCodeInput] = useState(false);
   const [showFreeModal, setShowFreeModal] = useState(false);
+  const [showProfileIncompleteModal, setShowProfileIncompleteModal] = useState(false);
 
   // Step 0
   const [email, setEmail] = useState("");
@@ -442,7 +443,15 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
         }),
       });
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
+
+      // Check for profile incomplete error - show blocking modal
+      if (data.error === "profile_incomplete") {
+        setLoading(false);
+        setShowProfileIncompleteModal(true);
+        return;
+      }
+
+      if (data.error) throw new Error(data.message || data.error);
       window.location.href = data.url;
     } catch (err: any) {
       setError(err.message || "Failed to start checkout");
@@ -1232,6 +1241,30 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
                     ADD ME TO THE WAITLIST
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Blocking modal - Profile Incomplete */}
+          {showProfileIncompleteModal && (
+            <div className="fixed inset-0 bg-nfw-blackberry/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl p-8 max-w-md w-full">
+                <h2 className="text-2xl font-black text-nfw-blackberry mb-4 font-serif text-center">
+                  Profile Incomplete
+                </h2>
+                <p className="text-nfw-blackberry/80 text-sm leading-relaxed mb-6">
+                  Your profile is incomplete. You must complete your profile before you can continue with payment.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileIncompleteModal(false);
+                    setStep(1);
+                  }}
+                  className="w-full py-3 bg-nfw-citrine text-nfw-blackberry font-bold text-sm hover:bg-nfw-citrine/90 transition-colors"
+                >
+                  Complete Your Profile
+                </button>
               </div>
             </div>
           )}

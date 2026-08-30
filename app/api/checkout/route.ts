@@ -47,6 +47,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check if profile is complete before allowing checkout
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("profile_completed")
+      .eq("id", session.user.id)
+      .single();
+
+    if (profile && profile.profile_completed !== true) {
+      return NextResponse.json(
+        { error: "profile_incomplete", message: "Please complete your profile before continuing with payment." },
+        { status: 400 }
+      );
+    }
+
     // Create Stripe checkout session
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "subscription",
