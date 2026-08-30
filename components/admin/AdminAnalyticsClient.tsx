@@ -522,13 +522,12 @@ export default function AdminAnalyticsClient({
     return filteredProfiles.filter((p) => p.is_admin === true).length;
   }, [filteredProfiles]);
 
-  // Paid members (non-admin, completed profile) - for waterfall breakdown
+  // Paid members (non-admin, contributing or founding) - for waterfall breakdown
   const paidMembersCount = useMemo(() => {
     return filteredProfiles.filter(
       (p) =>
         p.is_admin !== true &&
-        (p.membership_level === "contributing" || p.membership_level === "founding") &&
-        p.profile_completed === true
+        (p.membership_level === "contributing" || p.membership_level === "founding")
     ).length;
   }, [filteredProfiles]);
 
