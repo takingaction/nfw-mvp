@@ -133,7 +133,12 @@ export async function GET(request: Request) {
           payment_sync_at,
           profiles!inner(
             full_name,
-            membership_level
+            membership_level,
+            profile_completed,
+            free_membership_contact_submitted,
+            is_approved_free_member,
+            is_admin,
+            signup_source
           )
         `)
         .order("processed_at", { ascending: false })

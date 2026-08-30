@@ -12084,3 +12084,48 @@ if (profile && profile.profile_completed !== true) {
 - Shows when checkout API returns `profile_incomplete` error
 - Single button: "Complete Your Profile" → navigates to step 1
 - User must complete steps 1 and 2 before returning to step 3 to pay
+
+## Session 2026-08-30: Backfill Stripe Analytics - Gift Card Filter
+
+### Overview
+
+Added Gift Card filter to `/admin/backfill/stripe` page to track members who joined via gift code redemption.
+
+### Problem
+
+The backfill analytics page had no way to filter for gift code members (`signup_source === 'gift'`), making it difficult to analyze the gift code signup flow.
+
+### Changes Made
+
+**`app/admin/backfill/stripe/BackfillClient.tsx`:**
+- Added `signup_source` to profiles interface
+- Added `gift_card` to `paymentFilter` state type
+- Updated filter logic:
+  - `no_payment`: Expanded to all membership levels (was only contributing/founding)
+  - `database_only`: Excludes gift cards (`signup_source === 'gift'`)
+  - `paid_database_only`: Excludes gift cards
+  - `gift_card`: NEW filter showing only gift code members
+- Updated filter button counts to include gift_card
+- Added `gift_card: "gift-card"` to CSV export filter names
+
+**`app/api/admin/backfill/stripe/status/route.ts`:**
+- Added `signup_source` to profiles select query
+
+### Filter Logic
+
+| Filter | Condition |
+|--------|-----------|
+| All | No filter |
+| Database Only | `status === 'not_found'` AND `signup_source !== 'gift'` |
+| Succeeded | `payment_count > 0` AND `!has_failed` |
+| No Payment | `status === 'matched'` AND `lifetime_value === 0` (any tier) |
+| Paid Database Only | `status === 'not_found'` AND (contributing/founding) AND `signup_source !== 'gift'` |
+| Paid (DB) | contributing OR founding |
+| Gift Card | `signup_source === 'gift'` |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Added gift_card filter, expanded no_payment, added signup_source to interface |
+| `app/api/admin/backfill/stripe/status/route.ts` | Added signup_source to profiles select |

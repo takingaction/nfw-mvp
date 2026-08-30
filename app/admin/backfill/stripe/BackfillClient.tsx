@@ -37,6 +37,7 @@ interface BackfillStatus {
     free_membership_contact_submitted: boolean | null;
     is_approved_free_member: boolean | null;
     is_admin: boolean | null;
+    signup_source: string | null;
   };
 }
 
@@ -212,7 +213,7 @@ export default function BackfillClient() {
   const [syncProgress, setSyncProgress] = useState<string>("");
   const [expandedPayments, setExpandedPayments] = useState<any | null>(null);
   const [syncingCustomerId, setSyncingCustomerId] = useState<string | null>(null);
-  const [paymentFilter, setPaymentFilter] = useState<'all' | 'database_only' | 'succeeded' | 'no_payment' | 'paid_database_only' | 'paid_db_only'>('all');
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'database_only' | 'succeeded' | 'no_payment' | 'paid_database_only' | 'paid_db_only' | 'gift_card'>('all');
   const [errorModalMessage, setErrorModalMessage] = useState<string | null>(null);
   const [errorModalOpen, setErrorModalOpen] = useState(false);
 
@@ -391,7 +392,8 @@ export default function BackfillClient() {
       succeeded: "succeeded",
       no_payment: "no-payment",
       paid_database_only: "paid-database-only",
-      paid_db_only: "paid-db-only"
+      paid_db_only: "paid-db-only",
+      gift_card: "gift-card"
     };
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -711,11 +713,12 @@ export default function BackfillClient() {
   // Compute filtered rows - require at least 2 chars for search
   const safeRows = Array.isArray(rows) ? rows : [];
   const filteredRows = safeRows.filter(row => {
-    if (paymentFilter === 'database_only' && row.status !== 'not_found') return false;
+    if (paymentFilter === 'database_only' && (row.status !== 'not_found' || row.profiles?.signup_source === 'gift')) return false;
     if (paymentFilter === 'succeeded' && ((row.payment_count || 0) === 0 || row.has_failed)) return false;
-    if (paymentFilter === 'no_payment' && !(row.status === 'matched' && (row.lifetime_value || 0) === 0 && (row.profiles?.membership_level === 'contributing' || row.profiles?.membership_level === 'founding'))) return false;
-    if (paymentFilter === 'paid_database_only' && !(row.status === 'not_found' && (row.profiles?.membership_level === 'contributing' || row.profiles?.membership_level === 'founding'))) return false;
+    if (paymentFilter === 'no_payment' && !(row.status === 'matched' && (row.lifetime_value || 0) === 0)) return false;
+    if (paymentFilter === 'paid_database_only' && !(row.status === 'not_found' && (row.profiles?.membership_level === 'contributing' || row.profiles?.membership_level === 'founding') && row.profiles?.signup_source !== 'gift')) return false;
     if (paymentFilter === 'paid_db_only' && !(row.profiles?.membership_level === 'contributing' || row.profiles?.membership_level === 'founding')) return false;
+    if (paymentFilter === 'gift_card' && row.profiles?.signup_source !== 'gift') return false;
     if (debouncedSearch && debouncedSearch.length >= 2) {
       const q = debouncedSearch.toLowerCase();
       const profileName = (row.profiles && typeof row.profiles === 'object' && row.profiles.full_name)
@@ -1576,22 +1579,24 @@ export default function BackfillClient() {
           {/* Payment Filter Buttons */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-nfw-dove bg-nfw-dove/20 flex-wrap">
             <span className="text-xs text-nfw-blackberry/60 font-ui mr-1">Filter:</span>
-            {(['all', 'database_only', 'paid_database_only', 'paid_db_only', 'succeeded', 'no_payment'] as const).map((f) => {
+            {(['all', 'database_only', 'paid_database_only', 'paid_db_only', 'succeeded', 'no_payment', 'gift_card'] as const).map((f) => {
               const labelMap = {
                 all: "All",
                 database_only: "Database Only",
                 paid_database_only: "Paid Database Only",
                 paid_db_only: "Paid (DB)",
                 succeeded: "Succeeded",
-                no_payment: "No Payment"
+                no_payment: "No Payment",
+                gift_card: "Gift Card"
               };
               const countMap = {
                 all: rows.length,
-                database_only: rows.filter(r => r.status === 'not_found').length,
-                paid_database_only: rows.filter(r => r.status === 'not_found' && (r.profiles?.membership_level === 'contributing' || r.profiles?.membership_level === 'founding')).length,
+                database_only: rows.filter(r => r.status === 'not_found' && r.profiles?.signup_source !== 'gift').length,
+                paid_database_only: rows.filter(r => r.status === 'not_found' && (r.profiles?.membership_level === 'contributing' || r.profiles?.membership_level === 'founding') && r.profiles?.signup_source !== 'gift').length,
                 paid_db_only: rows.filter(r => r.profiles?.membership_level === 'contributing' || r.profiles?.membership_level === 'founding').length,
                 succeeded: rows.filter(r => (r.payment_count || 0) > 0 && !r.has_failed).length,
-                no_payment: rows.filter(r => r.status === 'matched' && (r.lifetime_value || 0) === 0 && (r.profiles?.membership_level === 'contributing' || r.profiles?.membership_level === 'founding')).length
+                no_payment: rows.filter(r => r.status === 'matched' && (r.lifetime_value || 0) === 0).length,
+                gift_card: rows.filter(r => r.profiles?.signup_source === 'gift').length
               };
               return (
                 <button
