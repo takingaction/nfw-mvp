@@ -155,6 +155,20 @@ export async function POST(request: Request) {
         } else {
           console.log(`[sync-missing-payments] Synced payment for ${row.email}: charge ${stripePaymentId}, type=${paymentType}, amount=${amount}`);
           results.success++;
+
+          // Update stripe_backfill_status with status and stripe_customer_id
+          const { error: statusUpdateError } = await supabaseAdmin
+            .from("stripe_backfill_status")
+            .update({
+              status: "matched",
+              stripe_customer_id: stripeCustomerId,
+              processed_at: new Date().toISOString(),
+            })
+            .eq("id", row.id);
+
+          if (statusUpdateError) {
+            console.error(`[sync-missing-payments] Status update error for ${row.email}:`, statusUpdateError);
+          }
         }
 
         // Rate limit - be nice to Stripe

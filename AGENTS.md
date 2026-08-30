@@ -11929,3 +11929,51 @@ RLS: public read, admin write. Seeded with default row.
 1. Run migration 149 in Supabase SQL Editor
 2. Visit `/admin/signup` to edit sidebar content
 3. Visit `/auth/sign-up` to preview changes
+
+---
+
+## Session 2026-08-30: Stripe Backfill Status Update Bug Fix
+
+### Problem
+
+5 members (jessrife@proton.me, jessicahooie@yahoo.com, renaeswope@gmail.com, testewart647@gmail.com, tingorony@gmail.com) showed as `not_found` status in the backfill admin page despite having paid memberships. Their `stripe_backfill_status` rows had `payment_count = 1` and `total_amount = 15.00` recorded, but `status = 'not_found'` and `stripe_customer_id = null`.
+
+### Root Cause
+
+The `sync-missing-payments` and `sync-customer/[id]` routes found Stripe customers and recorded their payments, but **failed to update the `status` field** from `'not_found'` to `'matched'`.
+
+### Files Fixed
+
+| File | Change |
+|------|--------|
+| `app/api/admin/backfill/stripe/sync-missing-payments/route.ts` | After inserting payment, now also updates `stripe_backfill_status` with `status: "matched"`, `stripe_customer_id`, and `processed_at` |
+| `app/api/admin/backfill/stripe/sync-customer/[id]/route.ts` | Added `status: "matched"` to the update object |
+
+### Why 90% Were Unaffected
+
+Most members were processed correctly because:
+1. Their `stripe_customer_id` was populated in `stripe_backfill_status` from the start
+2. The cron job (`sync-all-stripe-payments`) ran hourly and picked them up properly
+3. The 5 affected members were in a "liminal state" when the initial backfill ran
+
+### SQL Fix for Affected Members
+
+```sql
+UPDATE stripe_backfill_status
+SET
+  status = 'matched',
+  stripe_customer_id = CASE
+    WHEN email = 'jessrife@proton.me' THEN 'cus_V9VjaXUKsqLROF'
+    WHEN email = 'jessicahooie@yahoo.com' THEN 'cus_V9Mw6UkuwhjYXW'
+    WHEN email = 'renaeswope@gmail.com' THEN 'cus_V9kYoAyxmVbLbm'
+    WHEN email = 'testewart647@gmail.com' THEN 'cus_V9pfFiXdMNA8Ks'
+    WHEN email = 'tingorony@gmail.com' THEN 'cus_VAAlNtbW7Ktfe4'
+  END
+WHERE email IN (
+  'jessrife@proton.me',
+  'jessicahooie@yahoo.com',
+  'renaeswope@gmail.com',
+  'testewart647@gmail.com',
+  'tingorony@gmail.com'
+);
+```

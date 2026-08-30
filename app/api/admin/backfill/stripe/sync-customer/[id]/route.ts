@@ -271,6 +271,7 @@ export async function POST(
     const { error: updateError } = await supabaseAdmin
       .from("stripe_backfill_status")
       .update({
+        status: "matched",
         payment_count: paymentData.payment_count,
         total_amount: paymentData.total_amount,
         has_failed: paymentData.has_failed,
