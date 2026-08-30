@@ -25,13 +25,14 @@ export async function GET(request: Request) {
 
     console.log("[backfill-sync] Starting hourly backfill sync...");
 
-    // Get paid profiles NOT in stripe_backfill_status
+    // Get paid profiles NOT in stripe_backfill_status (paginated to avoid timeout)
     const { data: paidProfiles, error: profilesError } = await supabaseAdmin
       .from("profiles")
       .select("id, email, full_name, membership_level")
       .in("membership_level", ["contributing", "founding"])
       .eq("profile_completed", true)
-      .neq("is_admin", true);
+      .neq("is_admin", true)
+      .limit(100);
 
     if (profilesError) {
       console.error("[backfill-sync] Error fetching profiles:", profilesError);
@@ -87,15 +88,18 @@ export async function GET(request: Request) {
             status: "active",
           });
 
-          // Insert into stripe_backfill_status
+          // Upsert into stripe_backfill_status (ignore if already exists)
           const { error: insertError } = await supabaseAdmin
             .from("stripe_backfill_status")
-            .insert({
+            .upsert({
               profile_id: profile.id,
               email: profile.email,
               stripe_customer_id: customer.id,
               status: "matched",
               processed_at: new Date().toISOString(),
+            }, {
+              onConflict: 'profile_id',
+              ignoreDuplicates: true,
             });
 
           if (insertError) {
@@ -105,14 +109,17 @@ export async function GET(request: Request) {
             matched++;
           }
         } else {
-          // No Stripe customer found
+          // No Stripe customer found - upsert to avoid duplicate errors
           await supabaseAdmin
             .from("stripe_backfill_status")
-            .insert({
+            .upsert({
               profile_id: profile.id,
               email: profile.email,
               status: "not_found",
               processed_at: new Date().toISOString(),
+            }, {
+              onConflict: 'profile_id',
+              ignoreDuplicates: true,
             });
           notFound++;
         }

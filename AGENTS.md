@@ -12163,3 +12163,39 @@ reconciliation.summary.stripe_live.contributing.total.toLocaleString('en-US')
 ### Commit
 
 - `335486e` - fix: use toLocaleString('en-US') to prevent hydration mismatch
+
+## Session 2026-08-30: Backfill Stripe Cron Duplicate Key Fix
+
+### Problem
+
+Hourly backfill cron job (`/api/cron/backfill-sync`) was failing with duplicate key errors:
+```
+code: '23505'
+message: 'duplicate key value violates unique constraint "stripe_backfill_status_profile_id_unique"'
+```
+
+### Root Cause
+
+The cron used `INSERT` into `stripe_backfill_status` for profiles that were already in the table from a previous run. This caused 673+ duplicate key violations per cron execution.
+
+### Fix Applied
+
+1. Changed `insert()` → `upsert()` with `onConflict: 'profile_id', ignoreDuplicates: true` to silently skip already-existing records
+2. Added `.limit(100)` pagination to paid profiles query to prevent timeout
+
+```typescript
+// Before:
+.insert({...})
+
+// After:
+.upsert({...}, {
+  onConflict: 'profile_id',
+  ignoreDuplicates: true,
+})
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/cron/backfill-sync/route.ts` | Changed INSERT to UPSERT, added pagination limit(100) |
