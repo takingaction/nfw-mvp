@@ -228,7 +228,56 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     console.log("[sync-all-stripe-payments] Starting full payment sync...");
 
-    // Get all matched rows with stripe_customer_id that need syncing
+    // Step 1: Fix not_found records that have stripe_customer_id on the profile but not in backfill_status
+    // These are profiles with active Stripe subscriptions that were marked as "not_found" because
+    // email lookup failed, but they have stripe_customer_id on the profile itself
+    console.log("[sync-all-stripe-payments] Step 1: Fixing not_found records with stripe_customer_id on profile...");
+
+    const { data: notFoundRows, error: notFoundError } = await supabaseAdmin
+      .from("stripe_backfill_status")
+      .select("id, profile_id, email")
+      .eq("status", "not_found")
+      .is("stripe_customer_id", null);
+
+    if (notFoundError) {
+      console.error("[sync-all-stripe-payments] Error fetching not_found rows:", notFoundError);
+    }
+
+    let fixedCount = 0;
+    if (notFoundRows && notFoundRows.length > 0) {
+      console.log(`[sync-all-stripe-payments] Found ${notFoundRows.length} not_found records to fix`);
+
+      for (const row of notFoundRows) {
+        // Get the profile's stripe_customer_id
+        const { data: profile } = await supabaseAdmin
+          .from("profiles")
+          .select("stripe_customer_id")
+          .eq("id", row.profile_id)
+          .single();
+
+        if (profile?.stripe_customer_id) {
+          // Update backfill_status with the stripe_customer_id from profile and mark as matched
+          const { error: updateError } = await supabaseAdmin
+            .from("stripe_backfill_status")
+            .update({
+              stripe_customer_id: profile.stripe_customer_id,
+              status: "matched",
+              processed_at: new Date().toISOString(),
+            })
+            .eq("id", row.id);
+
+          if (updateError) {
+            console.error(`[sync-all-stripe-payments] Error fixing not_found row ${row.id}:`, updateError);
+          } else {
+            fixedCount++;
+            console.log(`[sync-all-stripe-payments] Fixed not_found: ${row.email} -> ${profile.stripe_customer_id}`);
+          }
+        }
+      }
+      console.log(`[sync-all-stripe-payments] Fixed ${fixedCount} not_found records`);
+    }
+
+    // Step 2: Get all matched rows with stripe_customer_id that need syncing
     // Priority: rows never synced, then rows synced > 24 hours ago
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 

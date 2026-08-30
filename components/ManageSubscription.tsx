@@ -22,7 +22,7 @@ export default function ManageSubscription({
       const data = await response.json();
 
       if (data.success) {
-        alert(`Congratulations! You've upgraded to Founding Member. Amount charged: $${data.amountDue.toFixed(2)}`);
+        alert(data.message || `Congratulations! You've upgraded to Founding Member. Amount charged: $${(data.amountCharged || 85).toFixed(2)}`);
         window.location.reload();
       } else {
         setError(data.error || "Failed to upgrade");

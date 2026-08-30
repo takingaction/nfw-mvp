@@ -68,8 +68,8 @@ export default function MembershipCard({
       });
       const data = await response.json();
       if (data.success) {
-        // Upgrade was successful - reload page to show new status
-        alert(`Congratulations! You've upgraded to Founding Member. Amount charged: $${data.amountDue.toFixed(2)}`);
+        // Upgrade was successful - payment confirmed, page will update via webhook
+        alert(data.message || `Congratulations! You've upgraded to Founding Member. Amount charged: $${(data.amountCharged || 85).toFixed(2)}`);
         window.location.reload();
       } else {
         alert(data.error || "Failed to create upgrade session");

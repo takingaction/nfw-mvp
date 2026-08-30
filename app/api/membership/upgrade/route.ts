@@ -66,43 +66,72 @@ export async function POST(request: Request) {
     }
 
     const subscription = subscriptions.data[0];
-    const foundingPriceId = process.env.STRIPE_PRICE_FOUNDING;
 
-    if (!foundingPriceId) {
+    // Create an invoice item for the $85 upgrade difference
+    // This will be charged immediately when we finalize the invoice
+    const invoiceItem = await stripe.invoiceItems.create({
+      customer: profile.stripe_customer_id,
+      amount: 8500, // $85 in cents
+      currency: "usd",
+      description: "Contributing to Founding membership upgrade",
+      metadata: {
+        user_id: profile.id,
+        upgrade_type: "contributing_to_founding",
+        subscription_id: subscription.id,
+      },
+    });
+
+    // Create and finalize the invoice (this triggers immediate charge)
+    const invoice = await stripe.invoices.create({
+      customer: profile.stripe_customer_id,
+      auto_advance: true,
+      collection_method: "charge_automatically",
+      metadata: {
+        user_id: profile.id,
+        upgrade_type: "contributing_to_founding",
+        invoice_item_id: invoiceItem.id,
+      },
+    });
+
+    const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+
+    // Check if the invoice was paid immediately
+    if (finalizedInvoice.status === "paid") {
+      // Invoice was paid immediately - we can proceed
+      return NextResponse.json({
+        success: true,
+        invoiceId: finalizedInvoice.id,
+        amountCharged: 85,
+        status: "paid",
+        message: "Upgrade successful! You've been charged $85.",
+      });
+    } else if (finalizedInvoice.status === "open") {
+      // Invoice is open but not paid yet - it will be retried
+      return NextResponse.json({
+        success: true,
+        invoiceId: finalizedInvoice.id,
+        amountCharged: 85,
+        status: "pending",
+        message: "Upgrade initiated. You will be charged $85 shortly.",
+      });
+    } else {
+      // Invoice failed or other status
       return NextResponse.json(
-        { error: "Stripe founding price not configured" },
-        { status: 500 },
+        { error: "Payment failed. Please try again or contact support." },
+        { status: 400 },
       );
     }
-
-    // Update the subscription to founding price with proration
-    // This charges the prorated difference immediately
-    const updatedSubscription = await stripe.subscriptions.update(
-      subscription.id,
-      {
-        items: [
-          {
-            id: subscription.items.data[0].id,
-            price: foundingPriceId,
-          },
-        ],
-        proration_behavior: "create_prorations",
-        expand: ["latest_invoice"],
-      }
-    ) as unknown as Stripe.Subscription & { current_period_end: number };
-
-    // Get the invoice to return payment status
-    const latestInvoice = updatedSubscription.latest_invoice as Stripe.Invoice;
-
-    return NextResponse.json({
-      success: true,
-      subscriptionId: updatedSubscription.id,
-      status: updatedSubscription.status,
-      amountDue: latestInvoice.amount_due / 100, // Convert from cents
-      nextBillingDate: new Date(updatedSubscription.current_period_end * 1000).toISOString(),
-    });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Membership upgrade error:", error);
+    
+    // Clean up: delete the invoice item if invoice creation failed
+    if (error.code === "invoice_no_customer") {
+      return NextResponse.json(
+        { error: "Customer not found in Stripe. Please contact support." },
+        { status: 400 },
+      );
+    }
+    
     return NextResponse.json(
       { error: "Failed to process upgrade. Please try again." },
       { status: 500 },

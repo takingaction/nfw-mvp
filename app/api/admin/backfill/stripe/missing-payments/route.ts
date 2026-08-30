@@ -15,9 +15,6 @@ const supabaseAdmin = createAdminClient(
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  // Request parameter required by Next.js but we don't use it
-  void request;
-
   try {
     // Admin auth check
     const supabase = await createClient();
@@ -36,110 +33,154 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get all known payment IDs from membership_payments - PAGINATED
-    const allPayments: Array<{stripe_payment_id: string | null}> = [];
-    let paymentsPageStart = 0;
-    const paymentsPageSize = 1000;
-    let paymentsHasMore = true;
+    // Get paid profile emails DIRECTLY with a JOIN query
+    const { data: paidProfiles, error: paidError } = await supabaseAdmin
+      .from("membership_payments")
+      .select(`
+        amount,
+        profiles(email)
+      `)
+      .in("amount", [15, 100]);
 
-    while (paymentsHasMore) {
-      const { data: paymentsPage } = await supabaseAdmin
-        .from("membership_payments")
-        .select("stripe_payment_id")
-        .range(paymentsPageStart, paymentsPageStart + paymentsPageSize - 1);
-
-      if (paymentsPage && paymentsPage.length > 0) {
-        allPayments.push(...paymentsPage);
-        paymentsPageStart += paymentsPageSize;
-      }
-      paymentsHasMore = !!(paymentsPage && paymentsPage.length === paymentsPageSize);
+    if (paidError) {
+      return NextResponse.json({ error: paidError.message }, { status: 500 });
     }
 
-    const knownIds = new Set(allPayments.map(p => p.stripe_payment_id).filter(Boolean));
-
-    // Get all matched Stripe customer IDs from backfill - PAGINATED
-    const allBackfillMatched: Array<{stripe_customer_id: string | null; email: string}> = [];
-    let backfillPageStart = 0;
-    const backfillPageSize = 1000;
-    let backfillHasMore = true;
-
-    while (backfillHasMore) {
-      const { data: backfillPage } = await supabaseAdmin
-        .from("stripe_backfill_status")
-        .select("stripe_customer_id, email")
-        .eq("status", "matched")
-        .range(backfillPageStart, backfillPageStart + backfillPageSize - 1);
-
-      if (backfillPage && backfillPage.length > 0) {
-        allBackfillMatched.push(...backfillPage);
-        backfillPageStart += backfillPageSize;
+    // Build paid emails set
+    const paidProfileEmails = new Set<string>();
+    for (const p of paidProfiles || []) {
+      const email = (p.profiles as any)?.email?.toLowerCase().trim();
+      if (email) {
+        paidProfileEmails.add(email);
       }
-      backfillHasMore = !!(backfillPage && backfillPage.length === backfillPageSize);
     }
 
-    const matchedCustomerIds = new Set(
-      allBackfillMatched.map(b => b.stripe_customer_id).filter(Boolean)
-    );
+    const dbContributingCount = paidProfiles?.filter(p => p.amount === 15).length || 0;
+    const dbFoundingCount = paidProfiles?.filter(p => p.amount === 100).length || 0;
 
-    // Get ALL Stripe charges
-    const allCharges: Stripe.Charge[] = [];
-    let hasMore = true;
-    let cursor;
+    // Get all Stripe subscription emails
+    const stripeEmailsByTier = {
+      contributing: new Set<string>(),
+      founding: new Set<string>(),
+    };
 
-    while (hasMore) {
-      const params: { limit: number; starting_after?: string } = { limit: 100 };
-      if (cursor) params.starting_after = cursor;
+    const stripeCustomerInfo = {
+      contributing: new Map<string, { name: string; customer_id: string }>(),
+      founding: new Map<string, { name: string; customer_id: string }>(),
+    };
 
-      const charges = await stripe.charges.list(params);
+    const statuses = ["active", "past_due", "canceled", "unpaid", "trialing", "incomplete", "incomplete_expired", "paused"];
 
-      for (const c of charges.data) {
-        if (c.status !== "succeeded") continue;
-        const amt = c.amount / 100;
-        if (amt !== 15 && amt !== 100) continue; // Only membership payments
-        allCharges.push(c);
+    for (const status of statuses) {
+      let hasMore = true;
+      let cursor: string | undefined;
+
+      while (hasMore) {
+        const params: any = { limit: 100, status };
+        if (cursor) params.starting_after = cursor;
+
+        const response = await stripe.subscriptions.list(params as any);
+        hasMore = response.has_more;
+
+        if (response.data.length > 0) {
+          cursor = response.data[response.data.length - 1].id;
+        }
+
+        for (const sub of response.data) {
+          const priceAmount = sub.items.data[0]?.price?.unit_amount;
+          if (priceAmount !== 1500 && priceAmount !== 10000) continue;
+
+          const tier = priceAmount === 1500 ? "contributing" : "founding";
+
+          const subAny = sub as any;
+          let email = subAny.billing_details?.email || "";
+          let name = subAny.billing_details?.name || "";
+
+          if (!email) {
+            try {
+              const customer = await stripe.customers.retrieve(sub.customer as string) as Stripe.Customer;
+              if (!customer.deleted && customer.email) {
+                email = customer.email;
+                name = customer.name || "";
+              }
+            } catch {}
+          }
+
+          if (!email) continue;
+
+          const emailLower = email.toLowerCase().trim();
+          stripeEmailsByTier[tier].add(emailLower);
+          stripeCustomerInfo[tier].set(emailLower, {
+            name,
+            customer_id: sub.customer as string,
+          });
+
+          await new Promise(r => setTimeout(r, 25));
+        }
       }
-
-      hasMore = charges.has_more;
-      if (hasMore && charges.data.length > 0) {
-        cursor = charges.data[charges.data.length - 1].id;
-      }
-      await new Promise(r => setTimeout(r, 25));
     }
 
-    // Find unmatched charges from matched customers
-    const unmatchedFromMatched: {
-      charge_id: string;
-      email: string;
-      amount: number;
-      customer_id: string;
-      created: string;
-    }[] = [];
+    // Find missing - emails in Stripe but NOT in paidProfileEmails
+    // Then look up their profile_id by email
+    const missingContributing: any[] = [];
+    const missingFounding: any[] = [];
 
-    for (const c of allCharges) {
-      if (knownIds.has(c.id)) continue; // Already in membership_payments
-      const customerId = typeof c.customer === 'string' ? c.customer : null;
-      if (!customerId || !matchedCustomerIds.has(customerId)) continue; // Not from our matched customers
+    // Get all profiles to look up profile_id by email
+    const { data: allProfiles } = await supabaseAdmin
+      .from("profiles")
+      .select("id, email");
 
-      unmatchedFromMatched.push({
-        charge_id: c.id,
-        email: c.billing_details?.email || "",
-        amount: c.amount / 100,
-        customer_id: c.customer as string,
-        created: new Date(c.created * 1000).toISOString(),
-      });
+    const profileIdByEmail = new Map<string, string>();
+    for (const p of allProfiles || []) {
+      if (p.email) {
+        profileIdByEmail.set(p.email.toLowerCase().trim(), p.id);
+      }
     }
 
-    // Sort by date descending
-    unmatchedFromMatched.sort((a, b) =>
-      new Date(b.created).getTime() - new Date(a.created).getTime()
-    );
+    for (const email of stripeEmailsByTier.contributing) {
+      if (!paidProfileEmails.has(email)) {
+        const info = stripeCustomerInfo.contributing.get(email)!;
+        const profile_id = profileIdByEmail.get(email) || null;
+        missingContributing.push({
+          email,
+          name: info.name,
+          stripe_customer_id: info.customer_id,
+          amount: 15,
+          profile_id,
+        });
+      }
+    }
 
-    const totalAmount = unmatchedFromMatched.reduce((s, c) => s + c.amount, 0);
+    for (const email of stripeEmailsByTier.founding) {
+      if (!paidProfileEmails.has(email)) {
+        const info = stripeCustomerInfo.founding.get(email)!;
+        const profile_id = profileIdByEmail.get(email) || null;
+        missingFounding.push({
+          email,
+          name: info.name,
+          stripe_customer_id: info.customer_id,
+          amount: 100,
+          profile_id,
+        });
+      }
+    }
+
+    missingContributing.sort((a, b) => a.email.localeCompare(b.email));
+    missingFounding.sort((a, b) => a.email.localeCompare(b.email));
 
     return NextResponse.json({
-      count: unmatchedFromMatched.length,
-      total_amount: totalAmount,
-      charges: unmatchedFromMatched,
+      contributing: missingContributing,
+      founding: missingFounding,
+      summary: {
+        contributing_count: missingContributing.length,
+        founding_count: missingFounding.length,
+        total_count: missingContributing.length + missingFounding.length,
+        stripe_contributing: stripeEmailsByTier.contributing.size,
+        stripe_founding: stripeEmailsByTier.founding.size,
+        db_contributing: dbContributingCount,
+        db_founding: dbFoundingCount,
+        paid_emails_count: paidProfileEmails.size,
+      },
     });
 
   } catch (error) {

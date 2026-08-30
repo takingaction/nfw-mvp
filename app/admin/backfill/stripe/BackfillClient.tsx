@@ -799,15 +799,15 @@ export default function BackfillClient() {
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-aubergine font-bold">{reconciliation.summary.stripe_live.contributing.count}</span>
                       <span className="text-nfw-blackberry/50"> / </span>
-                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.stripe_live.contributing.total.toLocaleString()}</span>
+                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.stripe_live.contributing.total.toLocaleString('en-US')}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
-                      <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.contributing.true_total?.toLocaleString() ?? '—'}</span>
+                      <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.contributing.true_total?.toLocaleString('en-US') ?? '—'}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-aubergine font-bold">{reconciliation.summary.our_db.contributing.count}</span>
                       <span className="text-nfw-blackberry/50"> / </span>
-                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.our_db.contributing.total.toLocaleString()}</span>
+                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.our_db.contributing.total.toLocaleString('en-US')}</span>
                     </td>
                     <td className={`px-4 py-3 text-center font-ui text-sm font-bold ${
                       reconciliation.summary.difference.contributing.total === 0 ? "text-green-600" :
@@ -816,7 +816,7 @@ export default function BackfillClient() {
                       {reconciliation.summary.difference.contributing.count > 0 ? "+" : ""}
                       {reconciliation.summary.difference.contributing.count} /&nbsp;
                       {reconciliation.summary.difference.contributing.total > 0 ? "+$" : reconciliation.summary.difference.contributing.total < 0 ? "-$" : ""}
-                      {Math.abs(reconciliation.summary.difference.contributing.total).toLocaleString()}
+                      {Math.abs(reconciliation.summary.difference.contributing.total).toLocaleString('en-US')}
                     </td>
                   </tr>
                   <tr className="hover:bg-nfw-dove/30">
@@ -824,15 +824,15 @@ export default function BackfillClient() {
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-aubergine font-bold">{reconciliation.summary.stripe_live.founding.count}</span>
                       <span className="text-nfw-blackberry/50"> / </span>
-                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.stripe_live.founding.total.toLocaleString()}</span>
+                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.stripe_live.founding.total.toLocaleString('en-US')}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
-                      <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.founding.true_total?.toLocaleString() ?? '—'}</span>
+                      <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.founding.true_total?.toLocaleString('en-US') ?? '—'}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-aubergine font-bold">{reconciliation.summary.our_db.founding.count}</span>
                       <span className="text-nfw-blackberry/50"> / </span>
-                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.our_db.founding.total.toLocaleString()}</span>
+                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.our_db.founding.total.toLocaleString('en-US')}</span>
                     </td>
                     <td className={`px-4 py-3 text-center font-ui text-sm font-bold ${
                       reconciliation.summary.difference.founding.total === 0 ? "text-green-600" :
@@ -841,7 +841,7 @@ export default function BackfillClient() {
                       {reconciliation.summary.difference.founding.count > 0 ? "+" : ""}
                       {reconciliation.summary.difference.founding.count} /&nbsp;
                       {reconciliation.summary.difference.founding.total > 0 ? "+$" : reconciliation.summary.difference.founding.total < 0 ? "-$" : ""}
-                      {Math.abs(reconciliation.summary.difference.founding.total).toLocaleString()}
+                      {Math.abs(reconciliation.summary.difference.founding.total).toLocaleString('en-US')}
                     </td>
                   </tr>
                   <tr className="bg-nfw-aubergine/5 hover:bg-nfw-aubergine/10">
@@ -849,15 +849,15 @@ export default function BackfillClient() {
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-aubergine font-bold">{reconciliation.summary.stripe_live.total.count}</span>
                       <span className="text-nfw-blackberry/50"> / </span>
-                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.stripe_live.total.total.toLocaleString()}</span>
+                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.stripe_live.total.total.toLocaleString('en-US')}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
-                      <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.total.true_total?.toLocaleString() ?? '—'}</span>
+                      <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.total.true_total?.toLocaleString('en-US') ?? '—'}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-aubergine font-bold">{reconciliation.summary.our_db.total.count}</span>
                       <span className="text-nfw-blackberry/50"> / </span>
-                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.our_db.total.total.toLocaleString()}</span>
+                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.our_db.total.total.toLocaleString('en-US')}</span>
                     </td>
                     <td className={`px-4 py-3 text-center font-ui text-sm font-bold ${
                       reconciliation.summary.difference.total.total === 0 ? "text-green-600" :
@@ -866,7 +866,7 @@ export default function BackfillClient() {
                       {reconciliation.summary.difference.total.count > 0 ? "+" : ""}
                       {reconciliation.summary.difference.total.count} /&nbsp;
                       {reconciliation.summary.difference.total.total > 0 ? "+$" : reconciliation.summary.difference.total.total < 0 ? "-$" : ""}
-                      {Math.abs(reconciliation.summary.difference.total.total).toLocaleString()}
+                      {Math.abs(reconciliation.summary.difference.total.total).toLocaleString('en-US')}
                     </td>
                   </tr>
                 </tbody>
@@ -1288,17 +1288,17 @@ export default function BackfillClient() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-nfw-wisteria/10 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-nfw-aubergine">${liveStats.contributing.revenue.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-nfw-aubergine">${liveStats.contributing.revenue.toLocaleString('en-US')}</div>
               <div className="text-sm text-nfw-blackberry/60">Contributing ($15/mo)</div>
               <div className="text-xs text-nfw-blackberry/40 mt-1">{liveStats.contributing.count} active</div>
             </div>
             <div className="bg-nfw-citrine/20 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-nfw-aubergine">${liveStats.founding.revenue.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-nfw-aubergine">${liveStats.founding.revenue.toLocaleString('en-US')}</div>
               <div className="text-sm text-nfw-blackberry/60">Founding ($100)</div>
               <div className="text-xs text-nfw-blackberry/40 mt-1">{liveStats.founding.count} active</div>
             </div>
             <div className="bg-nfw-aubergine/10 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-nfw-aubergine">${liveStats.total.revenue.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-nfw-aubergine">${liveStats.total.revenue.toLocaleString('en-US')}</div>
               <div className="text-sm text-nfw-blackberry/60">Total Revenue</div>
               <div className="text-xs text-nfw-blackberry/40 mt-1">{liveStats.total.count} subscribers</div>
             </div>

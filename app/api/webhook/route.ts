@@ -689,6 +689,84 @@ export async function POST(request: Request) {
         }
         break;
       }
+
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = invoice.customer as string;
+        
+        console.log("[webhook] Processing invoice.payment_succeeded for customer:", customerId);
+        
+        // Check if this is an upgrade invoice (has our metadata)
+        if (invoice.metadata?.upgrade_type !== "contributing_to_founding") {
+          console.log("[webhook] invoice.payment_succeeded: Not an upgrade invoice, skipping");
+          break;
+        }
+
+        const userId = invoice.metadata?.user_id;
+        if (!userId) {
+          console.error("[webhook] invoice.payment_succeeded: No user_id in invoice metadata");
+          break;
+        }
+
+        console.log("[webhook] invoice.payment_succeeded: Processing upgrade for user:", userId);
+
+        // Fetch current profile to get existing values
+        const { data: currentProfile } = await supabaseAdmin
+          .from("profiles")
+          .select("membership_level, first_paid_at, first_paid_level, stripe_customer_id")
+          .eq("id", userId)
+          .single();
+
+        // Only upgrade if user is currently contributing
+        if (currentProfile?.membership_level !== "contributing") {
+          console.log("[webhook] invoice.payment_succeeded: User is not contributing, skipping upgrade");
+          break;
+        }
+
+        // Get the invoice amount
+        const amountPaid = invoice.amount_paid / 100;
+        console.log("[webhook] invoice.payment_succeeded: Amount paid:", amountPaid);
+
+        // Insert into membership_upgrades table
+        await supabaseAdmin
+          .from("membership_upgrades")
+          .insert({
+            user_id: userId,
+            from_level: "contributing",
+            to_level: "founding",
+            amount: amountPaid,
+            stripe_payment_id: invoice.id, // invoice ID is the payment record
+          });
+
+        // Insert into membership_payments table
+        await supabaseAdmin
+          .from("membership_payments")
+          .insert({
+            user_id: userId,
+            amount: amountPaid,
+            payment_type: "upgrade",
+            stripe_payment_id: invoice.id,
+            stripe_invoice_id: invoice.id,
+          });
+
+        // Update profile to founding
+        await supabaseAdmin
+          .from("profiles")
+          .update({
+            membership_level: "founding",
+            previous_membership_level: currentProfile?.membership_level || "contributing",
+            subscription_status: "active",
+            subscription_ends_at: null,
+            updated_at: new Date().toISOString(),
+            // Track first paid upgrade (only if not already set)
+            first_paid_at: currentProfile?.first_paid_at || new Date().toISOString(),
+            first_paid_level: currentProfile?.first_paid_level || "founding",
+          })
+          .eq("id", userId);
+
+        console.log("[webhook] invoice.payment_succeeded: Successfully upgraded user", userId, "to founding");
+        break;
+      }
     }
 
     return NextResponse.json({ received: true });
