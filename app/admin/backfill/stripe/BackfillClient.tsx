@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
+import { getCategory } from "@/lib/member-categories";
 
 interface PaymentRecord {
   id: string;
@@ -32,6 +33,10 @@ interface BackfillStatus {
   profiles: {
     full_name: string | null;
     membership_level: string | null;
+    profile_completed: boolean | null;
+    free_membership_contact_submitted: boolean | null;
+    is_approved_free_member: boolean | null;
+    is_admin: boolean | null;
   };
 }
 
@@ -170,6 +175,29 @@ interface MissingProfile {
   stripeDashboardUrl: string | null;
 }
 
+interface MissingAccount {
+  email: string;
+  name: string;
+  stripe_customer_id: string;
+  subscription_id: string;
+  amount: number;
+  interval: string;
+  current_period_start: string;
+  status: string;
+  profile_id: string | null;
+  backfill_status: string | null;
+}
+
+interface MissingPaymentsResponse {
+  contributing: MissingAccount[];
+  founding: MissingAccount[];
+  summary: {
+    contributing_count: number;
+    founding_count: number;
+    total_count: number;
+  };
+}
+
 export default function BackfillClient() {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [message, setMessage] = useState<string>("");
@@ -184,7 +212,7 @@ export default function BackfillClient() {
   const [syncProgress, setSyncProgress] = useState<string>("");
   const [expandedPayments, setExpandedPayments] = useState<any | null>(null);
   const [syncingCustomerId, setSyncingCustomerId] = useState<string | null>(null);
-  const [paymentFilter, setPaymentFilter] = useState<'all' | 'database_only' | 'succeeded' | 'no_payment'>('all');
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'database_only' | 'succeeded' | 'no_payment' | 'paid_database_only' | 'paid_db_only'>('all');
   const [errorModalMessage, setErrorModalMessage] = useState<string | null>(null);
   const [errorModalOpen, setErrorModalOpen] = useState(false);
 
@@ -211,6 +239,11 @@ export default function BackfillClient() {
   // Gift code signups
   const [giftCodeProfiles, setGiftCodeProfiles] = useState<any[]>([]);
   const [giftCodeLoading, setGiftCodeLoading] = useState(false);
+
+  // Missing from DB (Stripe subscriptions not in membership_payments)
+  const [missingPayments, setMissingPayments] = useState<MissingPaymentsResponse | null>(null);
+  const [missingPaymentsLoading, setMissingPaymentsLoading] = useState(false);
+  const [missingPaymentsAction, setMissingPaymentsAction] = useState<{ id: string; action: string } | null>(null);
 
   // Sync missing payments
   const [syncMissingLoading, setSyncMissingLoading] = useState(false);
@@ -356,7 +389,9 @@ export default function BackfillClient() {
       all: "all",
       database_only: "database-only",
       succeeded: "succeeded",
-      no_payment: "no-payment"
+      no_payment: "no-payment",
+      paid_database_only: "paid-database-only",
+      paid_db_only: "paid-db-only"
     };
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -444,6 +479,110 @@ export default function BackfillClient() {
     }
   }, []);
 
+  // Fetch missing from DB (Stripe subscriptions not in membership_payments)
+  const fetchMissingPayments = useCallback(async () => {
+    setMissingPaymentsLoading(true);
+    try {
+      const res = await fetch("/api/admin/backfill/stripe/missing-payments");
+      if (res.ok) {
+        const data = await res.json();
+        setMissingPayments(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch missing payments:", error);
+    } finally {
+      setMissingPaymentsLoading(false);
+    }
+  }, []);
+
+  // Re-match a missing account
+  const handleRematch = async (account: MissingAccount) => {
+    if (!account.profile_id) return;
+    setMissingPaymentsAction({ id: account.stripe_customer_id, action: "rematch" });
+    try {
+      const res = await fetch("/api/admin/backfill/stripe/rematch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile_id: account.profile_id,
+          stripe_customer_id: account.stripe_customer_id,
+          email: account.email,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Re-matched: ${data.message}`);
+        fetchMissingPayments();
+        fetchReconciliation();
+      } else {
+        alert(`Failed to re-match: ${data.message}`);
+      }
+    } catch (error) {
+      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setMissingPaymentsAction(null);
+    }
+  };
+
+  // Sync a single missing account
+  const handleSyncSingle = async (account: MissingAccount) => {
+    if (!account.profile_id) return;
+    setMissingPaymentsAction({ id: account.stripe_customer_id, action: "sync" });
+    try {
+      const res = await fetch("/api/admin/backfill/stripe/sync-single", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile_id: account.profile_id,
+          stripe_customer_id: account.stripe_customer_id,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Synced: ${data.message}`);
+        fetchMissingPayments();
+        fetchReconciliation();
+        fetchStatus();
+      } else {
+        alert(`Failed to sync: ${data.message}`);
+      }
+    } catch (error) {
+      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setMissingPaymentsAction(null);
+    }
+  };
+
+  // Sync by email lookup (for accounts where profile_id is null but profile exists by email)
+  const handleSyncByEmail = async (account: MissingAccount) => {
+    if (!account.email) return;
+    setMissingPaymentsAction({ id: account.stripe_customer_id, action: "sync-email" });
+    try {
+      const res = await fetch("/api/admin/backfill/stripe/sync-by-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: account.email,
+          stripe_customer_id: account.stripe_customer_id,
+          amount: account.amount,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Synced: ${data.message}`);
+        fetchMissingPayments();
+        fetchReconciliation();
+        fetchStatus();
+      } else {
+        alert(`Failed to sync: ${data.message}`);
+      }
+    } catch (error) {
+      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setMissingPaymentsAction(null);
+    }
+  };
+
   // Backfill missing profiles to stripe_backfill_status
   const [backfillLoading, setBackfillLoading] = useState(false);
   const [backfillResult, setBackfillResult] = useState<{
@@ -506,7 +645,8 @@ export default function BackfillClient() {
     fetchMissingFromBackfill();
     fetchGiftCodes();
     fetchStripeOnly();
-  }, [fetchStatus, fetchLiveStats, fetchDuplicates, fetchMissingFromBackfill, fetchGiftCodes, fetchStripeOnly]);
+    fetchMissingPayments();
+  }, [fetchStatus, fetchLiveStats, fetchDuplicates, fetchMissingFromBackfill, fetchGiftCodes, fetchStripeOnly, fetchMissingPayments]);
 
   // Delete single payment
   const handleDeletePayment = async () => {
@@ -573,7 +713,9 @@ export default function BackfillClient() {
   const filteredRows = safeRows.filter(row => {
     if (paymentFilter === 'database_only' && row.status !== 'not_found') return false;
     if (paymentFilter === 'succeeded' && ((row.payment_count || 0) === 0 || row.has_failed)) return false;
-    if (paymentFilter === 'no_payment' && (!row.has_failed || row.total_amount !== 0)) return false;
+    if (paymentFilter === 'no_payment' && !(row.status === 'matched' && (row.lifetime_value || 0) === 0 && (row.profiles?.membership_level === 'contributing' || row.profiles?.membership_level === 'founding'))) return false;
+    if (paymentFilter === 'paid_database_only' && !(row.status === 'not_found' && (row.profiles?.membership_level === 'contributing' || row.profiles?.membership_level === 'founding'))) return false;
+    if (paymentFilter === 'paid_db_only' && !(row.profiles?.membership_level === 'contributing' || row.profiles?.membership_level === 'founding')) return false;
     if (debouncedSearch && debouncedSearch.length >= 2) {
       const q = debouncedSearch.toLowerCase();
       const profileName = (row.profiles && typeof row.profiles === 'object' && row.profiles.full_name)
@@ -922,6 +1064,205 @@ export default function BackfillClient() {
         )}
       </div>
 
+      {/* Missing from DB (Stripe subscriptions not in membership_payments) */}
+      {missingPayments && missingPayments.summary.total_count > 0 && (
+        <div className="bg-white rounded-lg border border-orange-200 overflow-hidden">
+          <div className="flex justify-between items-center p-4 border-b border-nfw-dove bg-orange-50">
+            <div>
+              <h3 className="font-ui font-bold text-orange-700">
+                Missing from DB ({missingPayments.summary.total_count})
+              </h3>
+              <p className="text-xs text-orange-600 mt-1">
+                Active Stripe subscriptions NOT in our membership_payments table
+              </p>
+            </div>
+            <button
+              onClick={fetchMissingPayments}
+              disabled={missingPaymentsLoading}
+              className="text-sm bg-nfw-wisteria text-white px-3 py-1 rounded hover:bg-nfw-wisteria/90 disabled:opacity-50"
+            >
+              {missingPaymentsLoading ? "Loading..." : "Refresh"}
+            </button>
+          </div>
+
+          <div className="p-4 space-y-6">
+            {/* Contributing ($15) */}
+            {missingPayments.contributing.length > 0 && (
+              <div>
+                <h4 className="font-ui font-semibold text-sm text-nfw-aubergine mb-2">
+                  Contributing ($15) — {missingPayments.summary.contributing_count}
+                </h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-nfw-dove/30">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-ui text-xs font-bold text-nfw-aubergine">Email</th>
+                        <th className="text-left px-3 py-2 font-ui text-xs font-bold text-nfw-aubergine">Stripe ID</th>
+                        <th className="text-center px-3 py-2 font-ui text-xs font-bold text-nfw-aubergine">Status</th>
+                        <th className="text-center px-3 py-2 font-ui text-xs font-bold text-nfw-aubergine">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-nfw-dove">
+                      {missingPayments.contributing.map((account) => (
+                        <tr key={account.stripe_customer_id} className="hover:bg-nfw-dove/30">
+                          <td className="px-3 py-2 font-ui text-sm">
+                            <div className="flex flex-col">
+                              <span>{account.email}</span>
+                              {account.name && (
+                                <span className="text-xs text-nfw-blackberry/50">{account.name}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 font-mono text-xs text-nfw-blackberry/70">
+                            {account.stripe_customer_id}
+                          </td>
+                           <td className="px-3 py-2 text-center">
+                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
+                               account.profile_id
+                                 ? "bg-green-100 text-green-700"
+                                 : "bg-red-100 text-red-700"
+                             }`}>
+                               {account.profile_id ? "Has Profile" : "No Profile"}
+                             </span>
+                           </td>
+                           <td className="px-3 py-2 text-center">
+                             <div className="flex items-center justify-center gap-1 flex-wrap">
+                               <a
+                                 href={`https://dashboard.stripe.com/customers/${account.stripe_customer_id}`}
+                                 target="_blank"
+                                 rel="noopener noreferrer"
+                                 className="px-2 py-1 text-xs bg-nfw-aubergine/10 text-nfw-aubergine rounded hover:bg-nfw-aubergine/20"
+                               >
+                                 Stripe
+                               </a>
+                               <button
+                                 onClick={() => handleSyncByEmail(account)}
+                                 disabled={missingPaymentsAction?.id === account.stripe_customer_id}
+                                 className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50"
+                               >
+                                 {missingPaymentsAction?.id === account.stripe_customer_id && missingPaymentsAction?.action === "sync-email" ? "..." : "Sync Email"}
+                               </button>
+                               {account.profile_id && (
+                                 <>
+                                   <button
+                                     onClick={() => handleRematch(account)}
+                                     disabled={missingPaymentsAction?.id === account.stripe_customer_id}
+                                     className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200 disabled:opacity-50"
+                                   >
+                                     {missingPaymentsAction?.id === account.stripe_customer_id && missingPaymentsAction?.action === "rematch" ? "..." : "Re-Match"}
+                                   </button>
+                                   <button
+                                     onClick={() => handleSyncSingle(account)}
+                                     disabled={missingPaymentsAction?.id === account.stripe_customer_id}
+                                     className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 disabled:opacity-50"
+                                   >
+                                     {missingPaymentsAction?.id === account.stripe_customer_id && missingPaymentsAction?.action === "sync" ? "..." : "Sync"}
+                                   </button>
+                                 </>
+                               )}
+                             </div>
+                           </td>
+                         </tr>
+                       ))}
+                     </tbody>
+                   </table>
+                 </div>
+               </div>
+             )}
+
+             {/* Founding ($100) */}
+            {missingPayments.founding.length > 0 && (
+              <div>
+                <h4 className="font-ui font-semibold text-sm text-nfw-aubergine mb-2">
+                  Founding ($100) — {missingPayments.summary.founding_count}
+                </h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-nfw-dove/30">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-ui text-xs font-bold text-nfw-aubergine">Email</th>
+                        <th className="text-left px-3 py-2 font-ui text-xs font-bold text-nfw-aubergine">Stripe ID</th>
+                        <th className="text-center px-3 py-2 font-ui text-xs font-bold text-nfw-aubergine">Status</th>
+                        <th className="text-center px-3 py-2 font-ui text-xs font-bold text-nfw-aubergine">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-nfw-dove">
+                      {missingPayments.founding.map((account) => (
+                        <tr key={account.stripe_customer_id} className="hover:bg-nfw-dove/30">
+                          <td className="px-3 py-2 font-ui text-sm">
+                            <div className="flex flex-col">
+                              <span>{account.email}</span>
+                              {account.name && (
+                                <span className="text-xs text-nfw-blackberry/50">{account.name}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 font-mono text-xs text-nfw-blackberry/70">
+                            {account.stripe_customer_id}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
+                              account.profile_id
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
+                            }`}>
+                              {account.profile_id ? "Has Profile" : "No Profile"}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <div className="flex items-center justify-center gap-1 flex-wrap">
+                              <a
+                                href={`https://dashboard.stripe.com/customers/${account.stripe_customer_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2 py-1 text-xs bg-nfw-aubergine/10 text-nfw-aubergine rounded hover:bg-nfw-aubergine/20"
+                              >
+                                Stripe
+                              </a>
+                              <button
+                                onClick={() => handleSyncByEmail(account)}
+                                disabled={missingPaymentsAction?.id === account.stripe_customer_id}
+                                className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50"
+                              >
+                                {missingPaymentsAction?.id === account.stripe_customer_id && missingPaymentsAction?.action === "sync-email" ? "..." : "Sync Email"}
+                              </button>
+                              {account.profile_id && (
+                                <>
+                                  <button
+                                    onClick={() => handleRematch(account)}
+                                    disabled={missingPaymentsAction?.id === account.stripe_customer_id}
+                                    className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200 disabled:opacity-50"
+                                  >
+                                    {missingPaymentsAction?.id === account.stripe_customer_id && missingPaymentsAction?.action === "rematch" ? "..." : "Re-Match"}
+                                  </button>
+                                  <button
+                                    onClick={() => handleSyncSingle(account)}
+                                    disabled={missingPaymentsAction?.id === account.stripe_customer_id}
+                                    className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 disabled:opacity-50"
+                                  >
+                                    {missingPaymentsAction?.id === account.stripe_customer_id && missingPaymentsAction?.action === "sync" ? "..." : "Sync"}
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {missingPayments && missingPayments.summary.total_count === 0 && (
+        <div className="bg-white rounded-lg border border-green-200 p-6 text-center">
+          <p className="font-ui text-green-700 font-semibold">✓ All Stripe subscriptions are in membership_payments</p>
+        </div>
+      )}
+
       {/* Live Stripe Stats */}
       {liveStats && (
         <div className="bg-white rounded-lg p-6 border border-nfw-aubergine/20">
@@ -1235,18 +1576,22 @@ export default function BackfillClient() {
           {/* Payment Filter Buttons */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-nfw-dove bg-nfw-dove/20 flex-wrap">
             <span className="text-xs text-nfw-blackberry/60 font-ui mr-1">Filter:</span>
-            {(['all', 'database_only', 'succeeded', 'no_payment'] as const).map((f) => {
+            {(['all', 'database_only', 'paid_database_only', 'paid_db_only', 'succeeded', 'no_payment'] as const).map((f) => {
               const labelMap = {
                 all: "All",
                 database_only: "Database Only",
+                paid_database_only: "Paid Database Only",
+                paid_db_only: "Paid (DB)",
                 succeeded: "Succeeded",
                 no_payment: "No Payment"
               };
               const countMap = {
                 all: rows.length,
                 database_only: rows.filter(r => r.status === 'not_found').length,
+                paid_database_only: rows.filter(r => r.status === 'not_found' && (r.profiles?.membership_level === 'contributing' || r.profiles?.membership_level === 'founding')).length,
+                paid_db_only: rows.filter(r => r.profiles?.membership_level === 'contributing' || r.profiles?.membership_level === 'founding').length,
                 succeeded: rows.filter(r => (r.payment_count || 0) > 0 && !r.has_failed).length,
-                no_payment: rows.filter(r => r.has_failed && r.total_amount === 0).length
+                no_payment: rows.filter(r => r.status === 'matched' && (r.lifetime_value || 0) === 0 && (r.profiles?.membership_level === 'contributing' || r.profiles?.membership_level === 'founding')).length
               };
               return (
                 <button
@@ -1309,13 +1654,24 @@ export default function BackfillClient() {
                         {(row.profiles && typeof row.profiles === 'object' && row.profiles.full_name) || "—"}
                       </td>
                       <td className="px-4 py-3 font-ui text-sm">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
-                          row.profiles?.membership_level === "founding"
-                            ? "bg-nfw-citrine text-nfw-blackberry"
-                            : "bg-nfw-wisteria/20 text-nfw-wisteria"
-                        }`}>
-                          {(row.profiles && typeof row.profiles === 'object' && row.profiles.membership_level) || "—"}
-                        </span>
+                        {(() => {
+                          const category = getCategory(row.profiles as Record<string, unknown>);
+                          const badgeStyles: Record<string, string> = {
+                            Admin: "bg-nfw-aubergine/20 text-nfw-aubergine",
+                            Founding: "bg-nfw-citrine text-nfw-blackberry",
+                            Contributing: "bg-green-100 text-green-700",
+                            Abandoned: "bg-nfw-stone/40 text-nfw-stone",
+                            "Profile Incomplete": "bg-nfw-stone/40 text-nfw-stone",
+                            Free: "bg-nfw-wisteria/20 text-nfw-wisteria",
+                            Waitlist: "bg-nfw-stone/40 text-nfw-stone",
+                            Unknown: "bg-nfw-stone/20 text-nfw-stone/70",
+                          };
+                          return (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${badgeStyles[category] || badgeStyles.Unknown}`}>
+                              {category}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3 font-ui text-sm">
                         <StatusBadge status={row.status} />
