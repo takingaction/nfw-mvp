@@ -11977,3 +11977,35 @@ WHERE email IN (
   'tingorony@gmail.com'
 );
 ```
+
+## Session 2026-08-30 (Afternoon): Gift Code Signup Source Tracking
+
+### Overview
+
+Added automatic `signup_source = 'gift'` tracking when gift codes are redeemed, and added `signup_source` to the profile update API's allowed fields.
+
+### Problem
+
+The gift code redemption API was setting `gift_code_redeemed = true` but NOT `signup_source = 'gift'`. This meant gift code redemptions were not being tracked properly in analytics and backfill reports.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/profile/update/route.ts` | Added `"signup_source"` to `ALLOWED_FIELDS` |
+| `app/api/gift-codes/redeem/route.ts` | Added `signup_source: "gift"` when redeeming gift code |
+
+### SQL to Fix Existing Gift Code Members
+
+```sql
+UPDATE profiles
+SET signup_source = 'gift'
+WHERE email = 'terrilsouza@gmail.com';
+```
+
+### Key Design Decision
+
+Server-side tracking (Option A) was chosen over client-side because:
+1. Server-side is more reliable - no dependency on client passing the field correctly
+2. Single source of truth - ANY gift code redemption path automatically gets the correct source
+3. Defense in depth - even if someone bypasses the UI and calls the API directly, it still gets set correctly

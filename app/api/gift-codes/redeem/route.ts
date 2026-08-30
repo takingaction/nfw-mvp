@@ -75,6 +75,7 @@ export async function POST(request: Request) {
         first_paid_level: profile?.first_paid_level || "contributing",
         // Mark as gift card redemption
         gift_code_redeemed: true,
+        signup_source: "gift",
       })
       .eq("id", user.id);
 

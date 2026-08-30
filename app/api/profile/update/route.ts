@@ -32,6 +32,7 @@ const ALLOWED_FIELDS = [
   "membership_level",
   "is_approved_free_member",
   "free_membership_contact_submitted",
+  "signup_source",
 ] as const;
 
 type AllowedField = (typeof ALLOWED_FIELDS)[number];
