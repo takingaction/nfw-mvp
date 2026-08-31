@@ -75,6 +75,9 @@ export async function GET(request: Request) {
     let stripeFoundingCount = 0;
     let stripeFoundingTotal = 0;
 
+    // Also build stripeEmailMap for missing_from_db check
+    const stripeEmailMap = new Map<string, { tier: string; amount: number; customer_id: string }>();
+
     for (const sub of allSubscriptions) {
       const amount = (sub.items.data[0]?.price?.unit_amount || 0) / 100;
       if (amount === 15) {
@@ -84,7 +87,51 @@ export async function GET(request: Request) {
         stripeFoundingCount++;
         stripeFoundingTotal += amount;
       }
+
+      // Build stripeEmailMap for missing_from_db
+      const priceAmount = sub.items.data[0]?.price?.unit_amount;
+      if (priceAmount === 1500 || priceAmount === 10000) {
+        const tier = priceAmount === 1500 ? "Contributing" : "Founding";
+        const customerId = typeof sub.customer === 'string' ? sub.customer : null;
+        const subAny = sub as any;
+        let email = subAny.billing_details?.email || "";
+        if (!email && customerId) {
+          try {
+            const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
+            if (!customer.deleted && customer.email) {
+              email = customer.email;
+            }
+          } catch (e) {}
+          await new Promise(r => setTimeout(r, 25));
+        }
+        if (email) {
+          const emailLower = email.toLowerCase();
+          if (!stripeEmailMap.has(emailLower)) {
+            stripeEmailMap.set(emailLower, { tier, amount, customer_id: customerId || "" });
+          }
+        }
+      }
     }
+
+    // Step 1c: Find emails in Stripe but not in any profile
+    const { data: allProfiles } = await supabase
+      .from("profiles")
+      .select("email");
+
+    const allProfileEmails = new Set<string>();
+    for (const profile of allProfiles || []) {
+      if (profile.email) {
+        allProfileEmails.add(profile.email.toLowerCase());
+      }
+    }
+
+    const missingFromDb: string[] = [];
+    for (const email of stripeEmailMap.keys()) {
+      if (!allProfileEmails.has(email)) {
+        missingFromDb.push(email);
+      }
+    }
+    missingFromDb.sort();
 
     // Step 1b: Get TRUE totals from actual invoice amounts
     let trueContributingTotal = 0;
@@ -323,6 +370,7 @@ export async function GET(request: Request) {
       },
       verified: verifiedCount,
       problematic_payments: problematicPayments,
+      missing_from_db: missingFromDb,
     });
 
   } catch (error: any) {

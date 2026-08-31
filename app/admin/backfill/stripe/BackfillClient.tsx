@@ -110,6 +110,7 @@ interface ReconciliationResponse {
   summary: ReconciliationSummary;
   verified: { valid: number; refunded: number; failed: number; not_found: number };
   problematic_payments: ProblematicPayment[];
+  missing_from_db?: string[];
 }
 
 interface DuplicateEmail {
@@ -1075,6 +1076,29 @@ export default function BackfillClient() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Missing from DB - Emails in Stripe but no profile */}
+      {reconciliation && reconciliation.missing_from_db && reconciliation.missing_from_db.length > 0 && (
+        <div className="bg-white rounded-lg border border-nfw-aubergine/20 overflow-hidden">
+          <div className="flex justify-between items-center p-4 border-b border-nfw-dove">
+            <h3 className="font-ui font-bold text-nfw-aubergine">
+              In Stripe, No Profile ({reconciliation.missing_from_db.length})
+            </h3>
+            <p className="text-sm text-nfw-blackberry/60 font-ui">
+              These emails are in Stripe but have no profile in our database
+            </p>
+          </div>
+          <div className="p-4 max-h-96 overflow-y-auto">
+            <ul className="space-y-1">
+              {reconciliation.missing_from_db.map((email: string) => (
+                <li key={email} className="font-mono text-sm text-nfw-blackberry/80">
+                  {email}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}
