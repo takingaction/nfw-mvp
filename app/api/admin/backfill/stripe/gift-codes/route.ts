@@ -33,7 +33,7 @@ export async function GET() {
       .from("profiles")
       .select("id, email, membership_level, gift_code_redeemed, stripe_customer_id")
       .eq("gift_code_redeemed", true)
-      .order("created_at", { ascending: false });
+      .order("joined_at", { ascending: false });
 
     if (error) {
       console.error("[gift-codes] Error:", error);
