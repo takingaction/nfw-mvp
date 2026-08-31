@@ -108,33 +108,54 @@ export async function GET(request: Request) {
             cursor = response.data[response.data.length - 1].id;
           }
 
-          // For each subscription, get charges
+          // For each subscription, get charges with rate limiting
           for (const sub of response.data) {
-            try {
-              const charges = await stripe.charges.list({
-                customer: sub.customer as string,
-                limit: 100,
-              });
+            let retryCount = 0;
+            const maxRetries = 3;
+            
+            while (retryCount < maxRetries) {
+              try {
+                // Add 100ms delay between charge list calls to avoid rate limits
+                await new Promise(r => setTimeout(r, 100));
+                
+                const charges = await stripe.charges.list({
+                  customer: sub.customer as string,
+                  limit: 100,
+                });
 
-              for (const charge of charges.data) {
-                // Only membership amounts, avoid duplicates
-                if ((charge.amount === 1500 || charge.amount === 10000) && !processedChargeIds.has(charge.id)) {
-                  processedChargeIds.add(charge.id);
-                  allCharges.push({
-                    id: charge.id,
-                    customer: charge.customer as string,
-                    amount: charge.amount,
-                    currency: charge.currency,
-                    created: charge.created,
-                    billing_details: charge.billing_details,
-                  });
+                for (const charge of charges.data) {
+                  // Only membership amounts, avoid duplicates
+                  if ((charge.amount === 1500 || charge.amount === 10000) && !processedChargeIds.has(charge.id)) {
+                    processedChargeIds.add(charge.id);
+                    allCharges.push({
+                      id: charge.id,
+                      customer: charge.customer as string,
+                      amount: charge.amount,
+                      currency: charge.currency,
+                      created: charge.created,
+                      billing_details: charge.billing_details,
+                    });
+                  }
+                }
+                break; // Success, exit retry loop
+              } catch (err: any) {
+                // Check if it's a rate limit error
+                if (err.type === 'StripeRateLimitError' || err.statusCode === 429) {
+                  retryCount++;
+                  console.warn(`Rate limited on customer ${sub.customer}, retry ${retryCount}/${maxRetries}`);
+                  // Exponential backoff: 500ms, 1000ms, 2000ms
+                  await new Promise(r => setTimeout(r, 500 * Math.pow(2, retryCount - 1)));
+                } else {
+                  // Non-rate-limit error, log and continue
+                  console.error(`Error fetching charges for customer ${sub.customer}:`, err.message);
+                  break;
                 }
               }
-            } catch (err) {
-              console.error(`Error fetching charges for customer ${sub.customer}:`, err);
             }
-
-            await new Promise(r => setTimeout(r, 25));
+            
+            if (retryCount >= maxRetries) {
+              console.error(`Failed after ${maxRetries} retries for customer ${sub.customer}`);
+            }
           }
         } catch (err) {
           console.error(`Error listing subscriptions (${status}):`, err);
