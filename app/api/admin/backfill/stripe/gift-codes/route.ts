@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
+
+const supabaseAdmin = createAdminClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export const dynamic = "force-dynamic";
 
@@ -22,31 +28,23 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get profiles where gift_code_redeemed = true
-    let profiles: any[] = [];
-    let giftCodes: any[] = [];
-    
-    try {
-      const result = await supabase
-        .from("profiles")
-        .select("id, email, membership_level, gift_code_redeemed, stripe_customer_id")
-        .eq("gift_code_redeemed", true)
-        .order("created_at", { ascending: false });
+    // Get profiles where gift_code_redeemed = true using admin client
+    const { data: profiles, error } = await supabaseAdmin
+      .from("profiles")
+      .select("id, email, membership_level, gift_code_redeemed, stripe_customer_id")
+      .eq("gift_code_redeemed", true)
+      .order("created_at", { ascending: false });
 
-      if (result.error) {
-        console.error("[gift-codes] Query error:", result.error);
-        return NextResponse.json({ error: result.error.message }, { status: 500 });
-      }
-      profiles = result.data || [];
-    } catch (e: any) {
-      console.error("[gift-codes] Unexpected error:", e);
-      return NextResponse.json({ error: e.message }, { status: 500 });
+    if (error) {
+      console.error("[gift-codes] Error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     // Get gift codes for these profiles
-    const profileIds = profiles.map((p: any) => p.id);
+    const profileIds = (profiles || []).map((p: any) => p.id);
+    let giftCodes: any[] = [];
     if (profileIds.length > 0) {
-      const { data: codes } = await supabase
+      const { data: codes } = await supabaseAdmin
         .from("gift_membership_codes")
         .select("code, redeemed_by_user_id")
         .in("redeemed_by_user_id", profileIds);
@@ -55,7 +53,7 @@ export async function GET() {
 
     // Transform to include redemption info
     const codeByUserId = new Map(giftCodes.map((c: any) => [c.redeemed_by_user_id, c]));
-    const transformed = profiles.map((p: any) => ({
+    const transformed = (profiles || []).map((p: any) => ({
       id: p.id,
       email: p.email,
       membership_level: p.membership_level,
