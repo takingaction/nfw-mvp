@@ -85,7 +85,11 @@ export async function GET(request: Request) {
   } catch (error: any) {
     console.error("[export-stripe-live] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to export" },
+      { 
+        error: error.message || "Failed to export",
+        stack: error.stack,
+        route: "stripe-live-export"
+      },
       { status: 500 }
     );
   }

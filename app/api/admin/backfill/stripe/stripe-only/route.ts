@@ -81,85 +81,74 @@ export async function GET(request: Request) {
     console.log(`[stripe-only] Profiles loaded: ${allProfiles.length}`);
     console.log(`[stripe-only] Emails in map: ${profileByEmail.size}`);
 
-    // Step 2: Get ALL Stripe charges (15/100 amounts) from ALL subscriptions
+    // Step 2: Get ALL Stripe charges (15/100 amounts) directly from charges.list()
+    // This is MUCH more efficient than iterating through subscriptions
+    // Instead of N API calls (one per subscription), we make ~38 calls (one per 100 charges)
     const allCharges: StripeCharge[] = [];
     const processedChargeIds = new Set<string>();
+    const MEMBERSHIP_CREATED_AFTER = Math.floor(new Date("2026-01-01").getTime() / 1000);
 
-    // Get ALL subscription statuses
-    const statuses: Array<"active" | "past_due" | "canceled" | "unpaid" | "trialing" | "incomplete" | "incomplete_expired" | "paused"> = 
-      ["active", "past_due", "canceled", "unpaid", "trialing", "incomplete", "incomplete_expired", "paused"];
+    let chargeHasMore = true;
+    let chargeCursor: string | undefined;
 
-    for (const status of statuses) {
-      let hasMore = true;
-      let cursor: string | undefined;
+    while (chargeHasMore) {
+      let retryCount = 0;
+      const maxRetries = 3;
 
-      while (hasMore) {
-        const params: any = {
-          limit: 100,
-          status,
-        };
-        if (cursor) params.starting_after = cursor;
-
+      while (retryCount < maxRetries) {
         try {
-          const response = await stripe.subscriptions.list(params as any);
-          hasMore = response.has_more;
-          
-          if (response.data.length > 0) {
-            cursor = response.data[response.data.length - 1].id;
+          // Add 250ms delay between charge list calls to avoid rate limits
+          await new Promise(r => setTimeout(r, 250));
+
+          const chargeParams: any = {
+            limit: 100,
+            created: { gte: MEMBERSHIP_CREATED_AFTER },
+          };
+          if (chargeCursor) chargeParams.starting_after = chargeCursor;
+
+          const chargesResponse = await stripe.charges.list(chargeParams);
+          chargeHasMore = chargesResponse.has_more;
+
+          if (chargesResponse.data.length > 0) {
+            chargeCursor = chargesResponse.data[chargesResponse.data.length - 1].id;
           }
 
-          // For each subscription, get charges with rate limiting
-          for (const sub of response.data) {
-            let retryCount = 0;
-            const maxRetries = 3;
-            
-            while (retryCount < maxRetries) {
-              try {
-                // Add 100ms delay between charge list calls to avoid rate limits
-                await new Promise(r => setTimeout(r, 100));
-                
-                const charges = await stripe.charges.list({
-                  customer: sub.customer as string,
-                  limit: 100,
-                });
-
-                for (const charge of charges.data) {
-                  // Only membership amounts, avoid duplicates
-                  if ((charge.amount === 1500 || charge.amount === 10000) && !processedChargeIds.has(charge.id)) {
-                    processedChargeIds.add(charge.id);
-                    allCharges.push({
-                      id: charge.id,
-                      customer: charge.customer as string,
-                      amount: charge.amount,
-                      currency: charge.currency,
-                      created: charge.created,
-                      billing_details: charge.billing_details,
-                    });
-                  }
-                }
-                break; // Success, exit retry loop
-              } catch (err: any) {
-                // Check if it's a rate limit error
-                if (err.type === 'StripeRateLimitError' || err.statusCode === 429) {
-                  retryCount++;
-                  console.warn(`Rate limited on customer ${sub.customer}, retry ${retryCount}/${maxRetries}`);
-                  // Exponential backoff: 500ms, 1000ms, 2000ms
-                  await new Promise(r => setTimeout(r, 500 * Math.pow(2, retryCount - 1)));
-                } else {
-                  // Non-rate-limit error, log and continue
-                  console.error(`Error fetching charges for customer ${sub.customer}:`, err.message);
-                  break;
-                }
-              }
-            }
-            
-            if (retryCount >= maxRetries) {
-              console.error(`Failed after ${maxRetries} retries for customer ${sub.customer}`);
+          for (const charge of chargesResponse.data) {
+            // Only membership amounts ($15 = 1500, $100 = 10000), avoid duplicates
+            if ((charge.amount === 1500 || charge.amount === 10000) && !processedChargeIds.has(charge.id)) {
+              processedChargeIds.add(charge.id);
+              allCharges.push({
+                id: charge.id,
+                customer: charge.customer as string,
+                amount: charge.amount,
+                currency: charge.currency,
+                created: charge.created,
+                billing_details: charge.billing_details,
+              });
             }
           }
-        } catch (err) {
-          console.error(`Error listing subscriptions (${status}):`, err);
+
+          console.log(`[stripe-only] Charges fetched so far: ${allCharges.length}, has_more: ${chargeHasMore}`);
+          break; // Success, exit retry loop
+
+        } catch (err: any) {
+          if (err.type === 'StripeRateLimitError' || err.statusCode === 429) {
+            retryCount++;
+            console.warn(`Rate limited fetching charges, retry ${retryCount}/${maxRetries}`);
+            // Exponential backoff: 500ms, 1000ms, 2000ms
+            await new Promise(r => setTimeout(r, 500 * Math.pow(2, retryCount - 1)));
+          } else {
+            // Non-rate-limit error, log and continue
+            console.error(`Error fetching charges:`, err.message);
+            chargeHasMore = false;
+            break;
+          }
         }
+      }
+
+      if (retryCount >= maxRetries) {
+        console.error(`Failed after ${maxRetries} retries for charges, stopping pagination`);
+        chargeHasMore = false;
       }
     }
 

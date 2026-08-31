@@ -12272,3 +12272,37 @@ When a payment is reversed, the system:
 - `reversal_reason` captures why the reversal happened
 - Webhook signature verification already exists in the route (was handling other Stripe events)
 - Cron remains as gap-filler for missed webhook events
+
+## Session 2026-08-31: Stripe Export Rate Limit Fix
+
+### Overview
+
+Fixed Stripe export functionality for backfill reconciliation by eliminating per-subscription API calls that caused rate limit errors.
+
+### Problem
+
+The `/api/admin/backfill/stripe/stripe-only` export was hitting Stripe rate limits because it made **one API call per subscription** (800+ calls for 800+ subscriptions).
+
+### Solution
+
+Changed from subscription-based iteration to direct `stripe.charges.list()` pagination:
+
+| Metric | Old Approach | New Approach |
+|--------|-------------|--------------|
+| API calls | 800+ (one per subscription) | ~38 (one per 100 charges) |
+| Data filtered | All time, all amounts | Since Jan 2026, only $15/$100 |
+| Rate limit risk | Very high | Low |
+
+### Key Changes
+
+1. **Removed subscription iteration** - No longer lists subscriptions then calls `charges.list()` for each
+2. **Direct charges listing** - Now calls `stripe.charges.list()` with cursor-based pagination
+3. **Date filter** - Only fetches charges created after Jan 1, 2026 (`created: { gte: MEMBERSHIP_CREATED_AFTER }`)
+4. **250ms delay** - Increased from 100ms to 250ms between API calls
+5. **Progress logging** - Added `console.log` during pagination to track progress
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/backfill/stripe/stripe-only/route.ts` | Rewrote charge fetching to use direct `charges.list()` pagination |
