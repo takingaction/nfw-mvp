@@ -646,9 +646,9 @@ export default function BackfillClient() {
     fetchDuplicates();
     fetchMissingFromBackfill();
     fetchGiftCodes();
-    // fetchStripeOnly(); // Skip on mount - too slow, call manually when needed
+    fetchStripeOnly();
     fetchMissingPayments();
-  }, [fetchStatus, fetchLiveStats, fetchDuplicates, fetchMissingFromBackfill, fetchGiftCodes, fetchMissingPayments]);
+  }, [fetchStatus, fetchLiveStats, fetchDuplicates, fetchMissingFromBackfill, fetchGiftCodes, fetchStripeOnly, fetchMissingPayments]);
 
   // Delete single payment
   const handleDeletePayment = async () => {

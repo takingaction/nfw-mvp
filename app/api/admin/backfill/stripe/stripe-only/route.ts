@@ -105,7 +105,7 @@ export async function GET(request: Request) {
           if (subCursor) subParams.starting_after = subCursor;
 
           // Add delay between subscription list calls
-          await new Promise(r => setTimeout(r, 500));
+          await new Promise(r => setTimeout(r, 200));
 
           const subsResponse = await stripe.subscriptions.list(subParams as any);
           subHasMore = subsResponse.has_more;
@@ -130,10 +130,9 @@ export async function GET(request: Request) {
 
     console.log(`[stripe-only] Total unique customers: ${allCustomerIds.length}`);
 
-    // Now fetch charges for each customer with VERY long delays to avoid rate limits
-    // 5 seconds between each customer's charges.list() call
-    // This export can take 10+ minutes to complete - that's expected
-    const DELAY_BETWEEN_CUSTOMERS = 5000; // 5 seconds
+    // Now fetch charges for each customer with rate limiting
+    // Target ~4 minutes total for 800 customers = 300ms per customer
+    const DELAY_BETWEEN_CUSTOMERS = 300; // 300ms
 
     for (let i = 0; i < allCustomerIds.length; i++) {
       const customerId = allCustomerIds[i];
