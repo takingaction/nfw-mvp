@@ -45,3 +45,6 @@ next-env.d.ts
 # ZDC breach reports (local only - contains PII)
 ZDC-breach-*.csv
 ZDC-breach-*.txt
+
+# Reports folder (contains sensitive data)
+REPORTS-IGNORE/
