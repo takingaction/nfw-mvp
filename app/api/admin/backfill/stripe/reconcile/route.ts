@@ -113,17 +113,32 @@ export async function GET(request: Request) {
       }
     }
 
-    // Step 1c: Find emails in Stripe but not in any profile
-    const { data: allProfiles } = await supabase
-      .from("profiles")
-      .select("email")
-      .limit(10000);
-
+    // Step 1c: Find emails in Stripe but not in any profile (paginate through all profiles)
     const allProfileEmails = new Set<string>();
-    for (const profile of allProfiles || []) {
-      if (profile.email) {
-        allProfileEmails.add(profile.email.toLowerCase());
+    let profilePage = 0;
+    const profilePageSize = 1000;
+    let hasMoreProfiles = true;
+
+    while (hasMoreProfiles) {
+      const { data: profileBatch, error: profileError } = await supabase
+        .from("profiles")
+        .select("email")
+        .range(profilePage * profilePageSize, (profilePage + 1) * profilePageSize - 1);
+
+      if (profileError) {
+        console.error("[reconcile] Profiles query error:", profileError);
+        break;
       }
+
+      const batch = profileBatch || [];
+      for (const profile of batch) {
+        if (profile.email) {
+          allProfileEmails.add(profile.email.toLowerCase());
+        }
+      }
+
+      profilePage++;
+      hasMoreProfiles = batch.length === profilePageSize;
     }
 
     const missingFromDb: string[] = [];
