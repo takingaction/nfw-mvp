@@ -31,6 +31,30 @@ This file contains context and instructions for AI agents working on this projec
 - `npm run lint` - Run ESLint
 - `npm run typecheck` - Run TypeScript type checking
 
+## Database Backup & Restore
+
+### Data-Only Dump
+
+```bash
+supabase db dump --data-only --db-url 'postgresql://postgres:<password>@db.lirsaxhujjgnibcwyzpl.supabase.co:5432/postgres' -f nfw_backup_full_$(date +%Y%m%d).sql
+```
+
+### Restore with Circular FK Warning
+
+The `membership_payments` table has a self-referential FK (`original_payment_id` → `membership_payments.id`) that causes pg_dump to warn about circular constraints. This is expected and does not affect the dump itself.
+
+**To restore a data-only dump, use `--disable-triggers`:**
+
+```bash
+# Restore with pg_restore (recommended)
+pg_restore --disable-triggers -d '<connection_string>' backup.sql
+
+# Or restore with psql and temporarily disable triggers
+psql -c "ALTER TABLE membership_payments DISABLE TRIGGER ALL;" -d '<connection_string>'
+psql -f backup.sql -d '<connection_string>'
+psql -c "ALTER TABLE membership_payments ENABLE TRIGGER ALL;" -d '<connection_string>'
+```
+
 ## Critical Database Schema Notes
 
 ### `profiles` Table Schema
