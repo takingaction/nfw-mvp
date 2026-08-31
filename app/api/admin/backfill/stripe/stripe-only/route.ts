@@ -131,8 +131,10 @@ export async function GET(request: Request) {
     console.log(`[stripe-only] Total unique customers: ${allCustomerIds.length}`);
 
     // Now fetch charges for each customer with rate limiting
-    // Target ~4 minutes total for 800 customers = 300ms per customer
-    const DELAY_BETWEEN_CUSTOMERS = 300; // 300ms
+    // Target ~4 minutes (240 seconds) total, regardless of customer count
+    const TARGET_SECONDS = 240;
+    const DELAY_BETWEEN_CUSTOMERS = Math.max(300, Math.floor((TARGET_SECONDS * 1000) / allCustomerIds.length));
+    console.log(`[stripe-only] Target: ${TARGET_SECONDS}s for ${allCustomerIds.length} customers = ${DELAY_BETWEEN_CUSTOMERS}ms delay per customer`);
 
     for (let i = 0; i < allCustomerIds.length; i++) {
       const customerId = allCustomerIds[i];
