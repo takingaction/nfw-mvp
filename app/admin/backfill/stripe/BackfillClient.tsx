@@ -262,6 +262,11 @@ export default function BackfillClient() {
   const [stripeOnlyTotal, setStripeOnlyTotal] = useState(0);
   const [stripeOnlyGeneratedAt, setStripeOnlyGeneratedAt] = useState<number | null>(null);
 
+  // Export Email CSV
+  const [exportCsvLoading, setExportCsvLoading] = useState(false);
+  const [exportCsvReady, setExportCsvReady] = useState(false);
+  const [exportCsvGeneratedAt, setExportCsvGeneratedAt] = useState<number | null>(null);
+
   // Load cached Stripe Only data on mount
   useEffect(() => {
     const cached = sessionStorage.getItem("stripeOnlyCharges");
@@ -275,6 +280,16 @@ export default function BackfillClient() {
       } catch {
         // ignore
       }
+    }
+  }, []);
+
+  // Load cached Export Email CSV data
+  useEffect(() => {
+    const cached = sessionStorage.getItem("exportEmailCsv");
+    const cachedGeneratedAt = sessionStorage.getItem("exportEmailCsvGeneratedAt");
+    if (cached && cachedGeneratedAt) {
+      setExportCsvReady(true);
+      setExportCsvGeneratedAt(parseInt(cachedGeneratedAt));
     }
   }, []);
 
@@ -348,6 +363,32 @@ export default function BackfillClient() {
     a.download = `stripe-only-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  }, []);
+
+  // Export Email CSV
+  const handleExportEmailCsv = useCallback(async () => {
+    setExportCsvLoading(true);
+    try {
+      const res = await fetch("/api/admin/backfill/stripe/reconcile?format=csv");
+      if (res.ok) {
+        const csv = await res.text();
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `email-reconciliation-${new Date().toISOString().split("T")[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setExportCsvLoading(false);
+      } else {
+        alert("Failed to generate CSV: " + res.statusText);
+        setExportCsvLoading(false);
+      }
+    } catch (error) {
+      console.error("Failed to export CSV:", error);
+      alert("Failed to generate CSV");
+      setExportCsvLoading(false);
+    }
   }, []);
 
   // Fetch live Stripe stats
@@ -806,6 +847,13 @@ export default function BackfillClient() {
             >
               {reconciliationLoading ? "Loading..." : "Refresh Reconciliation"}
             </button>
+            <button
+              onClick={handleExportEmailCsv}
+              disabled={exportCsvLoading}
+              className="text-sm bg-nfw-lilac text-white px-3 py-1 rounded hover:bg-nfw-lilac/90 disabled:opacity-50"
+            >
+              {exportCsvLoading ? "Exporting (~30 sec)..." : "Export Email CSV"}
+            </button>
           </div>
         </div>
 
@@ -839,53 +887,10 @@ export default function BackfillClient() {
                 <thead className="bg-nfw-aubergine/5">
                   <tr>
                     <th className="text-left px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Metric</th>
-                    <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">
-                      <div className="flex flex-col items-center gap-1">
-                        <span>Stripe Live</span>
-                        <a
-                          href="/api/admin/backfill/stripe/export/stripe-live?tier=contributing"
-                          download
-                          className="text-xs font-normal text-nfw-wisteria hover:text-nfw-wisteria/80 underline"
-                        >
-                          CSV
-                        </a>
-                      </div>
-                    </th>
+                    <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Stripe Live</th>
                     <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">True $</th>
-                    <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">
-                      <div className="flex flex-col items-center gap-1">
-                        <span>Our DB</span>
-                        <a
-                          href="/api/admin/backfill/stripe/export/our-db?tier=contributing"
-                          download
-                          className="text-xs font-normal text-nfw-wisteria hover:text-nfw-wisteria/80 underline"
-                        >
-                          CSV
-                        </a>
-                      </div>
-                    </th>
-                    <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">
-                      <div className="flex flex-col items-center gap-1">
-                        <span>Difference</span>
-                        <div className="flex gap-1">
-                          <a
-                            href="/api/admin/backfill/stripe/export/difference?tier=contributing&direction=stripe"
-                            download
-                            className="text-xs font-normal text-nfw-wisteria hover:text-nfw-wisteria/80 underline"
-                          >
-                            Stripe
-                          </a>
-                          <span className="text-nfw-blackberry/30">/</span>
-                          <a
-                            href="/api/admin/backfill/stripe/export/difference?tier=contributing&direction=db"
-                            download
-                            className="text-xs font-normal text-nfw-wisteria hover:text-nfw-wisteria/80 underline"
-                          >
-                            DB
-                          </a>
-                        </div>
-                      </div>
-                    </th>
+                    <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Our DB</th>
+                    <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Difference</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-nfw-dove">

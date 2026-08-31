@@ -12450,3 +12450,44 @@ Removed SQL backup files from git history using BFG Repo-Cleaner:
 - `nfw_backup_full_20260831.sql`
 
 Added `/*.sql` to `.gitignore` to prevent future SQL files from being tracked.
+
+## Session 2026-08-31 (Evening): Stripe Backfill Email CSV Export
+
+### Goal
+Complete Export Email CSV feature and write SQL migration to find emails from stripe-emails.csv not in membership_payments
+
+### Constraints & Preferences
+- Export Email CSV: EMAIL,IN_STRIPE,IN_DB,STRIPE_TIER,DB_TIER,AMOUNT format, unmatched first split, then alphabetical
+- SQL query: find emails in stripe-emails.csv (910 emails) that have no record in membership_payments
+
+### Completed
+
+1. **Export Email CSV Feature**
+   - Added `format=csv` support to `reconcile/route.ts` with customer email fetching via `customers.retrieve()` fallback
+   - Added "Export Email CSV" button to `BackfillClient.tsx`
+   - Changed button from `window.open` (new tab) to fetch + Blob download pattern
+   - Removed old CSV link text from Reconciliation table headers (Stripe Live, Our DB, Difference columns)
+
+2. **SQL Migration File**
+   - Created `supabase/migrations/151_stripe_emails_not_in_payments_query.sql`
+   - Contains 910 emails from `REPORTS-IGNORE/stripe-emails.csv`
+   - Includes 3 query variants:
+     - Query 1: Emails from stripe-emails.csv with NO record in membership_payments
+     - Query 2: Emails where profile exists but has NO payment record
+     - Query 3: Combined view showing profile + payment status
+
+### Key Decisions
+- Use fetch + Blob download (not window.open) so button shows loading state and download prompt appears after completion
+- Button text: "Exporting (~30 sec)..." during load, "Export Email CSV" when idle
+- Use two-step pattern: click → fetch → download (matches existing Stripe Only section pattern)
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `app/api/admin/backfill/stripe/reconcile/route.ts` | Added format=csv support with customer email fetching |
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Added Export Email CSV button with fetch + Blob download pattern |
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/151_stripe_emails_not_in_payments_query.sql` | SQL migration with 910 emails and 3 query variants |
