@@ -1,10 +1,12 @@
--- Migration: Find stripe-emails.csv emails not in membership_payments
--- Purpose: Query to identify emails from stripe-emails.csv that have no record in membership_payments
+-- Migration: Query stripe-emails.csv against membership_payments
+-- Purpose: Find emails from Stripe export that have no record in membership_payments
+-- Source: REPORTS-IGNORE/stripe-emails.csv (910 emails, no header, one per line)
+-- Run in Supabase SQL Editor - temp table auto-deletes when session ends
 
 -- Create temp table with emails from stripe-emails.csv
 CREATE TEMP TABLE stripe_emails (email TEXT);
 
--- Insert all 910 emails from stripe-emails.csv
+-- Insert all 910 emails (sourced directly from REPORTS-IGNORE/stripe-emails.csv)
 INSERT INTO stripe_emails (email) VALUES
 ('1sjrodriguez.2many@gmail.com'),
 ('2adventureridge@gmail.com'),
@@ -383,7 +385,7 @@ INSERT INTO stripe_emails (email) VALUES
 ('janzenmusic@gmail.com'),
 ('jarasviroj.s@gmail.com'),
 ('jasmine@eightthirtyseven.co'),
-('jayram.shruthi@gmail.com'),
+('jayaram.shruthi@gmail.com'),
 ('jaycey.ells@gmail.com'),
 ('jayraacevedo@gmail.com'),
 ('jaytobar@gmail.com'),
@@ -604,7 +606,7 @@ INSERT INTO stripe_emails (email) VALUES
 ('monicasilvagutierrez888@gmail.com'),
 ('monika@violetroots.com'),
 ('montsho510@gmail.com'),
-('mon Yakje@gmail.com'),
+('monyakje@gmail.com'),
 ('moraimacapellan@gmail.com'),
 ('moralyssa15@gmail.com'),
 ('morganrtw@gmail.com'),
@@ -617,7 +619,7 @@ INSERT INTO stripe_emails (email) VALUES
 ('msambrosky@yahoo.com'),
 ('mslashaeynewton@gmail.com'),
 ('msmehvishkhan@gmail.com'),
-('mspaula fukuhara@gmail.com'),
+('mspaulafukuhara@gmail.com'),
 ('mx.suja@proton.me'),
 ('myaiach@gmail.com'),
 ('myangeljaniceceold@gmail.com'),
@@ -801,7 +803,7 @@ INSERT INTO stripe_emails (email) VALUES
 ('sofiacitarella@yahoo.com'),
 ('sokituya13@gmail.com'),
 ('soniajostyles@gmail.com'),
-('sowliberation@proton.me'),
+('sowingliberation@proton.me'),
 ('spanarkelm@apboe.org'),
 ('sphilpottstreiff@gmail.com'),
 ('spice1387@gmail.com'),
@@ -865,7 +867,7 @@ INSERT INTO stripe_emails (email) VALUES
 ('tkadance@gmail.com'),
 ('tm21275@gmail.com'),
 ('tmyouman@gmail.com'),
-('taczauer@gmail.com'),
+('toczauer@gmail.com'),
 ('tollivermiller@gmail.com'),
 ('toni.carbetta@outlook.com'),
 ('tonnasmith1002@gmail.com'),
@@ -918,8 +920,7 @@ INSERT INTO stripe_emails (email) VALUES
 ('zobakre@gmail.com');
 
 -- Query 1: Find emails NOT in membership_payments (via profiles join)
--- This returns emails from stripe-emails.csv that have NO record in membership_payments
--- (profile may or may not exist)
+-- Returns emails from stripe-emails.csv that have NO record in membership_payments
 SELECT se.email
 FROM stripe_emails se
 LEFT JOIN (
@@ -932,7 +933,7 @@ WHERE payments.email IS NULL
 ORDER BY se.email;
 
 -- Query 2: Find emails where profile exists but has no payment record
--- (profile exists with matching email, but no membership_payments record)
+-- Returns emails where a profile exists but has NO membership_payments record
 SELECT se.email
 FROM stripe_emails se
 LEFT JOIN profiles p ON LOWER(se.email) = LOWER(p.email)
@@ -940,8 +941,8 @@ LEFT JOIN membership_payments mp ON p.id = mp.user_id
 WHERE p.id IS NOT NULL AND mp.id IS NULL
 ORDER BY se.email;
 
--- Query 3: Combined - find all emails with no profile AND no payment record
--- This shows emails that appear nowhere in our system
+-- Query 3: Combined view showing profile + payment status
+-- Returns all emails with no profile OR no payment
 SELECT 
   se.email,
   CASE WHEN p.id IS NULL THEN 'No Profile' ELSE 'Has Profile' END as profile_status,
@@ -952,5 +953,5 @@ LEFT JOIN membership_payments mp ON p.id = mp.user_id
 WHERE p.id IS NULL OR mp.id IS NULL
 ORDER BY profile_status, se.email;
 
--- Cleanup (optional - run manually if needed)
--- DROP TEMP TABLE stripe_emails;
+-- Temp table auto-deletes when SQL Editor session ends
+-- No manual cleanup needed
