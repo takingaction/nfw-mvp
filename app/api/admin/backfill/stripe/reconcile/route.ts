@@ -116,25 +116,14 @@ export async function GET(request: Request) {
     // Step 1c: Find emails in Stripe but not in any profile
     const { data: allProfiles } = await supabase
       .from("profiles")
-      .select("email");
+      .select("email")
+      .limit(10000);
 
     const allProfileEmails = new Set<string>();
     for (const profile of allProfiles || []) {
       if (profile.email) {
         allProfileEmails.add(profile.email.toLowerCase());
       }
-    }
-
-    // DEBUG
-    console.log("[reconcile] stripeEmailMap size:", stripeEmailMap.size);
-    console.log("[reconcile] allProfileEmails size:", allProfileEmails.size);
-    if (stripeEmailMap.size > 0) {
-      const sampleStripe = Array.from(stripeEmailMap.keys()).slice(0, 3);
-      console.log("[reconcile] sample stripe emails:", sampleStripe);
-    }
-    if (allProfileEmails.size > 0) {
-      const sampleProfiles = Array.from(allProfileEmails).slice(0, 3);
-      console.log("[reconcile] sample profile emails:", sampleProfiles);
     }
 
     const missingFromDb: string[] = [];
@@ -144,8 +133,6 @@ export async function GET(request: Request) {
       }
     }
     missingFromDb.sort();
-
-    console.log("[reconcile] missingFromDb size:", missingFromDb.length);
 
     // Step 1b: Get TRUE totals from actual invoice amounts
     let trueContributingTotal = 0;
