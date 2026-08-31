@@ -81,39 +81,79 @@ export async function GET(request: Request) {
     console.log(`[stripe-only] Profiles loaded: ${allProfiles.length}`);
     console.log(`[stripe-only] Emails in map: ${profileByEmail.size}`);
 
-    // Step 2: Get ALL Stripe charges (15/100 amounts) directly from charges.list()
-    // This is MUCH more efficient than iterating through subscriptions
-    // Instead of N API calls (one per subscription), we make ~38 calls (one per 100 charges)
+    // Step 2: Get ALL Stripe subscriptions with their customer IDs
+    // Then fetch charges for each subscription with proper batching
     const allCharges: StripeCharge[] = [];
     const processedChargeIds = new Set<string>();
-    const MEMBERSHIP_CREATED_AFTER = Math.floor(new Date("2026-01-01").getTime() / 1000);
+    const customerChargeCache = new Map<string, StripeCharge[]>();
 
-    let chargeHasMore = true;
-    let chargeCursor: string | undefined;
+    // Get all subscription customer IDs first (no charge fetching yet)
+    const allCustomerIds: string[] = [];
+    const statuses: Array<"active" | "past_due" | "canceled" | "unpaid" | "trialing" | "incomplete" | "incomplete_expired" | "paused"> =
+      ["active", "past_due", "canceled", "unpaid", "trialing", "incomplete", "incomplete_expired", "paused"];
 
-    while (chargeHasMore) {
-      let retryCount = 0;
-      const maxRetries = 3;
+    console.log(`[stripe-only] Fetching all subscription customer IDs...`);
 
-      while (retryCount < maxRetries) {
+    for (const status of statuses) {
+      let subHasMore = true;
+      let subCursor: string | undefined;
+      let pageNum = 0;
+
+      while (subHasMore) {
+        pageNum++;
         try {
-          // Add 250ms delay between charge list calls to avoid rate limits
-          await new Promise(r => setTimeout(r, 250));
+          const subParams: any = { limit: 100, status };
+          if (subCursor) subParams.starting_after = subCursor;
 
-          const chargeParams: any = {
-            limit: 100,
-            created: { gte: MEMBERSHIP_CREATED_AFTER },
-          };
-          if (chargeCursor) chargeParams.starting_after = chargeCursor;
+          // Add delay between subscription list calls
+          await new Promise(r => setTimeout(r, 200));
 
-          const chargesResponse = await stripe.charges.list(chargeParams);
-          chargeHasMore = chargesResponse.has_more;
+          const subsResponse = await stripe.subscriptions.list(subParams as any);
+          subHasMore = subsResponse.has_more;
 
-          if (chargesResponse.data.length > 0) {
-            chargeCursor = chargesResponse.data[chargesResponse.data.length - 1].id;
+          if (subsResponse.data.length > 0) {
+            subCursor = subsResponse.data[subsResponse.data.length - 1].id;
+
+            for (const sub of subsResponse.data) {
+              if (sub.customer && !allCustomerIds.includes(sub.customer as string)) {
+                allCustomerIds.push(sub.customer as string);
+              }
+            }
           }
 
-          for (const charge of chargesResponse.data) {
+          console.log(`[stripe-only] Status ${status}, page ${pageNum}: ${allCustomerIds.length} customers so far`);
+        } catch (err: any) {
+          console.error(`[stripe-only] Error listing subscriptions (${status}):`, err.message);
+          subHasMore = false;
+        }
+      }
+    }
+
+    console.log(`[stripe-only] Total unique customers: ${allCustomerIds.length}`);
+
+    // Now fetch charges for each customer in batches with rate limiting
+    // Process in chunks of 20 customers, with delay between each customer
+    const BATCH_SIZE = 20;
+    const DELAY_BETWEEN_CUSTOMERS = 500; // 500ms between each customer to avoid rate limits
+
+    for (let i = 0; i < allCustomerIds.length; i += BATCH_SIZE) {
+      const batch = allCustomerIds.slice(i, i + BATCH_SIZE);
+      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+      const totalBatches = Math.ceil(allCustomerIds.length / BATCH_SIZE);
+
+      console.log(`[stripe-only] Processing batch ${batchNum}/${totalBatches} (${batch.length} customers)`);
+
+      for (const customerId of batch) {
+        // Add delay between each customer's charges.list() call
+        await new Promise(r => setTimeout(r, DELAY_BETWEEN_CUSTOMERS));
+
+        try {
+          const charges = await stripe.charges.list({
+            customer: customerId,
+            limit: 100,
+          });
+
+          for (const charge of charges.data) {
             // Only membership amounts ($15 = 1500, $100 = 10000), avoid duplicates
             if ((charge.amount === 1500 || charge.amount === 10000) && !processedChargeIds.has(charge.id)) {
               processedChargeIds.add(charge.id);
@@ -127,29 +167,18 @@ export async function GET(request: Request) {
               });
             }
           }
-
-          console.log(`[stripe-only] Charges fetched so far: ${allCharges.length}, has_more: ${chargeHasMore}`);
-          break; // Success, exit retry loop
-
         } catch (err: any) {
-          if (err.type === 'StripeRateLimitError' || err.statusCode === 429) {
-            retryCount++;
-            console.warn(`Rate limited fetching charges, retry ${retryCount}/${maxRetries}`);
-            // Exponential backoff: 500ms, 1000ms, 2000ms
-            await new Promise(r => setTimeout(r, 500 * Math.pow(2, retryCount - 1)));
-          } else {
-            // Non-rate-limit error, log and continue
-            console.error(`Error fetching charges:`, err.message);
-            chargeHasMore = false;
-            break;
-          }
+          // Log but continue - we don't want to fail the whole export for one bad customer
+          console.warn(`[stripe-only] Error fetching charges for customer ${customerId}:`, err.message);
         }
       }
 
-      if (retryCount >= maxRetries) {
-        console.error(`Failed after ${maxRetries} retries for charges, stopping pagination`);
-        chargeHasMore = false;
+      // Extra delay between batches
+      if (i + BATCH_SIZE < allCustomerIds.length) {
+        await new Promise(r => setTimeout(r, 1000));
       }
+
+      console.log(`[stripe-only] Batch ${batchNum} complete: ${allCharges.length} membership charges found`);
     }
 
     console.log(`[stripe-only] Total unique Stripe charges found: ${allCharges.length}`);
