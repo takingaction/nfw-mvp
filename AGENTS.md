@@ -12351,3 +12351,78 @@ const DELAY_BETWEEN_CUSTOMERS = Math.max(300, Math.floor((TARGET_SECONDS * 1000)
 - sessionStorage: stores charges array for table display + client-side export
 - global variable: stores export data for server-side export fallback
 - 10 minute TTL on cache
+
+## Session 2026-08-31: Fix Incorrect Membership Levels for Paid Members
+
+### Problem
+
+10 members had successful Stripe payments but their `membership_level` was wrong:
+- 8 were `free` instead of `contributing`
+- 1 was `waitlist` (pipe.ashley) instead of `contributing`
+- 1 was `free` (michelle, admin) instead of `contributing`
+
+All had successful $15 payments recorded in `membership_payments` and `first_paid_level = 'contributing'`, but the `membership_level` and `subscription_status` were never updated.
+
+### Investigation
+
+1. Checked profiles for all 10 emails - confirmed they had successful payments
+2. Checked `membership_payments` - all had successful $15 signup payments
+3. Found michelle was missing `stripe_customer_id` - needed to add `cus_UZAzVTh5ALEdoJ`
+
+### SQL Applied
+
+```sql
+-- 1. Update michelle's stripe_customer_id
+UPDATE profiles
+SET stripe_customer_id = 'cus_UZAzVTh5ALEdoJ',
+    updated_at = first_paid_at
+WHERE email = 'michelle@nationalfundforwomen.org';
+
+-- 2. Update waitlist member with previous_membership_level tracking
+UPDATE profiles
+SET 
+  membership_level = 'contributing',
+  subscription_status = 'active',
+  previous_membership_level = 'waitlist',
+  updated_at = first_paid_at
+WHERE email = 'pipe.ashley@gmail.com'
+AND membership_level = 'waitlist';
+
+-- 3. Update non-waitlist members (free → contributing)
+UPDATE profiles
+SET 
+  membership_level = 'contributing',
+  subscription_status = 'active',
+  updated_at = first_paid_at
+WHERE email IN (
+  'grahmamelie@gmail.com',
+  'kenneshamoore@yahoo.com',
+  'yjdgreen@gmail.com',
+  'chalitaj221@gmail.com',
+  'danielle.cornish.avl@gmail.com',
+  'ferraroluxebuilders@gmail.com',
+  'espinozakimberly.0826@gmail.com',
+  'levi@speakwright.org',
+  'michelle@nationalfundforwomen.org'
+)
+AND membership_level != 'contributing';
+```
+
+### Verification Results
+
+| Member | Before | After |
+|--------|--------|-------|
+| 8 members (free) | `membership_level = 'free'` | `membership_level = 'contributing'` |
+| pipe.ashley (waitlist) | `membership_level = 'waitlist'` | `membership_level = 'contributing'` |
+| michelle (admin) | `stripe_customer_id = null` | `stripe_customer_id = 'cus_UZAzVTh5ALEdoJ'` |
+| All 10 | `subscription_status = 'failed'` or `null` | `subscription_status = 'active'` |
+
+### Git Cleanup
+
+Removed SQL backup files from git history using BFG Repo-Cleaner:
+- `nfw_backup_full_20260824.sql`
+- `nfw_backup_full_20260825.sql`
+- `nfw_backup_full_20260826.sql`
+- `nfw_backup_full_20260831.sql`
+
+Added `/*.sql` to `.gitignore` to prevent future SQL files from being tracked.
