@@ -85,7 +85,6 @@ export async function GET(request: Request) {
     // Then fetch charges for each subscription with proper batching
     const allCharges: StripeCharge[] = [];
     const processedChargeIds = new Set<string>();
-    const customerChargeCache = new Map<string, StripeCharge[]>();
 
     // Get all subscription customer IDs first (no charge fetching yet)
     const allCustomerIds: string[] = [];
@@ -106,7 +105,7 @@ export async function GET(request: Request) {
           if (subCursor) subParams.starting_after = subCursor;
 
           // Add delay between subscription list calls
-          await new Promise(r => setTimeout(r, 200));
+          await new Promise(r => setTimeout(r, 500));
 
           const subsResponse = await stripe.subscriptions.list(subParams as any);
           subHasMore = subsResponse.has_more;
@@ -131,54 +130,49 @@ export async function GET(request: Request) {
 
     console.log(`[stripe-only] Total unique customers: ${allCustomerIds.length}`);
 
-    // Now fetch charges for each customer in batches with rate limiting
-    // Process in chunks of 20 customers, with delay between each customer
-    const BATCH_SIZE = 20;
-    const DELAY_BETWEEN_CUSTOMERS = 500; // 500ms between each customer to avoid rate limits
+    // Now fetch charges for each customer with VERY long delays to avoid rate limits
+    // 5 seconds between each customer's charges.list() call
+    // This export can take 10+ minutes to complete - that's expected
+    const DELAY_BETWEEN_CUSTOMERS = 5000; // 5 seconds
 
-    for (let i = 0; i < allCustomerIds.length; i += BATCH_SIZE) {
-      const batch = allCustomerIds.slice(i, i + BATCH_SIZE);
-      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-      const totalBatches = Math.ceil(allCustomerIds.length / BATCH_SIZE);
+    for (let i = 0; i < allCustomerIds.length; i++) {
+      const customerId = allCustomerIds[i];
+      const customerNum = i + 1;
 
-      console.log(`[stripe-only] Processing batch ${batchNum}/${totalBatches} (${batch.length} customers)`);
-
-      for (const customerId of batch) {
-        // Add delay between each customer's charges.list() call
+      // Add delay between each customer's charges.list() call
+      if (i > 0) {
         await new Promise(r => setTimeout(r, DELAY_BETWEEN_CUSTOMERS));
+      }
 
-        try {
-          const charges = await stripe.charges.list({
-            customer: customerId,
-            limit: 100,
-          });
+      try {
+        const charges = await stripe.charges.list({
+          customer: customerId,
+          limit: 100,
+        });
 
-          for (const charge of charges.data) {
-            // Only membership amounts ($15 = 1500, $100 = 10000), avoid duplicates
-            if ((charge.amount === 1500 || charge.amount === 10000) && !processedChargeIds.has(charge.id)) {
-              processedChargeIds.add(charge.id);
-              allCharges.push({
-                id: charge.id,
-                customer: charge.customer as string,
-                amount: charge.amount,
-                currency: charge.currency,
-                created: charge.created,
-                billing_details: charge.billing_details,
-              });
-            }
+        for (const charge of charges.data) {
+          // Only membership amounts ($15 = 1500, $100 = 10000), avoid duplicates
+          if ((charge.amount === 1500 || charge.amount === 10000) && !processedChargeIds.has(charge.id)) {
+            processedChargeIds.add(charge.id);
+            allCharges.push({
+              id: charge.id,
+              customer: charge.customer as string,
+              amount: charge.amount,
+              currency: charge.currency,
+              created: charge.created,
+              billing_details: charge.billing_details,
+            });
           }
-        } catch (err: any) {
-          // Log but continue - we don't want to fail the whole export for one bad customer
-          console.warn(`[stripe-only] Error fetching charges for customer ${customerId}:`, err.message);
         }
-      }
 
-      // Extra delay between batches
-      if (i + BATCH_SIZE < allCustomerIds.length) {
-        await new Promise(r => setTimeout(r, 1000));
+        // Progress log every 25 customers
+        if (customerNum % 25 === 0 || customerNum === allCustomerIds.length) {
+          console.log(`[stripe-only] Processed ${customerNum}/${allCustomerIds.length} customers: ${allCharges.length} membership charges found`);
+        }
+      } catch (err: any) {
+        // Log but continue - we don't want to fail the whole export for one bad customer
+        console.warn(`[stripe-only] Error fetching charges for customer ${customerId}:`, err.message);
       }
-
-      console.log(`[stripe-only] Batch ${batchNum} complete: ${allCharges.length} membership charges found`);
     }
 
     console.log(`[stripe-only] Total unique Stripe charges found: ${allCharges.length}`);
