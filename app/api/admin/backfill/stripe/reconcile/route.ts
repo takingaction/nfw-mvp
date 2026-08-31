@@ -125,6 +125,18 @@ export async function GET(request: Request) {
       }
     }
 
+    // DEBUG
+    console.log("[reconcile] stripeEmailMap size:", stripeEmailMap.size);
+    console.log("[reconcile] allProfileEmails size:", allProfileEmails.size);
+    if (stripeEmailMap.size > 0) {
+      const sampleStripe = Array.from(stripeEmailMap.keys()).slice(0, 3);
+      console.log("[reconcile] sample stripe emails:", sampleStripe);
+    }
+    if (allProfileEmails.size > 0) {
+      const sampleProfiles = Array.from(allProfileEmails).slice(0, 3);
+      console.log("[reconcile] sample profile emails:", sampleProfiles);
+    }
+
     const missingFromDb: string[] = [];
     for (const email of stripeEmailMap.keys()) {
       if (!allProfileEmails.has(email)) {
@@ -132,6 +144,8 @@ export async function GET(request: Request) {
       }
     }
     missingFromDb.sort();
+
+    console.log("[reconcile] missingFromDb size:", missingFromDb.length);
 
     // Step 1b: Get TRUE totals from actual invoice amounts
     let trueContributingTotal = 0;
