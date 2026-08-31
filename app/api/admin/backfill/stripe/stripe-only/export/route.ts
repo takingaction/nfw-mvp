@@ -22,43 +22,46 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Fetch stripe-only data
-    const stripeOnlyRes = await fetch(
-      new URL("/api/admin/backfill/stripe/stripe-only", request.url),
-      {
-        headers: {
-          cookie: request.headers.get("cookie") || "",
-        },
-      }
-    );
-
-    if (!stripeOnlyRes.ok) {
-      return NextResponse.json({ error: "Failed to fetch Stripe Only data" }, { status: 500 });
+    // Check for cached export data from the main stripe-only endpoint
+    const cachedData = (global as any).__stripeOnlyExportData;
+    
+    if (!cachedData) {
+      return NextResponse.json(
+        { error: "No cached data. Please click 'Generate CSV' button first and wait for it to complete." },
+        { status: 400 }
+      );
     }
 
-    const { charges, count, total } = await stripeOnlyRes.json();
+    // Check if cache is older than 10 minutes
+    const TEN_MINUTES = 10 * 60 * 1000;
+    if (Date.now() - cachedData.generatedAt > TEN_MINUTES) {
+      return NextResponse.json(
+        { error: "Cache expired. Please click 'Generate CSV' button again." },
+        { status: 400 }
+      );
+    }
+
+    const { charges } = cachedData;
 
     // Build CSV
     const headers = [
+      "Email",
+      "Name",
       "Charge ID",
       "Customer ID",
-      "Email",
       "Amount",
       "Currency",
       "Date",
-      "Matched By",
-      "Profile ID",
     ];
 
     const rows = charges.map((c: any) => [
+      c.email || "",
+      c.name || "",
       c.charge_id,
       c.customer_id,
-      c.email || "",
       c.amount.toFixed(2),
       c.currency,
       c.created,
-      c.matched_by || "",
-      c.profile_id || "",
     ]);
 
     const csv = [

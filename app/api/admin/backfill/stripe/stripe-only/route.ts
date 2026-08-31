@@ -221,10 +221,24 @@ export async function GET(request: Request) {
 
     const total = stripeOnlyCharges.reduce((sum, c) => sum + c.amount, 0);
 
+    // Store result in memory for export endpoint to pick up (will be cleared after export or 10 min timeout)
+    const exportData = {
+      charges: stripeOnlyCharges,
+      count: stripeOnlyCharges.length,
+      total: total,
+      generatedAt: Date.now(),
+    };
+
+    // Store in a global variable (resets on server restart, but that's fine for our use case)
+    (global as any).__stripeOnlyExportData = exportData;
+    console.log(`[stripe-only] Stored export data, will be available at /export endpoint for 10 minutes`);
+
     return NextResponse.json({
       charges: stripeOnlyCharges,
       count: stripeOnlyCharges.length,
       total: total,
+      cached: false,
+      generatedAt: exportData.generatedAt,
     });
 
   } catch (error: any) {

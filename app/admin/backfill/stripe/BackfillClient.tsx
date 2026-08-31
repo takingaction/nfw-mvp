@@ -260,6 +260,23 @@ export default function BackfillClient() {
   const [stripeOnly, setStripeOnly] = useState<any[]>([]);
   const [stripeOnlyLoading, setStripeOnlyLoading] = useState(false);
   const [stripeOnlyTotal, setStripeOnlyTotal] = useState(0);
+  const [stripeOnlyGeneratedAt, setStripeOnlyGeneratedAt] = useState<number | null>(null);
+
+  // Load cached Stripe Only data on mount
+  useEffect(() => {
+    const cached = sessionStorage.getItem("stripeOnlyCharges");
+    const cachedTotal = sessionStorage.getItem("stripeOnlyTotal");
+    const cachedGeneratedAt = sessionStorage.getItem("stripeOnlyGeneratedAt");
+    if (cached) {
+      try {
+        setStripeOnly(JSON.parse(cached));
+        setStripeOnlyTotal(cachedTotal ? parseFloat(cachedTotal) : 0);
+        setStripeOnlyGeneratedAt(cachedGeneratedAt ? parseInt(cachedGeneratedAt) : null);
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
 
   // Fetch status
   const fetchStatus = useCallback(async () => {
@@ -290,12 +307,47 @@ export default function BackfillClient() {
         const data = await res.json();
         setStripeOnly(data.charges || []);
         setStripeOnlyTotal(data.total || 0);
+        setStripeOnlyGeneratedAt(data.generatedAt || Date.now());
+        // Store in sessionStorage for export
+        sessionStorage.setItem("stripeOnlyCharges", JSON.stringify(data.charges || []));
+        sessionStorage.setItem("stripeOnlyTotal", String(data.total || 0));
+        sessionStorage.setItem("stripeOnlyGeneratedAt", String(data.generatedAt || Date.now()));
       }
     } catch (error) {
       console.error("Failed to fetch Stripe Only:", error);
     } finally {
       setStripeOnlyLoading(false);
     }
+  }, []);
+
+  // Download Stripe Only CSV from cache
+  const downloadStripeOnlyCSV = useCallback(() => {
+    const cached = sessionStorage.getItem("stripeOnlyCharges");
+    if (!cached) {
+      alert("No cached data. Please click 'Generate CSV' first.");
+      return;
+    }
+    const charges = JSON.parse(cached);
+    const headers = ["Email", "Full Name", "Tier", "Status", "Charge ID", "Customer ID", "Amount", "Currency", "Date"];
+    const rows = charges.map((c: any) => [
+      c.email || "",
+      c.name || "",
+      c.tier || "",
+      c.status || "",
+      c.charge_id || "",
+      c.customer_id || "",
+      c.amount || 0,
+      c.currency || "",
+      c.created || "",
+    ]);
+    const csv = [headers, ...rows].map((row: string[]) => row.map((cell: string) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `stripe-only-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }, []);
 
   // Fetch live Stripe stats
@@ -1039,14 +1091,16 @@ export default function BackfillClient() {
               disabled={stripeOnlyLoading}
               className="text-sm bg-nfw-wisteria text-white px-3 py-1 rounded hover:bg-nfw-wisteria/90 disabled:opacity-50"
             >
-              {stripeOnlyLoading ? "Loading..." : "Refresh"}
+              {stripeOnlyLoading ? "Generating (~4 min)..." : (stripeOnlyGeneratedAt ? "Regenerate CSV" : "Generate CSV")}
             </button>
-            <button
-              onClick={() => window.open("/api/admin/backfill/stripe/stripe-only/export", "_blank")}
-              className="text-sm bg-nfw-lilac text-white px-3 py-1 rounded hover:bg-nfw-lilac/90"
-            >
-              Export CSV
-            </button>
+            {stripeOnlyGeneratedAt && !stripeOnlyLoading && (
+              <button
+                onClick={downloadStripeOnlyCSV}
+                className="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+              >
+                Download CSV ({stripeOnly.length} charges)
+              </button>
+            )}
             <button
               onClick={() => window.open("/api/admin/backfill/stripe/all-transactions/export", "_blank")}
               className="text-sm bg-nfw-aubergine text-white px-3 py-1 rounded hover:bg-nfw-aubergine/90"
@@ -1055,6 +1109,11 @@ export default function BackfillClient() {
             </button>
           </div>
         </div>
+        {stripeOnlyGeneratedAt && (
+          <div className="px-4 py-2 bg-green-50 border-b border-green-200 text-xs text-green-700">
+            CSV generated at {new Date(stripeOnlyGeneratedAt).toLocaleTimeString()}. Download link is valid until you generate a new CSV.
+          </div>
+        )}
         {stripeOnly.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">

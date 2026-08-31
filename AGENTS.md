@@ -12306,3 +12306,48 @@ Changed from subscription-based iteration to direct `stripe.charges.list()` pagi
 | File | Change |
 |------|--------|
 | `app/api/admin/backfill/stripe/stripe-only/route.ts` | Rewrote charge fetching to use direct `charges.list()` pagination |
+
+## Session 2026-08-31: Async CSV Generation for Stripe Export
+
+### Overview
+
+Implemented async CSV generation pattern for the Stripe export to avoid browser timeout issues. The generation happens in the background (~4 minutes) and a download link appears when it's done.
+
+### Problem
+
+The Stripe export CSV download was timing out or appearing to complete instantly because:
+1. The download triggered the slow API endpoint again
+2. The rate-limited endpoint was causing issues
+
+### Solution
+
+**Step 1: Generate in background, cache result**
+
+1. Click "Generate CSV" → starts ~4 min background process
+2. While running: button shows "Generating (~4 min)..."
+3. When done: green "Download CSV (X charges)" button appears
+4. Data cached in sessionStorage AND server-side global variable
+5. Click download → instant CSV from cache
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/backfill/stripe/stripe-only/route.ts` | Stores result in global variable for export endpoint |
+| `app/api/admin/backfill/stripe/stripe-only/export/route.ts` | Reads from cached global variable instead of re-querying |
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Added `downloadStripeOnlyCSV()` function, "Generate CSV" / "Download CSV" button states, sessionStorage caching |
+
+### Key Implementation
+
+**Dynamic delay calculation:**
+```typescript
+const TARGET_SECONDS = 240;
+const DELAY_BETWEEN_CUSTOMERS = Math.max(300, Math.floor((TARGET_SECONDS * 1000) / allCustomerIds.length));
+```
+- 33 customers → ~7.3s delay each → ~4 minutes total
+- 800 customers → 300ms delay each → ~4 minutes total
+
+**Cache strategy:**
+- sessionStorage: stores charges array for table display + client-side export
+- global variable: stores export data for server-side export fallback
+- 10 minute TTL on cache
