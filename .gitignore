@@ -48,3 +48,6 @@ ZDC-breach-*.txt
 
 # Reports folder (contains sensitive data)
 REPORTS-IGNORE/
+
+# SQL files
+/*.sql
