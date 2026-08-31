@@ -146,6 +146,11 @@ export default function GrantApplicationForm({
               <li>There are no nominations this grant cycle. Keep an eye out for future nomination-only grants!</li>
             </ul>
           </div>
+          <div className="bg-nfw-aubergine border border-nfw-aubergine p-5 mb-6">
+            <p className="font-serif text-sm text-white">
+              To keep microgrants fair and accessible to as many members as possible, members are not eligible to receive a grant two months in a row. For example, if you received a grant in August, you'll be eligible to receive another grant beginning in October. In the meantime, we encourage you to explore our other programs!
+            </p>
+          </div>
           <p className={labelClass}>
             Which grant are you applying for?{" "}
             <span className="text-nfw-lilac">*</span>

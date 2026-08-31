@@ -12491,3 +12491,24 @@ Complete Export Email CSV feature and write SQL migration to find emails from st
 | File | Purpose |
 |------|---------|
 | `supabase/migrations/151_stripe_emails_not_in_payments_query.sql` | SQL migration with 910 emails and 3 query variants |
+
+## Session 2026-08-31: Grant Eligibility Info Box
+
+### Overview
+
+Added a dedicated information box on the `/grants/apply` page above the grant selection to communicate the two-month eligibility rule for microgrants.
+
+### Changes Made
+
+**`components/GrantApplicationForm.tsx`:**
+- Added new aubergine box with eligibility text below the "Quick reminder before you apply:" box
+- Full aubergine background (`bg-nfw-aubergine`) with white text
+- Text: "To keep microgrants fair and accessible to as many members as possible, members are not eligible to receive a grant two months in a row. For example, if you received a grant in August, you'll be eligible to receive another grant beginning in October. In the meantime, we encourage you to explore our other programs!"
+
+### Layout
+
+```
+[Quick reminder before you apply: - wisteria box with bullets]
+[Eligibility info box - aubergine box with eligibility text]
+[Which grant are you applying for? - grant selection]
+```
