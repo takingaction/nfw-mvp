@@ -22,20 +22,11 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get profiles where signup_source = 'gift' or gift_code_redeemed = true
+    // Get profiles where gift_code_redeemed = true
     const { data: profiles, error } = await supabase
       .from("profiles")
-      .select(`
-        id,
-        email,
-        membership_level,
-        gift_code_redeemed,
-        stripe_customer_id,
-        gift_membership_codes(
-          code
-        )
-      `)
-      .or("signup_source.eq.gift,gift_code_redeemed.eq.true")
+      .select("id, email, membership_level, gift_code_redeemed, stripe_customer_id")
+      .eq("gift_code_redeemed", true)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -43,14 +34,26 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Get gift codes for these profiles
+    const profileIds = (profiles || []).map((p: any) => p.id);
+    let giftCodes: any[] = [];
+    if (profileIds.length > 0) {
+      const { data: codes } = await supabase
+        .from("gift_membership_codes")
+        .select("code, redeemed_by_user_id")
+        .in("redeemed_by_user_id", profileIds);
+      giftCodes = codes || [];
+    }
+
     // Transform to include redemption info
+    const codeByUserId = new Map(giftCodes.map((c: any) => [c.redeemed_by_user_id, c]));
     const transformed = (profiles || []).map((p: any) => ({
       id: p.id,
       email: p.email,
       membership_level: p.membership_level,
       gift_code_redeemed: p.gift_code_redeemed,
       stripe_customer_id: p.stripe_customer_id,
-      redemption: p.gift_membership_codes?.[0] || null,
+      redemption: codeByUserId.get(p.id) || null,
     }));
 
     return NextResponse.json({ profiles: transformed });
