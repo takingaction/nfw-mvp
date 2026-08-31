@@ -23,20 +23,28 @@ export async function GET() {
     }
 
     // Get profiles where gift_code_redeemed = true
-    const { data: profiles, error } = await supabase
-      .from("profiles")
-      .select("id, email, membership_level, gift_code_redeemed, stripe_customer_id")
-      .eq("gift_code_redeemed", true)
-      .order("created_at", { ascending: false });
+    let profiles: any[] = [];
+    let giftCodes: any[] = [];
+    
+    try {
+      const result = await supabase
+        .from("profiles")
+        .select("id, email, membership_level, gift_code_redeemed, stripe_customer_id")
+        .eq("gift_code_redeemed", true)
+        .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("[gift-codes] Error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      if (result.error) {
+        console.error("[gift-codes] Query error:", result.error);
+        return NextResponse.json({ error: result.error.message }, { status: 500 });
+      }
+      profiles = result.data || [];
+    } catch (e: any) {
+      console.error("[gift-codes] Unexpected error:", e);
+      return NextResponse.json({ error: e.message }, { status: 500 });
     }
 
     // Get gift codes for these profiles
-    const profileIds = (profiles || []).map((p: any) => p.id);
-    let giftCodes: any[] = [];
+    const profileIds = profiles.map((p: any) => p.id);
     if (profileIds.length > 0) {
       const { data: codes } = await supabase
         .from("gift_membership_codes")
@@ -47,7 +55,7 @@ export async function GET() {
 
     // Transform to include redemption info
     const codeByUserId = new Map(giftCodes.map((c: any) => [c.redeemed_by_user_id, c]));
-    const transformed = (profiles || []).map((p: any) => ({
+    const transformed = profiles.map((p: any) => ({
       id: p.id,
       email: p.email,
       membership_level: p.membership_level,
