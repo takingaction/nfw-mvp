@@ -9,6 +9,7 @@ import type { User } from "@supabase/supabase-js";
 interface Profile {
   full_name: string | null;
   is_admin: boolean | null;
+  is_reviewer: boolean | null;
 }
 
 interface NavLink {
@@ -27,6 +28,7 @@ export default function MobileMenu({ navLinks = [] }: MobileMenuProps) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isReviewer, setIsReviewer] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
 
   // Group navLinks into sections (parent items with indent=0 and their children)
@@ -66,6 +68,7 @@ export default function MobileMenu({ navLinks = [] }: MobileMenuProps) {
           const data = await response.json();
           setProfile(data);
           setIsAdmin(data.is_admin === true);
+          setIsReviewer(data.is_reviewer === true);
           localStorage.setItem("nfw_profile", JSON.stringify(data));
         }
       } catch (error) {
@@ -79,6 +82,7 @@ export default function MobileMenu({ navLinks = [] }: MobileMenuProps) {
       const parsed = JSON.parse(cached);
       setProfile(parsed);
       setIsAdmin(parsed?.is_admin === true);
+      setIsReviewer(parsed?.is_reviewer === true);
     }
 
     const supabase = createClient();
@@ -98,6 +102,7 @@ export default function MobileMenu({ navLinks = [] }: MobileMenuProps) {
       if (event === "SIGNED_OUT") {
         setProfile(null);
         setIsAdmin(false);
+        setIsReviewer(false);
         localStorage.removeItem("nfw_profile");
         return;
       }
@@ -252,6 +257,15 @@ export default function MobileMenu({ navLinks = [] }: MobileMenuProps) {
                           Admin Dashboard
                         </Link>
                       </>
+                    )}
+                    {(isAdmin || isReviewer) && (
+                      <Link
+                        href="/admin/grants"
+                        onClick={closeMenu}
+                        className="block px-4 py-2 text-white/80 hover:bg-white/10 transition-colors"
+                      >
+                        Manage Grants
+                      </Link>
                     )}
                     <div className="border-t border-white/10 my-2" />
                 <button

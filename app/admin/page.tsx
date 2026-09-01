@@ -1,4 +1,5 @@
-import { requireAdmin } from "@/lib/adminCheck";
+import { requireGrantsAccess } from "@/lib/adminCheck";
+import { redirect } from "next/navigation";
 import AdminHubClient from "./AdminHubClient";
 
 export const metadata = {
@@ -7,7 +8,12 @@ export const metadata = {
 };
 
 export default async function AdminPage() {
-  await requireAdmin();
+  const { isAdmin, isReviewer } = await requireGrantsAccess();
+
+  // Reviewers should be redirected to /admin/grants
+  if (!isAdmin && isReviewer) {
+    redirect("/admin/grants");
+  }
 
   return <AdminHubClient />;
 }

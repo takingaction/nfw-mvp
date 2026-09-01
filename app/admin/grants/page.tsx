@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { requireAdmin } from "@/middleware/adminCheck";
+import { requireGrantsAccess } from "@/middleware/adminCheck";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import SortableCycleList from "@/components/admin/SortableCycleList";
@@ -19,7 +19,7 @@ interface CycleStats {
 }
 
 export default async function AdminGrantsPage() {
-  await requireAdmin();
+  await requireGrantsAccess();
 
   const { data: cycles } = await supabaseAdmin
     .from("grant_cycles")

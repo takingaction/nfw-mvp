@@ -9,6 +9,7 @@ import type { User } from "@supabase/supabase-js";
 interface Profile {
   full_name: string | null;
   is_admin: boolean | null;
+  is_reviewer: boolean | null;
 }
 
 const ADMIN_STATUS_EVENT = "nfw-admin-status-change";
@@ -17,11 +18,13 @@ export function AuthButtonCombined() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isReviewer, setIsReviewer] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
-  const updateAdminStatus = (adminStatus: boolean) => {
+  const updateAdminStatus = (adminStatus: boolean, reviewerStatus: boolean) => {
     setIsAdmin(adminStatus);
-    window.dispatchEvent(new CustomEvent(ADMIN_STATUS_EVENT, { detail: { isAdmin: adminStatus } }));
+    setIsReviewer(reviewerStatus);
+    window.dispatchEvent(new CustomEvent(ADMIN_STATUS_EVENT, { detail: { isAdmin: adminStatus, isReviewer: reviewerStatus } }));
   };
 
   useEffect(() => {
@@ -32,8 +35,10 @@ export function AuthButtonCombined() {
           const data = await response.json();
           setProfile(data);
           const adminStatus = data.is_admin === true;
+          const reviewerStatus = data.is_reviewer === true;
           setIsAdmin(adminStatus);
-          updateAdminStatus(adminStatus);
+          setIsReviewer(reviewerStatus);
+          updateAdminStatus(adminStatus, reviewerStatus);
           localStorage.setItem("nfw_profile", JSON.stringify(data));
         }
       } catch (error) {
@@ -46,8 +51,10 @@ export function AuthButtonCombined() {
       const parsed = JSON.parse(cachedProfile) as Profile;
       setProfile(parsed);
       const adminStatus = parsed?.is_admin === true;
+      const reviewerStatus = parsed?.is_reviewer === true;
       setIsAdmin(adminStatus);
-      updateAdminStatus(adminStatus);
+      setIsReviewer(reviewerStatus);
+      updateAdminStatus(adminStatus, reviewerStatus);
     }
 
     const supabase = createClient();
@@ -70,7 +77,8 @@ export function AuthButtonCombined() {
       if (event === "SIGNED_OUT") {
         setProfile(null);
         setIsAdmin(false);
-        updateAdminStatus(false);
+        setIsReviewer(false);
+        updateAdminStatus(false, false);
         localStorage.removeItem("nfw_profile");
         return;
       }
@@ -134,6 +142,18 @@ export function AuthButtonCombined() {
             >
               My Profile
             </Link>
+            {(isAdmin || isReviewer) && (
+              <>
+                <div className="border-t border-nfw-aubergine/10 mt-1" />
+                <Link
+                  href="/admin/grants"
+                  className="block px-4 py-2 text-sm text-nfw-aubergine hover:bg-nfw-dove"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Manage Grants
+                </Link>
+              </>
+            )}
             {isAdmin && (
               <>
                 <div className="border-t border-nfw-aubergine/10 mt-1" />

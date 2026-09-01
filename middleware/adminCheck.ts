@@ -1,1 +1,1 @@
-export { requireAdmin } from "@/lib/adminCheck";
+export { requireAdmin, requireGrantsAccess } from "@/lib/adminCheck";

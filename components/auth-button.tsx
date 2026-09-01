@@ -10,6 +10,7 @@ export function AuthButton() {
   const [user, setUser] = useState<any>(undefined);
   const [profile, setProfile] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isReviewer, setIsReviewer] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -20,6 +21,7 @@ export function AuthButton() {
           const data = await response.json();
           setProfile(data);
           setIsAdmin(data.is_admin === true);
+          setIsReviewer(data.is_reviewer === true);
           localStorage.setItem("nfw_profile", JSON.stringify(data));
         }
       } catch (error) {
@@ -33,6 +35,7 @@ export function AuthButton() {
       const parsed = JSON.parse(cachedProfile);
       setProfile(parsed);
       setIsAdmin(parsed?.is_admin === true);
+      setIsReviewer(parsed?.is_reviewer === true);
     }
 
     // Create Supabase client for session check
@@ -58,6 +61,7 @@ export function AuthButton() {
       if (event === "SIGNED_OUT") {
         setProfile(null);
         setIsAdmin(false);
+        setIsReviewer(false);
         localStorage.removeItem("nfw_profile");
         return;
       }
@@ -123,6 +127,18 @@ export function AuthButton() {
             >
               My Profile
             </Link>
+            {(isAdmin || isReviewer) && (
+              <>
+                <div className="border-t border-nfw-blackberry/10 mt-1" />
+                <Link
+                  href="/admin/grants"
+                  className="block px-4 py-2 text-sm text-nfw-blackberry hover:bg-nfw-dove"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Manage Grants
+                </Link>
+              </>
+            )}
             {isAdmin && (
               <>
                 <div className="border-t border-nfw-blackberry/10 mt-1" />

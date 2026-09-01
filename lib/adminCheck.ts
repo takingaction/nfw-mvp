@@ -14,9 +14,14 @@ interface RequireAdminResult {
   authorized: boolean;
   user: any;
   profile: any;
+  isAdmin: boolean;
+  isReviewer: boolean;
 }
 
-export async function requireReviewer(options: RequireAdminOptions = {}): Promise<RequireAdminResult> {
+/**
+ * Require admin OR reviewer access - for grant scoring pages
+ */
+export async function requireGrantsAccess(options: RequireAdminOptions = {}): Promise<RequireAdminResult> {
   const { redirectOnFailure = false, loginRedirect = "/auth/login", adminRedirect = "/" } = options;
 
   const supabase = await createClient();
@@ -28,7 +33,7 @@ export async function requireReviewer(options: RequireAdminOptions = {}): Promis
     if (redirectOnFailure) {
       redirect(loginRedirect);
     }
-    return { authorized: false, user: null, profile: null };
+    return { authorized: false, user: null, profile: null, isAdmin: false, isReviewer: false };
   }
 
   const { data: profile } = await supabase
@@ -37,16 +42,22 @@ export async function requireReviewer(options: RequireAdminOptions = {}): Promis
     .eq("id", user.id)
     .single();
 
-  if (!profile?.is_admin && !profile?.is_reviewer) {
+  const isAdmin = profile?.is_admin === true;
+  const isReviewer = profile?.is_reviewer === true;
+
+  if (!isAdmin && !isReviewer) {
     if (redirectOnFailure) {
       redirect(adminRedirect);
     }
-    return { authorized: false, user: null, profile: null };
+    return { authorized: false, user: null, profile: null, isAdmin: false, isReviewer: false };
   }
 
-  return { user, profile, authorized: true };
+  return { user, profile, authorized: true, isAdmin, isReviewer };
 }
 
+/**
+ * Require admin access only - for admin-only pages
+ */
 export async function requireAdmin(options: RequireAdminOptions = {}): Promise<RequireAdminResult> {
   const { redirectOnFailure = false, loginRedirect = "/auth/login", adminRedirect = "/" } = options;
 
@@ -59,7 +70,7 @@ export async function requireAdmin(options: RequireAdminOptions = {}): Promise<R
     if (redirectOnFailure) {
       redirect(loginRedirect);
     }
-    return { authorized: false, user: null, profile: null };
+    return { authorized: false, user: null, profile: null, isAdmin: false, isReviewer: false };
   }
 
   const { data: profile } = await supabase
@@ -68,12 +79,15 @@ export async function requireAdmin(options: RequireAdminOptions = {}): Promise<R
     .eq("id", user.id)
     .single();
 
-  if (!profile?.is_admin && !profile?.is_reviewer) {
+  const isAdmin = profile?.is_admin === true;
+  const isReviewer = profile?.is_reviewer === true;
+
+  if (!isAdmin) {
     if (redirectOnFailure) {
       redirect(adminRedirect);
     }
-    return { authorized: false, user: null, profile: null };
+    return { authorized: false, user: null, profile: null, isAdmin: false, isReviewer };
   }
 
-  return { user, profile, authorized: true };
+  return { user, profile, authorized: true, isAdmin: true, isReviewer };
 }

@@ -59,7 +59,7 @@ export async function GET() {
 
     const { data: profile, error } = await supabase
       .from("profiles")
-      .select("id, full_name, is_admin, membership_level, profile_completed, is_approved_free_member, free_membership_contact_submitted")
+      .select("id, full_name, is_admin, is_reviewer, membership_level, profile_completed, is_approved_free_member, free_membership_contact_submitted")
       .eq("id", user.id)
       .single();
 
@@ -78,6 +78,7 @@ export async function GET() {
             profile_completed: false,
             is_approved_free_member: false,
             free_membership_contact_submitted: false,
+            is_reviewer: false,
             date_of_birth: "1900-01-01",
           });
 
@@ -89,7 +90,7 @@ export async function GET() {
         // Fetch the newly created profile
         const { data: newProfile, error: fetchError } = await supabase
           .from("profiles")
-          .select("id, full_name, is_admin, membership_level, profile_completed, is_approved_free_member, free_membership_contact_submitted")
+          .select("id, full_name, is_admin, is_reviewer, membership_level, profile_completed, is_approved_free_member, free_membership_contact_submitted")
           .eq("id", user.id)
           .single();
 
