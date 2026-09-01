@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { requireAdmin } from "@/middleware/adminCheck";
+import { requireGrantsAccess } from "@/middleware/adminCheck";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import AdminGrantReviewer from "@/components/admin/AdminGrantReviewer";
@@ -14,7 +14,7 @@ export default async function AdminGrantCyclePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireAdmin({ redirectOnFailure: true });
+  await requireGrantsAccess({ redirectOnFailure: true });
   const { id } = await params;
 
   const { data: cycle } = await supabaseAdmin
