@@ -7,7 +7,7 @@ export const metadata = {
 };
 
 export default async function GiftCodesAdminPage() {
-  await requireAdmin();
+  await requireAdmin({ redirectOnFailure: true });
 
   return <AdminGiftCodes />;
 }

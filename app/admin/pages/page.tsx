@@ -10,7 +10,7 @@ const supabaseAdmin = createClient(
 );
 
 export default async function AdminPagesPage() {
-  await requireAdmin();
+  await requireAdmin({ redirectOnFailure: true });
 
   const { data: pages } = await supabaseAdmin
     .from("pages")

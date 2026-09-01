@@ -13,7 +13,7 @@ export default async function AdminPageEditor({
 }: {
   params: Promise<{ pageId: string }>;
 }) {
-  await requireAdmin();
+  await requireAdmin({ redirectOnFailure: true });
 
   const { pageId } = await params;
 

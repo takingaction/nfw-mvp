@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 );
 
 export default async function AdminFooterPage() {
-  await requireAdmin();
+  await requireAdmin({ redirectOnFailure: true });
 
   const { data: footer } = await supabaseAdmin
     .from("site_footer")

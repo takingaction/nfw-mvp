@@ -7,7 +7,7 @@ export const metadata = {
 };
 
 export default async function AdminDashboardPage() {
-  await requireAdmin();
+  await requireAdmin({ redirectOnFailure: true });
 
   return <DashboardAdminClient />;
 }

@@ -7,7 +7,7 @@ export const metadata = {
 };
 
 export default async function SystemSettingsPage() {
-  await requireAdmin();
+  await requireAdmin({ redirectOnFailure: true });
 
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">

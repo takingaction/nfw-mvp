@@ -14,7 +14,7 @@ export default async function AdminGrantCyclePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireAdmin();
+  await requireAdmin({ redirectOnFailure: true });
   const { id } = await params;
 
   const { data: cycle } = await supabaseAdmin

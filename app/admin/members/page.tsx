@@ -5,7 +5,7 @@ import AdminMembersClient from "@/components/admin/AdminMembersClient";
 // BackfillButton removed - no longer needed
 
 async function AdminMembersContent({ page }: { page: number }) {
-  await requireAdmin();
+  await requireAdmin({ redirectOnFailure: true });
 
   const supabase = await createClient();
 

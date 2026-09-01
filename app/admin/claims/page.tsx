@@ -4,7 +4,7 @@ import AdminClaimsClient from "@/components/admin/AdminClaimsClient";
 import { Suspense } from "react";
 
 async function AdminClaimsContent() {
-  await requireAdmin();
+  await requireAdmin({ redirectOnFailure: true });
 
   const supabase = await createClient();
 

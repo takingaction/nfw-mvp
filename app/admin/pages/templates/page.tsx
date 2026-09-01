@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 );
 
 export default async function TemplatesPage() {
-  const { user } = await requireAdmin();
+  const { user } = await requireAdmin({ redirectOnFailure: true });
 
   const { data: templates } = await supabaseAdmin
     .from("section_templates")

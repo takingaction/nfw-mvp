@@ -14,7 +14,7 @@ const LEGAL_PAGES = [
 ];
 
 export default async function AdminLegalPage() {
-  await requireAdmin();
+  await requireAdmin({ redirectOnFailure: true });
 
   const { data: pages } = await supabaseAdmin
     .from("legal_pages")

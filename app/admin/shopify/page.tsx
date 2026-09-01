@@ -7,7 +7,7 @@ export const metadata = {
 };
 
 export default async function AdminShopifyPage() {
-  await requireAdmin();
+  await requireAdmin({ redirectOnFailure: true });
 
   return <ShopifyAdminClient />;
 }

@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 );
 
 export default async function AdminSignupPage() {
-  await requireAdmin();
+  await requireAdmin({ redirectOnFailure: true });
 
   const { data: signup } = await supabaseAdmin
     .from("site_signup")

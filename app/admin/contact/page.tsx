@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 );
 
 export default async function AdminContactPage() {
-  await requireAdmin();
+  await requireAdmin({ redirectOnFailure: true });
 
   const { data: contact } = await supabaseAdmin
     .from("site_contact")

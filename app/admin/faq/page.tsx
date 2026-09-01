@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 );
 
 export default async function AdminFaqPage() {
-  await requireAdmin();
+  await requireAdmin({ redirectOnFailure: true });
 
   const { data: faq } = await supabaseAdmin
     .from("site_faq")

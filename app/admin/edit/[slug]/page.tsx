@@ -13,7 +13,7 @@ export default async function AdminEditPage({ params }: Props) {
   const { slug } = await params;
   
   // Auth check
-  await requireAdmin();
+  await requireAdmin({ redirectOnFailure: true });
 
   // Create admin client (bypasses RLS)
   const supabase = await createClient();

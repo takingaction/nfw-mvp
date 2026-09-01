@@ -21,7 +21,7 @@ const AdminAnalyticsClient = dynamic(
 );
 
 async function AdminAnalyticsContent() {
-  await requireAdmin();
+  await requireAdmin({ redirectOnFailure: true });
   const supabase = await createClient();
 
   // Members data - fetch ALL via pagination to bypass 1000 row limit
