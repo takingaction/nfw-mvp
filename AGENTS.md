@@ -12612,18 +12612,24 @@ Added proper navigation for reviewers: "Manage Grants" link in member dropdown, 
 **Member section** (visible to all logged-in members):
 - Dashboard
 - My Profile
-- **Manage Grants** (visible if `isAdmin || isReviewer`)
+- **Manage Grants** (visible if `isReviewer && !isAdmin` - ONLY for reviewers, not admins)
 
 **Admin section** (visible only to admins):
 - Admin Dashboard (full admin hub)
 
 ### Security
 
-- `requireAdmin()` - Admin only (no reviewers)
+- `requireAdmin()` - Admin only (no reviewers), redirects to `/admin/grants` if reviewer tries to access
 - `requireGrantsAccess()` - Admin OR reviewer
-- `/admin` - Redirects reviewers to `/admin/grants`
-- Grant scoring pages - Use `requireGrantsAccess()`
+- `proxy.ts` - Allows both admins and reviewers to access `/admin/*`
+- All admin-only pages (20 total) now redirect reviewers to `/admin/grants`
 
-### Commit
+### Commits
 
 - `a460675` - feat: add reviewer tier for grant scoring with proper navigation
+- `0b5db21` - fix: proxy allows reviewers (not just admins) to access /admin/*
+- `ccfcc5b` - fix: requireGrantsAccess redirectOnFailure for /admin/grants
+- `3fe62de` - fix: scoring pages use profile directly not data.profile
+- `ebcf656` - fix: all admin-only pages redirect reviewers properly
+- `cdf8ffe` - fix: only reviewers (not admins) see Manage Grants in dropdown
+- `65daa38` - fix: reviewers redirected to /admin/grants when accessing admin-only pages
