@@ -127,7 +127,7 @@ export function AuthButton() {
             >
               My Profile
             </Link>
-            {(isAdmin || isReviewer) && (
+            {isReviewer && !isAdmin && (
               <>
                 <div className="border-t border-nfw-blackberry/10 mt-1" />
                 <Link

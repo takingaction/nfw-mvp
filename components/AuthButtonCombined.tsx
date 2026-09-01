@@ -142,7 +142,7 @@ export function AuthButtonCombined() {
             >
               My Profile
             </Link>
-            {(isAdmin || isReviewer) && (
+            {isReviewer && !isAdmin && (
               <>
                 <div className="border-t border-nfw-aubergine/10 mt-1" />
                 <Link

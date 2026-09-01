@@ -258,7 +258,7 @@ export default function MobileMenu({ navLinks = [] }: MobileMenuProps) {
                         </Link>
                       </>
                     )}
-                    {(isAdmin || isReviewer) && (
+                    {isReviewer && !isAdmin && (
                       <Link
                         href="/admin/grants"
                         onClick={closeMenu}
