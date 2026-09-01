@@ -12587,3 +12587,43 @@ Reviewers CANNOT:
 - Send money or finalize grants
 - Mark cycles as complete
 - Access other admin pages
+
+## Session 2026-09-01: Grant Reviewer Navigation
+
+### Overview
+
+Added proper navigation for reviewers: "Manage Grants" link in member dropdown, reviewers redirected from /admin to /admin/grants.
+
+### Changes Made
+
+| File | Change |
+|------|--------|
+| `lib/adminCheck.ts` | `requireAdmin()` now truly admin-only; added `requireGrantsAccess()` checking `is_admin \|\| is_reviewer` |
+| `middleware/adminCheck.ts` | Exports `requireGrantsAccess` |
+| `app/api/auth/profile/route.ts` | Added `is_reviewer` to profile response |
+| `app/admin/page.tsx` | Reviewers redirected to `/admin/grants` |
+| `app/admin/grants/page.tsx` | Uses `requireGrantsAccess()` |
+| `AuthButtonCombined.tsx` | Shows "Manage Grants" for `(isAdmin \|\| isReviewer)`; "Admin Dashboard" only for admins |
+| `auth-button.tsx` | Same changes as AuthButtonCombined |
+| `MobileMenu.tsx` | Same changes as AuthButtonCombined |
+
+### Dropdown Structure
+
+**Member section** (visible to all logged-in members):
+- Dashboard
+- My Profile
+- **Manage Grants** (visible if `isAdmin || isReviewer`)
+
+**Admin section** (visible only to admins):
+- Admin Dashboard (full admin hub)
+
+### Security
+
+- `requireAdmin()` - Admin only (no reviewers)
+- `requireGrantsAccess()` - Admin OR reviewer
+- `/admin` - Redirects reviewers to `/admin/grants`
+- Grant scoring pages - Use `requireGrantsAccess()`
+
+### Commit
+
+- `a460675` - feat: add reviewer tier for grant scoring with proper navigation
