@@ -41,14 +41,14 @@ export async function proxy(request: NextRequest) {
   }
 
   if (isProtectedRoute && !authError && user) {
-    // Check if user is admin
+    // Check if user is admin or reviewer
     const { data: profile } = await supabase
       .from("profiles")
-      .select("is_admin")
+      .select("is_admin, is_reviewer")
       .eq("id", user.id)
       .single();
 
-    if (!profile?.is_admin) {
+    if (!profile?.is_admin && !profile?.is_reviewer) {
       return NextResponse.redirect(new URL("/", request.url));
     }
   }
