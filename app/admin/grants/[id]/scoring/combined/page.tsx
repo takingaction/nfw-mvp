@@ -117,8 +117,8 @@ export default function CombinedScoresPage() {
       }
       // Check if user is admin or reviewer via profile
       const res = await fetch(`/api/auth/profile`);
-      const data = await res.json();
-      const isAuthorized = data.profile?.is_admin || data.profile?.is_reviewer;
+      const profile = await res.json();
+      const isAuthorized = profile?.is_admin || profile?.is_reviewer;
       if (!isAuthorized) {
         setAccessDenied(true);
       } else {
