@@ -28,10 +28,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify the user owns this grant OR is an admin
+    // Verify the user owns this grant OR is an admin/reviewer
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("is_admin")
+      .select("is_admin, is_reviewer")
       .eq("id", user.id)
       .single();
 
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Grant not found" }, { status: 404 });
     }
 
-    if (grant.user_id !== user.id && !profile?.is_admin) {
+    if (grant.user_id !== user.id && !profile?.is_admin && !profile?.is_reviewer) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
