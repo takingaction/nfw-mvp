@@ -12512,3 +12512,78 @@ Added a dedicated information box on the `/grants/apply` page above the grant se
 [Eligibility info box - aubergine box with eligibility text]
 [Which grant are you applying for? - grant selection]
 ```
+
+## Session 2026-09-01: Grant Reviewer Feature
+
+### Overview
+
+Added a new "reviewer" user tier that allows hired reviewers to access grant scoring pages without full admin access.
+
+### Constraints & Preferences
+- Score only: reviewers cannot perform financial actions (Send Money, Mark Cycle Complete, finalize grants)
+- Admin UI to manage reviewer status (toggle on /admin/members page, not hardcoded emails)
+- Navigation: direct URL access only (no reviewer-specific dropdown)
+
+### Database
+
+**Migration 152:** `supabase/migrations/152_add_is_reviewer.sql`
+
+```sql
+ALTER TABLE profiles ADD COLUMN is_reviewer BOOLEAN DEFAULT FALSE;
+CREATE INDEX idx_profiles_is_reviewer ON profiles(is_reviewer) WHERE is_reviewer = TRUE;
+NOTIFY pgrst, 'reload';
+```
+
+### API Routes Created
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/admin/members/set-reviewer` | POST | Toggle reviewer status (admin only) |
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/152_add_is_reviewer.sql` | Adds `is_reviewer` column to profiles |
+| `app/api/admin/members/set-reviewer/route.ts` | Toggle reviewer status API |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `lib/adminCheck.ts` | Added `requireReviewer()` helper checking `is_admin \|\| is_reviewer` |
+| `app/api/admin/grants/[id]/scores/first/route.ts` | Updated auth check to `is_admin \|\| is_reviewer` |
+| `app/api/admin/grants/[id]/scores/second/route.ts` | Updated auth check to `is_admin \|\| is_reviewer` |
+| `app/api/admin/grants/[id]/scores/combined/route.ts` | Updated auth check to `is_admin \|\| is_reviewer` |
+| `app/api/admin/grants/[id]/scoring/complete/route.ts` | Updated auth check to `is_admin \|\| is_reviewer` |
+| `app/api/admin/grants/[id]/scoring/second-complete/route.ts` | Updated auth check to `is_admin \|\| is_reviewer` |
+| `app/admin/grants/[id]/scoring/first/page.tsx` | Replaced ALLOWED_EMAILS with `is_admin \|\| is_reviewer` check |
+| `app/admin/grants/[id]/scoring/second/page.tsx` | Replaced ALLOWED_EMAILS with `is_admin \|\| is_reviewer` check |
+| `app/admin/grants/[id]/scoring/combined/page.tsx` | Replaced ALLOWED_EMAILS with `is_admin \|\| is_reviewer` check |
+| `app/admin/members/page.tsx` | Added `is_reviewer` to profiles select query |
+| `components/admin/AdminMembersClient.tsx` | Added reviewer badge, toggle UI in edit panel |
+
+### Sensitive Operations (Admin Only)
+
+These operations remain admin-only (not accessible to reviewers):
+- `tentative-approve` - Tentative approval selection
+- `final-approve` - Final approval and email sending
+- `transfer` - Stripe money transfer
+- `cycle/finalize` - Mark cycle as complete
+
+### How to Assign a Reviewer
+
+1. Go to `/admin/members`
+2. Find the member and click **Edit**
+3. In the edit panel, find **"Reviewer Status"** section
+4. Select **"Reviewer"** and click **Save**
+
+Reviewers can access:
+- `/admin/grants/[id]/scoring/first` - First review scoring
+- `/admin/grants/[id]/scoring/second` - Second review scoring
+- `/admin/grants/[id]/scoring/combined` - Combined scores view
+
+Reviewers CANNOT:
+- Send money or finalize grants
+- Mark cycles as complete
+- Access other admin pages

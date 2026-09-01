@@ -21,6 +21,17 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check if user is admin or reviewer
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin, is_reviewer")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.is_admin && !profile?.is_reviewer) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { id: cycleId } = await params;
 
     // Get cycle to check if first reviewer is complete
@@ -153,6 +164,17 @@ export async function POST(
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check if user is admin or reviewer
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin, is_reviewer")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.is_admin && !profile?.is_reviewer) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { id: cycleId } = await params;

@@ -128,6 +128,22 @@ interface DuplicateEmail {
   }>;
 }
 
+interface StripeDuplicateSubscription {
+  subscription_id: string;
+  customer_id: string;
+  tier: string;
+  amount: number;
+  status: string;
+  current_period_start: number;
+  current_period_end: number;
+}
+
+interface StripeDuplicate {
+  email: string;
+  count: number;
+  subscriptions: StripeDuplicateSubscription[];
+}
+
 interface MemberSearchResult {
   error?: string;
   profile: {
@@ -222,6 +238,11 @@ export default function BackfillClient() {
   const [duplicates, setDuplicates] = useState<DuplicateEmail[]>([]);
   const [duplicatesLoading, setDuplicatesLoading] = useState(false);
   const [expandedDuplicate, setExpandedDuplicate] = useState<string | null>(null);
+
+  // Duplicates in Stripe
+  const [stripeDuplicates, setStripeDuplicates] = useState<StripeDuplicate[]>([]);
+  const [stripeDuplicatesLoading, setStripeDuplicatesLoading] = useState(false);
+  const [expandedStripeDuplicate, setExpandedStripeDuplicate] = useState<string | null>(null);
 
   // Member search
   const [searchQuery, setSearchQuery] = useState("");
@@ -559,6 +580,22 @@ export default function BackfillClient() {
     }
   }, []);
 
+  // Fetch duplicates in Stripe
+  const fetchStripeDuplicates = useCallback(async () => {
+    setStripeDuplicatesLoading(true);
+    try {
+      const res = await fetch("/api/admin/backfill/stripe/stripe-duplicates");
+      if (res.ok) {
+        const data = await res.json();
+        setStripeDuplicates(data.duplicates || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch stripe duplicates:", error);
+    } finally {
+      setStripeDuplicatesLoading(false);
+    }
+  }, []);
+
   // Fetch missing from backfill
   const fetchMissingFromBackfill = useCallback(async () => {
     setMissingLoading(true);
@@ -738,11 +775,12 @@ export default function BackfillClient() {
     fetchStatus();
     fetchLiveStats();
     fetchDuplicates();
+    fetchStripeDuplicates();
     fetchMissingFromBackfill();
     fetchGiftCodes();
     fetchStripeOnly();
     fetchMissingPayments();
-  }, [fetchStatus, fetchLiveStats, fetchDuplicates, fetchMissingFromBackfill, fetchGiftCodes, fetchStripeOnly, fetchMissingPayments]);
+  }, [fetchStatus, fetchLiveStats, fetchDuplicates, fetchStripeDuplicates, fetchMissingFromBackfill, fetchGiftCodes, fetchStripeOnly, fetchMissingPayments]);
 
   // Delete single payment
   const handleDeletePayment = async () => {
@@ -1691,6 +1729,70 @@ export default function BackfillClient() {
                                 <StatusBadge status={row.status} />
                               </td>
                               <td className="p-2">{row.processed_at ? new Date(row.processed_at).toLocaleDateString() : "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicates in Stripe Section */}
+      {stripeDuplicates.length > 0 && (
+        <div className="bg-white rounded-lg border border-amber-200 overflow-hidden">
+          <div className="p-4 border-b border-nfw-dove bg-amber-50">
+            <h3 className="font-ui font-bold text-amber-700">Duplicates in Stripe ({stripeDuplicates.length})</h3>
+            <p className="text-xs text-amber-600 mt-1">
+              Same email with multiple Stripe subscriptions. Click to expand.
+            </p>
+          </div>
+          <div className="p-4">
+            <div className="space-y-2">
+              {stripeDuplicates.map((dup) => (
+                <div key={dup.email} className="border border-amber-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setExpandedStripeDuplicate(expandedStripeDuplicate === dup.email ? null : dup.email)}
+                    className="w-full flex items-center justify-between p-3 bg-amber-50/50 hover:bg-amber-100/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-sm">{dup.email}</span>
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">
+                        {dup.count} subs
+                      </span>
+                    </div>
+                    <span className="text-xs text-nfw-blackberry/50">
+                      {expandedStripeDuplicate === dup.email ? "▲" : "▼"}
+                    </span>
+                  </button>
+                  {expandedStripeDuplicate === dup.email && (
+                    <div className="p-3 bg-white border-t border-amber-200">
+                      <table className="w-full text-xs">
+                        <thead className="bg-amber-50">
+                          <tr>
+                            <th className="text-left p-2">Subscription ID</th>
+                            <th className="text-left p-2">Customer ID</th>
+                            <th className="text-left p-2">Tier</th>
+                            <th className="text-left p-2">Amount</th>
+                            <th className="text-left p-2">Status</th>
+                            <th className="text-left p-2">Period Start</th>
+                            <th className="text-left p-2">Period End</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-amber-100">
+                          {dup.subscriptions.map((sub) => (
+                            <tr key={sub.subscription_id}>
+                              <td className="p-2 font-mono text-xs break-all">{sub.subscription_id}</td>
+                              <td className="p-2 font-mono text-xs break-all">{sub.customer_id}</td>
+                              <td className="p-2">{sub.tier}</td>
+                              <td className="p-2">${sub.amount.toFixed(2)}</td>
+                              <td className="p-2">{sub.status}</td>
+                              <td className="p-2">{sub.current_period_start ? new Date(sub.current_period_start * 1000).toLocaleDateString() : "—"}</td>
+                              <td className="p-2">{sub.current_period_end ? new Date(sub.current_period_end * 1000).toLocaleDateString() : "—"}</td>
                             </tr>
                           ))}
                         </tbody>

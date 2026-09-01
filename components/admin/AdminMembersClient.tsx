@@ -36,6 +36,7 @@ type Member = {
   subscription_ends_at: string | null;
   joined_at: string | null;
   is_admin: boolean | null;
+  is_reviewer: boolean | null;
   access_perks_synced_at: string | null;
   membership_level: string | null;
   profile_completed: boolean | null;
@@ -95,7 +96,7 @@ export default function AdminMembersClient({
         const { data, error } = await supabase
           .from("profiles")
           .select(
-            "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted, previous_membership_level",
+            "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, is_reviewer, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted, previous_membership_level",
           )
           .order("joined_at", { ascending: false })
           .range(from, from + pageSize - 1);
@@ -320,6 +321,8 @@ export default function AdminMembersClient({
     const updates: any = {};
     if ("is_admin" in pendingChanges)
       updates.is_admin = pendingChanges.is_admin;
+    if ("is_reviewer" in pendingChanges)
+      updates.is_reviewer = pendingChanges.is_reviewer;
     if ("subscription_status" in pendingChanges)
       updates.subscription_status = pendingChanges.subscription_status;
     // Use pendingApprovalValue if set (from approval confirmation modal), otherwise use pendingChanges
@@ -498,6 +501,9 @@ export default function AdminMembersClient({
 
   const currentIsAdmin =
     "is_admin" in pendingChanges ? pendingChanges.is_admin : selected?.is_admin;
+
+  const currentIsReviewer =
+    "is_reviewer" in pendingChanges ? pendingChanges.is_reviewer : selected?.is_reviewer;
 
   const currentIsApprovedFreeMember =
     "is_approved_free_member" in pendingChanges
@@ -716,6 +722,10 @@ export default function AdminMembersClient({
                       {member.is_admin ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-blackberry text-white">
                           <Shield className="w-3 h-3" /> Admin
+                        </span>
+                      ) : member.is_reviewer ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-wisteria text-white">
+                          <Shield className="w-3 h-3" /> Reviewer
                         </span>
                       ) : (
                         <span className="text-xs text-nfw-blackberry/40">Member</span>
@@ -987,6 +997,57 @@ export default function AdminMembersClient({
                   </div>
                 )}
               </div>
+
+              {/* Reviewer Status - only show if not admin */}
+              {selected?.is_admin !== true && (
+                <div className="p-6 border-b border-nfw-blackberry/5">
+                  <label className="block text-sm font-black text-nfw-blackberry mb-3">
+                    Reviewer Status
+                  </label>
+                  <div className="space-y-2">
+                    {[
+                      {
+                        value: true,
+                        label: "Reviewer",
+                        description: "Can access grant scoring pages to review applications",
+                      },
+                      {
+                        value: false,
+                        label: "Member",
+                        description: "No grant scoring access",
+                      },
+                    ].map((option) => (
+                      <label
+                        key={String(option.value)}
+                        className={`flex items-start gap-3 p-3 border-2 cursor-pointer transition-all ${
+                          currentIsReviewer === option.value
+                            ? "border-nfw-wisteria bg-nfw-wisteria/5"
+                            : "border-nfw-blackberry/5 hover:border-nfw-blackberry/10"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="is_reviewer"
+                          checked={currentIsReviewer === option.value}
+                          onChange={() => handleChange("is_reviewer", option.value)}
+                          className="mt-0.5 accent-nfw-wisteria"
+                        />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <Shield className="w-3 h-3 text-nfw-wisteria" />
+                            <span className="text-sm font-semibold text-nfw-blackberry">
+                              {option.label}
+                            </span>
+                          </div>
+                          <p className="text-xs text-nfw-blackberry/40 mt-0.5">
+                            {option.description}
+                          </p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Free Membership Status - only show for free members */}
               {selected?.membership_level === "free" && (

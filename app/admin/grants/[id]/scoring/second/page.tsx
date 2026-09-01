@@ -8,12 +8,6 @@ import { createClient } from "@/lib/supabase/client";
 import GrantScoringRubric from "@/components/admin/GrantScoringRubric";
 import GrantApplicationScorer, { ScoreData } from "@/components/admin/GrantApplicationScorer";
 
-const ALLOWED_EMAILS = [
-  "michelle@nationalfundforwomen.org",
-  "kelsey@nationalfundforwomen.org",
-  "ron@myherodesign.com",
-];
-
 interface Grant {
   id: string;
   profiles?: {
@@ -63,10 +57,18 @@ export default function SecondReviewPage() {
     const checkAccess = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email || !ALLOWED_EMAILS.includes(user.email.toLowerCase())) {
+      if (!user) {
+        setAccessDenied(true);
+        return;
+      }
+      // Check if user is admin or reviewer via profile
+      const res = await fetch(`/api/auth/profile`);
+      const data = await res.json();
+      const isAuthorized = data.profile?.is_admin || data.profile?.is_reviewer;
+      if (!isAuthorized) {
         setAccessDenied(true);
       } else {
-        setUserEmail(user.email);
+        setUserEmail(user.email || null);
       }
     };
     checkAccess();
