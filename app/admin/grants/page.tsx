@@ -19,7 +19,7 @@ interface CycleStats {
 }
 
 export default async function AdminGrantsPage() {
-  await requireGrantsAccess();
+  await requireGrantsAccess({ redirectOnFailure: true });
 
   const { data: cycles } = await supabaseAdmin
     .from("grant_cycles")
