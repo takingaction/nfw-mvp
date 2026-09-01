@@ -59,7 +59,7 @@ export async function requireGrantsAccess(options: RequireAdminOptions = {}): Pr
  * Require admin access only - for admin-only pages
  */
 export async function requireAdmin(options: RequireAdminOptions = {}): Promise<RequireAdminResult> {
-  const { redirectOnFailure = false, loginRedirect = "/auth/login", adminRedirect = "/" } = options;
+  const { redirectOnFailure = false, loginRedirect = "/auth/login", adminRedirect = "/admin/grants" } = options;
 
   const supabase = await createClient();
   const {
