@@ -12683,3 +12683,40 @@ if (formData.get("website")) {
 - Real users never see or interact with the field
 - If honeypot is filled, silently redirect to success page (bot thinks signup succeeded)
 - Real signup continues normally
+
+## Session 2026-09-02: Gift Codes Email Variable Fix
+
+### Problem
+
+Gift codes email templates showed `{{gift_codes}}` literal placeholder instead of actual codes in both test and live emails.
+
+### Root Cause
+
+Variable name mismatch:
+- **Template expected:** `{{gift_codes}}`
+- **Code passed:** `codes` and `codes_list`
+
+The `sendGiftCodesEmail` function passed `codes` and `codes_list` variables, but the template was looking for `{{gift_codes}}`.
+
+### Solution
+
+Updated the send-test route to include proper test variables for gift codes:
+
+**File Modified:**
+| File | Change |
+|------|--------|
+| `app/api/admin/emails/[slug]/send-test/route.ts` | Added `codes` and `codes_list` test variables |
+
+**Added test variables:**
+```typescript
+codes: "TEST-CODE-001, TEST-CODE-002, TEST-CODE-003",
+codes_list: `<p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #F8F19A; margin: 10px 0;">TEST-CODE-001</p><p style="...">TEST-CODE-002</p><p style="...">TEST-CODE-003</p>`,
+```
+
+### Next Step
+
+Update template in Supabase to use `{{codes_list}}` instead of `{{gift_codes}}`.
+
+### Note
+
+The test email flow uses the same variable replacement function (`getPreRenderedHtmlAdmin`) as live emails, so seeing dummy codes in test = live will work the same way.
