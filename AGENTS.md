@@ -12773,47 +12773,66 @@ Added `disabled={loading}` to the waitlist button:
 
 - ✅ Build passes
 
-## Session 2026-09-02: Block Submission When File Validation Fails
+## Session 2026-09-02: Modal-based File Validation Errors
 
 ### Overview
 
-Fixed bug where users could submit grant applications even when a file validation error was displayed (e.g., oversized file). The form showed the error but didn't block submission.
+Replaced inline error display with a modal for file validation errors. When a user selects an invalid file (wrong type or too large), a modal appears with the error message and an OK button. The file is never added to the documents list.
 
 ### Problem
 
-When a user added an oversized file (>10MB):
-1. Error displayed: `"BrushBreak Pitch Deck.pdf" is too large (24.8MB). Maximum file size is 10MB.`
-2. File NOT added to documents array (validation worked correctly)
-3. User clicked Submit → grant was created anyway
-4. Upload loop ran with no files → succeeded
+Previous implementation showed an error message above the submit button, but users could still submit the application without any attachment since the invalid file was never actually attached.
 
 ### Solution
 
-**1. Block submission when error exists** - Added error check at start of `handleConfirmSubmit`:
+**1. Added modal state:**
 ```typescript
-if (error) return;
+const [showFileError, setShowFileError] = useState(false);
+const [fileErrorMessage, setFileErrorMessage] = useState("");
 ```
 
-**2. Clear error when user removes file** - Added `setError("")` to `removeDocument`:
+**2. Modified `handleFileChange`** to show modal instead of setting error state:
 ```typescript
-const removeDocument = (index: number) => {
-  setDocuments((prev) => prev.filter((_, i) => i !== index));
-  setError("");
-};
+if (!allowedTypes.includes(file.type)) {
+  setFileErrorMessage(`"${file.name}" is not a supported file type. Please upload a PDF, image (JPEG, PNG, GIF), or Word document.`);
+  setShowFileError(true);
+  return;
+}
+if (file.size > maxSize) {
+  const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+  setFileErrorMessage(`"${file.name}" is too large (${sizeMB}MB). Maximum file size is 10MB.`);
+  setShowFileError(true);
+  return;
+}
 ```
 
-### Behavior Now
-
-| Action | Result |
-|--------|--------|
-| User adds oversized file | Error shows, file NOT added to documents |
-| User clicks Submit | Blocked - error still shown |
-| User removes the bad file | Error clears, can submit |
-| User replaces with valid file | Error clears, can submit |
+**3. Added modal component:**
+```tsx
+{showFileError && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="absolute inset-0 bg-nfw-blackberry/40" />
+    <div className="relative bg-white rounded-xl shadow-2xl max-w-lg w-full p-6">
+      <h3 className="text-xl font-serif text-nfw-blackberry mb-4">
+        File Not Attached
+      </h3>
+      <p className="text-sm font-serif text-nfw-blackberry/80 mb-6">
+        {fileErrorMessage}
+      </p>
+      <button
+        onClick={() => setShowFileError(false)}
+        className="w-full bg-nfw-aubergine text-white px-6 py-3 font-ui font-bold text-sm tracking-wide hover:bg-nfw-aubergine/90 transition-colors"
+      >
+        OK
+      </button>
+    </div>
+  </div>
+)}
+```
 
 ### Files Modified
 
 | File | Change |
 |------|--------|
-| `components/GrantApplicationForm.tsx` | Added error check in handleConfirmSubmit, clear error in removeDocument |
+| `components/GrantApplicationForm.tsx` | Added modal state, replaced setError with modal trigger, added modal component |
+
 

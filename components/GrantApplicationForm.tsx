@@ -34,6 +34,8 @@ export default function GrantApplicationForm({
   const [fileInputKey, setFileInputKey] = useState(0);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitConsentChecked, setSubmitConsentChecked] = useState(false);
+  const [showFileError, setShowFileError] = useState(false);
+  const [fileErrorMessage, setFileErrorMessage] = useState("");
   const [certificationChecked, setCertificationChecked] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -134,17 +136,18 @@ export default function GrantApplicationForm({
 
       for (const file of newFiles) {
         if (!allowedTypes.includes(file.type)) {
-          setError(`"${file.name}" is not a supported file type. Please upload a PDF, image (JPEG, PNG, GIF), or Word document.`);
+          setFileErrorMessage(`"${file.name}" is not a supported file type. Please upload a PDF, image (JPEG, PNG, GIF), or Word document.`);
+          setShowFileError(true);
           return;
         }
         if (file.size > maxSize) {
           const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-          setError(`"${file.name}" is too large (${sizeMB}MB). Maximum file size is 10MB.`);
+          setFileErrorMessage(`"${file.name}" is too large (${sizeMB}MB). Maximum file size is 10MB.`);
+          setShowFileError(true);
           return;
         }
       }
 
-      setError("");
       setDocuments((prev) => [...prev, ...newFiles]);
       setFileInputKey((prev) => prev + 1);
     }
@@ -152,7 +155,6 @@ export default function GrantApplicationForm({
 
   const removeDocument = (index: number) => {
     setDocuments((prev) => prev.filter((_, i) => i !== index));
-    setError("");
   };
 
   const selectedCycle = cycles.find((c) => c.id === formData.cycle_id);
@@ -377,12 +379,6 @@ export default function GrantApplicationForm({
           )}
         </div>
 
-        {error && (
-          <div className="bg-red-50/50 border border-red-200 p-4">
-            <p className="text-red-800 text-sm">{error}</p>
-          </div>
-        )}
-
         <div className="flex gap-4 pt-2">
           <button
             type="submit"
@@ -504,6 +500,26 @@ export default function GrantApplicationForm({
                 Go Back
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showFileError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-nfw-blackberry/40" />
+          <div className="relative bg-white rounded-xl shadow-2xl max-w-lg w-full p-6">
+            <h3 className="text-xl font-serif text-nfw-blackberry mb-4">
+              File Not Attached
+            </h3>
+            <p className="text-sm font-serif text-nfw-blackberry/80 mb-6">
+              {fileErrorMessage}
+            </p>
+            <button
+              onClick={() => setShowFileError(false)}
+              className="w-full bg-nfw-aubergine text-white px-6 py-3 font-ui font-bold text-sm tracking-wide hover:bg-nfw-aubergine/90 transition-colors"
+            >
+              OK
+            </button>
           </div>
         </div>
       )}
