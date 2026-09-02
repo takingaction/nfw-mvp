@@ -12796,17 +12796,21 @@ const [fileErrorMessage, setFileErrorMessage] = useState("");
 if (!allowedTypes.includes(file.type)) {
   setFileErrorMessage(`"${file.name}" is not a supported file type. Please upload a PDF, image (JPEG, PNG, GIF), or Word document.`);
   setShowFileError(true);
+  setFileInputKey((prev) => prev + 1);
   return;
 }
 if (file.size > maxSize) {
   const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
   setFileErrorMessage(`"${file.name}" is too large (${sizeMB}MB). Maximum file size is 10MB.`);
   setShowFileError(true);
+  setFileInputKey((prev) => prev + 1);
   return;
 }
 ```
 
-**3. Added modal component:**
+**3. Reset file input on validation failure:** Adding `setFileInputKey` increment resets the file input UI so the filename clears.
+
+**4. Added modal component:**
 ```tsx
 {showFileError && (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -12833,6 +12837,6 @@ if (file.size > maxSize) {
 
 | File | Change |
 |------|--------|
-| `components/GrantApplicationForm.tsx` | Added modal state, replaced setError with modal trigger, added modal component |
+| `components/GrantApplicationForm.tsx` | Added modal state, replaced setError with modal trigger, added modal component, reset file input on validation failure |
 
 

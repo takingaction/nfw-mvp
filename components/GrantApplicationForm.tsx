@@ -138,12 +138,14 @@ export default function GrantApplicationForm({
         if (!allowedTypes.includes(file.type)) {
           setFileErrorMessage(`"${file.name}" is not a supported file type. Please upload a PDF, image (JPEG, PNG, GIF), or Word document.`);
           setShowFileError(true);
+          setFileInputKey((prev) => prev + 1);
           return;
         }
         if (file.size > maxSize) {
           const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
           setFileErrorMessage(`"${file.name}" is too large (${sizeMB}MB). Maximum file size is 10MB.`);
           setShowFileError(true);
+          setFileInputKey((prev) => prev + 1);
           return;
         }
       }
