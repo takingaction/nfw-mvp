@@ -12633,3 +12633,53 @@ Added proper navigation for reviewers: "Manage Grants" link in member dropdown, 
 - `ebcf656` - fix: all admin-only pages redirect reviewers properly
 - `cdf8ffe` - fix: only reviewers (not admins) see Manage Grants in dropdown
 - `65daa38` - fix: reviewers redirected to /admin/grants when accessing admin-only pages
+
+## Session 2026-09-02: Honeypot for Signup Form
+
+### Overview
+
+Added honeypot bot protection to the signup form (step 0) to catch bots before they consume email confirmation resources.
+
+### Problem
+
+The signup form had no bot protection beyond Supabase's built-in measures. Bots could create fake accounts and waste email confirmation resources.
+
+### Solution
+
+Added honeypot field using the same pattern as the contact form and other site forms:
+
+**Files Modified:**
+| File | Change |
+|------|--------|
+| `components/SignUpFlow.tsx` | Added honeypot input field and bot detection logic |
+
+### Implementation
+
+**Honeypot input field** (invisible, after confirm password):
+```tsx
+<input
+  type="text"
+  name="website"
+  tabIndex={-1}
+  autoComplete="off"
+  className="absolute -left-[9999px] w-1 h-1 opacity-0 pointer-events-none"
+  placeholder="Leave this blank if you're human"
+/>
+```
+
+**Bot detection** (in `handleCreateAccount`):
+```tsx
+const formData = new FormData(e.target as HTMLFormElement);
+if (formData.get("website")) {
+  // Bot detected - silently redirect to success page
+  window.location.href = "/auth/sign-up-success?email=" + encodeURIComponent(email);
+  return;
+}
+```
+
+### Behavior
+
+- Bots fill the hidden field (they see it as a normal input)
+- Real users never see or interact with the field
+- If honeypot is filled, silently redirect to success page (bot thinks signup succeeded)
+- Real signup continues normally

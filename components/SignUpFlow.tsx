@@ -298,6 +298,15 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
   // Step 0 — Create account
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Honeypot check - reject if bot fills this field
+    const formData = new FormData(e.target as HTMLFormElement);
+    if (formData.get("website")) {
+      // Bot detected - silently redirect to success page
+      window.location.href = "/auth/sign-up-success?email=" + encodeURIComponent(email);
+      return;
+    }
+
     if (password !== repeatPassword) {
       setError("Passwords do not match");
       return;
@@ -735,6 +744,17 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
                   <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
                 )}
               </div>
+
+              {/* Honeypot - hidden from users, catches bots */}
+              <input
+                type="text"
+                name="website"
+                tabIndex={-1}
+                autoComplete="off"
+                className="absolute -left-[9999px] w-1 h-1 opacity-0 pointer-events-none"
+                placeholder="Leave this blank if you're human"
+              />
+
               <button
                 type="submit"
                 disabled={loading || !isPasswordValid || password !== repeatPassword}
