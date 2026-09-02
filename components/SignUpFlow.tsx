@@ -1234,6 +1234,7 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
                   </button>
                   <button
                     type="button"
+                    disabled={loading}
                     onClick={async () => {
                       // Set profile as waitlist member via dedicated API
                       setLoading(true);
@@ -1244,11 +1245,11 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                         });
-                        
+
                         if (!response.ok) {
                           throw new Error("Failed to join waitlist");
                         }
-                        
+
                         window.location.href = "/auth/waitlist-confirmed";
                       } catch (err) {
                         console.error("Failed to join waitlist:", err);
@@ -1256,7 +1257,7 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
                         // Don't redirect - show error state instead
                       }
                     }}
-                    className="w-full py-3 bg-nfw-citrine text-nfw-blackberry font-bold text-sm hover:bg-nfw-citrine/90 transition-colors"
+                    className="w-full py-3 bg-nfw-citrine text-nfw-blackberry font-bold text-sm hover:bg-nfw-citrine/90 transition-colors disabled:opacity-50"
                   >
                     ADD ME TO THE WAITLIST
                   </button>

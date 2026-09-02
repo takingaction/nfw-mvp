@@ -58,6 +58,17 @@ export async function POST(request: NextRequest) {
     const userName = profileData?.full_name || "Member";
     const currentCount = waitlistCount || 0;
 
+    // Check if email already sent (idempotency guard)
+    const { data: existingProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("waitlist_email_sent_at")
+      .eq("id", user.id)
+      .single();
+
+    if (existingProfile?.waitlist_email_sent_at) {
+      return NextResponse.json({ success: true, message: "Email already sent" });
+    }
+
     if (userEmail) {
       try {
         // Dynamically import to avoid circular dependency issues

@@ -12720,3 +12720,56 @@ Update template in Supabase to use `{{codes_list}}` instead of `{{gift_codes}}`.
 ### Note
 
 The test email flow uses the same variable replacement function (`getPreRenderedHtmlAdmin`) as live emails, so seeing dummy codes in test = live will work the same way.
+
+## Session 2026-09-02: Waitlist Email Duplicate Fix
+
+### Problem
+
+Users were receiving duplicate waitlist confirmation emails sent ~2 minutes apart (e.g., alevermon@gmail.com received "An update on your NFW membership application" twice).
+
+### Root Cause
+
+1. **No server-side idempotency check** - The `/api/waitlist` POST handler had no guard against duplicate email sends. The `waitlist_email_sent_at` timestamp was only written AFTER the email was sent, so concurrent requests would both pass the email-sending logic.
+
+2. **Button not disabled while loading** - The "ADD ME TO THE WAITLIST" button in `SignUpFlow.tsx` did not have `disabled={loading}`, allowing double-clicks to reach the server.
+
+### Fix Applied
+
+**1. Server-side idempotency** (`app/api/waitlist/route.ts`):
+
+Added check before sending email:
+```typescript
+// Check if email already sent (idempotency guard)
+const { data: existingProfile } = await supabaseAdmin
+  .from("profiles")
+  .select("waitlist_email_sent_at")
+  .eq("id", user.id)
+  .single();
+
+if (existingProfile?.waitlist_email_sent_at) {
+  return NextResponse.json({ success: true, message: "Email already sent" });
+}
+```
+
+**2. Disable button while loading** (`components/SignUpFlow.tsx`):
+
+Added `disabled={loading}` to the waitlist button:
+```typescript
+<button
+  type="button"
+  disabled={loading}
+  ...
+>
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/waitlist/route.ts` | Added idempotency check before sending email |
+| `components/SignUpFlow.tsx` | Added `disabled={loading}` to waitlist button |
+
+### Build
+
+- ✅ Build passes
+
