@@ -119,6 +119,31 @@ export default function GrantApplicationForm({
     const files = e.target.files;
     if (files && files.length > 0) {
       const newFiles = Array.from(files);
+
+      // Validate files before adding
+      const allowedTypes = [
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ];
+      const maxSize = 10 * 1024 * 1024; // 10MB
+
+      for (const file of newFiles) {
+        if (!allowedTypes.includes(file.type)) {
+          setError(`"${file.name}" is not a supported file type. Please upload a PDF, image (JPEG, PNG, GIF), or Word document.`);
+          return;
+        }
+        if (file.size > maxSize) {
+          const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+          setError(`"${file.name}" is too large (${sizeMB}MB). Maximum file size is 10MB.`);
+          return;
+        }
+      }
+
+      setError("");
       setDocuments((prev) => [...prev, ...newFiles]);
       setFileInputKey((prev) => prev + 1);
     }
