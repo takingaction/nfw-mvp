@@ -12773,3 +12773,47 @@ Added `disabled={loading}` to the waitlist button:
 
 - ✅ Build passes
 
+## Session 2026-09-02: Block Submission When File Validation Fails
+
+### Overview
+
+Fixed bug where users could submit grant applications even when a file validation error was displayed (e.g., oversized file). The form showed the error but didn't block submission.
+
+### Problem
+
+When a user added an oversized file (>10MB):
+1. Error displayed: `"BrushBreak Pitch Deck.pdf" is too large (24.8MB). Maximum file size is 10MB.`
+2. File NOT added to documents array (validation worked correctly)
+3. User clicked Submit → grant was created anyway
+4. Upload loop ran with no files → succeeded
+
+### Solution
+
+**1. Block submission when error exists** - Added error check at start of `handleConfirmSubmit`:
+```typescript
+if (error) return;
+```
+
+**2. Clear error when user removes file** - Added `setError("")` to `removeDocument`:
+```typescript
+const removeDocument = (index: number) => {
+  setDocuments((prev) => prev.filter((_, i) => i !== index));
+  setError("");
+};
+```
+
+### Behavior Now
+
+| Action | Result |
+|--------|--------|
+| User adds oversized file | Error shows, file NOT added to documents |
+| User clicks Submit | Blocked - error still shown |
+| User removes the bad file | Error clears, can submit |
+| User replaces with valid file | Error clears, can submit |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/GrantApplicationForm.tsx` | Added error check in handleConfirmSubmit, clear error in removeDocument |
+

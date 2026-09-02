@@ -66,6 +66,7 @@ export default function GrantApplicationForm({
 
   const handleConfirmSubmit = async () => {
     if (!submitConsentChecked) return;
+    if (error) return;
     setLoading(true);
     setError("");
 
@@ -151,6 +152,7 @@ export default function GrantApplicationForm({
 
   const removeDocument = (index: number) => {
     setDocuments((prev) => prev.filter((_, i) => i !== index));
+    setError("");
   };
 
   const selectedCycle = cycles.find((c) => c.id === formData.cycle_id);
