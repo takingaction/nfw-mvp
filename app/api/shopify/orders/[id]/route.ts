@@ -75,16 +75,12 @@ export async function GET(
             name: string;
             statusPageUrl: string;
             displayFulfillmentStatus: string;
-            fulfillments: {
-              edges: Array<{
-                node: {
-                  trackingInfo: Array<{
-                    number: string;
-                    url: string;
-                  }>;
-                };
+            fulfillments: Array<{
+              trackingInfo: Array<{
+                number: string;
+                url: string;
               }>;
-            } | null;
+            }> | null;
           } | null;
         } | null;
       }>({
@@ -107,8 +103,8 @@ export async function GET(
         status = "fulfilled";
         orderId = draftOrder.order.id;
 
-        if (draftOrder.order.fulfillments?.edges && draftOrder.order.fulfillments.edges.length > 0) {
-          const fulfillment = draftOrder.order.fulfillments.edges[0].node;
+        if (draftOrder.order.fulfillments && draftOrder.order.fulfillments.length > 0) {
+          const fulfillment = draftOrder.order.fulfillments[0];
           if (fulfillment.trackingInfo && fulfillment.trackingInfo.length > 0) {
             trackingNumber = fulfillment.trackingInfo[0].number;
             trackingUrl = fulfillment.trackingInfo[0].url;

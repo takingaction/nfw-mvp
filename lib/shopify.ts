@@ -294,14 +294,10 @@ export const DRAFT_ORDER_QUERY = `
         name
         statusPageUrl
         displayFulfillmentStatus
-        fulfillments(first: 5) {
-          edges {
-            node {
-              trackingInfo(first: 5) {
-                number
-                url
-              }
-            }
+        fulfillments {
+          trackingInfo {
+            number
+            url
           }
         }
       }
@@ -320,16 +316,12 @@ export type ShopifyDraftOrder = {
     name: string;
     statusPageUrl: string;
     displayFulfillmentStatus: string;
-    fulfillments: {
-      edges: Array<{
-        node: {
-          trackingInfo: Array<{
-            number: string;
-            url: string;
-          }>;
-        };
+    fulfillments: Array<{
+      trackingInfo: Array<{
+        number: string;
+        url: string;
       }>;
-    } | null;
+    }> | null;
   } | null;
 };
 
