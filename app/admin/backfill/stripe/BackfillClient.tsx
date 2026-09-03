@@ -883,16 +883,9 @@ export default function BackfillClient() {
             >
               {syncMissingLoading ? "Syncing..." : "Sync Missing Payments"}
             </button>
-            <button
-              onClick={fetchReconciliation}
-              disabled={reconciliationLoading}
-              className="text-sm bg-nfw-aubergine text-white px-3 py-1 rounded hover:bg-nfw-aubergine/90 disabled:opacity-50"
-            >
-              {reconciliationLoading ? "Loading..." : "Refresh Reconciliation"}
-            </button>
             {reconciliation?.from_cache && (
               <span className="text-xs text-nfw-wisteria font-ui">
-                Cached {reconciliation.cached_at ? new Date(reconciliation.cached_at).toLocaleTimeString() : ""}
+                Updated {reconciliation.cached_at ? new Date(reconciliation.cached_at).toLocaleTimeString() : ""}
                 {reconciliation.cache_warning && <span className="text-orange-500 ml-1">⚠ {reconciliation.cache_warning}</span>}
               </span>
             )}
