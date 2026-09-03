@@ -12839,4 +12839,69 @@ if (file.size > maxSize) {
 |------|--------|
 | `components/GrantApplicationForm.tsx` | Added modal state, replaced setError with modal trigger, added modal component, reset file input on validation failure |
 
+## Session 2026-09-03: Backfill Cron Pagination Fix
+
+### Overview
+
+Fixed critical bug where `backfill-sync` cron was not processing 82 valid paid members due to PostgREST 1000-row pagination limit.
+
+### Problem
+
+With 3635 entries in `stripe_backfill_status`, the cron query at lines 43-46:
+
+```typescript
+const { data: existingBackfill } = await supabaseAdmin
+  .from("stripe_backfill_status")
+  .select("profile_id")
+  .not("profile_id", "is", null);
+```
+
+This query returned only the **first 1000** profile_ids due to PostgREST's default row limit. The remaining 2635 profile_ids were never added to `existingIds`, causing the filter at line 51 to incorrectly identify valid profiles as "not yet processed."
+
+### Solution
+
+Added pagination loop to fetch ALL profile_ids from `stripe_backfill_status`:
+
+```typescript
+const existingIds = new Set<string>();
+let bpPage = 0;
+const bpPageSize = 1000;
+let bpHasMore = true;
+
+while (bpHasMore) {
+  const { data: backfillBatch } = await supabaseAdmin
+    .from("stripe_backfill_status")
+    .select("profile_id")
+    .not("profile_id", "is", null)
+    .range(bpPage * bpPageSize, (bpPage + 1) * bpPageSize - 1);
+
+  if (backfillBatch && backfillBatch.length > 0) {
+    backfillBatch.forEach(r => { if (r.profile_id) existingIds.add(r.profile_id); });
+    bpPage++;
+    bpHasMore = backfillBatch.length === bpPageSize;
+  } else {
+    bpHasMore = false;
+  }
+}
+```
+
+### Also Fixed: stripe-only Timeout
+
+Changed `stripe-only` endpoint delay from 300ms minimum to 50ms minimum to prevent timeout:
+
+```typescript
+// Before: 978 × 300ms = ~5 minutes (timeout)
+const DELAY_BETWEEN_CUSTOMERS = Math.max(300, ...);
+
+// After: 978 × 50ms = ~49 seconds
+const TARGET_SECONDS = 120;
+const DELAY_BETWEEN_CUSTOMERS = Math.max(50, ...);
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/cron/backfill-sync/route.ts` | Added pagination to fetch all profile_ids from stripe_backfill_status |
+| `app/api/admin/backfill/stripe/stripe-only/route.ts` | Reduced minimum delay from 300ms to 50ms to prevent timeout |
 

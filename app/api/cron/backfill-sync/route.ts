@@ -39,13 +39,27 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: profilesError.message }, { status: 500 });
     }
 
-    // Get existing profile_ids in stripe_backfill_status
-    const { data: existingBackfill } = await supabaseAdmin
-      .from("stripe_backfill_status")
-      .select("profile_id")
-      .not("profile_id", "is", null);
+    // Get existing profile_ids in stripe_backfill_status (with pagination to bypass PostgREST max-rows cap)
+    const existingIds = new Set<string>();
+    let bpPage = 0;
+    const bpPageSize = 1000;
+    let bpHasMore = true;
 
-    const existingIds = new Set((existingBackfill || []).map(r => r.profile_id).filter(Boolean));
+    while (bpHasMore) {
+      const { data: backfillBatch } = await supabaseAdmin
+        .from("stripe_backfill_status")
+        .select("profile_id")
+        .not("profile_id", "is", null)
+        .range(bpPage * bpPageSize, (bpPage + 1) * bpPageSize - 1);
+
+      if (backfillBatch && backfillBatch.length > 0) {
+        backfillBatch.forEach(r => { if (r.profile_id) existingIds.add(r.profile_id); });
+        bpPage++;
+        bpHasMore = backfillBatch.length === bpPageSize;
+      } else {
+        bpHasMore = false;
+      }
+    }
 
     // Filter to only NEW paid profiles (not already in backfill)
     const newProfiles = (paidProfiles || []).filter(p => !existingIds.has(p.id));
