@@ -79,8 +79,8 @@ export async function GET(request: Request) {
               amount: priceAmount,
               email: (sub as any).billing_details?.email || null,
               created: sub.created,
-              current_period_start: sub.current_period_start,
-              current_period_end: sub.current_period_end,
+              current_period_start: (sub as any).current_period_start,
+              current_period_end: (sub as any).current_period_end,
             });
           }
         }
