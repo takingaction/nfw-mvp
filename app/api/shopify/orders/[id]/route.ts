@@ -49,7 +49,9 @@ export async function GET(
     }
 
     // Determine if this is a DraftOrder or Checkout ID
-    const isDraftOrder = claim.shopify_checkout_id.startsWith("draft_");
+    const isDraftOrder = 
+      claim.shopify_checkout_id.startsWith("draft_") || 
+      claim.shopify_checkout_id.startsWith("gid://shopify/DraftOrder/");
     
     let status = claim.status;
     let trackingNumber = claim.tracking_number;
