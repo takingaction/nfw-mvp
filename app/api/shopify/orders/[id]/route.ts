@@ -61,9 +61,15 @@ export async function GET(
 
     if (isDraftOrder) {
       // Query DraftOrder for draft_ IDs
-      const draftOrderId = claim.shopify_checkout_id.startsWith("gid://shopify/DraftOrder/")
-        ? claim.shopify_checkout_id
-        : `gid://shopify/DraftOrder/${claim.shopify_checkout_id}`;
+      // Convert short format (draft_xxx) to full GID format
+      let draftOrderId: string;
+      if (claim.shopify_checkout_id.startsWith("gid://shopify/DraftOrder/")) {
+        draftOrderId = claim.shopify_checkout_id; // Already full GID
+      } else {
+        // Extract numeric ID from draft_xxx format
+        const numericId = claim.shopify_checkout_id.replace("draft_", "");
+        draftOrderId = `gid://shopify/DraftOrder/${numericId}`;
+      }
 
       const data = await shopifyFetch<{
         draftOrder: {
@@ -125,6 +131,16 @@ export async function GET(
       }
     } else {
       // Query Checkout for checkout_ IDs
+      // Convert short format (checkout_xxx) to full GID format
+      let checkoutId: string;
+      if (claim.shopify_checkout_id.startsWith("gid://shopify/Checkout/")) {
+        checkoutId = claim.shopify_checkout_id; // Already full GID
+      } else {
+        // Extract numeric ID from checkout_xxx format
+        const numericId = claim.shopify_checkout_id.replace("checkout_", "");
+        checkoutId = `gid://shopify/Checkout/${numericId}`;
+      }
+
       const data = await shopifyFetch<{
         node: {
           id: string;
@@ -147,7 +163,7 @@ export async function GET(
         } | null;
       }>({
         query: CHECKOUT_QUERY,
-        variables: { id: claim.shopify_checkout_id },
+        variables: { id: checkoutId },
       });
 
       if (!data.node) {
