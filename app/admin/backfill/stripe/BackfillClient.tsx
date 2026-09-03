@@ -111,6 +111,10 @@ interface ReconciliationResponse {
   verified: { valid: number; refunded: number; failed: number; not_found: number };
   problematic_payments: ProblematicPayment[];
   missing_from_db?: string[];
+  from_cache?: boolean;
+  cached_at?: string;
+  cache_incomplete?: boolean;
+  cache_warning?: string;
 }
 
 interface DuplicateEmail {
@@ -886,6 +890,12 @@ export default function BackfillClient() {
             >
               {reconciliationLoading ? "Loading..." : "Refresh Reconciliation"}
             </button>
+            {reconciliation?.from_cache && (
+              <span className="text-xs text-nfw-wisteria font-ui">
+                Cached {reconciliation.cached_at ? new Date(reconciliation.cached_at).toLocaleTimeString() : ""}
+                {reconciliation.cache_warning && <span className="text-orange-500 ml-1">⚠ {reconciliation.cache_warning}</span>}
+              </span>
+            )}
             <button
               onClick={handleExportEmailCsv}
               disabled={exportCsvLoading}

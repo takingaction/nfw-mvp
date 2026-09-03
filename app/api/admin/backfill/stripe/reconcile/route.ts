@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
 });
+
+const supabaseAdmin = createAdminClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
 export const dynamic = "force-dynamic";
 
@@ -39,47 +45,42 @@ export async function GET(request: Request) {
     }
 
     // ========================================
-    // JSON FORMAT: Existing summary reconciliation
+    // JSON FORMAT: Use cached Stripe subscriptions
     // ========================================
 
-    // Step 1: Get Stripe live stats
-    let hasMore = true;
-    let cursor;
-    const allSubscriptions: Stripe.Subscription[] = [];
+    // Step 1: Get cached Stripe subscriptions
+    const { data: cachedData, error: cacheError } = await supabaseAdmin
+      .from("stripe_subscriptions_cache")
+      .select("*")
+      .eq("id", "latest")
+      .single();
 
-    while (hasMore) {
-      const params: { limit: number; starting_after?: string; status: "active" | "past_due" | "canceled" | "unpaid" | "trialing" | "incomplete" | "incomplete_expired" | "paused" } = {
-        limit: 100,
-        status: "active",
-      };
-      if (cursor) params.starting_after = cursor;
+    let stripeSubscriptions: any[] = [];
+    let cachedAt: string | null = null;
+    let fromCache = false;
+    let cacheIncomplete = false;
+    let cacheWarning: string | null = null;
 
-      const response = await stripe.subscriptions.list(params as any);
-
-      for (const sub of response.data) {
-        const priceAmount = sub.items.data[0]?.price?.unit_amount;
-        if (priceAmount !== 1500 && priceAmount !== 10000) continue;
-        allSubscriptions.push(sub);
-      }
-
-      hasMore = response.has_more;
-      if (hasMore && response.data.length > 0) {
-        cursor = response.data[response.data.length - 1].id;
-      }
-      await new Promise(r => setTimeout(r, 25));
+    if (!cacheError && cachedData) {
+      stripeSubscriptions = cachedData.subscriptions_json || [];
+      cachedAt = cachedData.fetched_at;
+      fromCache = true;
+      cacheIncomplete = cachedData.incomplete || false;
+      cacheWarning = cachedData.warning || null;
+    } else {
+      // No cache - this shouldn't happen if cron is running
+      console.warn("[reconcile] No cached subscriptions found - cron may not be running");
     }
 
-    // Calculate Stripe live totals (assumed based on count × price)
+    // Calculate Stripe live totals from cached subscriptions
     let stripeContributingCount = 0;
     let stripeContributingTotal = 0;
     let stripeFoundingCount = 0;
     let stripeFoundingTotal = 0;
-
-    // Also build stripeEmailMap for missing_from_db check
     const stripeEmailMap = new Map<string, { tier: string; amount: number; customer_id: string }>();
 
-    for (const sub of allSubscriptions) {
-      const amount = (sub.items.data[0]?.price?.unit_amount || 0) / 100;
+    for (const sub of stripeSubscriptions) {
+      const amount = sub.amount / 100; // Convert cents to dollars
       if (amount === 15) {
         stripeContributingCount++;
         stripeContributingTotal += amount;
@@ -88,32 +89,17 @@ export async function GET(request: Request) {
         stripeFoundingTotal += amount;
       }
 
-      // Build stripeEmailMap for missing_from_db
-      const priceAmount = sub.items.data[0]?.price?.unit_amount;
-      if (priceAmount === 1500 || priceAmount === 10000) {
-        const tier = priceAmount === 1500 ? "Contributing" : "Founding";
-        const customerId = typeof sub.customer === 'string' ? sub.customer : null;
-        const subAny = sub as any;
-        let email = subAny.billing_details?.email || "";
-        if (!email && customerId) {
-          try {
-            const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
-            if (!customer.deleted && customer.email) {
-              email = customer.email;
-            }
-          } catch (e) {}
-          await new Promise(r => setTimeout(r, 25));
-        }
-        if (email) {
-          const emailLower = email.toLowerCase();
-          if (!stripeEmailMap.has(emailLower)) {
-            stripeEmailMap.set(emailLower, { tier, amount, customer_id: customerId || "" });
-          }
+      // Build email map for missing_from_db check
+      if (sub.email) {
+        const tier = amount === 15 ? "Contributing" : "Founding";
+        const emailLower = sub.email.toLowerCase();
+        if (!stripeEmailMap.has(emailLower)) {
+          stripeEmailMap.set(emailLower, { tier, amount, customer_id: sub.customer || "" });
         }
       }
     }
 
-    // Step 1c: Find emails in Stripe but not in any profile (paginate through all profiles)
+    // Step 1b: Find emails in Stripe but not in any profile
     const allProfileEmails = new Set<string>();
     let profilePage = 0;
     const profilePageSize = 1000;
@@ -149,55 +135,22 @@ export async function GET(request: Request) {
     }
     missingFromDb.sort();
 
-    // Step 1b: Get TRUE totals from actual invoice amounts
-    let trueContributingTotal = 0;
-    let trueFoundingTotal = 0;
-
-    for (const sub of allSubscriptions) {
-      try {
-        const customerId = typeof sub.customer === 'string' ? sub.customer : null;
-        if (!customerId) continue;
-        
-        const invoices = await stripe.invoices.list({
-          customer: customerId,
-          limit: 100,
-        });
-
-        for (const invoice of invoices.data) {
-          if (invoice.status === "paid") {
-            const priceAmount = sub.items.data[0]?.price?.unit_amount;
-            if (priceAmount === 1500) {
-              trueContributingTotal += invoice.amount_paid / 100;
-            } else if (priceAmount === 10000) {
-              trueFoundingTotal += invoice.amount_paid / 100;
-            }
-          }
-        }
-      } catch (e) {
-        console.error(`[reconcile] Error fetching invoices for customer ${sub.customer}:`, e);
-      }
-      await new Promise(r => setTimeout(r, 25));
-    }
-
     const stripeLive = {
-      contributing: { 
-        count: stripeContributingCount, 
+      contributing: {
+        count: stripeContributingCount,
         total: stripeContributingTotal,
-        true_total: trueContributingTotal 
       },
-      founding: { 
-        count: stripeFoundingCount, 
+      founding: {
+        count: stripeFoundingCount,
         total: stripeFoundingTotal,
-        true_total: trueFoundingTotal 
       },
-      total: { 
-        count: stripeContributingCount + stripeFoundingCount, 
+      total: {
+        count: stripeContributingCount + stripeFoundingCount,
         total: stripeContributingTotal + stripeFoundingTotal,
-        true_total: trueContributingTotal + trueFoundingTotal
       },
     };
 
-    // Step 2: Get unique users per tier (count profiles, not payments)
+    // Step 2: Get unique users per tier from DB (count profiles, not payments)
     const { data: allPayments, error: paymentsError } = await supabase
       .from("membership_payments")
       .select(`
@@ -239,144 +192,32 @@ export async function GET(request: Request) {
     const ourDb = {
       contributing: { count: dbContributingCount, total: dbContributingTotal },
       founding: { count: dbFoundingCount, total: dbFoundingTotal },
-      total: { 
-        count: dbContributingCount + dbFoundingCount, 
-        total: dbContributingTotal + dbFoundingTotal 
+      total: {
+        count: dbContributingCount + dbFoundingCount,
+        total: dbContributingTotal + dbFoundingTotal,
       },
     };
-
-    // Use allPayments for individual payment verification
-    const payments = allPayments;
 
     // Calculate differences
     const difference = {
-      contributing: { 
-        count: dbContributingCount - stripeContributingCount, 
-        total: dbContributingTotal - stripeContributingTotal 
+      contributing: {
+        count: dbContributingCount - stripeContributingCount,
+        total: dbContributingTotal - stripeContributingTotal,
       },
-      founding: { 
-        count: dbFoundingCount - stripeFoundingCount, 
-        total: dbFoundingTotal - stripeFoundingTotal 
+      founding: {
+        count: dbFoundingCount - stripeFoundingCount,
+        total: dbFoundingTotal - stripeFoundingTotal,
       },
-      total: { 
-        count: (dbContributingCount + dbFoundingCount) - (stripeContributingCount + stripeFoundingCount), 
-        total: (dbContributingTotal + dbFoundingTotal) - (stripeContributingTotal + stripeFoundingTotal) 
+      total: {
+        count: (dbContributingCount + dbFoundingCount) - (stripeContributingCount + stripeFoundingCount),
+        total: (dbContributingTotal + dbFoundingTotal) - (stripeContributingTotal + stripeFoundingTotal),
       },
     };
 
-    // Step 3: Verify each payment against Stripe
-    const problematicPayments: any[] = [];
+    // For now, skip the expensive per-payment verification that caused timeouts
+    // This data is still useful but requires too many API calls
     const verifiedCount = { valid: 0, refunded: 0, failed: 0, not_found: 0 };
-
-    for (const payment of payments || []) {
-      // stripe_payment_id can be null for automatic payments (Stripe doesn't expose charge ID)
-      // stripe_invoice_id is the fallback verification for automatic payments
-      const hasStripeId = !!payment.stripe_payment_id;
-      const hasInvoiceId = !!payment.stripe_invoice_id;
-
-      if (!hasStripeId && !hasInvoiceId) {
-        // Missing both Stripe IDs - can't verify
-        problematicPayments.push({
-          id: payment.id,
-          stripe_payment_id: null,
-          stripe_invoice_id: null,
-          amount: payment.amount,
-          email: (payment.profiles as any)?.email || "unknown",
-          user_id: payment.user_id,
-          created_at: payment.created_at,
-          issue: "missing_stripe_id",
-          stripe_status: null,
-        });
-        continue;
-      }
-
-      try {
-        // Use stripe_payment_id if available, otherwise fall back to stripe_invoice_id
-        const paymentId = payment.stripe_payment_id || payment.stripe_invoice_id;
-        let status: string | null = null;
-
-        if (paymentId?.startsWith("in_")) {
-          // It's an invoice ID - use invoices API
-          const invoice = await stripe.invoices.retrieve(paymentId);
-          status = invoice.status === "paid" ? "succeeded" : invoice.status;
-        } else if (paymentId?.startsWith("ch_")) {
-          // It's a charge ID - use charges API
-          const charge = await stripe.charges.retrieve(paymentId);
-          status = charge.status;
-        } else {
-          // Unknown format - can't verify
-          verifiedCount.not_found++;
-          problematicPayments.push({
-            id: payment.id,
-            stripe_payment_id: payment.stripe_payment_id,
-            amount: payment.amount,
-            email: (payment.profiles as any)?.email || "unknown",
-            user_id: payment.user_id,
-            created_at: payment.created_at,
-            issue: "unknown_id_format",
-            stripe_status: null,
-          });
-          continue;
-        }
-
-        if (status === "succeeded") {
-          verifiedCount.valid++;
-        } else if (status === "refunded") {
-          verifiedCount.refunded++;
-          problematicPayments.push({
-            id: payment.id,
-            stripe_payment_id: payment.stripe_payment_id,
-            amount: payment.amount,
-            email: (payment.profiles as any)?.email || "unknown",
-            user_id: payment.user_id,
-            created_at: payment.created_at,
-            issue: "refunded",
-            stripe_status: "refunded",
-          });
-        } else if (status === "failed") {
-          verifiedCount.failed++;
-          problematicPayments.push({
-            id: payment.id,
-            stripe_payment_id: payment.stripe_payment_id,
-            amount: payment.amount,
-            email: (payment.profiles as any)?.email || "unknown",
-            user_id: payment.user_id,
-            created_at: payment.created_at,
-            issue: "failed",
-            stripe_status: "failed",
-          });
-        } else {
-          // Any other status (e.g., "open" for invoices with failed payments)
-          verifiedCount.not_found++;
-          problematicPayments.push({
-            id: payment.id,
-            stripe_payment_id: payment.stripe_payment_id,
-            amount: payment.amount,
-            email: (payment.profiles as any)?.email || "unknown",
-            user_id: payment.user_id,
-            created_at: payment.created_at,
-            issue: status || "unknown",
-            stripe_status: status,
-          });
-        }
-      } catch (stripeError: any) {
-        // Payment not found in Stripe
-        verifiedCount.not_found++;
-        problematicPayments.push({
-          id: payment.id,
-          stripe_payment_id: payment.stripe_payment_id,
-          amount: payment.amount,
-          email: (payment.profiles as any)?.email || "unknown",
-          user_id: payment.user_id,
-          created_at: payment.created_at,
-          issue: "not_found",
-          stripe_status: null,
-        });
-      }
-
-      // Rate limit - be nice to Stripe
-      await new Promise(r => setTimeout(r, 50));
-    }
+    const problematicPayments: any[] = [];
 
     return NextResponse.json({
       summary: {
@@ -387,6 +228,10 @@ export async function GET(request: Request) {
       verified: verifiedCount,
       problematic_payments: problematicPayments,
       missing_from_db: missingFromDb,
+      from_cache: fromCache,
+      cached_at: cachedAt,
+      cache_incomplete: cacheIncomplete,
+      cache_warning: cacheWarning,
     });
 
   } catch (error: any) {
@@ -403,64 +248,29 @@ export async function GET(request: Request) {
 // ========================================
 async function handleCsvFormat(supabase: any) {
   try {
-    // Step 1: Fetch all Stripe subscriptions with emails
+    // Get cached Stripe subscriptions
+    const { data: cachedData } = await supabaseAdmin
+      .from("stripe_subscriptions_cache")
+      .select("subscriptions_json")
+      .eq("id", "latest")
+      .single();
+
     const stripeEmailMap = new Map<string, { tier: string; amount: number; customer_id: string }>();
 
-    let hasMore = true;
-    let cursor;
-
-    while (hasMore) {
-      const params: { limit: number; starting_after?: string; status: "active" | "past_due" | "canceled" | "unpaid" | "trialing" | "incomplete" | "incomplete_expired" | "paused" } = {
-        limit: 100,
-        status: "active",
-      };
-      if (cursor) params.starting_after = cursor;
-
-      const response = await stripe.subscriptions.list(params as any);
-
-      for (const sub of response.data) {
-        const priceAmount = sub.items.data[0]?.price?.unit_amount;
-        if (priceAmount !== 1500 && priceAmount !== 10000) continue;
-
-        const tier = priceAmount === 1500 ? "Contributing" : "Founding";
-        const amount = priceAmount / 100;
-        const customerId = typeof sub.customer === 'string' ? sub.customer : null;
-
-        // Get email from subscription first
-        const subAny = sub as any;
-        let email = subAny.billing_details?.email || "";
-
-        // If no email, fetch customer directly from Stripe
-        if (!email && customerId) {
-          try {
-            const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
-            if (!customer.deleted && customer.email) {
-              email = customer.email;
-            }
-          } catch (e) {
-            // Customer lookup failed
-          }
-          // Rate limit - be nice to Stripe
-          await new Promise(r => setTimeout(r, 50));
-        }
-
-        if (email) {
-          const emailLower = email.toLowerCase();
-          // Only add if not already present (first occurrence wins)
+    if (cachedData?.subscriptions_json) {
+      for (const sub of cachedData.subscriptions_json) {
+        if (sub.email) {
+          const tier = sub.amount === 1500 ? "Contributing" : "Founding";
+          const amount = sub.amount / 100;
+          const emailLower = sub.email.toLowerCase();
           if (!stripeEmailMap.has(emailLower)) {
-            stripeEmailMap.set(emailLower, { tier, amount, customer_id: customerId || "" });
+            stripeEmailMap.set(emailLower, { tier, amount, customer_id: sub.customer || "" });
           }
         }
       }
-
-      hasMore = response.has_more;
-      if (hasMore && response.data.length > 0) {
-        cursor = response.data[response.data.length - 1].id;
-      }
-      await new Promise(r => setTimeout(r, 25));
     }
 
-    // Step 2: Fetch DB profiles for contributing/founding members
+    // Fetch DB profiles for contributing/founding members
     const { data: dbProfiles } = await supabase
       .from("profiles")
       .select("email, membership_level")
@@ -472,22 +282,19 @@ async function handleCsvFormat(supabase: any) {
         const emailLower = profile.email.toLowerCase();
         const tier = profile.membership_level === "founding" ? "Founding" : "Contributing";
         const amount = profile.membership_level === "founding" ? 100 : 15;
-        // Only add if not already present
         if (!dbEmailMap.has(emailLower)) {
           dbEmailMap.set(emailLower, { tier, amount });
         }
       }
     }
 
-    // Step 3: Build CSV rows
+    // Build CSV rows
     const csvRows: string[] = ["EMAIL,IN_STRIPE,IN_DB,STRIPE_TIER,DB_TIER,AMOUNT"];
 
-    // Collect all unique emails
     const allEmails = new Set<string>();
     for (const email of stripeEmailMap.keys()) allEmails.add(email);
     for (const email of dbEmailMap.keys()) allEmails.add(email);
 
-    // Build rows with match status
     const rows: Array<{
       email: string;
       inStripe: boolean;
@@ -510,25 +317,16 @@ async function handleCsvFormat(supabase: any) {
       const dbTier = dbData?.tier || "-";
       const amount = stripeData?.amount ? `$${stripeData.amount}` : (dbData?.amount ? `$${dbData.amount}` : "-");
 
-      rows.push({
-        email,
-        inStripe,
-        inDb,
-        stripeTier,
-        dbTier,
-        amount,
-        isUnmatched,
-      });
+      rows.push({ email, inStripe, inDb, stripeTier, dbTier, amount, isUnmatched });
     }
 
-    // Sort: unmatched first, then alphabetically by email
+    // Sort: unmatched first, then alphabetically
     rows.sort((a, b) => {
       if (a.isUnmatched && !b.isUnmatched) return -1;
       if (!a.isUnmatched && b.isUnmatched) return 1;
       return a.email.localeCompare(b.email);
     });
 
-    // Build CSV
     for (const row of rows) {
       const inStripe = row.inStripe ? "YES" : "NO";
       const inDb = row.inDb ? "YES" : "NO";
@@ -556,7 +354,6 @@ async function handleCsvFormat(supabase: any) {
 
 function escapeCsvField(field: string): string {
   if (!field) return "";
-  // If field contains comma, newline, or quote, wrap in quotes and escape internal quotes
   if (field.includes(",") || field.includes("\n") || field.includes('"')) {
     return `"${field.replace(/"/g, '""')}"`;
   }

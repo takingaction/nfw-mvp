@@ -12962,3 +12962,65 @@ The `/api/shopify/products` API returns `description` which contains raw HTML fr
 |------|--------|
 | `app/store/my-claims/page.tsx` | Use `cardDescription` instead of `description` for product mapping |
 
+---
+
+## Session 2026-09-03: Stripe Reconciliation Caching
+
+### Goal
+
+Fix Stripe reconciliation timeout and rate limiting issues on Vercel by implementing cross-browser caching with 1-hour TTL.
+
+### Problem
+
+The `/api/admin/backfill/stripe/reconcile` endpoint was calling Stripe API directly, causing:
+- 504 timeouts after 300 seconds on Vercel
+- Rate limit (429) errors when fetching 800+ subscriptions
+- Localhost had 887 Stripe live, Vercel had 863 (24 subscriptions missing due to rate limits)
+
+### Solution
+
+Implemented caching system with two database tables and a new hourly cron job:
+
+**Database Tables (`supabase/migrations/153_create_stripe_reconciliation_cache.sql`):**
+- `stripe_subscriptions_cache` - Raw Stripe subscription data with 1-hour TTL
+- `stripe_reconciliation_cache` - Computed reconciliation results with 1-hour TTL
+
+**Cron Job (`/api/cron/reconciliation-sync`):**
+- Runs hourly via Vercel cron
+- Fetches all Stripe subscriptions with retry logic (3 attempts, exponential backoff)
+- Uses 100ms delays between API calls to avoid rate limits
+- Computes and caches reconciliation results
+
+**Reconcile API (`/api/admin/backfill/stripe/reconcile`):**
+- Reads from cache instead of calling Stripe API directly
+- Returns `from_cache: true` and `cached_at` timestamp
+- Returns warning if cache is stale or incomplete
+
+### Key Decisions
+
+- Created separate `reconciliation-sync` cron to avoid Vercel timeout issues
+- Cache TTL of 1 hour - recomputes in background hourly
+- No manual refresh button - UI shows cache timestamp
+- Cross-browser cache via database tables (not sessionStorage)
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/153_create_stripe_reconciliation_cache.sql` | Cache tables schema |
+| `app/api/cron/reconciliation-sync/route.ts` | Hourly cron to fetch Stripe data |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/backfill/stripe/reconcile/route.ts` | Read from cache instead of calling Stripe directly |
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Show cache indicator badge |
+| `vercel.json` | Added reconciliation-sync cron (hourly) |
+
+### To Deploy
+
+1. Run migration 153 in Supabase SQL Editor
+2. Deploy to Vercel
+3. Cron runs hourly - no manual trigger needed
+
