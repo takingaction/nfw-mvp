@@ -12905,3 +12905,36 @@ const DELAY_BETWEEN_CUSTOMERS = Math.max(50, ...);
 | `app/api/cron/backfill-sync/route.ts` | Added pagination to fetch all profile_ids from stripe_backfill_status |
 | `app/api/admin/backfill/stripe/stripe-only/route.ts` | Reduced minimum delay from 300ms to 50ms to prevent timeout |
 
+---
+
+## Session 2026-09-02: Shopify DraftOrder API Fix for Order Status
+
+### Problem
+
+Error `No such type Checkout, so it can't be a fragment condition` occurred when users visited `/store/my-claims` because the `CHECKOUT_QUERY` used `... on Checkout` fragment, but all order IDs were `draft_XXXXX` format (Draft Order IDs).
+
+### Root Cause
+
+1. All ZDC orders use Draft Orders because they're the only way to pass custom attributes (`nfw_user_id`) to Shopify
+2. The `CHECKOUT_QUERY` used `node(id: $id) { ... on Checkout }` which only works for Checkout-type IDs
+3. Draft Order IDs (`draft_XXXXX`) require querying `draftOrder(id: $id)` instead
+
+### Fix Applied
+
+**`lib/shopify.ts`:**
+- Added `DRAFT_ORDER_QUERY` for querying Draft Orders via GraphQL
+- Added `ShopifyDraftOrder` type for typed response
+
+**`app/api/shopify/orders/[id]/route.ts`:**
+- Added detection for `draft_` vs `checkout_` ID prefixes
+- For `draft_` IDs: Uses `DRAFT_ORDER_QUERY` with `gid://shopify/DraftOrder/{id}` format
+- For `checkout_` IDs: Uses existing `CHECKOUT_QUERY`
+- Maps DraftOrder response to same return format (`status`, `trackingNumber`, `trackingUrl`, `orderId`, `completedAt`)
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `lib/shopify.ts` | Added `DRAFT_ORDER_QUERY` and `ShopifyDraftOrder` type |
+| `app/api/shopify/orders/[id]/route.ts` | Handle both DraftOrder and Checkout ID types |
+

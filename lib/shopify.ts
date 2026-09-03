@@ -281,6 +281,58 @@ export const CHECKOUT_QUERY = `
   }
 `;
 
+export const DRAFT_ORDER_QUERY = `
+  query DraftOrder($id: ID!) {
+    draftOrder(id: $id) {
+      id
+      name
+      status
+      completedAt
+      invoiceUrl
+      order {
+        id
+        name
+        statusPageUrl
+        displayFulfillmentStatus
+        fulfillments(first: 5) {
+          edges {
+            node {
+              trackingInfo(first: 5) {
+                number
+                url
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+export type ShopifyDraftOrder = {
+  id: string;
+  name: string;
+  status: "COMPLETED" | "INVOICE_SENT" | "PENDING";
+  completedAt: string | null;
+  invoiceUrl: string | null;
+  order: {
+    id: string;
+    name: string;
+    statusPageUrl: string;
+    displayFulfillmentStatus: string;
+    fulfillments: {
+      edges: Array<{
+        node: {
+          trackingInfo: Array<{
+            number: string;
+            url: string;
+          }>;
+        };
+      }>;
+    } | null;
+  } | null;
+};
+
 export type ShopifyOrder = {
   id: string;
   name: string;
