@@ -59,9 +59,9 @@ async function MyClaimsContent({
       if (productsRes.ok) {
         const products = await productsRes.json();
         const productMap = new Map(
-          products.map((p: { shopifyProductId: string; title: string; imageUrl: string; description: string }) => [
+          products.map((p: { shopifyProductId: string; title: string; imageUrl: string; cardDescription: string }) => [
             p.shopifyProductId,
-            { title: p.title, imageUrl: p.imageUrl, description: p.description }
+            { title: p.title, imageUrl: p.imageUrl, description: p.cardDescription }
           ])
         );
 

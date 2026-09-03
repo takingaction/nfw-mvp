@@ -12938,3 +12938,27 @@ Error `No such type Checkout, so it can't be a fragment condition` occurred when
 | `lib/shopify.ts` | Added `DRAFT_ORDER_QUERY` and `ShopifyDraftOrder` type |
 | `app/api/shopify/orders/[id]/route.ts` | Handle both DraftOrder and Checkout ID types |
 
+---
+
+## Session 2026-09-03: Fix My Claims HTML Description Display
+
+### Problem
+
+On `/store/my-claims`, HTML tags were displaying literally in the card description (e.g., `<p>`, `<ul>`, `<li>` tags showing instead of being rendered as HTML).
+
+### Root Cause
+
+The `/api/shopify/products` API returns `description` which contains raw HTML from Shopify's `descriptionHtml` field. The My Claims page was using this HTML `description` directly instead of the `cardDescription` field which has HTML stripped.
+
+### Fix Applied
+
+**`app/store/my-claims/page.tsx`:**
+- Changed product mapping to use `p.cardDescription` instead of `p.description`
+- `cardDescription` is auto-generated from HTML-stripped description (150 char max)
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/store/my-claims/page.tsx` | Use `cardDescription` instead of `description` for product mapping |
+
