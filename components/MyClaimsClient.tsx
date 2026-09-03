@@ -60,7 +60,7 @@ export default function MyClaimsClient({
     }
 
     try {
-      const res = await fetch(`/api/shopify/orders/${claim.shopify_checkout_id}`);
+      const res = await fetch(`/api/shopify/orders/${encodeURIComponent(claim.shopify_checkout_id)}`);
       const data = await res.json();
       return {
         status: data.status || claim.status,

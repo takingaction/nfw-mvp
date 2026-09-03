@@ -13,7 +13,7 @@ export async function GET(
     const { data: claim } = await supabase
       .from("zero_dollar_claims")
       .select("*")
-      .eq("shopify_checkout_id", id)
+      .eq("shopify_checkout_id", decodeURIComponent(id))
       .single();
 
     if (!claim) {
