@@ -36,6 +36,9 @@ const STATUS_INFO: Record<string, { label: string; description: string }> = {
   created: { label: "Processing", description: "Your order is being prepared" },
   fulfilled: { label: "Shipped", description: "Your item is on its way" },
   delivered: { label: "Delivered", description: "Your item has been delivered" },
+  cancelled: { label: "Cancelled", description: "This order was cancelled" },
+  rejected_invalid_user: { label: "Invalid", description: "This claim was not valid" },
+  rejected_monthly_limit: { label: "Monthly Limit", description: "Monthly claim limit reached" },
 };
 
 const SHOPIFY_STORE_DOMAIN = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN || "nfw-checkout.myshopify.com";
@@ -167,7 +170,7 @@ export default function MyClaimsClient({
     <div>
       <div className="space-y-4">
         {enrichedClaims.map((claim) => {
-          const info = STATUS_INFO[claim.status] || STATUS_INFO.pending;
+          const info = STATUS_INFO[claim.status] || { label: claim.status, description: "Status unknown" };
           const shopifyOrderUrl = getShopifyOrderUrl(claim);
 
           return (
