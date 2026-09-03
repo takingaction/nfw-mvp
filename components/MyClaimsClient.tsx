@@ -50,7 +50,11 @@ export default function MyClaimsClient({
   const [loadingClaimId, setLoadingClaimId] = useState<string | null>(null);
 
   const fetchOrderStatus = useCallback(async (claim: Claim): Promise<OrderStatus> => {
-    if (!claim.shopify_checkout_id || claim.shopify_checkout_id.startsWith('checkout_')) {
+    // Skip API call if no checkout ID or if it's a draft_/checkout_ short format
+    // These are stored in our DB but Shopify queries fail with "No such type Checkout"
+    if (!claim.shopify_checkout_id ||
+        claim.shopify_checkout_id.startsWith('checkout_') ||
+        claim.shopify_checkout_id.startsWith('draft_')) {
       return {
         status: claim.status,
         trackingNumber: claim.tracking_number,
