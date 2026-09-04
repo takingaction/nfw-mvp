@@ -12962,3 +12962,61 @@ The `/api/shopify/products` API returns `description` which contains raw HTML fr
 |------|--------|
 | `app/store/my-claims/page.tsx` | Use `cardDescription` instead of `description` for product mapping |
 
+---
+
+## Session 2026-09-03 (Evening): Revert to 64cc58e
+
+### Goal
+
+Revert to commit `64cc58e` because True $ verification was broken after adding caching layer.
+
+### Problem
+
+After adding caching in commits `049313f` and `fc064c2`:
+- The reconcile API was reading from cache instead of doing direct Stripe verification
+- True $ showed zeros because per-payment verification was disabled
+- Later commits tried to restore True $ verification but broke it by removing invoice/charge ID handling
+
+### Solution
+
+Reverted to `64cc58e` which had the working True $ verification with:
+- Invoice ID (`in_xxx`) handling via `stripe.invoices.retrieve()`
+- Charge ID (`ch_xxx`) handling via `stripe.charges.retrieve()`
+- Fallback to `stripe_invoice_id` when `stripe_payment_id` is null
+
+### Files Reverted/Deleted
+
+| File | Action |
+|------|--------|
+| `AGENTS.md` | Revert to 64cc58e state |
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Revert to 64cc58e state |
+| `app/api/admin/backfill/stripe/reconcile/route.ts` | Revert to 64cc58e state |
+| `vercel.json` | Remove reconciliation-sync cron entry |
+| `app/api/cron/reconciliation-sync/route.ts` | DELETE - didn't exist at 64cc58e |
+
+### SQL (if cache tables exist)
+
+```sql
+DROP TABLE IF EXISTS stripe_reconciliation_cache;
+DROP TABLE IF EXISTS stripe_subscriptions_cache;
+NOTIFY pgrst, 'reload';
+```
+
+### Key Implementation at 64cc58e
+
+The True $ verification loop handles three cases:
+
+```javascript
+if (paymentId?.startsWith("in_")) {
+  // Invoice ID - use stripe.invoices.retrieve()
+  const invoice = await stripe.invoices.retrieve(paymentId);
+  status = invoice.status === "paid" ? "succeeded" : invoice.status;
+} else if (paymentId?.startsWith("ch_")) {
+  // Charge ID - use stripe.charges.retrieve()
+  const charge = await stripe.charges.retrieve(paymentId);
+  status = charge.status;
+} else {
+  // Unknown format - can't verify
+}
+```
+
