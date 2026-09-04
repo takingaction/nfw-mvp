@@ -945,7 +945,7 @@ export default function BackfillClient() {
                       <span className="text-nfw-aubergine font-bold">${reconciliation.summary.stripe_live.contributing.total.toLocaleString('en-US')}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
-                      <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.contributing.true_total?.toLocaleString('en-US') ?? '—'}</span>
+                      <span className="text-nfw-wisteria font-bold">—</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-aubergine font-bold">{reconciliation.summary.our_db.contributing.count}</span>
@@ -970,7 +970,7 @@ export default function BackfillClient() {
                       <span className="text-nfw-aubergine font-bold">${reconciliation.summary.stripe_live.founding.total.toLocaleString('en-US')}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
-                      <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.founding.true_total?.toLocaleString('en-US') ?? '—'}</span>
+                      <span className="text-nfw-wisteria font-bold">—</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-aubergine font-bold">{reconciliation.summary.our_db.founding.count}</span>
@@ -995,7 +995,7 @@ export default function BackfillClient() {
                       <span className="text-nfw-aubergine font-bold">${reconciliation.summary.stripe_live.total.total.toLocaleString('en-US')}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
-                      <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.total.true_total?.toLocaleString('en-US') ?? '—'}</span>
+                      <span className="text-nfw-wisteria font-bold">—</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-aubergine font-bold">{reconciliation.summary.our_db.total.count}</span>
