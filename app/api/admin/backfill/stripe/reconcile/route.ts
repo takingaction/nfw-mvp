@@ -1,41 +1,12 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
 });
 
-const supabaseAdmin = createAdminClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
-
 export const dynamic = "force-dynamic";
-
-// Stripe API call with retry and exponential backoff
-async function stripeWithRetry<T>(
-  fn: () => Promise<T>,
-  maxRetries = 3,
-  baseDelayMs = 1000
-): Promise<T> {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error: any) {
-      if (error.status === 429 && attempt < maxRetries - 1) {
-        const retryAfter = parseInt(error.headers?.['retry-after'] || '5');
-        const delay = Math.max(retryAfter * 1000, baseDelayMs * Math.pow(2, attempt));
-        console.log(`[reconcile] Rate limited, waiting ${delay}ms before retry ${attempt + 1}/${maxRetries}`);
-        await new Promise(r => setTimeout(r, delay));
-        continue;
-      }
-      throw error;
-    }
-  }
-  throw new Error("Max retries exceeded");
-}
 
 export async function GET(request: Request) {
   try {
@@ -68,71 +39,47 @@ export async function GET(request: Request) {
     }
 
     // ========================================
-    // JSON FORMAT: Direct Stripe verification
+    // JSON FORMAT: Existing summary reconciliation
     // ========================================
 
-    console.log("[reconcile] Starting Stripe subscription fetch...");
-
-    // Step 1: Fetch all Stripe subscriptions directly
-    let stripeApiCalls = 0;
+    // Step 1: Get Stripe live stats
     let hasMore = true;
     let cursor;
-    const allSubscriptions: any[] = [];
+    const allSubscriptions: Stripe.Subscription[] = [];
 
     while (hasMore) {
-      try {
-        const params: any = {
-          limit: 100,
-          status: "active",
-        };
-        if (cursor) params.starting_after = cursor;
+      const params: { limit: number; starting_after?: string; status: "active" | "past_due" | "canceled" | "unpaid" | "trialing" | "incomplete" | "incomplete_expired" | "paused" } = {
+        limit: 100,
+        status: "active",
+      };
+      if (cursor) params.starting_after = cursor;
 
-        const response = await stripeWithRetry(() =>
-          stripe.subscriptions.list(params)
-        );
-        stripeApiCalls++;
+      const response = await stripe.subscriptions.list(params as any);
 
-        for (const sub of response.data) {
-          const priceAmount = sub.items.data[0]?.price?.unit_amount;
-          // Only store $15 and $100 subscriptions
-          if (priceAmount === 1500 || priceAmount === 10000) {
-            allSubscriptions.push({
-              id: sub.id,
-              customer: typeof sub.customer === 'string' ? sub.customer : null,
-              status: sub.status,
-              amount: priceAmount,
-              email: (sub as any).billing_details?.email || null,
-              created: sub.created,
-              current_period_start: (sub as any).current_period_start,
-              current_period_end: (sub as any).current_period_end,
-            });
-          }
-        }
-
-        hasMore = response.has_more;
-        if (hasMore && response.data.length > 0) {
-          cursor = response.data[response.data.length - 1].id;
-        }
-
-        // Be nice to Stripe - wait between pages
-        await new Promise(r => setTimeout(r, 25));
-      } catch (err: any) {
-        console.error(`[reconcile] Error fetching subscriptions:`, err.message);
-        throw new Error(`Stripe subscription fetch failed: ${err.message}`);
+      for (const sub of response.data) {
+        const priceAmount = sub.items.data[0]?.price?.unit_amount;
+        if (priceAmount !== 1500 && priceAmount !== 10000) continue;
+        allSubscriptions.push(sub);
       }
+
+      hasMore = response.has_more;
+      if (hasMore && response.data.length > 0) {
+        cursor = response.data[response.data.length - 1].id;
+      }
+      await new Promise(r => setTimeout(r, 25));
     }
 
-    console.log(`[reconcile] Fetched ${allSubscriptions.length} subscriptions (${stripeApiCalls} API calls)`);
-
-    // Calculate Stripe live totals
+    // Calculate Stripe live totals (assumed based on count × price)
     let stripeContributingCount = 0;
     let stripeContributingTotal = 0;
     let stripeFoundingCount = 0;
     let stripeFoundingTotal = 0;
+
+    // Also build stripeEmailMap for missing_from_db check
     const stripeEmailMap = new Map<string, { tier: string; amount: number; customer_id: string }>();
 
     for (const sub of allSubscriptions) {
-      const amount = sub.amount / 100; // Convert cents to dollars
+      const amount = (sub.items.data[0]?.price?.unit_amount || 0) / 100;
       if (amount === 15) {
         stripeContributingCount++;
         stripeContributingTotal += amount;
@@ -141,17 +88,32 @@ export async function GET(request: Request) {
         stripeFoundingTotal += amount;
       }
 
-      // Build email map for missing_from_db check
-      if (sub.email) {
-        const tier = amount === 15 ? "Contributing" : "Founding";
-        const emailLower = sub.email.toLowerCase();
-        if (!stripeEmailMap.has(emailLower)) {
-          stripeEmailMap.set(emailLower, { tier, amount, customer_id: sub.customer || "" });
+      // Build stripeEmailMap for missing_from_db
+      const priceAmount = sub.items.data[0]?.price?.unit_amount;
+      if (priceAmount === 1500 || priceAmount === 10000) {
+        const tier = priceAmount === 1500 ? "Contributing" : "Founding";
+        const customerId = typeof sub.customer === 'string' ? sub.customer : null;
+        const subAny = sub as any;
+        let email = subAny.billing_details?.email || "";
+        if (!email && customerId) {
+          try {
+            const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
+            if (!customer.deleted && customer.email) {
+              email = customer.email;
+            }
+          } catch (e) {}
+          await new Promise(r => setTimeout(r, 25));
+        }
+        if (email) {
+          const emailLower = email.toLowerCase();
+          if (!stripeEmailMap.has(emailLower)) {
+            stripeEmailMap.set(emailLower, { tier, amount, customer_id: customerId || "" });
+          }
         }
       }
     }
 
-    // Step 1b: Find emails in Stripe but not in any profile
+    // Step 1c: Find emails in Stripe but not in any profile (paginate through all profiles)
     const allProfileEmails = new Set<string>();
     let profilePage = 0;
     const profilePageSize = 1000;
@@ -187,22 +149,55 @@ export async function GET(request: Request) {
     }
     missingFromDb.sort();
 
+    // Step 1b: Get TRUE totals from actual invoice amounts
+    let trueContributingTotal = 0;
+    let trueFoundingTotal = 0;
+
+    for (const sub of allSubscriptions) {
+      try {
+        const customerId = typeof sub.customer === 'string' ? sub.customer : null;
+        if (!customerId) continue;
+        
+        const invoices = await stripe.invoices.list({
+          customer: customerId,
+          limit: 100,
+        });
+
+        for (const invoice of invoices.data) {
+          if (invoice.status === "paid") {
+            const priceAmount = sub.items.data[0]?.price?.unit_amount;
+            if (priceAmount === 1500) {
+              trueContributingTotal += invoice.amount_paid / 100;
+            } else if (priceAmount === 10000) {
+              trueFoundingTotal += invoice.amount_paid / 100;
+            }
+          }
+        }
+      } catch (e) {
+        console.error(`[reconcile] Error fetching invoices for customer ${sub.customer}:`, e);
+      }
+      await new Promise(r => setTimeout(r, 25));
+    }
+
     const stripeLive = {
-      contributing: {
-        count: stripeContributingCount,
+      contributing: { 
+        count: stripeContributingCount, 
         total: stripeContributingTotal,
+        true_total: trueContributingTotal 
       },
-      founding: {
-        count: stripeFoundingCount,
+      founding: { 
+        count: stripeFoundingCount, 
         total: stripeFoundingTotal,
+        true_total: trueFoundingTotal 
       },
-      total: {
-        count: stripeContributingCount + stripeFoundingCount,
+      total: { 
+        count: stripeContributingCount + stripeFoundingCount, 
         total: stripeContributingTotal + stripeFoundingTotal,
+        true_total: trueContributingTotal + trueFoundingTotal
       },
     };
 
-    // Step 2: Get unique users per tier from DB (count profiles, not payments)
+    // Step 2: Get unique users per tier (count profiles, not payments)
     const { data: allPayments, error: paymentsError } = await supabase
       .from("membership_payments")
       .select(`
@@ -218,18 +213,21 @@ export async function GET(request: Request) {
 
     if (paymentsError) {
       console.error("[reconcile] Payments query error:", paymentsError);
-      throw new Error(`Payments query failed: ${paymentsError.message}`);
+      return NextResponse.json({ error: paymentsError.message }, { status: 500 });
     }
 
     // Calculate our DB totals - count UNIQUE users per tier
     const contributingUserIds = new Set<string>();
     const foundingUserIds = new Set<string>();
+    const allUserIds = new Set<string>();
 
     for (const p of allPayments || []) {
       if (p.amount === 15) {
         contributingUserIds.add(p.user_id);
+        allUserIds.add(p.user_id);
       } else if (p.amount === 100) {
         foundingUserIds.add(p.user_id);
+        allUserIds.add(p.user_id);
       }
     }
 
@@ -241,40 +239,47 @@ export async function GET(request: Request) {
     const ourDb = {
       contributing: { count: dbContributingCount, total: dbContributingTotal },
       founding: { count: dbFoundingCount, total: dbFoundingTotal },
-      total: {
-        count: dbContributingCount + dbFoundingCount,
-        total: dbContributingTotal + dbFoundingTotal,
+      total: { 
+        count: dbContributingCount + dbFoundingCount, 
+        total: dbContributingTotal + dbFoundingTotal 
       },
     };
 
+    // Use allPayments for individual payment verification
+    const payments = allPayments;
+
     // Calculate differences
     const difference = {
-      contributing: {
-        count: dbContributingCount - stripeContributingCount,
-        total: dbContributingTotal - stripeContributingTotal,
+      contributing: { 
+        count: dbContributingCount - stripeContributingCount, 
+        total: dbContributingTotal - stripeContributingTotal 
       },
-      founding: {
-        count: dbFoundingCount - stripeFoundingCount,
-        total: dbFoundingTotal - stripeFoundingTotal,
+      founding: { 
+        count: dbFoundingCount - stripeFoundingCount, 
+        total: dbFoundingTotal - stripeFoundingTotal 
       },
-      total: {
-        count: (dbContributingCount + dbFoundingCount) - (stripeContributingCount + stripeFoundingCount),
-        total: (dbContributingTotal + dbFoundingTotal) - (stripeContributingTotal + stripeFoundingTotal),
+      total: { 
+        count: (dbContributingCount + dbFoundingCount) - (stripeContributingCount + stripeFoundingCount), 
+        total: (dbContributingTotal + dbFoundingTotal) - (stripeContributingTotal + stripeFoundingTotal) 
       },
     };
 
     // Step 3: Verify each payment against Stripe
-    console.log("[reconcile] Starting per-payment verification...");
-    const verifiedCount = { valid: 0, refunded: 0, failed: 0, not_found: 0 };
     const problematicPayments: any[] = [];
-    let chargeApiCalls = 0;
+    const verifiedCount = { valid: 0, refunded: 0, failed: 0, not_found: 0 };
 
-    for (const payment of allPayments || []) {
-      if (!payment.stripe_payment_id) {
-        // Missing Stripe ID - can't verify
+    for (const payment of payments || []) {
+      // stripe_payment_id can be null for automatic payments (Stripe doesn't expose charge ID)
+      // stripe_invoice_id is the fallback verification for automatic payments
+      const hasStripeId = !!payment.stripe_payment_id;
+      const hasInvoiceId = !!payment.stripe_invoice_id;
+
+      if (!hasStripeId && !hasInvoiceId) {
+        // Missing both Stripe IDs - can't verify
         problematicPayments.push({
           id: payment.id,
           stripe_payment_id: null,
+          stripe_invoice_id: null,
           amount: payment.amount,
           email: (payment.profiles as any)?.email || "unknown",
           user_id: payment.user_id,
@@ -286,15 +291,37 @@ export async function GET(request: Request) {
       }
 
       try {
-        const charge = await stripeWithRetry(() =>
-          stripe.charges.retrieve(payment.stripe_payment_id)
-        );
-        chargeApiCalls++;
-        const chargeStatus = charge.status as string;
+        // Use stripe_payment_id if available, otherwise fall back to stripe_invoice_id
+        const paymentId = payment.stripe_payment_id || payment.stripe_invoice_id;
+        let status: string | null = null;
 
-        if (chargeStatus === "succeeded") {
+        if (paymentId?.startsWith("in_")) {
+          // It's an invoice ID - use invoices API
+          const invoice = await stripe.invoices.retrieve(paymentId);
+          status = invoice.status === "paid" ? "succeeded" : invoice.status;
+        } else if (paymentId?.startsWith("ch_")) {
+          // It's a charge ID - use charges API
+          const charge = await stripe.charges.retrieve(paymentId);
+          status = charge.status;
+        } else {
+          // Unknown format - can't verify
+          verifiedCount.not_found++;
+          problematicPayments.push({
+            id: payment.id,
+            stripe_payment_id: payment.stripe_payment_id,
+            amount: payment.amount,
+            email: (payment.profiles as any)?.email || "unknown",
+            user_id: payment.user_id,
+            created_at: payment.created_at,
+            issue: "unknown_id_format",
+            stripe_status: null,
+          });
+          continue;
+        }
+
+        if (status === "succeeded") {
           verifiedCount.valid++;
-        } else if (chargeStatus === "refunded") {
+        } else if (status === "refunded") {
           verifiedCount.refunded++;
           problematicPayments.push({
             id: payment.id,
@@ -306,7 +333,7 @@ export async function GET(request: Request) {
             issue: "refunded",
             stripe_status: "refunded",
           });
-        } else if (chargeStatus === "failed") {
+        } else if (status === "failed") {
           verifiedCount.failed++;
           problematicPayments.push({
             id: payment.id,
@@ -318,9 +345,22 @@ export async function GET(request: Request) {
             issue: "failed",
             stripe_status: "failed",
           });
+        } else {
+          // Any other status (e.g., "open" for invoices with failed payments)
+          verifiedCount.not_found++;
+          problematicPayments.push({
+            id: payment.id,
+            stripe_payment_id: payment.stripe_payment_id,
+            amount: payment.amount,
+            email: (payment.profiles as any)?.email || "unknown",
+            user_id: payment.user_id,
+            created_at: payment.created_at,
+            issue: status || "unknown",
+            stripe_status: status,
+          });
         }
       } catch (stripeError: any) {
-        // Charge not found in Stripe
+        // Payment not found in Stripe
         verifiedCount.not_found++;
         problematicPayments.push({
           id: payment.id,
@@ -334,26 +374,9 @@ export async function GET(request: Request) {
         });
       }
 
-      // Rate limit - be nice to Stripe (100ms between charge calls)
-      await new Promise(r => setTimeout(r, 100));
+      // Rate limit - be nice to Stripe
+      await new Promise(r => setTimeout(r, 50));
     }
-
-    console.log(`[reconcile] Verified ${allPayments?.length || 0} payments (${chargeApiCalls} API calls)`);
-
-    const now = new Date().toISOString();
-
-    // Store results in cache for future use
-    await supabaseAdmin
-      .from("stripe_subscriptions_cache")
-      .upsert({
-        id: "latest",
-        subscriptions_json: allSubscriptions,
-        fetched_at: now,
-        subscription_count: allSubscriptions.length,
-        api_calls: stripeApiCalls + chargeApiCalls,
-        incomplete: false,
-        warning: null,
-      });
 
     return NextResponse.json({
       summary: {
@@ -364,34 +387,10 @@ export async function GET(request: Request) {
       verified: verifiedCount,
       problematic_payments: problematicPayments,
       missing_from_db: missingFromDb,
-      from_cache: false,
-      cached_at: now,
-      stripe_api_calls: stripeApiCalls + chargeApiCalls,
     });
 
   } catch (error: any) {
     console.error("[reconcile] Error:", error);
-
-    // Try to return cached data if available
-    const { data: cachedData } = await supabaseAdmin
-      .from("stripe_subscriptions_cache")
-      .select("*")
-      .eq("id", "latest")
-      .single();
-
-    if (cachedData) {
-      console.log("[reconcile] Returning cached data due to error");
-      return NextResponse.json({
-        error: error.message || "Verification failed",
-        cached_error: true,
-        summary: cachedData.last_summary || null,
-        verified: cachedData.last_verified || { valid: 0, refunded: 0, failed: 0, not_found: 0 },
-        problematic_payments: cachedData.last_problematic || [],
-        from_cache: true,
-        cached_at: cachedData.fetched_at,
-      });
-    }
-
     return NextResponse.json(
       { error: error.message || "Failed to reconcile" },
       { status: 500 }
@@ -404,29 +403,64 @@ export async function GET(request: Request) {
 // ========================================
 async function handleCsvFormat(supabase: any) {
   try {
-    // Get cached Stripe subscriptions
-    const { data: cachedData } = await supabaseAdmin
-      .from("stripe_subscriptions_cache")
-      .select("subscriptions_json")
-      .eq("id", "latest")
-      .single();
-
+    // Step 1: Fetch all Stripe subscriptions with emails
     const stripeEmailMap = new Map<string, { tier: string; amount: number; customer_id: string }>();
 
-    if (cachedData?.subscriptions_json) {
-      for (const sub of cachedData.subscriptions_json) {
-        if (sub.email) {
-          const tier = sub.amount === 1500 ? "Contributing" : "Founding";
-          const amount = sub.amount / 100;
-          const emailLower = sub.email.toLowerCase();
+    let hasMore = true;
+    let cursor;
+
+    while (hasMore) {
+      const params: { limit: number; starting_after?: string; status: "active" | "past_due" | "canceled" | "unpaid" | "trialing" | "incomplete" | "incomplete_expired" | "paused" } = {
+        limit: 100,
+        status: "active",
+      };
+      if (cursor) params.starting_after = cursor;
+
+      const response = await stripe.subscriptions.list(params as any);
+
+      for (const sub of response.data) {
+        const priceAmount = sub.items.data[0]?.price?.unit_amount;
+        if (priceAmount !== 1500 && priceAmount !== 10000) continue;
+
+        const tier = priceAmount === 1500 ? "Contributing" : "Founding";
+        const amount = priceAmount / 100;
+        const customerId = typeof sub.customer === 'string' ? sub.customer : null;
+
+        // Get email from subscription first
+        const subAny = sub as any;
+        let email = subAny.billing_details?.email || "";
+
+        // If no email, fetch customer directly from Stripe
+        if (!email && customerId) {
+          try {
+            const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
+            if (!customer.deleted && customer.email) {
+              email = customer.email;
+            }
+          } catch (e) {
+            // Customer lookup failed
+          }
+          // Rate limit - be nice to Stripe
+          await new Promise(r => setTimeout(r, 50));
+        }
+
+        if (email) {
+          const emailLower = email.toLowerCase();
+          // Only add if not already present (first occurrence wins)
           if (!stripeEmailMap.has(emailLower)) {
-            stripeEmailMap.set(emailLower, { tier, amount, customer_id: sub.customer || "" });
+            stripeEmailMap.set(emailLower, { tier, amount, customer_id: customerId || "" });
           }
         }
       }
+
+      hasMore = response.has_more;
+      if (hasMore && response.data.length > 0) {
+        cursor = response.data[response.data.length - 1].id;
+      }
+      await new Promise(r => setTimeout(r, 25));
     }
 
-    // Fetch DB profiles for contributing/founding members
+    // Step 2: Fetch DB profiles for contributing/founding members
     const { data: dbProfiles } = await supabase
       .from("profiles")
       .select("email, membership_level")
@@ -438,19 +472,22 @@ async function handleCsvFormat(supabase: any) {
         const emailLower = profile.email.toLowerCase();
         const tier = profile.membership_level === "founding" ? "Founding" : "Contributing";
         const amount = profile.membership_level === "founding" ? 100 : 15;
+        // Only add if not already present
         if (!dbEmailMap.has(emailLower)) {
           dbEmailMap.set(emailLower, { tier, amount });
         }
       }
     }
 
-    // Build CSV rows
+    // Step 3: Build CSV rows
     const csvRows: string[] = ["EMAIL,IN_STRIPE,IN_DB,STRIPE_TIER,DB_TIER,AMOUNT"];
 
+    // Collect all unique emails
     const allEmails = new Set<string>();
     for (const email of stripeEmailMap.keys()) allEmails.add(email);
     for (const email of dbEmailMap.keys()) allEmails.add(email);
 
+    // Build rows with match status
     const rows: Array<{
       email: string;
       inStripe: boolean;
@@ -473,16 +510,25 @@ async function handleCsvFormat(supabase: any) {
       const dbTier = dbData?.tier || "-";
       const amount = stripeData?.amount ? `$${stripeData.amount}` : (dbData?.amount ? `$${dbData.amount}` : "-");
 
-      rows.push({ email, inStripe, inDb, stripeTier, dbTier, amount, isUnmatched });
+      rows.push({
+        email,
+        inStripe,
+        inDb,
+        stripeTier,
+        dbTier,
+        amount,
+        isUnmatched,
+      });
     }
 
-    // Sort: unmatched first, then alphabetically
+    // Sort: unmatched first, then alphabetically by email
     rows.sort((a, b) => {
       if (a.isUnmatched && !b.isUnmatched) return -1;
       if (!a.isUnmatched && b.isUnmatched) return 1;
       return a.email.localeCompare(b.email);
     });
 
+    // Build CSV
     for (const row of rows) {
       const inStripe = row.inStripe ? "YES" : "NO";
       const inDb = row.inDb ? "YES" : "NO";
@@ -510,6 +556,7 @@ async function handleCsvFormat(supabase: any) {
 
 function escapeCsvField(field: string): string {
   if (!field) return "";
+  // If field contains comma, newline, or quote, wrap in quotes and escape internal quotes
   if (field.includes(",") || field.includes("\n") || field.includes('"')) {
     return `"${field.replace(/"/g, '""')}"`;
   }

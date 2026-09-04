@@ -111,12 +111,6 @@ interface ReconciliationResponse {
   verified: { valid: number; refunded: number; failed: number; not_found: number };
   problematic_payments: ProblematicPayment[];
   missing_from_db?: string[];
-  from_cache?: boolean;
-  cached_at?: string;
-  cache_incomplete?: boolean;
-  cache_warning?: string;
-  error?: string;
-  cached_error?: boolean;
 }
 
 interface DuplicateEmail {
@@ -444,23 +438,13 @@ export default function BackfillClient() {
     setReconciliationLoading(true);
     try {
       const res = await fetch("/api/admin/backfill/stripe/reconcile");
-      const data = await res.json();
       if (res.ok) {
+        const data = await res.json();
         setReconciliation(data);
         sessionStorage.setItem("stripe_reconciliation", JSON.stringify(data));
-      } else {
-        // API returned error status - set error in data so UI can display it
-        setReconciliation((prev: any) => ({
-          ...prev,
-          error: data.error || `Request failed with status ${res.status}`,
-        }));
       }
     } catch (error) {
       console.error("Failed to fetch reconciliation:", error);
-      setReconciliation((prev: any) => ({
-        ...prev,
-        error: error instanceof Error ? error.message : "Network error",
-      }));
     } finally {
       setReconciliationLoading(false);
     }
@@ -796,8 +780,7 @@ export default function BackfillClient() {
     fetchGiftCodes();
     fetchStripeOnly();
     fetchMissingPayments();
-    fetchReconciliation();
-  }, [fetchStatus, fetchLiveStats, fetchDuplicates, fetchStripeDuplicates, fetchMissingFromBackfill, fetchGiftCodes, fetchStripeOnly, fetchMissingPayments, fetchReconciliation]);
+  }, [fetchStatus, fetchLiveStats, fetchDuplicates, fetchStripeDuplicates, fetchMissingFromBackfill, fetchGiftCodes, fetchStripeOnly, fetchMissingPayments]);
 
   // Delete single payment
   const handleDeletePayment = async () => {
@@ -890,25 +873,18 @@ export default function BackfillClient() {
           <h3 className="font-ui font-bold text-nfw-aubergine">Reconciliation</h3>
           <div className="flex gap-2 items-center">
             <button
-              onClick={() => fetchReconciliation()}
-              disabled={reconciliationLoading}
-              className="text-sm bg-nfw-aubergine text-white px-3 py-1 rounded hover:bg-nfw-aubergine/90 disabled:opacity-50 flex items-center gap-1"
-            >
-              {reconciliationLoading ? (
-                <>
-                  <span className="animate-spin">⟳</span>
-                  Refreshing...
-                </>
-              ) : (
-                "Refresh Reconciliation"
-              )}
-            </button>
-            <button
               onClick={handleSyncMissingPayments}
               disabled={syncMissingLoading}
               className="text-sm bg-nfw-wisteria text-white px-3 py-1 rounded hover:bg-nfw-wisteria/90 disabled:opacity-50"
             >
               {syncMissingLoading ? "Syncing..." : "Sync Missing Payments"}
+            </button>
+            <button
+              onClick={fetchReconciliation}
+              disabled={reconciliationLoading}
+              className="text-sm bg-nfw-aubergine text-white px-3 py-1 rounded hover:bg-nfw-aubergine/90 disabled:opacity-50"
+            >
+              {reconciliationLoading ? "Loading..." : "Refresh Reconciliation"}
             </button>
             <button
               onClick={handleExportEmailCsv}
@@ -965,7 +941,7 @@ export default function BackfillClient() {
                       <span className="text-nfw-aubergine font-bold">${reconciliation.summary.stripe_live.contributing.total.toLocaleString('en-US')}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
-                      <span className="text-nfw-wisteria font-bold">—</span>
+                      <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.contributing.true_total?.toLocaleString('en-US') ?? '—'}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-aubergine font-bold">{reconciliation.summary.our_db.contributing.count}</span>
@@ -990,7 +966,7 @@ export default function BackfillClient() {
                       <span className="text-nfw-aubergine font-bold">${reconciliation.summary.stripe_live.founding.total.toLocaleString('en-US')}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
-                      <span className="text-nfw-wisteria font-bold">—</span>
+                      <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.founding.true_total?.toLocaleString('en-US') ?? '—'}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-aubergine font-bold">{reconciliation.summary.our_db.founding.count}</span>
@@ -1015,7 +991,7 @@ export default function BackfillClient() {
                       <span className="text-nfw-aubergine font-bold">${reconciliation.summary.stripe_live.total.total.toLocaleString('en-US')}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
-                      <span className="text-nfw-wisteria font-bold">—</span>
+                      <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.total.true_total?.toLocaleString('en-US') ?? '—'}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-aubergine font-bold">{reconciliation.summary.our_db.total.count}</span>
@@ -1037,29 +1013,12 @@ export default function BackfillClient() {
             </div>
 
             {/* Verified counts */}
-            <div className="flex justify-between items-center text-xs text-nfw-blackberry/60">
-              <div className="flex gap-4">
-                <span>✓ Valid: {reconciliation.verified.valid}</span>
-                <span className="text-red-600">✗ Refunded: {reconciliation.verified.refunded}</span>
-                <span className="text-red-600">✗ Failed: {reconciliation.verified.failed}</span>
-                <span className="text-yellow-600">? Database Only: {reconciliation.verified.not_found}</span>
-              </div>
-              <span className="text-nfw-wisteria">
-                {reconciliationLoading ? "Refreshing..." : `Updated ${reconciliation.cached_at ? new Date(reconciliation.cached_at).toLocaleTimeString() : ""}`}
-              </span>
+            <div className="flex gap-4 text-xs text-nfw-blackberry/60">
+              <span>✓ Valid: {reconciliation.verified.valid}</span>
+              <span className="text-red-600">✗ Refunded: {reconciliation.verified.refunded}</span>
+              <span className="text-red-600">✗ Failed: {reconciliation.verified.failed}</span>
+              <span className="text-yellow-600">? Database Only: {reconciliation.verified.not_found}</span>
             </div>
-
-            {/* Error display */}
-            {reconciliation?.error && (
-              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
-                <strong>⚠️ Verification failed:</strong> {reconciliation.error}
-                {reconciliation.cached_error && (
-                  <span className="block mt-1 text-xs">
-                    Showing cached data from earlier. The full verification encountered an error.
-                  </span>
-                )}
-              </div>
-            )}
           </>
         )}
 
