@@ -14,6 +14,29 @@ const supabaseAdmin = createAdminClient(
 
 export const dynamic = "force-dynamic";
 
+// Stripe API call with retry and exponential backoff
+async function stripeWithRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  baseDelayMs = 1000
+): Promise<T> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      if (error.status === 429 && attempt < maxRetries - 1) {
+        const retryAfter = parseInt(error.headers?.['retry-after'] || '5');
+        const delay = Math.max(retryAfter * 1000, baseDelayMs * Math.pow(2, attempt));
+        console.log(`[reconcile] Rate limited, waiting ${delay}ms before retry ${attempt + 1}/${maxRetries}`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new Error("Max retries exceeded");
+}
+
 export async function GET(request: Request) {
   try {
     // Admin auth check
@@ -45,41 +68,70 @@ export async function GET(request: Request) {
     }
 
     // ========================================
-    // JSON FORMAT: Use cached Stripe subscriptions
+    // JSON FORMAT: Direct Stripe verification
     // ========================================
 
-    // Step 1: Get cached Stripe subscriptions
-    const { data: cachedData, error: cacheError } = await supabaseAdmin
-      .from("stripe_subscriptions_cache")
-      .select("*")
-      .eq("id", "latest")
-      .single();
+    console.log("[reconcile] Starting Stripe subscription fetch...");
 
-    let stripeSubscriptions: any[] = [];
-    let cachedAt: string | null = null;
-    let fromCache = false;
-    let cacheIncomplete = false;
-    let cacheWarning: string | null = null;
+    // Step 1: Fetch all Stripe subscriptions directly
+    let stripeApiCalls = 0;
+    let hasMore = true;
+    let cursor;
+    const allSubscriptions: any[] = [];
 
-    if (!cacheError && cachedData) {
-      stripeSubscriptions = cachedData.subscriptions_json || [];
-      cachedAt = cachedData.fetched_at;
-      fromCache = true;
-      cacheIncomplete = cachedData.incomplete || false;
-      cacheWarning = cachedData.warning || null;
-    } else {
-      // No cache - this shouldn't happen if cron is running
-      console.warn("[reconcile] No cached subscriptions found - cron may not be running");
+    while (hasMore) {
+      try {
+        const params: any = {
+          limit: 100,
+          status: "active",
+        };
+        if (cursor) params.starting_after = cursor;
+
+        const response = await stripeWithRetry(() =>
+          stripe.subscriptions.list(params)
+        );
+        stripeApiCalls++;
+
+        for (const sub of response.data) {
+          const priceAmount = sub.items.data[0]?.price?.unit_amount;
+          // Only store $15 and $100 subscriptions
+          if (priceAmount === 1500 || priceAmount === 10000) {
+            allSubscriptions.push({
+              id: sub.id,
+              customer: typeof sub.customer === 'string' ? sub.customer : null,
+              status: sub.status,
+              amount: priceAmount,
+              email: (sub as any).billing_details?.email || null,
+              created: sub.created,
+              current_period_start: (sub as any).current_period_start,
+              current_period_end: (sub as any).current_period_end,
+            });
+          }
+        }
+
+        hasMore = response.has_more;
+        if (hasMore && response.data.length > 0) {
+          cursor = response.data[response.data.length - 1].id;
+        }
+
+        // Be nice to Stripe - wait between pages
+        await new Promise(r => setTimeout(r, 25));
+      } catch (err: any) {
+        console.error(`[reconcile] Error fetching subscriptions:`, err.message);
+        throw new Error(`Stripe subscription fetch failed: ${err.message}`);
+      }
     }
 
-    // Calculate Stripe live totals from cached subscriptions
+    console.log(`[reconcile] Fetched ${allSubscriptions.length} subscriptions (${stripeApiCalls} API calls)`);
+
+    // Calculate Stripe live totals
     let stripeContributingCount = 0;
     let stripeContributingTotal = 0;
     let stripeFoundingCount = 0;
     let stripeFoundingTotal = 0;
     const stripeEmailMap = new Map<string, { tier: string; amount: number; customer_id: string }>();
 
-    for (const sub of stripeSubscriptions) {
+    for (const sub of allSubscriptions) {
       const amount = sub.amount / 100; // Convert cents to dollars
       if (amount === 15) {
         stripeContributingCount++;
@@ -166,21 +218,18 @@ export async function GET(request: Request) {
 
     if (paymentsError) {
       console.error("[reconcile] Payments query error:", paymentsError);
-      return NextResponse.json({ error: paymentsError.message }, { status: 500 });
+      throw new Error(`Payments query failed: ${paymentsError.message}`);
     }
 
     // Calculate our DB totals - count UNIQUE users per tier
     const contributingUserIds = new Set<string>();
     const foundingUserIds = new Set<string>();
-    const allUserIds = new Set<string>();
 
     for (const p of allPayments || []) {
       if (p.amount === 15) {
         contributingUserIds.add(p.user_id);
-        allUserIds.add(p.user_id);
       } else if (p.amount === 100) {
         foundingUserIds.add(p.user_id);
-        allUserIds.add(p.user_id);
       }
     }
 
@@ -214,10 +263,97 @@ export async function GET(request: Request) {
       },
     };
 
-    // For now, skip the expensive per-payment verification that caused timeouts
-    // This data is still useful but requires too many API calls
+    // Step 3: Verify each payment against Stripe
+    console.log("[reconcile] Starting per-payment verification...");
     const verifiedCount = { valid: 0, refunded: 0, failed: 0, not_found: 0 };
     const problematicPayments: any[] = [];
+    let chargeApiCalls = 0;
+
+    for (const payment of allPayments || []) {
+      if (!payment.stripe_payment_id) {
+        // Missing Stripe ID - can't verify
+        problematicPayments.push({
+          id: payment.id,
+          stripe_payment_id: null,
+          amount: payment.amount,
+          email: (payment.profiles as any)?.email || "unknown",
+          user_id: payment.user_id,
+          created_at: payment.created_at,
+          issue: "missing_stripe_id",
+          stripe_status: null,
+        });
+        continue;
+      }
+
+      try {
+        const charge = await stripeWithRetry(() =>
+          stripe.charges.retrieve(payment.stripe_payment_id)
+        );
+        chargeApiCalls++;
+        const chargeStatus = charge.status as string;
+
+        if (chargeStatus === "succeeded") {
+          verifiedCount.valid++;
+        } else if (chargeStatus === "refunded") {
+          verifiedCount.refunded++;
+          problematicPayments.push({
+            id: payment.id,
+            stripe_payment_id: payment.stripe_payment_id,
+            amount: payment.amount,
+            email: (payment.profiles as any)?.email || "unknown",
+            user_id: payment.user_id,
+            created_at: payment.created_at,
+            issue: "refunded",
+            stripe_status: "refunded",
+          });
+        } else if (chargeStatus === "failed") {
+          verifiedCount.failed++;
+          problematicPayments.push({
+            id: payment.id,
+            stripe_payment_id: payment.stripe_payment_id,
+            amount: payment.amount,
+            email: (payment.profiles as any)?.email || "unknown",
+            user_id: payment.user_id,
+            created_at: payment.created_at,
+            issue: "failed",
+            stripe_status: "failed",
+          });
+        }
+      } catch (stripeError: any) {
+        // Charge not found in Stripe
+        verifiedCount.not_found++;
+        problematicPayments.push({
+          id: payment.id,
+          stripe_payment_id: payment.stripe_payment_id,
+          amount: payment.amount,
+          email: (payment.profiles as any)?.email || "unknown",
+          user_id: payment.user_id,
+          created_at: payment.created_at,
+          issue: "not_found",
+          stripe_status: null,
+        });
+      }
+
+      // Rate limit - be nice to Stripe (100ms between charge calls)
+      await new Promise(r => setTimeout(r, 100));
+    }
+
+    console.log(`[reconcile] Verified ${allPayments?.length || 0} payments (${chargeApiCalls} API calls)`);
+
+    const now = new Date().toISOString();
+
+    // Store results in cache for future use
+    await supabaseAdmin
+      .from("stripe_subscriptions_cache")
+      .upsert({
+        id: "latest",
+        subscriptions_json: allSubscriptions,
+        fetched_at: now,
+        subscription_count: allSubscriptions.length,
+        api_calls: stripeApiCalls + chargeApiCalls,
+        incomplete: false,
+        warning: null,
+      });
 
     return NextResponse.json({
       summary: {
@@ -228,14 +364,34 @@ export async function GET(request: Request) {
       verified: verifiedCount,
       problematic_payments: problematicPayments,
       missing_from_db: missingFromDb,
-      from_cache: fromCache,
-      cached_at: cachedAt,
-      cache_incomplete: cacheIncomplete,
-      cache_warning: cacheWarning,
+      from_cache: false,
+      cached_at: now,
+      stripe_api_calls: stripeApiCalls + chargeApiCalls,
     });
 
   } catch (error: any) {
     console.error("[reconcile] Error:", error);
+
+    // Try to return cached data if available
+    const { data: cachedData } = await supabaseAdmin
+      .from("stripe_subscriptions_cache")
+      .select("*")
+      .eq("id", "latest")
+      .single();
+
+    if (cachedData) {
+      console.log("[reconcile] Returning cached data due to error");
+      return NextResponse.json({
+        error: error.message || "Verification failed",
+        cached_error: true,
+        summary: cachedData.last_summary || null,
+        verified: cachedData.last_verified || { valid: 0, refunded: 0, failed: 0, not_found: 0 },
+        problematic_payments: cachedData.last_problematic || [],
+        from_cache: true,
+        cached_at: cachedData.fetched_at,
+      });
+    }
+
     return NextResponse.json(
       { error: error.message || "Failed to reconcile" },
       { status: 500 }

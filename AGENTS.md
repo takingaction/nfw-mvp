@@ -13024,3 +13024,62 @@ Implemented caching system with two database tables and a new hourly cron job:
 2. Deploy to Vercel
 3. Cron runs hourly - no manual trigger needed
 
+---
+
+## Session 2026-09-03 (Afternoon): Restore On-Demand Reconciliation with True $ Verification
+
+### Goal
+
+Restore "True $" verification (per-payment Stripe charge verification) that was disabled due to timeout concerns. The user confirmed it worked fine in ~5-8 minutes on Vercel.
+
+### Problem
+
+The previous implementation:
+- Used cache-reading logic that skipped verification entirely
+- Showed all zeros for Valid/Refunded/Failed counts
+- User was frustrated the True $ data wasn't showing
+
+### Solution
+
+**Reverted to on-demand verification with direct Stripe calls:**
+
+1. **Reconcile API (`app/api/admin/backfill/stripe/reconcile/route.ts`):**
+   - Direct Stripe subscription fetch (~11 API calls, ~1 min)
+   - Per-payment verification: `stripe.charges.retrieve()` for each payment (~800 payments × 100ms = ~80 sec)
+   - Results cached to `stripe_subscriptions_cache` when complete
+   - On error: returns cached data if available + `error` message
+
+2. **BackfillClient UI:**
+   - Added "Refresh Reconciliation" button (aubergine with spinner)
+   - Shows cached data immediately while running verification
+   - Loading state: "Refreshing..." with animated spinner
+   - Error banner if verification fails
+   - Timestamp moved to right side of Verified counts row
+
+3. **Hourly cron kept running:**
+   - `reconciliation-sync` cron still runs hourly to keep subscription cache fresh
+   - Fast (~1 min) since it only fetches subscriptions, not per-payment verification
+
+### Flow
+
+1. Admin clicks "Refresh Reconciliation"
+2. UI shows "Refreshing..." spinner, displays cached data if available
+3. API runs full verification (~5-8 min)
+4. Results cached to database
+5. UI updates with new verified counts
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/backfill/stripe/reconcile/route.ts` | Restored direct Stripe subscription fetch + per-payment verification + cache results |
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Added Refresh Reconciliation button, error display, moved timestamp |
+
+### Timing
+
+| Step | Duration |
+|------|----------|
+| Stripe subscription fetch | ~1 min |
+| Per-payment charge verification | ~5-7 min |
+| Total | ~5-8 min |
+
