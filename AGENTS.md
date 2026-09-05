@@ -13239,3 +13239,37 @@ const pollLiveStatsJob = async (jobId: string) => {
 
 ### Next Steps
 - (none)
+
+## Session 2026-09-05: ZDC Checkout Flow Restructure
+
+### Problem
+Users were able to create multiple `created` claims despite monthly limit due to pending INSERT failure not preventing Shopify order creation.
+
+### Root Cause
+Previous flow created claims BEFORE checking if pending INSERT would succeed:
+1. INSERT claim (pending) ✅
+2. CREATE Shopify order ✅
+3. UPDATE claim (created) ✅
+4. INSERT pending_monthly_claims ❌ (fails - but claim already created!)
+
+If pending INSERT failed, error was returned but orphaned `created` claims remained. User could retry and create more `created` claims.
+
+### Solution
+Restructured flow to INSERT pending_monthly_claims FIRST, before any claims or Shopify orders are created:
+
+**New flow:**
+1. **Step 0:** Check existing pending claim (SELECT) → return 400 if exists
+2. **Step 1:** Check lifetime duplicate (SELECT) → return 400 if exists
+3. **Step 2:** Check monthly completed (SELECT) → return 400 if exists
+4. **Step 3:** INSERT pending_monthly_claims FIRST → if fails, return 400, NO claim created ✅
+5. **Step 4:** CREATE Shopify order (only if pending INSERT succeeded)
+6. **Step 5:** UPDATE pending_monthly_claims with draft_order_id
+7. **Step 6:** INSERT claim (created)
+
+**Key improvement:** If pending INSERT fails, the user sees error and NO claim is created. No Shopify order is created either.
+
+### Files Modified
+- `app/api/shopify/checkout/route.ts` - Complete restructure of checkout flow
+
+### Commit
+- `9da99bc` - fix: restructure checkout flow - insert pending_monthly_claims FIRST
