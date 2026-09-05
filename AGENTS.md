@@ -13059,3 +13059,57 @@ if (pendingError) {
 |------|--------|
 | `app/api/shopify/checkout/route.ts` | Return error when `pending_monthly_claims` INSERT fails |
 
+
+## Session 2026-09-05: Sync Cron Matches Button Logic
+
+### Problem
+
+The `backfill-sync` cron job was not matching the `backfill-existing` button logic. Specifically:
+- Cron only searched Stripe by email
+- Cron ignored existing `stripe_customer_id` on profiles
+- Cron had a `.limit(100)` that prevented processing all profiles
+
+### Solution
+
+Updated `app/api/cron/backfill-sync/route.ts` to match `app/api/admin/backfill/stripe/backfill-existing/route.ts` exactly:
+
+1. **Removed `.limit(100)`** - Now processes all profiles like the button does
+2. **Added `stripe_customer_id`** to profile select
+3. **Added existing `stripe_customer_id` check first** - Tries the profile's existing Stripe ID before falling back to email search
+
+### Key Change - Two-Step Lookup
+
+```typescript
+// FIRST: Try existing stripe_customer_id on profile
+if (profile.stripe_customer_id) {
+  try {
+    const customer = await stripe.customers.retrieve(profile.stripe_customer_id);
+    if (!customer.deleted) {
+      stripeCustomerId = profile.stripe_customer_id;
+    }
+  } catch {
+    // Customer was deleted or invalid, continue to email lookup
+  }
+}
+
+// SECOND: Fall back to email search
+if (!stripeCustomerId && profile.email) {
+  const customers = await stripe.customers.list({ email: profile.email, limit: 1 });
+  if (customers.data.length > 0) {
+    stripeCustomerId = customers.data[0].id;
+  }
+}
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/cron/backfill-sync/route.ts` | Match button logic exactly |
+| `app/api/admin/backfill/stripe/backfill-existing/route.ts` | Fixed lint errors (unused `e`, `request`, `subscriptions`) |
+
+### Lint Fixes
+
+Fixed unused variable errors in both files:
+- `backfill-sync`: Removed unused `createClient` import, removed unused catch variable `e`, removed unused `subscriptions` assignment
+- `backfill-existing`: Removed unused `request` parameter, removed unused catch variable `e`, removed unused `subscriptions` assignment

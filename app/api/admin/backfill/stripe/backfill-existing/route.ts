@@ -14,7 +14,7 @@ const supabaseAdmin = createAdminClient(
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
     // Admin auth check
     const supabase = await createClient();
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
             if (!customer.deleted) {
               stripeCustomerId = profile.stripe_customer_id;
             }
-          } catch (e) {
+          } catch {
             // Customer was deleted or invalid, continue to email lookup
             stripeCustomerId = null;
           }
@@ -149,7 +149,7 @@ export async function POST(request: Request) {
 
         if (stripeCustomerId) {
           // Get subscription info for lifetime value
-          const subscriptions = await stripe.subscriptions.list({
+          await stripe.subscriptions.list({
             customer: stripeCustomerId,
             limit: 1,
             status: "active",
