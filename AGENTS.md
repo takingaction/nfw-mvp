@@ -13020,3 +13020,42 @@ if (paymentId?.startsWith("in_")) {
 }
 ```
 
+## Session 2026-09-05: ZDC Monthly Limit Bug Fix
+
+### Bug
+
+User claimed two items in the Zero Dollar Store in the same month (September 2026) despite the monthly limit of 1 claim per month.
+
+### Root Cause
+
+In `app/api/shopify/checkout/route.ts`, when the `pending_monthly_claims` INSERT failed due to UNIQUE constraint violation (user already had a checkout in progress), the error was logged but **ignored** and the checkout continued and returned success.
+
+```typescript
+// BUGGY CODE:
+if (pendingError) {
+  console.error("[checkout] Error inserting pending claim:", pendingError);
+  // Non-fatal - we have the claim in zero_dollar_claims  ← BUG
+}
+```
+
+### Fix
+
+Changed the `pendingError` handling to return a 400 error immediately, making the constraint violation fatal:
+
+```typescript
+// FIXED:
+if (pendingError) {
+  console.error("[checkout] Error inserting pending claim:", pendingError);
+  return NextResponse.json(
+    { error: "You have a checkout already in progress this month" },
+    { status: 400 }
+  );
+}
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/shopify/checkout/route.ts` | Return error when `pending_monthly_claims` INSERT fails |
+

@@ -272,7 +272,10 @@ export async function POST(request: NextRequest) {
 
     if (pendingError) {
       console.error("[checkout] Error inserting pending claim:", pendingError);
-      // Non-fatal - we have the claim in zero_dollar_claims
+      return NextResponse.json(
+        { error: "You have a checkout already in progress this month" },
+        { status: 400 }
+      );
     }
 
     console.log(`[checkout] Completed for claim ${claimId}, draft order ${draftOrderId}`);
