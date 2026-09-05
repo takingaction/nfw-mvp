@@ -87,16 +87,59 @@ export async function POST(request: Request) {
       });
     }
 
+    // Step 2: Get all profiles to look up profile_id by email - PAGINATED
+    const profileIdByEmail = new Map<string, string>();
+    let profilePage = 0;
+    const profilePageSize = 1000;
+    let hasMoreProfiles = true;
+
+    while (hasMoreProfiles) {
+      const { data: profileBatch } = await supabaseAdmin
+        .from("profiles")
+        .select("id, email")
+        .range(profilePage * profilePageSize, (profilePage + 1) * profilePageSize - 1);
+
+      if (profileBatch && profileBatch.length > 0) {
+        for (const p of profileBatch) {
+          if (p.email) {
+            profileIdByEmail.set(p.email.toLowerCase().trim(), p.id);
+          }
+        }
+        profilePage++;
+        hasMoreProfiles = profileBatch.length === profilePageSize;
+      } else {
+        hasMoreProfiles = false;
+      }
+    }
+
+    console.log(`[sync-missing-payments] Loaded ${profileIdByEmail.size} profiles for email lookup`);
+
     // Process each row
     const results = {
       success: 0,
       failed: 0,
+      profile_ids_fixed: 0,
       errors: [] as string[],
     };
 
     for (const row of rowsToSync) {
       try {
         const stripeCustomerId = row.stripe_customer_id;
+
+        // If profile_id is null, try to look it up by email
+        if (!row.profile_id) {
+          const foundProfileId = profileIdByEmail.get(row.email.toLowerCase().trim());
+          if (foundProfileId) {
+            // Update stripe_backfill_status with correct profile_id
+            await supabaseAdmin
+              .from("stripe_backfill_status")
+              .update({ profile_id: foundProfileId })
+              .eq("id", row.id);
+            results.profile_ids_fixed++;
+            row.profile_id = foundProfileId; // Use the found profile_id for payment insert
+            console.log(`[sync-missing-payments] Fixed profile_id for ${row.email}: ${foundProfileId}`);
+          }
+        }
 
         // Query Stripe for this customer's invoices (invoices have billing_reason)
         const invoices = await stripe.invoices.list({
@@ -171,8 +214,8 @@ export async function POST(request: Request) {
           }
         }
 
-        // Rate limit - be nice to Stripe
-        await new Promise(r => setTimeout(r, 100));
+        // Rate limit - be nice to Stripe (50ms = 20 customers/second, well under 100/sec limit)
+        await new Promise(r => setTimeout(r, 50));
 
       } catch (stripeError: any) {
         console.error(`[sync-missing-payments] Stripe error for ${row.email}:`, stripeError.message);
@@ -183,7 +226,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Sync complete: ${results.success} synced, ${results.failed} failed`,
+      message: `Sync complete: ${results.success} synced, ${results.profile_ids_fixed} profile_ids fixed, ${results.failed} failed`,
       results,
     });
 

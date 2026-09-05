@@ -11,6 +11,18 @@
     {
       "path": "/api/cron/sync-all-stripe-payments",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/process-reconciliation-jobs",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/process-payment-verify-jobs",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/process-stripe-only-jobs",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

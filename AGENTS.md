@@ -13113,3 +13113,129 @@ if (!stripeCustomerId && profile.email) {
 Fixed unused variable errors in both files:
 - `backfill-sync`: Removed unused `createClient` import, removed unused catch variable `e`, removed unused `subscriptions` assignment
 - `backfill-existing`: Removed unused `request` parameter, removed unused catch variable `e`, removed unused `subscriptions` assignment
+
+## Session 2026-09-05: Background Job Processing for Stripe Endpoints
+
+### Goal
+Implement background job processing for Stripe admin endpoints to avoid Vercel timeouts and remove automatic Stripe API calls from page load.
+
+### Constraints & Preferences
+- Pro plan (13 min max timeout)
+- All Stripe API calls must be manual-only (no page load triggers)
+- Use most reliable pattern: database-backed job queue with Supabase table
+- Cache results with 24-hour expiry
+- Split reconcile into 2 separate jobs for reliability
+
+### Completed
+
+**Database Migrations Created:**
+- `supabase/migrations/153_create_reconciliation_jobs_table.sql` - Creates `reconciliation_jobs` table for background job tracking
+- `supabase/migrations/154_create_stripe_only_jobs_table.sql` - Creates `stripe_only_jobs` table for background job tracking
+
+**API Routes Created:**
+- `app/api/admin/backfill/stripe/stripe-live/route.ts` - POST to trigger job, GET to check status
+- `app/api/cron/process-reconciliation-jobs/route.ts` - Cron worker for stripe_live job type
+- `app/api/cron/process-payment-verify-jobs/route.ts` - Cron worker for payment_verify job type
+- `app/api/admin/backfill/stripe/stripe-only-jobs/route.ts` - POST to trigger job, GET to check status
+- `app/api/cron/process-stripe-only-jobs/route.ts` - Cron worker for stripe-only jobs
+
+**Files Modified:**
+- `app/admin/backfill/stripe/BackfillClient.tsx` - Removed automatic Stripe calls from page load, added job polling
+- `vercel.json` - Added cron entries for job processors
+
+**Cron Schedule (every 5 minutes):**
+- `process-reconciliation-jobs` - Processes stripe_live and payment_verify jobs
+- `process-payment-verify-jobs` - Same as above (both job types in same processor)
+- `process-stripe-only-jobs` - Processes stripe-only charges export jobs
+
+### How It Works
+
+**Old Flow (Synchronous - caused timeouts):**
+1. Admin clicks "Refresh Reconciliation"
+2. API fetches all Stripe subscriptions, paginates through hundreds of records
+3. API times out after 13 minutes on Vercel Pro
+
+**New Flow (Async - reliable):**
+1. Admin clicks "Refresh Stripe"
+2. API creates job in `reconciliation_jobs` table, returns immediately
+3. UI polls for job status every 2 seconds
+4. Cron runs every 5 minutes, picks up pending job
+5. Cron processes job in chunks, updates progress in DB
+6. UI detects "completed" status, displays results
+
+### Job Queue Pattern
+
+```typescript
+// Trigger endpoint (POST /api/admin/backfill/stripe/stripe-live)
+const { data: job } = await supabaseAdmin
+  .from("reconciliation_jobs")
+  .insert({ job_type: "stripe_live", status: "pending" })
+  .select("id")
+  .single();
+return NextResponse.json({ jobId: job.id });
+
+// Cron worker (GET /api/cron/process-reconciliation-jobs)
+const { data: job } = await supabaseAdmin
+  .from("reconciliation_jobs")
+  .select("*")
+  .eq("job_type", "stripe_live")
+  .eq("status", "pending")
+  .limit(1)
+  .single();
+
+// Process...
+await supabaseAdmin
+  .from("reconciliation_jobs")
+  .update({ status: "completed", results_json: {...} })
+  .eq("id", job.id);
+```
+
+### UI Changes
+
+**Removed from page load:**
+- `fetchLiveStats()` - Was called automatically on mount
+- `fetchStripeOnly()` - Was called automatically on mount
+
+**Added manual buttons:**
+- "Refresh Stripe" button now triggers background job and polls for completion
+- "Generate Stripe Data" button now triggers background job and polls for completion
+
+**Polling pattern:**
+```typescript
+const pollLiveStatsJob = async (jobId: string) => {
+  const poll = async () => {
+    const res = await fetch(`/api/admin/backfill/stripe/stripe-live?jobId=${jobId}`);
+    const data = await res.json();
+    
+    if (data.status === "completed") {
+      setLiveStats(data.stripeLive);
+    } else if (data.status === "pending" || data.status === "processing") {
+      setTimeout(poll, 2000); // Poll every 2 seconds
+    }
+  };
+  poll();
+};
+```
+
+### Vercel Cron Configuration
+
+```json
+{
+  "crons": [
+    { "path": "/api/cron/process-reconciliation-jobs", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/process-payment-verify-jobs", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/process-stripe-only-jobs", "schedule": "*/5 * * * *" }
+  ]
+}
+```
+
+### To Deploy
+
+1. Run migrations 153 and 154 in Supabase SQL Editor
+2. Deploy the code
+3. Vercel cron will automatically pick up pending jobs every 5 minutes
+4. Click "Refresh Stripe" or "Generate Stripe Data" to trigger a job
+5. UI will poll for completion and display results
+
+### Next Steps
+- (none)

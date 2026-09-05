@@ -33,30 +33,45 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get paid profile emails DIRECTLY with a JOIN query
-    const { data: paidProfiles, error: paidError } = await supabaseAdmin
-      .from("membership_payments")
-      .select(`
-        amount,
-        profiles(email)
-      `)
-      .in("amount", [15, 100]);
-
-    if (paidError) {
-      return NextResponse.json({ error: paidError.message }, { status: 500 });
-    }
-
-    // Build paid emails set
+    // Get paid profile emails with PAGINATION to get all records
     const paidProfileEmails = new Set<string>();
-    for (const p of paidProfiles || []) {
-      const email = (p.profiles as any)?.email?.toLowerCase().trim();
-      if (email) {
-        paidProfileEmails.add(email);
+    let dbContributingCount = 0;
+    let dbFoundingCount = 0;
+    let paidPage = 0;
+    const paidPageSize = 1000;
+    let hasMorePaid = true;
+
+    while (hasMorePaid) {
+      const { data: paidBatch, error: paidError } = await supabaseAdmin
+        .from("membership_payments")
+        .select(`
+          amount,
+          profiles(email)
+        `)
+        .in("amount", [15, 100])
+        .range(paidPage * paidPageSize, (paidPage + 1) * paidPageSize - 1);
+
+      if (paidError) {
+        return NextResponse.json({ error: paidError.message }, { status: 500 });
       }
+
+      console.log(`[missing-payments] Paid page ${paidPage}: ${paidBatch?.length || 0} records`);
+
+      for (const p of paidBatch || []) {
+        const email = (p.profiles as any)?.email?.toLowerCase().trim();
+        if (email) {
+          paidProfileEmails.add(email);
+        }
+        if (p.amount === 15) dbContributingCount++;
+        else if (p.amount === 100) dbFoundingCount++;
+      }
+
+      hasMorePaid = paidBatch && paidBatch.length === paidPageSize;
+      paidPage++;
     }
 
-    const dbContributingCount = paidProfiles?.filter(p => p.amount === 15).length || 0;
-    const dbFoundingCount = paidProfiles?.filter(p => p.amount === 100).length || 0;
+    console.log(`[missing-payments] Total paid profiles: ${paidProfileEmails.size}`);
+    console.log(`[missing-payments] dbContributingCount: ${dbContributingCount}, dbFoundingCount: ${dbFoundingCount}`);
 
     // Get all Stripe subscription emails
     const stripeEmailsByTier = {
@@ -125,15 +140,28 @@ export async function GET(request: Request) {
     const missingContributing: any[] = [];
     const missingFounding: any[] = [];
 
-    // Get all profiles to look up profile_id by email
-    const { data: allProfiles } = await supabaseAdmin
-      .from("profiles")
-      .select("id, email");
-
+    // Get all profiles to look up profile_id by email - PAGINATED
     const profileIdByEmail = new Map<string, string>();
-    for (const p of allProfiles || []) {
-      if (p.email) {
-        profileIdByEmail.set(p.email.toLowerCase().trim(), p.id);
+    let profilePage = 0;
+    const profilePageSize = 1000;
+    let hasMoreProfiles = true;
+
+    while (hasMoreProfiles) {
+      const { data: profileBatch } = await supabaseAdmin
+        .from("profiles")
+        .select("id, email")
+        .range(profilePage * profilePageSize, (profilePage + 1) * profilePageSize - 1);
+
+      if (profileBatch && profileBatch.length > 0) {
+        for (const p of profileBatch) {
+          if (p.email) {
+            profileIdByEmail.set(p.email.toLowerCase().trim(), p.id);
+          }
+        }
+        profilePage++;
+        hasMoreProfiles = profileBatch.length === profilePageSize;
+      } else {
+        hasMoreProfiles = false;
       }
     }
 

@@ -209,7 +209,8 @@ export async function GET(request: Request) {
         user_id,
         profiles!inner(email, full_name)
       `)
-      .in("amount", [15, 100]);
+      .in("amount", [15, 100])
+      .limit(10000);
 
     if (paymentsError) {
       console.error("[reconcile] Payments query error:", paymentsError);

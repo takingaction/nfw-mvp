@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { getCategory } from "@/lib/member-categories";
 
@@ -222,6 +222,28 @@ export default function BackfillClient() {
   const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
   const [reconciliation, setReconciliation] = useState<ReconciliationResponse | null>(null);
   const [reconciliationLoading, setReconciliationLoading] = useState(false);
+  const [ourDb, setOurDb] = useState<{ contributing: { count: number; total: number }; founding: { count: number; total: number }; total: { count: number; total: number } } | null>(null);
+
+  // Compute difference: ourDb - stripe_live
+  const difference = useMemo(() => {
+    if (!ourDb || !reconciliation?.summary?.stripe_live) return null;
+    const stripe = reconciliation.summary.stripe_live;
+    return {
+      contributing: {
+        count: ourDb.contributing.count - stripe.contributing.count,
+        total: ourDb.contributing.total - stripe.contributing.total,
+      },
+      founding: {
+        count: ourDb.founding.count - stripe.founding.count,
+        total: ourDb.founding.total - stripe.founding.total,
+      },
+      total: {
+        count: ourDb.total.count - stripe.total.count,
+        total: ourDb.total.total - stripe.total.total,
+      },
+    };
+  }, [ourDb, reconciliation]);
+
   const [refreshingStats, setRefreshingStats] = useState(false);
   const [refreshingLive, setRefreshingLive] = useState(false);
 
@@ -271,6 +293,10 @@ export default function BackfillClient() {
   // Sync missing payments
   const [syncMissingLoading, setSyncMissingLoading] = useState(false);
   const [syncMissingResult, setSyncMissingResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
+
+  // Sync All button
+  const [syncingAll, setSyncingAll] = useState(false);
+  const [syncAllProgress, setSyncAllProgress] = useState({ current: 0, total: 0 });
 
   // Delete confirmation modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -335,27 +361,78 @@ export default function BackfillClient() {
     }
   }, []);
 
-  // Fetch Stripe Only data
-  const fetchStripeOnly = useCallback(async () => {
+  // Trigger Stripe Only job (creates job in queue, returns immediately)
+  const triggerStripeOnlyJob = useCallback(async () => {
     setStripeOnlyLoading(true);
     try {
-      const res = await fetch("/api/admin/backfill/stripe/stripe-only");
+      const res = await fetch("/api/admin/backfill/stripe/stripe-only-jobs", { method: "POST" });
       if (res.ok) {
         const data = await res.json();
-        setStripeOnly(data.charges || []);
-        setStripeOnlyTotal(data.total || 0);
-        setStripeOnlyGeneratedAt(data.generatedAt || Date.now());
-        // Store in sessionStorage for export
-        sessionStorage.setItem("stripeOnlyCharges", JSON.stringify(data.charges || []));
-        sessionStorage.setItem("stripeOnlyTotal", String(data.total || 0));
-        sessionStorage.setItem("stripeOnlyGeneratedAt", String(data.generatedAt || Date.now()));
+        // Start polling for results
+        pollStripeOnlyJob(data.jobId);
+      } else {
+        const err = await res.json();
+        setMessage(`Error: ${err.error || res.statusText}`);
+        setStripeOnlyLoading(false);
       }
     } catch (error) {
-      console.error("Failed to fetch Stripe Only:", error);
-    } finally {
+      console.error("Failed to trigger stripe-only:", error);
       setStripeOnlyLoading(false);
     }
   }, []);
+
+  // Poll for stripe-only job completion
+  const pollStripeOnlyJob = useCallback(async (jobId: string) => {
+    const maxPolls = 120;
+    let polls = 0;
+
+    const poll = async () => {
+      if (polls >= maxPolls) {
+        setMessage("Stripe Only polling timed out. Check back in a few minutes.");
+        setStripeOnlyLoading(false);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/backfill/stripe/stripe-only-jobs?jobId=${jobId}`);
+        if (res.ok) {
+          const data = await res.json();
+
+          if (data.status === "completed") {
+            setStripeOnly(data.charges || []);
+            setStripeOnlyTotal(data.total || 0);
+            setStripeOnlyGeneratedAt(Date.now());
+            // Store in sessionStorage for export
+            sessionStorage.setItem("stripeOnlyCharges", JSON.stringify(data.charges || []));
+            sessionStorage.setItem("stripeOnlyTotal", String(data.total || 0));
+            sessionStorage.setItem("stripeOnlyGeneratedAt", String(Date.now()));
+            setMessage(`Stripe Only generated: ${data.total} charges`);
+            setStripeOnlyLoading(false);
+          } else if (data.status === "failed") {
+            setMessage(`Job failed: ${data.error}`);
+            setStripeOnlyLoading(false);
+          } else {
+            polls++;
+            setTimeout(poll, 2000);
+          }
+        } else {
+          setMessage(`Error polling job: ${res.status}`);
+          setStripeOnlyLoading(false);
+        }
+      } catch (error) {
+        console.error("Poll error:", error);
+        polls++;
+        setTimeout(poll, 2000);
+      }
+    };
+
+    poll();
+  }, []);
+
+  // Legacy: Fetch Stripe Only data (now uses job polling)
+  const fetchStripeOnly = useCallback(async () => {
+    await triggerStripeOnlyJob();
+  }, [triggerStripeOnlyJob]);
 
   // Download Stripe Only CSV from cache
   const downloadStripeOnlyCSV = useCallback(() => {
@@ -413,25 +490,83 @@ export default function BackfillClient() {
     }
   }, []);
 
-  // Fetch live Stripe stats
-  const fetchLiveStats = useCallback(async () => {
+  // Trigger Stripe Live Stats job (creates job in queue, returns immediately)
+  const triggerLiveStatsJob = useCallback(async () => {
     setRefreshingLive(true);
+    setMessage("Creating background job...");
     try {
-      const res = await fetch("/api/admin/backfill/stripe/live-stats");
+      const res = await fetch("/api/admin/backfill/stripe/stripe-live", { method: "POST" });
       if (res.ok) {
         const data = await res.json();
-        setLiveStats(data);
-        setMessage("Live Stripe data refreshed successfully.");
+        setMessage(`Job ${data.jobId} created. Polling for results...`);
+        // Start polling for results
+        pollLiveStatsJob(data.jobId);
       } else {
-        setMessage(`Error refreshing Stripe data: ${res.status} ${res.statusText}`);
+        const err = await res.json();
+        setMessage(`Error: ${err.error || res.statusText}`);
+        setRefreshingLive(false);
       }
     } catch (error) {
-      console.error("Failed to fetch live stats:", error);
+      console.error("Failed to trigger live stats:", error);
       setMessage(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
-    } finally {
       setRefreshingLive(false);
     }
   }, []);
+
+  // Poll for live stats job completion
+  const pollLiveStatsJob = useCallback(async (jobId: string) => {
+    const maxPolls = 120; // 2 minutes max (cron runs every 5 min, but we'll poll faster)
+    let polls = 0;
+
+    const poll = async () => {
+      if (polls >= maxPolls) {
+        setMessage("Polling timed out. Check back in a few minutes.");
+        setRefreshingLive(false);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/backfill/stripe/stripe-live?jobId=${jobId}`);
+        if (res.ok) {
+          const data = await res.json();
+
+          if (data.status === "completed") {
+            // Job done! Extract stripe_live from response
+            if (data.stripeLive) {
+              const stripeLive = data.stripeLive;
+              setLiveStats({
+                contributing: { count: stripeLive.contributing.count, revenue: stripeLive.contributing.total },
+                founding: { count: stripeLive.founding.count, revenue: stripeLive.founding.total },
+                total: { count: stripeLive.total.count, revenue: stripeLive.total.total },
+              });
+            }
+            setMessage("Live Stripe data refreshed successfully.");
+          } else if (data.status === "failed") {
+            setMessage(`Job failed: ${data.error}`);
+          } else {
+            // Still pending/processing, keep polling
+            setMessage(`Processing... ${data.progress || data.status}`);
+            polls++;
+            setTimeout(poll, 2000); // Poll every 2 seconds
+          }
+        } else {
+          setMessage(`Error polling job: ${res.status}`);
+          setRefreshingLive(false);
+        }
+      } catch (error) {
+        console.error("Poll error:", error);
+        polls++;
+        setTimeout(poll, 2000);
+      }
+    };
+
+    poll();
+  }, []);
+
+  // Legacy: Fetch live Stripe stats (now uses job polling)
+  const fetchLiveStats = useCallback(async () => {
+    await triggerLiveStatsJob();
+  }, [triggerLiveStatsJob]);
 
   // Fetch reconciliation
   const fetchReconciliation = useCallback(async () => {
@@ -447,6 +582,22 @@ export default function BackfillClient() {
       console.error("Failed to fetch reconciliation:", error);
     } finally {
       setReconciliationLoading(false);
+    }
+  }, []);
+
+  // Fetch Our DB (fast, no Stripe calls)
+  const fetchOurDb = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/backfill/stripe/our-db");
+      if (res.ok) {
+        const data = await res.json();
+        console.log("[Our DB] Response:", data);
+        setOurDb(data.our_db);
+      } else {
+        console.error("[Our DB] Error:", res.status, await res.text());
+      }
+    } catch (error) {
+      console.error("Failed to fetch Our DB:", error);
     }
   }, []);
 
@@ -628,6 +779,40 @@ export default function BackfillClient() {
     }
   }, []);
 
+  // Sync All missing payments - insert them into membership_payments
+  const handleSyncAll = async () => {
+    const accounts = [
+      ...(missingPayments?.contributing || []),
+      ...(missingPayments?.founding || []),
+    ];
+    if (!confirm(`This will insert payment records for ${accounts.length} accounts that have profiles. Continue?`)) {
+      return;
+    }
+    setSyncingAll(true);
+    setSyncAllProgress({ current: 0, total: accounts.length });
+    try {
+      const res = await fetch("/api/admin/backfill/stripe/insert-missing-payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accounts }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Sync complete: ${data.message}`);
+        // Re-fetch both endpoints
+        await Promise.all([fetchMissingPayments(), fetchReconciliation()]);
+      } else {
+        alert(`Sync failed: ${data.error}`);
+      }
+    } catch (error) {
+      console.error("Sync All failed:", error);
+      alert("Sync All failed");
+    } finally {
+      setSyncingAll(false);
+      setSyncAllProgress({ current: 0, total: 0 });
+    }
+  };
+
   // Re-match a missing account
   const handleRematch = async (account: MissingAccount) => {
     if (!account.profile_id) return;
@@ -770,17 +955,16 @@ export default function BackfillClient() {
     }
   }, []);
 
-  // Check if initialized on mount
+  // Check if initialized on mount (removed automatic Stripe calls - now manual only)
   useEffect(() => {
     fetchStatus();
-    fetchLiveStats();
     fetchDuplicates();
     fetchStripeDuplicates();
     fetchMissingFromBackfill();
     fetchGiftCodes();
-    fetchStripeOnly();
     fetchMissingPayments();
-  }, [fetchStatus, fetchLiveStats, fetchDuplicates, fetchStripeDuplicates, fetchMissingFromBackfill, fetchGiftCodes, fetchStripeOnly, fetchMissingPayments]);
+    fetchOurDb();
+  }, [fetchStatus, fetchDuplicates, fetchStripeDuplicates, fetchMissingFromBackfill, fetchGiftCodes, fetchMissingPayments, fetchOurDb]);
 
   // Delete single payment
   const handleDeletePayment = async () => {
@@ -944,18 +1128,23 @@ export default function BackfillClient() {
                       <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.contributing.true_total?.toLocaleString('en-US') ?? '—'}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
-                      <span className="text-nfw-aubergine font-bold">{reconciliation.summary.our_db.contributing.count}</span>
+                      <span className="text-nfw-aubergine font-bold">{ourDb ? ourDb.contributing.count : '—'}</span>
                       <span className="text-nfw-blackberry/50"> / </span>
-                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.our_db.contributing.total.toLocaleString('en-US')}</span>
+                      <span className="text-nfw-aubergine font-bold">${ourDb ? ourDb.contributing.total.toLocaleString('en-US') : '—'}</span>
                     </td>
                     <td className={`px-4 py-3 text-center font-ui text-sm font-bold ${
-                      reconciliation.summary.difference.contributing.total === 0 ? "text-green-600" :
-                      reconciliation.summary.difference.contributing.total > 0 ? "text-red-600" : "text-orange-600"
+                      !difference ? "text-nfw-blackberry/30" :
+                      difference.contributing.total === 0 ? "text-green-600" :
+                      difference.contributing.total > 0 ? "text-red-600" : "text-orange-600"
                     }`}>
-                      {reconciliation.summary.difference.contributing.count > 0 ? "+" : ""}
-                      {reconciliation.summary.difference.contributing.count} /&nbsp;
-                      {reconciliation.summary.difference.contributing.total > 0 ? "+$" : reconciliation.summary.difference.contributing.total < 0 ? "-$" : ""}
-                      {Math.abs(reconciliation.summary.difference.contributing.total).toLocaleString('en-US')}
+                      {difference ? (
+                        <>
+                          {difference.contributing.count > 0 ? "+" : ""}
+                          {difference.contributing.count} /&nbsp;
+                          {difference.contributing.total > 0 ? "+$" : difference.contributing.total < 0 ? "-$" : ""}
+                          {Math.abs(difference.contributing.total).toLocaleString('en-US')}
+                        </>
+                      ) : '—'}
                     </td>
                   </tr>
                   <tr className="hover:bg-nfw-dove/30">
@@ -969,18 +1158,23 @@ export default function BackfillClient() {
                       <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.founding.true_total?.toLocaleString('en-US') ?? '—'}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
-                      <span className="text-nfw-aubergine font-bold">{reconciliation.summary.our_db.founding.count}</span>
+                      <span className="text-nfw-aubergine font-bold">{ourDb ? ourDb.founding.count : '—'}</span>
                       <span className="text-nfw-blackberry/50"> / </span>
-                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.our_db.founding.total.toLocaleString('en-US')}</span>
+                      <span className="text-nfw-aubergine font-bold">${ourDb ? ourDb.founding.total.toLocaleString('en-US') : '—'}</span>
                     </td>
                     <td className={`px-4 py-3 text-center font-ui text-sm font-bold ${
-                      reconciliation.summary.difference.founding.total === 0 ? "text-green-600" :
-                      reconciliation.summary.difference.founding.total > 0 ? "text-red-600" : "text-orange-600"
+                      !difference ? "text-nfw-blackberry/30" :
+                      difference.founding.total === 0 ? "text-green-600" :
+                      difference.founding.total > 0 ? "text-red-600" : "text-orange-600"
                     }`}>
-                      {reconciliation.summary.difference.founding.count > 0 ? "+" : ""}
-                      {reconciliation.summary.difference.founding.count} /&nbsp;
-                      {reconciliation.summary.difference.founding.total > 0 ? "+$" : reconciliation.summary.difference.founding.total < 0 ? "-$" : ""}
-                      {Math.abs(reconciliation.summary.difference.founding.total).toLocaleString('en-US')}
+                      {difference ? (
+                        <>
+                          {difference.founding.count > 0 ? "+" : ""}
+                          {difference.founding.count} /&nbsp;
+                          {difference.founding.total > 0 ? "+$" : difference.founding.total < 0 ? "-$" : ""}
+                          {Math.abs(difference.founding.total).toLocaleString('en-US')}
+                        </>
+                      ) : '—'}
                     </td>
                   </tr>
                   <tr className="bg-nfw-aubergine/5 hover:bg-nfw-aubergine/10">
@@ -994,18 +1188,23 @@ export default function BackfillClient() {
                       <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.total.true_total?.toLocaleString('en-US') ?? '—'}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
-                      <span className="text-nfw-aubergine font-bold">{reconciliation.summary.our_db.total.count}</span>
+                      <span className="text-nfw-aubergine font-bold">{ourDb ? ourDb.total.count : '—'}</span>
                       <span className="text-nfw-blackberry/50"> / </span>
-                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.our_db.total.total.toLocaleString('en-US')}</span>
+                      <span className="text-nfw-aubergine font-bold">${ourDb ? ourDb.total.total.toLocaleString('en-US') : '—'}</span>
                     </td>
                     <td className={`px-4 py-3 text-center font-ui text-sm font-bold ${
-                      reconciliation.summary.difference.total.total === 0 ? "text-green-600" :
-                      reconciliation.summary.difference.total.total > 0 ? "text-red-600" : "text-orange-600"
+                      !difference ? "text-nfw-blackberry/30" :
+                      difference.total.total === 0 ? "text-green-600" :
+                      difference.total.total > 0 ? "text-red-600" : "text-orange-600"
                     }`}>
-                      {reconciliation.summary.difference.total.count > 0 ? "+" : ""}
-                      {reconciliation.summary.difference.total.count} /&nbsp;
-                      {reconciliation.summary.difference.total.total > 0 ? "+$" : reconciliation.summary.difference.total.total < 0 ? "-$" : ""}
-                      {Math.abs(reconciliation.summary.difference.total.total).toLocaleString('en-US')}
+                      {difference ? (
+                        <>
+                          {difference.total.count > 0 ? "+" : ""}
+                          {difference.total.count} /&nbsp;
+                          {difference.total.total > 0 ? "+$" : difference.total.total < 0 ? "-$" : ""}
+                          {Math.abs(difference.total.total).toLocaleString('en-US')}
+                        </>
+                      ) : '—'}
                     </td>
                   </tr>
                 </tbody>
@@ -1158,7 +1357,7 @@ export default function BackfillClient() {
               disabled={stripeOnlyLoading}
               className="text-sm bg-nfw-wisteria text-white px-3 py-1 rounded hover:bg-nfw-wisteria/90 disabled:opacity-50"
             >
-              {stripeOnlyLoading ? "Generating (~4 min)..." : (stripeOnlyGeneratedAt ? "Regenerate CSV" : "Generate CSV")}
+              {stripeOnlyLoading ? "Starting job..." : (stripeOnlyGeneratedAt ? "Regenerate" : "Generate Stripe Data")}
             </button>
             {stripeOnlyGeneratedAt && !stripeOnlyLoading && (
               <button
@@ -1248,13 +1447,22 @@ export default function BackfillClient() {
                 Active Stripe subscriptions NOT in our membership_payments table
               </p>
             </div>
-            <button
-              onClick={fetchMissingPayments}
-              disabled={missingPaymentsLoading}
-              className="text-sm bg-nfw-wisteria text-white px-3 py-1 rounded hover:bg-nfw-wisteria/90 disabled:opacity-50"
-            >
-              {missingPaymentsLoading ? "Loading..." : "Refresh"}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={fetchMissingPayments}
+                disabled={missingPaymentsLoading}
+                className="text-sm bg-nfw-wisteria text-white px-3 py-1 rounded hover:bg-nfw-wisteria/90 disabled:opacity-50"
+              >
+                {missingPaymentsLoading ? "Loading..." : "Refresh"}
+              </button>
+              <button
+                onClick={handleSyncAll}
+                disabled={syncingAll || missingPayments.summary.total_count === 0}
+                className="text-sm bg-nfw-aubergine text-white px-3 py-1 rounded hover:bg-nfw-aubergine/90 disabled:opacity-50"
+              >
+                {syncingAll ? `Syncing... (${syncAllProgress.current}/${syncAllProgress.total})` : `Sync All (${missingPayments.summary.total_count})`}
+              </button>
+            </div>
           </div>
 
           <div className="p-4 space-y-6">
@@ -1448,10 +1656,10 @@ export default function BackfillClient() {
               {refreshingLive ? (
                 <>
                   <Loader2 className="w-3 h-3 animate-spin" />
-                  Refreshing...
+                  Starting job...
                 </>
               ) : (
-                "Refresh"
+                "Refresh Stripe"
               )}
             </button>
           </div>
