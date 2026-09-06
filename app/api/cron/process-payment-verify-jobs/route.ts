@@ -15,7 +15,7 @@ const CRON_SECRET = process.env.CRON_SECRET;
 
 export const dynamic = "force-dynamic";
 
-const DELAY_MS = 50;
+const DELAY_MS = 25; // Rate limiting delay between Stripe API calls
 
 async function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
       .single();
 
     if (jobError || !job) {
-      // Check for stale processing jobs
+      // No pending jobs - check for stale processing jobs
       const { data: staleJob } = await supabaseAdmin
         .from("reconciliation_jobs")
         .select("*")
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
 
       if (staleJob) {
         const processingTime = Date.now() - new Date(staleJob.created_at).getTime();
-        if (processingTime > 15 * 60 * 1000) {
+        if (processingTime > 10 * 60 * 1000) {
           await supabaseAdmin
             .from("reconciliation_jobs")
             .update({ status: "failed", error: "Job timed out", completed_at: new Date().toISOString() })
@@ -68,12 +68,12 @@ export async function GET(request: Request) {
     // Mark job as processing
     await supabaseAdmin
       .from("reconciliation_jobs")
-      .update({ status: "processing", progress: "Fetching payments..." })
+      .update({ status: "processing", progress: "Fetching payments from database..." })
       .eq("id", job.id);
 
     try {
-      // Get all membership payments
-      const { data: allPayments } = await supabaseAdmin
+      // Step 1: Get all payments from membership_payments
+      const { data: payments, error: paymentsError } = await supabaseAdmin
         .from("membership_payments")
         .select(`
           id,
@@ -84,33 +84,41 @@ export async function GET(request: Request) {
           user_id,
           profiles!inner(email, full_name)
         `)
-        .in("amount", [15, 100])
-        .limit(10000);
+        .in("amount", [15, 100]);
 
-      if (!allPayments) {
-        throw new Error("Failed to fetch payments");
+      if (paymentsError) {
+        throw new Error(`Failed to fetch payments: ${paymentsError.message}`);
       }
 
-      // Verify each payment against Stripe
-      const problematicPayments: any[] = [];
+      // Step 2: Verify each payment against Stripe
       const verifiedCount = { valid: 0, refunded: 0, failed: 0, not_found: 0 };
+      const problematicPayments: any[] = [];
 
       let processed = 0;
-      const total = allPayments.length;
+      const total = (payments || []).length;
 
-      for (const payment of allPayments) {
+      await supabaseAdmin
+        .from("reconciliation_jobs")
+        .update({ progress: `Verifying ${total} payments...` })
+        .eq("id", job.id);
+
+      for (const payment of payments || []) {
         processed++;
-        if (processed % 10 === 0) {
+        
+        // Progress update every 50 payments
+        if (processed % 50 === 0) {
           await supabaseAdmin
             .from("reconciliation_jobs")
             .update({ progress: `Verifying payments... ${processed}/${total}` })
             .eq("id", job.id);
         }
 
+        // stripe_payment_id can be null for automatic payments
         const hasStripeId = !!payment.stripe_payment_id;
         const hasInvoiceId = !!payment.stripe_invoice_id;
 
         if (!hasStripeId && !hasInvoiceId) {
+          // Missing both Stripe IDs - can't verify
           problematicPayments.push({
             id: payment.id,
             stripe_payment_id: null,
@@ -130,12 +138,15 @@ export async function GET(request: Request) {
           let status: string | null = null;
 
           if (paymentId?.startsWith("in_")) {
+            // Invoice ID - use invoices API
             const invoice = await stripe.invoices.retrieve(paymentId);
             status = invoice.status === "paid" ? "succeeded" : invoice.status;
           } else if (paymentId?.startsWith("ch_")) {
+            // Charge ID - use charges API
             const charge = await stripe.charges.retrieve(paymentId);
             status = charge.status;
           } else {
+            // Unknown format - can't verify
             verifiedCount.not_found++;
             problematicPayments.push({
               id: payment.id,
@@ -147,6 +158,7 @@ export async function GET(request: Request) {
               issue: "unknown_id_format",
               stripe_status: null,
             });
+            await delay(DELAY_MS);
             continue;
           }
 
@@ -177,6 +189,7 @@ export async function GET(request: Request) {
               stripe_status: "failed",
             });
           } else {
+            // Any other status
             verifiedCount.not_found++;
             problematicPayments.push({
               id: payment.id,
@@ -190,6 +203,7 @@ export async function GET(request: Request) {
             });
           }
         } catch (stripeError: any) {
+          // Payment not found in Stripe
           verifiedCount.not_found++;
           problematicPayments.push({
             id: payment.id,
@@ -203,6 +217,7 @@ export async function GET(request: Request) {
           });
         }
 
+        // Rate limit - be nice to Stripe
         await delay(DELAY_MS);
       }
 
@@ -212,17 +227,17 @@ export async function GET(request: Request) {
         .update({
           status: "completed",
           completed_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          verified_payments_json: { verified: verifiedCount },
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+          verified_payments_json: verifiedCount,
           problematic_payments_json: problematicPayments,
-          progress: "Complete",
+          progress: `Complete: ${verifiedCount.valid} valid, ${verifiedCount.refunded} refunded, ${verifiedCount.failed} failed, ${verifiedCount.not_found} not found`,
         })
         .eq("id", job.id);
 
       return NextResponse.json({
         success: true,
         jobId: job.id,
-        message: `Verified ${total} payments, ${problematicPayments.length} problematic`,
+        message: `Verified ${total} payments: ${JSON.stringify(verifiedCount)}`,
       });
 
     } catch (error: any) {
@@ -240,6 +255,6 @@ export async function GET(request: Request) {
 
   } catch (error: any) {
     console.error("[process-payment-verify-jobs] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed" }, { status: 500 });
   }
 }

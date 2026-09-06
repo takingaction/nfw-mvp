@@ -222,6 +222,7 @@ export default function BackfillClient() {
   const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
   const [reconciliation, setReconciliation] = useState<ReconciliationResponse | null>(null);
   const [reconciliationLoading, setReconciliationLoading] = useState(false);
+  const [verifyPaymentsLoading, setVerifyPaymentsLoading] = useState(false);
   const [ourDb, setOurDb] = useState<{ contributing: { count: number; total: number }; founding: { count: number; total: number }; total: { count: number; total: number } } | null>(null);
 
   // Compute difference: ourDb - stripe_live
@@ -672,6 +673,106 @@ export default function BackfillClient() {
       }
     }
   }, []);
+
+  // Verify Payments - triggers background job for payment verification
+  const handleVerifyPayments = useCallback(async () => {
+    setVerifyPaymentsLoading(true);
+    setMessage("Creating payment verification job...");
+
+    try {
+      const createRes = await fetch("/api/admin/backfill/stripe/verify-payments", { method: "POST" });
+      if (!createRes.ok) {
+        const err = await createRes.json();
+        setMessage(`Error creating job: ${err.error || createRes.statusText}`);
+        setVerifyPaymentsLoading(false);
+        return;
+      }
+      const { jobId } = await createRes.json();
+      setMessage(`Job ${jobId} created. Processing payments (this may take several minutes)...`);
+
+      // Poll for completion
+      const maxPolls = 300; // 10 minutes max
+      let polls = 0;
+
+      const poll = async () => {
+        if (polls >= maxPolls) {
+          setMessage("Polling timed out. Payment verification may still be processing.");
+          setVerifyPaymentsLoading(false);
+          return;
+        }
+
+        try {
+          const statusRes = await fetch(`/api/admin/backfill/stripe/verify-payments?jobId=${jobId}`);
+          if (!statusRes.ok) {
+            setMessage(`Error polling job: ${statusRes.status}`);
+            setVerifyPaymentsLoading(false);
+            return;
+          }
+          const status = await statusRes.json();
+
+          if (status.status === "completed") {
+            setMessage("Payment verification complete. Refreshing reconciliation...");
+            
+            // Fetch updated reconciliation
+            const reconRes = await fetch("/api/admin/backfill/stripe/reconcile");
+            if (reconRes.ok) {
+              const data = await reconRes.json();
+              setReconciliation(data);
+              sessionStorage.setItem("stripe_reconciliation", JSON.stringify(data));
+            }
+            
+            setVerifyPaymentsLoading(false);
+            setMessage("Payment verification complete.");
+            return;
+          } else if (status.status === "failed") {
+            setMessage(`Job failed: ${status.error}`);
+            setVerifyPaymentsLoading(false);
+            return;
+          }
+
+          polls++;
+          setTimeout(poll, 2000); // Poll every 2 seconds
+        } catch (error) {
+          console.error("Poll error:", error);
+          setMessage(`Poll error: ${error instanceof Error ? error.message : "Unknown error"}`);
+          setVerifyPaymentsLoading(false);
+        }
+      };
+
+      poll();
+    } catch (error) {
+      console.error("Failed to verify payments:", error);
+      setMessage(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setVerifyPaymentsLoading(false);
+    }
+  }, []);
+
+  // Delete Cache - deletes all reconciliation cache and triggers fresh jobs
+  const handleDeleteCache = useCallback(async () => {
+    if (!confirm("Are you sure you want to delete all cached data? This will trigger fresh Stripe data fetches.")) {
+      return;
+    }
+
+    setMessage("Deleting cache and triggering fresh jobs...");
+
+    try {
+      // Delete all cache entries
+      const deleteRes = await fetch("/api/admin/backfill/stripe/verify-payments", { method: "DELETE" });
+      if (!deleteRes.ok) {
+        const err = await deleteRes.json();
+        setMessage(`Error deleting cache: ${err.error || deleteRes.statusText}`);
+        return;
+      }
+
+      // Trigger fresh jobs
+      await triggerLiveStatsJob();
+      
+      setMessage("Cache deleted. Fresh jobs triggered. Data will refresh automatically.");
+    } catch (error) {
+      console.error("Failed to delete cache:", error);
+      setMessage(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }, [triggerLiveStatsJob]);
 
   const handleExportCSV = () => {
     window.open("/api/admin/backfill/stripe/export", "_blank");
@@ -1137,6 +1238,19 @@ export default function BackfillClient() {
             >
               {exportCsvLoading ? "Exporting (~30 sec)..." : "Export Email CSV"}
             </button>
+            <button
+              onClick={handleVerifyPayments}
+              disabled={verifyPaymentsLoading}
+              className="text-sm bg-nfw-citrine text-nfw-blackberry px-3 py-1 rounded hover:bg-nfw-citrine/90 disabled:opacity-50"
+            >
+              {verifyPaymentsLoading ? "Verifying..." : "Verify Payments"}
+            </button>
+            <button
+              onClick={handleDeleteCache}
+              className="text-sm bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+            >
+              Delete Cache
+            </button>
           </div>
         </div>
 
@@ -1273,10 +1387,16 @@ export default function BackfillClient() {
 
             {/* Verified counts */}
             <div className="flex gap-4 text-xs text-nfw-blackberry/60">
-              <span>✓ Valid: {reconciliation.verified.valid}</span>
-              <span className="text-red-600">✗ Refunded: {reconciliation.verified.refunded}</span>
-              <span className="text-red-600">✗ Failed: {reconciliation.verified.failed}</span>
-              <span className="text-yellow-600">? Database Only: {reconciliation.verified.not_found}</span>
+              {reconciliation.verified.valid > 0 || reconciliation.verified.refunded > 0 || reconciliation.verified.failed > 0 || reconciliation.verified.not_found > 0 ? (
+                <>
+                  <span>✓ Valid: {reconciliation.verified.valid}</span>
+                  <span className="text-red-600">✗ Refunded: {reconciliation.verified.refunded}</span>
+                  <span className="text-red-600">✗ Failed: {reconciliation.verified.failed}</span>
+                  <span className="text-yellow-600">? Database Only: {reconciliation.verified.not_found}</span>
+                </>
+              ) : (
+                <span className="text-nfw-wisteria">Click "Verify Payments" to verify each payment against Stripe.</span>
+              )}
             </div>
           </>
         )}

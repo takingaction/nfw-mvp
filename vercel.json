@@ -18,7 +18,7 @@
     },
     {
       "path": "/api/cron/process-payment-verify-jobs",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 8 * * *"
     },
     {
       "path": "/api/cron/process-stripe-only-jobs",
