@@ -13273,3 +13273,25 @@ Restructured flow to INSERT pending_monthly_claims FIRST, before any claims or S
 
 ### Commit
 - `9da99bc` - fix: restructure checkout flow - insert pending_monthly_claims FIRST
+
+## Session 2026-09-06: Fix Reconciliation Cache Reading
+
+### Problem
+UI's `fetchReconciliation()` was calling `/api/admin/backfill/stripe/reconcile` directly, which fetched from Stripe on every button click. This bypassed the `reconciliation_jobs` cache table where background jobs store results.
+
+### Solution
+Modified `/reconcile` endpoint to read from `reconciliation_jobs` cache first:
+- Check for valid (non-expired) cached job with `stripe_live_json` data
+- If cache exists, calculate `our_db` and `difference` fresh (fast, no Stripe calls)
+- Fall back to direct Stripe API only if no valid cache exists
+
+### Key Insight
+- **New job system** (`/api/admin/backfill/stripe/stripe-live`): Stores data in `reconciliation_jobs.stripe_live_json` ✓
+- **UI's `fetchReconciliation()`**: Was calling `/reconcile` which fetched from Stripe directly ✗
+- **Now `/reconcile`**: Checks `reconciliation_jobs` cache first, falls back to Stripe only if needed ✓
+
+### Files Modified
+- `app/api/admin/backfill/stripe/reconcile/route.ts` - Added cache check before fetching from Stripe
+
+### Commit
+- `bd7087c` - fix: read from reconciliation_jobs cache for Stripe live data
