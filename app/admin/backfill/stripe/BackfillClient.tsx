@@ -614,7 +614,6 @@ export default function BackfillClient() {
             if (reconRes.ok) {
               const data = await reconRes.json();
               setReconciliation(data);
-              sessionStorage.setItem("stripe_reconciliation", JSON.stringify(data));
               setMessage("Reconciliation refreshed successfully.");
             } else {
               setMessage(`Error fetching reconciliation: ${reconRes.status}`);
@@ -662,16 +661,16 @@ export default function BackfillClient() {
     }
   }, []);
 
-  // Load cached reconciliation on mount
+  // Fetch reconciliation from server on mount
   useEffect(() => {
-    const cached = sessionStorage.getItem("stripe_reconciliation");
-    if (cached) {
-      try {
-        setReconciliation(JSON.parse(cached));
-      } catch {
-        // ignore parse errors
-      }
-    }
+    fetch("/api/admin/backfill/stripe/reconcile")
+      .then(res => res.json())
+      .then(data => {
+        if (data && !data.error && data.summary) {
+          setReconciliation(data);
+        }
+      })
+      .catch(console.error);
   }, []);
 
   // Verify Payments - triggers background job for payment verification
@@ -718,7 +717,6 @@ export default function BackfillClient() {
             if (reconRes.ok) {
               const data = await reconRes.json();
               setReconciliation(data);
-              sessionStorage.setItem("stripe_reconciliation", JSON.stringify(data));
             }
             
             setVerifyPaymentsLoading(false);
