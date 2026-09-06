@@ -84,8 +84,17 @@ export async function GET(request: Request) {
       const stripeLive = cachedJob.stripe_live_json;
       const stripeContributingCount = stripeLive.contributing?.count || 0;
       const stripeFoundingCount = stripeLive.founding?.count || 0;
-      const stripeContributingTotal = stripeLive.contributing?.true_total || stripeContributingCount * 15;
-      const stripeFoundingTotal = stripeLive.founding?.true_total || stripeFoundingCount * 100;
+      // Use nullish coalescing to handle true_total = 0 case properly
+      const stripeContributingTotal = stripeLive.contributing?.true_total ?? stripeContributingCount * 15;
+      const stripeFoundingTotal = stripeLive.founding?.true_total ?? stripeFoundingCount * 100;
+
+      // Ensure true_total is always set in the returned stripeLive object
+      if (stripeLive.contributing) {
+        stripeLive.contributing.true_total = stripeContributingTotal;
+      }
+      if (stripeLive.founding) {
+        stripeLive.founding.true_total = stripeFoundingTotal;
+      }
 
       const ourDb = {
         contributing: { count: dbContributingCount, total: dbContributingTotal },

@@ -13315,3 +13315,36 @@ Updated `/reconcile` GET to read from **both** job types:
 
 ### Commit
 - `322309e` - fix: also read payment_verify job cache for verified data
+
+## Session 2026-09-06: Fix Reconciliation Background Job + True $ Display
+
+### Problem
+- "Refresh Reconciliation" button timed out after 300s on Vercel because it made synchronous Stripe API calls
+- "True $" column showed zeros even when data existed (using `||` instead of `??` for nullish coalescing)
+
+### Solution
+
+**1. `fetchReconciliation` now uses background job + polling pattern**
+
+Changed from direct API call to:
+1. POST to `/stripe-live` to create a background job
+2. Poll the job status every 2 seconds
+3. Once job completes, fetch `/reconcile` (cache will be valid)
+
+**2. Fixed nullish coalescing for `true_total`**
+
+Changed `||` to `??` so `true_total = 0` is treated as valid (not falsy).
+
+**3. Ensure `true_total` always set in cache-hit response**
+
+Added code to always set `stripeLive.contributing.true_total` and `stripeLive.founding.true_total` in the response.
+
+### Files Modified
+- `app/admin/backfill/stripe/BackfillClient.tsx` - `fetchReconciliation` now uses job polling
+- `app/api/admin/backfill/stripe/reconcile/route.ts` - Fixed `??` coalescing and ensured `true_total` is always set
+
+### To Test
+1. Deploy changes
+2. Clear sessionStorage on backfill page
+3. Click "Refresh Reconciliation"
+4. Should show "Creating background job..." → "Polling for results..." → completes

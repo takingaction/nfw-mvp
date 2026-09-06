@@ -568,19 +568,79 @@ export default function BackfillClient() {
     await triggerLiveStatsJob();
   }, [triggerLiveStatsJob]);
 
-  // Fetch reconciliation
+  // Fetch reconciliation - uses background job + polling
   const fetchReconciliation = useCallback(async () => {
     setReconciliationLoading(true);
+    setMessage("Creating background job...");
+
     try {
-      const res = await fetch("/api/admin/backfill/stripe/reconcile");
-      if (res.ok) {
-        const data = await res.json();
-        setReconciliation(data);
-        sessionStorage.setItem("stripe_reconciliation", JSON.stringify(data));
+      // 1. Create a stripe_live job (same job type used by fetchLiveStats)
+      const createRes = await fetch("/api/admin/backfill/stripe/stripe-live", { method: "POST" });
+      if (!createRes.ok) {
+        const err = await createRes.json();
+        setMessage(`Error creating job: ${err.error || createRes.statusText}`);
+        setReconciliationLoading(false);
+        return;
       }
+      const { jobId } = await createRes.json();
+      setMessage(`Job ${jobId} created. Polling for results...`);
+
+      // 2. Poll for job completion
+      const maxPolls = 120; // 2 minutes max
+      let polls = 0;
+
+      const poll = async () => {
+        if (polls >= maxPolls) {
+          setMessage("Polling timed out. Check back in a few minutes.");
+          setReconciliationLoading(false);
+          return;
+        }
+
+        try {
+          const statusRes = await fetch(`/api/admin/backfill/stripe/stripe-live?jobId=${jobId}`);
+          if (!statusRes.ok) {
+            setMessage(`Error polling job: ${statusRes.status}`);
+            setReconciliationLoading(false);
+            return;
+          }
+          const status = await statusRes.json();
+
+          if (status.status === "completed") {
+            setMessage("Background job complete. Fetching reconciliation...");
+
+            // 3. Job done - now fetch reconciliation (cache will be valid)
+            const reconRes = await fetch("/api/admin/backfill/stripe/reconcile");
+            if (reconRes.ok) {
+              const data = await reconRes.json();
+              setReconciliation(data);
+              sessionStorage.setItem("stripe_reconciliation", JSON.stringify(data));
+              setMessage("Reconciliation refreshed successfully.");
+            } else {
+              setMessage(`Error fetching reconciliation: ${reconRes.status}`);
+            }
+            setReconciliationLoading(false);
+            return;
+          } else if (status.status === "failed") {
+            setMessage(`Job failed: ${status.error}`);
+            setReconciliationLoading(false);
+            return;
+          } else {
+            // Still pending/processing, keep polling
+            setMessage(`Processing... ${status.progress || status.status}`);
+            polls++;
+            setTimeout(poll, 2000);
+          }
+        } catch (error) {
+          console.error("Poll error:", error);
+          polls++;
+          setTimeout(poll, 2000);
+        }
+      };
+
+      poll();
     } catch (error) {
       console.error("Failed to fetch reconciliation:", error);
-    } finally {
+      setMessage(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
       setReconciliationLoading(false);
     }
   }, []);
