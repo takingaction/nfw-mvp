@@ -40,10 +40,10 @@ export async function POST(request: Request) {
     );
 
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("profile_completed")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (profile && profile.profile_completed !== true) {
@@ -73,9 +73,9 @@ export async function POST(request: Request) {
       ],
       success_url: `${request.headers.get("origin")}/auth/welcome`,
       cancel_url: cancelUrl || `${request.headers.get("origin")}/membership`,
-      customer_email: session.user.email,
+      customer_email: user.email,
       metadata: {
-        userId: session.user.id,
+        userId: user.id,
         membershipLevel: membershipLevel,
       },
     });

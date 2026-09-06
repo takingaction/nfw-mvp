@@ -51,8 +51,8 @@ export async function POST(request: Request) {
     let userId: string | null = null;
     try {
       const supabase = await createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      userId = session?.user?.id || null;
+      const { data: { user } } = await supabase.auth.getUser();
+      userId = user?.id || null;
     } catch (e) {
       // Continue without user ID - purchase doesn't require login
     }

@@ -83,6 +83,23 @@ export async function GET() {
           });
 
         if (insertError) {
+          if (insertError.code === '23505') {
+            // Profile was just created by another request (race condition) - fetch and return it
+            const { data: existingProfile, error: fetchError } = await supabaseAdmin
+              .from("profiles")
+              .select("id, full_name, is_admin, is_reviewer, membership_level, profile_completed, is_approved_free_member, free_membership_contact_submitted")
+              .eq("id", user.id)
+              .single();
+
+            if (existingProfile && !fetchError) {
+              const normalizedProfile = {
+                ...existingProfile,
+                membership_level: existingProfile.membership_level || "free",
+              };
+              setCachedProfile(user.id, normalizedProfile);
+              return NextResponse.json(normalizedProfile);
+            }
+          }
           console.error("Failed to create defensive profile:", insertError);
           return NextResponse.json({ error: "Failed to create profile" }, { status: 500 });
         }

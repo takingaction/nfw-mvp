@@ -28,16 +28,16 @@ export async function POST(request: Request) {
     );
 
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Find the Stripe customer by email
     const customers = await stripe.customers.list({
-      email: session.user.email,
+      email: user.email,
       limit: 1,
     });
 

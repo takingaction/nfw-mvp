@@ -40,10 +40,10 @@ export async function POST(request: Request) {
     );
 
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const { data: abandoned } = await supabase
       .from("abandoned_checkouts")
       .select("id, membership_level, stripe_customer_id")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .is("recovered_at", null)
       .single();
 
@@ -87,9 +87,9 @@ export async function POST(request: Request) {
       ],
       success_url: `${request.headers.get("origin") || "https://nationalfundforwomen.org"}/auth/welcome`,
       cancel_url: `${request.headers.get("origin") || "https://nationalfundforwomen.org"}/membership`,
-      customer_email: session.user.email,
+      customer_email: user.email,
       metadata: {
-        userId: session.user.id,
+        userId: user.id,
         membershipLevel: abandoned.membership_level,
         resumedFrom: abandoned.id, // Track which abandoned checkout this resumed from
       },

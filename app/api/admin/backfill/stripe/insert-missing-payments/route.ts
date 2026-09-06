@@ -31,15 +31,15 @@ export async function POST(request: Request) {
   try {
     // Admin auth check
     const supabase = await createSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { data: adminProfile } = await supabase
       .from("profiles")
       .select("is_admin")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (!adminProfile?.is_admin) {
