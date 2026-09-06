@@ -13295,3 +13295,23 @@ Modified `/reconcile` endpoint to read from `reconciliation_jobs` cache first:
 
 ### Commit
 - `bd7087c` - fix: read from reconciliation_jobs cache for Stripe live data
+
+## Session 2026-09-06 (continued): Fix Reconciliation Cache - Read Both Job Types
+
+### Problem
+localhost and Vercel showed different results even with same cached data because:
+- `stripe_live` job stores `stripe_live_json` and `missing_from_db`
+- `payment_verify` job stores `verified_payments_json` and `problematic_payments_json`
+- Previous fix only read `stripe_live` job, returning **zeros** for `verified` and **empty** `problematic_payments`
+
+### Solution
+Updated `/reconcile` GET to read from **both** job types:
+1. Fetch `stripe_live` job for `stripe_live` counts and `missing_from_db`
+2. Fetch `payment_verify` job for `verified` counts and `problematic_payments`
+3. Combine both in the response
+
+### Files Modified
+- `app/api/admin/backfill/stripe/reconcile/route.ts` - Also reads `payment_verify` job cache for verified data
+
+### Commit
+- `322309e` - fix: also read payment_verify job cache for verified data
