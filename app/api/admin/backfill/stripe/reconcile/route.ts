@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
 });
+
+const supabaseAdmin = createAdminClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +45,72 @@ export async function GET(request: Request) {
     }
 
     // ========================================
-    // JSON FORMAT: Existing summary reconciliation
+    // JSON FORMAT: Check cache first
+    // ========================================
+
+    // Check for cached Stripe live data in reconciliation_jobs
+    const { data: cachedJob } = await supabaseAdmin
+      .from("reconciliation_jobs")
+      .select("*")
+      .eq("job_type", "stripe_live")
+      .eq("status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    const hasValidCache = cachedJob && (!cachedJob.expires_at || new Date(cachedJob.expires_at) > new Date());
+
+    // If we have valid cached Stripe data, use it
+    if (hasValidCache && cachedJob.stripe_live_json) {
+      // Fetch our_db fresh (it's fast, no Stripe calls)
+      const { data: allPayments } = await supabase
+        .from("membership_payments")
+        .select(`id, amount, user_id, profiles!inner(email, full_name)`)
+        .in("amount", [15, 100])
+        .limit(10000);
+
+      // Calculate our DB totals
+      const contributingUserIds = new Set<string>();
+      const foundingUserIds = new Set<string>();
+      for (const p of allPayments || []) {
+        if (p.amount === 15) contributingUserIds.add(p.user_id);
+        else if (p.amount === 100) foundingUserIds.add(p.user_id);
+      }
+      const dbContributingCount = contributingUserIds.size;
+      const dbFoundingCount = foundingUserIds.size;
+      const dbContributingTotal = dbContributingCount * 15;
+      const dbFoundingTotal = dbFoundingCount * 100;
+
+      const stripeLive = cachedJob.stripe_live_json;
+      const stripeContributingCount = stripeLive.contributing?.count || 0;
+      const stripeFoundingCount = stripeLive.founding?.count || 0;
+      const stripeContributingTotal = stripeLive.contributing?.true_total || stripeContributingCount * 15;
+      const stripeFoundingTotal = stripeLive.founding?.true_total || stripeFoundingCount * 100;
+
+      const ourDb = {
+        contributing: { count: dbContributingCount, total: dbContributingTotal },
+        founding: { count: dbFoundingCount, total: dbFoundingTotal },
+        total: { count: dbContributingCount + dbFoundingCount, total: dbContributingTotal + dbFoundingTotal },
+      };
+
+      const difference = {
+        contributing: { count: dbContributingCount - stripeContributingCount, total: dbContributingTotal - stripeContributingTotal },
+        founding: { count: dbFoundingCount - stripeFoundingCount, total: dbFoundingTotal - stripeFoundingTotal },
+        total: { count: (dbContributingCount + dbFoundingCount) - (stripeContributingCount + stripeFoundingCount), total: (dbContributingTotal + dbFoundingTotal) - (stripeContributingTotal + stripeFoundingTotal) },
+      };
+
+      return NextResponse.json({
+        summary: { stripe_live: stripeLive, our_db: ourDb, difference },
+        verified: { valid: 0, refunded: 0, failed: 0, not_found: 0 },
+        problematic_payments: [],
+        missing_from_db: cachedJob.missing_from_db || [],
+        cached: true,
+        cachedAt: cachedJob.completed_at,
+      });
+    }
+
+    // ========================================
+    // No cache - fetch fresh from Stripe
     // ========================================
 
     // Step 1: Get Stripe live stats
