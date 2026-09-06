@@ -13348,3 +13348,20 @@ Added code to always set `stripeLive.contributing.true_total` and `stripeLive.fo
 2. Clear sessionStorage on backfill page
 3. Click "Refresh Reconciliation"
 4. Should show "Creating background job..." → "Polling for results..." → completes
+
+## Session 2026-09-06: Grants Apply Client-Side Validation Fix
+
+### Problem
+When submitting a grant application with multiple attachments, users got a 400 error from `/api/grants/create` because the 10-character minimum validation happened on the server, not the client. The error was cryptic and unhelpful.
+
+### Solution
+Added client-side 10-character validation in `handleOpenConfirm` BEFORE opening the confirmation modal:
+
+1. **Validation in `handleOpenConfirm`** - Each text field (who_are_you, biggest_challenge, fund_usage) now validates 10-character minimum before showing the modal
+2. **Error display banner** - Added red error banner below the submit button showing specific validation errors
+
+### Files Modified
+- `components/GrantApplicationForm.tsx` - Added 10-char validation with specific error messages, added error display banner below submit button
+
+### Commit
+- `002a26a` - fix: add client-side 10-char validation and error display on grants apply page
