@@ -53,13 +53,23 @@ export default function GrantApplicationForm({
     e.preventDefault();
     setError("");
 
-    if (
-      !formData.cycle_id ||
-      !formData.who_are_you ||
-      !formData.biggest_challenge ||
-      !formData.fund_usage
-    ) {
-      setError("Please fill in all required fields");
+    if (!formData.cycle_id) {
+      setError("Please select a grant");
+      return;
+    }
+
+    if (!formData.who_are_you || formData.who_are_you.trim().length < 10) {
+      setError("Please provide a description of at least 10 characters");
+      return;
+    }
+
+    if (!formData.biggest_challenge || formData.biggest_challenge.trim().length < 10) {
+      setError("Please describe your challenge in at least 10 characters");
+      return;
+    }
+
+    if (!formData.fund_usage || formData.fund_usage.trim().length < 10) {
+      setError("Please describe fund usage in at least 10 characters");
       return;
     }
 
@@ -380,6 +390,12 @@ export default function GrantApplicationForm({
             </div>
           )}
         </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            <p className="text-sm font-serif">{error}</p>
+          </div>
+        )}
 
         <div className="flex gap-4 pt-2">
           <button
