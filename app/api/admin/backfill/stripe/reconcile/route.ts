@@ -99,10 +99,30 @@ export async function GET(request: Request) {
         total: { count: (dbContributingCount + dbFoundingCount) - (stripeContributingCount + stripeFoundingCount), total: (dbContributingTotal + dbFoundingTotal) - (stripeContributingTotal + stripeFoundingTotal) },
       };
 
+      // Also fetch payment_verify job for verified data
+      const { data: paymentVerifyJob } = await supabaseAdmin
+        .from("reconciliation_jobs")
+        .select("*")
+        .eq("job_type", "payment_verify")
+        .eq("status", "completed")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      // Get verified data from payment_verify job if available and not expired
+      let verified = { valid: 0, refunded: 0, failed: 0, not_found: 0 };
+      let problematicPayments: any[] = [];
+      if (paymentVerifyJob && (!paymentVerifyJob.expires_at || new Date(paymentVerifyJob.expires_at) > new Date())) {
+        if (paymentVerifyJob.verified_payments_json) {
+          verified = paymentVerifyJob.verified_payments_json.verified || verified;
+        }
+        problematicPayments = paymentVerifyJob.problematic_payments_json || [];
+      }
+
       return NextResponse.json({
         summary: { stripe_live: stripeLive, our_db: ourDb, difference },
-        verified: { valid: 0, refunded: 0, failed: 0, not_found: 0 },
-        problematic_payments: [],
+        verified,
+        problematic_payments: problematicPayments,
         missing_from_db: cachedJob.missing_from_db || [],
         cached: true,
         cachedAt: cachedJob.completed_at,
