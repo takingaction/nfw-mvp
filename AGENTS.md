@@ -13365,3 +13365,47 @@ Added client-side 10-character validation in `handleOpenConfirm` BEFORE opening 
 
 ### Commit
 - `002a26a` - fix: add client-side 10-char validation and error display on grants apply page
+
+## Session 2026-09-07: Backfill/Stripe Page Crash Fixes
+
+### Problem
+The `/admin/backfill/stripe` page was crashing with:
+- `"Cannot read properties of undefined (reading 'slice')"`
+- `"Encountered two children with the same key"` (Strict Mode symptom)
+
+### Root Causes
+
+**1. TermlyCMP Race Condition** (`components/TermlyCMP.tsx`)
+- Script loading lacked a guard to prevent duplicate loading in React Strict Mode or concurrent mounts
+
+**2. Missing Defensive Checks** (`app/admin/backfill/stripe/BackfillClient.tsx`)
+- Multiple `.map()` and `.slice()` calls could crash when APIs returned unexpected structures
+- `missingPayments.contributing.map()` would crash if `contributing` was undefined
+- `reconciliation.problematic_payments.map()` would crash if `problematic_payments` was undefined
+
+### Fixes Applied
+
+**1. TermlyCMP Duplicate Script Guard:**
+```typescript
+const existingScript = document.querySelector(`script[src^="${SCRIPT_SRC_BASE}"]`)
+if (existingScript) {
+  isScriptAdded.current = true
+  return
+}
+```
+
+**2. Defensive Checks Added:**
+| Line | Change |
+|------|--------|
+| 1442 | `reconciliation.problematic_payments.map` → `reconciliation.problematic_payments?.map` |
+| 1617 | `missingPayments.summary.total_count > 0` → `(missingPayments.summary?.total_count ?? 0) > 0` |
+| 1638 | `missingPayments.summary.total_count === 0` → `(missingPayments.summary?.total_count ?? 0) === 0` |
+| 1648 | `missingPayments.contributing.length > 0` → `(missingPayments?.contributing?.length ?? 0) > 0` |
+| 1664 | `missingPayments.contributing.map` → `missingPayments?.contributing?.map` |
+| 1732 | `missingPayments.founding.length > 0` → `(missingPayments?.founding?.length ?? 0) > 0` |
+| 1748 | `missingPayments.founding.map` → `missingPayments?.founding?.map` |
+| 1818 | `missingPayments.summary.total_count === 0` → `(missingPayments.summary?.total_count ?? 0) === 0` |
+
+### Files Modified
+- `components/TermlyCMP.tsx` - Added DOM check to prevent duplicate script loading
+- `app/admin/backfill/stripe/BackfillClient.tsx` - Added optional chaining and nullish coalescing for defensive checks

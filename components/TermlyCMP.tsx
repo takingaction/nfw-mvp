@@ -31,6 +31,12 @@ export default function TermlyCMP({ autoBlock, masterConsentsOrigin }: { autoBlo
 
   useEffect(() => {
     if (isScriptAdded.current) return
+    // Additional DOM check to prevent duplicate loading in Strict Mode or concurrent mounts
+    const existingScript = document.querySelector(`script[src^="${SCRIPT_SRC_BASE}"]`)
+    if (existingScript) {
+      isScriptAdded.current = true
+      return
+    }
     const script = document.createElement('script')
     script.src = scriptSrc
     document.head.appendChild(script)

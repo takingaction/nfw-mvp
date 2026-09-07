@@ -1439,7 +1439,7 @@ export default function BackfillClient() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-nfw-dove">
-                {reconciliation.problematic_payments.map((payment) => (
+                {reconciliation.problematic_payments?.map((payment) => (
                   <tr
                     key={payment.id}
                     className={`hover:bg-nfw-dove/30 ${
@@ -1614,12 +1614,12 @@ export default function BackfillClient() {
       </div>
 
       {/* Missing from DB (Stripe subscriptions not in membership_payments) */}
-      {missingPayments && missingPayments.summary.total_count > 0 && (
+      {missingPayments && (missingPayments.summary?.total_count ?? 0) > 0 && (
         <div className="bg-white rounded-lg border border-orange-200 overflow-hidden">
           <div className="flex justify-between items-center p-4 border-b border-nfw-dove bg-orange-50">
             <div>
               <h3 className="font-ui font-bold text-orange-700">
-                Missing from DB ({missingPayments.summary.total_count})
+                Missing from DB ({missingPayments.summary?.total_count ?? 0})
               </h3>
               <p className="text-xs text-orange-600 mt-1">
                 Active Stripe subscriptions NOT in our membership_payments table
@@ -1635,20 +1635,20 @@ export default function BackfillClient() {
               </button>
               <button
                 onClick={handleSyncAll}
-                disabled={syncingAll || missingPayments.summary.total_count === 0}
+                disabled={syncingAll || (missingPayments.summary?.total_count ?? 0) === 0}
                 className="text-sm bg-nfw-aubergine text-white px-3 py-1 rounded hover:bg-nfw-aubergine/90 disabled:opacity-50"
               >
-                {syncingAll ? `Syncing... (${syncAllProgress.current}/${syncAllProgress.total})` : `Sync All (${missingPayments.summary.total_count})`}
+                {syncingAll ? `Syncing... (${syncAllProgress.current}/${syncAllProgress.total})` : `Sync All (${missingPayments.summary?.total_count ?? 0})`}
               </button>
             </div>
           </div>
 
           <div className="p-4 space-y-6">
             {/* Contributing ($15) */}
-            {missingPayments.contributing.length > 0 && (
+            {(missingPayments?.contributing?.length ?? 0) > 0 && (
               <div>
                 <h4 className="font-ui font-semibold text-sm text-nfw-aubergine mb-2">
-                  Contributing ($15) — {missingPayments.summary.contributing_count}
+                  Contributing ($15) — {missingPayments.summary?.contributing_count ?? 0}
                 </h4>
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -1661,7 +1661,7 @@ export default function BackfillClient() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-nfw-dove">
-                      {missingPayments.contributing.map((account) => (
+                      {missingPayments?.contributing?.map((account) => (
                         <tr key={account.stripe_customer_id} className="hover:bg-nfw-dove/30">
                           <td className="px-3 py-2 font-ui text-sm">
                             <div className="flex flex-col">
@@ -1728,11 +1728,11 @@ export default function BackfillClient() {
                </div>
              )}
 
-             {/* Founding ($100) */}
-            {missingPayments.founding.length > 0 && (
+              {/* Founding ($100) */}
+            {(missingPayments?.founding?.length ?? 0) > 0 && (
               <div>
                 <h4 className="font-ui font-semibold text-sm text-nfw-aubergine mb-2">
-                  Founding ($100) — {missingPayments.summary.founding_count}
+                  Founding ($100) — {missingPayments.summary?.founding_count ?? 0}
                 </h4>
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -1745,7 +1745,7 @@ export default function BackfillClient() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-nfw-dove">
-                      {missingPayments.founding.map((account) => (
+                      {missingPayments?.founding?.map((account) => (
                         <tr key={account.stripe_customer_id} className="hover:bg-nfw-dove/30">
                           <td className="px-3 py-2 font-ui text-sm">
                             <div className="flex flex-col">
@@ -1815,7 +1815,7 @@ export default function BackfillClient() {
         </div>
       )}
 
-      {missingPayments && missingPayments.summary.total_count === 0 && (
+      {missingPayments && (missingPayments.summary?.total_count ?? 0) === 0 && (
         <div className="bg-white rounded-lg border border-green-200 p-6 text-center">
           <p className="font-ui text-green-700 font-semibold">✓ All Stripe subscriptions are in membership_payments</p>
         </div>
