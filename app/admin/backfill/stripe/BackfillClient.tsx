@@ -1439,7 +1439,7 @@ export default function BackfillClient() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-nfw-dove">
-                {reconciliation.problematic_payments?.map((payment) => (
+                {[...new Set(reconciliation.problematic_payments || [])].map((payment) => (
                   <tr
                     key={payment.id}
                     className={`hover:bg-nfw-dove/30 ${

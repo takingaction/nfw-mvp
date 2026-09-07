@@ -125,7 +125,13 @@ export async function GET(request: Request) {
         if (paymentVerifyJob.verified_payments_json) {
           verified = paymentVerifyJob.verified_payments_json.verified || verified;
         }
-        problematicPayments = paymentVerifyJob.problematic_payments_json || [];
+        // Deduplicate by id to prevent React key warnings
+        const seenPaymentIds = new Set<string>();
+        problematicPayments = (paymentVerifyJob.problematic_payments_json || []).filter(p => {
+          if (seenPaymentIds.has(p.id)) return false;
+          seenPaymentIds.add(p.id);
+          return true;
+        });
       }
 
       return NextResponse.json({

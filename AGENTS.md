@@ -13452,9 +13452,33 @@ WHERE id NOT IN (
 );
 ```
 
+### Additional Fix Needed (2026-09-07)
+
+**Problem:** Error persisted after initial fix - "Encountered two children with the same key" with UUIDs like `8069a414-d22c-4bf2-bcda-021ed619ca3e`
+
+**Root Cause Found:** The duplicate key issue was in `problematic_payments` array (not `missing_from_db`). The cron job stored duplicate payment IDs in `problematic_payments_json` without deduplication.
+
+**Fixes Applied:**
+
+**1. API Layer Deduplication for problematic_payments** (`app/api/admin/backfill/stripe/reconcile/route.ts` line 128):
+```typescript
+// Deduplicate by id to prevent React key warnings
+const seenPaymentIds = new Set<string>();
+problematicPayments = (paymentVerifyJob.problematic_payments_json || []).filter(p => {
+  if (seenPaymentIds.has(p.id)) return false;
+  seenPaymentIds.add(p.id);
+  return true;
+});
+```
+
+**2. Client-Side Safety Net** (`app/admin/backfill/stripe/BackfillClient.tsx` line 1442):
+```typescript
+{[...new Set(reconciliation.problematic_payments || [])].map((payment) => (
+```
+
 ### Files Modified
 - `app/api/admin/backfill/stripe/reconcile/route.ts` - Added deduplication at API layer
 - `app/admin/backfill/stripe/BackfillClient.tsx` - Added deduplication at render layer
 
 ### Commit
-- `fix: deduplicate missing_from_db arrays to prevent React key errors`
+- `fix: deduplicate problematic_payments arrays to prevent React key errors`
