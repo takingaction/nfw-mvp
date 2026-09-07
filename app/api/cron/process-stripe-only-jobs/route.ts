@@ -95,6 +95,7 @@ export async function GET(request: Request) {
               customer_id: charge.customer,
               email: charge.billing_details?.email || "",
               name: charge.billing_details?.name || "",
+              amount: amount,
               created: new Date(charge.created * 1000).toISOString(),
               status: charge.status,
               refunded: charge.refunded,
@@ -146,15 +147,21 @@ export async function GET(request: Request) {
         .from("gift_membership_purchases")
         .select("id, buyer_email, stripe_payment_intent_id, stripe_session_id");
 
-      // Build map of charge_id -> gift purchase (check both payment_intent_id and session_id)
+      // Build maps for gift purchase matching (by charge_id AND by email)
       const giftPurchaseByChargeId = new Map<string, any>();
+      const giftPurchaseByEmail = new Map<string, any>();
       if (giftPurchases) {
         for (const purchase of giftPurchases) {
+          // By charge ID (payment_intent_id or session_id)
           if (purchase.stripe_payment_intent_id) {
             giftPurchaseByChargeId.set(purchase.stripe_payment_intent_id, purchase);
           }
           if (purchase.stripe_session_id) {
             giftPurchaseByChargeId.set(purchase.stripe_session_id, purchase);
+          }
+          // By email (buyer_email)
+          if (purchase.buyer_email) {
+            giftPurchaseByEmail.set(purchase.buyer_email.toLowerCase(), purchase);
           }
         }
       }
@@ -167,8 +174,9 @@ export async function GET(request: Request) {
           continue; // Person IS in our DB, skip
         }
 
-        // Check if this is a gift purchase
-        const giftPurchase = giftPurchaseByChargeId.get(charge.charge_id);
+        // Check if this is a gift purchase - by charge_id OR by email
+        const giftPurchase = giftPurchaseByChargeId.get(charge.charge_id) 
+          || (chargeEmail && giftPurchaseByEmail.get(chargeEmail));
         const chargeWithGiftFlag = {
           ...charge,
           is_gift_purchase: !!giftPurchase,
