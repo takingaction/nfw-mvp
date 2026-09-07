@@ -141,14 +141,40 @@ export async function GET(request: Request) {
         }
       }
 
-      // Step B: Filter charges to only unmatched (email NOT in profiles)
+      // Step B: Fetch gift purchases for matching
+      const { data: giftPurchases } = await supabaseAdmin
+        .from("gift_membership_purchases")
+        .select("id, buyer_email, stripe_payment_intent_id, stripe_session_id");
+
+      // Build map of charge_id -> gift purchase (check both payment_intent_id and session_id)
+      const giftPurchaseByChargeId = new Map<string, any>();
+      if (giftPurchases) {
+        for (const purchase of giftPurchases) {
+          if (purchase.stripe_payment_intent_id) {
+            giftPurchaseByChargeId.set(purchase.stripe_payment_intent_id, purchase);
+          }
+          if (purchase.stripe_session_id) {
+            giftPurchaseByChargeId.set(purchase.stripe_session_id, purchase);
+          }
+        }
+      }
+
+      // Step C: Filter charges to only unmatched (email NOT in profiles) and mark gift purchases
       const stripeOnlyCharges: any[] = [];
       for (const charge of charges) {
         const chargeEmail = charge.email?.toLowerCase();
         if (chargeEmail && profileByEmail.has(chargeEmail)) {
           continue; // Person IS in our DB, skip
         }
-        stripeOnlyCharges.push(charge);
+
+        // Check if this is a gift purchase
+        const giftPurchase = giftPurchaseByChargeId.get(charge.charge_id);
+        const chargeWithGiftFlag = {
+          ...charge,
+          is_gift_purchase: !!giftPurchase,
+          buyer_email: giftPurchase?.buyer_email || null,
+        };
+        stripeOnlyCharges.push(chargeWithGiftFlag);
       }
 
       const total = stripeOnlyCharges.length;

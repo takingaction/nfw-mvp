@@ -322,6 +322,12 @@ export async function GET(request: Request): Promise<NextResponse> {
             return { id: row.id, success: false, error: "No stripe_customer_id" };
           }
 
+          // Skip Connect accounts (acct_) - can't query via standard Stripe API
+          if (row.stripe_customer_id.startsWith('acct_')) {
+            console.log(`[sync-all-stripe-payments] Skipping Connect account for ${row.email}: ${row.stripe_customer_id}`);
+            return { id: row.id, success: true, skipped: true, message: "Connect account - skipped" };
+          }
+
           const paymentData = await syncPaymentsForCustomer(row.stripe_customer_id);
 
           if (!paymentData) {

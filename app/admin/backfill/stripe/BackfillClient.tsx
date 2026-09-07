@@ -1569,6 +1569,7 @@ export default function BackfillClient() {
                   <th className="text-left px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Customer ID</th>
                   <th className="text-left px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Date</th>
                   <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Matched By</th>
+                  <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Gift</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-nfw-dove">
@@ -1600,6 +1601,15 @@ export default function BackfillClient() {
                       }`}>
                         {charge.matched_by || "No Match"}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {charge.is_gift_purchase ? (
+                        <span className="inline-flex items-center justify-center text-green-600" title={`Gift purchase by ${charge.buyer_email}`}>
+                          ✓
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}
