@@ -99,16 +99,30 @@ export async function POST(request: Request) {
 
     // Check if the invoice was paid immediately
     if (finalizedInvoice.status === "paid") {
+      // Update subscription to founding price immediately after payment
+      const subscriptionItemId = subscription.items.data[0].id;
+      await stripe.subscriptions.update(subscription.id, {
+        items: [{
+          id: subscriptionItemId,
+          price: process.env.STRIPE_PRICE_FOUNDING,
+        }],
+        metadata: {
+          upgraded_from: "contributing",
+          upgrade_invoice_id: finalizedInvoice.id,
+        },
+      });
+
       // Invoice was paid immediately - we can proceed
       return NextResponse.json({
         success: true,
         invoiceId: finalizedInvoice.id,
         amountCharged: 85,
         status: "paid",
-        message: "Upgrade successful! You've been charged $85.",
+        message: "Upgrade successful! You're now a Founding member.",
       });
     } else if (finalizedInvoice.status === "open") {
-      // Invoice is open but not paid yet - it will be retried
+      // For pending invoices, we'll update subscription when webhook fires
+      // The webhook will handle the subscription update
       return NextResponse.json({
         success: true,
         invoiceId: finalizedInvoice.id,

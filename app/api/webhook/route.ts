@@ -750,6 +750,35 @@ export async function POST(request: Request) {
             stripe_invoice_id: invoice.id,
           });
 
+        // Fetch current subscription and update to founding price (idempotent)
+        const subscriptions = await stripe.subscriptions.list({
+          customer: customerId,
+          status: "active",
+          limit: 1,
+        });
+
+        if (subscriptions.data.length > 0) {
+          const sub = subscriptions.data[0];
+          const currentPriceId = sub.items.data[0].price.id;
+
+          if (currentPriceId !== process.env.STRIPE_PRICE_FOUNDING) {
+            const subscriptionItemId = sub.items.data[0].id;
+            await stripe.subscriptions.update(sub.id, {
+              items: [{
+                id: subscriptionItemId,
+                price: process.env.STRIPE_PRICE_FOUNDING,
+              }],
+              metadata: {
+                upgraded_from: "contributing",
+                upgrade_invoice_id: invoice.id,
+              },
+            });
+            console.log("[webhook] invoice.payment_succeeded: Updated subscription to founding price");
+          } else {
+            console.log("[webhook] invoice.payment_succeeded: Subscription already at founding price, skipping");
+          }
+        }
+
         // Update profile to founding
         await supabaseAdmin
           .from("profiles")
