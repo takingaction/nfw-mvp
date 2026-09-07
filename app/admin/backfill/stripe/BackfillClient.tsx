@@ -1508,7 +1508,7 @@ export default function BackfillClient() {
           </div>
           <div className="p-4 max-h-96 overflow-y-auto">
             <ul className="space-y-1">
-              {[...new Set(reconciliation.missing_from_db)].map((email: string) => (
+              {[...new Set(reconciliation.missing_from_db || [])].map((email: string) => (
                 <li key={email} className="font-mono text-sm text-nfw-blackberry/80">
                   {email}
                 </li>
@@ -1583,7 +1583,7 @@ export default function BackfillClient() {
                         rel="noopener noreferrer"
                         className="text-nfw-aubergine hover:underline"
                       >
-                        {charge.charge_id.slice(0, 20)}...
+                        {charge.charge_id?.slice(0, 20) || '—'}...
                       </a>
                     </td>
                     <td className="px-4 py-3 font-ui text-sm font-mono text-xs">{charge.customer_id?.slice(0, 20)}...</td>
@@ -2040,7 +2040,7 @@ export default function BackfillClient() {
                     <span className="font-mono text-xs">{profile.email}</span>
                     <span className="ml-2 text-xs text-nfw-blackberry/50">
                       {profile.membership_level} • {profile.gift_code_redeemed ? "Gift Redeemed" : "Gift Source"}
-                      {profile.redemption?.code && ` • Code: ${profile.redemption.code.slice(0, 8)}...`}
+                      {profile.redemption?.code && ` • Code: ${profile.redemption?.code?.slice(0, 8) || ''}...`}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -2106,7 +2106,7 @@ export default function BackfillClient() {
                         <tbody className="divide-y divide-nfw-dove/50">
                           {dup.rows.map((row) => (
                             <tr key={row.id}>
-                              <td className="p-2 font-mono">{row.id.slice(0, 8)}...</td>
+                              <td className="p-2 font-mono">{row.id?.slice(0, 8) || '—'}...</td>
                               <td className="p-2">{row.full_name || "—"}</td>
                               <td className="p-2">{row.membership_level || "—"}</td>
                               <td className="p-2 font-mono">{row.stripe_customer_id?.slice(0, 12) || "—"}...</td>
