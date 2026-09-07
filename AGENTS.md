@@ -13572,3 +13572,95 @@ After upgrade, users stay on their **original contributing renewal date**. The $
 ### Commit
 
 - `92f3af1` - fix: update Stripe subscription when upgrading contributing to founding
+
+---
+
+## Session 2026-09-08: Analytics Pagination Fix
+
+### Problem
+
+`/admin/analytics` page was showing incorrect revenue data because 6 queries were hitting Supabase's default 1000 row limit without pagination. The `/admin/backfill/stripe` page correctly showed $30,590 but analytics showed only $24,731 (≈80.9% = 1000/1236 records).
+
+### Root Cause
+
+Supabase PostgREST returns maximum 1000 rows per query by default. Six queries in `app/admin/analytics/page.tsx` were missing pagination:
+
+| Query | Issue |
+|-------|-------|
+| `membership_payments` | 1000/1363 rows = $24,731 instead of $30,560 |
+| `membership_upgrades` | Missing pagination |
+| `grants` | Missing pagination |
+| `offer_redemptions` | Missing pagination |
+| `zero_dollar_claims` | Missing pagination |
+| `nfw_perk_redemptions` | Missing pagination |
+
+### Solution
+
+Created `fetchAllWithPagination()` helper function that:
+- Loops through results in 1000-row pages
+- Accumulates all results until no more pages
+- Logs each page fetched and total rows for debugging
+- Error handling: logs and continues (matches existing profiles query behavior)
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/analytics/page.tsx` | Added helper function, fixed all 6 queries with pagination |
+
+### Key Implementation
+
+```typescript
+const PAGE_SIZE = 1000;
+
+async function fetchAllWithPagination(
+  tableName: string,
+  queryBuilder: any,
+  orderColumn: string = "created_at"
+): Promise<any[]> {
+  const allData: any[] = [];
+  let page = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const from = page * PAGE_SIZE;
+    const { data, error } = await queryBuilder
+      .order(orderColumn, { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) {
+      console.error(`[analytics] Error fetching ${tableName}:`, error);
+      break;
+    }
+
+    if (data && data.length > 0) {
+      allData.push(...data);
+      page++;
+      hasMore = data.length === PAGE_SIZE;
+      console.log(`[analytics] ${tableName}: fetched page ${page} (${data.length} rows), total so far: ${allData.length}`);
+    } else {
+      hasMore = false;
+    }
+  }
+
+  console.log(`[analytics] ${tableName}: complete. Total rows: ${allData.length}`);
+  return allData;
+}
+```
+
+### Debug Logging
+
+Each query now logs to console:
+```
+[analytics] membership_payments: fetched page 1 (1000 rows), total so far: 1000
+[analytics] membership_payments: fetched page 2 (363 rows), total so far: 1363
+[analytics] membership_payments: complete. Total rows: 1363
+```
+
+### Known Remaining Issue (P1 - Separate Ticket)
+
+`totalFunded` in `AdminAnalyticsClient.tsx` ignores the date range filter and shows all-time funded grants even when filtered to a specific period. This is a separate bug that doesn't affect revenue calculations.
+
+### Commit
+
+- (pending) - fix: add pagination to analytics queries with helper function and debug logging

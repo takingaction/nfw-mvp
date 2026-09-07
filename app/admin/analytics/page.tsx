@@ -20,97 +20,122 @@ const AdminAnalyticsClient = dynamic(
   }
 );
 
-async function AdminAnalyticsContent() {
-  await requireAdmin({ redirectOnFailure: true });
-  const supabase = await createClient();
+const PAGE_SIZE = 1000;
 
-  // Members data - fetch ALL via pagination to bypass 1000 row limit
-  const pageSize = 1000;
-  const allProfiles: any[] = [];
+async function fetchAllWithPagination(
+  tableName: string,
+  queryBuilder: any,
+  orderColumn: string = "created_at"
+): Promise<any[]> {
+  const allData: any[] = [];
   let page = 0;
   let hasMore = true;
 
   while (hasMore) {
-    const from = page * pageSize;
-    const { data, error } = await supabase
-      .from("profiles")
-      .select(
-        "id, joined_at, subscription_status, membership_level, subscription_ends_at, first_paid_at, first_paid_level, is_approved_free_member, free_membership_contact_submitted, state, city, household_income, date_of_birth, is_admin, profile_completed, previous_membership_level, stripe_customer_id, signup_source",
-      )
-      .order("joined_at", { ascending: true })
-      .range(from, from + pageSize - 1);
+    const from = page * PAGE_SIZE;
+    const { data, error } = await queryBuilder
+      .order(orderColumn, { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
 
     if (error) {
-      console.error("Error fetching profiles:", error);
+      console.error(`[analytics] Error fetching ${tableName}:`, error);
       break;
     }
 
     if (data && data.length > 0) {
-      allProfiles.push(...data);
+      allData.push(...data);
       page++;
-      hasMore = data.length === pageSize;
+      hasMore = data.length === PAGE_SIZE;
+      console.log(`[analytics] ${tableName}: fetched page ${page} (${data.length} rows), total so far: ${allData.length}`);
     } else {
       hasMore = false;
     }
   }
 
-  const profiles = allProfiles;
+  console.log(`[analytics] ${tableName}: complete. Total rows: ${allData.length}`);
+  return allData;
+}
 
-  // Membership payments for period revenue calculation
-  const { data: membershipPayments } = await supabaseAdmin
-    .from("membership_payments")
-    .select("id, user_id, amount, payment_type, created_at")
-    .order("created_at", { ascending: true });
+async function AdminAnalyticsContent() {
+  await requireAdmin({ redirectOnFailure: true });
+  const supabase = await createClient();
 
-  // Membership upgrades for upgrade stats
-  const { data: membershipUpgrades } = await supabaseAdmin
-    .from("membership_upgrades")
-    .select("id, user_id, from_level, to_level, amount, created_at")
-    .order("created_at", { ascending: true });
-
-  // Grants data (use admin client to bypass RLS)
-  const { data: grants } = await supabaseAdmin
-    .from("grants")
+  // ── PROFILES ────────────────────────────────────────────────────────────────
+  console.log("[analytics] Starting profile fetch with pagination...");
+  const profilesQuery = supabase
+    .from("profiles")
     .select(
-      "id, cycle_id, status, amount_approved, submitted_at, funded_at",
-    )
-    .order("submitted_at", { ascending: true });
+      "id, joined_at, subscription_status, membership_level, subscription_ends_at, first_paid_at, first_paid_level, is_approved_free_member, free_membership_contact_submitted, state, city, household_income, date_of_birth, is_admin, profile_completed, previous_membership_level, stripe_customer_id, signup_source"
+    );
+  const profiles = await fetchAllWithPagination("profiles", profilesQuery, "joined_at");
 
-  // Grant cycles data (use admin client to bypass RLS)
+  // ── MEMBERSHIP PAYMENTS ────────────────────────────────────────────────────
+  console.log("[analytics] Starting membership_payments fetch...");
+  const membershipPaymentsQuery = supabaseAdmin
+    .from("membership_payments")
+    .select("id, user_id, amount, payment_type, created_at");
+  const membershipPayments = await fetchAllWithPagination("membership_payments", membershipPaymentsQuery);
+
+  // ── MEMBERSHIP UPGRADES ──────────────────────────────────────────────────
+  console.log("[analytics] Starting membership_upgrades fetch...");
+  const membershipUpgradesQuery = supabaseAdmin
+    .from("membership_upgrades")
+    .select("id, user_id, from_level, to_level, amount, created_at");
+  const membershipUpgrades = await fetchAllWithPagination("membership_upgrades", membershipUpgradesQuery);
+
+  // ── GRANTS ───────────────────────────────────────────────────────────────
+  console.log("[analytics] Starting grants fetch...");
+  const grantsQuery = supabaseAdmin
+    .from("grants")
+    .select("id, user_id, cycle_id, status, amount_approved, submitted_at, funded_at");
+  const grants = await fetchAllWithPagination("grants", grantsQuery, "submitted_at");
+
+  // ── GRANT CYCLES ────────────────────────────────────────────────────────
+  console.log("[analytics] Starting grant_cycles fetch (no pagination needed)...");
   const { data: grantCycles } = await supabaseAdmin
     .from("grant_cycles")
     .select("id, start_date, end_date, is_testing_only")
     .order("start_date", { ascending: true });
+  console.log(`[analytics] grant_cycles: ${grantCycles?.length || 0} rows`);
 
-  // Perks redemptions (use admin client to bypass RLS)
-  const { data: redemptions } = await supabaseAdmin
+  // ── OFFER REDEMPTIONS ───────────────────────────────────────────────────
+  console.log("[analytics] Starting offer_redemptions fetch...");
+  const redemptionsQuery = supabaseAdmin
     .from("offer_redemptions")
-    .select("id, user_id, offer_key, offer_title, store_name, redeem_type, created_at")
-    .order("created_at", { ascending: true });
+    .select("id, user_id, offer_key, offer_title, store_name, redeem_type, created_at");
+  const redemptions = await fetchAllWithPagination("offer_redemptions", redemptionsQuery);
 
-  // Newsletter signups (use admin client to bypass RLS)
+  // ── NEWSLETTER SIGNUPS ─────────────────────────────────────────────────
+  console.log("[analytics] Starting coming_soon_emails fetch (no pagination needed)...");
   const { data: newsletterEmails } = await supabaseAdmin
     .from("coming_soon_emails")
     .select("id, created_at")
     .order("created_at", { ascending: true });
+  console.log(`[analytics] coming_soon_emails: ${newsletterEmails?.length || 0} rows`);
 
-  // Zero Dollar Store claims (use admin client to bypass RLS)
-  const { data: zdsClaims } = await supabaseAdmin
+  // ── ZERO DOLLAR STORE CLAIMS ─────────────────────────────────────────────
+  console.log("[analytics] Starting zero_dollar_claims fetch...");
+  const zdsClaimsQuery = supabaseAdmin
     .from("zero_dollar_claims")
-    .select("id, user_id, shopify_product_id, status, claimed_at")
-    .order("claimed_at", { ascending: true });
+    .select("id, user_id, shopify_product_id, status, claimed_at");
+  const zdsClaims = await fetchAllWithPagination("zero_dollar_claims", zdsClaimsQuery, "claimed_at");
 
-  // NFW Perk Redemptions for engagement (use admin client to bypass RLS)
-  const { data: nfwPerkRedemptions } = await supabaseAdmin
+  // ── NFW PERK REDEMPTIONS ───────────────────────────────────────────────
+  console.log("[analytics] Starting nfw_perk_redemptions fetch...");
+  const nfwPerkRedemptionsQuery = supabaseAdmin
     .from("nfw_perk_redemptions")
-    .select("id, user_id, perk_id, redeemed_at")
-    .order("redeemed_at", { ascending: true });
+    .select("id, user_id, perk_id, redeemed_at");
+  const nfwPerkRedemptions = await fetchAllWithPagination("nfw_perk_redemptions", nfwPerkRedemptionsQuery, "redeemed_at");
 
-  // Shopify product mappings for product titles
+  // ── SHOPIFY PRODUCTS ────────────────────────────────────────────────────
+  console.log("[analytics] Starting shopify_product_mappings fetch (no pagination needed)...");
   const { data: shopifyProducts } = await supabaseAdmin
     .from("shopify_product_mappings")
     .select("shopify_product_id, title")
     .not("title", "is", null);
+  console.log(`[analytics] shopify_product_mappings: ${shopifyProducts?.length || 0} rows`);
+
+  console.log("[analytics] All data fetching complete.");
 
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">
