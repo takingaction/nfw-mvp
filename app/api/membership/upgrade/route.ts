@@ -67,10 +67,23 @@ export async function POST(request: Request) {
 
     const subscription = subscriptions.data[0];
 
+    // Create and finalize the invoice FIRST
+    // We must create the invoice before the invoice item so we can attach the item to it
+    const invoice = await stripe.invoices.create({
+      customer: profile.stripe_customer_id,
+      auto_advance: true,
+      collection_method: "charge_automatically",
+      metadata: {
+        user_id: profile.id,
+        upgrade_type: "contributing_to_founding",
+      },
+    });
+
     // Create an invoice item for the $85 upgrade difference
-    // This will be charged immediately when we finalize the invoice
+    // Attach it to the specific invoice so it gets included when we finalize
     const invoiceItem = await stripe.invoiceItems.create({
       customer: profile.stripe_customer_id,
+      invoice: invoice.id, // Attach to the invoice we just created
       amount: 8500, // $85 in cents
       currency: "usd",
       description: "Contributing to Founding membership upgrade",
@@ -81,18 +94,7 @@ export async function POST(request: Request) {
       },
     });
 
-    // Create and finalize the invoice (this triggers immediate charge)
-    const invoice = await stripe.invoices.create({
-      customer: profile.stripe_customer_id,
-      auto_advance: true,
-      collection_method: "charge_automatically",
-      metadata: {
-        user_id: profile.id,
-        upgrade_type: "contributing_to_founding",
-        invoice_item_id: invoiceItem.id,
-      },
-    });
-
+    // Finalize the invoice (this triggers immediate charge with the $85 line item)
     const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
 
     // Check if the invoice was paid immediately
