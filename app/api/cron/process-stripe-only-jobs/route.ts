@@ -109,7 +109,49 @@ export async function GET(request: Request) {
         await delay(DELAY_MS);
       }
 
-      const total = charges.length;
+      // Step A: Get all profile emails for matching
+      const allProfiles: any[] = [];
+      let pageStart = 0;
+      const pageSize = 1000;
+      let profileHasMore = true;
+
+      while (profileHasMore) {
+        const { data: profilesPage, error: profileError } = await supabaseAdmin
+          .from("profiles")
+          .select("id, email")
+          .range(pageStart, pageStart + pageSize - 1);
+
+        if (profileError) {
+          throw new Error(`Error fetching profiles: ${profileError.message}`);
+        }
+
+        if (profilesPage && profilesPage.length > 0) {
+          allProfiles.push(...profilesPage);
+          pageStart += pageSize;
+        }
+
+        profileHasMore = profilesPage && profilesPage.length === pageSize;
+      }
+
+      // Build email → profile map (case-insensitive)
+      const profileByEmail = new Map<string, any>();
+      for (const profile of allProfiles) {
+        if (profile.email) {
+          profileByEmail.set(profile.email.toLowerCase(), profile);
+        }
+      }
+
+      // Step B: Filter charges to only unmatched (email NOT in profiles)
+      const stripeOnlyCharges: any[] = [];
+      for (const charge of charges) {
+        const chargeEmail = charge.email?.toLowerCase();
+        if (chargeEmail && profileByEmail.has(chargeEmail)) {
+          continue; // Person IS in our DB, skip
+        }
+        stripeOnlyCharges.push(charge);
+      }
+
+      const total = stripeOnlyCharges.length;
 
       // Update job with results
       await supabaseAdmin
@@ -118,7 +160,7 @@ export async function GET(request: Request) {
           status: "completed",
           completed_at: new Date().toISOString(),
           expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          charges_json: charges,
+          charges_json: stripeOnlyCharges,
           total,
         })
         .eq("id", job.id);
@@ -126,7 +168,7 @@ export async function GET(request: Request) {
       return NextResponse.json({
         success: true,
         jobId: job.id,
-        message: `Processed ${total} charges`,
+        message: `Processed ${total} unmatched charges`,
       });
 
     } catch (error: any) {
