@@ -91,11 +91,11 @@ export async function GET(request: Request) {
           const amount = charge.amount / 100;
           if (amount === 15 || amount === 100) {
             charges.push({
-              id: charge.id,
-              amount,
+              charge_id: charge.id,
+              customer_id: charge.customer,
               email: charge.billing_details?.email || "",
               name: charge.billing_details?.name || "",
-              created: charge.created,
+              created: new Date(charge.created * 1000).toISOString(),
               status: charge.status,
               refunded: charge.refunded,
             });
