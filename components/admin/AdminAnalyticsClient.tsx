@@ -729,7 +729,7 @@ export default function AdminAnalyticsClient({
   const totalFunded = useMemo(
     () =>
       grants
-        .filter((g) => g.status === "payment_sent" && isInRange(g.funded_at) && !isGrantTestingOnly(g))
+        .filter((g) => g.status === "payment_sent" && isInRange(g.submitted_at) && !isGrantTestingOnly(g))
         .reduce((sum, g) => sum + (g.amount_approved || 0), 0),
     [grants, isInRange, cycleTestingMap],
   );

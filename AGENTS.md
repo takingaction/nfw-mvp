@@ -13663,4 +13663,48 @@ Each query now logs to console:
 
 ### Commit
 
-- (pending) - fix: add pagination to analytics queries with helper function and debug logging
+- `7d84c61` - fix: add pagination to analytics queries with helper function and debug logging
+
+---
+
+## Session 2026-09-08: Analytics totalFunded Date Filter Fix
+
+### Problem
+
+`totalFunded` (labeled "Disbursed" in the UI) used `funded_at` (when grant was paid) while `filteredGrants` used `submitted_at` (when application was submitted). This caused inconsistency when filtering by date range.
+
+**Example:** A grant submitted in June, paid in August
+- Filter to "August 2026"
+- `filteredGrants` (list): Shows nothing (not submitted in August)
+- `totalFunded`: Shows $X (paid in August)
+- **Inconsistent!** The list and total don't match.
+
+### Solution
+
+Changed `totalFunded` to use `isInRange(g.submitted_at)` instead of `isInRange(g.funded_at)`, matching `filteredGrants`.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/admin/AdminAnalyticsClient.tsx` | Changed `isInRange(g.funded_at)` → `isInRange(g.submitted_at)` in totalFunded filter |
+
+### Before
+
+```typescript
+const totalFunded = grants
+  .filter((g) => g.status === "payment_sent" && isInRange(g.funded_at) && !isGrantTestingOnly(g))
+  .reduce((sum, g) => sum + (g.amount_approved || 0), 0),
+```
+
+### After
+
+```typescript
+const totalFunded = grants
+  .filter((g) => g.status === "payment_sent" && isInRange(g.submitted_at) && !isGrantTestingOnly(g))
+  .reduce((sum, g) => sum + (g.amount_approved || 0), 0),
+```
+
+### Commit
+
+- (pending) - fix: align totalFunded date filter with filteredGrants using submitted_at
