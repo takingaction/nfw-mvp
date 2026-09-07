@@ -132,7 +132,7 @@ export async function GET(request: Request) {
         summary: { stripe_live: stripeLive, our_db: ourDb, difference },
         verified,
         problematic_payments: problematicPayments,
-        missing_from_db: cachedJob.missing_from_db || [],
+        missing_from_db: [...new Set(cachedJob.missing_from_db || [])],
         cached: true,
         cachedAt: cachedJob.completed_at,
       });

@@ -13409,3 +13409,52 @@ if (existingScript) {
 ### Files Modified
 - `components/TermlyCMP.tsx` - Added DOM check to prevent duplicate script loading
 - `app/admin/backfill/stripe/BackfillClient.tsx` - Added optional chaining and nullish coalescing for defensive checks
+
+---
+
+## Session 2026-09-07: Backfill Stripe Missing_from_db Duplicate Fix
+
+### Problem
+
+The `/admin/backfill/stripe` page crashed with "Encountered two children with the same key" error because `missing_from_db` array contained duplicate email entries.
+
+### Root Cause
+
+Investigation revealed:
+- The SQL query showed `kandersonxx@yahoo.com` appeared 16 times across different `reconciliation_jobs` rows (not within one array)
+- The cron replaces `missing_from_db` each run, so duplicates were likely from multiple cron runs detecting the same "missing" email
+- The API returned cached data with duplicates, and the UI rendered them with the email as the React key
+
+### Fixes Applied
+
+**1. API Layer Deduplication** (`app/api/admin/backfill/stripe/reconcile/route.ts`):
+```typescript
+// Line 135 - added deduplication:
+missing_from_db: [...new Set(cachedJob.missing_from_db || [])],
+```
+
+**2. Client-Side Safety Net** (`app/admin/backfill/stripe/BackfillClient.tsx`):
+```typescript
+// Line 1511 - deduplicate before mapping:
+{[...new Set(reconciliation.missing_from_db)].map((email: string) => (
+```
+
+### SQL Cleanup (Run in Supabase SQL Editor)
+
+```sql
+-- Delete old reconciliation_jobs rows, keeping only the latest per job_type
+DELETE FROM reconciliation_jobs
+WHERE id NOT IN (
+  SELECT DISTINCT ON (job_type) id
+  FROM reconciliation_jobs
+  WHERE job_type IN ('stripe_live', 'payment_verify', 'stripe_only')
+  ORDER BY job_type, created_at DESC
+);
+```
+
+### Files Modified
+- `app/api/admin/backfill/stripe/reconcile/route.ts` - Added deduplication at API layer
+- `app/admin/backfill/stripe/BackfillClient.tsx` - Added deduplication at render layer
+
+### Commit
+- `fix: deduplicate missing_from_db arrays to prevent React key errors`

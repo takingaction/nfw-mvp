@@ -1508,7 +1508,7 @@ export default function BackfillClient() {
           </div>
           <div className="p-4 max-h-96 overflow-y-auto">
             <ul className="space-y-1">
-              {reconciliation.missing_from_db.map((email: string) => (
+              {[...new Set(reconciliation.missing_from_db)].map((email: string) => (
                 <li key={email} className="font-mono text-sm text-nfw-blackberry/80">
                   {email}
                 </li>
