@@ -140,6 +140,17 @@ export async function GET(request: Request) {
       }
     }
 
+    // Deduplicate rows by id (defensive - prevents React key warning)
+    for (const dup of duplicates) {
+      const seenIds = new Set<string>();
+      dup.rows = dup.rows.filter(row => {
+        if (seenIds.has(row.id)) return false;
+        seenIds.add(row.id);
+        return true;
+      });
+      dup.count = dup.rows.length;
+    }
+
     // Sort by count descending
     duplicates.sort((a, b) => b.count - a.count);
 
