@@ -13482,3 +13482,93 @@ problematicPayments = (paymentVerifyJob.problematic_payments_json || []).filter(
 
 ### Commit
 - `fix: deduplicate problematic_payments arrays to prevent React key errors`
+
+---
+
+## Session 2026-09-07: Contributing-to-Founding Subscription Update Fix
+
+### Problem
+
+The upgrade from contributing ($15/year) to founding ($100/year) was charging $85 but **never updating the Stripe subscription** to the founding price. After paying $85, users would:
+- Show as "founding" in our database
+- But stay on the $15/year subscription in Stripe
+- Get charged $15 at next renewal instead of $100
+
+### Root Cause
+
+Two places that should have called `stripe.subscriptions.update()` were missing it entirely:
+- `app/api/membership/upgrade/route.ts` - the user-facing upgrade endpoint
+- `app/api/webhook/route.ts` - the `invoice.payment_succeeded` webhook handler
+
+Neither was calling `stripe.subscriptions.update()` to change the subscription's price item from contributing to founding.
+
+### Solution
+
+**Both places now update the subscription:**
+
+**1. upgrade/route.ts** - Updates immediately when `finalizedInvoice.status === "paid"`:
+```typescript
+const subscriptionItemId = subscription.items.data[0].id;
+await stripe.subscriptions.update(subscription.id, {
+  items: [{
+    id: subscriptionItemId,
+    price: process.env.STRIPE_PRICE_FOUNDING,
+  }],
+  metadata: {
+    upgraded_from: "contributing",
+    upgrade_invoice_id: finalizedInvoice.id,
+  },
+});
+```
+
+**2. webhook (invoice.payment_succeeded)** - Updates as fallback when webhook fires:
+```typescript
+const subscriptions = await stripe.subscriptions.list({
+  customer: customerId,
+  status: "active",
+  limit: 1,
+});
+
+if (subscriptions.data.length > 0) {
+  const sub = subscriptions.data[0];
+  const currentPriceId = sub.items.data[0].price.id;
+
+  if (currentPriceId !== process.env.STRIPE_PRICE_FOUNDING) {
+    const subscriptionItemId = sub.items.data[0].id;
+    await stripe.subscriptions.update(sub.id, {
+      items: [{
+        id: subscriptionItemId,
+        price: process.env.STRIPE_PRICE_FOUNDING,
+      }],
+    });
+  }
+}
+```
+
+### Idempotency
+
+Both places check if subscription is already at founding price before updating:
+- `upgrade/route.ts`: Skips update if already at founding
+- `webhook`: Logs "already at founding price, skipping"
+
+### What Was Already Working
+
+The profile and database were already being updated correctly:
+- Profile `membership_level` set to "founding"
+- `membership_upgrades` table entry created
+- `membership_payments` table entry created
+
+### Renewal Date
+
+After upgrade, users stay on their **original contributing renewal date**. The $85 is a one-time upgrade fee. Their next renewal will be at $100/year from their original renewal date.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/membership/upgrade/route.ts` | Added `stripe.subscriptions.update()` after invoice is paid |
+| `app/api/webhook/route.ts` | Added subscription fetch + `stripe.subscriptions.update()` in `invoice.payment_succeeded` handler |
+
+### Commit
+
+- `92f3af1` - fix: update Stripe subscription when upgrading contributing to founding
