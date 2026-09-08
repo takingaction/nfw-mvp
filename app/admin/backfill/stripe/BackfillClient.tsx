@@ -279,6 +279,22 @@ export default function BackfillClient() {
     closeModal();
   };
 
+  // Navigation safeguard state
+  const [isOperationRunning, setIsOperationRunning] = useState(false);
+
+  // Effect to warn before leaving during operation
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isOperationRunning) {
+        e.preventDefault();
+        e.returnValue = "A process is running. Are you sure you want to leave?";
+        return e.returnValue;
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isOperationRunning]);
+
   // Compute difference: ourDb - stripe_live
   const difference = useMemo(() => {
     if (!ourDb || !reconciliation?.summary?.stripe_live) return null;
@@ -422,6 +438,7 @@ export default function BackfillClient() {
   // Trigger Stripe Only job (creates job in queue, returns immediately)
   const triggerStripeOnlyJob = useCallback(async () => {
     setStripeOnlyLoading(true);
+    setIsOperationRunning(true);
     try {
       const res = await fetch("/api/admin/backfill/stripe/stripe-only-jobs", { method: "POST" });
       if (res.ok) {
@@ -432,10 +449,12 @@ export default function BackfillClient() {
         const err = await res.json();
         setMessage(`Error: ${err.error || res.statusText}`);
         setStripeOnlyLoading(false);
+        setIsOperationRunning(false);
       }
     } catch (error) {
       console.error("Failed to trigger stripe-only:", error);
       setStripeOnlyLoading(false);
+      setIsOperationRunning(false);
     }
   }, []);
 
@@ -448,6 +467,7 @@ export default function BackfillClient() {
       if (polls >= maxPolls) {
         setMessage("Stripe Only polling timed out. Check back in a few minutes.");
         setStripeOnlyLoading(false);
+        setIsOperationRunning(false);
         return;
       }
 
@@ -466,9 +486,11 @@ export default function BackfillClient() {
             sessionStorage.setItem("stripeOnlyGeneratedAt", String(Date.now()));
             setMessage(`Stripe Only generated: ${data.total} charges`);
             setStripeOnlyLoading(false);
+            setIsOperationRunning(false);
           } else if (data.status === "failed") {
             setMessage(`Job failed: ${data.error}`);
             setStripeOnlyLoading(false);
+            setIsOperationRunning(false);
           } else {
             polls++;
             setTimeout(poll, 2000);
@@ -476,6 +498,7 @@ export default function BackfillClient() {
         } else {
           setMessage(`Error polling job: ${res.status}`);
           setStripeOnlyLoading(false);
+          setIsOperationRunning(false);
         }
       } catch (error) {
         console.error("Poll error:", error);
@@ -551,6 +574,7 @@ export default function BackfillClient() {
   // Trigger Stripe Live Stats job (creates job in queue, returns immediately)
   const triggerLiveStatsJob = useCallback(async () => {
     setRefreshingLive(true);
+    setIsOperationRunning(true);
     setMessage("Creating background job...");
     try {
       const res = await fetch("/api/admin/backfill/stripe/stripe-live", { method: "POST" });
@@ -563,11 +587,13 @@ export default function BackfillClient() {
         const err = await res.json();
         setMessage(`Error: ${err.error || res.statusText}`);
         setRefreshingLive(false);
+        setIsOperationRunning(false);
       }
     } catch (error) {
       console.error("Failed to trigger live stats:", error);
       setMessage(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
       setRefreshingLive(false);
+      setIsOperationRunning(false);
     }
   }, []);
 
@@ -580,6 +606,7 @@ export default function BackfillClient() {
       if (polls >= maxPolls) {
         setMessage("Polling timed out. Check back in a few minutes.");
         setRefreshingLive(false);
+        setIsOperationRunning(false);
         return;
       }
 
@@ -599,8 +626,12 @@ export default function BackfillClient() {
               });
             }
             setMessage("Live Stripe data refreshed successfully.");
+            setRefreshingLive(false);
+            setIsOperationRunning(false);
           } else if (data.status === "failed") {
             setMessage(`Job failed: ${data.error}`);
+            setRefreshingLive(false);
+            setIsOperationRunning(false);
           } else {
             // Still pending/processing, keep polling
             setMessage(`Processing... ${data.progress || data.status}`);
@@ -610,6 +641,7 @@ export default function BackfillClient() {
         } else {
           setMessage(`Error polling job: ${res.status}`);
           setRefreshingLive(false);
+          setIsOperationRunning(false);
         }
       } catch (error) {
         console.error("Poll error:", error);
@@ -737,6 +769,7 @@ export default function BackfillClient() {
       "This will query Stripe to verify every payment in our database. This is a heavy operation that may take several minutes. Continue?",
       async () => {
         setVerifyPaymentsLoading(true);
+        setIsOperationRunning(true);
         setMessage("Creating payment verification job...");
 
         try {
@@ -745,6 +778,7 @@ export default function BackfillClient() {
             const err = await createRes.json();
             setMessage(`Error creating job: ${err.error || createRes.statusText}`);
             setVerifyPaymentsLoading(false);
+            setIsOperationRunning(false);
             return;
           }
           const { jobId } = await createRes.json();
@@ -758,6 +792,7 @@ export default function BackfillClient() {
             if (polls >= maxPolls) {
               setMessage("Polling timed out. Payment verification may still be processing.");
               setVerifyPaymentsLoading(false);
+              setIsOperationRunning(false);
               return;
             }
 
@@ -766,26 +801,29 @@ export default function BackfillClient() {
               if (!statusRes.ok) {
                 setMessage(`Error polling job: ${statusRes.status}`);
                 setVerifyPaymentsLoading(false);
+                setIsOperationRunning(false);
                 return;
               }
               const status = await statusRes.json();
 
               if (status.status === "completed") {
                 setMessage("Payment verification complete. Refreshing reconciliation...");
-                
+
                 // Fetch updated reconciliation
                 const reconRes = await fetch("/api/admin/backfill/stripe/reconcile");
                 if (reconRes.ok) {
                   const data = await reconRes.json();
                   setReconciliation(data);
                 }
-                
+
                 setVerifyPaymentsLoading(false);
+                setIsOperationRunning(false);
                 setMessage("Payment verification complete.");
                 return;
               } else if (status.status === "failed") {
                 setMessage(`Job failed: ${status.error}`);
                 setVerifyPaymentsLoading(false);
+                setIsOperationRunning(false);
                 return;
               }
 
@@ -795,6 +833,7 @@ export default function BackfillClient() {
               console.error("Poll error:", error);
               setMessage(`Poll error: ${error instanceof Error ? error.message : "Unknown error"}`);
               setVerifyPaymentsLoading(false);
+              setIsOperationRunning(false);
             }
           };
 
@@ -803,6 +842,7 @@ export default function BackfillClient() {
           console.error("Failed to verify payments:", error);
           setMessage(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
           setVerifyPaymentsLoading(false);
+          setIsOperationRunning(false);
         }
       }
     );
@@ -901,6 +941,7 @@ export default function BackfillClient() {
       "This will sync payment details from Stripe for all matched customers. This may take a few minutes. Continue?",
       async () => {
         setSyncingPayments(true);
+        setIsOperationRunning(true);
         setSyncProgress("Starting payment sync...");
         try {
           const res = await fetch("/api/admin/backfill/stripe/sync-all-payments", { method: "POST" });
@@ -915,6 +956,7 @@ export default function BackfillClient() {
           showError("Sync Failed", error instanceof Error ? error.message : "Unknown error");
         } finally {
           setSyncingPayments(false);
+          setIsOperationRunning(false);
           setSyncProgress("");
         }
       }
@@ -1024,6 +1066,7 @@ export default function BackfillClient() {
       "This will insert payment records for accounts that have profiles in Stripe but not in our database. Continue?",
       async () => {
         setSyncingAll(true);
+        setIsOperationRunning(true);
         setSyncAllProgress({ current: 0, total: accounts.length });
         try {
           const res = await fetch("/api/admin/backfill/stripe/insert-missing", {
@@ -1043,6 +1086,7 @@ export default function BackfillClient() {
           showError("Sync Failed", error instanceof Error ? error.message : "Unknown error");
         } finally {
           setSyncingAll(false);
+          setIsOperationRunning(false);
           setSyncAllProgress({ current: 0, total: 0 });
         }
       }
@@ -1332,28 +1376,28 @@ export default function BackfillClient() {
               disabled={syncingAll}
               className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
             >
-              {syncingAll ? "Syncing..." : "Sync Profiles"}
+              {syncingAll ? "Working..." : "Sync Profiles"}
             </button>
             <button
               onClick={handleSyncAllPayments}
               disabled={syncingPayments}
               className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
             >
-              {syncingPayments ? "Syncing..." : "Sync Payments"}
+              {syncingPayments ? "Working..." : "Sync Payments"}
             </button>
             <button
               onClick={handleVerifyPayments}
               disabled={verifyPaymentsLoading}
               className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
             >
-              {verifyPaymentsLoading ? "Verifying..." : "Verify Payments"}
+              {verifyPaymentsLoading ? "Working..." : "Verify Payments"}
             </button>
             <button
               onClick={fetchStripeOnly}
               disabled={stripeOnlyLoading}
               className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
             >
-              {stripeOnlyLoading ? "Starting..." : "Generate Stripe Data"}
+              {stripeOnlyLoading ? "Working..." : "Generate Stripe Data"}
             </button>
           </div>
         </div>
