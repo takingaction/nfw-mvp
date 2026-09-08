@@ -1507,20 +1507,6 @@ export default function BackfillClient() {
                 </tbody>
               </table>
             </div>
-
-            {/* Verified counts */}
-            <div className="flex gap-4 text-xs text-nfw-blackberry/60">
-              {reconciliation.verified.valid > 0 || reconciliation.verified.refunded > 0 || reconciliation.verified.failed > 0 || reconciliation.verified.not_found > 0 ? (
-                <>
-                  <span>✓ Valid: {reconciliation.verified.valid}</span>
-                  <span className="text-red-600">✗ Refunded: {reconciliation.verified.refunded}</span>
-                  <span className="text-red-600">✗ Failed: {reconciliation.verified.failed}</span>
-                  <span className="text-yellow-600">? Database Only: {reconciliation.verified.not_found}</span>
-                </>
-              ) : (
-                <span className="text-nfw-wisteria">Click "Verify Payments" to verify each payment against Stripe.</span>
-              )}
-            </div>
           </>
         )}
 
