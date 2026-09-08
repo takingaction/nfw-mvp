@@ -13,15 +13,15 @@ export async function GET(request: Request) {
   try {
     // Admin auth check
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { data: adminProfile } = await supabase
       .from("profiles")
       .select("is_admin")
-      .eq("id", user.id)
+      .eq("id", session.user.id)
       .single();
 
     if (!adminProfile?.is_admin) {
@@ -138,17 +138,6 @@ export async function GET(request: Request) {
           })),
         });
       }
-    }
-
-    // Deduplicate rows by id (defensive - prevents React key warning)
-    for (const dup of duplicates) {
-      const seenIds = new Set<string>();
-      dup.rows = dup.rows.filter(row => {
-        if (seenIds.has(row.id)) return false;
-        seenIds.add(row.id);
-        return true;
-      });
-      dup.count = dup.rows.length;
     }
 
     // Sort by count descending

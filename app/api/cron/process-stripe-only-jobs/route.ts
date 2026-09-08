@@ -11,215 +11,284 @@ const supabaseAdmin = createAdminClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-const CRON_SECRET = process.env.CRON_SECRET;
-
 export const dynamic = "force-dynamic";
 
-const DELAY_MS = 50;
+const DELAY_MS = 50; // Small delay between API calls
 
-async function delay(ms: number) {
+async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export async function GET(request: Request) {
-  // Auth check
-  const authHeader = request.headers.get("Authorization");
-  if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+interface StripeCharge {
+  id: string;
+  customer: string;
+  amount: number;
+  currency: string;
+  created: number;
+  billing_details?: {
+    email?: string | null;
+    name?: string | null;
+  };
+}
+
+async function processStripeOnlyJob(jobId: string): Promise<void> {
+  console.log(`[process-stripe-only] Processing job ${jobId}`);
 
   try {
-    // Pick up one pending job
-    const { data: job, error: jobError } = await supabaseAdmin
+    // Update job status to processing
+    await supabaseAdmin
       .from("stripe_only_jobs")
-      .select("*")
+      .update({
+        status: "processing",
+        progress: "Loading profiles..."
+      })
+      .eq("id", jobId);
+
+    // Step 1: Get ALL profile emails using pagination
+    const allProfiles: any[] = [];
+    let pageStart = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data: profilesPage, error } = await supabaseAdmin
+        .from("profiles")
+        .select("id, email")
+        .range(pageStart, pageStart + pageSize - 1);
+
+      if (error) {
+        throw new Error(`Failed to fetch profiles: ${error.message}`);
+      }
+
+      if (profilesPage && profilesPage.length > 0) {
+        allProfiles.push(...profilesPage);
+        pageStart += pageSize;
+      }
+
+      hasMore = profilesPage && profilesPage.length === pageSize;
+    }
+
+    // Build email → profile map (case-insensitive)
+    const profileByEmail = new Map<string, any>();
+    for (const profile of allProfiles) {
+      if (profile.email) {
+        profileByEmail.set(profile.email.toLowerCase(), profile);
+      }
+    }
+
+    console.log(`[process-stripe-only] Profiles loaded: ${allProfiles.length}`);
+
+    // Update progress
+    await supabaseAdmin
+      .from("stripe_only_jobs")
+      .update({ progress: "Fetching Stripe subscriptions..." })
+      .eq("id", jobId);
+
+    // Step 2: Get ALL Stripe subscriptions with their customer IDs
+    const allCustomerIds: string[] = [];
+    const statuses: Array<"active" | "past_due" | "canceled" | "unpaid" | "trialing" | "incomplete" | "incomplete_expired" | "paused"> =
+      ["active", "past_due", "canceled", "unpaid", "trialing", "incomplete", "incomplete_expired", "paused"];
+
+    for (const status of statuses) {
+      let subHasMore = true;
+      let subCursor: string | undefined;
+      let pageNum = 0;
+
+      while (subHasMore) {
+        pageNum++;
+        try {
+          const subParams: any = { limit: 100, status };
+          if (subCursor) subParams.starting_after = subCursor;
+
+          await sleep(200); // Delay between subscription list calls
+
+          const subsResponse = await stripe.subscriptions.list(subParams as any);
+          subHasMore = subsResponse.has_more;
+
+          if (subsResponse.data.length > 0) {
+            subCursor = subsResponse.data[subsResponse.data.length - 1].id;
+
+            for (const sub of subsResponse.data) {
+              if (sub.customer && !allCustomerIds.includes(sub.customer as string)) {
+                allCustomerIds.push(sub.customer as string);
+              }
+            }
+          }
+
+          console.log(`[process-stripe-only] Status ${status}, page ${pageNum}: ${allCustomerIds.length} customers`);
+        } catch (err: any) {
+          console.error(`[process-stripe-only] Error listing subscriptions (${status}):`, err.message);
+          subHasMore = false;
+        }
+      }
+    }
+
+    console.log(`[process-stripe-only] Total unique customers: ${allCustomerIds.length}`);
+
+    // Update progress
+    await supabaseAdmin
+      .from("stripe_only_jobs")
+      .update({ progress: `Processing ${allCustomerIds.length} customers...` })
+      .eq("id", jobId);
+
+    // Step 3: Fetch charges for each customer
+    const allCharges: StripeCharge[] = [];
+    const processedChargeIds = new Set<string>();
+
+    // Target ~2 minutes total
+    const TARGET_SECONDS = 120;
+    const DELAY_BETWEEN_CUSTOMERS = Math.max(50, Math.floor((TARGET_SECONDS * 1000) / allCustomerIds.length));
+
+    for (let i = 0; i < allCustomerIds.length; i++) {
+      const customerId = allCustomerIds[i];
+      const customerNum = i + 1;
+
+      if (i > 0) {
+        await sleep(DELAY_BETWEEN_CUSTOMERS);
+      }
+
+      try {
+        const charges = await stripe.charges.list({
+          customer: customerId,
+          limit: 100,
+        });
+
+        for (const charge of charges.data) {
+          // Only membership amounts ($15 = 1500, $100 = 10000)
+          if ((charge.amount === 1500 || charge.amount === 10000) && !processedChargeIds.has(charge.id)) {
+            processedChargeIds.add(charge.id);
+            allCharges.push({
+              id: charge.id,
+              customer: charge.customer as string,
+              amount: charge.amount,
+              currency: charge.currency,
+              created: charge.created,
+              billing_details: charge.billing_details,
+            });
+          }
+        }
+
+        // Progress log every 25 customers
+        if (customerNum % 25 === 0 || customerNum === allCustomerIds.length) {
+          console.log(`[process-stripe-only] Processed ${customerNum}/${allCustomerIds.length}: ${allCharges.length} charges`);
+          
+          // Update progress in job
+          await supabaseAdmin
+            .from("stripe_only_jobs")
+            .update({ 
+              progress: `Processed ${customerNum}/${allCustomerIds.length} customers...`
+            })
+            .eq("id", jobId);
+        }
+      } catch (err: any) {
+        console.warn(`[process-stripe-only] Error fetching charges for ${customerId}:`, err.message);
+      }
+    }
+
+    console.log(`[process-stripe-only] Total charges: ${allCharges.length}`);
+
+    // Update progress
+    await supabaseAdmin
+      .from("stripe_only_jobs")
+      .update({ progress: "Finding Stripe-only charges..." })
+      .eq("id", jobId);
+
+    // Step 4: Find charges where email is NOT in our profiles
+    const stripeOnlyCharges: any[] = [];
+    let matchCount = 0;
+
+    for (const charge of allCharges) {
+      const chargeEmail = charge.billing_details?.email?.toLowerCase();
+
+      if (chargeEmail && profileByEmail.has(chargeEmail)) {
+        matchCount++;
+        continue;
+      }
+
+      stripeOnlyCharges.push({
+        charge_id: charge.id,
+        customer_id: charge.customer,
+        email: charge.billing_details?.email || null,
+        name: charge.billing_details?.name || null,
+        amount: charge.amount / 100,
+        currency: charge.currency,
+        created: new Date(charge.created * 1000).toISOString(),
+      });
+    }
+
+    console.log(`[process-stripe-only] Matched: ${matchCount}, Stripe-only: ${stripeOnlyCharges.length}`);
+
+    // Sort by date, newest first
+    stripeOnlyCharges.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+
+    const total = stripeOnlyCharges.reduce((sum, c) => sum + c.amount, 0);
+
+    // Store results in job
+    await supabaseAdmin
+      .from("stripe_only_jobs")
+      .update({
+        status: "completed",
+        progress: "Completed",
+        completed_at: new Date().toISOString(),
+        charges_json: stripeOnlyCharges,
+        total: total,
+        expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour cache
+      })
+      .eq("id", jobId);
+
+    console.log(`[process-stripe-only] Job ${jobId} completed: ${stripeOnlyCharges.length} charges, total $${total}`);
+
+  } catch (error: any) {
+    console.error(`[process-stripe-only] Error processing job ${jobId}:`, error);
+    await supabaseAdmin
+      .from("stripe_only_jobs")
+      .update({
+        status: "failed",
+        error: error.message,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", jobId);
+  }
+}
+
+export async function GET(request: Request): Promise<NextResponse> {
+  try {
+    const authHeader = request.headers.get("Authorization");
+    const cronSecret = process.env.CRON_SECRET;
+
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    console.log("[process-stripe-only] Starting stripe-only jobs processor...");
+
+    // Find pending job
+    const { data: job } = await supabaseAdmin
+      .from("stripe_only_jobs")
+      .select("id")
       .eq("status", "pending")
       .order("created_at", { ascending: true })
       .limit(1)
       .single();
 
-    if (jobError || !job) {
-      // Check for stale processing jobs
-      const { data: staleJob } = await supabaseAdmin
-        .from("stripe_only_jobs")
-        .select("*")
-        .eq("status", "processing")
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .single();
-
-      if (staleJob) {
-        const processingTime = Date.now() - new Date(staleJob.created_at).getTime();
-        if (processingTime > 10 * 60 * 1000) {
-          await supabaseAdmin
-            .from("stripe_only_jobs")
-            .update({ status: "failed", error: "Job timed out", completed_at: new Date().toISOString() })
-            .eq("id", staleJob.id);
-          return NextResponse.json({ message: "Marked stale job as failed" });
-        }
-        return NextResponse.json({ message: "Job still processing", jobId: staleJob.id });
-      }
-
-      return NextResponse.json({ message: "No pending stripe_only jobs" });
+    if (!job) {
+      console.log("[process-stripe-only] No pending jobs found");
+      return NextResponse.json({ success: true, message: "No pending jobs" });
     }
 
-    // Mark job as processing
-    await supabaseAdmin
-      .from("stripe_only_jobs")
-      .update({ status: "processing" })
-      .eq("id", job.id);
+    await processStripeOnlyJob(job.id);
 
-    try {
-      // Get all charges from Stripe
-      const charges: any[] = [];
-      let hasMore = true;
-      let cursor;
-
-      const MEMBERSHIP_CREATED_AFTER = Math.floor(new Date("2026-01-01").getTime() / 1000);
-
-      while (hasMore) {
-        const params: any = {
-          limit: 100,
-          created: { gte: MEMBERSHIP_CREATED_AFTER },
-        };
-        if (cursor) params.starting_after = cursor;
-
-        const response = await stripe.charges.list(params);
-        hasMore = response.has_more;
-
-        for (const charge of response.data) {
-          const amount = charge.amount / 100;
-          if (amount === 15 || amount === 100) {
-            charges.push({
-              charge_id: charge.id,
-              customer_id: charge.customer,
-              email: charge.billing_details?.email || "",
-              name: charge.billing_details?.name || "",
-              amount: amount,
-              created: new Date(charge.created * 1000).toISOString(),
-              status: charge.status,
-              refunded: charge.refunded,
-            });
-          }
-        }
-
-        if (response.data.length > 0) {
-          cursor = response.data[response.data.length - 1].id;
-        }
-
-        await delay(DELAY_MS);
-      }
-
-      // Step A: Get all profile emails for matching
-      const allProfiles: any[] = [];
-      let pageStart = 0;
-      const pageSize = 1000;
-      let profileHasMore = true;
-
-      while (profileHasMore) {
-        const { data: profilesPage, error: profileError } = await supabaseAdmin
-          .from("profiles")
-          .select("id, email")
-          .range(pageStart, pageStart + pageSize - 1);
-
-        if (profileError) {
-          throw new Error(`Error fetching profiles: ${profileError.message}`);
-        }
-
-        if (profilesPage && profilesPage.length > 0) {
-          allProfiles.push(...profilesPage);
-          pageStart += pageSize;
-        }
-
-        profileHasMore = profilesPage && profilesPage.length === pageSize;
-      }
-
-      // Build email → profile map (case-insensitive)
-      const profileByEmail = new Map<string, any>();
-      for (const profile of allProfiles) {
-        if (profile.email) {
-          profileByEmail.set(profile.email.toLowerCase(), profile);
-        }
-      }
-
-      // Step B: Fetch gift purchases for matching
-      const { data: giftPurchases } = await supabaseAdmin
-        .from("gift_membership_purchases")
-        .select("id, buyer_email, stripe_payment_intent_id, stripe_session_id");
-
-      // Build maps for gift purchase matching (by charge_id AND by email)
-      const giftPurchaseByChargeId = new Map<string, any>();
-      const giftPurchaseByEmail = new Map<string, any>();
-      if (giftPurchases) {
-        for (const purchase of giftPurchases) {
-          // By charge ID (payment_intent_id or session_id)
-          if (purchase.stripe_payment_intent_id) {
-            giftPurchaseByChargeId.set(purchase.stripe_payment_intent_id, purchase);
-          }
-          if (purchase.stripe_session_id) {
-            giftPurchaseByChargeId.set(purchase.stripe_session_id, purchase);
-          }
-          // By email (buyer_email)
-          if (purchase.buyer_email) {
-            giftPurchaseByEmail.set(purchase.buyer_email.toLowerCase(), purchase);
-          }
-        }
-      }
-
-      // Step C: Filter charges to only unmatched (email NOT in profiles) and mark gift purchases
-      const stripeOnlyCharges: any[] = [];
-      for (const charge of charges) {
-        const chargeEmail = charge.email?.toLowerCase();
-        if (chargeEmail && profileByEmail.has(chargeEmail)) {
-          continue; // Person IS in our DB, skip
-        }
-
-        // Check if this is a gift purchase - by charge_id OR by email
-        const giftPurchase = giftPurchaseByChargeId.get(charge.charge_id) 
-          || (chargeEmail && giftPurchaseByEmail.get(chargeEmail));
-        const chargeWithGiftFlag = {
-          ...charge,
-          is_gift_purchase: !!giftPurchase,
-          buyer_email: giftPurchase?.buyer_email || null,
-        };
-        stripeOnlyCharges.push(chargeWithGiftFlag);
-      }
-
-      const total = stripeOnlyCharges.length;
-
-      // Update job with results
-      await supabaseAdmin
-        .from("stripe_only_jobs")
-        .update({
-          status: "completed",
-          completed_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          charges_json: stripeOnlyCharges,
-          total,
-        })
-        .eq("id", job.id);
-
-      return NextResponse.json({
-        success: true,
-        jobId: job.id,
-        message: `Processed ${total} unmatched charges`,
-      });
-
-    } catch (error: any) {
-      await supabaseAdmin
-        .from("stripe_only_jobs")
-        .update({
-          status: "failed",
-          error: error.message,
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", job.id);
-
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    return NextResponse.json({
+      success: true,
+      jobId: job.id,
+      status: "processed"
+    });
 
   } catch (error: any) {
-    console.error("[process-stripe-only-jobs] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[process-stripe-only] Error:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to process stripe-only jobs" },
+      { status: 500 }
+    );
   }
 }

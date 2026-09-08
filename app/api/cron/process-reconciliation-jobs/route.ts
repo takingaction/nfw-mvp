@@ -11,209 +11,320 @@ const supabaseAdmin = createAdminClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-const CRON_SECRET = process.env.CRON_SECRET;
-
 export const dynamic = "force-dynamic";
 
-const CHUNK_SIZE = 50;
-const DELAY_MS = 25;
+const DELAY_MS = 100; // Delay between Stripe API calls
 
-async function delay(ms: number) {
+async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export async function GET(request: Request) {
-  // Auth check
-  const authHeader = request.headers.get("Authorization");
-  if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+// Process stripe_live job - fetch all Stripe subscriptions and calculate totals
+async function processStripeLiveJob(jobId: string): Promise<void> {
+  console.log(`[process-reconciliation] Processing stripe_live job ${jobId}`);
 
   try {
-    // Pick up one pending stripe_live job
-    const { data: job, error: jobError } = await supabaseAdmin
+    // Update job status to processing
+    await supabaseAdmin
       .from("reconciliation_jobs")
-      .select("*")
+      .update({ 
+        status: "processing",
+        progress: "Fetching Stripe subscriptions..."
+      })
+      .eq("id", jobId);
+
+    // Fetch all active subscriptions
+    const subscriptions: any[] = [];
+    let hasMore = true;
+    let startingAfter: string | undefined;
+
+    while (hasMore) {
+      const params: any = { limit: 100, status: "active" };
+      if (startingAfter) params.starting_after = startingAfter;
+
+      const response = await stripe.subscriptions.list(params);
+      subscriptions.push(...response.data);
+
+      hasMore = response.has_more;
+      if (hasMore && response.data.length > 0) {
+        startingAfter = response.data[response.data.length - 1].id;
+      }
+
+      await sleep(DELAY_MS);
+    }
+
+    console.log(`[process-reconciliation] Found ${subscriptions.length} active subscriptions`);
+
+    // Calculate totals by tier
+    let contributingCount = 0;
+    let contributingTotal = 0;
+    let foundingCount = 0;
+    let foundingTotal = 0;
+
+    for (const sub of subscriptions) {
+      const priceId = sub.items?.data?.[0]?.price?.id;
+      const priceAmount = sub.items?.data?.[0]?.price?.unit_amount || 0;
+
+      // Determine tier based on price
+      // $15/month = contributing, $100/year or $100/month = founding
+      // Or check if it's the founding price env var
+      const isFounding = priceAmount === 10000 || 
+        priceId === process.env.STRIPE_PRICE_FOUNDING ||
+        (priceAmount === 100 && sub.items?.data?.[0]?.price?.recurring?.interval === 'year');
+
+      if (isFounding) {
+        foundingCount++;
+        foundingTotal += 100; // Founding is $100
+      } else {
+        contributingCount++;
+        contributingTotal += 15; // Contributing is $15
+      }
+    }
+
+    const stripeLiveData = {
+      contributing: { count: contributingCount, total: contributingTotal },
+      founding: { count: foundingCount, total: foundingTotal },
+      total: { count: contributingCount + foundingCount, total: contributingTotal + foundingTotal },
+      fetchedAt: new Date().toISOString(),
+    };
+
+    // Update job with results
+    await supabaseAdmin
+      .from("reconciliation_jobs")
+      .update({
+        status: "completed",
+        progress: "Completed",
+        completed_at: new Date().toISOString(),
+        stripe_live_json: stripeLiveData,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hour cache
+      })
+      .eq("id", jobId);
+
+    console.log(`[process-reconciliation] stripe_live job ${jobId} completed:`, stripeLiveData);
+
+  } catch (error: any) {
+    console.error(`[process-reconciliation] Error processing stripe_live job ${jobId}:`, error);
+    await supabaseAdmin
+      .from("reconciliation_jobs")
+      .update({
+        status: "failed",
+        error: error.message,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", jobId);
+  }
+}
+
+// Process payment_verify job - verify payments in our DB against Stripe
+async function processPaymentVerifyJob(jobId: string): Promise<void> {
+  console.log(`[process-reconciliation] Processing payment_verify job ${jobId}`);
+
+  try {
+    // Update job status to processing
+    await supabaseAdmin
+      .from("reconciliation_jobs")
+      .update({
+        status: "processing",
+        progress: "Fetching payment data..."
+      })
+      .eq("id", jobId);
+
+    // Get all membership payments from our DB
+    const { data: payments, error: paymentsError } = await supabaseAdmin
+      .from("membership_payments")
+      .select("id, amount, stripe_payment_id, stripe_invoice_id, user_id, payment_type, created_at")
+      .in("amount", [15, 100]);
+
+    if (paymentsError) {
+      throw new Error(`Failed to fetch payments: ${paymentsError.message}`);
+    }
+
+    console.log(`[process-reconciliation] Verifying ${payments?.length || 0} payments`);
+
+    let valid = 0;
+    let refunded = 0;
+    let failed = 0;
+    let notFound = 0;
+    const problematicPayments: any[] = [];
+
+    // Verify each payment against Stripe
+    for (const payment of payments || []) {
+      try {
+        let stripeStatus: string | null = null;
+        let isValid = false;
+
+        if (payment.stripe_invoice_id?.startsWith("in_")) {
+          // Invoice ID - verify via invoices API
+          await sleep(DELAY_MS);
+          try {
+            const invoice = await stripe.invoices.retrieve(payment.stripe_invoice_id);
+            stripeStatus = invoice.status;
+            isValid = invoice.status === "paid";
+          } catch (e: any) {
+            if (e.code === "resource_missing") {
+              stripeStatus = "not_found";
+              notFound++;
+              problematicPayments.push({
+                id: payment.id,
+                stripe_payment_id: payment.stripe_payment_id,
+                amount: payment.amount,
+                email: null, // Would need to join to get email
+                user_id: payment.user_id,
+                created_at: payment.created_at,
+                issue: "not_found",
+                stripe_status: null,
+              });
+            }
+          }
+        } else if (payment.stripe_payment_id?.startsWith("ch_")) {
+          // Charge ID - verify via charges API
+          await sleep(DELAY_MS);
+          try {
+            const charge = await stripe.charges.retrieve(payment.stripe_payment_id);
+            stripeStatus = charge.status;
+            isValid = charge.status === "succeeded";
+          } catch (e: any) {
+            if (e.code === "resource_missing") {
+              stripeStatus = "not_found";
+              notFound++;
+              problematicPayments.push({
+                id: payment.id,
+                stripe_payment_id: payment.stripe_payment_id,
+                amount: payment.amount,
+                email: null,
+                user_id: payment.user_id,
+                created_at: payment.created_at,
+                issue: "not_found",
+                stripe_status: null,
+              });
+            }
+          }
+        }
+
+        if (isValid) valid++;
+        else if (stripeStatus === "refunded") {
+          refunded++;
+          problematicPayments.push({
+            id: payment.id,
+            stripe_payment_id: payment.stripe_payment_id,
+            amount: payment.amount,
+            email: null,
+            user_id: payment.user_id,
+            created_at: payment.created_at,
+            issue: "refunded",
+            stripe_status: stripeStatus,
+          });
+        }
+        else if (stripeStatus === "failed") {
+          failed++;
+          problematicPayments.push({
+            id: payment.id,
+            stripe_payment_id: payment.stripe_payment_id,
+            amount: payment.amount,
+            email: null,
+            user_id: payment.user_id,
+            created_at: payment.created_at,
+            issue: "failed",
+            stripe_status: stripeStatus,
+          });
+        }
+
+      } catch (e: any) {
+        console.error(`[process-reconciliation] Error verifying payment ${payment.id}:`, e.message);
+      }
+    }
+
+    const verifiedData = {
+      valid,
+      refunded,
+      failed,
+      not_found: notFound,
+    };
+
+    // Update job with results
+    await supabaseAdmin
+      .from("reconciliation_jobs")
+      .update({
+        status: "completed",
+        progress: "Completed",
+        completed_at: new Date().toISOString(),
+        verified_payments_json: verifiedData,
+        problematic_payments_json: problematicPayments,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hour cache
+      })
+      .eq("id", jobId);
+
+    console.log(`[process-reconciliation] payment_verify job ${jobId} completed:`, verifiedData);
+
+  } catch (error: any) {
+    console.error(`[process-reconciliation] Error processing payment_verify job ${jobId}:`, error);
+    await supabaseAdmin
+      .from("reconciliation_jobs")
+      .update({
+        status: "failed",
+        error: error.message,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", jobId);
+  }
+}
+
+export async function GET(request: Request): Promise<NextResponse> {
+  try {
+    const authHeader = request.headers.get("Authorization");
+    const cronSecret = process.env.CRON_SECRET;
+
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    console.log("[process-reconciliation] Starting reconciliation jobs processor...");
+
+    // Process stripe_live jobs first
+    const { data: stripeLiveJob } = await supabaseAdmin
+      .from("reconciliation_jobs")
+      .select("id")
       .eq("job_type", "stripe_live")
       .eq("status", "pending")
       .order("created_at", { ascending: true })
       .limit(1)
       .single();
 
-    if (jobError || !job) {
-      // No pending jobs - check for processing jobs that might have stalled
-      const { data: staleJob } = await supabaseAdmin
-        .from("reconciliation_jobs")
-        .select("*")
-        .eq("job_type", "stripe_live")
-        .eq("status", "processing")
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .single();
-
-      if (staleJob) {
-        // Mark as failed if processing for > 10 minutes
-        const processingTime = Date.now() - new Date(staleJob.created_at).getTime();
-        if (processingTime > 10 * 60 * 1000) {
-          await supabaseAdmin
-            .from("reconciliation_jobs")
-            .update({ status: "failed", error: "Job timed out", completed_at: new Date().toISOString() })
-            .eq("id", staleJob.id);
-          return NextResponse.json({ message: "Marked stale job as failed" });
-        }
-        return NextResponse.json({ message: "Job still processing", jobId: staleJob.id });
-      }
-
-      return NextResponse.json({ message: "No pending stripe_live jobs" });
+    if (stripeLiveJob) {
+      await processStripeLiveJob(stripeLiveJob.id);
     }
 
-    // Mark job as processing
-    await supabaseAdmin
+    // Process payment_verify jobs
+    const { data: paymentVerifyJob } = await supabaseAdmin
       .from("reconciliation_jobs")
-      .update({ status: "processing", progress: "Fetching subscriptions..." })
-      .eq("id", job.id);
+      .select("id")
+      .eq("job_type", "payment_verify")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .single();
 
-    try {
-      // Step 1: Get all Stripe subscriptions with emails
-      let hasMore = true;
-      let cursor;
-      const allSubscriptions: Stripe.Subscription[] = [];
-
-      while (hasMore) {
-        const params: any = { limit: 100, status: "active" };
-        if (cursor) params.starting_after = cursor;
-
-        const response = await stripe.subscriptions.list(params);
-        hasMore = response.has_more;
-
-        if (response.data.length > 0) {
-          cursor = response.data[response.data.length - 1].id;
-
-          for (const sub of response.data) {
-            const priceAmount = sub.items.data[0]?.price?.unit_amount;
-            if (priceAmount === 1500 || priceAmount === 10000) {
-              allSubscriptions.push(sub);
-            }
-          }
-        }
-
-        await delay(DELAY_MS);
-      }
-
-      // Step 2: Build stripe email map and get true totals
-      const stripeEmailMap = new Map<string, { tier: string; amount: number; customer_id: string }>();
-      let stripeContributingCount = 0;
-      let stripeFoundingCount = 0;
-      let trueContributingTotal = 0;
-      let trueFoundingTotal = 0;
-
-      for (const sub of allSubscriptions) {
-        const priceAmount = sub.items.data[0]?.price?.unit_amount;
-        const amount = (priceAmount || 0) / 100;
-        const tier = priceAmount === 1500 ? "Contributing" : "Founding";
-
-        if (amount === 15) stripeContributingCount++;
-        else if (amount === 100) stripeFoundingCount++;
-
-        const customerId = typeof sub.customer === "string" ? sub.customer : null;
-        const subAny = sub as any;
-        let email = subAny.billing_details?.email || "";
-
-        if (!email && customerId) {
-          try {
-            const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
-            if (!customer.deleted && customer.email) {
-              email = customer.email;
-            }
-          } catch {}
-          await delay(DELAY_MS);
-        }
-
-        if (email) {
-          const emailLower = email.toLowerCase();
-          if (!stripeEmailMap.has(emailLower)) {
-            stripeEmailMap.set(emailLower, { tier, amount, customer_id: customerId || "" });
-          }
-        }
-      }
-
-      // Step 3: Get true totals from invoices (sample - in production would do all)
-      // For now, use assumed totals
-      trueContributingTotal = stripeContributingCount * 15;
-      trueFoundingTotal = stripeFoundingCount * 100;
-
-      // Step 4: Get all profile emails
-      const allProfileEmails = new Set<string>();
-      let profilePage = 0;
-      const profilePageSize = 1000;
-      let hasMoreProfiles = true;
-
-      while (hasMoreProfiles) {
-        const { data: profileBatch } = await supabaseAdmin
-          .from("profiles")
-          .select("email")
-          .range(profilePage * profilePageSize, (profilePage + 1) * profilePageSize - 1);
-
-        const batch = profileBatch || [];
-        for (const profile of batch) {
-          if (profile.email) {
-            allProfileEmails.add(profile.email.toLowerCase());
-          }
-        }
-
-        profilePage++;
-        hasMoreProfiles = batch.length === profilePageSize;
-      }
-
-      // Find missing from DB
-      const missingFromDb: string[] = [];
-      for (const email of stripeEmailMap.keys()) {
-        if (!allProfileEmails.has(email)) {
-          missingFromDb.push(email);
-        }
-      }
-      missingFromDb.sort();
-
-      const stripeLive = {
-        contributing: { count: stripeContributingCount, total: stripeContributingCount * 15, true_total: trueContributingTotal },
-        founding: { count: stripeFoundingCount, total: stripeFoundingCount * 100, true_total: trueFoundingTotal },
-        total: { count: stripeContributingCount + stripeFoundingCount, total: (stripeContributingCount * 15) + (stripeFoundingCount * 100), true_total: trueContributingTotal + trueFoundingTotal },
-      };
-
-      // Update job with results
-      await supabaseAdmin
-        .from("reconciliation_jobs")
-        .update({
-          status: "completed",
-          completed_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
-          stripe_live_json: stripeLive,
-          missing_from_db: missingFromDb,
-          progress: "Complete",
-        })
-        .eq("id", job.id);
-
-      return NextResponse.json({
-        success: true,
-        jobId: job.id,
-        message: `Processed ${allSubscriptions.length} subscriptions, ${missingFromDb.length} missing from DB`,
-      });
-
-    } catch (error: any) {
-      await supabaseAdmin
-        .from("reconciliation_jobs")
-        .update({
-          status: "failed",
-          error: error.message,
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", job.id);
-
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (paymentVerifyJob) {
+      await processPaymentVerifyJob(paymentVerifyJob.id);
     }
+
+    if (!stripeLiveJob && !paymentVerifyJob) {
+      console.log("[process-reconciliation] No pending jobs found");
+    }
+
+    return NextResponse.json({
+      success: true,
+      processed: {
+        stripe_live: stripeLiveJob ? "job_found_and_processed" : "no_job",
+        payment_verify: paymentVerifyJob ? "job_found_and_processed" : "no_job",
+      }
+    });
 
   } catch (error: any) {
-    console.error("[process-reconciliation-jobs] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[process-reconciliation] Error:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to process reconciliation jobs" },
+      { status: 500 }
+    );
   }
 }

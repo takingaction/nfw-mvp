@@ -24,7 +24,7 @@ interface PaymentRecord {
   error_message: string | null;
   billing_reason: string | null;
   stripe_invoice_id: string;
-  stripe_payment_id: string | null; // actual charge ID (from invoice.charge)
+  stripe_payment_id: string | null;
   payment_type: string;
 }
 
@@ -83,14 +83,10 @@ async function syncPaymentsForCustomer(
       const date = new Date(invoice.created * 1000).toISOString();
 
       let errorMessage: string | null = null;
-      // Invoices with status "open" and a next_payment_attempt have failed payments
       if (status === "open" && invoice.next_payment_attempt) {
         errorMessage = "Payment attempt failed, retry scheduled";
         hasFailed = true;
       }
-
-      // Note: Refund detection on invoices requires looking at related charges
-      // For simplicity, we skip refund tracking on invoices
 
       const paymentType = invoice.billing_reason === "subscription_create" ? "signup" :
                          invoice.billing_reason === "subscription_cycle" ? "renewal" :
@@ -103,8 +99,6 @@ async function syncPaymentsForCustomer(
         }
       }
 
-      // Access charge ID - Stripe Invoice has charge as string | Charge | null
-      // For automatic payments, charge may be null - set stripe_payment_id to null in that case
       const chargeId = (invoice as any).charge;
       const stripePaymentId = typeof chargeId === 'string' ? chargeId : null;
 
@@ -135,7 +129,7 @@ async function syncPaymentsForCustomer(
       all_payments_json: allPayments,
     };
   } catch (error: any) {
-    console.error(`[sync-all-stripe-payments] Error for customer ${stripeCustomerId}:`, error.message);
+    console.error(`[payment-sync] Error for customer ${stripeCustomerId}:`, error.message);
     return null;
   }
 }
@@ -149,7 +143,7 @@ function mapBillingReasonToPaymentType(billingReason: string | null): string {
     case "subscription_update":
       return "upgrade";
     default:
-      return "renewal"; // fallback for manual or unknown
+      return "renewal";
   }
 }
 
@@ -170,11 +164,10 @@ async function insertMembershipPaymentsIfNeeded(
       continue;
     }
 
-    // ALWAYS use stripe_invoice_id for duplicate detection
     const invoiceId = payment.stripe_invoice_id;
 
     if (!invoiceId) {
-      console.warn(`[sync] Skipping payment with no invoice ID for user ${profileId}`);
+      console.warn(`[payment-sync] Skipping payment with no invoice ID for user ${profileId}`);
       skipped++;
       continue;
     }
@@ -190,10 +183,8 @@ async function insertMembershipPaymentsIfNeeded(
       continue;
     }
 
-    // Determine payment type from billing_reason
     const paymentType = mapBillingReasonToPaymentType(payment.billing_reason);
 
-    // Insert new record
     const { error: insertError } = await supabaseAdmin
       .from("membership_payments")
       .insert({
@@ -206,7 +197,7 @@ async function insertMembershipPaymentsIfNeeded(
       });
 
     if (insertError) {
-      console.error(`[sync-all-stripe-payments] Failed to insert payment ${invoiceId}:`, insertError.message);
+      console.error(`[payment-sync] Failed to insert payment ${invoiceId}:`, insertError.message);
       skipped++;
     } else {
       inserted++;
@@ -218,7 +209,6 @@ async function insertMembershipPaymentsIfNeeded(
 
 export async function GET(request: Request): Promise<NextResponse> {
   try {
-    // Cron auth check
     const authHeader = request.headers.get("Authorization");
     const cronSecret = process.env.CRON_SECRET;
 
@@ -226,12 +216,10 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("[sync-all-stripe-payments] Starting full payment sync...");
+    console.log("[payment-sync] Starting hourly payment sync...");
 
-    // Step 1: Fix not_found records that have stripe_customer_id on the profile but not in backfill_status
-    // These are profiles with active Stripe subscriptions that were marked as "not_found" because
-    // email lookup failed, but they have stripe_customer_id on the profile itself
-    console.log("[sync-all-stripe-payments] Step 1: Fixing not_found records with stripe_customer_id on profile...");
+    // Step 1: Fix not_found records that have stripe_customer_id on the profile
+    console.log("[payment-sync] Step 1: Fixing not_found records with stripe_customer_id on profile...");
 
     const { data: notFoundRows, error: notFoundError } = await supabaseAdmin
       .from("stripe_backfill_status")
@@ -240,15 +228,14 @@ export async function GET(request: Request): Promise<NextResponse> {
       .is("stripe_customer_id", null);
 
     if (notFoundError) {
-      console.error("[sync-all-stripe-payments] Error fetching not_found rows:", notFoundError);
+      console.error("[payment-sync] Error fetching not_found rows:", notFoundError);
     }
 
     let fixedCount = 0;
     if (notFoundRows && notFoundRows.length > 0) {
-      console.log(`[sync-all-stripe-payments] Found ${notFoundRows.length} not_found records to fix`);
+      console.log(`[payment-sync] Found ${notFoundRows.length} not_found records to fix`);
 
       for (const row of notFoundRows) {
-        // Get the profile's stripe_customer_id
         const { data: profile } = await supabaseAdmin
           .from("profiles")
           .select("stripe_customer_id")
@@ -256,7 +243,6 @@ export async function GET(request: Request): Promise<NextResponse> {
           .single();
 
         if (profile?.stripe_customer_id) {
-          // Update backfill_status with the stripe_customer_id from profile and mark as matched
           const { error: updateError } = await supabaseAdmin
             .from("stripe_backfill_status")
             .update({
@@ -267,18 +253,17 @@ export async function GET(request: Request): Promise<NextResponse> {
             .eq("id", row.id);
 
           if (updateError) {
-            console.error(`[sync-all-stripe-payments] Error fixing not_found row ${row.id}:`, updateError);
+            console.error(`[payment-sync] Error fixing not_found row ${row.id}:`, updateError);
           } else {
             fixedCount++;
-            console.log(`[sync-all-stripe-payments] Fixed not_found: ${row.email} -> ${profile.stripe_customer_id}`);
+            console.log(`[payment-sync] Fixed not_found: ${row.email} -> ${profile.stripe_customer_id}`);
           }
         }
       }
-      console.log(`[sync-all-stripe-payments] Fixed ${fixedCount} not_found records`);
+      console.log(`[payment-sync] Fixed ${fixedCount} not_found records`);
     }
 
     // Step 2: Get all matched rows with stripe_customer_id that need syncing
-    // Priority: rows never synced, then rows synced > 24 hours ago
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
     const { data: rows, error: rowsError } = await supabaseAdmin
@@ -288,7 +273,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       .not("stripe_customer_id", "is", null);
 
     if (rowsError) {
-      console.error("[sync-all-stripe-payments] Error fetching rows:", rowsError);
+      console.error("[payment-sync] Error fetching rows:", rowsError);
       return NextResponse.json({ error: rowsError.message }, { status: 500 });
     }
 
@@ -301,18 +286,16 @@ export async function GET(request: Request): Promise<NextResponse> {
       });
     }
 
-    // Filter to rows that need syncing (never synced or > 24 hours old)
     const rowsToSync = rows.filter(r =>
       !r.payment_sync_at || new Date(r.payment_sync_at) < new Date(twentyFourHoursAgo)
     );
 
-    console.log(`[sync-all-stripe-payments] ${rowsToSync.length} rows need syncing (of ${rows.length} total)`);
+    console.log(`[payment-sync] ${rowsToSync.length} rows need syncing (of ${rows.length} total)`);
 
     let synced = 0;
     let failed = 0;
     const errors: string[] = [];
 
-    // Process in batches
     for (let i = 0; i < rowsToSync.length; i += BATCH_SIZE) {
       const batch = rowsToSync.slice(i, i + BATCH_SIZE);
 
@@ -322,9 +305,8 @@ export async function GET(request: Request): Promise<NextResponse> {
             return { id: row.id, success: false, error: "No stripe_customer_id" };
           }
 
-          // Skip Connect accounts (acct_) - can't query via standard Stripe API
           if (row.stripe_customer_id.startsWith('acct_')) {
-            console.log(`[sync-all-stripe-payments] Skipping Connect account for ${row.email}: ${row.stripe_customer_id}`);
+            console.log(`[payment-sync] Skipping Connect account for ${row.email}: ${row.stripe_customer_id}`);
             return { id: row.id, success: true, skipped: true, message: "Connect account - skipped" };
           }
 
@@ -352,18 +334,17 @@ export async function GET(request: Request): Promise<NextResponse> {
             .eq("id", row.id);
 
           if (updateError) {
-            console.error(`[sync-all-stripe-payments] Update error for ${row.id}:`, updateError);
+            console.error(`[payment-sync] Update error for ${row.id}:`, updateError);
             return { id: row.id, success: false, error: updateError.message };
           }
 
-          // Insert succeeded payments into membership_payments if they don't exist
           const { inserted, skipped } = await insertMembershipPaymentsIfNeeded(
             row.profile_id,
             paymentData.all_payments_json
           );
 
           if (inserted > 0) {
-            console.log(`[sync-all-stripe-payments] Inserted ${inserted} payments for customer ${row.id}`);
+            console.log(`[payment-sync] Inserted ${inserted} payments for customer ${row.id}`);
           }
 
           return { id: row.id, success: true, inserted, skipped };
@@ -381,25 +362,25 @@ export async function GET(request: Request): Promise<NextResponse> {
         }
       }
 
-      console.log(`[sync-all-stripe-payments] Progress: ${Math.min(i + BATCH_SIZE, rowsToSync.length)}/${rowsToSync.length}`);
+      console.log(`[payment-sync] Progress: ${Math.min(i + BATCH_SIZE, rowsToSync.length)}/${rowsToSync.length}`);
 
       if (i + BATCH_SIZE < rowsToSync.length) {
         await sleep(BATCH_DELAY_MS);
       }
     }
 
-    console.log(`[sync-all-stripe-payments] Complete: ${synced} synced, ${failed} failed`);
+    console.log(`[payment-sync] Complete: ${synced} synced, ${failed} failed`);
 
     return NextResponse.json({
       success: true,
       synced,
       failed,
       total: rowsToSync.length,
-      errors: errors.slice(0, 10), // Return first 10 errors
+      errors: errors.slice(0, 10),
     });
 
   } catch (error: any) {
-    console.error("[sync-all-stripe-payments] Error:", error);
+    console.error("[payment-sync] Error:", error);
     return NextResponse.json(
       { error: error.message || "Failed to sync payments" },
       { status: 500 }

@@ -22,7 +22,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("[backfill-sync] Starting hourly backfill sync...");
+    console.log("[profile-sync] Starting hourly profile sync...");
 
     // Get paid profiles NOT in stripe_backfill_status - PAGINATED
     const allPaidProfiles: Array<{
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
         .range(profilesPageStart, profilesPageStart + profilesPageSize - 1);
 
       if (profilesError) {
-        console.error("[backfill-sync] Error fetching profiles:", profilesError);
+        console.error("[profile-sync] Error fetching profiles:", profilesError);
         return NextResponse.json({ error: profilesError.message }, { status: 500 });
       }
 
@@ -80,7 +80,7 @@ export async function GET(request: Request) {
     // Filter to only NEW paid profiles (not already in backfill)
     const missingProfiles = allPaidProfiles.filter(p => !existingIds.has(p.id));
 
-    console.log(`[backfill-sync] Found ${missingProfiles.length} paid profiles to backfill`);
+    console.log(`[profile-sync] Found ${missingProfiles.length} paid profiles to backfill`);
 
     if (missingProfiles.length === 0) {
       return NextResponse.json({
@@ -148,12 +148,12 @@ export async function GET(request: Request) {
             });
 
           if (upsertError) {
-            console.error(`[backfill-sync] Error upserting for ${profile.email}:`, upsertError);
+            console.error(`[profile-sync] Error upserting for ${profile.email}:`, upsertError);
             errors++;
           } else {
             matched++;
             if (profile.stripe_customer_id) withStripeId++;
-            console.log(`[backfill-sync] Matched: ${profile.email} -> ${stripeCustomerId}`);
+            console.log(`[profile-sync] Matched: ${profile.email} -> ${stripeCustomerId}`);
           }
         } else {
           // No Stripe customer found
@@ -167,11 +167,11 @@ export async function GET(request: Request) {
             });
 
           if (insertError) {
-            console.error(`[backfill-sync] Error inserting not_found for ${profile.email}:`, insertError);
+            console.error(`[profile-sync] Error inserting not_found for ${profile.email}:`, insertError);
             errors++;
           } else {
             notFound++;
-            console.log(`[backfill-sync] Not found in Stripe: ${profile.email}`);
+            console.log(`[profile-sync] Not found in Stripe: ${profile.email}`);
           }
         }
 
@@ -179,16 +179,16 @@ export async function GET(request: Request) {
         await new Promise(r => setTimeout(r, 100));
 
       } catch (err) {
-        console.error(`[backfill-sync] Error processing ${profile.email}:`, err);
+        console.error(`[profile-sync] Error processing ${profile.email}:`, err);
         errors++;
       }
     }
 
-    console.log(`[backfill-sync] Complete. Matched: ${matched}, Not found: ${notFound}, With Stripe ID: ${withStripeId}, Errors: ${errors}`);
+    console.log(`[profile-sync] Complete. Matched: ${matched}, Not found: ${notFound}, With Stripe ID: ${withStripeId}, Errors: ${errors}`);
 
     return NextResponse.json({
       success: true,
-      message: `Backfill complete`,
+      message: `Profile sync complete`,
       synced: matched,
       notFound,
       withStripeId,
@@ -197,7 +197,7 @@ export async function GET(request: Request) {
     });
 
   } catch (error) {
-    console.error("[backfill-sync] Error:", error);
+    console.error("[profile-sync] Error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }

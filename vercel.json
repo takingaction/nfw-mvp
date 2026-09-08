@@ -5,20 +5,16 @@
       "schedule": "0 * * * *"
     },
     {
-      "path": "/api/cron/backfill-sync",
+      "path": "/api/cron/profile-sync",
       "schedule": "0 * * * *"
     },
     {
-      "path": "/api/cron/sync-all-stripe-payments",
+      "path": "/api/cron/payment-sync",
       "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/process-reconciliation-jobs",
       "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/process-payment-verify-jobs",
-      "schedule": "0 8 * * *"
     },
     {
       "path": "/api/cron/process-stripe-only-jobs",

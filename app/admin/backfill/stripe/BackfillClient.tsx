@@ -218,12 +218,66 @@ interface MissingPaymentsResponse {
 
 export default function BackfillClient() {
   const [status, setStatus] = useState<StatusResponse | null>(null);
-  const [message, setMessage] = useState<string>("");
   const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
   const [reconciliation, setReconciliation] = useState<ReconciliationResponse | null>(null);
   const [reconciliationLoading, setReconciliationLoading] = useState(false);
   const [verifyPaymentsLoading, setVerifyPaymentsLoading] = useState(false);
   const [ourDb, setOurDb] = useState<{ contributing: { count: number; total: number }; founding: { count: number; total: number }; total: { count: number; total: number } } | null>(null);
+
+  // Legacy message state (for status updates - being phased out in favor of modals)
+  const [message, setMessage] = useState<string>("");
+
+  // Unified Modal State
+  type ModalType = 'confirm' | 'success' | 'error' | 'loading' | null;
+  interface ModalConfig {
+    title: string;
+    message?: string;
+    onConfirm?: () => void | Promise<void>;
+    loadingMessage?: string;
+    autoClose?: number; // ms to auto-close for success modals
+    confirmText?: string;
+    cancelText?: string;
+  }
+  const [modalType, setModalType] = useState<ModalType>(null);
+  const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void | Promise<void>, confirmText = "Continue", cancelText = "Cancel") => {
+    setModalType('confirm');
+    setModalConfig({ title, message, onConfirm, confirmText, cancelText });
+  };
+
+  const showSuccess = (title: string, message?: string, autoClose = 3000) => {
+    setModalType('success');
+    setModalConfig({ title, message, autoClose });
+    if (autoClose > 0) {
+      setTimeout(() => {
+        setModalType(null);
+        setModalConfig(null);
+      }, autoClose);
+    }
+  };
+
+  const showError = (title: string, message: string) => {
+    setModalType('error');
+    setModalConfig({ title, message });
+  };
+
+  const showLoading = (title: string, loadingMessage?: string) => {
+    setModalType('loading');
+    setModalConfig({ title, loadingMessage });
+  };
+
+  const closeModal = () => {
+    setModalType(null);
+    setModalConfig(null);
+  };
+
+  const handleModalConfirm = async () => {
+    if (modalConfig?.onConfirm) {
+      await modalConfig.onConfirm();
+    }
+    closeModal();
+  };
 
   // Compute difference: ourDb - stripe_live
   const difference = useMemo(() => {
@@ -342,6 +396,9 @@ export default function BackfillClient() {
     }
   }, []);
 
+  // Active tab state for organizing sections
+  const [activeTab, setActiveTab] = useState<'stripe-data' | 'members' | 'payments' | 'tools'>('stripe-data');
+
   // Fetch status
   const fetchStatus = useCallback(async () => {
     setRefreshingStats(true);
@@ -439,7 +496,7 @@ export default function BackfillClient() {
   const downloadStripeOnlyCSV = useCallback(() => {
     const cached = sessionStorage.getItem("stripeOnlyCharges");
     if (!cached) {
-      alert("No cached data. Please click 'Generate CSV' first.");
+      showError("No Data", "Please click 'Generate CSV' first to generate the data.");
       return;
     }
     const charges = JSON.parse(cached);
@@ -481,12 +538,12 @@ export default function BackfillClient() {
         URL.revokeObjectURL(url);
         setExportCsvLoading(false);
       } else {
-        alert("Failed to generate CSV: " + res.statusText);
+        showError("Export Failed", `Failed to generate CSV: ${res.statusText}`);
         setExportCsvLoading(false);
       }
     } catch (error) {
       console.error("Failed to export CSV:", error);
-      alert("Failed to generate CSV");
+      showError("Export Failed", "Failed to generate CSV");
       setExportCsvLoading(false);
     }
   }, []);
@@ -675,101 +732,109 @@ export default function BackfillClient() {
 
   // Verify Payments - triggers background job for payment verification
   const handleVerifyPayments = useCallback(async () => {
-    setVerifyPaymentsLoading(true);
-    setMessage("Creating payment verification job...");
-
-    try {
-      const createRes = await fetch("/api/admin/backfill/stripe/verify-payments", { method: "POST" });
-      if (!createRes.ok) {
-        const err = await createRes.json();
-        setMessage(`Error creating job: ${err.error || createRes.statusText}`);
-        setVerifyPaymentsLoading(false);
-        return;
-      }
-      const { jobId } = await createRes.json();
-      setMessage(`Job ${jobId} created. Processing payments (this may take several minutes)...`);
-
-      // Poll for completion
-      const maxPolls = 300; // 10 minutes max
-      let polls = 0;
-
-      const poll = async () => {
-        if (polls >= maxPolls) {
-          setMessage("Polling timed out. Payment verification may still be processing.");
-          setVerifyPaymentsLoading(false);
-          return;
-        }
+    showConfirm(
+      "Verify All Payments",
+      "This will query Stripe to verify every payment in our database. This is a heavy operation that may take several minutes. Continue?",
+      async () => {
+        setVerifyPaymentsLoading(true);
+        setMessage("Creating payment verification job...");
 
         try {
-          const statusRes = await fetch(`/api/admin/backfill/stripe/verify-payments?jobId=${jobId}`);
-          if (!statusRes.ok) {
-            setMessage(`Error polling job: ${statusRes.status}`);
+          const createRes = await fetch("/api/admin/backfill/stripe/verify-payments", { method: "POST" });
+          if (!createRes.ok) {
+            const err = await createRes.json();
+            setMessage(`Error creating job: ${err.error || createRes.statusText}`);
             setVerifyPaymentsLoading(false);
             return;
           }
-          const status = await statusRes.json();
+          const { jobId } = await createRes.json();
+          setMessage(`Job ${jobId} created. Processing payments (this may take several minutes)...`);
 
-          if (status.status === "completed") {
-            setMessage("Payment verification complete. Refreshing reconciliation...");
-            
-            // Fetch updated reconciliation
-            const reconRes = await fetch("/api/admin/backfill/stripe/reconcile");
-            if (reconRes.ok) {
-              const data = await reconRes.json();
-              setReconciliation(data);
+          // Poll for completion
+          const maxPolls = 300; // 10 minutes max
+          let polls = 0;
+
+          const poll = async () => {
+            if (polls >= maxPolls) {
+              setMessage("Polling timed out. Payment verification may still be processing.");
+              setVerifyPaymentsLoading(false);
+              return;
             }
-            
-            setVerifyPaymentsLoading(false);
-            setMessage("Payment verification complete.");
-            return;
-          } else if (status.status === "failed") {
-            setMessage(`Job failed: ${status.error}`);
-            setVerifyPaymentsLoading(false);
-            return;
-          }
 
-          polls++;
-          setTimeout(poll, 2000); // Poll every 2 seconds
+            try {
+              const statusRes = await fetch(`/api/admin/backfill/stripe/verify-payments?jobId=${jobId}`);
+              if (!statusRes.ok) {
+                setMessage(`Error polling job: ${statusRes.status}`);
+                setVerifyPaymentsLoading(false);
+                return;
+              }
+              const status = await statusRes.json();
+
+              if (status.status === "completed") {
+                setMessage("Payment verification complete. Refreshing reconciliation...");
+                
+                // Fetch updated reconciliation
+                const reconRes = await fetch("/api/admin/backfill/stripe/reconcile");
+                if (reconRes.ok) {
+                  const data = await reconRes.json();
+                  setReconciliation(data);
+                }
+                
+                setVerifyPaymentsLoading(false);
+                setMessage("Payment verification complete.");
+                return;
+              } else if (status.status === "failed") {
+                setMessage(`Job failed: ${status.error}`);
+                setVerifyPaymentsLoading(false);
+                return;
+              }
+
+              polls++;
+              setTimeout(poll, 2000); // Poll every 2 seconds
+            } catch (error) {
+              console.error("Poll error:", error);
+              setMessage(`Poll error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              setVerifyPaymentsLoading(false);
+            }
+          };
+
+          poll();
         } catch (error) {
-          console.error("Poll error:", error);
-          setMessage(`Poll error: ${error instanceof Error ? error.message : "Unknown error"}`);
+          console.error("Failed to verify payments:", error);
+          setMessage(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
           setVerifyPaymentsLoading(false);
         }
-      };
-
-      poll();
-    } catch (error) {
-      console.error("Failed to verify payments:", error);
-      setMessage(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
-      setVerifyPaymentsLoading(false);
-    }
+      }
+    );
   }, []);
 
   // Delete Cache - deletes all reconciliation cache and triggers fresh jobs
   const handleDeleteCache = useCallback(async () => {
-    if (!confirm("Are you sure you want to delete all cached data? This will trigger fresh Stripe data fetches.")) {
-      return;
-    }
+    showConfirm(
+      "Delete Cache",
+      "This will clear all cached Stripe data and refresh from Stripe. Continue?",
+      async () => {
+        showLoading("Clearing Cache", "Deleting cache and triggering fresh jobs...");
 
-    setMessage("Deleting cache and triggering fresh jobs...");
+        try {
+          // Delete all cache entries
+          const deleteRes = await fetch("/api/admin/backfill/stripe/verify-payments", { method: "DELETE" });
+          if (!deleteRes.ok) {
+            const err = await deleteRes.json();
+            showError("Delete Failed", err.error || deleteRes.statusText);
+            return;
+          }
 
-    try {
-      // Delete all cache entries
-      const deleteRes = await fetch("/api/admin/backfill/stripe/verify-payments", { method: "DELETE" });
-      if (!deleteRes.ok) {
-        const err = await deleteRes.json();
-        setMessage(`Error deleting cache: ${err.error || deleteRes.statusText}`);
-        return;
+          // Trigger fresh jobs
+          await triggerLiveStatsJob();
+
+          showSuccess("Cache Cleared", "Data will refresh automatically");
+        } catch (error) {
+          console.error("Failed to delete cache:", error);
+          showError("Delete Failed", error instanceof Error ? error.message : "Unknown error");
+        }
       }
-
-      // Trigger fresh jobs
-      await triggerLiveStatsJob();
-      
-      setMessage("Cache deleted. Fresh jobs triggered. Data will refresh automatically.");
-    } catch (error) {
-      console.error("Failed to delete cache:", error);
-      setMessage(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
-    }
+    );
   }, [triggerLiveStatsJob]);
 
   const handleExportCSV = () => {
@@ -831,47 +896,57 @@ export default function BackfillClient() {
 
   // Sync all payments from Stripe
   const handleSyncAllPayments = async () => {
-    if (!confirm("This will sync payment details from Stripe for all matched customers. This may take ~2 minutes. Continue?")) {
-      return;
-    }
-    setSyncingPayments(true);
-    setSyncProgress("Starting payment sync...");
-    try {
-      const res = await fetch("/api/admin/backfill/stripe/sync-all-payments", { method: "POST" });
-      const data = await res.json();
-      if (data.success) {
-        setSyncProgress(`Complete: ${data.synced} synced, ${data.failed} failed`);
-        fetchStatus(); // Refresh to show new data
-      } else {
-        setSyncProgress(`Error: ${data.error || "Unknown error"}`);
+    showConfirm(
+      "Sync All Payments",
+      "This will sync payment details from Stripe for all matched customers. This may take a few minutes. Continue?",
+      async () => {
+        setSyncingPayments(true);
+        setSyncProgress("Starting payment sync...");
+        try {
+          const res = await fetch("/api/admin/backfill/stripe/sync-all-payments", { method: "POST" });
+          const data = await res.json();
+          if (data.success) {
+            showSuccess("Sync Complete", `Successfully synced payments`);
+            fetchStatus(); // Refresh to show new data
+          } else {
+            showError("Sync Failed", data.error || "Unknown error");
+          }
+        } catch (error) {
+          showError("Sync Failed", error instanceof Error ? error.message : "Unknown error");
+        } finally {
+          setSyncingPayments(false);
+          setSyncProgress("");
+        }
       }
-    } catch (error) {
-      setSyncProgress(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
-    } finally {
-      setSyncingPayments(false);
-    }
+    );
   };
 
   // Sync missing payments from Stripe
   const handleSyncMissingPayments = async () => {
-    if (!confirm("This will query Stripe for ~85 contributing members who are missing payment records. Continue?")) {
-      return;
-    }
-    setSyncMissingLoading(true);
-    setSyncMissingResult(null);
-    try {
-      const res = await fetch("/api/admin/backfill/stripe/sync-missing-payments", { method: "POST" });
-      const data = await res.json();
-      if (data.success) {
-        setSyncMissingResult(data.results || { success: 0, failed: 0, errors: [] });
-      } else {
-        setSyncMissingResult({ success: 0, failed: 0, errors: [data.error || "Unknown error"] });
+    showConfirm(
+      "Sync Missing Payments",
+      "This will query Stripe for members with payments not yet recorded in our database. Continue?",
+      async () => {
+        setSyncMissingLoading(true);
+        setSyncMissingResult(null);
+        try {
+          const res = await fetch("/api/admin/backfill/stripe/sync-missing-payments", { method: "POST" });
+          const data = await res.json();
+          if (data.success) {
+            showSuccess("Sync Complete", `Found ${data.results?.success || 0} missing payments`);
+            setSyncMissingResult(data.results || { success: 0, failed: 0, errors: [] });
+          } else {
+            showError("Sync Failed", data.error || "Unknown error");
+            setSyncMissingResult({ success: 0, failed: 0, errors: [data.error || "Unknown error"] });
+          }
+        } catch (error) {
+          showError("Sync Failed", error instanceof Error ? error.message : "Unknown error");
+          setSyncMissingResult({ success: 0, failed: 0, errors: [error instanceof Error ? error.message : "Unknown error"] });
+        } finally {
+          setSyncMissingLoading(false);
+        }
       }
-    } catch (error) {
-      setSyncMissingResult({ success: 0, failed: 0, errors: [error instanceof Error ? error.message : "Unknown error"] });
-    } finally {
-      setSyncMissingLoading(false);
-    }
+    );
   };
 
   // Fetch duplicates
@@ -944,32 +1019,34 @@ export default function BackfillClient() {
       ...(missingPayments?.contributing || []),
       ...(missingPayments?.founding || []),
     ];
-    if (!confirm(`This will insert payment records for ${accounts.length} accounts that have profiles. Continue?`)) {
-      return;
-    }
-    setSyncingAll(true);
-    setSyncAllProgress({ current: 0, total: accounts.length });
-    try {
-      const res = await fetch("/api/admin/backfill/stripe/insert-missing-payments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accounts }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert(`Sync complete: ${data.message}`);
-        // Re-fetch both endpoints
-        await Promise.all([fetchMissingPayments(), fetchReconciliation()]);
-      } else {
-        alert(`Sync failed: ${data.error}`);
+    showConfirm(
+      "Insert Missing Payment Records",
+      "This will insert payment records for accounts that have profiles in Stripe but not in our database. Continue?",
+      async () => {
+        setSyncingAll(true);
+        setSyncAllProgress({ current: 0, total: accounts.length });
+        try {
+          const res = await fetch("/api/admin/backfill/stripe/insert-missing-payments", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ accounts }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            showSuccess("Sync Complete", data.message);
+            await Promise.all([fetchMissingPayments(), fetchReconciliation()]);
+          } else {
+            showError("Sync Failed", data.error);
+          }
+        } catch (error) {
+          console.error("Sync All failed:", error);
+          showError("Sync Failed", error instanceof Error ? error.message : "Unknown error");
+        } finally {
+          setSyncingAll(false);
+          setSyncAllProgress({ current: 0, total: 0 });
+        }
       }
-    } catch (error) {
-      console.error("Sync All failed:", error);
-      alert("Sync All failed");
-    } finally {
-      setSyncingAll(false);
-      setSyncAllProgress({ current: 0, total: 0 });
-    }
+    );
   };
 
   // Re-match a missing account
@@ -988,14 +1065,14 @@ export default function BackfillClient() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Re-matched: ${data.message}`);
+        showSuccess("Re-matched", data.message);
         fetchMissingPayments();
         fetchReconciliation();
       } else {
-        alert(`Failed to re-match: ${data.message}`);
+        showError("Re-match Failed", data.message);
       }
     } catch (error) {
-      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      showError("Re-match Failed", error instanceof Error ? error.message : "Unknown error");
     } finally {
       setMissingPaymentsAction(null);
     }
@@ -1016,15 +1093,15 @@ export default function BackfillClient() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Synced: ${data.message}`);
+        showSuccess("Synced", data.message);
         fetchMissingPayments();
         fetchReconciliation();
         fetchStatus();
       } else {
-        alert(`Failed to sync: ${data.message}`);
+        showError("Sync Failed", data.message);
       }
     } catch (error) {
-      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      showError("Sync Failed", error instanceof Error ? error.message : "Unknown error");
     } finally {
       setMissingPaymentsAction(null);
     }
@@ -1046,15 +1123,15 @@ export default function BackfillClient() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Synced: ${data.message}`);
+        showSuccess("Synced", data.message);
         fetchMissingPayments();
         fetchReconciliation();
         fetchStatus();
       } else {
-        alert(`Failed to sync: ${data.message}`);
+        showError("Sync Failed", data.message);
       }
     } catch (error) {
-      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      showError("Sync Failed", error instanceof Error ? error.message : "Unknown error");
     } finally {
       setMissingPaymentsAction(null);
     }
@@ -1071,31 +1148,36 @@ export default function BackfillClient() {
   } | null>(null);
 
   const handleBackfillMissing = async () => {
-    if (!confirm("This will look up all missing paid members in Stripe and add them to stripe_backfill_status. Continue?")) {
-      return;
-    }
-    setBackfillLoading(true);
-    setBackfillResult(null);
-    try {
-      const res = await fetch("/api/admin/backfill/stripe/backfill-existing", {
-        method: "POST",
-      });
-      const data = await res.json();
-      setBackfillResult(data);
-      if (data.success) {
-        // Refresh all data
-        fetchStatus();
-        fetchLiveStats();
-        fetchDuplicates();
-        fetchMissingFromBackfill();
-        fetchGiftCodes();
+    showConfirm(
+      "Sync All to Stripe",
+      "This will look up all paid members in Stripe and add them to the backfill status. Continue?",
+      async () => {
+        setBackfillLoading(true);
+        setBackfillResult(null);
+        try {
+          const res = await fetch("/api/admin/backfill/stripe/backfill-existing", {
+            method: "POST",
+          });
+          const data = await res.json();
+          setBackfillResult(data);
+          if (data.success) {
+            showSuccess("Sync Complete", data.message);
+            fetchStatus();
+            fetchLiveStats();
+            fetchDuplicates();
+            fetchMissingFromBackfill();
+            fetchGiftCodes();
+          } else {
+            showError("Sync Failed", data.message || "Unknown error");
+          }
+        } catch (error) {
+          console.error("Backfill failed:", error);
+          showError("Sync Failed", error instanceof Error ? error.message : "Unknown error");
+        } finally {
+          setBackfillLoading(false);
+        }
       }
-    } catch (error) {
-      console.error("Backfill failed:", error);
-      setBackfillResult({ message: "Backfill failed: " + (error instanceof Error ? error.message : "Unknown error") });
-    } finally {
-      setBackfillLoading(false);
-    }
+    );
   };
 
   // Fetch gift code signups
@@ -1210,44 +1292,87 @@ export default function BackfillClient() {
 
   return (
     <div className="space-y-6">
+      {/* Sticky Tab Bar */}
+      <div className="sticky top-[90px] z-40 bg-white/95 backdrop-blur-sm border-b border-nfw-dove">
+        <div className="flex gap-2 flex-wrap items-center py-3 pl-4">
+          <button
+            onClick={() => setActiveTab('stripe-data')}
+            className={`px-4 py-2 rounded-lg font-ui text-sm font-bold transition-colors ${
+              activeTab === 'stripe-data'
+                ? "bg-nfw-aubergine text-white"
+                : "bg-nfw-aubergine/10 text-nfw-aubergine hover:bg-nfw-aubergine/20"
+            }`}
+          >
+            Stripe Data
+          </button>
+          <button
+            onClick={() => setActiveTab('members')}
+            className={`px-4 py-2 rounded-lg font-ui text-sm font-bold transition-colors ${
+              activeTab === 'members'
+                ? "bg-nfw-wisteria text-white"
+                : "bg-nfw-wisteria/10 text-nfw-wisteria hover:bg-nfw-wisteria/20"
+            }`}
+          >
+            Members
+          </button>
+          <button
+            onClick={() => setActiveTab('payments')}
+            className={`px-4 py-2 rounded-lg font-ui text-sm font-bold transition-colors ${
+              activeTab === 'payments'
+                ? "bg-nfw-citrine text-nfw-blackberry"
+                : "bg-nfw-citrine/30 text-nfw-blackberry hover:bg-nfw-citrine/50"
+            }`}
+          >
+            Payments
+          </button>
+          <div className="ml-auto flex gap-2 items-center pr-4">
+            <div className="w-px h-6 bg-nfw-dove mr-2" />
+            <button
+              onClick={handleSyncAll}
+              disabled={syncingAll}
+              className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
+            >
+              {syncingAll ? "Syncing..." : "Sync Profiles"}
+            </button>
+            <button
+              onClick={handleSyncAllPayments}
+              disabled={syncingPayments}
+              className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
+            >
+              {syncingPayments ? "Syncing..." : "Sync Payments"}
+            </button>
+            <button
+              onClick={handleVerifyPayments}
+              disabled={verifyPaymentsLoading}
+              className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
+            >
+              {verifyPaymentsLoading ? "Verifying..." : "Verify Payments"}
+            </button>
+            <button
+              onClick={fetchStripeOnly}
+              disabled={stripeOnlyLoading}
+              className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
+            >
+              {stripeOnlyLoading ? "Starting..." : "Generate Stripe Data"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* TAB 1: Stripe Data */}
+      {activeTab === 'stripe-data' && (
+      <>
       {/* Reconciliation Comparison */}
       <div className="bg-white rounded-lg p-6 border border-nfw-aubergine/20">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-ui font-bold text-nfw-aubergine">Reconciliation</h3>
           <div className="flex gap-2 items-center">
             <button
-              onClick={handleSyncMissingPayments}
-              disabled={syncMissingLoading}
-              className="text-sm bg-nfw-wisteria text-white px-3 py-1 rounded hover:bg-nfw-wisteria/90 disabled:opacity-50"
-            >
-              {syncMissingLoading ? "Syncing..." : "Sync Missing Payments"}
-            </button>
-            <button
-              onClick={fetchReconciliation}
-              disabled={reconciliationLoading}
-              className="text-sm bg-nfw-aubergine text-white px-3 py-1 rounded hover:bg-nfw-aubergine/90 disabled:opacity-50"
-            >
-              {reconciliationLoading ? "Loading..." : "Refresh Reconciliation"}
-            </button>
-            <button
               onClick={handleExportEmailCsv}
               disabled={exportCsvLoading}
               className="text-sm bg-nfw-lilac text-white px-3 py-1 rounded hover:bg-nfw-lilac/90 disabled:opacity-50"
             >
               {exportCsvLoading ? "Exporting (~30 sec)..." : "Export Email CSV"}
-            </button>
-            <button
-              onClick={handleVerifyPayments}
-              disabled={verifyPaymentsLoading}
-              className="text-sm bg-nfw-citrine text-nfw-blackberry px-3 py-1 rounded hover:bg-nfw-citrine/90 disabled:opacity-50"
-            >
-              {verifyPaymentsLoading ? "Verifying..." : "Verify Payments"}
-            </button>
-            <button
-              onClick={handleDeleteCache}
-              className="text-sm bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-            >
-              Delete Cache
             </button>
           </div>
         </div>
@@ -1495,29 +1620,12 @@ export default function BackfillClient() {
         </div>
       )}
 
-      {/* Missing from DB - Emails in Stripe but no profile */}
-      {reconciliation && reconciliation.missing_from_db && reconciliation.missing_from_db.length > 0 && (
-        <div className="bg-white rounded-lg border border-nfw-aubergine/20 overflow-hidden">
-          <div className="flex justify-between items-center p-4 border-b border-nfw-dove">
-            <h3 className="font-ui font-bold text-nfw-aubergine">
-              In Stripe, No Profile ({reconciliation.missing_from_db.length})
-            </h3>
-            <p className="text-sm text-nfw-blackberry/60 font-ui">
-              These emails are in Stripe but have no profile in our database
-            </p>
-          </div>
-          <div className="p-4 max-h-96 overflow-y-auto">
-            <ul className="space-y-1">
-              {[...new Set(reconciliation.missing_from_db || [])].map((email: string) => (
-                <li key={email} className="font-mono text-sm text-nfw-blackberry/80">
-                  {email}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+      </>
       )}
 
+      {/* TAB 3: Payments */}
+      {activeTab === 'payments' && (
+      <>
       {/* Stripe Only Section */}
       <div className="bg-white rounded-lg border border-nfw-aubergine/20 overflow-hidden">
         <div className="flex justify-between items-center p-4 border-b border-nfw-dove">
@@ -1530,13 +1638,6 @@ export default function BackfillClient() {
             </p>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={fetchStripeOnly}
-              disabled={stripeOnlyLoading}
-              className="text-sm bg-nfw-wisteria text-white px-3 py-1 rounded hover:bg-nfw-wisteria/90 disabled:opacity-50"
-            >
-              {stripeOnlyLoading ? "Starting job..." : (stripeOnlyGeneratedAt ? "Regenerate" : "Generate Stripe Data")}
-            </button>
             {stripeOnlyGeneratedAt && !stripeOnlyLoading && (
               <button
                 onClick={downloadStripeOnlyCSV}
@@ -1642,13 +1743,6 @@ export default function BackfillClient() {
                 className="text-sm bg-nfw-wisteria text-white px-3 py-1 rounded hover:bg-nfw-wisteria/90 disabled:opacity-50"
               >
                 {missingPaymentsLoading ? "Loading..." : "Refresh"}
-              </button>
-              <button
-                onClick={handleSyncAll}
-                disabled={syncingAll || (missingPayments.summary?.total_count ?? 0) === 0}
-                className="text-sm bg-nfw-aubergine text-white px-3 py-1 rounded hover:bg-nfw-aubergine/90 disabled:opacity-50"
-              >
-                {syncingAll ? `Syncing... (${syncAllProgress.current}/${syncAllProgress.total})` : `Sync All (${missingPayments.summary?.total_count ?? 0})`}
               </button>
             </div>
           </div>
@@ -1870,52 +1964,12 @@ export default function BackfillClient() {
           </div>
         </div>
       )}
-
-      {/* Message */}
-      {message && (
-        <div className="bg-nfw-aubergine/10 border border-nfw-aubergine/30 rounded-lg p-4 font-ui text-sm whitespace-pre-wrap">
-          {message}
-        </div>
+      </>
       )}
 
-      {/* Actions */}
-      <div className="flex flex-wrap gap-4">
-        <button
-          onClick={fetchStatus}
-          disabled={refreshingStats}
-          className="bg-nfw-wisteria text-white font-ui font-bold px-6 py-3 rounded-lg hover:bg-nfw-wisteria/90 disabled:opacity-50 flex items-center gap-2"
-        >
-          {refreshingStats ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Refreshing...
-            </>
-          ) : (
-            "Refresh Stats"
-          )}
-        </button>
-        <button
-          onClick={handleExportCSV}
-          className="bg-nfw-lilac text-white font-ui font-bold px-6 py-3 rounded-lg hover:bg-nfw-lilac/90"
-        >
-          Export CSV
-        </button>
-        <button
-          onClick={handleSyncAllPayments}
-          disabled={syncingPayments}
-          className="bg-nfw-citrine text-nfw-blackberry font-ui font-bold px-6 py-3 rounded-lg hover:bg-nfw-citrine/90 disabled:opacity-50"
-        >
-          {syncingPayments ? "Syncing Payments..." : "Sync All Payments"}
-        </button>
-      </div>
-
-      {/* Sync Progress */}
-      {syncProgress && (
-        <div className="bg-nfw-citrine/20 border border-nfw-citrine/30 rounded-lg p-4 font-ui text-sm">
-          {syncProgress}
-        </div>
-      )}
-
+      {/* TAB 2: Members */}
+      {activeTab === 'members' && (
+      <>
       {/* Clean Stats Cards - Distinct Email Counts */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <StatCard label="Total Users" value={counts.total} color="aubergine" />
@@ -2473,6 +2527,87 @@ export default function BackfillClient() {
         </div>
       )}
 
+      {/* Unified Modal */}
+      {modalType && modalConfig && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            {modalType === 'confirm' && (
+              <>
+                <h3 className="font-ui font-bold text-amber-600 text-lg mb-4">{modalConfig.title}</h3>
+                {modalConfig.message && (
+                  <p className="font-ui text-sm text-nfw-blackberry/70 mb-6">{modalConfig.message}</p>
+                )}
+                <div className="flex gap-4 justify-end">
+                  <button
+                    onClick={closeModal}
+                    className="px-4 py-2 font-ui text-sm text-nfw-blackberry/70 hover:text-nfw-blackberry"
+                  >
+                    {modalConfig.cancelText || "Cancel"}
+                  </button>
+                  <button
+                    onClick={handleModalConfirm}
+                    className="px-4 py-2 bg-amber-600 text-white font-ui text-sm rounded hover:bg-amber-700"
+                  >
+                    {modalConfig.confirmText || "Continue"}
+                  </button>
+                </div>
+              </>
+            )}
+            {modalType === 'success' && (
+              <>
+                <h3 className="font-ui font-bold text-green-600 text-lg mb-4 flex items-center gap-2">
+                  <span className="text-xl">✓</span> {modalConfig.title}
+                </h3>
+                {modalConfig.message && (
+                  <p className="font-ui text-sm text-nfw-blackberry/70 mb-6">{modalConfig.message}</p>
+                )}
+                <div className="flex justify-end">
+                  <button
+                    onClick={closeModal}
+                    className="px-4 py-2 bg-green-600 text-white font-ui text-sm rounded hover:bg-green-700"
+                  >
+                    OK
+                  </button>
+                </div>
+              </>
+            )}
+            {modalType === 'error' && (
+              <>
+                <h3 className="font-ui font-bold text-red-600 text-lg mb-4 flex items-center gap-2">
+                  <span className="text-xl">✗</span> {modalConfig.title}
+                </h3>
+                {modalConfig.message && (
+                  <div className="max-h-96 overflow-y-auto mb-4">
+                    <p className="font-mono text-sm bg-red-50 p-3 rounded border border-red-200 whitespace-pre-wrap">
+                      {modalConfig.message}
+                    </p>
+                  </div>
+                )}
+                <div className="flex justify-end">
+                  <button
+                    onClick={closeModal}
+                    className="px-4 py-2 bg-nfw-aubergine text-white font-ui text-sm rounded hover:bg-nfw-aubergine/90"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            )}
+            {modalType === 'loading' && (
+              <>
+                <h3 className="font-ui font-bold text-nfw-aubergine text-lg mb-4 flex items-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  {modalConfig.title}
+                </h3>
+                {modalConfig.loadingMessage && (
+                  <p className="font-ui text-sm text-nfw-blackberry/70">{modalConfig.loadingMessage}</p>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {deleteModalOpen && deleteTarget && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -2537,24 +2672,7 @@ export default function BackfillClient() {
         </div>
       )}
 
-      {/* Error Modal */}
-      {errorModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="font-ui font-bold text-red-600 text-lg mb-4">Error Details</h3>
-            <div className="max-h-96 overflow-y-auto mb-4">
-              <p className="font-mono text-sm bg-red-50 p-3 rounded border border-red-200 whitespace-pre-wrap">
-                {errorModalMessage}
-              </p>
-            </div>
-            <button
-              onClick={() => setErrorModalOpen(false)}
-              className="mt-4 px-4 py-2 bg-nfw-aubergine text-white rounded font-ui text-sm hover:bg-nfw-aubergine/90"
-            >
-              Close
-            </button>
-          </div>
-        </div>
+      </>
       )}
     </div>
   );
