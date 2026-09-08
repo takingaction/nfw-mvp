@@ -27,30 +27,48 @@ export async function GET(request: Request) {
 
     const amount = tier === "contributing" ? 15 : 100;
 
-    // Get all payments for this tier
-    const { data: payments, error } = await supabase
-      .from("membership_payments")
-      .select(`
-        user_id,
-        id,
-        amount,
-        payment_type,
-        stripe_payment_id,
-        stripe_invoice_id,
-        created_at,
-        profiles!inner(email, full_name)
-      `)
-      .eq("amount", amount)
-      .order("created_at", { ascending: false });
+    // Get all payments for this tier - WITH PAGINATION
+    const allPayments: any[] = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
 
-    if (error) {
-      console.error("[export-our-db] Error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    while (hasMore) {
+      const { data: batch, error } = await supabase
+        .from("membership_payments")
+        .select(`
+          user_id,
+          id,
+          amount,
+          payment_type,
+          stripe_payment_id,
+          stripe_invoice_id,
+          created_at,
+          profiles!inner(email, full_name)
+        `)
+        .eq("amount", amount)
+        .order("created_at", { ascending: false })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      if (error) {
+        console.error("[export-our-db] Error:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      if (batch && batch.length > 0) {
+        allPayments.push(...batch);
+        page++;
+        hasMore = batch.length === pageSize;
+      } else {
+        hasMore = false;
+      }
     }
+
+    console.log(`[export-our-db] Loaded ${allPayments.length} payments for ${tier} tier`);
 
     // Get unique users
     const userMap = new Map<string, any>();
-    for (const p of payments || []) {
+    for (const p of allPayments) {
       const row = p as any;
       // profiles is an array when using join syntax
       const profiles = row.profiles;

@@ -33,30 +33,48 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get paid profile emails DIRECTLY with a JOIN query
-    const { data: paidProfiles, error: paidError } = await supabaseAdmin
-      .from("membership_payments")
-      .select(`
-        amount,
-        profiles(email)
-      `)
-      .in("amount", [15, 100]);
+    // Get paid profile emails DIRECTLY with a JOIN query - WITH PAGINATION
+    const allPaidProfiles: any[] = [];
+    let paidPage = 0;
+    const paidPageSize = 1000;
+    let paidHasMore = true;
 
-    if (paidError) {
-      return NextResponse.json({ error: paidError.message }, { status: 500 });
+    while (paidHasMore) {
+      const { data: paidBatch, error: paidError } = await supabaseAdmin
+        .from("membership_payments")
+        .select(`
+          amount,
+          profiles(email)
+        `)
+        .in("amount", [15, 100])
+        .range(paidPage * paidPageSize, (paidPage + 1) * paidPageSize - 1);
+
+      if (paidError) {
+        return NextResponse.json({ error: paidError.message }, { status: 500 });
+      }
+
+      if (paidBatch && paidBatch.length > 0) {
+        allPaidProfiles.push(...paidBatch);
+        paidPage++;
+        paidHasMore = paidBatch.length === paidPageSize;
+      } else {
+        paidHasMore = false;
+      }
     }
+
+    console.log(`[missing-payments] Loaded ${allPaidProfiles.length} paid profiles`);
 
     // Build paid emails set
     const paidProfileEmails = new Set<string>();
-    for (const p of paidProfiles || []) {
+    for (const p of allPaidProfiles) {
       const email = (p.profiles as any)?.email?.toLowerCase().trim();
       if (email) {
         paidProfileEmails.add(email);
       }
     }
 
-    const dbContributingCount = paidProfiles?.filter(p => p.amount === 15).length || 0;
-    const dbFoundingCount = paidProfiles?.filter(p => p.amount === 100).length || 0;
+    const dbContributingCount = allPaidProfiles.filter(p => p.amount === 15).length || 0;
+    const dbFoundingCount = allPaidProfiles.filter(p => p.amount === 100).length || 0;
 
     // Get all Stripe subscription emails
     const stripeEmailsByTier = {
