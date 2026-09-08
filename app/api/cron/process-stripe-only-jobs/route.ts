@@ -223,6 +223,117 @@ async function processStripeOnlyJob(jobId: string): Promise<void> {
 
     const total = stripeOnlyCharges.reduce((sum, c) => sum + c.amount, 0);
 
+    // Step 5: Compute Duplicates in Stripe (emails with 2+ subscriptions)
+    // We need to re-fetch subscriptions to build email → subs map
+    const emailToSubs = new Map<string, any[]>();
+
+    await supabaseAdmin
+      .from("stripe_only_jobs")
+      .update({ progress: "Finding duplicates..." })
+      .eq("id", jobId);
+
+    for (const status of statuses) {
+      let subHasMore = true;
+      let subCursor: string | undefined;
+
+      while (subHasMore) {
+        try {
+          const subParams: any = { limit: 100, status };
+          if (subCursor) subParams.starting_after = subCursor;
+
+          await sleep(200);
+
+          const subsResponse = await stripe.subscriptions.list(subParams as any);
+          subHasMore = subsResponse.has_more;
+
+          if (subsResponse.data.length > 0) {
+            subCursor = subsResponse.data[subsResponse.data.length - 1].id;
+
+            for (const sub of subsResponse.data) {
+              const subAny = sub as any;
+              const email = (subAny.customer_email || "").toLowerCase();
+              if (email) {
+                if (!emailToSubs.has(email)) {
+                  emailToSubs.set(email, []);
+                }
+                emailToSubs.get(email)!.push({
+                  subscription_id: sub.id,
+                  customer_id: sub.customer,
+                  tier: sub.items.data[0]?.price?.unit_amount === 1500 ? "contributing" : "founding",
+                  amount: (sub.items.data[0]?.price?.unit_amount || 0) / 100,
+                  status: sub.status,
+                  current_period_start: subAny.current_period_start,
+                  current_period_end: subAny.current_period_end,
+                });
+              }
+            }
+          }
+        } catch (err: any) {
+          console.error(`[process-stripe-only] Error fetching subscriptions for duplicates:`, err.message);
+          subHasMore = false;
+        }
+      }
+    }
+
+    const stripeDuplicates = [];
+    for (const [email, subs] of emailToSubs.entries()) {
+      if (subs.length > 1) {
+        stripeDuplicates.push({ email, count: subs.length, subscriptions: subs });
+      }
+    }
+    // Sort by count desc
+    stripeDuplicates.sort((a, b) => b.count - a.count);
+
+    console.log(`[process-stripe-only] Stripe duplicates: ${stripeDuplicates.length}`);
+
+    // Step 6: Compute Duplicates (DB query - emails with 2+ entries in stripe_backfill_status)
+    const { data: backfillRecords } = await supabaseAdmin
+      .from("stripe_backfill_status")
+      .select("email")
+      .not("email", "is", null);
+
+    const emailCount = new Map<string, number>();
+    for (const record of backfillRecords || []) {
+      const email = (record.email || "").toLowerCase();
+      emailCount.set(email, (emailCount.get(email) || 0) + 1);
+    }
+
+    const duplicates = [];
+    for (const [email, count] of emailCount.entries()) {
+      if (count > 1) {
+        duplicates.push({ email, count });
+      }
+    }
+    duplicates.sort((a, b) => b.count - a.count);
+
+    console.log(`[process-stripe-only] Duplicates: ${duplicates.length}`);
+
+    // Step 7: Compute Missing from Backfill (profiles with stripe_customer_id but not in stripe_backfill_status)
+    const { data: profilesWithStripe } = await supabaseAdmin
+      .from("profiles")
+      .select("id, email, stripe_customer_id")
+      .not("stripe_customer_id", "is", null);
+
+    const { data: backfillCustomerIds } = await supabaseAdmin
+      .from("stripe_backfill_status")
+      .select("stripe_customer_id")
+      .not("stripe_customer_id", "is", null);
+
+    const backfillCustomerIdSet = new Set((backfillCustomerIds || []).map((r: any) => r.stripe_customer_id));
+
+    const missingFromBackfill = [];
+    for (const profile of profilesWithStripe || []) {
+      if (profile.stripe_customer_id && !backfillCustomerIdSet.has(profile.stripe_customer_id)) {
+        missingFromBackfill.push({
+          email: profile.email,
+          stripe_customer_id: profile.stripe_customer_id,
+        });
+      }
+    }
+    missingFromBackfill.sort((a, b) => (a.email || "").localeCompare(b.email || ""));
+
+    console.log(`[process-stripe-only] Missing from backfill: ${missingFromBackfill.length}`);
+
     // Store results in job
     await supabaseAdmin
       .from("stripe_only_jobs")
@@ -232,6 +343,9 @@ async function processStripeOnlyJob(jobId: string): Promise<void> {
         completed_at: new Date().toISOString(),
         charges_json: stripeOnlyCharges,
         total: total,
+        stripe_duplicates_json: stripeDuplicates,
+        duplicates_json: duplicates,
+        missing_from_backfill_json: missingFromBackfill,
         expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour cache
       })
       .eq("id", jobId);

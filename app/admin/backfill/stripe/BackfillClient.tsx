@@ -361,10 +361,6 @@ export default function BackfillClient() {
   const [missingPaymentsLoading, setMissingPaymentsLoading] = useState(false);
   const [missingPaymentsAction, setMissingPaymentsAction] = useState<{ id: string; action: string } | null>(null);
 
-  // Sync missing payments
-  const [syncMissingLoading, setSyncMissingLoading] = useState(false);
-  const [syncMissingResult, setSyncMissingResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
-
   // Sync All button
   const [syncingAll, setSyncingAll] = useState(false);
   const [syncAllProgress, setSyncAllProgress] = useState({ current: 0, total: 0 });
@@ -479,6 +475,9 @@ export default function BackfillClient() {
           if (data.status === "completed") {
             setStripeOnly(data.charges || []);
             setStripeOnlyTotal(data.total || 0);
+            setDuplicates(data.duplicates || []);
+            setStripeDuplicates(data.stripeDuplicates || []);
+            setMissingFromBackfill(data.missingFromBackfill || []);
             setStripeOnlyGeneratedAt(Date.now());
             // Store in sessionStorage for export
             sessionStorage.setItem("stripeOnlyCharges", JSON.stringify(data.charges || []));
@@ -934,20 +933,20 @@ export default function BackfillClient() {
     URL.revokeObjectURL(url);
   };
 
-  // Sync all payments from Stripe
+  // Sync all payments from Stripe (calls payment-sync cron logic via admin endpoint)
   const handleSyncAllPayments = async () => {
     showConfirm(
       "Sync All Payments",
-      "This will sync payment details from Stripe for all matched customers. This may take a few minutes. Continue?",
+      "This will sync payment details from Stripe and insert missing payments. This may take a few minutes. Continue?",
       async () => {
         setSyncingPayments(true);
         setIsOperationRunning(true);
         setSyncProgress("Starting payment sync...");
         try {
-          const res = await fetch("/api/admin/backfill/stripe/sync-all-payments", { method: "POST" });
+          const res = await fetch("/api/admin/backfill/stripe/sync-all", { method: "POST" });
           const data = await res.json();
           if (data.success) {
-            showSuccess("Sync Complete", `Successfully synced payments`);
+            showSuccess("Sync Complete", `Synced ${data.synced || 0}, failed ${data.failed || 0}`);
             fetchStatus(); // Refresh to show new data
           } else {
             showError("Sync Failed", data.error || "Unknown error");
@@ -958,34 +957,6 @@ export default function BackfillClient() {
           setSyncingPayments(false);
           setIsOperationRunning(false);
           setSyncProgress("");
-        }
-      }
-    );
-  };
-
-  // Sync missing payments from Stripe
-  const handleSyncMissingPayments = async () => {
-    showConfirm(
-      "Sync Missing Payments",
-      "This will query Stripe for members with payments not yet recorded in our database. Continue?",
-      async () => {
-        setSyncMissingLoading(true);
-        setSyncMissingResult(null);
-        try {
-          const res = await fetch("/api/admin/backfill/stripe/sync-missing-payments", { method: "POST" });
-          const data = await res.json();
-          if (data.success) {
-            showSuccess("Sync Complete", `Found ${data.results?.success || 0} missing payments`);
-            setSyncMissingResult(data.results || { success: 0, failed: 0, errors: [] });
-          } else {
-            showError("Sync Failed", data.error || "Unknown error");
-            setSyncMissingResult({ success: 0, failed: 0, errors: [data.error || "Unknown error"] });
-          }
-        } catch (error) {
-          showError("Sync Failed", error instanceof Error ? error.message : "Unknown error");
-          setSyncMissingResult({ success: 0, failed: 0, errors: [error instanceof Error ? error.message : "Unknown error"] });
-        } finally {
-          setSyncMissingLoading(false);
         }
       }
     );
@@ -1243,13 +1214,10 @@ export default function BackfillClient() {
   // Check if initialized on mount (removed automatic Stripe calls - now manual only)
   useEffect(() => {
     fetchStatus();
-    fetchDuplicates();
-    fetchStripeDuplicates();
-    fetchMissingFromBackfill();
     fetchGiftCodes();
     fetchMissingPayments();
     fetchOurDb();
-  }, [fetchStatus, fetchDuplicates, fetchStripeDuplicates, fetchMissingFromBackfill, fetchGiftCodes, fetchMissingPayments, fetchOurDb]);
+  }, [fetchStatus, fetchGiftCodes, fetchMissingPayments, fetchOurDb]);
 
   // Delete single payment
   const handleDeletePayment = async () => {
@@ -1521,14 +1489,14 @@ export default function BackfillClient() {
               disabled={syncingAll}
               className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
             >
-              {syncingAll ? "Working..." : "Sync Profiles"}
+              {syncingAll ? "Working..." : "Insert Missing Payments"}
             </button>
             <button
               onClick={handleSyncAllPayments}
               disabled={syncingPayments}
               className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
             >
-              {syncingPayments ? "Working..." : "Sync Payments"}
+              {syncingPayments ? "Working..." : "Sync All Payments"}
             </button>
             <button
               onClick={handleVerifyPayments}
@@ -1565,28 +1533,6 @@ export default function BackfillClient() {
             </button>
           </div>
         </div>
-
-        {syncMissingResult && (
-          <div className={`mb-4 p-3 rounded text-sm font-ui ${
-            syncMissingResult.failed === 0
-              ? "bg-green-50 border border-green-200 text-green-700"
-              : "bg-yellow-50 border border-yellow-200 text-yellow-700"
-          }`}>
-            {syncMissingResult.failed === 0 ? "✓" : "⚠"} Synced {syncMissingResult.success} payments
-            {syncMissingResult.failed > 0 && `, ${syncMissingResult.failed} failed`}
-            {syncMissingResult.errors.length > 0 && (
-              <button
-                onClick={() => {
-                  setErrorModalMessage(syncMissingResult.errors.join("\n"));
-                  setErrorModalOpen(true);
-                }}
-                className="ml-2 underline hover:no-underline"
-              >
-                View Errors
-              </button>
-            )}
-          </div>
-        )}
 
         {reconciliation && (
           <>
@@ -1703,6 +1649,30 @@ export default function BackfillClient() {
           <p className="text-nfw-blackberry/60 font-ui text-sm">
             Click &quot;Refresh Reconciliation&quot; to compare Stripe live data against our database.
           </p>
+        )}
+
+        {/* In Stripe, No Profile Section */}
+        {reconciliation?.missing_from_db && reconciliation.missing_from_db.length > 0 && (
+          <div className="bg-white rounded-lg border border-yellow-200 overflow-hidden mt-4">
+            <div className="p-4 border-b border-yellow-200">
+              <h3 className="font-ui font-bold text-yellow-700">
+                In Stripe, No Profile ({reconciliation.missing_from_db.length})
+              </h3>
+              <p className="text-xs text-nfw-blackberry/60 mt-1">
+                Emails that exist in Stripe but have no matching profile in our database
+              </p>
+            </div>
+            <div className="p-4 flex flex-wrap gap-2">
+              {reconciliation.missing_from_db.map((email: string) => (
+                <span
+                  key={email}
+                  className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-ui bg-yellow-100 text-yellow-800 border border-yellow-200"
+                >
+                  {email}
+                </span>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 
