@@ -230,23 +230,45 @@ export async function POST(request: Request): Promise<NextResponse> {
     console.log("[sync-all] Starting payment sync (admin triggered)...");
 
     // Step 1: Fix not_found records that have stripe_customer_id on the profile
+    // FIX: Add pagination and filter out rows where profile_id is NULL
     console.log("[sync-all] Step 1: Fixing not_found records with stripe_customer_id on profile...");
 
-    const { data: notFoundRows, error: notFoundError } = await supabaseAdmin
-      .from("stripe_backfill_status")
-      .select("id, profile_id, email")
-      .eq("status", "not_found")
-      .is("stripe_customer_id", null);
+    const PAGE_SIZE = 1000;
+    const allNotFoundRows: { id: string; profile_id: string | null; email: string }[] = [];
+    let notFoundPage = 0;
+    let notFoundHasMore = true;
 
-    if (notFoundError) {
-      console.error("[sync-all] Error fetching not_found rows:", notFoundError);
+    while (notFoundHasMore) {
+      const { data: notFoundBatch, error: notFoundError } = await supabaseAdmin
+        .from("stripe_backfill_status")
+        .select("id, profile_id, email")
+        .eq("status", "not_found")
+        .is("stripe_customer_id", null)
+        .not("profile_id", "is", null)  // Only process rows with valid profile_id
+        .range(notFoundPage * PAGE_SIZE, (notFoundPage + 1) * PAGE_SIZE - 1);
+
+      if (notFoundError) {
+        console.error("[sync-all] Error fetching not_found rows:", notFoundError);
+        break;
+      }
+
+      if (notFoundBatch && notFoundBatch.length > 0) {
+        allNotFoundRows.push(...notFoundBatch);
+        notFoundPage++;
+        notFoundHasMore = notFoundBatch.length === PAGE_SIZE;
+      } else {
+        notFoundHasMore = false;
+      }
     }
 
-    let fixedCount = 0;
-    if (notFoundRows && notFoundRows.length > 0) {
-      console.log(`[sync-all] Found ${notFoundRows.length} not_found records to fix`);
+    console.log(`[sync-all] Found ${allNotFoundRows.length} not_found records with profile_id to fix`);
 
-      for (const row of notFoundRows) {
+    let fixedCount = 0;
+    if (allNotFoundRows.length > 0) {
+      for (const row of allNotFoundRows) {
+        // First try lookup by profile_id
+        let stripeCustomerId: string | null = null;
+
         const { data: profile } = await supabaseAdmin
           .from("profiles")
           .select("stripe_customer_id")
@@ -254,10 +276,24 @@ export async function POST(request: Request): Promise<NextResponse> {
           .single();
 
         if (profile?.stripe_customer_id) {
+          stripeCustomerId = profile.stripe_customer_id;
+        } else if (row.email) {
+          // Fallback: try to find stripe_customer_id by email in Stripe
+          try {
+            const customers = await stripe.customers.list({ email: row.email, limit: 1 });
+            if (customers.data.length > 0) {
+              stripeCustomerId = customers.data[0].id;
+            }
+          } catch (stripeError: any) {
+            console.warn(`[sync-all] Stripe lookup failed for ${row.email}:`, stripeError.message);
+          }
+        }
+
+        if (stripeCustomerId) {
           const { error: updateError } = await supabaseAdmin
             .from("stripe_backfill_status")
             .update({
-              stripe_customer_id: profile.stripe_customer_id,
+              stripe_customer_id: stripeCustomerId,
               status: "matched",
               processed_at: new Date().toISOString(),
             })
@@ -267,7 +303,9 @@ export async function POST(request: Request): Promise<NextResponse> {
             console.error(`[sync-all] Error fixing not_found row ${row.id}:`, updateError);
           } else {
             fixedCount++;
-            console.log(`[sync-all] Fixed not_found: ${row.email} -> ${profile.stripe_customer_id}`);
+            if (fixedCount <= 10) {
+              console.log(`[sync-all] Fixed not_found: ${row.email} -> ${stripeCustomerId}`);
+            }
           }
         }
       }

@@ -48,27 +48,60 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get all known payment IDs from membership_payments (both stripe_payment_id and stripe_invoice_id)
-    const { data: payments } = await supabaseAdmin
-      .from("membership_payments")
-      .select("stripe_payment_id, stripe_invoice_id");
+    // Get all known payment IDs from membership_payments (both stripe_payment_id and stripe_invoice_id) - WITH PAGINATION
+    const allPayments: { stripe_payment_id: string | null; stripe_invoice_id: string }[] = [];
+    let paymentsPage = 0;
+    const paymentsPageSize = 1000;
+    let paymentsHasMore = true;
 
-    const knownPaymentIds = new Set(payments?.map(p => p.stripe_payment_id) || []);
-    const knownInvoiceIds = new Set(payments?.map(p => p.stripe_invoice_id) || []);
+    while (paymentsHasMore) {
+      const { data: paymentsBatch } = await supabaseAdmin
+        .from("membership_payments")
+        .select("stripe_payment_id, stripe_invoice_id")
+        .range(paymentsPage * paymentsPageSize, (paymentsPage + 1) * paymentsPageSize - 1);
 
-    // Get all matched Stripe customer IDs from backfill with their profile IDs
-    const { data: backfillMatched } = await supabaseAdmin
-      .from("stripe_backfill_status")
-      .select("stripe_customer_id, profile_id, email")
-      .eq("status", "matched");
+      if (paymentsBatch && paymentsBatch.length > 0) {
+        allPayments.push(...paymentsBatch);
+        paymentsPage++;
+        paymentsHasMore = paymentsBatch.length === paymentsPageSize;
+      } else {
+        paymentsHasMore = false;
+      }
+    }
+
+    const knownPaymentIds = new Set(allPayments.map(p => p.stripe_payment_id) || []);
+    const knownInvoiceIds = new Set(allPayments.map(p => p.stripe_invoice_id) || []);
+
+    // Get all matched Stripe customer IDs from backfill with their profile IDs - WITH PAGINATION
+    const allBackfillMatched: { stripe_customer_id: string | null; profile_id: string | null; email: string }[] = [];
+    let backfillPage = 0;
+    let backfillHasMore = true;
+
+    while (backfillHasMore) {
+      const { data: backfillBatch } = await supabaseAdmin
+        .from("stripe_backfill_status")
+        .select("stripe_customer_id, profile_id, email")
+        .eq("status", "matched")
+        .range(backfillPage * 1000, (backfillPage + 1) * 1000 - 1);
+
+      if (backfillBatch && backfillBatch.length > 0) {
+        allBackfillMatched.push(...backfillBatch);
+        backfillPage++;
+        backfillHasMore = backfillBatch.length === 1000;
+      } else {
+        backfillHasMore = false;
+      }
+    }
 
     // Build customer ID -> profile ID map
     const customerToProfile = new Map<string, string>();
-    for (const b of backfillMatched || []) {
+    for (const b of allBackfillMatched) {
       if (b.stripe_customer_id && b.profile_id) {
         customerToProfile.set(b.stripe_customer_id, b.profile_id);
       }
     }
+
+    console.log(`[insert-missing] Loaded ${allPayments.length} existing payments, ${allBackfillMatched.length} matched backfill records`);
 
     // Get ALL Stripe invoices (not charges - invoices have billing_reason)
     const allInvoices: Stripe.Invoice[] = [];
