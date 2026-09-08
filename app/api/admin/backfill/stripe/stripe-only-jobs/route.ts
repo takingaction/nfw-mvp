@@ -84,6 +84,9 @@ export async function GET(request: Request) {
         error: job.error,
         charges: job.charges_json,
         total: job.total,
+        duplicates: job.duplicates_json,
+        missingFromBackfill: job.missing_from_backfill_json,
+        stripeDuplicates: job.stripe_duplicates_json,
         completedAt: job.completed_at,
       });
     }
@@ -108,6 +111,9 @@ export async function GET(request: Request) {
       error: latestJob.error,
       charges: latestJob.charges_json,
       total: latestJob.total,
+      duplicates: latestJob.duplicates_json,
+      missingFromBackfill: latestJob.missing_from_backfill_json,
+      stripeDuplicates: latestJob.stripe_duplicates_json,
       completedAt: latestJob.completed_at,
       isExpired,
     });

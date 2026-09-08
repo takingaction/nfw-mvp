@@ -1026,7 +1026,7 @@ export default function BackfillClient() {
         setSyncingAll(true);
         setSyncAllProgress({ current: 0, total: accounts.length });
         try {
-          const res = await fetch("/api/admin/backfill/stripe/insert-missing-payments", {
+          const res = await fetch("/api/admin/backfill/stripe/insert-missing", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ accounts }),
