@@ -1336,6 +1336,151 @@ export default function BackfillClient() {
 
   return (
     <div className="space-y-6">
+      {/* Unified Modal */}
+      {modalType && modalConfig && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            {modalType === 'confirm' && (
+              <>
+                <h3 className="font-ui font-bold text-amber-600 text-lg mb-4">{modalConfig.title}</h3>
+                {modalConfig.message && (
+                  <p className="font-ui text-sm text-nfw-blackberry/70 mb-6">{modalConfig.message}</p>
+                )}
+                <div className="flex gap-4 justify-end">
+                  <button
+                    onClick={closeModal}
+                    className="px-4 py-2 font-ui text-sm text-nfw-blackberry/70 hover:text-nfw-blackberry"
+                  >
+                    {modalConfig.cancelText || "Cancel"}
+                  </button>
+                  <button
+                    onClick={handleModalConfirm}
+                    className="px-4 py-2 bg-amber-600 text-white font-ui text-sm rounded hover:bg-amber-700"
+                  >
+                    {modalConfig.confirmText || "Continue"}
+                  </button>
+                </div>
+              </>
+            )}
+            {modalType === 'success' && (
+              <>
+                <h3 className="font-ui font-bold text-green-600 text-lg mb-4 flex items-center gap-2">
+                  <span className="text-xl">✓</span> {modalConfig.title}
+                </h3>
+                {modalConfig.message && (
+                  <p className="font-ui text-sm text-nfw-blackberry/70 mb-6">{modalConfig.message}</p>
+                )}
+                <div className="flex justify-end">
+                  <button
+                    onClick={closeModal}
+                    className="px-4 py-2 bg-green-600 text-white font-ui text-sm rounded hover:bg-green-700"
+                  >
+                    OK
+                  </button>
+                </div>
+              </>
+            )}
+            {modalType === 'error' && (
+              <>
+                <h3 className="font-ui font-bold text-red-600 text-lg mb-4 flex items-center gap-2">
+                  <span className="text-xl">✗</span> {modalConfig.title}
+                </h3>
+                {modalConfig.message && (
+                  <div className="max-h-96 overflow-y-auto mb-4">
+                    <p className="font-mono text-sm bg-red-50 p-3 rounded border border-red-200 whitespace-pre-wrap">
+                      {modalConfig.message}
+                    </p>
+                  </div>
+                )}
+                <div className="flex justify-end">
+                  <button
+                    onClick={closeModal}
+                    className="px-4 py-2 bg-nfw-aubergine text-white font-ui text-sm rounded hover:bg-nfw-aubergine/90"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            )}
+            {modalType === 'loading' && (
+              <>
+                <h3 className="font-ui font-bold text-nfw-aubergine text-lg mb-4 flex items-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  {modalConfig.title}
+                </h3>
+                {modalConfig.loadingMessage && (
+                  <p className="font-ui text-sm text-nfw-blackberry/70">{modalConfig.loadingMessage}</p>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && deleteTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="font-ui font-bold text-nfw-aubergine text-lg mb-4">Confirm Delete</h3>
+            <p className="font-ui text-sm text-nfw-blackberry/70 mb-6">
+              Are you sure you want to delete this payment?
+            </p>
+            <div className="bg-nfw-dove/50 rounded p-3 mb-6">
+              <div className="text-sm"><strong>Email:</strong> {deleteTarget.email}</div>
+              <div className="text-sm"><strong>Amount:</strong> ${deleteTarget.amount}</div>
+              <div className="text-sm"><strong>Issue:</strong> {deleteTarget.issue}</div>
+              <div className="text-sm"><strong>Stripe Status:</strong> {deleteTarget.stripe_status || "—"}</div>
+            </div>
+            <div className="flex gap-4 justify-end">
+              <button
+                onClick={() => {
+                  setDeleteModalOpen(false);
+                  setDeleteTarget(null);
+                }}
+                className="px-4 py-2 font-ui text-sm text-nfw-blackberry/70 hover:text-nfw-blackberry"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeletePayment}
+                className="px-4 py-2 bg-red-600 text-white font-ui text-sm rounded hover:bg-red-700"
+              >
+                Delete Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {bulkDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="font-ui font-bold text-nfw-aubergine text-lg mb-4">Confirm Bulk Delete</h3>
+            <p className="font-ui text-sm text-nfw-blackberry/70 mb-6">
+              Are you sure you want to delete {bulkDeleteIds.length} payment(s)? This action cannot be undone.
+            </p>
+            <div className="flex gap-4 justify-end">
+              <button
+                onClick={() => {
+                  setBulkDeleteModalOpen(false);
+                  setBulkDeleteIds([]);
+                }}
+                className="px-4 py-2 font-ui text-sm text-nfw-blackberry/70 hover:text-nfw-blackberry"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="px-4 py-2 bg-red-600 text-white font-ui text-sm rounded hover:bg-red-700"
+              >
+                Delete {bulkDeleteIds.length} Payments
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sticky Tab Bar */}
       <div className="sticky top-[90px] z-40 bg-white/95 backdrop-blur-sm border-b border-nfw-dove">
         <div className="flex gap-2 flex-wrap items-center py-3 pl-4">
@@ -2553,151 +2698,6 @@ export default function BackfillClient() {
                 )}
               </tbody>
             </table>
-          </div>
-        </div>
-      )}
-
-      {/* Unified Modal */}
-      {modalType && modalConfig && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            {modalType === 'confirm' && (
-              <>
-                <h3 className="font-ui font-bold text-amber-600 text-lg mb-4">{modalConfig.title}</h3>
-                {modalConfig.message && (
-                  <p className="font-ui text-sm text-nfw-blackberry/70 mb-6">{modalConfig.message}</p>
-                )}
-                <div className="flex gap-4 justify-end">
-                  <button
-                    onClick={closeModal}
-                    className="px-4 py-2 font-ui text-sm text-nfw-blackberry/70 hover:text-nfw-blackberry"
-                  >
-                    {modalConfig.cancelText || "Cancel"}
-                  </button>
-                  <button
-                    onClick={handleModalConfirm}
-                    className="px-4 py-2 bg-amber-600 text-white font-ui text-sm rounded hover:bg-amber-700"
-                  >
-                    {modalConfig.confirmText || "Continue"}
-                  </button>
-                </div>
-              </>
-            )}
-            {modalType === 'success' && (
-              <>
-                <h3 className="font-ui font-bold text-green-600 text-lg mb-4 flex items-center gap-2">
-                  <span className="text-xl">✓</span> {modalConfig.title}
-                </h3>
-                {modalConfig.message && (
-                  <p className="font-ui text-sm text-nfw-blackberry/70 mb-6">{modalConfig.message}</p>
-                )}
-                <div className="flex justify-end">
-                  <button
-                    onClick={closeModal}
-                    className="px-4 py-2 bg-green-600 text-white font-ui text-sm rounded hover:bg-green-700"
-                  >
-                    OK
-                  </button>
-                </div>
-              </>
-            )}
-            {modalType === 'error' && (
-              <>
-                <h3 className="font-ui font-bold text-red-600 text-lg mb-4 flex items-center gap-2">
-                  <span className="text-xl">✗</span> {modalConfig.title}
-                </h3>
-                {modalConfig.message && (
-                  <div className="max-h-96 overflow-y-auto mb-4">
-                    <p className="font-mono text-sm bg-red-50 p-3 rounded border border-red-200 whitespace-pre-wrap">
-                      {modalConfig.message}
-                    </p>
-                  </div>
-                )}
-                <div className="flex justify-end">
-                  <button
-                    onClick={closeModal}
-                    className="px-4 py-2 bg-nfw-aubergine text-white font-ui text-sm rounded hover:bg-nfw-aubergine/90"
-                  >
-                    Close
-                  </button>
-                </div>
-              </>
-            )}
-            {modalType === 'loading' && (
-              <>
-                <h3 className="font-ui font-bold text-nfw-aubergine text-lg mb-4 flex items-center gap-2">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  {modalConfig.title}
-                </h3>
-                {modalConfig.loadingMessage && (
-                  <p className="font-ui text-sm text-nfw-blackberry/70">{modalConfig.loadingMessage}</p>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deleteModalOpen && deleteTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="font-ui font-bold text-nfw-aubergine text-lg mb-4">Confirm Delete</h3>
-            <p className="font-ui text-sm text-nfw-blackberry/70 mb-6">
-              Are you sure you want to delete this payment?
-            </p>
-            <div className="bg-nfw-dove/50 rounded p-3 mb-6">
-              <div className="text-sm"><strong>Email:</strong> {deleteTarget.email}</div>
-              <div className="text-sm"><strong>Amount:</strong> ${deleteTarget.amount}</div>
-              <div className="text-sm"><strong>Issue:</strong> {deleteTarget.issue}</div>
-              <div className="text-sm"><strong>Stripe Status:</strong> {deleteTarget.stripe_status || "—"}</div>
-            </div>
-            <div className="flex gap-4 justify-end">
-              <button
-                onClick={() => {
-                  setDeleteModalOpen(false);
-                  setDeleteTarget(null);
-                }}
-                className="px-4 py-2 font-ui text-sm text-nfw-blackberry/70 hover:text-nfw-blackberry"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeletePayment}
-                className="px-4 py-2 bg-red-600 text-white font-ui text-sm rounded hover:bg-red-700"
-              >
-                Delete Payment
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Delete Confirmation Modal */}
-      {bulkDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="font-ui font-bold text-nfw-aubergine text-lg mb-4">Confirm Bulk Delete</h3>
-            <p className="font-ui text-sm text-nfw-blackberry/70 mb-6">
-              Are you sure you want to delete {bulkDeleteIds.length} payment(s)? This action cannot be undone.
-            </p>
-            <div className="flex gap-4 justify-end">
-              <button
-                onClick={() => {
-                  setBulkDeleteModalOpen(false);
-                  setBulkDeleteIds([]);
-                }}
-                className="px-4 py-2 font-ui text-sm text-nfw-blackberry/70 hover:text-nfw-blackberry"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleBulkDelete}
-                className="px-4 py-2 bg-red-600 text-white font-ui text-sm rounded hover:bg-red-700"
-              >
-                Delete {bulkDeleteIds.length} Payments
-              </button>
-            </div>
           </div>
         </div>
       )}

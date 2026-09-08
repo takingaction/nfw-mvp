@@ -205,8 +205,11 @@ export default function AdminAnalyticsClient({
 
   // Fetch Stripe live stats on mount
   useEffect(() => {
-    fetch("/api/admin/backfill/stripe/live-stats")
-      .then((res) => res.json())
+    fetch("/api/admin/backfill/stripe/stripe-live")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch");
+        return res.json();
+      })
       .then((data) => {
         if (data.contributing && data.founding && data.total) {
           setStripeLiveStats(data);
