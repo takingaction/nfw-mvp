@@ -197,6 +197,7 @@ export async function POST(request: Request) {
                         id: subscriptionItemId,
                         price: process.env.STRIPE_PRICE_FOUNDING,
                       }],
+                      proration_behavior: "none",
                       metadata: {
                         upgraded_from: "contributing",
                       },
@@ -860,6 +861,7 @@ export async function POST(request: Request) {
                 id: subscriptionItemId,
                 price: process.env.STRIPE_PRICE_FOUNDING,
               }],
+              proration_behavior: "none",
               metadata: {
                 upgraded_from: "contributing",
                 upgrade_invoice_id: invoice.id,
