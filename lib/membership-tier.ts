@@ -133,15 +133,15 @@ export async function recalculateAndUpdateMemberTier(
 }
 
 /**
- * Finds a payment by stripe_payment_id or stripe_invoice_id.
+ * Finds a payment by stripe_payment_id, stripe_invoice_id, or stripe_payment_intent_id.
  */
 export async function findPaymentByStripeId(
   stripeId: string
-): Promise<{ id: string; user_id: string; amount: number } | null> {
-  // First try stripe_payment_id
+): Promise<{ id: string; user_id: string; amount: number; stripe_payment_id: string | null } | null> {
+  // First try stripe_payment_id (charge ID)
   const { data: byPaymentId, error: byPaymentIdError } = await supabaseAdmin
     .from("membership_payments")
-    .select("id, user_id, amount")
+    .select("id, user_id, amount, stripe_payment_id")
     .eq("stripe_payment_id", stripeId)
     .limit(1)
     .single();
@@ -153,7 +153,7 @@ export async function findPaymentByStripeId(
   // Then try stripe_invoice_id
   const { data: byInvoiceId, error: byInvoiceIdError } = await supabaseAdmin
     .from("membership_payments")
-    .select("id, user_id, amount")
+    .select("id, user_id, amount, stripe_payment_id")
     .eq("stripe_invoice_id", stripeId)
     .limit(1)
     .single();
@@ -162,7 +162,32 @@ export async function findPaymentByStripeId(
     return byInvoiceId;
   }
 
+  // Finally try stripe_payment_intent_id (for refund events that come with charge ID)
+  const { data: byIntentId, error: byIntentIdError } = await supabaseAdmin
+    .from("membership_payments")
+    .select("id, user_id, amount, stripe_payment_id")
+    .eq("stripe_payment_intent_id", stripeId)
+    .limit(1)
+    .single();
+
+  if (byIntentId && !byIntentIdError) {
+    return byIntentId;
+  }
+
   return null;
+}
+
+/**
+ * Result of a refund/dispute processing.
+ */
+export interface RefundResult {
+  success: boolean;
+  reversalId: string | null;
+  matchedPayment: { id: string; user_id: string; amount: number } | null;
+  tierChanged: boolean;
+  oldTier: string | null;
+  newTier: string | null;
+  userEmail: string | null;
 }
 
 /**
@@ -172,18 +197,33 @@ export async function recordPaymentReversal(
   originalPaymentId: string,
   reversalType: "refunded" | "disputed",
   reversalReason?: string
-): Promise<string | null> {
+): Promise<RefundResult> {
   // Get the original payment
   const { data: originalPayment, error: fetchError } = await supabaseAdmin
     .from("membership_payments")
-    .select("id, user_id, amount, payment_type, stripe_invoice_id, stripe_payment_id")
+    .select("id, user_id, amount, payment_type, stripe_invoice_id, stripe_payment_id, stripe_payment_intent_id")
     .eq("id", originalPaymentId)
     .single();
 
   if (fetchError || !originalPayment) {
     console.error("[recordPaymentReversal] Original payment not found:", originalPaymentId);
-    return null;
+    return {
+      success: false,
+      reversalId: null,
+      matchedPayment: null,
+      tierChanged: false,
+      oldTier: null,
+      newTier: null,
+      userEmail: null,
+    };
   }
+
+  // Get old tier before recalculating
+  const oldTier = originalPayment.payment_type === "upgrade" || originalPayment.amount === 100
+    ? "founding"
+    : originalPayment.payment_type === "signup" || originalPayment.payment_type === "renewal" || originalPayment.amount === 15
+      ? "contributing"
+      : "free";
 
   // Insert reversal record
   const { data: reversalRecord, error: insertError } = await supabaseAdmin
@@ -195,6 +235,7 @@ export async function recordPaymentReversal(
       status: reversalType,
       stripe_payment_id: originalPayment.stripe_payment_id,
       stripe_invoice_id: originalPayment.stripe_invoice_id,
+      stripe_payment_intent_id: originalPayment.stripe_payment_intent_id,
       original_payment_id: originalPaymentId,
       reversal_reason: reversalReason || `${reversalType} event received`,
     })
@@ -203,18 +244,149 @@ export async function recordPaymentReversal(
 
   if (insertError) {
     console.error("[recordPaymentReversal] Error inserting reversal:", insertError);
-    return null;
+    return {
+      success: false,
+      reversalId: null,
+      matchedPayment: originalPayment,
+      tierChanged: false,
+      oldTier,
+      newTier: null,
+      userEmail: null,
+    };
   }
 
   console.log(`[recordPaymentReversal] Recorded ${reversalType} for payment ${originalPaymentId}`);
 
+  // Get user email for notification
+  const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("email")
+    .eq("id", originalPayment.user_id)
+    .single();
+
   // Recalculate and update the member's tier
+  let tierChanged = false;
+  let newTier: string | null = null;
   try {
-    await recalculateAndUpdateMemberTier(originalPayment.user_id);
+    const tierResult = await recalculateAndUpdateMemberTier(originalPayment.user_id);
+    newTier = tierResult.membership_level;
+    tierChanged = oldTier !== newTier;
   } catch (err) {
     console.error("[recordPaymentReversal] Error updating member tier:", err);
     // Don't fail the reversal if tier update fails
   }
 
-  return reversalRecord?.id;
+  return {
+    success: true,
+    reversalId: reversalRecord?.id || null,
+    matchedPayment: originalPayment,
+    tierChanged,
+    oldTier,
+    newTier,
+    userEmail: profile?.email || null,
+  };
+}
+
+/**
+ * Sends a Slack notification for refund processing.
+ */
+export async function notifyRefundProcessed(params: {
+  userId: string;
+  email: string;
+  amount: number;
+  oldTier: string;
+  newTier: string;
+  refundType: "refunded" | "disputed";
+  paymentId: string;
+  tierChanged: boolean;
+}): Promise<void> {
+  const webhookUrl = process.env.SLACK_REFUND_WEBHOOK_URL;
+  if (!webhookUrl) {
+    console.warn("[notifyRefundProcessed] SLACK_REFUND_WEBHOOK_URL not configured, skipping notification");
+    return;
+  }
+
+  const {
+    email,
+    amount,
+    oldTier,
+    newTier,
+    refundType,
+    paymentId,
+    tierChanged,
+  } = params;
+
+  const emoji = tierChanged ? "🔵" : "⚪";
+  const tierChangeText = tierChanged ? `• Tier Change: ${oldTier} → ${newTier}` : "";
+
+  const message = {
+    text: `${emoji} Refund Processed`,
+    blocks: [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `${emoji} *Refund Processed*\n• Member: ${email}\n• Amount: $${Math.abs(amount).toFixed(2)}\n${tierChangeText}\n• Type: ${refundType}\n• Payment ID: ${paymentId}`,
+        },
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(message),
+    });
+
+    if (!response.ok) {
+      console.error("[notifyRefundProcessed] Failed to send Slack notification:", response.statusText);
+    }
+  } catch (err) {
+    console.error("[notifyRefundProcessed] Error sending Slack notification:", err);
+  }
+}
+
+/**
+ * Sends a Slack notification when a refund cannot be matched.
+ */
+export async function notifyRefundNotMatched(params: {
+  chargeId: string;
+  amount?: number;
+  error: string;
+}): Promise<void> {
+  const webhookUrl = process.env.SLACK_REFUND_WEBHOOK_URL;
+  if (!webhookUrl) {
+    console.warn("[notifyRefundNotMatched] SLACK_REFUND_WEBHOOK_URL not configured, skipping notification");
+    return;
+  }
+
+  const { chargeId, amount, error } = params;
+
+  const message = {
+    text: "🔴 Refund Not Matched - ACTION REQUIRED",
+    blocks: [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `🔴 *Refund Not Matched - ACTION REQUIRED*\n• Charge ID: ${chargeId}\n• Amount: ${amount ? `$${Math.abs(amount).toFixed(2)}` : "N/A"}\n• Error: ${error}\n• Please investigate manually`,
+        },
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(message),
+    });
+
+    if (!response.ok) {
+      console.error("[notifyRefundNotMatched] Failed to send Slack notification:", response.statusText);
+    }
+  } catch (err) {
+    console.error("[notifyRefundNotMatched] Error sending Slack notification:", err);
+  }
 }

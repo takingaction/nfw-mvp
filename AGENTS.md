@@ -14007,3 +14007,32 @@ When user tries to log in before confirming email:
 
 ### Commit
 - `feat: add resend confirmation email to error and login pages`
+
+## Session 2026-09-12: Payment Intents Backfill UI
+
+### Goal
+Add UI to `/admin/backfill/stripe` page to run the Payment Intents backfill without needing curl commands.
+
+### Changes Made
+
+**API Auth (`app/api/admin/backfill/stripe/backfill-payment-intents/route.ts`):**
+- Changed auth from CRON_SECRET to admin session auth via `requireAdmin()`
+
+**UI (`app/admin/backfill/stripe/BackfillClient.tsx`):**
+- Added state: `paymentIntentsCount`, `paymentIntentsLoading`, `paymentIntentsResult`
+- Added `fetchPaymentIntentsCount()` to fetch count on page load
+- Added `handlePaymentIntentsBackfill()` to run the backfill
+- Added new "Payment Intents Backfill" section in the Members tab showing:
+  - Count of payments needing backfill
+  - "Run Backfill" button
+  - Last result display (processed/failed)
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/backfill/stripe/backfill-payment-intents/route.ts` | Changed auth to admin session |
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Added backfill UI section |
+
+### Build
+- ✅ Build passed

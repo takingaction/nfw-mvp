@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { sendGiftCodesEmail, sendWelcomeEmail } from "@/lib/email";
-import { recordPaymentReversal, findPaymentByStripeId } from "@/lib/membership-tier";
+import { recordPaymentReversal, findPaymentByStripeId, notifyRefundProcessed, notifyRefundNotMatched } from "@/lib/membership-tier";
 
 export const dynamic = "force-dynamic";
 
@@ -156,6 +156,16 @@ export async function POST(request: Request) {
             if (currentProfile?.membership_level !== "contributing") {
               console.log("[webhook] upgrade: User is not contributing, skipping. Current level:", currentProfile?.membership_level);
             } else {
+              // Get charge ID from PaymentIntent for refund tracking
+              let chargeId = null;
+              let stripePaymentIntentId = session.payment_intent as string;
+              try {
+                const paymentIntent = await stripe.paymentIntents.retrieve(stripePaymentIntentId);
+                chargeId = paymentIntent.latest_charge as string || null;
+              } catch (err) {
+                console.error("[webhook] upgrade: Failed to get PaymentIntent:", err);
+              }
+
               // Insert into membership_upgrades table
               await supabaseAdmin
                 .from("membership_upgrades")
@@ -164,18 +174,21 @@ export async function POST(request: Request) {
                   from_level: "contributing",
                   to_level: "founding",
                   amount: amountPaid,
-                  stripe_payment_id: session.payment_intent as string,
+                  stripe_payment_id: chargeId,  // Store charge ID for refund lookups
                 });
 
-              // Insert into membership_payments table
+              // Insert into membership_payments table with both IDs
               await supabaseAdmin
                 .from("membership_payments")
                 .insert({
                   user_id: userId,
                   amount: amountPaid,
                   payment_type: "upgrade",
-                  stripe_payment_id: session.payment_intent as string,
+                  stripe_payment_id: chargeId,  // Store charge ID for refund lookups
+                  stripe_payment_intent_id: stripePaymentIntentId,  // Also store PI for fallback lookup
                 });
+
+              console.log("[webhook] upgrade: Inserted membership_payment for user:", userId, "charge:", chargeId);
 
               // Update subscription to founding price
               if (currentProfile?.stripe_customer_id) {
@@ -413,6 +426,30 @@ export async function POST(request: Request) {
                 await checkAndSyncAccessMember(supabaseAdmin, profileId, customerEmail);
               } catch (err) {
                 console.error("[webhook] Failed to sync to Access Perks:", err);
+              }
+
+              // Insert into membership_payments for regular purchases
+              // Get charge ID from PaymentIntent for refund tracking
+              if (paymentIntentId && profileUpdated) {
+                try {
+                  const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+                  const chargeId = paymentIntent.latest_charge as string || null;
+                  const stripePaymentIntentId = paymentIntent.id;
+
+                  await supabaseAdmin
+                    .from("membership_payments")
+                    .insert({
+                      user_id: profileId,
+                      amount: amountPaid,
+                      payment_type: "signup",
+                      stripe_payment_id: chargeId,  // Store charge ID for refund lookups
+                      stripe_payment_intent_id: stripePaymentIntentId,  // Also store PI for fallback lookup
+                    });
+
+                  console.log("[webhook] Inserted membership_payment for user:", profileId, "charge:", chargeId);
+                } catch (err) {
+                  console.error("[webhook] Failed to insert membership_payment:", err);
+                }
               }
             }
           } else {
@@ -821,6 +858,18 @@ export async function POST(request: Request) {
         const amountPaid = invoice.amount_paid / 100;
         console.log("[webhook] invoice.payment_succeeded: Amount paid:", amountPaid);
 
+        // Get charge ID from PaymentIntent for refund tracking
+        let chargeId = null;
+        let paymentIntentId = (invoice as any).payment_intent as string || null;
+        if (paymentIntentId) {
+          try {
+            const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+            chargeId = paymentIntent.latest_charge as string || null;
+          } catch (err) {
+            console.error("[webhook] invoice.payment_succeeded: Failed to get PaymentIntent:", err);
+          }
+        }
+
         // Insert into membership_upgrades table
         await supabaseAdmin
           .from("membership_upgrades")
@@ -829,19 +878,22 @@ export async function POST(request: Request) {
             from_level: "contributing",
             to_level: "founding",
             amount: amountPaid,
-            stripe_payment_id: invoice.id, // invoice ID is the payment record
+            stripe_payment_id: chargeId, // Store charge ID for refund lookups
           });
 
-        // Insert into membership_payments table
+        // Insert into membership_payments table with both IDs
         await supabaseAdmin
           .from("membership_payments")
           .insert({
             user_id: userId,
             amount: amountPaid,
             payment_type: "upgrade",
-            stripe_payment_id: invoice.id,
+            stripe_payment_id: chargeId,  // Store charge ID for refund lookups
+            stripe_payment_intent_id: paymentIntentId,  // Also store PI for fallback lookup
             stripe_invoice_id: invoice.id,
           });
+
+        console.log("[webhook] invoice.payment_succeeded: Inserted membership_payment for user:", userId, "charge:", chargeId);
 
         // Fetch current subscription and update to founding price (idempotent)
         const subscriptions = await stripe.subscriptions.list({
@@ -896,25 +948,43 @@ export async function POST(request: Request) {
         console.log("[webhook] Processing charge.refunded event");
         const charge = event.data.object as Stripe.Charge;
         const chargeId = charge.id;
+        const refundAmount = charge.amount_refunded ? charge.amount_refunded / 100 : 0;
 
-        console.log(`[webhook] charge.refunded: Processing charge ${chargeId}`);
+        console.log(`[webhook] charge.refunded: Processing charge ${chargeId}, amount: ${refundAmount}`);
 
         // Find the original payment by stripe_payment_id (which is the charge ID)
         const payment = await findPaymentByStripeId(chargeId);
 
         if (!payment) {
           console.log(`[webhook] charge.refunded: No matching payment found for charge ${chargeId}`);
+          // Send Slack alert for unmatched refund
+          await notifyRefundNotMatched({
+            chargeId,
+            amount: refundAmount,
+            error: "No matching payment found for this charge ID",
+          });
           break;
         }
 
-        const reversalId = await recordPaymentReversal(
+        const result = await recordPaymentReversal(
           payment.id,  // Pass internal payment ID, not charge ID
           "refunded",
           `Full refund received`
         );
 
-        if (reversalId) {
-          console.log(`[webhook] charge.refunded: Recorded reversal ${reversalId} for charge ${chargeId}`);
+        if (result.success && result.reversalId) {
+          console.log(`[webhook] charge.refunded: Recorded reversal ${result.reversalId} for charge ${chargeId}`);
+          // Send Slack notification for successful refund
+          await notifyRefundProcessed({
+            userId: payment.user_id,
+            email: result.userEmail || "",
+            amount: payment.amount,
+            oldTier: result.oldTier || "",
+            newTier: result.newTier || "",
+            refundType: "refunded",
+            paymentId: payment.stripe_payment_id || chargeId,
+            tierChanged: result.tierChanged || false,
+          });
         }
         break;
       }
@@ -941,17 +1011,34 @@ export async function POST(request: Request) {
 
           if (!payment) {
             console.log(`[webhook] charge.dispute.closed: No matching payment found for charge ${chargeId}`);
+            // Send Slack alert for unmatched dispute
+            await notifyRefundNotMatched({
+              chargeId,
+              amount: dispute.amount ? dispute.amount / 100 : undefined,
+              error: `Dispute lost: ${dispute.reason || "customer dispute"}`,
+            });
             break;
           }
 
-          const reversalId = await recordPaymentReversal(
+          const result = await recordPaymentReversal(
             payment.id,  // Pass internal payment ID, not charge ID
             "disputed",
             `Dispute lost: ${dispute.reason || "customer dispute"}`
           );
 
-          if (reversalId) {
-            console.log(`[webhook] charge.dispute.closed: Recorded reversal ${reversalId} for charge ${chargeId}`);
+          if (result.success && result.reversalId) {
+            console.log(`[webhook] charge.dispute.closed: Recorded reversal ${result.reversalId} for charge ${chargeId}`);
+            // Send Slack notification for successful dispute handling
+            await notifyRefundProcessed({
+              userId: payment.user_id,
+              email: result.userEmail || "",
+              amount: payment.amount,
+              oldTier: result.oldTier || "",
+              newTier: result.newTier || "",
+              refundType: "disputed",
+              paymentId: payment.stripe_payment_id || chargeId,
+              tierChanged: result.tierChanged || false,
+            });
           }
         } else {
           console.log(`[webhook] charge.dispute.closed: Dispute status is ${dispute.status}, not processing`);

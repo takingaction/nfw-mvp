@@ -357,6 +357,11 @@ export default function BackfillClient() {
   const [giftCodeProfiles, setGiftCodeProfiles] = useState<any[]>([]);
   const [giftCodeLoading, setGiftCodeLoading] = useState(false);
 
+  // Payment Intents Backfill
+  const [paymentIntentsCount, setPaymentIntentsCount] = useState(0);
+  const [paymentIntentsLoading, setPaymentIntentsLoading] = useState(false);
+  const [paymentIntentsResult, setPaymentIntentsResult] = useState<{ processed: number; failed: number; message: string } | null>(null);
+
   // Missing from DB (Stripe subscriptions not in membership_payments)
   const [missingPayments, setMissingPayments] = useState<MissingPaymentsResponse | null>(null);
   const [missingPaymentsLoading, setMissingPaymentsLoading] = useState(false);
@@ -1281,6 +1286,30 @@ export default function BackfillClient() {
     );
   };
 
+  // Run Payment Intents Backfill
+  const handlePaymentIntentsBackfill = async () => {
+    setPaymentIntentsLoading(true);
+    setPaymentIntentsResult(null);
+    try {
+      const res = await fetch("/api/admin/backfill/stripe/backfill-payment-intents", {
+        method: "POST",
+      });
+      const data = await res.json();
+      setPaymentIntentsResult(data);
+      if (res.ok) {
+        showSuccess("Backfill Complete", data.message);
+        fetchPaymentIntentsCount();
+      } else {
+        showError("Backfill Failed", data.message || data.error || "Unknown error");
+      }
+    } catch (error) {
+      console.error("Payment intents backfill failed:", error);
+      showError("Backfill Failed", error instanceof Error ? error.message : "Unknown error");
+    } finally {
+      setPaymentIntentsLoading(false);
+    }
+  };
+
   // Fetch gift code signups
   const fetchGiftCodes = useCallback(async () => {
     setGiftCodeLoading(true);
@@ -1297,6 +1326,22 @@ export default function BackfillClient() {
     }
   }, []);
 
+  // Fetch payment intents backfill count
+  const fetchPaymentIntentsCount = useCallback(async () => {
+    setPaymentIntentsLoading(true);
+    try {
+      const res = await fetch("/api/admin/backfill/stripe/backfill-payment-intents");
+      if (res.ok) {
+        const data = await res.json();
+        setPaymentIntentsCount(data.count || 0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch payment intents count:", error);
+    } finally {
+      setPaymentIntentsLoading(false);
+    }
+  }, []);
+
   // Check if initialized on mount (removed automatic Stripe calls - now manual only)
   useEffect(() => {
     fetchStatus();
@@ -1306,7 +1351,8 @@ export default function BackfillClient() {
     fetchDuplicates();
     fetchStripeDuplicates();
     fetchMissingFromBackfill();
-  }, [fetchStatus, fetchGiftCodes, fetchMissingPaymentsSilent, fetchOurDb, fetchDuplicates, fetchStripeDuplicates, fetchMissingFromBackfill]);
+    fetchPaymentIntentsCount();
+  }, [fetchStatus, fetchGiftCodes, fetchMissingPaymentsSilent, fetchOurDb, fetchDuplicates, fetchStripeDuplicates, fetchMissingFromBackfill, fetchPaymentIntentsCount]);
 
   // Delete single payment
   const handleDeletePayment = async () => {
@@ -2374,6 +2420,38 @@ export default function BackfillClient() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Intents Backfill Section */}
+      {paymentIntentsCount > 0 && (
+        <div className="bg-white rounded-lg border border-blue-200 overflow-hidden">
+          <div className="p-4 border-b border-nfw-dove bg-blue-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-ui font-bold text-blue-700">Payment Intents Backfill ({paymentIntentsCount})</h3>
+                <p className="text-xs text-blue-600 mt-1">
+                  Payments need PaymentIntent IDs for refund tracking.
+                </p>
+              </div>
+              <button
+                onClick={handlePaymentIntentsBackfill}
+                disabled={paymentIntentsLoading}
+                className="px-3 py-1.5 bg-blue-500 text-white text-xs font-ui font-semibold rounded hover:bg-blue-600 disabled:opacity-50"
+              >
+                {paymentIntentsLoading ? "Running..." : "Run Backfill"}
+              </button>
+            </div>
+            {paymentIntentsResult && (
+              <div className="mt-2 p-2 bg-blue-100 rounded text-xs">
+                <p className="font-semibold">Last backfill result:</p>
+                <p>{paymentIntentsResult.message}</p>
+                {paymentIntentsResult.processed !== undefined && (
+                  <p>Processed: {paymentIntentsResult.processed}, Failed: {paymentIntentsResult.failed}</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
