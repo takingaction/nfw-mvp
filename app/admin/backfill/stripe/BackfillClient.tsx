@@ -415,7 +415,7 @@ export default function BackfillClient() {
   }, []);
 
   // Active tab state for organizing sections
-  const [activeTab, setActiveTab] = useState<'stripe-data' | 'members' | 'payments' | 'tools'>('stripe-data');
+  const [activeTab, setActiveTab] = useState<'stripe-data' | 'members' | 'payments' | 'tools' | 'pi-backfill'>('stripe-data');
 
   // Fetch status
   const fetchStatus = useCallback(async () => {
@@ -1608,6 +1608,16 @@ export default function BackfillClient() {
             Members
           </button>
           <button
+            onClick={() => setActiveTab('pi-backfill')}
+            className={`px-4 py-2 rounded-lg font-ui text-sm font-bold transition-colors ${
+              activeTab === 'pi-backfill'
+                ? "bg-blue-600 text-white"
+                : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+            }`}
+          >
+            PI Backfill
+          </button>
+          <button
             onClick={() => setActiveTab('payments')}
             className={`px-4 py-2 rounded-lg font-ui text-sm font-bold transition-colors ${
               activeTab === 'payments'
@@ -1784,8 +1794,44 @@ export default function BackfillClient() {
                 </tbody>
               </table>
             </div>
-          </>
-        )}
+      </>
+      )}
+
+      {/* PI BACKFILL SECTION - Always visible at bottom of Stripe Data tab */}
+      <div className="bg-white rounded-lg border-2 border-blue-500 overflow-hidden mt-6">
+        <div className="p-6 border-b border-nfw-dove bg-blue-50">
+          <h3 className="font-ui font-bold text-lg text-blue-700">Payment Intents Backfill</h3>
+          <p className="text-sm text-blue-600 mt-2">
+            Payments missing stripe_payment_intent_id for refund tracking.
+          </p>
+        </div>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-sm text-gray-600">Payments needing backfill:</p>
+              <p className="text-3xl font-bold text-blue-600">{paymentIntentsCount}</p>
+            </div>
+            <button
+              onClick={handlePaymentIntentsBackfill}
+              disabled={paymentIntentsLoading}
+              className="px-6 py-3 bg-blue-600 text-white text-sm font-ui font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {paymentIntentsLoading ? "Running..." : "Run Backfill"}
+            </button>
+          </div>
+          {paymentIntentsResult && (
+            <div className="mt-4 p-4 bg-blue-100 rounded-lg">
+              <p className="font-semibold text-sm">Last result:</p>
+              <p className="text-sm mt-1">{paymentIntentsResult.message}</p>
+              {paymentIntentsResult.processed !== undefined && (
+                <p className="text-sm mt-1">
+                  Processed: {paymentIntentsResult.processed}, Failed: {paymentIntentsResult.failed}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
         {!reconciliation && !reconciliationLoading && (
           <p className="text-nfw-blackberry/60 font-ui text-sm">

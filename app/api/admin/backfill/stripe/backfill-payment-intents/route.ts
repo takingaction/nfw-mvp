@@ -213,11 +213,16 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     // Verify this is an admin request
+    console.log("[payment-intents] GET - checking admin auth");
     const adminCheck = await requireAdmin({ redirectOnFailure: false });
+    console.log("[payment-intents] adminCheck:", JSON.stringify(adminCheck));
+    
     if (!adminCheck.authorized) {
+      console.log("[payment-intents] Not authorized, returning 401");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    console.log("[payment-intents] Admin authorized, querying payments");
     const { data: payments, count, error } = await supabaseAdmin
       .from("membership_payments")
       .select("id", { count: "exact" })
