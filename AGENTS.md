@@ -13908,3 +13908,29 @@ Three fetch functions were not added to the page mount `useEffect`:
 
 ### Commit
 - `feat: add manual Refresh button to Reconciliation Table for direct Stripe fetch`
+
+## Session 2026-09-11: Promotional Popup Double-Load Fix
+
+### Problem
+Popups on `/admin/promotional-popups` loaded twice on page mount - appeared, then faded out after 3 seconds and loaded again.
+
+### Root Cause
+React Strict Mode double-invokes useEffects in development. The fetch effect's cleanup ran, then the effect ran again. The show-effect had `popups` in its dependency array, so when the second fetch set new `popups` state, the show-effect re-ran and reset the timer, causing the popup to appear, disappear, then re-appear.
+
+### Solution
+
+**`components/popup/PromotionalPopup.tsx`:**
+1. Added `mountedRef` object to track component mount status
+2. Added cleanup in fetch effect to set `mountedRef.current = false` on unmount
+3. Added `mountedRef.current` guard before setting state in fetch
+4. Removed `popups` from show-effect dependencies (now only depends on `currentPopup`)
+5. Added `mountedRef.current` guard before setting `showPopup` state in timer
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/popup/PromotionalPopup.tsx` | Added mountedRef, cleanup, and guards to prevent double-load |
+
+### Commit
+- `fix: prevent promotional popup double-load on page mount`
