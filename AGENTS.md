@@ -13915,30 +13915,53 @@ Three fetch functions were not added to the page mount `useEffect`:
 Popups on `/admin/promotional-popups` loaded twice on page mount - appeared, then faded out after 3 seconds and loaded again.
 
 ### Root Cause
-React Strict Mode double-invokes useEffects in development. The fetch effect's cleanup ran, then the effect ran again. The show-effect had `popups` in its dependency array, so when the second fetch set new `popups` state, the show-effect re-ran and reset the timer, causing the popup to appear, disappear, then re-appear.
+Multiple issues combined:
+1. React Strict Mode double-invokes useEffects in development
+2. The `animKey` state caused re-renders which re-triggered the show effect
+3. The CSS `animate-popup-fade` class conflicted with inline opacity/transform styles, causing visual glitches
 
-### Solution (Two Iterations)
+### Solution (Three Iterations)
 
 **First fix (db68c66):** Added `mountedRef` using `useRef(true)`
-- This didn't work because `mountedRef = { current: true }` was a plain object recreated every render
+- Didn't work - `mountedRef = { current: true }` was a plain object recreated every render
 
 **Second fix (40331de):** Switched to local `isMounted` variable pattern
+- Helped with Strict Mode but popup still grew in size after showing
+
+**Third fix (70d26e6):** Complete rewrite of show logic
+- Removed `animKey` state entirely (was causing re-render loops)
+- Added `animationKeyRef` to track animation cycles
+- Removed `animate-popup-fade` CSS class and used only inline styles
+- Used CSS transitions for opacity, transform, and visibility
+- Changed effect dependency from `currentPopup` to `currentPopup?.id`
+
+### Final Working Solution
 
 **`components/popup/PromotionalPopup.tsx`:**
-1. Use local `let isMounted = true` in effect closure instead of ref
-2. Return early if `path` is empty
-3. Check `isMounted` before setting state
-4. Cleanup sets `isMounted = false` when effect re-runs
-5. Removed `popups` from show-effect dependencies
+
+1. **Removed state-driven animation restart** - No more `animKey` state
+2. **Use `animationKeyRef`** - Tracks animation cycles without triggering re-renders
+3. **CSS transitions only** - No CSS animation class, just inline styles:
+   ```typescript
+   style={{ 
+     opacity: showPopup ? 1 : 0,
+     transform: showPopup ? 'scale(1)' : 'scale(0.95)',
+     transition: 'opacity 0.3s ease, transform 0.3s ease',
+     visibility: showPopup ? 'visible' : 'hidden'
+   }}
+   ```
+4. **Effect depends on `currentPopup?.id`** - Only re-runs when popup ID changes
 
 ### Files Modified
 
 | File | Change |
 |------|--------|
-| `components/popup/PromotionalPopup.tsx` | Switched from mountedRef to local isMounted pattern |
+| `components/popup/PromotionalPopup.tsx` | Complete rewrite of show logic - removed animKey, removed CSS animation class, use only inline styles |
 
-### Commit
-- `fix: use local isMounted in fetch effect to fix popup double-load`
+### Commits
+- `db68c66` - Initial isMounted attempt (didn't fully work)
+- `40331de` - Local isMounted pattern (popup still had issues)
+- `70d26e6` - Final fix - removed CSS animation, inline styles only
 
 ## Session 2026-09-11: Auth Email Confirmation Resend Feature
 
