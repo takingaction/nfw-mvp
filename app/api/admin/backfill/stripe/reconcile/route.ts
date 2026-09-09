@@ -91,9 +91,15 @@ export async function GET(request: Request) {
       // Ensure true_total is always set in the returned stripeLive object
       if (stripeLive.contributing) {
         stripeLive.contributing.true_total = stripeContributingTotal;
+        stripeLive.contributing.total = stripeContributingTotal;
       }
       if (stripeLive.founding) {
         stripeLive.founding.true_total = stripeFoundingTotal;
+        stripeLive.founding.total = stripeFoundingTotal;
+      }
+      if (stripeLive.total) {
+        stripeLive.total.true_total = stripeContributingTotal + stripeFoundingTotal;
+        stripeLive.total.total = stripeContributingTotal + stripeFoundingTotal;
       }
 
       const ourDb = {

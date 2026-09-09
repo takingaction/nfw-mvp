@@ -13797,3 +13797,27 @@ Split `fetchMissingPayments` into two functions:
 ### Commit
 
 - `ff54b95` - fix: split fetchMissingPayments into silent (page load) and modal (button click) versions
+
+## Session 2026-09-09 (Afternoon): Fix Stripe Live Column Showing $0
+
+### Problem
+
+Stripe Live column in reconciliation table showed `$0` for all rows despite database cache having correct values.
+
+### Root Cause
+
+The `stripe_live_json` stored by cron had `count` and `true_total` fields but NOT `total`. The reconcile API set `true_total` on the cached objects but never set `total`. The UI read `stripe_live.contributing.total` which was `undefined`, resulting in `$0`.
+
+### Solution
+
+**`app/api/admin/backfill/stripe/reconcile/route.ts`**: After computing totals, now sets both `true_total` AND `total` on all three tier objects (`contributing`, `founding`, `total`).
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/backfill/stripe/reconcile/route.ts` | Set `total` field on contributing, founding, and total tier objects in addition to `true_total` |
+
+### Commit
+
+- `fix: set total field on stripeLive tier objects for UI compatibility`
