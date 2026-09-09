@@ -1029,27 +1029,32 @@ export default function BackfillClient() {
     }
   }, []);
 
-  // Fetch missing from DB (Stripe subscriptions not in membership_payments)
+  // Fetch missing from DB (Stripe subscriptions not in membership_payments) - silent version for page load
+  const fetchMissingPaymentsSilent = useCallback(async () => {
+    setMissingPaymentsLoading(true);
+    try {
+      const res = await fetch("/api/admin/backfill/stripe/missing-payments");
+      if (res.ok) {
+        const data = await res.json();
+        setMissingPayments(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch missing payments:", error);
+    } finally {
+      setMissingPaymentsLoading(false);
+    }
+  }, []);
+
+  // Fetch missing from DB - with confirmation modal (for button clicks)
   const fetchMissingPayments = useCallback(async () => {
     showConfirm(
       "Refresh Missing Payments",
       "Refresh the list of missing payments from Stripe?",
       async () => {
-        setMissingPaymentsLoading(true);
-        try {
-          const res = await fetch("/api/admin/backfill/stripe/missing-payments");
-          if (res.ok) {
-            const data = await res.json();
-            setMissingPayments(data);
-          }
-        } catch (error) {
-          console.error("Failed to fetch missing payments:", error);
-        } finally {
-          setMissingPaymentsLoading(false);
-        }
+        await fetchMissingPaymentsSilent();
       }
     );
-  }, []);
+  }, [fetchMissingPaymentsSilent]);
 
   // Sync All missing payments - insert them into membership_payments
   const handleSyncAll = async () => {
@@ -1245,9 +1250,9 @@ export default function BackfillClient() {
   useEffect(() => {
     fetchStatus();
     fetchGiftCodes();
-    fetchMissingPayments();
+    fetchMissingPaymentsSilent();
     fetchOurDb();
-  }, [fetchStatus, fetchGiftCodes, fetchMissingPayments, fetchOurDb]);
+  }, [fetchStatus, fetchGiftCodes, fetchMissingPaymentsSilent, fetchOurDb]);
 
   // Delete single payment
   const handleDeletePayment = async () => {
