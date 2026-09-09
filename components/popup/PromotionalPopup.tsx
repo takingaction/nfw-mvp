@@ -24,8 +24,7 @@ export default function PromotionalPopup({ path }: PromotionalPopupProps) {
   const [popups, setPopups] = useState<Popup[]>([]);
   const [currentPopup, setCurrentPopup] = useState<Popup | null>(null);
   const [showPopup, setShowPopup] = useState(false);
-  const [animKey, setAnimKey] = useState(0);
-  const popupShownRef = useRef(false);
+  const animationKeyRef = useRef(0);
   const [isMobile, setIsMobile] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
@@ -67,17 +66,18 @@ export default function PromotionalPopup({ path }: PromotionalPopupProps) {
   }, [path]);
 
   useEffect(() => {
-    if (currentPopup) {
-      popupShownRef.current = false;
-      const timer = setTimeout(() => {
-        if (popupShownRef.current) return;
-        popupShownRef.current = true;
-        setShowPopup(true);
-        setAnimKey(prev => prev + 1);
-      }, currentPopup.delay_seconds * 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [currentPopup]);
+    if (!currentPopup) return;
+    
+    animationKeyRef.current += 1;
+    const currentKey = animationKeyRef.current;
+    
+    const timer = setTimeout(() => {
+      if (animationKeyRef.current !== currentKey) return;
+      setShowPopup(true);
+    }, currentPopup.delay_seconds * 1000);
+    
+    return () => clearTimeout(timer);
+  }, [currentPopup?.id]);
 
   const isDismissed = (popup: Popup): boolean => {
     if (typeof window === "undefined") return false;
@@ -193,16 +193,23 @@ export default function PromotionalPopup({ path }: PromotionalPopupProps) {
 return (
     <>
       <div
-        key={animKey}
         className="fixed inset-0 z-50"
         style={{ pointerEvents: showPopup ? "auto" : "none" }}
         onClick={handleOverlayClick}
       >
-        <div className={`absolute inset-0 bg-black/50 ${showPopup ? "animate-popup-fade" : ""}`} />
+        <div 
+          className="absolute inset-0 bg-black/50 animate-popup-fade" 
+          style={{ opacity: showPopup ? 1 : 0, transition: 'opacity 0.3s ease' }} 
+        />
 
         {isMobile ? (
           <div
-            className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl ${showPopup ? "animate-popup-fade" : ""}`}
+            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl animate-popup-fade"
+            style={{ 
+              opacity: showPopup ? 1 : 0, 
+              transform: showPopup ? 'translateY(0)' : 'translateY(100%)',
+              transition: 'opacity 0.3s ease, transform 0.3s ease'
+            }}
           >
             <div className="p-4 flex justify-between items-center border-b border-nfw-blackberry/10">
               <span className="font-sans text-sm text-nfw-blackberry/60">
@@ -239,7 +246,12 @@ return (
         ) : (
           <div className="absolute inset-0 flex items-center justify-center p-4">
             <div
-              className={`bg-white rounded-lg shadow-2xl max-w-3xl w-full ${showPopup ? "animate-popup-fade" : ""}`}
+              className="bg-white rounded-lg shadow-2xl max-w-3xl w-full animate-popup-fade"
+              style={{ 
+                opacity: showPopup ? 1 : 0, 
+                transform: showPopup ? 'scale(1)' : 'scale(0.95)',
+                transition: 'opacity 0.3s ease, transform 0.3s ease'
+              }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex flex-col md:flex-row items-stretch">
