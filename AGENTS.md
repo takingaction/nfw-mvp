@@ -13770,4 +13770,30 @@ await Promise.all([
 
 ### Commit
 
-- (pending) - fix: refresh all page sections after backfill bulk operations complete
+- `d511dd4` - fix: refresh all page sections after backfill bulk operations complete
+
+## Session 2026-09-09 (Continued): Fix Modal Showing on Page Load
+
+### Problem
+
+When loading the backfill/stripe page, a confirmation modal "Refresh Missing Payments?" appeared immediately instead of showing the page content.
+
+### Root Cause
+
+The `useEffect` on page mount called `fetchMissingPayments()`, which internally called `showConfirm()` - opening the modal immediately on page load.
+
+### Solution
+
+Split `fetchMissingPayments` into two functions:
+1. `fetchMissingPaymentsSilent()` - just fetches data without modal (for page load)
+2. `fetchMissingPayments()` - shows confirmation modal first, then calls silent version (for button clicks)
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Split into silent and modal versions |
+
+### Commit
+
+- `ff54b95` - fix: split fetchMissingPayments into silent (page load) and modal (button click) versions

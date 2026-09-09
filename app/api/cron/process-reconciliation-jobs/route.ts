@@ -82,9 +82,9 @@ async function processStripeLiveJob(jobId: string): Promise<void> {
     }
 
     const stripeLiveData = {
-      contributing: { count: contributingCount, total: contributingTotal },
-      founding: { count: foundingCount, total: foundingTotal },
-      total: { count: contributingCount + foundingCount, total: contributingTotal + foundingTotal },
+      contributing: { count: contributingCount, true_total: contributingTotal },
+      founding: { count: foundingCount, true_total: foundingTotal },
+      total: { count: contributingCount + foundingCount, true_total: contributingTotal + foundingTotal },
       fetchedAt: new Date().toISOString(),
     };
 

@@ -219,6 +219,7 @@ interface MissingPaymentsResponse {
 export default function BackfillClient() {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
+  const [liveStatsStale, setLiveStatsStale] = useState(false);
   const [reconciliation, setReconciliation] = useState<ReconciliationResponse | null>(null);
   const [reconciliationLoading, setReconciliationLoading] = useState(false);
   const [verifyPaymentsLoading, setVerifyPaymentsLoading] = useState(false);
@@ -620,14 +621,14 @@ export default function BackfillClient() {
         if (res.ok) {
           const data = await res.json();
 
-          if (data.status === "completed") {
+            if (data.status === "completed") {
             // Job done! Extract stripe_live from response
             if (data.stripeLive) {
               const stripeLive = data.stripeLive;
               setLiveStats({
-                contributing: { count: stripeLive.contributing.count, revenue: stripeLive.contributing.total },
-                founding: { count: stripeLive.founding.count, revenue: stripeLive.founding.total },
-                total: { count: stripeLive.total.count, revenue: stripeLive.total.total },
+                contributing: { count: stripeLive.contributing.count, revenue: stripeLive.contributing.true_total },
+                founding: { count: stripeLive.founding.count, revenue: stripeLive.founding.true_total },
+                total: { count: stripeLive.total.count, revenue: stripeLive.total.true_total },
               });
             }
             setMessage("Live Stripe data refreshed successfully.");
@@ -755,13 +756,33 @@ export default function BackfillClient() {
     }
   }, []);
 
-  // Fetch reconciliation from server on mount
+  // Fetch reconciliation and live stats from server on mount (smart cache check)
   useEffect(() => {
+    // Fetch reconciliation
     fetch("/api/admin/backfill/stripe/reconcile")
       .then(res => res.json())
       .then(data => {
         if (data && !data.error && data.summary) {
           setReconciliation(data);
+        }
+      })
+      .catch(console.error);
+
+    // Fetch live stats (fast cache check, no Stripe calls)
+    fetch("/api/admin/backfill/stripe/stripe-live")
+      .then(res => res.json())
+      .then(data => {
+        if (data?.stripeLive) {
+          // Transform true_total -> revenue for UI compatibility
+          const sl = data.stripeLive;
+          setLiveStats({
+            contributing: { count: sl.contributing.count, revenue: sl.contributing.true_total },
+            founding: { count: sl.founding.count, revenue: sl.founding.true_total },
+            total: { count: sl.total.count, revenue: sl.total.true_total },
+          });
+          setLiveStatsStale(false);
+        } else if (data?.expired || data?.cached === false) {
+          setLiveStatsStale(true);
         }
       })
       .catch(console.error);
@@ -2106,25 +2127,32 @@ export default function BackfillClient() {
       )}
 
       {/* Live Stripe Stats */}
-      {liveStats && (
-        <div className="bg-white rounded-lg p-6 border border-nfw-aubergine/20">
-          <div className="flex justify-between items-center mb-4">
+      <div className="bg-white rounded-lg p-6 border border-nfw-aubergine/20">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-2">
             <h3 className="font-ui font-bold text-nfw-aubergine">Live Stripe Subscriptions</h3>
-            <button
-              onClick={fetchLiveStats}
-              disabled={refreshingLive}
-              className="text-sm bg-nfw-wisteria text-white px-3 py-1 rounded hover:bg-nfw-wisteria/90 disabled:opacity-50 flex items-center gap-1"
-            >
-              {refreshingLive ? (
-                <>
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Starting job...
-                </>
-              ) : (
-                "Refresh Stripe"
-              )}
-            </button>
+            {liveStatsStale && (
+              <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">
+                Data may be stale — click Refresh to update
+              </span>
+            )}
           </div>
+          <button
+            onClick={fetchLiveStats}
+            disabled={refreshingLive}
+            className="text-sm bg-nfw-wisteria text-white px-3 py-1 rounded hover:bg-nfw-wisteria/90 disabled:opacity-50 flex items-center gap-1"
+          >
+            {refreshingLive ? (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Starting job...
+              </>
+            ) : (
+              "Refresh Stripe"
+            )}
+          </button>
+        </div>
+        {liveStats ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-nfw-wisteria/10 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-nfw-aubergine">${liveStats.contributing.revenue.toLocaleString('en-US')}</div>
@@ -2142,8 +2170,12 @@ export default function BackfillClient() {
               <div className="text-xs text-nfw-blackberry/40 mt-1">{liveStats.total.count} subscribers</div>
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="text-center py-4 text-nfw-blackberry/50">
+            {liveStatsStale ? "Click Refresh to load data" : "Loading..."}
+          </div>
+        )}
+      </div>
       </>
       )}
 
