@@ -812,7 +812,7 @@ export default function BackfillClient() {
               const status = await statusRes.json();
 
               if (status.status === "completed") {
-                setMessage("Payment verification complete. Refreshing reconciliation...");
+                setMessage("Payment verification complete. Refreshing all data...");
 
                 // Fetch updated reconciliation
                 const reconRes = await fetch("/api/admin/backfill/stripe/reconcile");
@@ -820,6 +820,13 @@ export default function BackfillClient() {
                   const data = await reconRes.json();
                   setReconciliation(data);
                 }
+
+                // Refresh all sections: Members tab (Status), Stripe Data tab (Live, Our DB)
+                await Promise.all([
+                  fetchStatus(),    // Refresh Members tab stats
+                  fetchLiveStats(), // Refresh Stripe Data tab - Live Stripe column
+                  fetchOurDb(),     // Refresh Stripe Data tab - Our DB column
+                ]);
 
                 setVerifyPaymentsLoading(false);
                 setIsOperationRunning(false);
@@ -953,7 +960,13 @@ export default function BackfillClient() {
           const data = await res.json();
           if (data.success) {
             showSuccess("Sync Complete", `Synced ${data.synced || 0}, failed ${data.failed || 0}`);
-            fetchStatus(); // Refresh to show new data
+            // Refresh all sections: Members tab (Status), Stripe Data tab (Live, True $, Our DB)
+            await Promise.all([
+              fetchStatus(),       // Refresh Members tab stats
+              fetchLiveStats(),    // Refresh Stripe Data tab - Live Stripe column
+              fetchReconciliation(), // Refresh Stripe Data tab - True $ + Difference
+              fetchOurDb(),        // Refresh Stripe Data tab - Our DB column
+            ]);
           } else {
             showError("Sync Failed", data.error || "Unknown error");
           }
@@ -1060,7 +1073,12 @@ export default function BackfillClient() {
           const data = await res.json();
           if (data.success) {
             showSuccess("Sync Complete", data.message);
-            await Promise.all([fetchMissingPayments(), fetchReconciliation()]);
+            // Refresh all sections: Members tab (Status), Stripe Data tab (Reconciliation), Payments tab (MissingPayments)
+            await Promise.all([
+              fetchStatus(),         // Refresh Members tab stats
+              fetchMissingPayments(), // Refresh Payments tab
+              fetchReconciliation(), // Refresh Stripe Data tab
+            ]);
           } else {
             showError("Sync Failed", data.error);
           }

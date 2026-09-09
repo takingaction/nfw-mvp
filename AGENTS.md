@@ -13707,4 +13707,67 @@ const totalFunded = grants
 
 ### Commit
 
-- (pending) - fix: align totalFunded date filter with filteredGrants using submitted_at
+- `7d84c61` - fix: add pagination to analytics queries with helper function and debug logging
+
+## Session 2026-09-09: Backfill Stripe Page Refresh Fix
+
+### Overview
+
+Fixed the backfill/stripe page so that bulk operation buttons refresh ALL relevant sections after completing, not just some tabs.
+
+### Problem
+
+Three bulk operation handlers only refreshed certain page sections:
+- `handleSyncAllPayments` only called `fetchStatus()` (Members tab)
+- `handleVerifyPayments` only called `fetchReconciliation()` (Stripe Data tab)
+- `handleSyncAll` only called `fetchMissingPayments()` and `fetchReconciliation()`
+
+This left other tabs showing stale data after operations completed.
+
+### Page Structure
+
+| Tab | Shows | State Used |
+|-----|-------|------------|
+| **Stripe Data** | Reconciliation table (Stripe Live vs True $ vs Our DB) | `reconciliation`, `ourDb`, `liveStats` |
+| **Members** | Stats cards (Total Users, Matched, Not Found, Errors) | `status.counts` |
+| **Payments** | Payment tables | various |
+
+### Changes Made
+
+**`handleSyncAllPayments`** - Now refreshes all 4 state variables:
+```typescript
+await Promise.all([
+  fetchStatus(),        // Refresh Members tab stats
+  fetchLiveStats(),   // Refresh Stripe Data tab - Live Stripe column
+  fetchReconciliation(), // Refresh Stripe Data tab - True $ + Difference
+  fetchOurDb(),      // Refresh Stripe Data tab - Our DB column
+]);
+```
+
+**`handleVerifyPayments`** - Now refreshes all 3 sections:
+```typescript
+await Promise.all([
+  fetchStatus(),    // Refresh Members tab stats
+  fetchLiveStats(), // Refresh Stripe Data tab - Live Stripe column
+  fetchOurDb(),    // Refresh Stripe Data tab - Our DB column
+]);
+```
+
+**`handleSyncAll`** - Now refreshes all 3 sections:
+```typescript
+await Promise.all([
+  fetchStatus(),         // Refresh Members tab stats
+  fetchMissingPayments(), // Refresh Payments tab
+  fetchReconciliation(), // Refresh Stripe Data tab
+]);
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Added missing fetch calls to 3 handlers |
+
+### Commit
+
+- (pending) - fix: refresh all page sections after backfill bulk operations complete
