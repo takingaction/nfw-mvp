@@ -1943,7 +1943,7 @@ export default function BackfillClient() {
                 disabled={missingPaymentsLoading}
                 className="text-sm bg-nfw-wisteria text-white px-3 py-1 rounded hover:bg-nfw-wisteria/90 disabled:opacity-50"
               >
-                {missingPaymentsLoading ? "Loading..." : "Refresh"}
+                {missingPaymentsLoading ? "Working..." : "Refresh"}
               </button>
             </div>
           </div>
@@ -2155,19 +2155,19 @@ export default function BackfillClient() {
         {liveStats ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-nfw-wisteria/10 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-nfw-aubergine">${liveStats.contributing.revenue.toLocaleString('en-US')}</div>
+              <div className="text-2xl font-bold text-nfw-aubergine">${(liveStats?.contributing?.revenue ?? 0).toLocaleString('en-US')}</div>
               <div className="text-sm text-nfw-blackberry/60">Contributing ($15/mo)</div>
-              <div className="text-xs text-nfw-blackberry/40 mt-1">{liveStats.contributing.count} active</div>
+              <div className="text-xs text-nfw-blackberry/40 mt-1">{liveStats?.contributing?.count ?? 0} active</div>
             </div>
             <div className="bg-nfw-citrine/20 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-nfw-aubergine">${liveStats.founding.revenue.toLocaleString('en-US')}</div>
+              <div className="text-2xl font-bold text-nfw-aubergine">${(liveStats?.founding?.revenue ?? 0).toLocaleString('en-US')}</div>
               <div className="text-sm text-nfw-blackberry/60">Founding ($100)</div>
-              <div className="text-xs text-nfw-blackberry/40 mt-1">{liveStats.founding.count} active</div>
+              <div className="text-xs text-nfw-blackberry/40 mt-1">{liveStats?.founding?.count ?? 0} active</div>
             </div>
             <div className="bg-nfw-aubergine/10 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-nfw-aubergine">${liveStats.total.revenue.toLocaleString('en-US')}</div>
+              <div className="text-2xl font-bold text-nfw-aubergine">${(liveStats?.total?.revenue ?? 0).toLocaleString('en-US')}</div>
               <div className="text-sm text-nfw-blackberry/60">Total Revenue</div>
-              <div className="text-xs text-nfw-blackberry/40 mt-1">{liveStats.total.count} subscribers</div>
+              <div className="text-xs text-nfw-blackberry/40 mt-1">{liveStats?.total?.count ?? 0} subscribers</div>
             </div>
           </div>
         ) : (
