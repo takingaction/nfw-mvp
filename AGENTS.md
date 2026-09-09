@@ -13939,3 +13939,48 @@ React Strict Mode double-invokes useEffects in development. The fetch effect's c
 
 ### Commit
 - `fix: use local isMounted in fetch effect to fix popup double-load`
+
+## Session 2026-09-11: Auth Email Confirmation Resend Feature
+
+### Problem
+Users who let their email confirmation link expire had no clear way to request a new one. The only option was to visit `/auth/sign-up-success` directly.
+
+### Solution
+
+Added resend confirmation email functionality to two locations:
+
+#### 1. `/auth/error` page (`app/auth/error/page.tsx`)
+
+When a confirmation link is expired or invalid:
+- Shows friendly "Confirmation Issue" heading instead of generic error
+- Detects confirmation-related errors (expired, invalid, token issues)
+- Displays email input + "Resend confirmation email" button
+- 60-second cooldown between resends
+- Success/error feedback
+- "Back to sign up" link
+
+#### 2. Login page (`components/login-form.tsx`)
+
+When user tries to log in before confirming email:
+- Shows citrine-tinted box with "Email not confirmed" message
+- "Resend confirmation email" button in the same box
+- 60-second cooldown with countdown
+- Only shows for confirmation errors, not other login failures
+
+### User Flows
+
+| Scenario | Where resend is available |
+|----------|-------------------------|
+| Confirmation link expired | `/auth/error` page auto-detects and shows resend |
+| User tries to login before confirming | Login page shows resend option |
+| User visits `/auth/sign-up-success` directly | Already had resend button |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/auth/error/page.tsx` | Complete rewrite - detects confirmation errors, shows resend form with 60s cooldown |
+| `components/login-form.tsx` | Added resend confirmation button for "Email not confirmed" error state |
+
+### Commit
+- `feat: add resend confirmation email to error and login pages`

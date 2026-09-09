@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +25,19 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [showResend, setShowResend] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => {
+        setResendCooldown((prev) => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +62,8 @@ export function LoginForm({
       router.push(nextUrl);
     } catch (err: any) {
       if (err.message?.includes("Email not confirmed")) {
-        setError("Please confirm your email address first. Check your inbox for a confirmation link.");
+        setShowResend(true);
+        setError("Please confirm your email address first.");
       } else if (err.message?.includes("Invalid login credentials")) {
         setError("Invalid email or password");
       } else {
@@ -80,6 +93,34 @@ export function LoginForm({
     if (error) {
       setError(error.message);
       setIsGoogleLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!email || resendCooldown > 0) return;
+
+    setIsResending(true);
+    setError(null);
+
+    try {
+      const supabase = createClient();
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
+        email: email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/sign-up?step=1`,
+        },
+      });
+
+      if (resendError) throw resendError;
+
+      setError(null);
+      setShowResend(false);
+      setResendCooldown(60);
+    } catch (err: any) {
+      setError(err.message || "Failed to resend email. Please try again.");
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -166,7 +207,31 @@ export function LoginForm({
                   className="border-nfw-blackberry/20 focus:border-nfw-blackberry focus:ring-nfw-lilac"
                 />
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
+              {error && !showResend && <p className="text-sm text-red-500">{error}</p>}
+              {showResend && (
+                <div className="p-3 bg-nfw-citrine/20 border border-nfw-citrine/40 rounded-lg">
+                  <p className="text-sm text-nfw-blackberry mb-2">
+                    {error || "Please confirm your email address first."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleResendConfirmation}
+                    disabled={isResending || resendCooldown > 0 || !email}
+                    className="w-full py-2 bg-nfw-blackberry text-white font-bold text-sm hover:bg-nfw-blackberry/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 rounded-lg"
+                  >
+                    {isResending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Resending...
+                      </>
+                    ) : resendCooldown > 0 ? (
+                      `Resend in ${resendCooldown}s`
+                    ) : (
+                      "Resend confirmation email"
+                    )}
+                  </button>
+                </div>
+              )}
               <Button type="submit" className="w-full bg-nfw-blackberry hover:bg-nfw-blackberry/90" disabled={isLoading}>
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
