@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
 interface Popup {
@@ -25,6 +25,7 @@ export default function PromotionalPopup({ path }: PromotionalPopupProps) {
   const [currentPopup, setCurrentPopup] = useState<Popup | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [animKey, setAnimKey] = useState(0);
+  const popupShownRef = useRef(false);
   const [isMobile, setIsMobile] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
@@ -67,7 +68,10 @@ export default function PromotionalPopup({ path }: PromotionalPopupProps) {
 
   useEffect(() => {
     if (currentPopup) {
+      popupShownRef.current = false;
       const timer = setTimeout(() => {
+        if (popupShownRef.current) return;
+        popupShownRef.current = true;
         setShowPopup(true);
         setAnimKey(prev => prev + 1);
       }, currentPopup.delay_seconds * 1000);
