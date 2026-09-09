@@ -198,17 +198,18 @@ return (
         onClick={handleOverlayClick}
       >
         <div 
-          className="absolute inset-0 bg-black/50 animate-popup-fade" 
+          className="absolute inset-0 bg-black/50" 
           style={{ opacity: showPopup ? 1 : 0, transition: 'opacity 0.3s ease' }} 
         />
 
         {isMobile ? (
           <div
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl animate-popup-fade"
+            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl"
             style={{ 
               opacity: showPopup ? 1 : 0, 
               transform: showPopup ? 'translateY(0)' : 'translateY(100%)',
-              transition: 'opacity 0.3s ease, transform 0.3s ease'
+              transition: 'opacity 0.3s ease, transform 0.3s ease',
+              visibility: showPopup ? 'visible' : 'hidden'
             }}
           >
             <div className="p-4 flex justify-between items-center border-b border-nfw-blackberry/10">
@@ -246,11 +247,12 @@ return (
         ) : (
           <div className="absolute inset-0 flex items-center justify-center p-4">
             <div
-              className="bg-white rounded-lg shadow-2xl max-w-3xl w-full animate-popup-fade"
+              className="bg-white rounded-lg shadow-2xl max-w-3xl w-full"
               style={{ 
                 opacity: showPopup ? 1 : 0, 
                 transform: showPopup ? 'scale(1)' : 'scale(0.95)',
-                transition: 'opacity 0.3s ease, transform 0.3s ease'
+                transition: 'opacity 0.3s ease, transform 0.3s ease',
+                visibility: showPopup ? 'visible' : 'hidden'
               }}
               onClick={(e) => e.stopPropagation()}
             >
