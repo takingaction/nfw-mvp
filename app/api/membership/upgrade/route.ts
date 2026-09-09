@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     // Verify user is a contributing member and get stripe_customer_id
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id, membership_level, stripe_customer_id")
+      .select("id, email, full_name, membership_level, stripe_customer_id")
       .eq("id", user.id)
       .single();
 
@@ -51,105 +51,60 @@ export async function POST(request: Request) {
       );
     }
 
-    // Find the active subscription for this customer
-    const subscriptions = await stripe.subscriptions.list({
+    // Get origin for redirect URLs
+    const origin = request.headers.get("origin") || "https://nationalfundforwomen.org";
+
+    // Create Checkout Session for the $85 upgrade
+    // This uses the customer's existing payment method via Stripe Checkout
+    const session = await stripe.checkout.sessions.create({
       customer: profile.stripe_customer_id,
-      status: "active",
-      limit: 1,
-    });
-
-    if (subscriptions.data.length === 0) {
-      return NextResponse.json(
-        { error: "No active subscription found. Please contact support." },
-        { status: 400 },
-      );
-    }
-
-    const subscription = subscriptions.data[0];
-
-    // Create and finalize the invoice FIRST
-    // We must create the invoice before the invoice item so we can attach the item to it
-    const invoice = await stripe.invoices.create({
-      customer: profile.stripe_customer_id,
-      auto_advance: true,
-      collection_method: "charge_automatically",
-      metadata: {
-        user_id: profile.id,
-        upgrade_type: "contributing_to_founding",
-      },
-    });
-
-    // Create an invoice item for the $85 upgrade difference
-    // Attach it to the specific invoice so it gets included when we finalize
-    const invoiceItem = await stripe.invoiceItems.create({
-      customer: profile.stripe_customer_id,
-      invoice: invoice.id, // Attach to the invoice we just created
-      amount: 8500, // $85 in cents
-      currency: "usd",
-      description: "Contributing to Founding membership upgrade",
-      metadata: {
-        user_id: profile.id,
-        upgrade_type: "contributing_to_founding",
-        subscription_id: subscription.id,
-      },
-    });
-
-    // Finalize the invoice (this triggers immediate charge with the $85 line item)
-    const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
-
-    // Check if the invoice was paid immediately
-    if (finalizedInvoice.status === "paid") {
-      // Update subscription to founding price immediately after payment
-      const subscriptionItemId = subscription.items.data[0].id;
-      await stripe.subscriptions.update(subscription.id, {
-        items: [{
-          id: subscriptionItemId,
-          price: process.env.STRIPE_PRICE_FOUNDING,
-        }],
-        metadata: {
-          upgraded_from: "contributing",
-          upgrade_invoice_id: finalizedInvoice.id,
+      mode: "payment",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "Membership Upgrade: Contributing to Founding",
+              description: "One-time upgrade fee to change your annual membership from $15 to $100 per year",
+            },
+            unit_amount: 8500, // $85.00 in cents
+          },
+          quantity: 1,
         },
-      });
+      ],
+      success_url: `${origin}/dashboard?upgrade=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/dashboard?upgrade=cancelled`,
+      metadata: {
+        userId: profile.id,
+        upgrade_type: "contributing_to_founding",
+        from_level: "contributing",
+        to_level: "founding",
+        amount: "85",
+      },
+    });
 
-      // Invoice was paid immediately - we can proceed
-      return NextResponse.json({
-        success: true,
-        invoiceId: finalizedInvoice.id,
-        amountCharged: 85,
-        status: "paid",
-        message: "Upgrade successful! You're now a Founding member.",
-      });
-    } else if (finalizedInvoice.status === "open") {
-      // For pending invoices, we'll update subscription when webhook fires
-      // The webhook will handle the subscription update
-      return NextResponse.json({
-        success: true,
-        invoiceId: finalizedInvoice.id,
-        amountCharged: 85,
-        status: "pending",
-        message: "Upgrade initiated. You will be charged $85 shortly.",
-      });
-    } else {
-      // Invoice failed or other status
-      return NextResponse.json(
-        { error: "Payment failed. Please try again or contact support." },
-        { status: 400 },
-      );
-    }
+    console.log("[upgrade] Created checkout session:", session.id, "for user:", profile.id);
+
+    // Return the session URL for frontend redirect
+    return NextResponse.json({
+      success: true,
+      url: session.url,
+      sessionId: session.id,
+      message: "Redirecting to secure payment...",
+    });
   } catch (error: any) {
     console.error("Membership upgrade error:", error);
-    
-    // Clean up: delete the invoice item if invoice creation failed
-    if (error.code === "invoice_no_customer") {
+
+    if (error.code === "customer_not_found") {
       return NextResponse.json(
         { error: "Customer not found in Stripe. Please contact support." },
         { status: 400 },
       );
     }
-    
+
     return NextResponse.json(
-      { error: "Failed to process upgrade. Please try again." },
+      { error: "Failed to create upgrade session. Please try again." },
       { status: 500 },
     );
   }

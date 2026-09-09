@@ -67,10 +67,9 @@ export default function MembershipCard({
         method: "POST",
       });
       const data = await response.json();
-      if (data.success) {
-        // Upgrade was successful - payment confirmed, page will update via webhook
-        alert(data.message || `Congratulations! You've upgraded to Founding Member. Amount charged: $${(data.amountCharged || 85).toFixed(2)}`);
-        window.location.reload();
+      if (data.success && data.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
       } else {
         alert(data.error || "Failed to create upgrade session");
         setUpgrading(false);

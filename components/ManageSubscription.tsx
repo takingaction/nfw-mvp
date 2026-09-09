@@ -21,9 +21,9 @@ export default function ManageSubscription({
       });
       const data = await response.json();
 
-      if (data.success) {
-        alert(data.message || `Congratulations! You've upgraded to Founding Member. Amount charged: $${(data.amountCharged || 85).toFixed(2)}`);
-        window.location.reload();
+      if (data.success && data.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
       } else {
         setError(data.error || "Failed to upgrade");
         setLoading(false);

@@ -133,6 +133,98 @@ export async function POST(request: Request) {
 
             console.log(`Gift purchase processed: ${quantity} codes for ${buyerEmail}`);
           }
+        } else if (session.metadata?.upgrade_type === "contributing_to_founding") {
+          // Handle upgrade from contributing to founding
+          const userId = session.metadata?.userId;
+          const amountPaid = (session.amount_total || 8500) / 100;
+
+          console.log("[webhook] Processing upgrade to founding for user:", userId, "amount:", amountPaid);
+
+          if (!userId) {
+            console.error("[webhook] upgrade: No userId in metadata, skipping");
+          } else {
+            // Get current profile
+            const { data: currentProfile } = await supabaseAdmin
+              .from("profiles")
+              .select("membership_level, first_paid_at, first_paid_level, stripe_customer_id")
+              .eq("id", userId)
+              .single();
+
+            console.log("[webhook] upgrade: Current profile:", currentProfile);
+
+            // Only upgrade if user is currently contributing
+            if (currentProfile?.membership_level !== "contributing") {
+              console.log("[webhook] upgrade: User is not contributing, skipping. Current level:", currentProfile?.membership_level);
+            } else {
+              // Insert into membership_upgrades table
+              await supabaseAdmin
+                .from("membership_upgrades")
+                .insert({
+                  user_id: userId,
+                  from_level: "contributing",
+                  to_level: "founding",
+                  amount: amountPaid,
+                  stripe_payment_id: session.payment_intent as string,
+                });
+
+              // Insert into membership_payments table
+              await supabaseAdmin
+                .from("membership_payments")
+                .insert({
+                  user_id: userId,
+                  amount: amountPaid,
+                  payment_type: "upgrade",
+                  stripe_payment_id: session.payment_intent as string,
+                });
+
+              // Update subscription to founding price
+              if (currentProfile?.stripe_customer_id) {
+                const customerId = currentProfile.stripe_customer_id;
+                const subscriptions = await stripe.subscriptions.list({
+                  customer: customerId,
+                  status: "active",
+                  limit: 1,
+                });
+
+                if (subscriptions.data.length > 0) {
+                  const sub = subscriptions.data[0];
+                  const currentPriceId = sub.items.data[0].price.id;
+
+                  if (currentPriceId !== process.env.STRIPE_PRICE_FOUNDING) {
+                    const subscriptionItemId = sub.items.data[0].id;
+                    await stripe.subscriptions.update(sub.id, {
+                      items: [{
+                        id: subscriptionItemId,
+                        price: process.env.STRIPE_PRICE_FOUNDING,
+                      }],
+                      metadata: {
+                        upgraded_from: "contributing",
+                      },
+                    });
+                    console.log("[webhook] upgrade: Updated subscription to founding price");
+                  } else {
+                    console.log("[webhook] upgrade: Subscription already at founding price");
+                  }
+                }
+              }
+
+              // Update profile to founding
+              await supabaseAdmin
+                .from("profiles")
+                .update({
+                  membership_level: "founding",
+                  previous_membership_level: currentProfile?.membership_level || "contributing",
+                  subscription_status: "active",
+                  subscription_ends_at: null,
+                  updated_at: new Date().toISOString(),
+                  first_paid_at: currentProfile?.first_paid_at || new Date().toISOString(),
+                  first_paid_level: currentProfile?.first_paid_level || "founding",
+                })
+                .eq("id", userId);
+
+              console.log("[webhook] upgrade: Successfully upgraded user", userId, "to founding");
+            }
+          }
         } else {
           // Regular membership purchase
           let userId = session.metadata?.userId;
