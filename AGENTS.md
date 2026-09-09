@@ -13861,3 +13861,50 @@ Three fetch functions were not added to the page mount `useEffect`:
 
 ### Commit
 - `fix: auto-load all backfill sections on page mount, add orphaned fetchStripeDuplicates`
+
+## Session 2026-09-10: Manual Reconciliation Refresh Button
+
+### Goal
+- Add manual Refresh button to Reconciliation Table that directly fetches Stripe and updates cache (~2 sec), bypassing background job
+
+### Constraints & Preferences
+- Refresh button must update cache (Option A) — not just UI
+- All action buttons should say "Working..." while processing
+
+### Solution
+
+**1. Added `fresh=true` param to `/reconcile` endpoint**
+
+**`app/api/admin/backfill/stripe/reconcile/route.ts`:**
+- Added `fresh` parameter check at line 52
+- When `fresh=true`, calls `handleFreshStripeFetch()` which:
+  - Fetches all Stripe subscriptions directly (no background job)
+  - Calculates totals from live Stripe data
+  - Updates cache in `reconciliation_jobs` table
+  - Returns fresh data with `fresh: true` flag
+
+**2. Added Refresh button to Reconciliation Table UI**
+
+**`app/admin/backfill/stripe/BackfillClient.tsx`:**
+- Added `handleRefreshReconciliation()` function (~2 sec direct fetch)
+- Added Refresh button next to "Reconciliation" heading (aubergine style)
+- Button shows "Refreshing..." while processing
+- Updates message bar with status
+
+### How It Works
+
+| Scenario | Behavior |
+|----------|---------|
+| Click "Refresh" | Fetches Stripe directly (~2 sec), updates cache, shows fresh data |
+| Cache valid | Shows cached data immediately |
+| Background job running | Manual refresh bypasses it |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/backfill/stripe/reconcile/route.ts` | Added `fresh=true` param handling, `handleFreshStripeFetch()` function |
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Added Refresh button, `handleRefreshReconciliation()` function |
+
+### Commit
+- `feat: add manual Refresh button to Reconciliation Table for direct Stripe fetch`

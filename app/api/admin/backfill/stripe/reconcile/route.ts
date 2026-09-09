@@ -48,6 +48,8 @@ export async function GET(request: Request) {
     // JSON FORMAT: Check cache first
     // ========================================
 
+    const fresh = url.searchParams.get('fresh') === 'true';
+
     // Check for cached Stripe live data in reconciliation_jobs
     const { data: cachedJob } = await supabaseAdmin
       .from("reconciliation_jobs")
@@ -59,6 +61,11 @@ export async function GET(request: Request) {
       .single();
 
     const hasValidCache = cachedJob && (!cachedJob.expires_at || new Date(cachedJob.expires_at) > new Date());
+
+    // If fresh=true, skip cache and fetch directly from Stripe
+    if (fresh) {
+      return await handleFreshStripeFetch(supabase, supabaseAdmin);
+    }
 
     // If we have valid cached Stripe data, use it
     if (hasValidCache && cachedJob.stripe_live_json) {
@@ -164,6 +171,171 @@ export async function GET(request: Request) {
     console.error("[reconcile] Error:", error);
     return NextResponse.json(
       { error: error.message || "Failed to reconcile" },
+      { status: 500 }
+    );
+  }
+}
+
+// ========================================
+// FRESH STRIPE FETCH (direct, no background job)
+// ========================================
+async function handleFreshStripeFetch(supabase: any, supabaseAdmin: any) {
+  try {
+    console.log("[reconcile] Fresh fetch requested - fetching directly from Stripe");
+
+    // Fetch all active subscriptions directly from Stripe
+    const subscriptions: any[] = [];
+    let hasMore = true;
+    let startingAfter: string | undefined;
+
+    while (hasMore) {
+      const params: any = { limit: 100, status: "active" };
+      if (startingAfter) params.starting_after = startingAfter;
+
+      const response = await stripe.subscriptions.list(params);
+      subscriptions.push(...response.data);
+
+      hasMore = response.has_more;
+      if (hasMore && response.data.length > 0) {
+        startingAfter = response.data[response.data.length - 1].id;
+      }
+      // Small delay to be nice to Stripe
+      await new Promise(r => setTimeout(r, 50));
+    }
+
+    // Calculate totals
+    let contributingCount = 0;
+    let contributingTotal = 0;
+    let foundingCount = 0;
+    let foundingTotal = 0;
+
+    for (const sub of subscriptions) {
+      const priceId = sub.items?.data?.[0]?.price?.id;
+      const priceAmount = sub.items?.data?.[0]?.price?.unit_amount || 0;
+
+      const isFounding = priceAmount === 10000 ||
+        priceId === process.env.STRIPE_PRICE_FOUNDING ||
+        (priceAmount === 100 && sub.items?.data?.[0]?.price?.recurring?.interval === 'year');
+
+      if (isFounding) {
+        foundingCount++;
+        foundingTotal += 100;
+      } else {
+        contributingCount++;
+        contributingTotal += 15;
+      }
+    }
+
+    const stripeLiveData = {
+      contributing: { count: contributingCount, true_total: contributingTotal, total: contributingTotal },
+      founding: { count: foundingCount, true_total: foundingTotal, total: foundingTotal },
+      total: { count: contributingCount + foundingCount, true_total: contributingTotal + foundingTotal, total: contributingTotal + foundingTotal },
+      fetchedAt: new Date().toISOString(),
+    };
+
+    // Update/create cache entry
+    const { data: existingCache } = await supabaseAdmin
+      .from("reconciliation_jobs")
+      .select("id")
+      .eq("job_type", "stripe_live")
+      .eq("status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (existingCache) {
+      await supabaseAdmin
+        .from("reconciliation_jobs")
+        .update({
+          status: "completed",
+          progress: "Completed",
+          completed_at: new Date().toISOString(),
+          stripe_live_json: stripeLiveData,
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        })
+        .eq("id", existingCache.id);
+    } else {
+      await supabaseAdmin
+        .from("reconciliation_jobs")
+        .insert({
+          job_type: "stripe_live",
+          status: "completed",
+          progress: "Completed",
+          completed_at: new Date().toISOString(),
+          stripe_live_json: stripeLiveData,
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        });
+    }
+
+    // Fetch our_db fresh
+    const { data: allPayments } = await supabase
+      .from("membership_payments")
+      .select(`id, amount, user_id, profiles!inner(email, full_name)`)
+      .in("amount", [15, 100])
+      .limit(10000);
+
+    const contributingUserIds = new Set<string>();
+    const foundingUserIds = new Set<string>();
+    for (const p of allPayments || []) {
+      if (p.amount === 15) contributingUserIds.add(p.user_id);
+      else if (p.amount === 100) foundingUserIds.add(p.user_id);
+    }
+    const dbContributingCount = contributingUserIds.size;
+    const dbFoundingCount = foundingUserIds.size;
+    const dbContributingTotal = dbContributingCount * 15;
+    const dbFoundingTotal = dbFoundingCount * 100;
+
+    const ourDb = {
+      contributing: { count: dbContributingCount, total: dbContributingTotal },
+      founding: { count: dbFoundingCount, total: dbFoundingTotal },
+      total: { count: dbContributingCount + dbFoundingCount, total: dbContributingTotal + dbFoundingTotal },
+    };
+
+    const difference = {
+      contributing: { count: dbContributingCount - contributingCount, total: dbContributingTotal - contributingTotal },
+      founding: { count: dbFoundingCount - foundingCount, total: dbFoundingTotal - foundingTotal },
+      total: { count: (dbContributingCount + dbFoundingCount) - (contributingCount + foundingCount), total: (dbContributingTotal + dbFoundingTotal) - (contributingTotal + foundingTotal) },
+    };
+
+    // Get payment_verify data if available
+    const { data: paymentVerifyJob } = await supabaseAdmin
+      .from("reconciliation_jobs")
+      .select("*")
+      .eq("job_type", "payment_verify")
+      .eq("status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    let verified = { valid: 0, refunded: 0, failed: 0, not_found: 0 };
+    let problematicPayments: any[] = [];
+    if (paymentVerifyJob && (!paymentVerifyJob.expires_at || new Date(paymentVerifyJob.expires_at) > new Date())) {
+      if (paymentVerifyJob.verified_payments_json) {
+        verified = paymentVerifyJob.verified_payments_json.verified || verified;
+      }
+      const seenPaymentIds = new Set<string>();
+      problematicPayments = (paymentVerifyJob.problematic_payments_json || []).filter((p: { id: string }) => {
+        if (seenPaymentIds.has(p.id)) return false;
+        seenPaymentIds.add(p.id);
+        return true;
+      });
+    }
+
+    console.log("[reconcile] Fresh fetch complete:", stripeLiveData);
+
+    return NextResponse.json({
+      summary: { stripe_live: stripeLiveData, our_db: ourDb, difference },
+      verified,
+      problematic_payments: problematicPayments,
+      missing_from_db: [],
+      cached: false,
+      fresh: true,
+    });
+
+  } catch (error: any) {
+    console.error("[reconcile/fresh] Error:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to fetch fresh data" },
       { status: 500 }
     );
   }

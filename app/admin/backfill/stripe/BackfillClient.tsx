@@ -756,6 +756,35 @@ export default function BackfillClient() {
     }
   }, []);
 
+  // Refresh Reconciliation - direct fetch from Stripe (~2 seconds)
+  const handleRefreshReconciliation = useCallback(async () => {
+    setReconciliationLoading(true);
+    setMessage("Fetching fresh data from Stripe...");
+
+    try {
+      const res = await fetch("/api/admin/backfill/stripe/reconcile?fresh=true");
+      if (!res.ok) {
+        const err = await res.json();
+        setMessage(`Refresh failed: ${err.error || res.statusText}`);
+        setReconciliationLoading(false);
+        return;
+      }
+      const data = await res.json();
+      if (data.error) {
+        setMessage(`Refresh failed: ${data.error}`);
+        setReconciliationLoading(false);
+        return;
+      }
+      setReconciliation(data);
+      setMessage("Reconciliation refreshed successfully.");
+    } catch (error) {
+      console.error("Refresh reconciliation failed:", error);
+      setMessage(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setReconciliationLoading(false);
+    }
+  }, []);
+
   // Fetch reconciliation and live stats from server on mount (smart cache check)
   useEffect(() => {
     // Fetch reconciliation
@@ -1584,6 +1613,13 @@ export default function BackfillClient() {
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-ui font-bold text-nfw-aubergine">Reconciliation</h3>
           <div className="flex gap-2 items-center">
+            <button
+              onClick={handleRefreshReconciliation}
+              disabled={reconciliationLoading}
+              className="text-sm bg-nfw-aubergine text-white px-3 py-1 rounded hover:bg-nfw-aubergine/90 disabled:opacity-50"
+            >
+              {reconciliationLoading ? "Refreshing..." : "Refresh"}
+            </button>
             <button
               onClick={handleExportEmailCsv}
               disabled={exportCsvLoading}
