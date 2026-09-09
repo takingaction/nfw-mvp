@@ -1610,7 +1610,7 @@ export default function BackfillClient() {
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-aubergine font-bold">{reconciliation.summary.stripe_live.contributing.count}</span>
                       <span className="text-nfw-blackberry/50"> / </span>
-                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.stripe_live.contributing.total.toLocaleString('en-US')}</span>
+                      <span className="text-nfw-aubergine font-bold">${(reconciliation.summary.stripe_live.contributing.total ?? 0).toLocaleString('en-US')}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.contributing.true_total?.toLocaleString('en-US') ?? '—'}</span>
@@ -1640,7 +1640,7 @@ export default function BackfillClient() {
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-aubergine font-bold">{reconciliation.summary.stripe_live.founding.count}</span>
                       <span className="text-nfw-blackberry/50"> / </span>
-                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.stripe_live.founding.total.toLocaleString('en-US')}</span>
+                      <span className="text-nfw-aubergine font-bold">${(reconciliation.summary.stripe_live.founding.total ?? 0).toLocaleString('en-US')}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.founding.true_total?.toLocaleString('en-US') ?? '—'}</span>
@@ -1670,7 +1670,7 @@ export default function BackfillClient() {
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-aubergine font-bold">{reconciliation.summary.stripe_live.total.count}</span>
                       <span className="text-nfw-blackberry/50"> / </span>
-                      <span className="text-nfw-aubergine font-bold">${reconciliation.summary.stripe_live.total.total.toLocaleString('en-US')}</span>
+                      <span className="text-nfw-aubergine font-bold">${(reconciliation.summary.stripe_live.total.total ?? 0).toLocaleString('en-US')}</span>
                     </td>
                     <td className="px-4 py-3 text-center font-ui text-sm">
                       <span className="text-nfw-wisteria font-bold">${reconciliation.summary.stripe_live.total.true_total?.toLocaleString('en-US') ?? '—'}</span>
