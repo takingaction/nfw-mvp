@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 
 interface Popup {
@@ -27,7 +27,6 @@ export default function PromotionalPopup({ path }: PromotionalPopupProps) {
   const [animKey, setAnimKey] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [dismissed, setDismissed] = useState(false);
-  const mountedRef = useRef(true);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -37,15 +36,19 @@ export default function PromotionalPopup({ path }: PromotionalPopupProps) {
   }, []);
 
   useEffect(() => {
+    if (!path) return;
+
+    let isMounted = true;
+
     const fetchPopups = async () => {
       try {
         const res = await fetch(`/api/promotional-popups?path=${encodeURIComponent(path)}`);
         const data = await res.json();
-        if (data.popups && data.popups.length > 0) {
+        if (isMounted && data.popups && data.popups.length > 0) {
           const eligible = data.popups.filter((popup: Popup) => {
             return !isDismissed(popup);
           });
-          if (eligible.length > 0 && mountedRef.current) {
+          if (eligible.length > 0) {
             setPopups(eligible);
             setCurrentPopup(eligible[0]);
           }
@@ -54,19 +57,19 @@ export default function PromotionalPopup({ path }: PromotionalPopupProps) {
         console.error("Error fetching popups:", error);
       }
     };
+
     fetchPopups();
+
     return () => {
-      mountedRef.current = false;
+      isMounted = false;
     };
   }, [path]);
 
   useEffect(() => {
     if (currentPopup) {
       const timer = setTimeout(() => {
-        if (mountedRef.current) {
-          setShowPopup(true);
-          setAnimKey(prev => prev + 1);
-        }
+        setShowPopup(true);
+        setAnimKey(prev => prev + 1);
       }, currentPopup.delay_seconds * 1000);
       return () => clearTimeout(timer);
     }
