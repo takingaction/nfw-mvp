@@ -273,10 +273,10 @@ export default function BackfillClient() {
   };
 
   const handleModalConfirm = async () => {
+    closeModal(); // Close immediately
     if (modalConfig?.onConfirm) {
-      await modalConfig.onConfirm();
+      await modalConfig.onConfirm(); // Async work continues in background
     }
-    closeModal();
   };
 
   // Navigation safeguard state
@@ -511,7 +511,13 @@ export default function BackfillClient() {
 
   // Legacy: Fetch Stripe Only data (now uses job polling)
   const fetchStripeOnly = useCallback(async () => {
-    await triggerStripeOnlyJob();
+    showConfirm(
+      "Generate Stripe Data",
+      "Generate Stripe Data from Stripe?",
+      async () => {
+        await triggerStripeOnlyJob();
+      }
+    );
   }, [triggerStripeOnlyJob]);
 
   // Download Stripe Only CSV from cache
@@ -1012,18 +1018,24 @@ export default function BackfillClient() {
 
   // Fetch missing from DB (Stripe subscriptions not in membership_payments)
   const fetchMissingPayments = useCallback(async () => {
-    setMissingPaymentsLoading(true);
-    try {
-      const res = await fetch("/api/admin/backfill/stripe/missing-payments");
-      if (res.ok) {
-        const data = await res.json();
-        setMissingPayments(data);
+    showConfirm(
+      "Refresh Missing Payments",
+      "Refresh the list of missing payments from Stripe?",
+      async () => {
+        setMissingPaymentsLoading(true);
+        try {
+          const res = await fetch("/api/admin/backfill/stripe/missing-payments");
+          if (res.ok) {
+            const data = await res.json();
+            setMissingPayments(data);
+          }
+        } catch (error) {
+          console.error("Failed to fetch missing payments:", error);
+        } finally {
+          setMissingPaymentsLoading(false);
+        }
       }
-    } catch (error) {
-      console.error("Failed to fetch missing payments:", error);
-    } finally {
-      setMissingPaymentsLoading(false);
-    }
+    );
   }, []);
 
   // Sync All missing payments - insert them into membership_payments
