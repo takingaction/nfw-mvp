@@ -27,6 +27,7 @@ export default function PromotionalPopup({ path }: PromotionalPopupProps) {
   const [animKey, setAnimKey] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const mountedRef = { current: true };
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -44,7 +45,7 @@ export default function PromotionalPopup({ path }: PromotionalPopupProps) {
           const eligible = data.popups.filter((popup: Popup) => {
             return !isDismissed(popup);
           });
-          if (eligible.length > 0) {
+          if (eligible.length > 0 && mountedRef.current) {
             setPopups(eligible);
             setCurrentPopup(eligible[0]);
           }
@@ -54,17 +55,22 @@ export default function PromotionalPopup({ path }: PromotionalPopupProps) {
       }
     };
     fetchPopups();
+    return () => {
+      mountedRef.current = false;
+    };
   }, [path]);
 
   useEffect(() => {
-    if (currentPopup && popups.length > 0) {
+    if (currentPopup) {
       const timer = setTimeout(() => {
-        setShowPopup(true);
-        setAnimKey(prev => prev + 1);
+        if (mountedRef.current) {
+          setShowPopup(true);
+          setAnimKey(prev => prev + 1);
+        }
       }, currentPopup.delay_seconds * 1000);
       return () => clearTimeout(timer);
     }
-  }, [currentPopup, popups]);
+  }, [currentPopup]);
 
   const isDismissed = (popup: Popup): boolean => {
     if (typeof window === "undefined") return false;
