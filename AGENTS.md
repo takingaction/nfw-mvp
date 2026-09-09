@@ -14036,3 +14036,49 @@ Add UI to `/admin/backfill/stripe` page to run the Payment Intents backfill with
 
 ### Build
 - ✅ Build passed
+
+## Session 2026-09-13: Add RLS to membership_payments_wrong_backup
+
+### Overview
+
+Added Row Level Security (RLS) policies to the `membership_payments_wrong_backup` table, which is a backup of ~363 records with incorrect payment types from the `membership_payments` table.
+
+### SQL Applied (via Supabase SQL Editor)
+
+```sql
+-- Enable RLS
+ALTER TABLE membership_payments_wrong_backup ENABLE ROW LEVEL SECURITY;
+
+-- Admin users can SELECT
+CREATE POLICY "Admin users can view membership_payments_wrong_backup"
+  ON membership_payments_wrong_backup FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.is_admin = true
+    )
+  );
+
+-- Service role can do everything (bypasses RLS for supabaseAdmin)
+CREATE POLICY "Service role can manage membership_payments_wrong_backup"
+  ON membership_payments_wrong_backup FOR ALL
+  USING (auth.jwt()->>'role' = 'service_role');
+
+-- Notify PostgREST to reload schema cache
+NOTIFY pgrst, 'reload';
+```
+
+### Security Design
+
+| Policy | Access |
+|--------|--------|
+| Admin SELECT | ✅ Allowed (is_admin = true) |
+| Service role ALL | ✅ Allowed (bypasses RLS) |
+| Public/Users | ❌ Denied |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `AGENTS.md` | This session entry |
