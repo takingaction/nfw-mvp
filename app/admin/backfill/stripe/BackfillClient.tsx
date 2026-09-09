@@ -302,16 +302,16 @@ export default function BackfillClient() {
     const stripe = reconciliation.summary.stripe_live;
     return {
       contributing: {
-        count: ourDb.contributing.count - stripe.contributing.count,
-        total: ourDb.contributing.total - stripe.contributing.total,
+        count: (ourDb.contributing.count ?? 0) - (stripe.contributing.count ?? 0),
+        total: (ourDb.contributing.total ?? 0) - (stripe.contributing.total ?? 0),
       },
       founding: {
-        count: ourDb.founding.count - stripe.founding.count,
-        total: ourDb.founding.total - stripe.founding.total,
+        count: (ourDb.founding.count ?? 0) - (stripe.founding.count ?? 0),
+        total: (ourDb.founding.total ?? 0) - (stripe.founding.total ?? 0),
       },
       total: {
-        count: ourDb.total.count - stripe.total.count,
-        total: ourDb.total.total - stripe.total.total,
+        count: (ourDb.total.count ?? 0) - (stripe.total.count ?? 0),
+        total: (ourDb.total.total ?? 0) - (stripe.total.total ?? 0),
       },
     };
   }, [ourDb, reconciliation]);
@@ -1236,6 +1236,7 @@ export default function BackfillClient() {
             fetchStatus();
             fetchLiveStats();
             fetchDuplicates();
+            fetchStripeDuplicates();
             fetchMissingFromBackfill();
             fetchGiftCodes();
           } else {
@@ -1273,7 +1274,10 @@ export default function BackfillClient() {
     fetchGiftCodes();
     fetchMissingPaymentsSilent();
     fetchOurDb();
-  }, [fetchStatus, fetchGiftCodes, fetchMissingPaymentsSilent, fetchOurDb]);
+    fetchDuplicates();
+    fetchStripeDuplicates();
+    fetchMissingFromBackfill();
+  }, [fetchStatus, fetchGiftCodes, fetchMissingPaymentsSilent, fetchOurDb, fetchDuplicates, fetchStripeDuplicates, fetchMissingFromBackfill]);
 
   // Delete single payment
   const handleDeletePayment = async () => {
@@ -2249,7 +2253,7 @@ export default function BackfillClient() {
               <div>
                 <h3 className="font-ui font-bold text-orange-700">Missing from Backfill ({missingFromBackfill.length})</h3>
                 <p className="text-xs text-orange-600 mt-1">
-                  Paid profiles NOT in stripe_backfill_status. Manual review needed.
+                  Profiles NOT in stripe_backfill_status (all membership tiers). Manual review needed.
                 </p>
               </div>
               <button

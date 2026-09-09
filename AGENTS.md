@@ -13821,3 +13821,43 @@ The `stripe_live_json` stored by cron had `count` and `true_total` fields but NO
 ### Commit
 
 - `fix: set total field on stripeLive tier objects for UI compatibility`
+
+## Session 2026-09-09 (Evening): Backfill/Stripe Page Sections Auto-Load Fix
+
+### Problem
+
+Three sections on `/admin/backfill/stripe` were not appearing on page load:
+- **"Missing from Backfill"** (Members tab, orange) — only appeared after clicking "Sync All to Stripe"
+- **"Duplicate Emails"** (Members tab, purple) — only appeared after "Sync All to Stripe"
+- **"Duplicates in Stripe"** (Members tab, amber) — **never appeared at all** — `fetchStripeDuplicates()` was defined but never called
+
+### Root Cause
+
+Three fetch functions were not added to the page mount `useEffect`:
+1. `fetchDuplicates()` — only called in "Sync All to Stripe" handler
+2. `fetchStripeDuplicates()` — **never called anywhere** — orphaned function
+3. `fetchMissingFromBackfill()` — only called in "Sync All to Stripe" handler
+
+### Fix Applied
+
+**`app/admin/backfill/stripe/BackfillClient.tsx`:**
+
+1. **Page mount useEffect** (line 1272): Added 3 fetch calls to auto-populate on page load:
+   - `fetchDuplicates()`
+   - `fetchStripeDuplicates()`
+   - `fetchMissingFromBackfill()`
+
+2. **"Sync All to Stripe" handler** (line 1239): Added `fetchStripeDuplicates()` to refresh all sections after sync completes
+
+3. **Section description** (line 2256): Fixed misleading text:
+   - Before: `"Paid profiles NOT in stripe_backfill_status..."`
+   - After: `"Profiles NOT in stripe_backfill_status (all membership tiers)..."`
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Added 3 fetch calls to page mount, added `fetchStripeDuplicates()` to sync handler, fixed section description |
+
+### Commit
+- `fix: auto-load all backfill sections on page mount, add orphaned fetchStripeDuplicates`
