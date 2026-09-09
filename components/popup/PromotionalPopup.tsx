@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
 interface Popup {
@@ -27,7 +27,7 @@ export default function PromotionalPopup({ path }: PromotionalPopupProps) {
   const [animKey, setAnimKey] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [dismissed, setDismissed] = useState(false);
-  const mountedRef = { current: true };
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
