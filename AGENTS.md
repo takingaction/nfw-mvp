@@ -13917,20 +13917,25 @@ Popups on `/admin/promotional-popups` loaded twice on page mount - appeared, the
 ### Root Cause
 React Strict Mode double-invokes useEffects in development. The fetch effect's cleanup ran, then the effect ran again. The show-effect had `popups` in its dependency array, so when the second fetch set new `popups` state, the show-effect re-ran and reset the timer, causing the popup to appear, disappear, then re-appear.
 
-### Solution
+### Solution (Two Iterations)
+
+**First fix (db68c66):** Added `mountedRef` using `useRef(true)`
+- This didn't work because `mountedRef = { current: true }` was a plain object recreated every render
+
+**Second fix (40331de):** Switched to local `isMounted` variable pattern
 
 **`components/popup/PromotionalPopup.tsx`:**
-1. Added `mountedRef` object to track component mount status
-2. Added cleanup in fetch effect to set `mountedRef.current = false` on unmount
-3. Added `mountedRef.current` guard before setting state in fetch
-4. Removed `popups` from show-effect dependencies (now only depends on `currentPopup`)
-5. Added `mountedRef.current` guard before setting `showPopup` state in timer
+1. Use local `let isMounted = true` in effect closure instead of ref
+2. Return early if `path` is empty
+3. Check `isMounted` before setting state
+4. Cleanup sets `isMounted = false` when effect re-runs
+5. Removed `popups` from show-effect dependencies
 
 ### Files Modified
 
 | File | Change |
 |------|--------|
-| `components/popup/PromotionalPopup.tsx` | Added mountedRef, cleanup, and guards to prevent double-load |
+| `components/popup/PromotionalPopup.tsx` | Switched from mountedRef to local isMounted pattern |
 
 ### Commit
-- `fix: prevent promotional popup double-load on page mount`
+- `fix: use local isMounted in fetch effect to fix popup double-load`
