@@ -21,9 +21,12 @@ interface GrantCycle {
 }
 
 export default function GrantApplicationForm({
+  userId,
+  userEmail,
   cycles,
 }: {
   userId: string;
+  userEmail: string;
   cycles: GrantCycle[];
 }) {
   const router = useRouter();
@@ -125,6 +128,22 @@ export default function GrantApplicationForm({
       setError(err.message || "Failed to submit application");
       setLoading(false);
       setUploadingDocs(false);
+
+      const cycleName = cycles.find((c) => c.id === formData.cycle_id)?.cycle_name || "unknown";
+      fetch("/api/log/client-error", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          userEmail,
+          cycleId: formData.cycle_id,
+          cycleName,
+          errorMessage: err.message || "Unknown error",
+          errorCode: err.code,
+          stack: err.stack,
+          timestamp: new Date().toISOString(),
+        }),
+      }).catch(console.error);
     }
   };
 

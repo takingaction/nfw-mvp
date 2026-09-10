@@ -75,7 +75,7 @@ export default async function ApplyForGrantPage({
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {validCycles && validCycles.length > 0 ? (
-          <GrantApplicationForm userId={user!.id} cycles={validCycles} />
+          <GrantApplicationForm userId={user!.id} userEmail={user!.email || ""} cycles={validCycles} />
         ) : (
           <div className="bg-nfw-citrine/20 border border-nfw-citrine p-6">
             <h3 className="font-serif text-lg font-semibold text-nfw-blackberry mb-2">
