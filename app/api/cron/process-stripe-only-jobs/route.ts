@@ -13,7 +13,8 @@ const supabaseAdmin = createAdminClient(
 
 export const dynamic = "force-dynamic";
 
-const DELAY_MS = 50; // Small delay between API calls
+const DELAY_MS = 50;
+const CUSTOMERS_PER_RUN = 50; // Process 50 customers per cron run (~60 seconds)
 
 async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -31,20 +32,53 @@ interface StripeCharge {
   };
 }
 
-async function processStripeOnlyJob(jobId: string): Promise<void> {
-  console.log(`[process-stripe-only] Processing job ${jobId}`);
+interface ProgressData {
+  // Phase 1: Profile loading
+  profileEmails?: string[];
+  // Phase 2: Customer enumeration  
+  allCustomerIds?: string[];
+  // Phase 2: Duplicate detection - collect subscription data once
+  emailToSubs?: Array<{
+    email: string;
+    subscription_id: string;
+    customer_id: string;
+    tier: string;
+    status: string;
+  }>;
+  // Phase 3: Charge collection
+  allCharges?: StripeCharge[];
+  processedChargeIds?: string[];
+  // Phase 4: Results
+  stripeOnlyCharges?: any[];
+  stripeDuplicates?: any[];
+  duplicates?: any[];
+  missingFromBackfill?: any[];
+  total?: number;
+  matchCount?: number;
+}
 
-  try {
-    // Update job status to processing
-    await supabaseAdmin
-      .from("stripe_only_jobs")
-      .update({
-        status: "processing",
-        progress: "Loading profiles..."
-      })
-      .eq("id", jobId);
+async function processJobChunk(jobId: string): Promise<{ done: boolean; phase: string }> {
+  // Fetch current job state
+  const { data: job } = await supabaseAdmin
+    .from("stripe_only_jobs")
+    .select("*")
+    .eq("id", jobId)
+    .single();
 
-    // Step 1: Get ALL profile emails using pagination
+  if (!job) {
+    throw new Error("Job not found");
+  }
+
+  const currentPhase = job.current_phase || "pending";
+  const progressData: ProgressData = job.progress_data || {};
+  const processedCount = job.processed_count || 0;
+
+  console.log(`[process-stripe-only] Phase: ${currentPhase}, Processed: ${processedCount}`);
+
+  // ========== PHASE 1: Load profiles (one-time) ==========
+  if (currentPhase === "pending" || !progressData.profileEmails) {
+    console.log("[process-stripe-only] PHASE 1: Loading profiles...");
+    
     const allProfiles: any[] = [];
     let pageStart = 0;
     const pageSize = 1000;
@@ -68,31 +102,52 @@ async function processStripeOnlyJob(jobId: string): Promise<void> {
       hasMore = profilesPage && profilesPage.length === pageSize;
     }
 
-    // Build email → profile map (case-insensitive)
-    const profileByEmail = new Map<string, any>();
+    // Build email set
+    const profileEmails = new Set<string>();
     for (const profile of allProfiles) {
       if (profile.email) {
-        profileByEmail.set(profile.email.toLowerCase(), profile);
+        profileEmails.add(profile.email.toLowerCase());
       }
     }
 
-    console.log(`[process-stripe-only] Profiles loaded: ${allProfiles.length}`);
+    console.log(`[process-stripe-only] Loaded ${allProfiles.length} profiles, ${profileEmails.size} emails`);
 
-    // Update progress
+    // Move to phase 2
     await supabaseAdmin
       .from("stripe_only_jobs")
-      .update({ progress: "Fetching Stripe subscriptions..." })
+      .update({
+        current_phase: "enum_customers",
+        progress_data: { profileEmails: Array.from(profileEmails) },
+        progress: "Enumerating Stripe customers...",
+      })
       .eq("id", jobId);
 
-    // Step 2: Get ALL Stripe subscriptions with their customer IDs
-    const allCustomerIds: string[] = [];
+    return { done: false, phase: "enum_customers" };
+  }
+
+  // ========== PHASE 2: Enumerate all Stripe customers ==========
+  if (currentPhase === "enum_customers") {
+    console.log("[process-stripe-only] PHASE 2: Enumerating Stripe customers...");
+    
+    const allCustomerIds: string[] = progressData.allCustomerIds || [];
+    // Collect subscription data for duplicate detection (Phase 4 will reuse this)
+    const emailToSubs: ProgressData["emailToSubs"] = progressData.emailToSubs || [];
     const statuses: Array<"active" | "past_due" | "canceled" | "unpaid" | "trialing" | "incomplete" | "incomplete_expired" | "paused"> =
       ["active", "past_due", "canceled", "unpaid", "trialing", "incomplete", "incomplete_expired", "paused"];
 
+    // Find last processed status and cursor
+    const lastStatus = job.last_processed_id?.split("|")[0] || statuses[0];
+    const lastCursor = job.last_processed_id?.split("|")[1] || null;
+    
+    let foundResumePoint = false;
+    let subHasMore = true;
+    let subCursor: string | undefined = lastCursor || undefined;
+    let pageNum = 0;
+    let checkpointCounter = 0; // For more frequent checkpoints
+
     for (const status of statuses) {
-      let subHasMore = true;
-      let subCursor: string | undefined;
-      let pageNum = 0;
+      if (!foundResumePoint && status !== lastStatus) continue;
+      if (foundResumePoint || status === lastStatus) foundResumePoint = true;
 
       while (subHasMore) {
         pageNum++;
@@ -100,51 +155,99 @@ async function processStripeOnlyJob(jobId: string): Promise<void> {
           const subParams: any = { limit: 100, status };
           if (subCursor) subParams.starting_after = subCursor;
 
-          await sleep(200); // Delay between subscription list calls
+          await sleep(DELAY_MS); // 50ms instead of 200ms
 
           const subsResponse = await stripe.subscriptions.list(subParams as any);
-          subHasMore = subsResponse.has_more;
+          subHasMore = (subsResponse as any).has_more;
 
           if (subsResponse.data.length > 0) {
             subCursor = subsResponse.data[subsResponse.data.length - 1].id;
 
             for (const sub of subsResponse.data) {
-              if (sub.customer && !allCustomerIds.includes(sub.customer as string)) {
-                allCustomerIds.push(sub.customer as string);
+              const customerId = sub.customer as string;
+              if (customerId && !allCustomerIds.includes(customerId)) {
+                allCustomerIds.push(customerId);
+              }
+              // Collect subscription data for Phase 4 duplicate detection
+              const email = (sub as any).customer_email?.toLowerCase();
+              if (email) {
+                emailToSubs.push({
+                  email,
+                  subscription_id: sub.id,
+                  customer_id: customerId,
+                  tier: sub.items.data[0]?.price?.unit_amount === 1500 ? "contributing" : "founding",
+                  status: sub.status,
+                });
               }
             }
           }
 
-          console.log(`[process-stripe-only] Status ${status}, page ${pageNum}: ${allCustomerIds.length} customers`);
+          checkpointCounter++;
+          console.log(`[process-stripe-only] Status ${status}, page ${pageNum}: ${allCustomerIds.length} customers, ${emailToSubs.length} subs`);
+
+          // Save checkpoint every 25 API calls (not customers) for better resume granularity
+          if (checkpointCounter % 25 === 0) {
+            await supabaseAdmin
+              .from("stripe_only_jobs")
+              .update({
+                progress_data: { ...progressData, allCustomerIds, emailToSubs },
+                last_processed_id: `${status}|${subCursor}`,
+                progress: `Found ${allCustomerIds.length} customers, ${emailToSubs.length} subscriptions...`,
+              })
+              .eq("id", jobId);
+          }
         } catch (err: any) {
           console.error(`[process-stripe-only] Error listing subscriptions (${status}):`, err.message);
           subHasMore = false;
         }
       }
+      
+      subHasMore = true;
+      subCursor = undefined;
     }
 
-    console.log(`[process-stripe-only] Total unique customers: ${allCustomerIds.length}`);
+    console.log(`[process-stripe-only] Total unique customers: ${allCustomerIds.length}, subscriptions: ${emailToSubs.length}`);
 
-    // Update progress
+    // Move to phase 3 (fetch charges) - pass emailToSubs for Phase 4 reuse
     await supabaseAdmin
       .from("stripe_only_jobs")
-      .update({ progress: `Processing ${allCustomerIds.length} customers...` })
+      .update({
+        current_phase: "fetch_charges",
+        progress_data: { 
+          ...progressData, 
+          allCustomerIds,
+          emailToSubs,
+          allCharges: [],
+          processedChargeIds: [] 
+        },
+        processed_count: 0,
+        total_count: allCustomerIds.length,
+        last_processed_id: null,
+        progress: `Fetching charges for ${allCustomerIds.length} customers...`,
+      })
       .eq("id", jobId);
 
-    // Step 3: Fetch charges for each customer
-    const allCharges: StripeCharge[] = [];
-    const processedChargeIds = new Set<string>();
+    return { done: false, phase: "fetch_charges" };
+  }
 
-    // Target ~2 minutes total
-    const TARGET_SECONDS = 120;
-    const DELAY_BETWEEN_CUSTOMERS = Math.max(50, Math.floor((TARGET_SECONDS * 1000) / allCustomerIds.length));
+  // ========== PHASE 3: Fetch charges for each customer ==========
+  if (currentPhase === "fetch_charges") {
+    console.log("[process-stripe-only] PHASE 3: Fetching charges...");
+    
+    const allCustomerIds: string[] = progressData.allCustomerIds || [];
+    const allCharges: StripeCharge[] = progressData.allCharges || [];
+    const processedChargeIds = new Set<string>(progressData.processedChargeIds || []);
+    
+    const startIndex = processedCount;
+    const endIndex = Math.min(startIndex + CUSTOMERS_PER_RUN, allCustomerIds.length);
+    
+    console.log(`[process-stripe-only] Processing customers ${startIndex} to ${endIndex} of ${allCustomerIds.length}`);
 
-    for (let i = 0; i < allCustomerIds.length; i++) {
+    for (let i = startIndex; i < endIndex; i++) {
       const customerId = allCustomerIds[i];
-      const customerNum = i + 1;
-
-      if (i > 0) {
-        await sleep(DELAY_BETWEEN_CUSTOMERS);
+      
+      if (i > startIndex) {
+        await sleep(DELAY_MS);
       }
 
       try {
@@ -154,7 +257,6 @@ async function processStripeOnlyJob(jobId: string): Promise<void> {
         });
 
         for (const charge of charges.data) {
-          // Only membership amounts ($15 = 1500, $100 = 10000)
           if ((charge.amount === 1500 || charge.amount === 10000) && !processedChargeIds.has(charge.id)) {
             processedChargeIds.add(charge.id);
             allCharges.push({
@@ -167,40 +269,68 @@ async function processStripeOnlyJob(jobId: string): Promise<void> {
             });
           }
         }
-
-        // Progress log every 25 customers
-        if (customerNum % 25 === 0 || customerNum === allCustomerIds.length) {
-          console.log(`[process-stripe-only] Processed ${customerNum}/${allCustomerIds.length}: ${allCharges.length} charges`);
-          
-          // Update progress in job
-          await supabaseAdmin
-            .from("stripe_only_jobs")
-            .update({ 
-              progress: `Processed ${customerNum}/${allCustomerIds.length} customers...`
-            })
-            .eq("id", jobId);
-        }
       } catch (err: any) {
         console.warn(`[process-stripe-only] Error fetching charges for ${customerId}:`, err.message);
       }
     }
 
-    console.log(`[process-stripe-only] Total charges: ${allCharges.length}`);
+    const newProcessedCount = endIndex;
+    const isDone = newProcessedCount >= allCustomerIds.length;
 
-    // Update progress
-    await supabaseAdmin
-      .from("stripe_only_jobs")
-      .update({ progress: "Finding Stripe-only charges..." })
-      .eq("id", jobId);
+    if (isDone) {
+      console.log(`[process-stripe-only] Charge fetching complete: ${allCharges.length} charges`);
+      
+      // Move to computing phase - pass emailToSubs for duplicate detection
+      await supabaseAdmin
+        .from("stripe_only_jobs")
+        .update({
+          current_phase: "computing",
+          progress_data: { 
+            ...progressData, 
+            allCharges,
+            processedChargeIds: Array.from(processedChargeIds)
+          },
+          processed_count: newProcessedCount,
+          progress: "Computing results...",
+        })
+        .eq("id", jobId);
 
-    // Step 4: Find charges where email is NOT in our profiles
+      return { done: false, phase: "computing" };
+    } else {
+      // Save checkpoint and let next cron run continue
+      await supabaseAdmin
+        .from("stripe_only_jobs")
+        .update({
+          processed_count: newProcessedCount,
+          progress_data: { 
+            ...progressData, 
+            allCharges,
+            processedChargeIds: Array.from(processedChargeIds)
+          },
+          progress: `Processed ${newProcessedCount}/${allCustomerIds.length} customers...`,
+        })
+        .eq("id", jobId);
+
+      console.log(`[process-stripe-only] Checkpoint saved at ${newProcessedCount}/${allCustomerIds.length}`);
+      return { done: false, phase: "fetch_charges" };
+    }
+  }
+
+  // ========== PHASE 4: Compute results ==========
+  if (currentPhase === "computing") {
+    console.log("[process-stripe-only] PHASE 4: Computing results...");
+    
+    const allCharges: StripeCharge[] = progressData.allCharges || [];
+    const profileEmails = new Set<string>(progressData.profileEmails || []);
+    
+    // Find charges where email is NOT in our profiles
     const stripeOnlyCharges: any[] = [];
     let matchCount = 0;
 
     for (const charge of allCharges) {
       const chargeEmail = charge.billing_details?.email?.toLowerCase();
 
-      if (chargeEmail && profileByEmail.has(chargeEmail)) {
+      if (chargeEmail && profileEmails.has(chargeEmail)) {
         matchCount++;
         continue;
       }
@@ -216,77 +346,39 @@ async function processStripeOnlyJob(jobId: string): Promise<void> {
       });
     }
 
-    console.log(`[process-stripe-only] Matched: ${matchCount}, Stripe-only: ${stripeOnlyCharges.length}`);
-
     // Sort by date, newest first
     stripeOnlyCharges.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
-
     const total = stripeOnlyCharges.reduce((sum, c) => sum + c.amount, 0);
 
-    // Step 5: Compute Duplicates in Stripe (emails with 2+ subscriptions)
-    // We need to re-fetch subscriptions to build email → subs map
-    const emailToSubs = new Map<string, any[]>();
+    console.log(`[process-stripe-only] Matched: ${matchCount}, Stripe-only: ${stripeOnlyCharges.length}`);
 
-    await supabaseAdmin
-      .from("stripe_only_jobs")
-      .update({ progress: "Finding duplicates..." })
-      .eq("id", jobId);
+    // Get Stripe duplicates from cached subscription data (reused from Phase 2)
+    // emailToSubs was collected during Phase 2 enumeration - no need to re-fetch
+    const cachedEmailToSubs: Array<{
+      email: string;
+      subscription_id: string;
+      customer_id: string;
+      tier: string;
+      status: string;
+    }> = progressData.emailToSubs || [];
 
-    for (const status of statuses) {
-      let subHasMore = true;
-      let subCursor: string | undefined;
-
-      while (subHasMore) {
-        try {
-          const subParams: any = { limit: 100, status };
-          if (subCursor) subParams.starting_after = subCursor;
-
-          await sleep(200);
-
-          const subsResponse = await stripe.subscriptions.list(subParams as any);
-          subHasMore = subsResponse.has_more;
-
-          if (subsResponse.data.length > 0) {
-            subCursor = subsResponse.data[subsResponse.data.length - 1].id;
-
-            for (const sub of subsResponse.data) {
-              const subAny = sub as any;
-              const email = (subAny.customer_email || "").toLowerCase();
-              if (email) {
-                if (!emailToSubs.has(email)) {
-                  emailToSubs.set(email, []);
-                }
-                emailToSubs.get(email)!.push({
-                  subscription_id: sub.id,
-                  customer_id: sub.customer,
-                  tier: sub.items.data[0]?.price?.unit_amount === 1500 ? "contributing" : "founding",
-                  amount: (sub.items.data[0]?.price?.unit_amount || 0) / 100,
-                  status: sub.status,
-                  current_period_start: subAny.current_period_start,
-                  current_period_end: subAny.current_period_end,
-                });
-              }
-            }
-          }
-        } catch (err: any) {
-          console.error(`[process-stripe-only] Error fetching subscriptions for duplicates:`, err.message);
-          subHasMore = false;
-        }
+    const emailToSubsMap = new Map<string, typeof cachedEmailToSubs>();
+    for (const sub of cachedEmailToSubs) {
+      if (!emailToSubsMap.has(sub.email)) {
+        emailToSubsMap.set(sub.email, []);
       }
+      emailToSubsMap.get(sub.email)!.push(sub);
     }
 
     const stripeDuplicates = [];
-    for (const [email, subs] of emailToSubs.entries()) {
+    for (const [email, subs] of emailToSubsMap.entries()) {
       if (subs.length > 1) {
         stripeDuplicates.push({ email, count: subs.length, subscriptions: subs });
       }
     }
-    // Sort by count desc
     stripeDuplicates.sort((a, b) => b.count - a.count);
 
-    console.log(`[process-stripe-only] Stripe duplicates: ${stripeDuplicates.length}`);
-
-    // Step 6: Compute Duplicates (DB query - emails with 2+ entries in stripe_backfill_status)
+    // Get DB duplicates (emails with 2+ entries in stripe_backfill_status)
     const { data: backfillRecords } = await supabaseAdmin
       .from("stripe_backfill_status")
       .select("email")
@@ -306,9 +398,7 @@ async function processStripeOnlyJob(jobId: string): Promise<void> {
     }
     duplicates.sort((a, b) => b.count - a.count);
 
-    console.log(`[process-stripe-only] Duplicates: ${duplicates.length}`);
-
-    // Step 7: Compute Missing from Backfill (profiles with stripe_customer_id but not in stripe_backfill_status)
+    // Get missing from backfill
     const { data: profilesWithStripe } = await supabaseAdmin
       .from("profiles")
       .select("id, email, stripe_customer_id")
@@ -332,13 +422,14 @@ async function processStripeOnlyJob(jobId: string): Promise<void> {
     }
     missingFromBackfill.sort((a, b) => (a.email || "").localeCompare(b.email || ""));
 
-    console.log(`[process-stripe-only] Missing from backfill: ${missingFromBackfill.length}`);
+    console.log(`[process-stripe-only] Stripe duplicates: ${stripeDuplicates.length}, DB duplicates: ${duplicates.length}, Missing: ${missingFromBackfill.length}`);
 
-    // Store results in job
+    // Store results
     await supabaseAdmin
       .from("stripe_only_jobs")
       .update({
         status: "completed",
+        current_phase: "completed",
         progress: "Completed",
         completed_at: new Date().toISOString(),
         charges_json: stripeOnlyCharges,
@@ -346,23 +437,17 @@ async function processStripeOnlyJob(jobId: string): Promise<void> {
         stripe_duplicates_json: stripeDuplicates,
         duplicates_json: duplicates,
         missing_from_backfill_json: missingFromBackfill,
-        expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour cache
+        expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        progress_data: null, // Clean up
       })
       .eq("id", jobId);
 
-    console.log(`[process-stripe-only] Job ${jobId} completed: ${stripeOnlyCharges.length} charges, total $${total}`);
-
-  } catch (error: any) {
-    console.error(`[process-stripe-only] Error processing job ${jobId}:`, error);
-    await supabaseAdmin
-      .from("stripe_only_jobs")
-      .update({
-        status: "failed",
-        error: error.message,
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", jobId);
+    console.log(`[process-stripe-only] Job ${jobId} completed`);
+    return { done: true, phase: "completed" };
   }
+
+  // Should not reach here
+  return { done: true, phase: currentPhase };
 }
 
 export async function GET(request: Request): Promise<NextResponse> {
@@ -376,11 +461,33 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     console.log("[process-stripe-only] Starting stripe-only jobs processor...");
 
-    // Find pending job
-    const { data: job } = await supabaseAdmin
+    // Mark stale processing jobs as failed (older than 30 minutes)
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const { data: staleJobs } = await supabaseAdmin
       .from("stripe_only_jobs")
       .select("id")
-      .eq("status", "pending")
+      .eq("status", "processing")
+      .lt("updated_at", thirtyMinutesAgo);
+
+    if (staleJobs && staleJobs.length > 0) {
+      console.log(`[process-stripe-only] Marking ${staleJobs.length} stale jobs as failed`);
+      for (const stale of staleJobs) {
+        await supabaseAdmin
+          .from("stripe_only_jobs")
+          .update({
+            status: "failed",
+            error: "Job timed out",
+            completed_at: new Date().toISOString(),
+          })
+          .eq("id", stale.id);
+      }
+    }
+
+    // Find pending or processing job
+    const { data: job } = await supabaseAdmin
+      .from("stripe_only_jobs")
+      .select("id, status")
+      .in("status", ["pending", "processing"])
       .order("created_at", { ascending: true })
       .limit(1)
       .single();
@@ -390,12 +497,23 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ success: true, message: "No pending jobs" });
     }
 
-    await processStripeOnlyJob(job.id);
+    console.log(`[process-stripe-only] Processing job ${job.id}`);
+    
+    // Ensure job is in processing state
+    if (job.status === "pending") {
+      await supabaseAdmin
+        .from("stripe_only_jobs")
+        .update({ status: "processing" })
+        .eq("id", job.id);
+    }
+
+    const result = await processJobChunk(job.id);
 
     return NextResponse.json({
       success: true,
       jobId: job.id,
-      status: "processed"
+      phase: result.phase,
+      done: result.done,
     });
 
   } catch (error: any) {

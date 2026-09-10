@@ -188,24 +188,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Step 2: Check monthly completed (1 per month, any product)
-    const { data: monthlyClaim } = await supabaseAdmin
+    // Step 3: INSERT zero_dollar_claims FIRST to get the real UUID
+    // We need the real claim ID BEFORE calling Shopify so we can put it in the note
+    const { data: claimData, error: claimInsertError } = await supabaseAdmin
       .from("zero_dollar_claims")
+      .insert({
+        user_id: userId,
+        shopify_product_id: productId,
+        shopify_variant_id: variantId,
+        shopify_checkout_id: null, // Will be updated after Shopify order is created
+        status: "created",
+        shipping_address: { placeholder: true },
+        claimed_at: now.toISOString(),
+        claim_month: claimMonth,
+      })
       .select("id")
-      .eq("user_id", userId)
-      .eq("claim_month", claimMonth)
-      .in("status", ["completed", "fulfilled", "paid"])
-      .limit(1);
+      .single();
 
-    if (monthlyClaim && monthlyClaim.length > 0) {
+    if (claimInsertError) {
+      console.error("[checkout] Error inserting claim:", claimInsertError);
       return NextResponse.json(
-        { error: "You have already claimed a product this month" },
-        { status: 400 }
+        { error: "Failed to create claim" },
+        { status: 500 }
       );
     }
 
-    // Step 3: INSERT pending_monthly_claims FIRST (before Shopify, before claim)
-    // This is the authoritative lock - if this fails, NO claim is created
+    const claimId = claimData.id;
+    console.log(`[checkout] Created claim ${claimId} for user ${userId}`);
+
+    // Step 4: INSERT pending_monthly_claims (lock using real claim ID)
     const { error: pendingError } = await supabaseAdmin
       .from("pending_monthly_claims")
       .insert({
@@ -218,6 +229,11 @@ export async function POST(request: NextRequest) {
 
     if (pendingError) {
       console.error("[checkout] Error inserting pending claim:", pendingError);
+      // Rollback: delete the claim we just created
+      await supabaseAdmin
+        .from("zero_dollar_claims")
+        .delete()
+        .eq("id", claimId);
       return NextResponse.json(
         { error: "You have a checkout already in progress this month" },
         { status: 400 }
@@ -226,14 +242,13 @@ export async function POST(request: NextRequest) {
 
     console.log(`[checkout] Inserted pending_monthly_claims for user ${userId}, month ${claimMonth}`);
 
-    // Step 4: Create Shopify Draft Order via Admin API
+    // Step 5: Create Shopify Draft Order via Admin API
     let draftOrderId: string;
     let checkoutUrl: string;
 
     try {
-      // Use a temporary claim ID for Shopify note (will be updated later)
-      const tempClaimId = `pending_${userId}_${Date.now()}`;
-      const draftOrder = await createDraftOrderShopify(variantId, 1, tempClaimId, userId);
+      // Use the REAL claim ID for Shopify note (not a temp ID)
+      const draftOrder = await createDraftOrderShopify(variantId, 1, claimId, userId);
       
       // draftOrder.id is the Shopify draft order ID (numeric string)
       // We prefix with "draft_" to distinguish from cart IDs
@@ -243,15 +258,17 @@ export async function POST(request: NextRequest) {
       console.log(`[checkout] Created Shopify draft order ${draftOrderId}`);
 
     } catch (shopifyError) {
-      // Shopify failed - leave pending for cron cleanup (30 min), return error
+      // Shopify failed - rollback both entries
       console.error("[checkout] Shopify error:", shopifyError);
+      await supabaseAdmin.from("pending_monthly_claims").delete().eq("user_id", userId).eq("claim_month", claimMonth);
+      await supabaseAdmin.from("zero_dollar_claims").delete().eq("id", claimId);
       return NextResponse.json(
         { error: shopifyError instanceof Error ? shopifyError.message : "Failed to create Shopify checkout" },
         { status: 500 }
       );
     }
 
-    // Step 5: UPDATE pending_monthly_claims with draft_order_id
+    // Step 6: UPDATE both tables with draft_order_id
     const { error: pendingUpdateError } = await supabaseAdmin
       .from("pending_monthly_claims")
       .update({ shopify_checkout_id: draftOrderId })
@@ -263,34 +280,17 @@ export async function POST(request: NextRequest) {
       // Non-fatal - we can still look up by user_id + claim_month in webhook
     }
 
-    // Step 6: INSERT claim
-    const { data: claimData, error: claimInsertError } = await supabaseAdmin
+    const { error: claimUpdateError } = await supabaseAdmin
       .from("zero_dollar_claims")
-      .insert({
-        user_id: userId,
-        shopify_product_id: productId,
-        shopify_variant_id: variantId,
-        shopify_checkout_id: draftOrderId,
-        status: "created",
-        shipping_address: { placeholder: true },
-        claimed_at: now.toISOString(),
-        claim_month: claimMonth,
-      })
-      .select("id")
-      .single();
+      .update({ shopify_checkout_id: draftOrderId })
+      .eq("id", claimId);
 
-    if (claimInsertError) {
-      console.error("[checkout] Error inserting claim:", claimInsertError);
-      // Claim insert failed - leave pending for cron cleanup
-      return NextResponse.json(
-        { error: "Failed to create claim" },
-        { status: 500 }
-      );
+    if (claimUpdateError) {
+      console.error("[checkout] Error updating claim with draft_order_id:", claimUpdateError);
+      // Non-fatal - the claim exists with the right status
     }
 
-    const claimId = claimData.id;
-
-    console.log(`[checkout] Created claim ${claimId} for user ${userId}`);
+    console.log(`[checkout] Checkout complete for claim ${claimId}`);
 
     return NextResponse.json({
       checkoutUrl,
