@@ -14258,3 +14258,58 @@ if (insertError?.code === '23505') {
 ### Commit
 
 - `xxxxxxx` - fix: correct grants.payout_amount to amount_approved in 3 files; fix auth callback race condition
+
+## Session 2026-09-13: Split Stripe Duplicates Job
+
+### Goal
+- Separate expensive subscription enumeration into on-demand job; simplify main stripe-only job to use direct charge fetching
+
+### Constraints & Preferences
+- Duplicates job: on-demand only (no weekly cron)
+- Cache results until next run (no expiration)
+- Duplicates viewable only (no notifications)
+- No "cancel & restart" option if job already running
+- Naming: `/api/admin/backfill/stripe/duplicates` (clean senior dev convention)
+
+### Completed
+
+**Migration 157:** `supabase/migrations/157_split_stripe_duplicates_jobs.sql`
+- Creates `stripe_duplicates_jobs` table: id, status, error, total_subscriptions, duplicate_emails_count, duplicates_json, created_at, completed_at
+- Drops `stripe_duplicates_json` column from `stripe_only_jobs`
+
+**New Files:**
+| File | Purpose |
+|------|---------|
+| `app/api/cron/process-stripe-duplicates-jobs/route.ts` | On-demand cron worker enumerating active subscriptions, computing duplicates |
+| `app/api/admin/backfill/stripe/duplicates/route.ts` | GET (cached results) and POST (create job) endpoints |
+
+**Files Modified:**
+| File | Change |
+|------|--------|
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Added `handleFindDuplicates` handler + amber "Find Duplicates" button |
+| `app/api/cron/process-stripe-only-jobs/route.ts` | Removed emailToSubs, stripeDuplicates, duplicates_json, stripe_duplicates_json; removed Phase 2 duplicate detection, Phase 4 computing |
+| `app/api/cron/process-stripe-duplicates-jobs/route.ts` | Fixed `current_period_end` type error with `(sub as any)` cast |
+
+### How It Works
+
+**Duplicates Job (on-demand):**
+1. User clicks "Find Duplicates" → POST `/api/admin/backfill/stripe/duplicates`
+2. Creates `stripe_duplicates_jobs` row with `status: 'pending'`
+3. Cron worker picks up job every 5 min, enumerates `active` subscriptions (~50/call)
+4. Computes same-email-multiple-subscriptions, stores in `duplicates_json`
+5. UI polls GET endpoint, displays results when complete
+
+**Main Job (stripe-only):**
+- Phase 1: Load profiles from DB
+- Phase 2: Enumerate customers (no duplicate detection)
+- Phase 3: Fetch charges directly
+- Phase 4: Compute stripe-only charges (no duplicate analysis)
+
+### Key Decisions
+- Active subscriptions only (~50/call vs ~130+ for all 8 statuses)
+- Duplicate: same email, multiple subscriptions
+- Results cached in `stripe_duplicates_jobs` table
+- No expiration — persists until next run
+
+### Commit
+- `split-stripe-duplicates` - feat: split duplicates job into separate on-demand worker

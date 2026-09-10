@@ -970,6 +970,86 @@ export default function BackfillClient() {
     );
   }, []);
 
+  // Find Duplicates - triggers background job to find Stripe subscription duplicates
+  const handleFindDuplicates = useCallback(async () => {
+    setStripeDuplicatesLoading(true);
+    setIsOperationRunning(true);
+    setMessage("Creating duplicates job...");
+
+    try {
+      const createRes = await fetch("/api/admin/backfill/stripe/duplicates", { method: "POST" });
+      if (!createRes.ok) {
+        const err = await createRes.json();
+        setMessage(`Error creating job: ${err.error || createRes.statusText}`);
+        setStripeDuplicatesLoading(false);
+        setIsOperationRunning(false);
+        return;
+      }
+      const { jobId, status, message } = await createRes.json();
+      
+      if (status === "pending" || status === "processing") {
+        setMessage(`Job ${jobId} created. Finding duplicates...`);
+        
+        // Poll for completion
+        const maxPolls = 180; // 6 minutes max
+        let polls = 0;
+
+        const poll = async () => {
+          if (polls >= maxPolls) {
+            setMessage("Polling timed out. Duplicates job may still be processing.");
+            setStripeDuplicatesLoading(false);
+            setIsOperationRunning(false);
+            return;
+          }
+
+          try {
+            const statusRes = await fetch(`/api/admin/backfill/stripe/duplicates`);
+            if (!statusRes.ok) {
+              setMessage(`Error polling job: ${statusRes.status}`);
+              setStripeDuplicatesLoading(false);
+              setIsOperationRunning(false);
+              return;
+            }
+            const status = await statusRes.json();
+
+            if (status.duplicates && status.duplicates.length > 0) {
+              setStripeDuplicates(status.duplicates || []);
+              setMessage(`Found ${status.duplicateCount || 0} duplicate emails`);
+              setStripeDuplicatesLoading(false);
+              setIsOperationRunning(false);
+              return;
+            } else if (status.cached) {
+              // Job completed with results
+              setStripeDuplicates(status.duplicates || []);
+              setMessage(`Found ${status.duplicateCount || 0} duplicate emails (cached)`);
+              setStripeDuplicatesLoading(false);
+              setIsOperationRunning(false);
+              return;
+            } else {
+              polls++;
+              setTimeout(poll, 2000);
+            }
+          } catch (error) {
+            console.error("Poll error:", error);
+            polls++;
+            setTimeout(poll, 2000);
+          }
+        };
+
+        poll();
+      } else {
+        setMessage(message || "Unknown response");
+        setStripeDuplicatesLoading(false);
+        setIsOperationRunning(false);
+      }
+    } catch (error) {
+      console.error("Failed to find duplicates:", error);
+      setMessage(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setStripeDuplicatesLoading(false);
+      setIsOperationRunning(false);
+    }
+  }, []);
+
   // Delete Cache - deletes all reconciliation cache and triggers fresh jobs
   const handleDeleteCache = useCallback(async () => {
     showConfirm(
@@ -1661,6 +1741,13 @@ export default function BackfillClient() {
               className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
             >
               {stripeOnlyLoading ? "Working..." : "Generate Stripe Data"}
+            </button>
+            <button
+              onClick={handleFindDuplicates}
+              disabled={stripeDuplicatesLoading}
+              className="text-sm border-2 border-amber-500 text-amber-600 px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-amber-50 disabled:opacity-50"
+            >
+              {stripeDuplicatesLoading ? "Working..." : "Find Duplicates"}
             </button>
           </div>
         </div>

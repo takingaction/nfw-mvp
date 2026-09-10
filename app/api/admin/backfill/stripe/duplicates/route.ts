@@ -13,147 +13,119 @@ export async function GET(request: Request) {
   try {
     // Admin auth check
     const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { data: adminProfile } = await supabase
       .from("profiles")
       .select("is_admin")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (!adminProfile?.is_admin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get all duplicate emails (emails that appear more than once) - with pagination
-    const allRows: any[] = [];
-    let drPage = 0;
-    const drPageSize = 1000;
-    let drHasMore = true;
+    // Check for existing cached result
+    const { data: existingJob } = await supabaseAdmin
+      .from("stripe_duplicates_jobs")
+      .select("*")
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false })
+      .limit(1)
+      .single();
 
-    while (drHasMore) {
-      const { data: batch, error } = await supabaseAdmin
-        .from("stripe_backfill_status")
-        .select(`
-          id,
-          email,
-          status,
-          stripe_customer_id,
-          profile_id,
-          processed_at,
-          error_message,
-          profiles!inner(
-            full_name,
-            membership_level
-          )
-        `)
-        .order("processed_at", { ascending: false })
-        .range(drPage * drPageSize, (drPage + 1) * drPageSize - 1);
-
-      if (error) {
-        console.error("[duplicates] Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
-
-      if (batch && batch.length > 0) {
-        allRows.push(...batch);
-        drPage++;
-        drHasMore = batch.length === drPageSize;
-      } else {
-        drHasMore = false;
-      }
+    if (existingJob && existingJob.duplicates_json) {
+      return NextResponse.json({
+        duplicates: existingJob.duplicates_json,
+        duplicateCount: existingJob.duplicate_emails_count || 0,
+        totalSubscriptions: existingJob.total_subscriptions || 0,
+        cached: true,
+        completedAt: existingJob.completed_at,
+      });
     }
-
-    // Get all payments to compute lifetime_value per user - with pagination
-    const allPayments: { user_id: string; amount: number }[] = [];
-    let apPage = 0;
-    const apPageSize = 1000;
-    let apHasMore = true;
-
-    while (apHasMore) {
-      const { data: paymentBatch } = await supabaseAdmin
-        .from("membership_payments")
-        .select(`user_id, amount`)
-        .range(apPage * apPageSize, (apPage + 1) * apPageSize - 1);
-
-      if (paymentBatch && paymentBatch.length > 0) {
-        allPayments.push(...paymentBatch);
-        apPage++;
-        apHasMore = paymentBatch.length === apPageSize;
-      } else {
-        apHasMore = false;
-      }
-    }
-
-    // Compute lifetime_value per user_id
-    const lifetimeValueByUserId = new Map<string, number>();
-    for (const payment of allPayments || []) {
-      const current = lifetimeValueByUserId.get(payment.user_id) || 0;
-      lifetimeValueByUserId.set(payment.user_id, current + (payment.amount || 0));
-    }
-
-    // Group by email and find duplicates
-    const emailMap = new Map<string, typeof allRows>();
-    for (const row of allRows || []) {
-      const email = row.email.toLowerCase();
-      if (!emailMap.has(email)) {
-        emailMap.set(email, []);
-      }
-      emailMap.get(email)!.push(row);
-    }
-
-    // Filter to only emails with duplicates (count > 1)
-    const duplicates: Array<{
-      email: string;
-      count: number;
-      rows: Array<{
-        id: string;
-        status: string;
-        stripe_customer_id: string | null;
-        lifetime_value: number | null;
-        processed_at: string | null;
-        error_message: string | null;
-        full_name: string | null;
-        membership_level: string | null;
-      }>;
-    }> = [];
-
-    for (const [email, rows] of emailMap) {
-      if (rows.length > 1) {
-        duplicates.push({
-          email,
-          count: rows.length,
-          rows: rows.map(r => ({
-            id: r.id,
-            status: r.status,
-            stripe_customer_id: r.stripe_customer_id,
-            lifetime_value: lifetimeValueByUserId.get(r.profile_id) || 0,
-            processed_at: r.processed_at,
-            error_message: r.error_message,
-            full_name: (r as any).profiles?.full_name || null,
-            membership_level: (r as any).profiles?.membership_level || null,
-          })),
-        });
-      }
-    }
-
-    // Sort by count descending
-    duplicates.sort((a, b) => b.count - a.count);
 
     return NextResponse.json({
-      success: true,
-      totalDuplicates: duplicates.reduce((sum, d) => sum + d.count, 0),
-      uniqueEmailsWithDuplicates: duplicates.length,
-      duplicates,
+      duplicates: [],
+      duplicateCount: 0,
+      totalSubscriptions: 0,
+      cached: false,
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("[duplicates] Error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
+      { error: error.message || "Failed to get duplicates" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    // Admin auth check
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: adminProfile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single();
+
+    if (!adminProfile?.is_admin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Check for existing pending/processing job
+    const { data: existingJob } = await supabaseAdmin
+      .from("stripe_duplicates_jobs")
+      .select("id, status")
+      .in("status", ["pending", "processing"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (existingJob) {
+      return NextResponse.json({
+        jobId: existingJob.id,
+        status: existingJob.status,
+        message: "Job already in progress",
+      });
+    }
+
+    // Create new job
+    const { data: newJob, error } = await supabaseAdmin
+      .from("stripe_duplicates_jobs")
+      .insert({ status: "pending" })
+      .select("id")
+      .single();
+
+    if (error || !newJob) {
+      console.error("[duplicates] Failed to create job:", error);
+      return NextResponse.json(
+        { error: "Failed to create job" },
+        { status: 500 }
+      );
+    }
+
+    console.log(`[duplicates] Created job ${newJob.id}`);
+
+    return NextResponse.json({
+      jobId: newJob.id,
+      status: "pending",
+      message: "Job created, processing in background",
+    });
+
+  } catch (error: any) {
+    console.error("[duplicates] Error:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to trigger duplicates job" },
       { status: 500 }
     );
   }
