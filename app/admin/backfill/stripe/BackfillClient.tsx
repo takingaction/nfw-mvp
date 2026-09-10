@@ -988,15 +988,15 @@ export default function BackfillClient() {
       const { jobId, status, message } = await createRes.json();
       
       if (status === "pending" || status === "processing") {
-        setMessage(`Job ${jobId} created. Finding duplicates...`);
-        
-        // Poll for completion
-        const maxPolls = 180; // 6 minutes max
+        setMessage(`Job ${jobId} created. Waiting for cron to process (runs every 5 min)...`);
+
+        // Poll for completion - cron runs every 5 min, so wait up to 7 min
+        const maxPolls = 210; // 7 minutes max (cron fires every 5 min)
         let polls = 0;
 
         const poll = async () => {
           if (polls >= maxPolls) {
-            setMessage("Polling timed out. Duplicates job may still be processing.");
+            setMessage("Timed out waiting for cron. Check Vercel cron is enabled, or try again later.");
             setStripeDuplicatesLoading(false);
             setIsOperationRunning(false);
             return;
@@ -2658,6 +2658,12 @@ export default function BackfillClient() {
       {/* Results Table */}
       {initialized && rows.length > 0 && (
         <div className="bg-white rounded-lg border border-nfw-aubergine/20 overflow-hidden">
+          <div className="px-4 py-3 border-b border-nfw-dove bg-nfw-aubergine/5">
+            <h3 className="font-ui font-bold text-nfw-aubergine">Results Table</h3>
+            <p className="text-xs text-nfw-blackberry/60 mt-0.5">
+              All profiles with their Stripe reconciliation status. Use filters to narrow results.
+            </p>
+          </div>
           {/* Payment Filter Buttons */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-nfw-dove bg-nfw-dove/20 flex-wrap">
             <span className="text-xs text-nfw-blackberry/60 font-ui mr-1">Filter:</span>

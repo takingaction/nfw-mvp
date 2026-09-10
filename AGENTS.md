@@ -14377,3 +14377,41 @@ Removed `fetchStripeDuplicates` from the page mount useEffect. The "Find Duplica
 
 ### Commit
 - `fix: remove fetchStripeDuplicates from page mount - now button-only`
+
+## Session 2026-09-14: Fix Duplicates Cron Not Configured
+
+### Problem
+
+The "Find Duplicates" button created jobs in `stripe_duplicates_jobs` table but the cron worker to process them (`process-stripe-duplicates-jobs`) was **not configured in vercel.json**, so jobs never got processed. Also, polling timeout was too short (6 min) for the 5-min cron interval.
+
+### Solution
+
+1. **Added missing cron to vercel.json:**
+```json
+{
+  "path": "/api/cron/process-stripe-duplicates-jobs",
+  "schedule": "*/5 * * * *"
+}
+```
+
+2. **Increased polling timeout in handleFindDuplicates:**
+- `maxPolls` increased from 180 (6 min) to 210 (7 min)
+- Better messaging: "Waiting for cron to process (runs every 5 min)..."
+- Clearer timeout message
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `vercel.json` | Added `process-stripe-duplicates-jobs` cron entry |
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Increased `maxPolls` to 210, improved messaging |
+
+### How It Works Now
+
+1. User clicks "Find Duplicates" → creates job in `stripe_duplicates_jobs`
+2. Cron fires every 5 min → processes pending jobs
+3. Results cached permanently in `stripe_duplicates_jobs.duplicates_json`
+4. Subsequent page loads show cached results immediately
+
+### Commit
+- `fix: add missing duplicates cron to vercel.json, increase polling timeout`

@@ -23,6 +23,10 @@
     {
       "path": "/api/cron/process-sync-all-jobs",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/process-stripe-duplicates-jobs",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
