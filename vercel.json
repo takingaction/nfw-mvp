@@ -19,6 +19,10 @@
     {
       "path": "/api/cron/process-stripe-only-jobs",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/process-sync-all-jobs",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

@@ -510,6 +510,66 @@ export default function BackfillClient() {
     poll();
   }, []);
 
+  // Poll for sync-all job completion
+  const pollSyncAllJob = useCallback(async (jobId: string) => {
+    const maxPolls = 180; // 6 minutes max (cron runs every 5 min, give buffer)
+    let polls = 0;
+
+    const poll = async () => {
+      if (polls >= maxPolls) {
+        setMessage("Sync All polling timed out. Check back in a few minutes.");
+        setSyncingPayments(false);
+        setIsOperationRunning(false);
+        setSyncProgress("");
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/backfill/stripe/sync-all?jobId=${jobId}`);
+        if (res.ok) {
+          const data = await res.json();
+
+          if (data.status === "completed") {
+            setMessage(`Sync Complete: ${data.synced_count || 0} synced, ${data.failed_count || 0} failed`);
+            setSyncingPayments(false);
+            setIsOperationRunning(false);
+            setSyncProgress("");
+            // Refresh all sections
+            await Promise.all([
+              fetchStatus(),
+              fetchLiveStats(),
+              fetchReconciliation(),
+              fetchOurDb(),
+            ]);
+          } else if (data.status === "failed") {
+            setMessage(`Job failed: ${data.error_message || "Unknown error"}`);
+            setSyncingPayments(false);
+            setIsOperationRunning(false);
+            setSyncProgress("");
+          } else {
+            // pending or processing - update progress
+            const processed = data.processed_records || 0;
+            const total = data.total_records || 0;
+            setSyncProgress(`Processing: ${processed}/${total} records...`);
+            polls++;
+            setTimeout(poll, 2000);
+          }
+        } else {
+          setMessage(`Error polling job: ${res.status}`);
+          setSyncingPayments(false);
+          setIsOperationRunning(false);
+          setSyncProgress("");
+        }
+      } catch (error) {
+        console.error("Poll error:", error);
+        polls++;
+        setTimeout(poll, 2000);
+      }
+    };
+
+    poll();
+  }, []);
+
   // Legacy: Fetch Stripe Only data (now uses job polling)
   const fetchStripeOnly = useCallback(async () => {
     showConfirm(
@@ -996,11 +1056,11 @@ export default function BackfillClient() {
     URL.revokeObjectURL(url);
   };
 
-  // Sync all payments from Stripe (calls payment-sync cron logic via admin endpoint)
+  // Sync all payments from Stripe (background job pattern)
   const handleSyncAllPayments = async () => {
     showConfirm(
       "Sync All Payments",
-      "This will sync payment details from Stripe and insert missing payments. This may take a few minutes. Continue?",
+      "This will sync payment details from Stripe and insert missing payments. This uses a background job and may take several minutes. Continue?",
       async () => {
         setSyncingPayments(true);
         setIsOperationRunning(true);
@@ -1008,21 +1068,22 @@ export default function BackfillClient() {
         try {
           const res = await fetch("/api/admin/backfill/stripe/sync-all", { method: "POST" });
           const data = await res.json();
-          if (data.success) {
-            showSuccess("Sync Complete", `Synced ${data.synced || 0}, failed ${data.failed || 0}`);
-            // Refresh all sections: Members tab (Status), Stripe Data tab (Live, True $, Our DB)
-            await Promise.all([
-              fetchStatus(),       // Refresh Members tab stats
-              fetchLiveStats(),    // Refresh Stripe Data tab - Live Stripe column
-              fetchReconciliation(), // Refresh Stripe Data tab - True $ + Difference
-              fetchOurDb(),        // Refresh Stripe Data tab - Our DB column
-            ]);
+          if (data.jobId) {
+            // Job created, start polling
+            setMessage("Sync job started. Polling for results...");
+            pollSyncAllJob(data.jobId);
+          } else if (data.message?.includes("already")) {
+            // Existing job, poll that
+            setMessage(`Existing job found. Polling for results...`);
+            pollSyncAllJob(data.jobId);
           } else {
             showError("Sync Failed", data.error || "Unknown error");
+            setSyncingPayments(false);
+            setIsOperationRunning(false);
+            setSyncProgress("");
           }
         } catch (error) {
           showError("Sync Failed", error instanceof Error ? error.message : "Unknown error");
-        } finally {
           setSyncingPayments(false);
           setIsOperationRunning(false);
           setSyncProgress("");

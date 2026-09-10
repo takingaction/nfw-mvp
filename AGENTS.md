@@ -14121,3 +14121,99 @@ User clicks Submit → fetch fails → catch block
 ### Commit
 
 - `999231b` - feat: add Slack error logging for grant application failures
+
+## Session 2026-09-13: Sync-All Background Job Pattern
+
+### Overview
+
+Converted the sync-all endpoint from synchronous (causing Vercel 300s timeout) to background job pattern to handle ~1000+ customers reliably.
+
+### Problem
+
+Original `/api/admin/backfill/stripe/sync-all` endpoint timed out after 300 seconds on Vercel when processing large numbers of customers. Error: "Unexpected token 'A', "An error o"... is not valid JSON" - HTML error page returned instead of JSON.
+
+### Solution
+
+Implemented background job pattern with cron worker:
+
+1. **POST /api/admin/backfill/stripe/sync-all** - Creates job record and returns immediately (~1s)
+2. **Cron worker /api/cron/process-sync-all-jobs** - Processes job in background (~2-3 min for 1000 customers)
+3. **UI polling** - Polls job status every 2 seconds until complete
+
+### Database Migration
+
+**`supabase/migrations/155_create_sync_all_jobs_table.sql`**:
+```sql
+CREATE TABLE sync_all_jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  status TEXT CHECK (status IN ('pending', 'processing', 'completed', 'failed')) DEFAULT 'pending',
+  total_records INTEGER DEFAULT 0,
+  processed_records INTEGER DEFAULT 0,
+  synced_count INTEGER DEFAULT 0,
+  failed_count INTEGER DEFAULT 0,
+  error_message TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  completed_at TIMESTAMPTZ
+);
+```
+
+### Job Trigger Endpoint
+
+**`app/api/admin/backfill/stripe/sync-all/route.ts`**:
+- POST: Creates job record, checks for existing pending/processing jobs (race condition prevention), returns jobId immediately
+- GET: Returns job status for polling
+
+### Cron Worker
+
+**`app/api/cron/process-sync-all-jobs/route.ts`**:
+- Picks up oldest pending job every 5 minutes
+- Marks stale processing jobs (>10 min) as failed
+- **Step 1**: Fix not_found records (lookup stripe_customer_id by profile_id or email)
+- **Step 2**: Sync payments for matched rows using concurrent batch processing (25 customers concurrently, 200ms delay)
+- Updates job progress periodically
+- Single atomic update at end to prevent partial state
+
+### Race Condition Prevention
+
+- Cron worker marks stale jobs as failed before picking up new ones
+- Job trigger checks for existing pending/processing jobs and returns existing jobId if found
+- Only one job runs at a time
+
+### UI Changes
+
+**`app/admin/backfill/stripe/BackfillClient.tsx`**:
+- Added `pollSyncAllJob()` function for polling job status
+- Modified `handleSyncAllPayments()` to use job trigger + polling
+- Progress displayed during processing ("Processing: X/Y records...")
+- Results shown when complete
+
+### Vercel Cron Configuration
+
+```json
+{
+  "path": "/api/cron/process-sync-all-jobs",
+  "schedule": "*/5 * * * *"
+}
+```
+
+### Performance
+
+- ~2-3 minutes for 1000 customers (vs timeout at 5 minutes)
+- Concurrent batch processing: 25 customers at a time
+- 200ms delay between batches to avoid rate limits
+- Progress updates every batch
+
+### Files Created/Modified
+
+| File | Change |
+|------|--------|
+| `supabase/migrations/155_create_sync_all_jobs_table.sql` | Created - job tracking table |
+| `app/api/admin/backfill/stripe/sync-all/route.ts` | Modified - job trigger only |
+| `app/api/cron/process-sync-all-jobs/route.ts` | Created - background worker |
+| `vercel.json` | Added cron entry |
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Added polling + progress UI |
+
+### Commit
+
+- `xxxxxxx` - feat: convert sync-all to background job pattern to avoid Vercel timeout
