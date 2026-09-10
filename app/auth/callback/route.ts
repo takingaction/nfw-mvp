@@ -47,7 +47,10 @@ export async function GET(request: NextRequest) {
               profile_completed: false,
             });
 
-          if (insertError) {
+          if (insertError?.code === '23505') {
+            // Concurrent request got there first — safe to ignore
+            console.log("[AuthCallback] Profile already exists (concurrent insert suppressed)");
+          } else if (insertError) {
             console.error("[AuthCallback] Failed to create profile:", insertError);
             redirect("/auth/error?error=Profile creation failed");
           }

@@ -14217,3 +14217,44 @@ CREATE TABLE sync_all_jobs (
 ### Commit
 
 - `xxxxxxx` - feat: convert sync-all to background job pattern to avoid Vercel timeout
+
+## Session 2026-09-10: Supabase Error Fixes
+
+### Bug: Dashboard Savings Returned Wrong Data
+
+**Problem:** Three files queried `grants.payout_amount` which doesn't exist. The correct column is `amount_approved`. Dashboard and API returned broken/zero savings data since Sep 10.
+
+**Source:** Post-Sep 10 error log analysis (`REPORTS-IGNORE/supabase_errors-Sep-10-2026.csv`):
+- 15 errors: `column grants.payout_amount does not exist`
+- 7 errors: `duplicate key violates profiles_pkey` (race condition in auth callback)
+- 1 error: `relation "email_templates" does not exist` (transient, self-resolved)
+
+### Fix 1: `payout_amount` → `amount_approved`
+
+| File | Change |
+|------|--------|
+| `app/dashboard/page.tsx` | `select("payout_amount")` → `select("amount_approved")`, type + reduce |
+| `components/dashboard/YourMicrograntsSection.tsx` | Type `payout_amount: number \| null` → `amount_approved: number \| null` |
+| `app/api/dashboard/savings/route.ts` | `select("payout_amount")` → `select("amount_approved")`, type + reduce |
+
+### Fix 2: Auth Callback Race Condition
+
+**File:** `app/auth/callback/route.ts`
+
+**Problem:** TOCTOU race — concurrent auth callbacks both SELECT profile (none found), then both INSERT (one fails with duplicate key).
+
+**Fix:** Added explicit `23505` check before generic error handling:
+
+```typescript
+if (insertError?.code === '23505') {
+  // Concurrent request got there first — safe to ignore
+  console.log("[AuthCallback] Profile already exists (concurrent insert suppressed)");
+} else if (insertError) {
+  console.error("[AuthCallback] Failed to create profile:", insertError);
+  redirect("/auth/error?error=Profile creation failed");
+}
+```
+
+### Commit
+
+- `xxxxxxx` - fix: correct grants.payout_amount to amount_approved in 3 files; fix auth callback race condition

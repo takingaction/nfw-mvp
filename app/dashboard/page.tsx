@@ -29,7 +29,7 @@ async function getSavings(userId: string) {
   const [micrograntsResult, perksResult, claimsResult, nfwPerksResult] = await Promise.all([
     supabaseAdmin
       .from("grants")
-      .select("payout_amount")
+      .select("amount_approved")
       .eq("user_id", userId)
       .eq("status", "paid"),
     supabaseAdmin
@@ -48,7 +48,7 @@ async function getSavings(userId: string) {
   ]);
 
   const micrograntsTotal = (micrograntsResult.data || []).reduce(
-    (sum: number, g: { payout_amount: number | null }) => sum + (g.payout_amount || 0),
+    (sum: number, g: { amount_approved: number | null }) => sum + (g.amount_approved || 0),
     0
   );
 

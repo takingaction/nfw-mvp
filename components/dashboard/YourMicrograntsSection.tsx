@@ -13,7 +13,7 @@ interface Grant {
   id: string;
   cycle_id: string;
   status: string;
-  payout_amount: number | null;
+  amount_approved: number | null;
   created_at: string;
   grant_cycles: {
     cycle_name: string;
