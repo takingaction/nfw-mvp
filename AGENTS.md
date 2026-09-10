@@ -14053,3 +14053,71 @@ NOTIFY pgrst, 'reload';
 | File | Change |
 |------|--------|
 | `AGENTS.md` | This session entry |
+
+## Session 2026-09-13: Grant Application Error Logging
+
+### Overview
+
+Added client-side error logging to the grant application form with Slack notifications for failed submissions.
+
+### Problem
+
+When grant application submissions failed (e.g., SSL/TLS handshake failures), there was no way to identify which user was affected because:
+- GET /grants/apply logs don't include user IDs
+- Vercel GET request logs don't include user IDs
+- Only server-side POST /api/grants/create logged userId
+
+### Solution
+
+Created a new error logging endpoint that receives client-side errors and sends Slack notifications.
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `lib/slack-notifications.ts` | `notifyGrantApplicationError()` function |
+| `app/api/log/client-error/route.ts` | POST endpoint for client error logging |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/grants/apply/page.tsx` | Pass `userEmail` prop to form |
+| `components/GrantApplicationForm.tsx` | Catch errors, lookup cycle name, call error logging endpoint |
+
+### Error Logging Flow
+
+```
+User clicks Submit → fetch fails → catch block
+                                      ↓
+                            fetch /api/log/client-error
+                                      ↓
+                            notifyGrantApplicationError()
+                                      ↓
+                            Slack message sent with:
+                            - User email + ID
+                            - Cycle name + ID
+                            - Error message + code + stack
+```
+
+### Slack Message Format
+
+```
+🔴 Grant Application Error
+• User: email (userId)
+• Cycle: cycle_name (cycleId)
+• Error: error message
+• Time: timestamp
+• Stack: (if available)
+```
+
+### Key Implementation Details
+
+- Uses existing `SLACK_REFUND_WEBHOOK_URL` for Slack notifications
+- Cycle name looked up from `cycles` array using `formData.cycle_id`
+- Error logging is fire-and-forget (doesn't block error display to user)
+- Non-blocking: `catch(console.error)` ensures logging failure doesn't affect user experience
+
+### Commit
+
+- `999231b` - feat: add Slack error logging for grant application failures
