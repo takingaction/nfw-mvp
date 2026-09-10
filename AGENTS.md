@@ -14345,3 +14345,35 @@ Increased the delay between Stripe API calls from 50ms to 250ms.
 
 ### Commit
 - `fix: increase Stripe API delay from 50ms to 250ms to avoid rate limits`
+
+## Session 2026-09-14: Fix Duplicates Section Loading on Page Mount
+
+### Problem
+
+Every time the `/admin/backfill/stripe` page loaded, the "Find Duplicates" button showed "Working" and the duplicates section disappeared. The page was calling the live Stripe API endpoint (`/api/admin/backfill/stripe/stripe-duplicates`) on mount, which makes real Stripe API calls and takes 2+ minutes.
+
+### Root Cause
+
+The useEffect on mount (line 1448) called `fetchStripeDuplicates()` which triggers the live Stripe API endpoint. This endpoint:
+- Makes real Stripe API calls for ALL subscriptions
+- Has only 25ms delays between calls
+- Takes 2+ minutes to complete
+- Shows "Working" state the entire time
+
+### Solution
+
+Removed `fetchStripeDuplicates` from the page mount useEffect. The "Find Duplicates" button (`handleFindDuplicates`) already triggers the background job properly. On page load, the cached results are shown via `fetchDuplicates()` which reads from the `stripe_duplicates_jobs` table.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Removed `fetchStripeDuplicates` from useEffect on mount |
+
+### Behavior After Fix
+
+- Page loads → shows cached results via `fetchDuplicates()` (reads from job cache)
+- User clicks "Find Duplicates" → triggers background job via `handleFindDuplicates()` → cron processes → results cached
+
+### Commit
+- `fix: remove fetchStripeDuplicates from page mount - now button-only`

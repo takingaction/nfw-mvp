@@ -1445,9 +1445,8 @@ export default function BackfillClient() {
     fetchMissingPaymentsSilent();
     fetchOurDb();
     fetchDuplicates();
-    fetchStripeDuplicates();
     fetchMissingFromBackfill();
-  }, [fetchStatus, fetchGiftCodes, fetchMissingPaymentsSilent, fetchOurDb, fetchDuplicates, fetchStripeDuplicates, fetchMissingFromBackfill]);
+  }, [fetchStatus, fetchGiftCodes, fetchMissingPaymentsSilent, fetchOurDb, fetchDuplicates, fetchMissingFromBackfill]);
 
   // Delete single payment
   const handleDeletePayment = async () => {
