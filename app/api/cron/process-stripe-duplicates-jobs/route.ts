@@ -13,7 +13,7 @@ const supabaseAdmin = createAdminClient(
 
 export const dynamic = "force-dynamic";
 
-const DELAY_MS = 50;
+const DELAY_MS = 250;
 const SUBS_PER_RUN = 50; // Process 50 subscriptions per cron run (~30-60 seconds)
 
 async function sleep(ms: number): Promise<void> {

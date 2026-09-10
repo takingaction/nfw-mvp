@@ -14313,3 +14313,35 @@ if (insertError?.code === '23505') {
 
 ### Commit
 - `split-stripe-duplicates` - feat: split duplicates job into separate on-demand worker
+
+## Session 2026-09-14: Stripe Duplicates Cron Rate Limit Fix
+
+### Problem
+
+The duplicates cron worker at `app/api/cron/process-stripe-duplicates-jobs/route.ts` was hitting Stripe's API rate limits, causing 429 errors and 2+ minute execution times.
+
+### Root Cause
+
+- `DELAY_MS = 50` (only 50ms between Stripe API calls)
+- When Vercel cron triggers multiple concurrent executions, 50ms wasn't enough to avoid rate limits
+- 429 responses caused retries and further delays
+
+### Solution
+
+Increased the delay between Stripe API calls from 50ms to 250ms.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/cron/process-stripe-duplicates-jobs/route.ts` | Changed `DELAY_MS` from `50` to `250` (line 16) |
+
+### Rationale
+
+- 50ms × concurrent executions = rate limit hits
+- 250ms gives Stripe time to reset between calls
+- 250ms × 100 calls = 25 seconds total delay (acceptable)
+- Job persists progress between cron runs, so slower per-run is fine
+
+### Commit
+- `fix: increase Stripe API delay from 50ms to 250ms to avoid rate limits`
