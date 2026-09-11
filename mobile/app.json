@@ -16,8 +16,8 @@
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSPhotoLibraryUsageDescription": "Allow NFW to access your photos so you can set a profile picture.",
-        "NSCameraUsageDescription": "Allow NFW to use your camera so you can take a profile picture."
+        "NSPhotoLibraryUsageDescription": "Allow NFW to access your photos so you can set a profile picture or attach receipts to grant applications.",
+        "NSCameraUsageDescription": "Allow NFW to use your camera so you can take a profile picture or photograph receipts for grant applications."
       }
     },
     "android": {
@@ -81,6 +81,13 @@
         "expo-notifications",
         {
           "color": "#3E145F"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow NFW to access your photos so you can attach receipts and documents to grant applications.",
+          "cameraPermission": "Allow NFW to use your camera so you can photograph receipts and documents for grant applications."
         }
       ]
     ],

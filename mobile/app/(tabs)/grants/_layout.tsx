@@ -7,10 +7,6 @@ export default function GrantsLayout() {
     <Stack screenOptions={brandStackOptions}>
       <Stack.Screen name="index" options={{ title: "Microgrants" }} />
       <Stack.Screen name="apply/index" options={{ title: "Apply" }} />
-      <Stack.Screen
-        name="apply/confirm"
-        options={{ title: "Confirm & Submit", presentation: "modal" }}
-      />
       <Stack.Screen name="my-applications" options={{ title: "My Applications" }} />
       <Stack.Screen name="[id]" options={{ title: "Application" }} />
       <Stack.Screen

@@ -1,7 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Linking, StyleSheet, Text, View } from "react-native";
+import * as WebBrowser from "expo-web-browser";
+import { useState } from "react";
+import { Alert, StyleSheet, Text, View } from "react-native";
 
+import { StripeConnectCard } from "@/components/grants/StripeConnectCard";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -9,24 +12,38 @@ import { ErrorScreen, LoadingScreen, Screen } from "@/components/ui/Screen";
 import { Body, Caption, Heading, Label, Subheading } from "@/components/ui/Typography";
 import { colors, theme } from "@/constants/colors";
 import { fonts } from "@/constants/fonts";
-import { env } from "@/lib/env";
-import { decodeHtml, formatCurrency, formatDateLong, formatDateTime } from "@/lib/format";
+import { ApiError } from "@/lib/api";
+import { getDocumentUrl } from "@/lib/api/grants";
+import { decodeHtml, formatCurrency, formatDateLong, formatDateShort, formatDateTime } from "@/lib/format";
 import { useGrant, useGrantDocuments } from "@/lib/queries/grants";
-import { useAuthStore } from "@/stores/auth";
-import { GRANT_STATUS_LABELS, GRANT_STATUS_TONES } from "@/types/grants";
+import { GRANT_STATUS_LABELS, GRANT_STATUS_TONES, type GrantDocument } from "@/types/grants";
 
 /**
  * Web equivalent:
  *   - app/grants/view/[id]/page.tsx
- *   - GET /api/stripe/connect/status, POST /api/grants/document-url (Bearer pending → web hand-off)
+ *   - GET /api/stripe/connect/status + POST /api/stripe/connect (via StripeConnectCard)
+ *   - POST /api/grants/document-url (signed URL → in-app browser)
  * Build phase: 3
  */
 export default function GrantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const profile = useAuthStore((s) => s.profile);
   const grant = useGrant(id);
   const documents = useGrantDocuments(id);
+  const [openingDoc, setOpeningDoc] = useState<string | null>(null);
+
+  async function openDocument(d: GrantDocument) {
+    if (!d.document_url || !id) return;
+    setOpeningDoc(d.id);
+    try {
+      const { url } = await getDocumentUrl(id, d.document_url);
+      await WebBrowser.openBrowserAsync(url);
+    } catch (err) {
+      Alert.alert("Couldn't open document", err instanceof ApiError ? err.message : "Failed to open document");
+    } finally {
+      setOpeningDoc(null);
+    }
+  }
 
   if (grant.isLoading) return <LoadingScreen />;
   if (grant.isError) return <ErrorScreen message={(grant.error as Error).message} onRetry={() => grant.refetch()} />;
@@ -38,8 +55,6 @@ export default function GrantDetailScreen() {
   const cycle = g.grant_cycles;
   const label = GRANT_STATUS_LABELS[g.status] ?? g.status;
   const tone = GRANT_STATUS_TONES[g.status] ?? "neutral";
-  const bankConnected = !!g.stripe_connect_account_id || profile?.stripe_onboarding_completed === true;
-  const webGrantUrl = `${env.siteUrl}/grants/view/${g.id}`;
 
   return (
     <>
@@ -60,27 +75,10 @@ export default function GrantDetailScreen() {
         ) : null}
 
         {/* Status-specific action sections */}
-        {g.status === "approved" && !bankConnected && (
-          <Card surface="citrine" bordered={false} style={styles.action}>
-            <Subheading>Your Grant Has Been Approved!</Subheading>
-            <Body>
-              To receive your funds, please connect your bank account. This is a secure process handled by Stripe — NFW never sees your banking details.
-            </Body>
-            <Caption tone="default">
-              IMPORTANT: If you don&apos;t have a website, please input nationalfundforwomen.org when prompted.
-            </Caption>
-            <Button label="Connect Bank Account" variant="tertiary" onPress={() => Linking.openURL(webGrantUrl)} />
-            <Caption>Opens nationalfundforwomen.org to complete Stripe onboarding.</Caption>
-          </Card>
-        )}
-        {g.status === "approved" && bankConnected && (
-          <Card style={[styles.action, styles.successCard]}>
-            <View style={styles.inlineRow}>
-              <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
-              <Label>Bank Account Connected</Label>
-            </View>
-            <Caption>Your payment will be sent to your connected account.</Caption>
-          </Card>
+        {g.status === "approved" && (
+          <View style={styles.action}>
+            <StripeConnectCard grantId={g.id} />
+          </View>
         )}
         {g.status === "payment_sent" && (
           <Card style={[styles.action, styles.successCard]}>
@@ -140,11 +138,14 @@ export default function GrantDetailScreen() {
                   <Text style={styles.docName} numberOfLines={1}>
                     {d.file_name}
                   </Text>
-                  {d.file_size ? <Caption>{Math.round(d.file_size / 1024)} KB</Caption> : null}
+                  <Caption>
+                    Uploaded {formatDateShort(d.uploaded_at)}
+                    {d.file_size ? ` • ${Math.round(d.file_size / 1024)} KB` : ""}
+                  </Caption>
                 </View>
+                <Button label={openingDoc === d.id ? "Loading..." : "View →"} variant="ghost" size="sm" loading={openingDoc === d.id} onPress={() => openDocument(d)} />
               </View>
             ))}
-            <Caption>Documents can be viewed on nationalfundforwomen.org.</Caption>
           </Card>
         )}
 
@@ -190,7 +191,6 @@ const styles = StyleSheet.create({
   action: { marginTop: 16, gap: 10 },
   successCard: { borderColor: "#86EFAC", backgroundColor: "#F0FDF4" },
   dangerCard: { borderColor: "#FCA5A5", backgroundColor: "#FEF2F2" },
-  inlineRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   block: { marginTop: 16, gap: 8 },
   answer: { marginTop: 20, gap: 6 },
   docRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.border },

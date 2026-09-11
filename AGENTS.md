@@ -14687,3 +14687,27 @@ reads and `auth.*` only.
 
 **Verified:** `tsc` 0 errors, `next build` ✓, `/api/admin/members/list` → 401 with no session
 and with a garbage Bearer token.
+
+## Session 2026-09-11 (cont.): Mobile Slice C — Grants end-to-end
+
+Native grant application, document handling and Stripe Connect onboarding. **No web changes**
+— all five routes (`grants/create`, `grants/upload-document`, `grants/document-url`,
+`stripe/connect`, `stripe/connect/status`) already used the shared helper and accept Bearer tokens.
+
+| Area | Files |
+|---|---|
+| API | `mobile/lib/api/grants.ts`; hooks `useCreateGrant`, `useStripeConnectStatus` in `lib/queries/grants.ts` |
+| Form | `app/(tabs)/grants/apply/index.tsx` — replaces the Slice A web hand-off. Cycle radio cards (pre-selects `?cycleId=` or a lone open cycle), three textareas with the web's labels/helpers/placeholders/limits (500/1000/500), validation order + error strings from `GrantApplicationForm.tsx`, consent modal → `POST /grants/create` → uploads → success |
+| Documents | `components/grants/DocumentPicker.tsx` — Choose File (`expo-document-picker`) + Take Photo / Library (`expo-image-picker`, plugin added to `app.json`); same 6 MIME types + 10 MB; `resolveDocumentMime()` maps `.doc/.docx` by extension because RN pickers report `application/octet-stream`. Uploads run **after** create (route requires `grantId`), sequentially; failures show Retry / "Continue without them". |
+| Consent | `components/grants/ConsentModal.tsx` — verbatim "Ready to Submit" copy, both checkboxes required |
+| Stripe | `components/grants/StripeConnectCard.tsx` — merges `ConnectBankButton` + `StripeAccountStatus`. Opens onboarding in `expo-web-browser`; Stripe redirects to the **web** return page (that page sets `profiles.stripe_onboarding_completed`); on app foreground the card re-polls `/status` and refreshes the profile. Used in grant detail and the dashboard banner. `connect/return.tsx` + `connect/refresh.tsx` are real screens (future universal-link targets). |
+| Detail | `app/(tabs)/grants/[id].tsx` — documents "View →" via signed URL; approved state renders `StripeConnectCard` |
+| UI | `components/ui/Modal.tsx` (BrandModal). Removed `apply/confirm` route (consent is a modal). |
+
+**Deferred (documented in blueprint):** per-cycle `requires_documents` flag + enforcement (no such
+concept exists today — requirements live in description text); post-submission upload backstop.
+
+**Web bugs observed, not fixed:** `StripeAccountStatus.tsx` Retry never re-fetches;
+`grants/create` doesn't validate `certification_consent` server-side.
+
+**Build:** `tsc` 0, `expo lint` clean, `expo-doctor` 21/21, Metro bundle 11.1 MB OK.

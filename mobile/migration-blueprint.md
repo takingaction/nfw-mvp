@@ -1,7 +1,7 @@
 # NFW Mobile — Migration Blueprint
 
 **Created:** 2026-09-11
-**Status:** Slices A + B complete (Login · Dashboard · Grants read-only · Settings · **Perks tab**). Web API now accepts Bearer tokens. See "Implementation Status" below.
+**Status:** Slices A + B + C complete (Login · Dashboard · **Grants end-to-end** · Settings · Perks). Web API accepts Bearer tokens. See "Implementation Status" below.
 **Source plan:** `../mobile-app.md`
 **Web architecture reference:** `../AGENTS.md`
 
@@ -32,8 +32,8 @@
 | `components/banners/DashboardBanners.tsx` | **Done** | — | DOB · pending free / waitlist · You're Approved (connect / connected) |
 | `app/(tabs)/grants/index.tsx` | **Done** | `grant_cycles` direct | Reminder + eligibility copy verbatim from `GrantApplicationForm.tsx`. Filters `is_testing_only` for non-admins, `end_date >= today`. |
 | `app/(tabs)/grants/my-applications.tsx` | **Done** | own `grants` + cycle embed | Stat cards + status prompts match web |
-| `app/(tabs)/grants/[id].tsx` | **Done** | own `grants`, `grant_documents` | Timeline, answers, status actions. Document **viewing** and Stripe onboarding hand off to web (Bearer). |
-| `app/(tabs)/grants/apply/index.tsx` | **Interim** | — | Shows chosen cycle, hands off to web form. Native form = Slice B. |
+| `app/(tabs)/grants/[id].tsx` | **Done** | own `grants`, `grant_documents`, `/api/grants/document-url`, Stripe status | Timeline, answers, status actions. Documents open via signed URL in the in-app browser; approved grants show `StripeConnectCard`. |
+| `app/(tabs)/grants/apply/index.tsx` | **Done** (Slice C) | `/api/grants/create` + `/upload-document` | Native form: cycle radio cards, three textareas (500/1000/500), validation order + strings from web, consent modal, create → sequential uploads with Retry / Continue-without → success. Documents via file picker, camera or photo library. |
 | `app/(tabs)/settings/index.tsx` | **Done** | auth store | Identity card, grouped rows, sign-out confirm, version |
 | `components/ui/*` | **Done** | — | Typography, Button, Card, Badge, Banner, EmptyState, Input, Screen, AnimatedCurrency |
 | `lib/queries/{grants,dashboard}.ts` | **Done** | — | TanStack hooks; keys in `lib/queries/keys.ts` |
@@ -53,13 +53,26 @@
 | `app/(tabs)/perks/saved.tsx` | **Done** | liked stores | Numeric key → store offers; partner-name key → NFW list |
 | `app/(tabs)/perks/history.tsx` | **Done** | redemptions + nfw redemptions + fresh-url | "Open" re-mints expiring coupon URLs; expired → alert |
 | `lib/html.ts` | **Done** | — | RN replacement for DOM decoding: entities (named/dec/hex), tag stripping with paragraph breaks, link extraction, phone extraction, `simplifyRedemptionMessage`. Unit-checked (12 cases). |
+| **Slice C — Grants completion** | | | |
+| `lib/api/grants.ts` | **Done** | Vercel API | createGrant, uploadGrantDocument (multipart `file` + `grantId`; MIME resolved from extension when the picker reports octet-stream), getDocumentUrl, createStripeConnectLink, getStripeConnectStatus, logGrantError |
+| `components/grants/DocumentPicker.tsx` | **Done** | — | Choose File / Take Photo / Library; same 6 MIME types + 10 MB; web's exact "File Not Attached" strings |
+| `components/grants/ConsentModal.tsx` | **Done** | — | "Ready to Submit": certification + consent checkboxes, collapsible full text — verbatim |
+| `components/grants/StripeConnectCard.tsx` | **Done** | `/api/stripe/connect` + `/status` | Merges web ConnectBankButton + StripeAccountStatus. Opens onboarding in the in-app browser; Stripe returns to the **web** return page (which sets `stripe_onboarding_completed`); card re-polls `/status` and refreshes the profile when the app foregrounds. Used on grant detail and the dashboard banner. |
+| `app/(tabs)/grants/application-success.tsx` | **Done** | — | Verbatim copy, "What happens next" 01/02/03 |
+| `app/(tabs)/grants/connect/{return,refresh}.tsx` | **Done** | Stripe status / connect | Real screens; become universal-link targets in Slice F |
+| `components/ui/Modal.tsx` | **Done** | — | BrandModal (scrim + card + footer) |
+| `app/(tabs)/grants/apply/confirm.tsx` | Removed | — | Consent is a modal, as on web |
 | `app/(tabs)/perks/travel.tsx` | Placeholder | — | Slice F (WebView + `/api/travel/token`) |
 | Everything else in the mapping table | Placeholder | — | Renders `PlaceholderScreen` with its web equivalent |
 
 **Removed:** the `__DEV__` preview bypass (login button, settings button, `devPreview` store flag, `AuthGate` exemption).
 
+### Deferred from Slice C (agreed 2026-09-11)
+- **Required documents per grant cycle.** No `requires_documents` concept exists in the schema, admin UI or web form — requirements live in cycle description text only. Proposed design: migration adding `grant_cycles.requires_documents BOOLEAN` + `document_instructions TEXT`; admin checkbox/textarea on cycle new/edit; enforce ≥1 attached document on web + mobile; "Documents required" badge on cycle cards. Server-side enforcement at `grants/create` isn't possible because uploads happen after the row exists; the backstop is a "zero documents" state visible on the detail screen and to reviewers.
+- **Post-submission document backstop.** If uploads fail after create, mobile offers Retry / Continue-without. Allowing uploads later from the application detail (only while zero docs + status `submitted`) was discussed and deferred.
+- **Web bugs observed (not fixed):** `StripeAccountStatus.tsx` "Retry" only resets state — the fetch effect never re-runs; `grants/create` does not validate `certification_consent === true` server-side.
+
 ### Remaining slices
-- **C — Grants completion:** native application form + consent, document upload/view, application-success, Stripe Connect onboarding via in-app browser + `nfw://grants/connect/*` returns
 - **D — Zero Dollar Store:** browse, product detail, claim → Shopify checkout in in-app browser, my-claims, ZDS savings bucket (verify `zero_dollar_claims` RLS first)
 - **E — Auth + Profile completion:** sign-up steps 0–3, forgot/update password, welcome/waitlist/error screens, profile view/edit, avatar upload, membership status, gift-code redeem, delete account
 - **F — Push + deep links + Travel:** `push_tokens` table + `/api/push/register` + grant-status hooks; universal links; Travel WebView

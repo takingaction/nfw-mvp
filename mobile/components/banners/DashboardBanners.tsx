@@ -1,7 +1,8 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Linking } from "react-native";
+import { Linking, View } from "react-native";
 
+import { StripeConnectCard } from "@/components/grants/StripeConnectCard";
 import { Banner } from "@/components/ui/Banner";
 import { env } from "@/lib/env";
 import { needsDateOfBirth, type Profile } from "@/types/profile";
@@ -18,7 +19,7 @@ type Props = {
  *   1. components/profile/ProfileBanner.tsx           — DOB placeholder (non-dismissible)
  *   2. components/dashboard/AbandonedCheckoutBanner   — OMITTED on mobile (Stripe purchase is web-only)
  *   3. components/dashboard/PendingFreeMembershipBanner — pending free / waitlist (dismissible per session)
- *   4. "YOU'RE APPROVED!" connect-bank banner          — approved grant, Stripe not onboarded
+ *   4. "YOU'RE APPROVED!" connect-bank card            — approved grant, Stripe not onboarded (native flow)
  *   5. "YOU'RE APPROVED!" already-connected banner     — approved grant, Stripe onboarded
  */
 export function DashboardBanners({ profile, hasPaidOrApprovedGrant, latestGrantId }: Props) {
@@ -58,16 +59,9 @@ export function DashboardBanners({ profile, hasPaidOrApprovedGrant, latestGrantI
       )}
 
       {hasPaidOrApprovedGrant && latestGrantId && !profile.stripe_onboarding_completed && (
-        <Banner
-          surface="citrine"
-          title="You're Approved!"
-          message="Connect your bank account to receive your grant payments."
-          note="IMPORTANT: If you don't have a website, please input nationalfundforwomen.org when prompted."
-          actionLabel="Connect Bank Account"
-          // Stripe Connect onboarding link requires POST /api/stripe/connect (Bearer token
-          // support pending). Until then, hand off to the web application page.
-          onAction={() => Linking.openURL(`${env.siteUrl}/grants/view/${latestGrantId}`)}
-        />
+        <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+          <StripeConnectCard grantId={latestGrantId} compact />
+        </View>
       )}
 
       {hasPaidOrApprovedGrant && latestGrantId && profile.stripe_onboarding_completed && (

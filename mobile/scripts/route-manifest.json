@@ -1,56 +1,472 @@
 {
   "_comment": "Source of truth for skeleton screens. Run `node scripts/generate-placeholders.mjs` to (re)create any missing route files. Existing files are never overwritten.",
   "routes": [
-    { "file": "app/+not-found.tsx", "component": "NotFoundScreen", "title": "Page Not Found", "web": ["app/not-found.tsx"], "phase": 1, "notFound": true },
-
-    { "file": "app/auth/login.tsx", "component": "LoginScreen", "title": "Member Login", "web": ["app/auth/login/page.tsx", "components/login-form.tsx"], "phase": 2 },
-    { "file": "app/auth/sign-up/index.tsx", "component": "SignUpScreen", "title": "Become a Member", "web": ["app/auth/sign-up/page.tsx", "components/SignUpFlow.tsx (step 0)", "GET /api/signup"], "phase": 2 },
-    { "file": "app/auth/sign-up/profile.tsx", "component": "SignUpProfileScreen", "title": "Personal Info", "web": ["components/SignUpFlow.tsx (step 1)", "POST /api/profile/update"], "phase": 2 },
-    { "file": "app/auth/sign-up/identity.tsx", "component": "SignUpIdentityScreen", "title": "About You", "web": ["components/SignUpFlow.tsx (step 2)", "POST /api/profile/update"], "phase": 2 },
-    { "file": "app/auth/sign-up/membership.tsx", "component": "SignUpMembershipScreen", "title": "Choose Membership", "web": ["components/SignUpFlow.tsx (step 3)", "POST /api/waitlist"], "phase": 2, "notes": "Paid tiers open nationalfundforwomen.org in the system browser (Apple 3.1.1). Free → waitlist via POST /api/waitlist." },
-    { "file": "app/auth/sign-up-success.tsx", "component": "SignUpSuccessScreen", "title": "Check Your Email", "web": ["app/auth/sign-up-success/page.tsx"], "phase": 2, "notes": "Resend confirmation via supabase.auth.resend({ type: 'signup' }) with 60s cooldown." },
-    { "file": "app/auth/forgot-password.tsx", "component": "ForgotPasswordScreen", "title": "Reset Password", "web": ["app/auth/forgot-password/page.tsx"], "phase": 2 },
-    { "file": "app/auth/update-password.tsx", "component": "UpdatePasswordScreen", "title": "New Password", "web": ["app/auth/update-password/page.tsx", "POST /api/auth/update-password"], "phase": 2, "notes": "Calls supabase.auth.updateUser directly — no cookie exchange needed on mobile." },
-    { "file": "app/auth/welcome.tsx", "component": "WelcomeScreen", "title": "Welcome to NFW", "web": ["app/auth/welcome/page.tsx"], "phase": 2 },
-    { "file": "app/auth/waitlist-confirmed.tsx", "component": "WaitlistConfirmedScreen", "title": "You're on the Waitlist", "web": ["app/auth/waitlist-confirmed/page.tsx"], "phase": 2 },
-    { "file": "app/auth/error.tsx", "component": "AuthErrorScreen", "title": "Confirmation Issue", "web": ["app/auth/error/page.tsx"], "phase": 2 },
-
-    { "file": "app/(tabs)/dashboard/index.tsx", "component": "DashboardScreen", "title": "Dashboard", "web": ["app/dashboard/page.tsx", "GET /api/auth/profile", "GET /api/dashboard/settings", "GET /api/dashboard/savings"], "phase": 6 },
-
-    { "file": "app/(tabs)/grants/index.tsx", "component": "GrantsScreen", "title": "Microgrants", "web": ["grant_cycles (status=open, is_testing_only=false)", "components/dashboard/YourMicrograntsSection.tsx"], "phase": 3 },
-    { "file": "app/(tabs)/grants/apply/index.tsx", "component": "GrantApplyScreen", "title": "Apply for a Microgrant", "web": ["app/grants/apply/page.tsx", "components/GrantApplicationForm.tsx", "POST /api/grants/upload-document"], "phase": 3 },
-    { "file": "app/(tabs)/grants/apply/confirm.tsx", "component": "GrantApplyConfirmScreen", "title": "Confirm & Submit", "web": ["components/GrantApplicationForm.tsx (consent modal)", "POST /api/grants/create"], "phase": 3 },
-    { "file": "app/(tabs)/grants/my-applications.tsx", "component": "MyApplicationsScreen", "title": "My Applications", "web": ["app/grants/my-applications/page.tsx"], "phase": 3 },
-    { "file": "app/(tabs)/grants/[id].tsx", "component": "GrantDetailScreen", "title": "Application", "web": ["app/grants/view/[id]/page.tsx", "POST /api/grants/document-url", "GET /api/stripe/connect/status"], "phase": 3, "param": "id" },
-    { "file": "app/(tabs)/grants/application-success.tsx", "component": "ApplicationSuccessScreen", "title": "Application Submitted", "web": ["app/grants/application-success/page.tsx"], "phase": 3 },
-    { "file": "app/(tabs)/grants/connect/return.tsx", "component": "ConnectReturnScreen", "title": "Bank Account Connected", "web": ["app/grants/connect/return/page.tsx"], "phase": 3, "notes": "Deep-link target nfw://grants/connect/return?grantId=…" },
-    { "file": "app/(tabs)/grants/connect/refresh.tsx", "component": "ConnectRefreshScreen", "title": "Continue Onboarding", "web": ["app/grants/connect/refresh/page.tsx", "POST /api/stripe/connect"], "phase": 3 },
-
-    { "file": "app/(tabs)/perks/index.tsx", "component": "PerksScreen", "title": "Perks", "web": ["app/perks/page.tsx", "GET /api/access-perks/rollup", "GET /api/access-perks/offers/search", "GET /api/nfw-perks", "GET /api/perk-collections", "GET /api/perks/settings"], "phase": 4 },
-    { "file": "app/(tabs)/perks/filters.tsx", "component": "PerksFiltersScreen", "title": "Filters", "web": ["components/perks/FilterSidebar.tsx", "GET /api/access-perks/categories", "GET /api/access-perks/categories/counts", "GET /api/access-perks/facets"], "phase": 4 },
-    { "file": "app/(tabs)/perks/[offerKey].tsx", "component": "OfferDetailScreen", "title": "Offer", "web": ["app/perks/[offerKey]/page.tsx", "components/perks/OfferDetailPanel.tsx", "GET /api/access-perks/offers/[offerKey]", "GET /api/access-perks/offers/[offerKey]/uses-remaining", "GET /api/access-perks/locations", "POST /api/access-perks/offers/[offerKey]/redeem"], "phase": 5, "param": "offerKey" },
-    { "file": "app/(tabs)/perks/nfw/[slug].tsx", "component": "NfwPerkDetailScreen", "title": "NFW Exclusive", "web": ["app/perks/nfw/[slug]/page.tsx", "GET /api/nfw-perks/slug/[slug]", "POST /api/nfw-perks/[id]/redeem"], "phase": 5, "param": "slug" },
-    { "file": "app/(tabs)/perks/collections/[slug].tsx", "component": "PerkCollectionScreen", "title": "Collection", "web": ["app/perks/page.tsx?collection=slug", "GET /api/perk-collections"], "phase": 4, "param": "slug" },
-    { "file": "app/(tabs)/perks/saved.tsx", "component": "SavedBrandsScreen", "title": "Saved Brands", "web": ["components/dashboard/SavedBrandsPanel.tsx", "GET/POST/DELETE /api/perks/liked-stores"], "phase": 4 },
-    { "file": "app/(tabs)/perks/history.tsx", "component": "RedemptionHistoryScreen", "title": "Redeemed Perks", "web": ["app/perks/history/page.tsx", "GET /api/access-perks/redemptions", "GET /api/nfw-perks/redemptions", "GET /api/access-perks/redemptions/[id]/fresh-url"], "phase": 5 },
-    { "file": "app/(tabs)/perks/travel.tsx", "component": "TravelScreen", "title": "Travel", "web": ["app/travel/page.tsx", "app/travel/TravelClient.tsx", "POST /api/travel/token"], "phase": 7, "notes": "react-native-webview hosting the Access Travel SDK." },
-
-    { "file": "app/(tabs)/settings/index.tsx", "component": "SettingsScreen", "title": "Settings", "web": ["components/AuthButtonCombined.tsx (member dropdown)", "app/auth/logout/route.ts"], "phase": 6 },
-    { "file": "app/(tabs)/settings/profile/index.tsx", "component": "ProfileScreen", "title": "My Profile", "web": ["app/profile/page.tsx", "GET /api/auth/profile", "GET /api/profile"], "phase": 2 },
-    { "file": "app/(tabs)/settings/profile/edit.tsx", "component": "ProfileEditScreen", "title": "Edit Profile", "web": ["app/profile/edit/page.tsx", "components/ProfileCompletionForm.tsx", "POST /api/profile/update", "POST /api/profile/avatar"], "phase": 2 },
-    { "file": "app/(tabs)/settings/membership.tsx", "component": "MembershipScreen", "title": "Membership", "web": ["components/ManageSubscription.tsx (status only)"], "phase": 6, "notes": "Status only. Upgrade / Manage buttons open nationalfundforwomen.org in the system browser — no in-app Stripe (Apple 3.1.1)." },
-    { "file": "app/(tabs)/settings/redeem-gift-code.tsx", "component": "RedeemGiftCodeScreen", "title": "Redeem Gift Code", "web": ["components/gift/RedeemGiftCodeModal.tsx", "POST /api/gift-codes/redeem"], "phase": 6 },
-    { "file": "app/(tabs)/settings/notifications.tsx", "component": "NotificationSettingsScreen", "title": "Notifications", "web": ["(new) POST /api/push/register", "(new) push_tokens table"], "phase": 6 },
-    { "file": "app/(tabs)/settings/delete-account.tsx", "component": "DeleteAccountScreen", "title": "Delete Account", "web": ["components/profile/DeleteAccountModal.tsx", "GET/POST /api/profile/request-deletion", "POST /api/profile/cancel-deletion"], "phase": 6, "notes": "Required by App Store Guideline 5.1.1(v)." },
-
-    { "file": "app/store/index.tsx", "component": "StoreScreen", "title": "Zero Dollar Store", "web": ["app/store/page.tsx", "components/StoreClient.tsx", "GET /api/shopify/products", "GET /api/store/settings", "GET /api/system-settings", "GET /api/store/claims/check"], "phase": 6 },
-    { "file": "app/store/[productId].tsx", "component": "ProductDetailScreen", "title": "Product", "web": ["components/ProductDetailPanel.tsx"], "phase": 6, "param": "productId" },
-    { "file": "app/store/claim/[productId].tsx", "component": "ClaimItemScreen", "title": "Claim Item", "web": ["components/ClaimItemModal.tsx", "POST /api/shopify/checkout"], "phase": 6, "param": "productId", "notes": "Shopify checkout URL opens in expo-web-browser." },
-    { "file": "app/store/my-claims.tsx", "component": "MyClaimsScreen", "title": "My Claims", "web": ["app/store/my-claims/page.tsx", "GET /api/store/claims/my-claims-simple", "GET /api/shopify/orders/[id]"], "phase": 6 },
-
-    { "file": "app/share-your-story.tsx", "component": "ShareYourStoryScreen", "title": "Share Your Story", "web": ["app/share-your-story/page.tsx", "POST /api/testimonials"], "phase": 6 },
-    { "file": "app/contact.tsx", "component": "ContactScreen", "title": "Contact Member Support", "web": ["app/contact/page.tsx", "GET /api/contact", "POST /api/contact/submit"], "phase": 6 },
-    { "file": "app/faq.tsx", "component": "FaqScreen", "title": "FAQ", "web": ["app/faq/page.tsx", "GET /api/faq"], "phase": 6 },
-    { "file": "app/legal/[slug].tsx", "component": "LegalScreen", "title": "Legal", "web": ["app/privacy/page.tsx", "app/terms-of-service/page.tsx", "app/accessibility/page.tsx", "GET /api/legal/[slug]"], "phase": 8, "param": "slug", "notes": "WebView of the Termly embed." }
+    {
+      "file": "app/+not-found.tsx",
+      "component": "NotFoundScreen",
+      "title": "Page Not Found",
+      "web": [
+        "app/not-found.tsx"
+      ],
+      "phase": 1,
+      "notFound": true
+    },
+    {
+      "file": "app/auth/login.tsx",
+      "component": "LoginScreen",
+      "title": "Member Login",
+      "web": [
+        "app/auth/login/page.tsx",
+        "components/login-form.tsx"
+      ],
+      "phase": 2
+    },
+    {
+      "file": "app/auth/sign-up/index.tsx",
+      "component": "SignUpScreen",
+      "title": "Become a Member",
+      "web": [
+        "app/auth/sign-up/page.tsx",
+        "components/SignUpFlow.tsx (step 0)",
+        "GET /api/signup"
+      ],
+      "phase": 2
+    },
+    {
+      "file": "app/auth/sign-up/profile.tsx",
+      "component": "SignUpProfileScreen",
+      "title": "Personal Info",
+      "web": [
+        "components/SignUpFlow.tsx (step 1)",
+        "POST /api/profile/update"
+      ],
+      "phase": 2
+    },
+    {
+      "file": "app/auth/sign-up/identity.tsx",
+      "component": "SignUpIdentityScreen",
+      "title": "About You",
+      "web": [
+        "components/SignUpFlow.tsx (step 2)",
+        "POST /api/profile/update"
+      ],
+      "phase": 2
+    },
+    {
+      "file": "app/auth/sign-up/membership.tsx",
+      "component": "SignUpMembershipScreen",
+      "title": "Choose Membership",
+      "web": [
+        "components/SignUpFlow.tsx (step 3)",
+        "POST /api/waitlist"
+      ],
+      "phase": 2,
+      "notes": "Paid tiers open nationalfundforwomen.org in the system browser (Apple 3.1.1). Free → waitlist via POST /api/waitlist."
+    },
+    {
+      "file": "app/auth/sign-up-success.tsx",
+      "component": "SignUpSuccessScreen",
+      "title": "Check Your Email",
+      "web": [
+        "app/auth/sign-up-success/page.tsx"
+      ],
+      "phase": 2,
+      "notes": "Resend confirmation via supabase.auth.resend({ type: 'signup' }) with 60s cooldown."
+    },
+    {
+      "file": "app/auth/forgot-password.tsx",
+      "component": "ForgotPasswordScreen",
+      "title": "Reset Password",
+      "web": [
+        "app/auth/forgot-password/page.tsx"
+      ],
+      "phase": 2
+    },
+    {
+      "file": "app/auth/update-password.tsx",
+      "component": "UpdatePasswordScreen",
+      "title": "New Password",
+      "web": [
+        "app/auth/update-password/page.tsx",
+        "POST /api/auth/update-password"
+      ],
+      "phase": 2,
+      "notes": "Calls supabase.auth.updateUser directly — no cookie exchange needed on mobile."
+    },
+    {
+      "file": "app/auth/welcome.tsx",
+      "component": "WelcomeScreen",
+      "title": "Welcome to NFW",
+      "web": [
+        "app/auth/welcome/page.tsx"
+      ],
+      "phase": 2
+    },
+    {
+      "file": "app/auth/waitlist-confirmed.tsx",
+      "component": "WaitlistConfirmedScreen",
+      "title": "You're on the Waitlist",
+      "web": [
+        "app/auth/waitlist-confirmed/page.tsx"
+      ],
+      "phase": 2
+    },
+    {
+      "file": "app/auth/error.tsx",
+      "component": "AuthErrorScreen",
+      "title": "Confirmation Issue",
+      "web": [
+        "app/auth/error/page.tsx"
+      ],
+      "phase": 2
+    },
+    {
+      "file": "app/(tabs)/dashboard/index.tsx",
+      "component": "DashboardScreen",
+      "title": "Dashboard",
+      "web": [
+        "app/dashboard/page.tsx",
+        "GET /api/auth/profile",
+        "GET /api/dashboard/settings",
+        "GET /api/dashboard/savings"
+      ],
+      "phase": 6
+    },
+    {
+      "file": "app/(tabs)/grants/index.tsx",
+      "component": "GrantsScreen",
+      "title": "Microgrants",
+      "web": [
+        "grant_cycles (status=open, is_testing_only=false)",
+        "components/dashboard/YourMicrograntsSection.tsx"
+      ],
+      "phase": 3
+    },
+    {
+      "file": "app/(tabs)/grants/apply/index.tsx",
+      "component": "GrantApplyScreen",
+      "title": "Apply for a Microgrant",
+      "web": [
+        "app/grants/apply/page.tsx",
+        "components/GrantApplicationForm.tsx",
+        "POST /api/grants/upload-document"
+      ],
+      "phase": 3
+    },
+    {
+      "file": "app/(tabs)/grants/my-applications.tsx",
+      "component": "MyApplicationsScreen",
+      "title": "My Applications",
+      "web": [
+        "app/grants/my-applications/page.tsx"
+      ],
+      "phase": 3
+    },
+    {
+      "file": "app/(tabs)/grants/[id].tsx",
+      "component": "GrantDetailScreen",
+      "title": "Application",
+      "web": [
+        "app/grants/view/[id]/page.tsx",
+        "POST /api/grants/document-url",
+        "GET /api/stripe/connect/status"
+      ],
+      "phase": 3,
+      "param": "id"
+    },
+    {
+      "file": "app/(tabs)/grants/application-success.tsx",
+      "component": "ApplicationSuccessScreen",
+      "title": "Application Submitted",
+      "web": [
+        "app/grants/application-success/page.tsx"
+      ],
+      "phase": 3
+    },
+    {
+      "file": "app/(tabs)/grants/connect/return.tsx",
+      "component": "ConnectReturnScreen",
+      "title": "Bank Account Connected",
+      "web": [
+        "app/grants/connect/return/page.tsx"
+      ],
+      "phase": 3,
+      "notes": "Deep-link target nfw://grants/connect/return?grantId=…"
+    },
+    {
+      "file": "app/(tabs)/grants/connect/refresh.tsx",
+      "component": "ConnectRefreshScreen",
+      "title": "Continue Onboarding",
+      "web": [
+        "app/grants/connect/refresh/page.tsx",
+        "POST /api/stripe/connect"
+      ],
+      "phase": 3
+    },
+    {
+      "file": "app/(tabs)/perks/index.tsx",
+      "component": "PerksScreen",
+      "title": "Perks",
+      "web": [
+        "app/perks/page.tsx",
+        "GET /api/access-perks/rollup",
+        "GET /api/access-perks/offers/search",
+        "GET /api/nfw-perks",
+        "GET /api/perk-collections",
+        "GET /api/perks/settings"
+      ],
+      "phase": 4
+    },
+    {
+      "file": "app/(tabs)/perks/filters.tsx",
+      "component": "PerksFiltersScreen",
+      "title": "Filters",
+      "web": [
+        "components/perks/FilterSidebar.tsx",
+        "GET /api/access-perks/categories",
+        "GET /api/access-perks/categories/counts",
+        "GET /api/access-perks/facets"
+      ],
+      "phase": 4
+    },
+    {
+      "file": "app/(tabs)/perks/[offerKey].tsx",
+      "component": "OfferDetailScreen",
+      "title": "Offer",
+      "web": [
+        "app/perks/[offerKey]/page.tsx",
+        "components/perks/OfferDetailPanel.tsx",
+        "GET /api/access-perks/offers/[offerKey]",
+        "GET /api/access-perks/offers/[offerKey]/uses-remaining",
+        "GET /api/access-perks/locations",
+        "POST /api/access-perks/offers/[offerKey]/redeem"
+      ],
+      "phase": 5,
+      "param": "offerKey"
+    },
+    {
+      "file": "app/(tabs)/perks/nfw/[slug].tsx",
+      "component": "NfwPerkDetailScreen",
+      "title": "NFW Exclusive",
+      "web": [
+        "app/perks/nfw/[slug]/page.tsx",
+        "GET /api/nfw-perks/slug/[slug]",
+        "POST /api/nfw-perks/[id]/redeem"
+      ],
+      "phase": 5,
+      "param": "slug"
+    },
+    {
+      "file": "app/(tabs)/perks/collections/[slug].tsx",
+      "component": "PerkCollectionScreen",
+      "title": "Collection",
+      "web": [
+        "app/perks/page.tsx?collection=slug",
+        "GET /api/perk-collections"
+      ],
+      "phase": 4,
+      "param": "slug"
+    },
+    {
+      "file": "app/(tabs)/perks/saved.tsx",
+      "component": "SavedBrandsScreen",
+      "title": "Saved Brands",
+      "web": [
+        "components/dashboard/SavedBrandsPanel.tsx",
+        "GET/POST/DELETE /api/perks/liked-stores"
+      ],
+      "phase": 4
+    },
+    {
+      "file": "app/(tabs)/perks/history.tsx",
+      "component": "RedemptionHistoryScreen",
+      "title": "Redeemed Perks",
+      "web": [
+        "app/perks/history/page.tsx",
+        "GET /api/access-perks/redemptions",
+        "GET /api/nfw-perks/redemptions",
+        "GET /api/access-perks/redemptions/[id]/fresh-url"
+      ],
+      "phase": 5
+    },
+    {
+      "file": "app/(tabs)/perks/travel.tsx",
+      "component": "TravelScreen",
+      "title": "Travel",
+      "web": [
+        "app/travel/page.tsx",
+        "app/travel/TravelClient.tsx",
+        "POST /api/travel/token"
+      ],
+      "phase": 7,
+      "notes": "react-native-webview hosting the Access Travel SDK."
+    },
+    {
+      "file": "app/(tabs)/settings/index.tsx",
+      "component": "SettingsScreen",
+      "title": "Settings",
+      "web": [
+        "components/AuthButtonCombined.tsx (member dropdown)",
+        "app/auth/logout/route.ts"
+      ],
+      "phase": 6
+    },
+    {
+      "file": "app/(tabs)/settings/profile/index.tsx",
+      "component": "ProfileScreen",
+      "title": "My Profile",
+      "web": [
+        "app/profile/page.tsx",
+        "GET /api/auth/profile",
+        "GET /api/profile"
+      ],
+      "phase": 2
+    },
+    {
+      "file": "app/(tabs)/settings/profile/edit.tsx",
+      "component": "ProfileEditScreen",
+      "title": "Edit Profile",
+      "web": [
+        "app/profile/edit/page.tsx",
+        "components/ProfileCompletionForm.tsx",
+        "POST /api/profile/update",
+        "POST /api/profile/avatar"
+      ],
+      "phase": 2
+    },
+    {
+      "file": "app/(tabs)/settings/membership.tsx",
+      "component": "MembershipScreen",
+      "title": "Membership",
+      "web": [
+        "components/ManageSubscription.tsx (status only)"
+      ],
+      "phase": 6,
+      "notes": "Status only. Upgrade / Manage buttons open nationalfundforwomen.org in the system browser — no in-app Stripe (Apple 3.1.1)."
+    },
+    {
+      "file": "app/(tabs)/settings/redeem-gift-code.tsx",
+      "component": "RedeemGiftCodeScreen",
+      "title": "Redeem Gift Code",
+      "web": [
+        "components/gift/RedeemGiftCodeModal.tsx",
+        "POST /api/gift-codes/redeem"
+      ],
+      "phase": 6
+    },
+    {
+      "file": "app/(tabs)/settings/notifications.tsx",
+      "component": "NotificationSettingsScreen",
+      "title": "Notifications",
+      "web": [
+        "(new) POST /api/push/register",
+        "(new) push_tokens table"
+      ],
+      "phase": 6
+    },
+    {
+      "file": "app/(tabs)/settings/delete-account.tsx",
+      "component": "DeleteAccountScreen",
+      "title": "Delete Account",
+      "web": [
+        "components/profile/DeleteAccountModal.tsx",
+        "GET/POST /api/profile/request-deletion",
+        "POST /api/profile/cancel-deletion"
+      ],
+      "phase": 6,
+      "notes": "Required by App Store Guideline 5.1.1(v)."
+    },
+    {
+      "file": "app/store/index.tsx",
+      "component": "StoreScreen",
+      "title": "Zero Dollar Store",
+      "web": [
+        "app/store/page.tsx",
+        "components/StoreClient.tsx",
+        "GET /api/shopify/products",
+        "GET /api/store/settings",
+        "GET /api/system-settings",
+        "GET /api/store/claims/check"
+      ],
+      "phase": 6
+    },
+    {
+      "file": "app/store/[productId].tsx",
+      "component": "ProductDetailScreen",
+      "title": "Product",
+      "web": [
+        "components/ProductDetailPanel.tsx"
+      ],
+      "phase": 6,
+      "param": "productId"
+    },
+    {
+      "file": "app/store/claim/[productId].tsx",
+      "component": "ClaimItemScreen",
+      "title": "Claim Item",
+      "web": [
+        "components/ClaimItemModal.tsx",
+        "POST /api/shopify/checkout"
+      ],
+      "phase": 6,
+      "param": "productId",
+      "notes": "Shopify checkout URL opens in expo-web-browser."
+    },
+    {
+      "file": "app/store/my-claims.tsx",
+      "component": "MyClaimsScreen",
+      "title": "My Claims",
+      "web": [
+        "app/store/my-claims/page.tsx",
+        "GET /api/store/claims/my-claims-simple",
+        "GET /api/shopify/orders/[id]"
+      ],
+      "phase": 6
+    },
+    {
+      "file": "app/share-your-story.tsx",
+      "component": "ShareYourStoryScreen",
+      "title": "Share Your Story",
+      "web": [
+        "app/share-your-story/page.tsx",
+        "POST /api/testimonials"
+      ],
+      "phase": 6
+    },
+    {
+      "file": "app/contact.tsx",
+      "component": "ContactScreen",
+      "title": "Contact Member Support",
+      "web": [
+        "app/contact/page.tsx",
+        "GET /api/contact",
+        "POST /api/contact/submit"
+      ],
+      "phase": 6
+    },
+    {
+      "file": "app/faq.tsx",
+      "component": "FaqScreen",
+      "title": "FAQ",
+      "web": [
+        "app/faq/page.tsx",
+        "GET /api/faq"
+      ],
+      "phase": 6
+    },
+    {
+      "file": "app/legal/[slug].tsx",
+      "component": "LegalScreen",
+      "title": "Legal",
+      "web": [
+        "app/privacy/page.tsx",
+        "app/terms-of-service/page.tsx",
+        "app/accessibility/page.tsx",
+        "GET /api/legal/[slug]"
+      ],
+      "phase": 8,
+      "param": "slug",
+      "notes": "WebView of the Termly embed."
+    }
   ]
 }

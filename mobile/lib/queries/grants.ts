@@ -1,4 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { createGrant, getStripeConnectStatus, type CreateGrantBody } from "@/lib/api/grants";
 
 import { todayIsoDate } from "@/lib/format";
 import { queryKeys } from "@/lib/queries/keys";
@@ -92,5 +94,34 @@ export function useGrantDocuments(grantId: string | undefined) {
       if (error) throw error;
       return (data ?? []) as GrantDocument[];
     },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Slice C — mutations + Stripe Connect
+// ---------------------------------------------------------------------------
+
+export function useCreateGrant() {
+  const qc = useQueryClient();
+  const userId = useAuthStore((s) => s.user?.id);
+  return useMutation({
+    mutationFn: (body: CreateGrantBody) => createGrant(body),
+    onSuccess: () => {
+      if (userId) void qc.invalidateQueries({ queryKey: queryKeys.myGrants(userId) });
+      void qc.invalidateQueries({ queryKey: ["grant-cycles"] });
+    },
+  });
+}
+
+export const stripeStatusKey = (grantId: string) => ["stripe-connect-status", grantId] as const;
+
+/** Stripe Connect onboarding status for a grant. Poll by calling refetch() after the browser closes. */
+export function useStripeConnectStatus(grantId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: stripeStatusKey(grantId ?? ""),
+    enabled: !!grantId && enabled,
+    queryFn: () => getStripeConnectStatus(grantId!),
+    staleTime: 15 * 1000,
+    retry: false,
   });
 }
