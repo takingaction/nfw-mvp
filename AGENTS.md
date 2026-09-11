@@ -14781,3 +14781,33 @@ the blueprint (`monthlyClaimed` never refreshed after checkout; `STATUS_INFO` la
 `completed`/`paid`; `claims/check` trusts `?userId=`; `profile/address` route unauthenticated + unused).
 
 **Build:** `tsc` 0, `expo lint` clean, `expo-doctor` 21/21, Metro bundle 11.1 MB OK.
+
+## Session 2026-09-11 (cont.): Mobile Slice E — Sign-up, password reset, profile & account
+
+**No web changes.** Sign-up/password flows use Supabase auth directly; profile/account use the
+Bearer-authenticated `/api/*` routes.
+
+| Area | Files |
+|---|---|
+| Constants | `mobile/constants/signup.ts` — `US_STATES`, `INCOME_RANGES`, `IDENTITY_OPTIONS`, `PASSWORD_REQUIREMENTS`, `PLANS`, waitlist modal copy (verbatim from `SignUpFlow.tsx`) |
+| API | `lib/api/profile.ts` (update, avatar upload/delete, gift redeem, deletion request/cancel, waitlist, signup content) |
+| UI primitives | `components/ui/{Select,DateField,CheckboxRow}.tsx`, `lib/dates.ts` (MM/DD/YYYY ↔ ISO, unit-checked) |
+| Shared fields | `components/profile/ProfileFields.tsx` — Personal Info + Identity groups reused by sign-up steps 1–2 and profile edit |
+| Sign-up | `app/auth/sign-up/{index,profile,identity,membership}.tsx`, `sign-up-success.tsx`, `components/auth/{AuthShell,SignupProgress,ResendConfirmation}.tsx` |
+| Auth misc | `app/auth/{forgot-password,update-password,error,welcome,waitlist-confirmed}.tsx` |
+| Profile | `app/(tabs)/settings/profile/{index,edit}.tsx`, `components/profile/AvatarPicker.tsx` |
+| Account | `app/(tabs)/settings/{membership,redeem-gift-code,delete-account}.tsx` |
+
+Decisions / parity notes:
+- Step 3 paid plans open the website (Apple 3.1.1). Gift code and waitlist are native.
+- `emailRedirectTo` for confirmation/recovery points at the **website** until `nfw://auth/callback`
+  is added to Supabase's redirect allowlist and universal links exist (Slice F).
+- Improvements over web: waitlist join errors are shown; update-password enforces the sign-up
+  strength rules; resend works when the email is unknown; delete-account can cancel a pending
+  request (`/api/profile/cancel-deletion` existed but had no UI).
+- `Profile` type / `PROFILE_COLUMNS` in `stores/auth.ts` extended with phone, address, income,
+  identities, social_handles.
+
+Remaining placeholders: Travel, Notifications, Contact, FAQ, Share Your Story, Legal (Slices F/G).
+
+**Build:** `tsc` 0, `expo lint` clean, `expo-doctor` 21/21, Metro bundle 11.3 MB OK.

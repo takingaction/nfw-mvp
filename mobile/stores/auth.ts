@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import type { Profile } from "@/types/profile";
 
 const PROFILE_COLUMNS =
-  "id, email, full_name, avatar_url, membership_level, subscription_status, subscription_ends_at, profile_completed, is_admin, is_reviewer, is_approved_free_member, free_membership_contact_submitted, date_of_birth, city, state, zip, stripe_onboarding_completed, access_perks_member_id, joined_at";
+  "id, email, full_name, avatar_url, membership_level, subscription_status, subscription_ends_at, profile_completed, is_admin, is_reviewer, is_approved_free_member, free_membership_contact_submitted, date_of_birth, phone_number, address_line1, address_line2, city, state, zip, household_income, identities, social_handles, stripe_onboarding_completed, access_perks_member_id, joined_at";
 
 function placeholderProfile(id: string, email: string | null): Profile {
   return {
@@ -22,9 +22,15 @@ function placeholderProfile(id: string, email: string | null): Profile {
     is_approved_free_member: false,
     free_membership_contact_submitted: false,
     date_of_birth: null,
+    phone_number: null,
+    address_line1: null,
+    address_line2: null,
     city: null,
     state: null,
     zip: null,
+    household_income: null,
+    identities: null,
+    social_handles: null,
     stripe_onboarding_completed: false,
     access_perks_member_id: null,
     joined_at: null,

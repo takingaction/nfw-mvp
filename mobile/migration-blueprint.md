@@ -72,6 +72,17 @@
 | `app/store/my-claims.tsx` | **Done** | `my-claims-simple` | Status badges incl. `completed`/`paid` (unmapped on web → showed raw status), tracking link/number, order #. Limited to the latest 5 claims by the existing API. "View on Shopify" hidden, matching the web TODO. |
 | `components/dashboard/StoreSummary.tsx` | **Done** | claims + products | "Your Order History" (completed/fulfilled/paid/delivered/cancelled) + "Latest Offerings" (8, DRAFT dimmed) |
 | Savings ZDS bucket | **Done** | `/api/dashboard/savings` | `useSavings` now calls the API (Bearer) so the Zero Dollar Store figure is real; Perks = Access + NFW combined as on web |
+| **Slice E — Auth + Profile completion** | | | |
+| `constants/signup.ts` | **Done** | — | `US_STATES`, `INCOME_RANGES`, `IDENTITY_OPTIONS`, `PASSWORD_REQUIREMENTS`, `PLANS`, waitlist modal copy — verbatim from `SignUpFlow.tsx` |
+| `lib/api/profile.ts` | **Done** | `/api/profile/update`, `/avatar`, `/avatar/delete`, `/api/gift-codes/redeem`, `/api/profile/request-deletion`, `/cancel-deletion`, `/api/waitlist`, `/api/signup` | |
+| `components/ui/{Select,DateField,CheckboxRow}.tsx` · `lib/dates.ts` | **Done** | — | Native replacements for `<select>` / `<input type=date>` / checkbox grids. `DateField` is MM/DD/YYYY → ISO with 18+ validation (helpers unit-checked). |
+| `components/profile/ProfileFields.tsx` | **Done** | — | Shared Personal Info + Identity field groups used by sign-up steps 1–2 and profile edit; labels/placeholders/options verbatim |
+| `app/auth/sign-up/index.tsx` | **Done** | Supabase `signUp` | Step 0: email/password/confirm, live rule checklist, Google, Terms/Privacy links. `emailRedirectTo` = website step 1; after confirming, the member signs in here and the dashboard gate routes to step 1. |
+| `app/auth/sign-up-success.tsx` · `components/auth/ResendConfirmation.tsx` | **Done** | Supabase `resend` | 60 s cooldown, web strings. Email input shown when the address is unknown (fixes the web's disabled-resend edge case). |
+| `app/auth/sign-up/{profile,identity,membership}.tsx` · `components/auth/SignupProgress.tsx` | **Done** | `/api/profile/update`, `/api/waitlist`, `/api/gift-codes/redeem` | Steps 1–3 with progress chips. Step 2 sets `profile_completed`. Step 3: paid plans **open the website** (Apple 3.1.1), gift code + waitlist native; waitlist failure is surfaced (web swallows it). |
+| `app/auth/{forgot-password,update-password,error,welcome,waitlist-confirmed}.tsx` | **Done** | Supabase auth | Update-password applies the sign-up strength rules (web has none); handles missing session. |
+| `app/(tabs)/settings/profile/{index,edit}.tsx` · `components/profile/AvatarPicker.tsx` | **Done** | `/api/profile/update`, avatar routes | View (DOB banner, avatar, membership status, info rows, danger zone) + full edit form. Avatar via camera/library with square crop, JPEG ≤ 2 MB. |
+| `app/(tabs)/settings/{membership,redeem-gift-code,delete-account}.tsx` | **Done** | web links, gift redeem, deletion routes | Membership is status-only; upgrade/portal open the website. Delete-account exposes **cancel pending request** (API exists; web modal lacks it). |
 | `app/(tabs)/perks/travel.tsx` | Placeholder | — | Slice F (WebView + `/api/travel/token`) |
 | Everything else in the mapping table | Placeholder | — | Renders `PlaceholderScreen` with its web equivalent |
 
@@ -86,8 +97,11 @@
 - **My Claims pagination.** `/api/store/claims/my-claims-simple` returns the latest 5 claims; the web page lists all via the service role. A paginated member API (or reading `zero_dollar_claims` directly once its RLS is confirmed) is a follow-up.
 - **Web observations (not fixed):** `StoreClient` never updates `monthlyClaimed` after a successful checkout (mobile does); `MyClaimsClient.STATUS_INFO` lacks `completed`/`paid`; `/api/store/claims/check` trusts `?userId=` without `getUser()`; `/api/profile/address/[userId]` is unauthenticated and unused.
 
+### Deferred from Slice E
+- **Email-link deep linking.** Confirmation and recovery emails currently land on the website (`emailRedirectTo` = web URLs) because `nfw://auth/callback` isn't in Supabase's redirect allowlist yet (Dependencies #4). Once universal links ship (Slice F), point `emailRedirectTo` at the app so confirmation/reset complete in-app.
+- **Web observations (not fixed):** waitlist join failure sets no visible error; `validateGiftCode` (GET) is dead code; confirmation guard redirects to `/auth/sign-up-success` without `?email=` (disables resend); avatar "delete old file" parses a signed URL incorrectly (silent no-op); `DeleteAccountModal` has no cancel path; `/api/profile/update` accepts non-existent columns that 500.
+
 ### Remaining slices
-- **E — Auth + Profile completion:** sign-up steps 0–3, forgot/update password, welcome/waitlist/error screens, profile view/edit, avatar upload, membership status, gift-code redeem, delete account
 - **F — Push + deep links + Travel:** `push_tokens` table + `/api/push/register` + grant-status hooks; universal links; Travel WebView
 - **G — Release:** icons/splash, Contact/FAQ/Share/Legal screens, error reporting, a11y, EAS builds, TestFlight/Play, store listings
 

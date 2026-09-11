@@ -7,6 +7,13 @@ export type MembershipLevel = "free" | "contributing" | "founding" | "waitlist";
 
 export type SubscriptionStatus = "active" | "canceling" | "cancelled" | "failed" | null;
 
+export interface SocialHandles {
+  instagram?: string;
+  tiktok?: string;
+  facebook?: string;
+  linkedin?: string;
+}
+
 export interface Profile {
   id: string;
   email: string | null;
@@ -21,9 +28,15 @@ export interface Profile {
   is_approved_free_member: boolean;
   free_membership_contact_submitted: boolean | null;
   date_of_birth: string | null;
+  phone_number: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
   city: string | null;
   state: string | null;
   zip: string | null;
+  household_income: string | null;
+  identities: string[] | null;
+  social_handles: SocialHandles | null;
   stripe_onboarding_completed: boolean;
   access_perks_member_id: string | null;
   joined_at: string | null;
