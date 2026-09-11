@@ -14607,3 +14607,55 @@ WHERE updated_at IS NOT NULL;
 
 NOTIFY pgrst, 'reload';
 ```
+
+## Session 2026-09-11 (cont.): Mobile Slice B — Bearer-token API + Perks tab
+
+### Web: `lib/supabase/server.ts` accepts Bearer tokens (commit `459cdc4`)
+
+`createClient()` now has two transports: cookies (unchanged, web) and
+`Authorization: Bearer <access_token>` (mobile). The Bearer path is taken only when the header
+is present **and no `sb-*auth-token` cookie exists**, so a browser session always wins. It builds a
+stateless supabase-js client with the JWT in `global.headers` (RLS applies to that user) and
+shadows `auth.getUser()` / `auth.getSession()` on that instance so every existing route works
+unchanged. Tokens are verified server-side by GoTrue; non-JWT values, forged and expired tokens
+→ 401 like a bad cookie.
+
+Seven routes that inlined their own `@supabase/ssr` client were switched to the helper
+(`access-perks/locations`, `auth/profile`, `checkout`, `checkout/abandoned`, `checkout/resume`,
+`portal`, `profile`). The other 25 non-admin routes already used it.
+
+**Verified** against a production build with a throwaway auth user (created + deleted via the
+admin API): 401 for no/garbage/forged/publishable-key tokens; 200 with a real token on
+`/api/profile`, `/api/auth/profile`, `/api/access-perks/{redemptions,locations}`,
+`/api/perks/liked-stores`, `/api/nfw-perks`.
+
+**Rule:** new API routes must use `createClient()` from `@/lib/supabase/server`, never an inline
+`createServerClient(...)` — otherwise the mobile app gets 401.
+
+### Mobile: Perks tab (Phases 4–5 of mobile-app.md)
+
+| Area | Files |
+|---|---|
+| Types / constants | `types/perks.ts` (API shapes, `DISTANCE_OPTIONS`, `OFFER_TYPE_OPTIONS`, `EXCLUDED_STORES`, method labels) |
+| API client | `lib/api/perks.ts` — every `/api/access-perks`, `/api/perks`, `/api/nfw-perks`, `/api/perk-collections`, `/api/perks/settings` call |
+| HTML | `lib/html.ts` — RN replacement for the web's DOM-based `decodeHTML`/`decodeHtml`/`simplifyRedemptionMessage`; 12-case check passes |
+| State | `stores/perksFilters.ts` (web `app/perks/page.tsx` state), `stores/likedStores.ts` (optimistic hearts) |
+| Hooks | `lib/queries/perks.ts` (TanStack; stores are page-based, offers are `useInfiniteQuery`) |
+| Components | `components/perks/{StoreCard,OfferCard,NfwPerkCard,LikeButton,PerksSearchBar,LocationPicker,RedemptionResult}.tsx` |
+| Screens | `app/(tabs)/perks/{index,filters,[offerKey],store/[storeKey],nfw/[slug],collections/[slug],saved,history}.tsx` |
+
+Behavioural parity notes:
+- Nationwide = `distance=2500mi`; the API maps it upstream. Profile ZIP is the default location.
+- Stores view filters `EXCLUDED_STORES` client-side (same list as web).
+- Multi-location offers: selecting a location calls `/offers/search?offer_group_key=&location_key=`
+  and redeems with that location-specific `offer_key` (web fix 2026-05-05).
+- Redemption outcomes: `link` → open URL + promo; `instore`/`instore_print` → custom
+  `display_message` (Continue/Cancel) or coupon URL; `call` → tel: link. Coupon URLs and partner
+  sites open in `expo-web-browser`.
+- History "Open" uses `/redemptions/[id]/fresh-url` (stored URLs expire); expired → alert.
+- Locations rollup view and Travel WebView are not in this slice.
+
+New route not in the original manifest: `perks/store/[storeKey]` (pushed screen instead of the
+web's in-place stores→offers view swap). Added `expo-clipboard`, `expo-linear-gradient`.
+
+**Build:** mobile `tsc` 0, `expo lint` clean, `expo-doctor` 21/21, Metro bundle 11.0 MB OK.

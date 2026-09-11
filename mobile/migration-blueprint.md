@@ -1,7 +1,7 @@
 # NFW Mobile — Migration Blueprint
 
 **Created:** 2026-09-11
-**Status:** Slice A complete (Login · Dashboard · Grants read-only · Settings). See "Implementation Status" below.
+**Status:** Slices A + B complete (Login · Dashboard · Grants read-only · Settings · **Perks tab**). Web API now accepts Bearer tokens. See "Implementation Status" below.
 **Source plan:** `../mobile-app.md`
 **Web architecture reference:** `../AGENTS.md`
 
@@ -39,12 +39,31 @@
 | `lib/queries/{grants,dashboard}.ts` | **Done** | — | TanStack hooks; keys in `lib/queries/keys.ts` |
 | `stores/auth.ts` | **Done** | `profiles` direct | Reads own row (RLS 159 compatible); `null → "free"` normalisation |
 | Fonts | **Done** | `@expo-google-fonts/*` | Playfair Display + DM Sans loaded in root layout; splash held until ready |
+| **Slice B — Perks tab** | | | |
+| Web `lib/supabase/server.ts` | **Done** (commit `459cdc4`) | — | `createClient()` accepts `Authorization: Bearer <access_token>` when no auth cookie is present. Unblocks every `/api/*` route for mobile. |
+| `lib/api.ts` → `lib/api/perks.ts` | **Done** | Vercel API | Typed wrappers for rollup, offers search/detail/uses/redeem, locations, categories, facets, redemptions (+fresh-url, check), liked stores, NFW perks, collections, settings |
+| `stores/perksFilters.ts` | **Done** | — | Mirrors `app/perks/page.tsx` state: view, query, ZIP (profile default), distance (10mi default, `2500mi` = Nationwide), online-only, categories, facets, offer types, page, NFW toggle. Sidebar Reset vs full RESET semantics preserved. |
+| `stores/likedStores.ts` | **Done** | `/api/perks/liked-stores` | Optimistic heart toggle with revert |
+| `app/(tabs)/perks/index.tsx` | **Done** | rollup / search / nfw-perks / collections / settings | Stores view (page-based, 100/page, `EXCLUDED_STORES` filter) and Offers view (infinite scroll). Banner honours `is_test_mode`. Quick-access row: NFW Exclusive · collections · Travel. **Locations view omitted** (low value on mobile). |
+| `app/(tabs)/perks/filters.tsx` | **Done** | categories / facets | Modal: Online Only · category tree · facets · offer types · Reset |
+| `app/(tabs)/perks/store/[storeKey].tsx` | **Done** (new route) | offers search `store_key` | Replaces web's in-place "offers filtered by store" view swap with a pushed screen |
+| `app/(tabs)/perks/[offerKey].tsx` | **Done** | offer / uses-remaining / redemptions check / locations / redeem | All 4 methods. Multi-location offers resolve a location-specific `offer_key` before redeeming (web parity). Custom `display_message` HTML → text + tappable links + Continue/Cancel. Coupons open in `expo-web-browser`. 48-hour and limit errors surface verbatim. |
+| `app/(tabs)/perks/nfw/[slug].tsx` | **Done** | nfw-perks slug / redeem | Records redemption then opens partner site; promo reveal after redemption |
+| `app/(tabs)/perks/collections/[slug].tsx` | **Done** | perk-collections + per-item resolution | Same client-side item resolution + `display_order` sort as web |
+| `app/(tabs)/perks/saved.tsx` | **Done** | liked stores | Numeric key → store offers; partner-name key → NFW list |
+| `app/(tabs)/perks/history.tsx` | **Done** | redemptions + nfw redemptions + fresh-url | "Open" re-mints expiring coupon URLs; expired → alert |
+| `lib/html.ts` | **Done** | — | RN replacement for DOM decoding: entities (named/dec/hex), tag stripping with paragraph breaks, link extraction, phone extraction, `simplifyRedemptionMessage`. Unit-checked (12 cases). |
+| `app/(tabs)/perks/travel.tsx` | Placeholder | — | Slice F (WebView + `/api/travel/token`) |
 | Everything else in the mapping table | Placeholder | — | Renders `PlaceholderScreen` with its web equivalent |
 
 **Removed:** the `__DEV__` preview bypass (login button, settings button, `devPreview` store flag, `AuthGate` exemption).
 
-### Slice B (next) — requires web Bearer-token change first
-Perks search/detail/redeem (Access Perks proxy), NFW perk redeem, Zero Dollar Store browse/claim, savings ZDS bucket, grant application form + document upload/view, Stripe Connect onboarding link, avatar upload, profile edit via `/api/profile/update`.
+### Remaining slices
+- **C — Grants completion:** native application form + consent, document upload/view, application-success, Stripe Connect onboarding via in-app browser + `nfw://grants/connect/*` returns
+- **D — Zero Dollar Store:** browse, product detail, claim → Shopify checkout in in-app browser, my-claims, ZDS savings bucket (verify `zero_dollar_claims` RLS first)
+- **E — Auth + Profile completion:** sign-up steps 0–3, forgot/update password, welcome/waitlist/error screens, profile view/edit, avatar upload, membership status, gift-code redeem, delete account
+- **F — Push + deep links + Travel:** `push_tokens` table + `/api/push/register` + grant-status hooks; universal links; Travel WebView
+- **G — Release:** icons/splash, Contact/FAQ/Share/Legal screens, error reporting, a11y, EAS builds, TestFlight/Play, store listings
 
 ---
 

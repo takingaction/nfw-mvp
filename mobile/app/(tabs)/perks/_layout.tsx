@@ -7,6 +7,7 @@ export default function PerksLayout() {
     <Stack screenOptions={brandStackOptions}>
       <Stack.Screen name="index" options={{ title: "Perks" }} />
       <Stack.Screen name="filters" options={{ title: "Filters", presentation: "modal" }} />
+      <Stack.Screen name="store/[storeKey]" options={{ title: "Store" }} />
       <Stack.Screen name="[offerKey]" options={{ title: "Offer" }} />
       <Stack.Screen name="nfw/[slug]" options={{ title: "NFW Exclusive" }} />
       <Stack.Screen name="collections/[slug]" options={{ title: "Collection" }} />
