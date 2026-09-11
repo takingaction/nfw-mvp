@@ -14532,3 +14532,26 @@ article page.
 `supabase/migrations/159_harden_rls_policies_rollback.sql`.
 
 **Build:** web `tsc` 0 errors, `next build` ✓ (209 pages); mobile `tsc` 0 errors, `expo-doctor` 21/21.
+
+### Part 5 — Mobile Slice A implemented (Login · Dashboard · Grants · Settings)
+
+Built after the hardening work, entirely inside `/mobile`, using **direct Supabase reads** the
+RLS policies already allow (own `profiles`/`grants`/`grant_documents`/`store_likes`/
+`offer_redemptions`/`nfw_perk_redemptions`; public `grant_cycles`/`dashboard_settings`/`nfw_perks`).
+No web API calls yet — those wait on the Bearer-token change.
+
+| Area | Files | Parity notes |
+|---|---|---|
+| Login | `app/auth/login.tsx`, `components/auth/GoogleButton.tsx` | Same copy/error strings/60 s resend as `components/login-form.tsx` |
+| Dashboard | `app/(tabs)/dashboard/index.tsx`, `components/dashboard/*`, `components/banners/DashboardBanners.tsx` | Same gating + section order as `app/dashboard/page.tsx`. Savings computed on-device with `status = payment_sent`; ZDS bucket shows "—" (needs `compare_at_price` via service role). No abandoned-checkout banner (purchases are web-only). |
+| Grants | `app/(tabs)/grants/{index,my-applications,[id],apply/index}.tsx`, `components/grants/*` | Reminder/eligibility copy verbatim from `GrantApplicationForm.tsx`. Apply screen is an interim web hand-off. |
+| Settings | `app/(tabs)/settings/index.tsx` | Sign-out, profile/membership/legal rows |
+| UI kit | `components/ui/*`, `constants/fonts.ts` (`@expo-google-fonts/playfair-display`, `dm-sans`), `lib/format.ts` | UTC-safe date formatting (same fix as web 2026-08-11) |
+| Data | `lib/queries/{keys,grants,dashboard}.ts`, `types/{grants,dashboard,profile}.ts`, `stores/auth.ts` | `stores/auth.refreshProfile` reads own `profiles` row directly |
+| Lint | `mobile/eslint.config.js` (`eslint-config-expo/flat`) | `npx expo lint` clean |
+
+Dev-preview bypass removed. Metro bundle verified (10.8 MB, all new modules resolve).
+Full status table: `mobile/migration-blueprint.md` → "Implementation Status".
+
+**Next:** web Bearer-token support in `lib/supabase/server.ts` → unlocks Slice B (Perks, Store,
+grant form, savings ZDS, Stripe Connect link, avatar/profile edit).

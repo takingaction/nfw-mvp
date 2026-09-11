@@ -140,7 +140,7 @@ interface StripeDuplicateSubscription {
 
 interface StripeDuplicate {
   email: string;
-  count: number;
+  subscription_count: number;
   subscriptions: StripeDuplicateSubscription[];
 }
 
@@ -476,9 +476,6 @@ export default function BackfillClient() {
           if (data.status === "completed") {
             setStripeOnly(data.charges || []);
             setStripeOnlyTotal(data.total || 0);
-            setDuplicates(data.duplicates || []);
-            setStripeDuplicates(data.stripeDuplicates || []);
-            setMissingFromBackfill(data.missingFromBackfill || []);
             setStripeOnlyGeneratedAt(Date.now());
             // Store in sessionStorage for export
             sessionStorage.setItem("stripeOnlyCharges", JSON.stringify(data.charges || []));
@@ -1188,11 +1185,11 @@ export default function BackfillClient() {
     }
   }, []);
 
-  // Fetch duplicates in Stripe
+  // Fetch duplicates in Stripe (reads from stripe_duplicates_jobs table)
   const fetchStripeDuplicates = useCallback(async () => {
     setStripeDuplicatesLoading(true);
     try {
-      const res = await fetch("/api/admin/backfill/stripe/stripe-duplicates");
+      const res = await fetch("/api/admin/backfill/stripe/duplicates");
       if (res.ok) {
         const data = await res.json();
         setStripeDuplicates(data.duplicates || []);
@@ -2611,7 +2608,7 @@ export default function BackfillClient() {
                     <div className="flex items-center gap-3">
                       <span className="font-mono text-sm">{dup.email}</span>
                       <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">
-                        {dup.count} subs
+                        {dup.subscription_count} subs
                       </span>
                     </div>
                     <span className="text-xs text-nfw-blackberry/50">

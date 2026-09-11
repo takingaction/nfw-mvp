@@ -78,17 +78,14 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Job not found" }, { status: 404 });
       }
 
-      return NextResponse.json({
-        jobId: job.id,
-        status: job.status,
-        error: job.error,
-        charges: job.charges_json,
-        total: job.total,
-        duplicates: job.duplicates_json,
-        missingFromBackfill: job.missing_from_backfill_json,
-        stripeDuplicates: job.stripe_duplicates_json,
-        completedAt: job.completed_at,
-      });
+    return NextResponse.json({
+      jobId: job.id,
+      status: job.status,
+      error: job.error,
+      charges: job.charges_json,
+      total: job.total,
+      completedAt: job.completed_at,
+    });
     }
 
     // Get latest job
@@ -111,9 +108,6 @@ export async function GET(request: Request) {
       error: latestJob.error,
       charges: latestJob.charges_json,
       total: latestJob.total,
-      duplicates: latestJob.duplicates_json,
-      missingFromBackfill: latestJob.missing_from_backfill_json,
-      stripeDuplicates: latestJob.stripe_duplicates_json,
       completedAt: latestJob.completed_at,
       isExpired,
     });
