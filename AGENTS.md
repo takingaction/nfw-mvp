@@ -14711,3 +14711,42 @@ concept exists today — requirements live in description text); post-submission
 `grants/create` doesn't validate `certification_consent` server-side.
 
 **Build:** `tsc` 0, `expo lint` clean, `expo-doctor` 21/21, Metro bundle 11.1 MB OK.
+
+## Session 2026-09-15: TypeScript Build Fixes + Deletion Request Research
+
+### TypeScript Build Fixes
+
+Three files had TypeScript errors that blocked the build. All fixed.
+
+| File | Error | Fix |
+|------|-------|-----|
+| `app/api/admin/grants/[id]/scores/route.ts` | `profile_completed` not in `profiles` select | Added `profile_completed` to profiles join select |
+| `components/admin/GrantCombinedScores.tsx` | `BankStatus` type had nullable fields that conflicted with usage | Fixed `BankStatus` type to match actual API response |
+| `app/admin/grants/[id]/scoring/combined/page.tsx` | `grantCycle` type mismatch | Fixed type annotation for `grantCycle` |
+
+**Build:** `npm run build` passes with 0 TypeScript errors.
+
+### Deletion Request Flow Research
+
+Investigated whether admins can initiate deletion requests on behalf of users.
+
+**Current Flow (Correct):**
+1. Member initiates deletion from their profile settings via `DeleteAccountModal.tsx`
+2. `POST /api/profile/request-deletion` creates the request
+3. Admin reviews at `/admin/deletion-requests`
+4. Admin verifies identity, processes the anonymization
+
+**Key Files:**
+- `components/profile/DeleteAccountModal.tsx` - User-facing modal for requesting deletion
+- `app/api/profile/request-deletion` - User's POST endpoint to create request
+- `app/api/admin/deletion-requests/route.ts` - Admin GET endpoint (only GET, no POST)
+- `app/admin/deletion-requests/` - Admin UI for managing requests
+- `lib/anonymize.ts` - 14-step anonymization logic
+- `lib/adminCheck.ts` - `requireAdmin()` return type `{ user, profile, authorized, isAdmin, isReviewer }`
+
+**Conclusion:**
+No gap to fill - the self-service model is appropriate. Members must initiate their own deletion requests because:
+- Explicit consent from the member
+- Reduces admin burden
+- Cleaner audit trail
+- Self-service without admin intervention
