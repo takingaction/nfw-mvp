@@ -1,0 +1,41 @@
+# Dependency directories (Massive token drains)
+node_modules/
+bower_components/
+vendor/
+.pnpm-store/
+
+# Build outputs, artifacts, and compiled assets
+dist/
+build/
+.next/
+.nuxt/
+out/
+.docusaurus/
+*.pyc
+__pycache__/
+
+# Version control and environment configurations
+.git/
+.svn/
+.hg/
+.env
+.env.*
+!.env.example
+
+# Large data, database dumps, and media
+*.log
+*.sqlite
+*.db
+*.mp4
+*.mp3
+*.pdf
+*.zip
+*.tar.gz
+public/assets/images/
+public/storage/
+
+# IDE configurations and system artifacts
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,13 @@
+
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "anthropic/claude-fable-5-1",
+  "model_config": {
+    // Drop to medium or low to massively curb unnecessary reasoning token bill 
+    "effort": "medium" 
+  },
+  "watcher": {
+    // Redundant layer to make sure filesystem updates don't spam the agent
+    "ignore": ["node_modules/**", "dist/**", ".expo/**"] 
+  }
+}
