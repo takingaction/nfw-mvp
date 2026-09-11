@@ -12,9 +12,6 @@ type Props = { savings: Savings | undefined; loading?: boolean };
  * Web: components/dashboard/MembershipImpactCard.tsx
  * Aubergine card · eyebrow "Your Membership at Work" · "$X saved" · lilac 3-column
  * breakdown: Microgrants / Perks / Zero Dollar Store.
- *
- * Zero Dollar Store shows "—" until the web API accepts Bearer tokens (needs
- * shopify_product_mappings.compare_at_price via service role).
  */
 export function MembershipImpactCard({ savings, loading }: Props) {
   const total = savings?.total ?? 0;
@@ -32,7 +29,7 @@ export function MembershipImpactCard({ savings, loading }: Props) {
       <View style={styles.breakdown}>
         <Stat label="Microgrants" value={savings?.microgrants} />
         <Stat label="Perks" value={savings?.perks} />
-        <Stat label="Zero Dollar Store" value={savings?.zeroDollarStore ?? null} last />
+        <Stat label="Zero Dollar Store" value={savings?.zeroDollarStore} last />
       </View>
     </View>
   );

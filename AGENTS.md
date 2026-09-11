@@ -14750,3 +14750,34 @@ No gap to fill - the self-service model is appropriate. Members must initiate th
 - Reduces admin burden
 - Cleaner audit trail
 - Self-service without admin intervention
+
+## Session 2026-09-11 (cont.): Mobile Slice D — Zero Dollar Store
+
+**No web changes.** Products/settings are public; claims, checkout and savings use Bearer tokens.
+
+| Area | Files |
+|---|---|
+| Data | `mobile/types/store.ts`, `lib/api/store.ts` (`canClaimProduct` = `StoreClient.canClaim()` verbatim; variant grouping / out-of-stock / resolution = `ClaimItemModal`), `lib/queries/store.ts` |
+| Screens | `app/store/{index,[productId],claim/[productId],my-claims}.tsx` |
+| Components | `components/store/{ProductCard,StoreUnavailableModal}.tsx`, `components/dashboard/StoreSummary.tsx` |
+| Savings | `useSavings` now calls `GET /api/dashboard/savings` so the Zero Dollar Store bucket is real (was "—") |
+
+Behaviour: Shopify hosted checkout opens in `expo-web-browser` (address collected there); after
+a successful `POST /api/shopify/checkout` the app marks the month as claimed optimistically and
+re-polls `/api/store/claims/check` on foreground because the webhook lands asynchronously.
+503 `shopify_unavailable` → non-dismissable modal (same copy as web).
+
+### CRITICAL: mobile API base must be the `www` host
+
+`https://nationalfundforwomen.org` **307-redirects to `https://www.nationalfundforwomen.org`**.
+Fetch strips `Authorization` on cross-origin redirects, so an app pointed at the apex gets 401 on
+every authenticated route even though the same token works against `www`. Fixed in
+`mobile/.env`, `.env.example`, `eas.json` and `lib/env.ts`. Verified with a throwaway user against
+production: 200 on `/api/profile`, `/api/dashboard/savings`, `/api/store/claims/*`,
+`/api/access-perks/redemptions`. (This also confirms the Bearer change `459cdc4` is live.)
+
+**Deferred:** paginated My Claims API (`my-claims-simple` returns 5). Web observations logged in
+the blueprint (`monthlyClaimed` never refreshed after checkout; `STATUS_INFO` lacks
+`completed`/`paid`; `claims/check` trusts `?userId=`; `profile/address` route unauthenticated + unused).
+
+**Build:** `tsc` 0, `expo lint` clean, `expo-doctor` 21/21, Metro bundle 11.1 MB OK.

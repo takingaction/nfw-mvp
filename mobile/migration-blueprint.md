@@ -1,7 +1,9 @@
 # NFW Mobile — Migration Blueprint
 
 **Created:** 2026-09-11
-**Status:** Slices A + B + C complete (Login · Dashboard · **Grants end-to-end** · Settings · Perks). Web API accepts Bearer tokens. See "Implementation Status" below.
+**Status:** Slices A–D complete (Login · Dashboard · Grants end-to-end · Settings · Perks · **Zero Dollar Store**). Web API accepts Bearer tokens. See "Implementation Status" below.
+
+> **API base URL must be `https://www.nationalfundforwomen.org`.** The apex domain 307-redirects to `www`, and fetch strips `Authorization` on cross-origin redirects — pointing the app at the apex makes every authenticated call 401. (Fixed 2026-09-11 in `.env`, `.env.example`, `eas.json`, `lib/env.ts`.)
 **Source plan:** `../mobile-app.md`
 **Web architecture reference:** `../AGENTS.md`
 
@@ -62,6 +64,14 @@
 | `app/(tabs)/grants/connect/{return,refresh}.tsx` | **Done** | Stripe status / connect | Real screens; become universal-link targets in Slice F |
 | `components/ui/Modal.tsx` | **Done** | — | BrandModal (scrim + card + footer) |
 | `app/(tabs)/grants/apply/confirm.tsx` | Removed | — | Consent is a modal, as on web |
+| **Slice D — Zero Dollar Store** | | | |
+| `lib/api/store.ts` · `lib/queries/store.ts` · `types/store.ts` | **Done** | `/api/shopify/products` (public), `/api/store/settings`, `/api/system-settings`, `/api/store/claims/check`, `/api/shopify/checkout`, `/api/store/claims/my-claims-simple`, `/api/dashboard/savings` | `canClaimProduct()` reproduces `StoreClient.canClaim()` order + strings; variant grouping / out-of-stock detection / variant resolution mirror `ClaimItemModal` |
+| `app/store/index.tsx` | **Done** | products · settings · system · claims-check | Hero, product cards (3:4 image, badges, "Value: $X.XX", Claim Item / More Info), monthly-limit notice, pull-to-refresh, re-checks claims on app foreground (webhook is async). Non-dismissable `StoreUnavailableModal` when `shopify_checkout_enabled === false`. |
+| `app/store/[productId].tsx` | **Done** | products | Paged image carousel with dots, status badge, HTML description → text + tappable links, "Available Options" chips, Product ID, Claim button |
+| `app/store/claim/[productId].tsx` | **Done** | `/api/shopify/checkout` | Option pickers (out-of-stock values disabled), web's validation strings, "Confirm Your Claim" modal, Shopify hosted checkout in the in-app browser, 503 → unavailable modal. **Improvement over web:** `claimedThisMonth` is set optimistically after a successful checkout so buttons grey out without a reload. |
+| `app/store/my-claims.tsx` | **Done** | `my-claims-simple` | Status badges incl. `completed`/`paid` (unmapped on web → showed raw status), tracking link/number, order #. Limited to the latest 5 claims by the existing API. "View on Shopify" hidden, matching the web TODO. |
+| `components/dashboard/StoreSummary.tsx` | **Done** | claims + products | "Your Order History" (completed/fulfilled/paid/delivered/cancelled) + "Latest Offerings" (8, DRAFT dimmed) |
+| Savings ZDS bucket | **Done** | `/api/dashboard/savings` | `useSavings` now calls the API (Bearer) so the Zero Dollar Store figure is real; Perks = Access + NFW combined as on web |
 | `app/(tabs)/perks/travel.tsx` | Placeholder | — | Slice F (WebView + `/api/travel/token`) |
 | Everything else in the mapping table | Placeholder | — | Renders `PlaceholderScreen` with its web equivalent |
 
@@ -72,8 +82,11 @@
 - **Post-submission document backstop.** If uploads fail after create, mobile offers Retry / Continue-without. Allowing uploads later from the application detail (only while zero docs + status `submitted`) was discussed and deferred.
 - **Web bugs observed (not fixed):** `StripeAccountStatus.tsx` "Retry" only resets state — the fetch effect never re-runs; `grants/create` does not validate `certification_consent === true` server-side.
 
+### Deferred from Slice D
+- **My Claims pagination.** `/api/store/claims/my-claims-simple` returns the latest 5 claims; the web page lists all via the service role. A paginated member API (or reading `zero_dollar_claims` directly once its RLS is confirmed) is a follow-up.
+- **Web observations (not fixed):** `StoreClient` never updates `monthlyClaimed` after a successful checkout (mobile does); `MyClaimsClient.STATUS_INFO` lacks `completed`/`paid`; `/api/store/claims/check` trusts `?userId=` without `getUser()`; `/api/profile/address/[userId]` is unauthenticated and unused.
+
 ### Remaining slices
-- **D — Zero Dollar Store:** browse, product detail, claim → Shopify checkout in in-app browser, my-claims, ZDS savings bucket (verify `zero_dollar_claims` RLS first)
 - **E — Auth + Profile completion:** sign-up steps 0–3, forgot/update password, welcome/waitlist/error screens, profile view/edit, avatar upload, membership status, gift-code redeem, delete account
 - **F — Push + deep links + Travel:** `push_tokens` table + `/api/push/register` + grant-status hooks; universal links; Travel WebView
 - **G — Release:** icons/splash, Contact/FAQ/Share/Legal screens, error reporting, a11y, EAS builds, TestFlight/Play, store listings

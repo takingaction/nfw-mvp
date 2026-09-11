@@ -30,6 +30,5 @@ export interface Savings {
   microgrants: number;
   /** Access Perks + NFW Perks combined (web combines them into one column). */
   perks: number;
-  /** null = not computable on mobile yet (needs Bearer-token API access) */
-  zeroDollarStore: number | null;
+  zeroDollarStore: number;
 }

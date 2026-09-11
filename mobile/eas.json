@@ -17,7 +17,7 @@
       "distribution": "internal",
       "channel": "preview",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://nationalfundforwomen.org"
+        "EXPO_PUBLIC_API_BASE_URL": "https://www.nationalfundforwomen.org"
       },
       "android": { "buildType": "apk" }
     },
@@ -25,7 +25,7 @@
       "autoIncrement": true,
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://nationalfundforwomen.org"
+        "EXPO_PUBLIC_API_BASE_URL": "https://www.nationalfundforwomen.org"
       }
     }
   },

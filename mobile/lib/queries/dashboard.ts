@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { fetchSavings } from "@/lib/api/store";
 import { queryKeys } from "@/lib/queries/keys";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/auth";
@@ -19,11 +20,10 @@ export function useDashboardSettings() {
 }
 
 /**
- * "Your Membership at Work" totals — mirrors getSavings() in app/dashboard/page.tsx,
- * computed on-device from tables the member can read under RLS:
- *   microgrants : grants.amount_approved where status = payment_sent
- *   perks       : Σ offer_redemptions.offer_value + Σ nfw_perks.estimated_value (own redemptions)
- *   ZDS         : needs shopify_product_mappings.compare_at_price via the web API → null for now
+ * "Your Membership at Work" totals — GET /api/dashboard/savings (same computation as
+ * getSavings() in app/dashboard/page.tsx, incl. the Zero Dollar Store bucket which needs
+ * shopify_product_mappings.compare_at_price via the service role). Web combines Access
+ * Perks + NFW Perks into one "Perks" figure; we do the same here.
  */
 export function useSavings() {
   const userId = useAuthStore((s) => s.user?.id);
@@ -32,31 +32,14 @@ export function useSavings() {
     queryKey: queryKeys.savings(userId ?? "anon"),
     enabled: !!userId,
     queryFn: async (): Promise<Savings> => {
-      const uid = userId!;
-      const [grantsRes, offersRes, nfwRedRes] = await Promise.all([
-        supabase.from("grants").select("amount_approved").eq("user_id", uid).eq("status", "payment_sent"),
-        supabase.from("offer_redemptions").select("offer_value").eq("user_id", uid),
-        supabase.from("nfw_perk_redemptions").select("perk_id").eq("user_id", uid),
-      ]);
-      for (const r of [grantsRes, offersRes, nfwRedRes]) if (r.error) throw r.error;
-
-      const microgrants = (grantsRes.data ?? []).reduce((s, g) => s + Number(g.amount_approved ?? 0), 0);
-      const accessPerks = (offersRes.data ?? []).reduce((s, o) => s + Number(o.offer_value ?? 0), 0);
-
-      let nfwPerks = 0;
-      const perkIds = (nfwRedRes.data ?? []).map((r) => r.perk_id).filter(Boolean);
-      if (perkIds.length) {
-        const { data: perks, error } = await supabase
-          .from("nfw_perks")
-          .select("id, estimated_value")
-          .in("id", perkIds);
-        if (error) throw error;
-        const byId = new Map((perks ?? []).map((p) => [p.id, Number(p.estimated_value ?? 0)]));
-        nfwPerks = perkIds.reduce((s, id) => s + (byId.get(id) ?? 0), 0);
-      }
-
-      const perks = accessPerks + nfwPerks;
-      return { total: microgrants + perks, microgrants, perks, zeroDollarStore: null };
+      const data = await fetchSavings();
+      const perks = Number(data.perks ?? 0) + Number(data.nfwPerks ?? 0);
+      return {
+        total: Number(data.total ?? 0),
+        microgrants: Number(data.microgrants ?? 0),
+        perks,
+        zeroDollarStore: Number(data.zeroDollarStore ?? 0),
+      };
     },
   });
 }

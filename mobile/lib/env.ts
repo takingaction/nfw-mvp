@@ -19,12 +19,12 @@ export const env = {
     process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   ),
   /** Base URL of the Next.js app whose /api/* routes the mobile app calls. */
-  apiBaseUrl: (process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://nationalfundforwomen.org").replace(
+  apiBaseUrl: (process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://www.nationalfundforwomen.org").replace(
     /\/$/,
     "",
   ),
   /** Public site URL for links opened in the system browser (upgrade, manage subscription, legal). */
-  siteUrl: "https://nationalfundforwomen.org",
+  siteUrl: "https://www.nationalfundforwomen.org",
   /** Deep-link scheme registered in app.json */
   scheme: "nfw",
 } as const;

@@ -11,6 +11,7 @@ import { GrantsSummary } from "@/components/dashboard/GrantsSummary";
 import { MembershipCard } from "@/components/dashboard/MembershipCard";
 import { MembershipImpactCard } from "@/components/dashboard/MembershipImpactCard";
 import { PerksSummary } from "@/components/dashboard/PerksSummary";
+import { StoreSummary } from "@/components/dashboard/StoreSummary";
 import { LoadingScreen, Screen } from "@/components/ui/Screen";
 import { useDashboardSettings, usePerksCounts, useSavings } from "@/lib/queries/dashboard";
 import { useMyGrants, useOpenGrantCycles } from "@/lib/queries/grants";
@@ -88,6 +89,8 @@ export default function DashboardScreen() {
       <GrantsSummary grants={grants.data ?? []} availableCycles={cycles.data ?? []} />
 
       <PerksSummary savedBrands={perksCounts.data?.savedBrands ?? 0} redeemed={perksCounts.data?.redeemed ?? 0} />
+
+      <StoreSummary />
 
       <BottomActions settings={settings.data ?? null} />
     </Screen>
