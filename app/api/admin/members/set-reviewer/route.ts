@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminCheck";
-import { createClient } from "@/lib/supabase/server";
+import getAdminClient from "@/lib/supabase/admin";
 
 const ALLOWED_EMAILS = [
   "rachel@nationalfundforwomen.org",
@@ -23,10 +23,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
-    const supabase = await createClient();
-
-    // Update the reviewer's status
-    const { error: updateError } = await supabase
+    // Service role: updating ANOTHER user's row. The RLS UPDATE policy is own-row only,
+    // so the cookie client silently matched 0 rows here (bug fixed 2026-09-11).
+    const { error: updateError } = await getAdminClient()
       .from("profiles")
       .update({ is_reviewer: isReviewer })
       .eq("id", memberId);

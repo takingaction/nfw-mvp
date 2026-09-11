@@ -14555,3 +14555,55 @@ Full status table: `mobile/migration-blueprint.md` → "Implementation Status".
 
 **Next:** web Bearer-token support in `lib/supabase/server.ts` → unlocks Slice B (Perks, Store,
 grant form, savings ZDS, Stripe Connect link, avatar/profile edit).
+
+## Session 2026-09-15: Stripe Backfill Duplicates Fixes
+
+### Bug 1: `stripe_duplicates_jobs` missing columns
+
+Migration 157 created `stripe_duplicates_jobs` but the cron worker expected columns that didn't exist:
+- `progress_data JSONB` - missing
+- `current_phase TEXT` - missing
+- `processed_count INTEGER` - missing
+- `updated_at TIMESTAMPTZ` - missing
+
+### Bug 2: Field name mismatch `dup.count` vs `dup.subscription_count`
+
+- Cron stores `subscription_count` (line 209 of process-stripe-duplicates-jobs/route.ts)
+- UI expected `dup.count` (line 2611 of BackfillClient.tsx)
+- TypeScript interface had `count: number` instead of `subscription_count: number`
+
+### Bug 3: Wrong endpoint for `fetchStripeDuplicates`
+
+- `fetchStripeDuplicates` called `/api/admin/backfill/stripe/stripe-duplicates` which doesn't exist
+- Should call `/api/admin/backfill/stripe/duplicates`
+
+### Bug 4: stripe-only-jobs GET returned non-existent fields
+
+- `duplicates`, `missingFromBackfill`, `stripeDuplicates` don't exist on `stripe_only_jobs` table
+- Removed these undefined fields from GET response
+
+### Files Modified
+
+- `supabase/migrations/160_fix_stripe_duplicates_jobs_missing_columns.sql` - New migration
+- `app/admin/backfill/stripe/BackfillClient.tsx`:
+  - Fixed `dup.count` → `dup.subscription_count`
+  - Fixed `StripeDuplicate` interface: `count` → `subscription_count`
+  - Fixed `fetchStripeDuplicates` endpoint URL
+  - Removed `duplicates`/`stripeDuplicates`/`missingFromBackfill` state from stripe-only polling
+- `app/api/admin/backfill/stripe/stripe-only-jobs/route.ts` - Removed non-existent fields from GET response
+
+### SQL to Run
+
+```sql
+ALTER TABLE stripe_duplicates_jobs 
+ADD COLUMN IF NOT EXISTS progress_data JSONB,
+ADD COLUMN IF NOT EXISTS current_phase TEXT DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS processed_count INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_stripe_duplicates_jobs_updated 
+ON stripe_duplicates_jobs(updated_at) 
+WHERE updated_at IS NOT NULL;
+
+NOTIFY pgrst, 'reload';
+```

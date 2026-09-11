@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import getAdminClient from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -75,7 +76,9 @@ export default async function ArticlePage({
 
   let author = null;
   if (article.author_id) {
-    const { data: authorData } = await supabase
+    // Service role: profiles SELECT is restricted to own row / admins (migration 159),
+    // but article author names are public content.
+    const { data: authorData } = await getAdminClient()
       .from("profiles")
       .select("full_name")
       .eq("id", article.author_id)

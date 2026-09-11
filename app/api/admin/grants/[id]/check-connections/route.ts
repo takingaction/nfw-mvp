@@ -17,8 +17,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
-
+    const adminCheck = await requireAdmin();
+    if (!adminCheck.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
     const { id: cycleId } = await params;
 
     // Get the cycle

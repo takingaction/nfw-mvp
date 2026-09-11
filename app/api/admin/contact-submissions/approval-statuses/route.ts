@@ -9,8 +9,10 @@ const supabaseAdmin = createClient(
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin();
-
+    const adminCheck = await requireAdmin();
+    if (!adminCheck.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
     const { searchParams } = new URL(request.url);
     const userIdsParam = searchParams.get("user_ids");
 

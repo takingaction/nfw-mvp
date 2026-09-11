@@ -31,7 +31,9 @@ async function getSavings(userId: string) {
       .from("grants")
       .select("amount_approved")
       .eq("user_id", userId)
-      .eq("status", "paid"),
+      // "payment_sent" is the terminal paid status (see grants_status_check);
+      // the previous "paid" filter matched nothing, so this figure was always $0.
+      .eq("status", "payment_sent"),
     supabaseAdmin
       .from("offer_redemptions")
       .select("offer_value")

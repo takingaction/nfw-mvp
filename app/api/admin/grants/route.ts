@@ -9,8 +9,10 @@ const supabaseAdmin = createClient(
 
 export async function GET() {
   try {
-    await requireAdmin();
-
+    const adminCheck = await requireAdmin();
+    if (!adminCheck.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
     const { data: cycles, error } = await supabaseAdmin
       .from("grant_cycles")
       .select("id, cycle_name, featured_image")

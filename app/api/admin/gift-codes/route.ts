@@ -9,7 +9,10 @@ const supabaseAdmin = createClient(
 
 export async function GET(request: Request) {
   try {
-    await requireAdmin();
+    const adminCheck = await requireAdmin();
+    if (!adminCheck.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -107,7 +110,10 @@ async function getStats() {
 
 export async function POST(request: Request) {
   try {
-    await requireAdmin();
+    const adminCheck = await requireAdmin();
+    if (!adminCheck.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

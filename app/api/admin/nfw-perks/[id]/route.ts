@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import getAdminClient from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/adminCheck";
 
 export async function GET(
@@ -7,10 +7,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    const adminCheck = await requireAdmin();
+    if (!adminCheck.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
     const { id } = await params;
 
-    const supabase = await createClient();
+    // Service role: admin CRUD must not depend on RLS policy evaluation (see migration 159).
+    const supabase = getAdminClient();
 
     const { data: perk, error } = await supabase
       .from("nfw_perks")
@@ -44,7 +48,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    const adminCheck = await requireAdmin();
+    if (!adminCheck.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
     const { id } = await params;
     const body = await request.json();
 
@@ -69,7 +76,8 @@ export async function PUT(
       return NextResponse.json({ error: "Landing page URL is required" }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    // Service role: admin CRUD must not depend on RLS policy evaluation (see migration 159).
+    const supabase = getAdminClient();
 
     // Generate slug from title if not provided
     const generatedSlug = slug || (title
@@ -120,10 +128,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    const adminCheck = await requireAdmin();
+    if (!adminCheck.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
     const { id } = await params;
 
-    const supabase = await createClient();
+    // Service role: admin CRUD must not depend on RLS policy evaluation (see migration 159).
+    const supabase = getAdminClient();
 
     const { error } = await supabase
       .from("nfw_perks")

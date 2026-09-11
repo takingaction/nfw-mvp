@@ -10,6 +10,8 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  // The Expo mobile app lives in ./mobile with its own package.json, tsconfig and lint setup.
+  { ignores: ["mobile/**"] },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
 ];
 

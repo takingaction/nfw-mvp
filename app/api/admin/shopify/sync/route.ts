@@ -10,7 +10,10 @@ const supabaseAdmin = createClient(
 
 export async function POST() {
   try {
-    await requireAdmin();
+    const adminCheck = await requireAdmin();
+    if (!adminCheck.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
     const data = await shopifyFetch<{ products: { edges: Array<{ node: ShopifyProduct }> } }>({
       query: PRODUCTS_QUERY,
       variables: { first: 250 },

@@ -203,7 +203,10 @@ function parseCustomDate(dateStr: string, isStart: boolean): string {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin();
+    const adminCheck = await requireAdmin();
+    if (!adminCheck.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

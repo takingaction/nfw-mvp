@@ -7,10 +7,15 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
 
     const supabase = await createClient();
+
+    // Identity comes from the session, never from the query string. (The previous
+    // `?userId=` param let any caller impersonate an admin to view admin-only perks.)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const userId = user?.id ?? null;
 
     // Check if user is admin
     let isAdmin = false;

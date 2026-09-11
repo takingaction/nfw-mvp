@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import getAdminClient from "@/lib/supabase/admin";
 import ArticlesClient from "@/components/ArticlesClient";
 
 export const metadata = {
@@ -123,10 +124,11 @@ async function ArticlesContent({
         category = categoryData;
       }
 
-      // Fetch author
+      // Fetch author (service role: profiles SELECT is own-row/admin only after migration 159,
+      // but author names are public content)
       let author = null;
       if (article.author_id) {
-        const { data: authorData } = await supabase
+        const { data: authorData } = await getAdminClient()
           .from("profiles")
           .select("full_name")
           .eq("id", article.author_id)

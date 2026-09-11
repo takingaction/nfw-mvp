@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const userIdParam = searchParams.get("userId");
     const categories = searchParams.get("categories");
     const search = searchParams.get("search");
     const limit = parseInt(searchParams.get("limit") || "50");
@@ -12,10 +11,11 @@ export async function GET(request: Request) {
 
     const supabase = await createClient();
 
-    // Get user from session if userId not provided
-    let userId = userIdParam;
+    // Identity comes from the session only. The former `?userId=` override let
+    // callers read other users' redemption state; it is ignored now.
+    let userId: string | null = null;
     let isAdmin = false;
-    if (!userId) {
+    {
       const { data: { user } } = await supabase.auth.getUser();
       userId = user?.id || null;
 

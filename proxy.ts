@@ -33,15 +33,24 @@ export async function proxy(request: NextRequest) {
 
   // Handle orphaned session (user deleted from auth.users but still has cookies)
   // Only redirect for protected routes, not general pages (they handle their own redirects)
-  const isProtectedRoute = request.nextUrl.pathname.startsWith("/admin");
-  const isAuthPage = request.nextUrl.pathname.startsWith("/auth/");
+  const pathname = request.nextUrl.pathname;
+  const isAdminPage = pathname.startsWith("/admin");
+  // Edge guard for admin API routes. Individual routes also enforce requireAdmin(),
+  // but this ensures no /api/admin/* handler is reachable without an admin/reviewer
+  // session even if a route forgets to check the result.
+  const isAdminApi = pathname.startsWith("/api/admin");
+  const isProtectedRoute = isAdminPage || isAdminApi;
 
   if (isProtectedRoute && !user) {
+    if (isAdminApi) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
   if (isProtectedRoute && !authError && user) {
-    // Check if user is admin or reviewer
+    // Check if user is admin or reviewer (reviewers need the grant-scoring APIs;
+    // admin-only routes enforce is_admin themselves via requireAdmin()).
     const { data: profile } = await supabase
       .from("profiles")
       .select("is_admin, is_reviewer")
@@ -49,6 +58,9 @@ export async function proxy(request: NextRequest) {
       .single();
 
     if (!profile?.is_admin && !profile?.is_reviewer) {
+      if (isAdminApi) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
       return NextResponse.redirect(new URL("/", request.url));
     }
   }

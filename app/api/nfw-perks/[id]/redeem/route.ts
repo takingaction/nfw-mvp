@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import getAdminClient from "@/lib/supabase/admin";
 
 export async function POST(
   request: Request,
@@ -53,7 +54,9 @@ export async function POST(
       return NextResponse.json({ error: "You have already redeemed this perk" }, { status: 400 });
     }
 
-    const { count: redemptionCount } = await supabase
+    // Global cap check must count ALL users' redemptions. RLS restricts the user
+    // client to own rows (migration 159), so use the service role here.
+    const { count: redemptionCount } = await getAdminClient()
       .from("nfw_perk_redemptions")
       .select("*", { count: "exact", head: true })
       .eq("perk_id", id);

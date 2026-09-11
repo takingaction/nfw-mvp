@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import getAdminClient from "@/lib/supabase/admin";
 
 export async function GET() {
   try {
@@ -13,7 +14,10 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: redemptions, error } = await supabase
+    // Service role so the nfw_perks embed still resolves for perks that have since been
+    // deactivated (public SELECT policy only exposes is_active = true). Query is scoped
+    // to the authenticated user's own redemptions.
+    const { data: redemptions, error } = await getAdminClient()
       .from("nfw_perk_redemptions")
       .select(`
         id,

@@ -30,7 +30,8 @@ export async function GET() {
         .from("grants")
         .select("amount_approved")
         .eq("user_id", userId)
-        .eq("status", "paid"),
+        // "payment_sent" is the terminal paid status; "paid" matched nothing (always $0).
+        .eq("status", "payment_sent"),
       supabaseAdmin
         .from("offer_redemptions")
         .select("offer_value")

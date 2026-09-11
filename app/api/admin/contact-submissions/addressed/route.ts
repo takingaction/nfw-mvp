@@ -9,8 +9,10 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin();
-
+    const adminCheck = await requireAdmin();
+    if (!adminCheck.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
     const { id } = await request.json();
 
     if (!id) {

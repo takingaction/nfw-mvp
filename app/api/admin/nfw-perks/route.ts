@@ -9,8 +9,10 @@ const supabaseAdmin = createClientSupabase(
 
 export async function GET() {
   try {
-    await requireAdmin();
-
+    const adminCheck = await requireAdmin();
+    if (!adminCheck.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
     const { data: perks, error } = await supabaseAdmin
       .from("nfw_perks")
       .select("*")
@@ -45,8 +47,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    await requireAdmin();
-
+    const adminCheck = await requireAdmin();
+    if (!adminCheck.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
     const body = await request.json();
 
     const {
