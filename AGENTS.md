@@ -14415,3 +14415,120 @@ The "Find Duplicates" button created jobs in `stripe_duplicates_jobs` table but 
 
 ### Commit
 - `fix: add missing duplicates cron to vercel.json, increase polling timeout`
+
+## Session 2026-09-11: Mobile App Scaffold (Expo) + RLS / Admin API Hardening
+
+### Part 1 — NFW Mobile App scaffold (`/mobile`)
+
+Initialized the React Native app from `mobile-app.md`. Full route mapping, build architecture and
+web-repo dependencies are in **`mobile/migration-blueprint.md`** — treat that file as the source
+of truth for the mobile project.
+
+**Stack (supersedes mobile-app.md):** Expo SDK 57 managed / TypeScript · **Expo Router** (bottom
+tabs: Dashboard · Grants · Perks · Settings; Zero Dollar Store is a root stack) · Zustand +
+TanStack Query · `expo-secure-store` via Supabase's LargeSecureStore pattern (AES key in
+SecureStore, ciphertext in AsyncStorage — works around the 2 KB limit) · `@supabase/supabase-js`
+with PKCE, `detectSessionInUrl: false`.
+
+**Expo account:** owner `my-hero-creative`, slug `nfw-app`, EAS project
+`8f7802b0-60fc-4623-809f-cf26fe7e06dd`. CLI login is `npx expo login --browser` (Google account,
+no password). Dev on a phone requires `npx expo start --tunnel` — the Mac is on Ethernet and the
+phone on Wi-Fi, and the router blocks wired↔wireless client traffic, so LAN mode times out.
+
+**Decisions:** membership purchase/upgrade/portal is **web-only** (Apple 3.1.1); mobile shows
+status and opens `nationalfundforwomen.org` in the system browser. Grant application form, Access
+Perks search/redeem, Store and Savings are blocked until `lib/supabase/server.ts` accepts
+`Authorization: Bearer <token>` (deferred; see blueprint "Dependencies on the Web Repo" #1).
+
+**Repo isolation:** `/mobile` has its own `package.json` (not a workspace). Root `tsconfig.json`
+now `exclude`s `mobile`; `eslint.config.mjs` ignores `mobile/**`. Vercel never builds it.
+
+**Dev-only bypass (remove in Phase 2):** `stores/auth.ts` `devPreview` flag + buttons on
+`app/auth/login.tsx` / `app/(tabs)/settings/index.tsx`, all behind `__DEV__`.
+
+**Gotcha:** `create-expo-app@4` is broken on npm 12 (changed `npm pack --json` shape). Template
+was pulled via `npm pack expo-template-blank-typescript` and Expo Router wired manually.
+
+### Part 2 — CRITICAL: 21 admin API routes were unauthenticated
+
+`requireAdmin()` (lib/adminCheck.ts) was refactored on 2026-04-28 to **return**
+`{ authorized: false }` instead of throwing. 22 call sites in 16 API routes were still written
+throw-style (`await requireAdmin();` / `try { await requireAdmin() } catch {...}`) and discarded
+the result, so the guard did nothing. `proxy.ts` only protected `/admin/*` pages, not
+`/api/admin/*`. Every affected route uses the service-role client, so RLS did not help.
+
+Reachable without any session until this fix, among others:
+- `POST /api/admin/grants/[id]/transfer` — **creates a Stripe payout**
+- `GET /api/admin/members/export` — full member PII CSV
+- `POST /api/admin/shopify/sync`, `update-product`; gift-codes, story/contact submissions, waitlist export
+
+**Fix (two layers):**
+1. All 22 call sites now `const adminCheck = await requireAdmin(); if (!adminCheck.authorized) return 403`.
+   (`requireAdmin`'s return contract unchanged — 8 other callers already check `.authorized`.)
+2. `proxy.ts` now guards `/api/admin/*` at the edge: 401 JSON without a session, 403 JSON unless
+   `is_admin || is_reviewer` (reviewers need the scoring APIs; admin-only routes still enforce
+   `is_admin` themselves).
+
+**Rule going forward:** never call `requireAdmin()` / `requireGrantsAccess()` as a bare statement.
+Always check `.authorized` (API) or pass `{ redirectOnFailure: true }` (pages).
+
+### Part 3 — RLS hardening (migration 159)
+
+Audit found four over-permissive policies:
+
+| Table | Was | Now (159) |
+|---|---|---|
+| `profiles` | `SELECT USING (true)` — every profile incl. email/DOB/income/Stripe IDs readable by anyone | `auth.uid() = id OR is_admin(auth.uid())`; + admin UPDATE policy |
+| `nfw_perks` | `FOR ALL USING (true)` ("Admin full access" with no admin check) | admin-only ALL via `is_admin()`; public SELECT `is_active = true` kept |
+| `nfw_perk_redemptions` | `SELECT USING (true)` | admin-only SELECT; own-row SELECT/INSERT kept |
+| `perks_settings` | `FOR ALL USING (true)` | admin-only ALL; public SELECT kept |
+
+New helper `public.is_admin(uuid)` — `SECURITY DEFINER` is required (a plain function reading
+`profiles` inside a `profiles` policy recurses). Rollback: `159_harden_rls_policies_rollback.sql`.
+
+**Web code moved to service role BEFORE the migration** (these were legitimate cross-user reads
+on the RLS client that the new policies would break):
+
+| File | Change |
+|---|---|
+| `app/articles/[slug]/page.tsx`, `app/articles/page.tsx` | author `full_name` lookup → `getAdminClient()` (public pages, non-admin visitors) |
+| `app/api/nfw-perks/[id]/redeem/route.ts` | global `max_redemptions_total` count → service role (own-row SELECT would count 0/1) |
+| `app/api/nfw-perks/redemptions/route.ts` | → service role so the `nfw_perks` embed resolves for since-deactivated perks |
+| `app/api/admin/nfw-perks/[id]/route.ts` GET/PUT/DELETE | → service role (admin CRUD must not depend on policy evaluation) |
+| `app/api/admin/members/set-reviewer/route.ts` | → service role. **Was already broken**: updating another user's row via the cookie client matched 0 rows under the own-row UPDATE policy. |
+| `app/api/nfw-perks/route.ts`, `[id]/route.ts`, `slug/[slug]/route.ts` | identity from session only; the `?userId=` query param (which let anyone impersonate an admin to see `is_admin_only` perks or read others' redemption state) is ignored |
+
+**Deploy order:** (1) deploy this commit → (2) run `159_harden_rls_policies.sql` in the SQL
+Editor → (3) verify: `/admin/members` counts+list, `/admin/analytics`, `/admin/articles` author
+dropdown, `/admin/backfill/stripe` reconciliation totals (the `profiles!inner` embeds silently
+drop rows if `is_admin()` misfires), `/admin/nfw-perks` edit/delete, set-reviewer toggle,
+reviewer-account scoring pages, member dashboard/profile, public article author names, anon
+article page.
+
+**Deferred:** `zero_dollar_claims` and `dashboard_settings` have no RLS/`ENABLE` in migrations
+(configured out-of-band). Verify in the dashboard before deciding.
+
+### Part 4 — Bug fixes bundled in
+
+- `app/dashboard/page.tsx` + `app/api/dashboard/savings/route.ts` `getSavings`: microgrants
+  bucket filtered `status = "paid"`, which is not a grant status (terminal is `payment_sent`), so
+  the **"Microgrants" savings figure was always $0**. Fixed.
+- `set-reviewer` no-op (see Part 3).
+
+### Files Modified (web)
+
+`proxy.ts`, `tsconfig.json`, `eslint.config.mjs`, `app/dashboard/page.tsx`,
+`app/api/dashboard/savings/route.ts`, `app/articles/page.tsx`, `app/articles/[slug]/page.tsx`,
+`app/api/nfw-perks/{route,[id]/route,[id]/redeem/route,redemptions/route,slug/[slug]/route}.ts`,
+`app/api/admin/nfw-perks/{route,[id]/route}.ts`, `app/api/admin/members/{export,set-reviewer,backfill-payments}/route.ts`,
+`app/api/admin/grants/{route,[id]/transfer/route,[id]/check-connections/route,[id]/export/route}.ts`,
+`app/api/admin/shopify/{sync,update-product}/route.ts`, `app/api/admin/gift-codes/route.ts`,
+`app/api/admin/story-submissions/route.ts`, `app/api/admin/contact-submissions/{route,addressed/route,approval-statuses/route}.ts`,
+`app/api/admin/waitlist/export/route.ts`.
+
+### Files Created
+
+`mobile/**` (see blueprint), `supabase/migrations/159_harden_rls_policies.sql`,
+`supabase/migrations/159_harden_rls_policies_rollback.sql`.
+
+**Build:** web `tsc` 0 errors, `next build` ✓ (209 pages); mobile `tsc` 0 errors, `expo-doctor` 21/21.

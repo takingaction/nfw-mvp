@@ -6,37 +6,57 @@ const BATCH_DELAY_MS = 200;
 
 /**
  * GET /api/admin/bulk/waitlist
- * 
+ *
  * Gets all waitlist members with their email status.
+ * Uses pagination to handle large waitlists (Supabase default limit is 1000).
  */
 export async function GET() {
   try {
     const supabase = getAdminClient();
 
-    // Fetch all waitlist members (people who joined with a waitlist_joined_at)
-    const { data: members, error } = await supabase
-      .from("profiles")
-      .select(`
-        id,
-        full_name,
-        email,
-        waitlist_joined_at,
-        waitlist_email_sent_at,
-        is_approved_free_member,
-        membership_level,
-        joined_at
-      `)
-      .eq("membership_level", "waitlist")
-      .not("waitlist_joined_at", "is", null)
-      .order("waitlist_joined_at", { ascending: true });
+    const PAGE_SIZE = 1000;
+    const allMembers: any[] = [];
+    let page = 0;
+    let hasMore = true;
 
-    if (error) {
-      console.error("[admin/bulk/waitlist] Error fetching waitlist:", error);
-      return NextResponse.json(
-        { error: "Failed to fetch waitlist" },
-        { status: 500 }
-      );
+    while (hasMore) {
+      const from = page * PAGE_SIZE;
+
+      const { data: membersBatch, error } = await supabase
+        .from("profiles")
+        .select(`
+          id,
+          full_name,
+          email,
+          waitlist_joined_at,
+          waitlist_email_sent_at,
+          is_approved_free_member,
+          membership_level,
+          joined_at
+        `)
+        .eq("membership_level", "waitlist")
+        .not("waitlist_joined_at", "is", null)
+        .order("waitlist_joined_at", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) {
+        console.error("[admin/bulk/waitlist] Error fetching waitlist:", error);
+        return NextResponse.json(
+          { error: "Failed to fetch waitlist" },
+          { status: 500 }
+        );
+      }
+
+      if (membersBatch && membersBatch.length > 0) {
+        allMembers.push(...membersBatch);
+        page++;
+        hasMore = membersBatch.length === PAGE_SIZE;
+      } else {
+        hasMore = false;
+      }
     }
+
+    const members = allMembers;
 
     const stats = {
       total: members?.length || 0,
