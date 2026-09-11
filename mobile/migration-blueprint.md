@@ -1,0 +1,241 @@
+# NFW Mobile — Migration Blueprint
+
+**Created:** 2026-09-11
+**Status:** Slice A complete (Login · Dashboard · Grants read-only · Settings). See "Implementation Status" below.
+**Source plan:** `../mobile-app.md`
+**Web architecture reference:** `../AGENTS.md`
+
+---
+
+## Technical Decisions (superseding `mobile-app.md`)
+
+| Layer | `mobile-app.md` said | Adopted |
+|---|---|---|
+| Framework | Expo (managed) | Expo managed workflow, TypeScript — **latest stable SDK** |
+| Navigation | React Navigation v6 | **Expo Router** (file-based) with Bottom Tabs: `Dashboard` · `Grants` · `Perks` · `Settings` |
+| Session storage | AsyncStorage | **`expo-secure-store`** via Supabase's `LargeSecureStore` pattern (AES key in SecureStore, encrypted blob in AsyncStorage — works around the 2048-byte SecureStore limit) |
+| State | Zustand | Zustand (client state) + **TanStack Query** (server state / caching) |
+| Push | Expo Notifications | Expo Notifications + FCM/APNs |
+| Auth | Supabase RN client | `@supabase/supabase-js` with custom storage adapter; PKCE flow; Google OAuth via `expo-web-browser` |
+| Zero Dollar Store | (unspecified) | **Root-level stack** `app/store/*`, entry points from Dashboard + Perks |
+| Membership payments | (unspecified) | **Status-only.** Upgrade / Manage Subscription opens `nationalfundforwomen.org` in the system browser (Apple 3.1.1 reader-app pattern). No in-app Stripe checkout. |
+
+---
+
+## Implementation Status
+
+| Screen / module | Status | Data source | Notes |
+|---|---|---|---|
+| `app/auth/login.tsx` | **Done** | Supabase auth direct | Copy, error strings, 60 s resend cooldown identical to `components/login-form.tsx`. Google via `lib/auth/google.ts`. |
+| `app/(tabs)/dashboard/index.tsx` | **Done** | Direct Supabase (own rows + public tables) | Same gating order as web. Savings computed on-device; **Zero Dollar Store bucket shows "—"** until Bearer. Abandoned-checkout banner intentionally omitted (purchase is web-only). Stripe "Connect Bank Account" opens the web grant page. |
+| `components/dashboard/*` | **Done** | — | Hero, MembershipCard, MembershipImpactCard, FeaturedItems, GrantsSummary, PerksSummary, BottomActions |
+| `components/banners/DashboardBanners.tsx` | **Done** | — | DOB · pending free / waitlist · You're Approved (connect / connected) |
+| `app/(tabs)/grants/index.tsx` | **Done** | `grant_cycles` direct | Reminder + eligibility copy verbatim from `GrantApplicationForm.tsx`. Filters `is_testing_only` for non-admins, `end_date >= today`. |
+| `app/(tabs)/grants/my-applications.tsx` | **Done** | own `grants` + cycle embed | Stat cards + status prompts match web |
+| `app/(tabs)/grants/[id].tsx` | **Done** | own `grants`, `grant_documents` | Timeline, answers, status actions. Document **viewing** and Stripe onboarding hand off to web (Bearer). |
+| `app/(tabs)/grants/apply/index.tsx` | **Interim** | — | Shows chosen cycle, hands off to web form. Native form = Slice B. |
+| `app/(tabs)/settings/index.tsx` | **Done** | auth store | Identity card, grouped rows, sign-out confirm, version |
+| `components/ui/*` | **Done** | — | Typography, Button, Card, Badge, Banner, EmptyState, Input, Screen, AnimatedCurrency |
+| `lib/queries/{grants,dashboard}.ts` | **Done** | — | TanStack hooks; keys in `lib/queries/keys.ts` |
+| `stores/auth.ts` | **Done** | `profiles` direct | Reads own row (RLS 159 compatible); `null → "free"` normalisation |
+| Fonts | **Done** | `@expo-google-fonts/*` | Playfair Display + DM Sans loaded in root layout; splash held until ready |
+| Everything else in the mapping table | Placeholder | — | Renders `PlaceholderScreen` with its web equivalent |
+
+**Removed:** the `__DEV__` preview bypass (login button, settings button, `devPreview` store flag, `AuthGate` exemption).
+
+### Slice B (next) — requires web Bearer-token change first
+Perks search/detail/redeem (Access Perks proxy), NFW perk redeem, Zero Dollar Store browse/claim, savings ZDS bucket, grant application form + document upload/view, Stripe Connect onboarding link, avatar upload, profile edit via `/api/profile/update`.
+
+---
+
+## Route / Feature Mapping
+
+Left: existing Next.js page, Vercel API route, or UI component. Right: the Expo Router file (relative to `/mobile/app/`) or module where the equivalent is built.
+
+| Web (Next.js page / Vercel API / UI context) | Expo Router path (`/mobile/app/...`) |
+|---|---|
+| **APP SHELL** | |
+| `app/layout.tsx` (providers, nav, GA4, Termly) | `app/_layout.tsx` — QueryClient, Zustand hydration, session restore from SecureStore, auth gate, push token registration |
+| `proxy.ts` (auth redirect middleware) | `app/index.tsx` — redirect → `/(tabs)/dashboard` or `/auth/login` |
+| `app/not-found.tsx` | `app/+not-found.tsx` |
+| **AUTH** | |
+| `app/auth/login/page.tsx` · `components/login-form.tsx` | `app/auth/login.tsx` |
+| `app/auth/sign-up/page.tsx` · `components/SignUpFlow.tsx` (steps 0–3) | `app/auth/sign-up/index.tsx` (step 0), `app/auth/sign-up/profile.tsx` (step 1), `app/auth/sign-up/identity.tsx` (step 2), `app/auth/sign-up/membership.tsx` (step 3) |
+| `app/auth/sign-up-success/page.tsx` | `app/auth/sign-up-success.tsx` |
+| `app/auth/forgot-password/page.tsx` | `app/auth/forgot-password.tsx` |
+| `app/auth/update-password/page.tsx` · `POST /api/auth/update-password` | `app/auth/update-password.tsx` (calls `supabase.auth.updateUser` directly — session lives in SecureStore, no cookie exchange needed) |
+| `app/auth/callback/route.ts` · `app/auth/confirm/route.ts` (PKCE / token_hash) | `app/auth/callback.tsx` — deep-link target `nfw://auth/callback`; handles `exchangeCodeForSession` + `verifyOtp` |
+| `app/auth/welcome/page.tsx` | `app/auth/welcome.tsx` |
+| `app/auth/waitlist-confirmed/page.tsx` · `POST /api/waitlist` | `app/auth/waitlist-confirmed.tsx` |
+| `app/auth/error/page.tsx` (resend confirmation) | `app/auth/error.tsx` |
+| `app/auth/logout/route.ts` | Settings → `useAuthStore().signOut()` (clears SecureStore) |
+| Google OAuth (Supabase provider, `auth.nationalfundforwomen.org`) | `lib/auth/google.ts` — `expo-web-browser` + `signInWithOAuth({ skipBrowserRedirect: true, redirectTo: 'nfw://auth/callback' })` |
+| **DASHBOARD TAB** | |
+| `app/dashboard/page.tsx` | `app/(tabs)/dashboard/index.tsx` |
+| `components/dashboard/DashboardHero.tsx` · `GET /api/dashboard/settings` | `components/dashboard/DashboardHero.tsx` |
+| `components/dashboard/MembershipCard.tsx` · `GET /api/auth/profile` | `components/dashboard/MembershipCard.tsx` |
+| `components/dashboard/MembershipImpactCard.tsx` · `GET /api/dashboard/savings` | `components/dashboard/MembershipImpactCard.tsx` |
+| `components/dashboard/PopularAcrossNFW.tsx` | `components/dashboard/FeaturedItems.tsx` (horizontal FlatList) |
+| `components/dashboard/YourPerksAndBenefits.tsx` · `SavedBrandsPanel` · `RedeemedPerksPanel` | `components/dashboard/PerksSummary.tsx` → pushes `/(tabs)/perks/saved` and `/(tabs)/perks/history` |
+| `components/dashboard/YourMicrograntsSection.tsx` | `components/dashboard/GrantsSummary.tsx` → pushes `/(tabs)/grants` |
+| `components/dashboard/YourZeroDollarStoreSection.tsx` | `components/dashboard/StoreSummary.tsx` → pushes `/store` |
+| `components/dashboard/PendingFreeMembershipBanner.tsx` · `AbandonedCheckoutBanner.tsx` · `components/profile/ProfileBanner.tsx` (DOB) · "You're Approved" Stripe banner | `components/banners/DashboardBanners.tsx` (single stacked banner component, same 4 conditions) |
+| `components/AccessPerksSync.tsx` · `POST /api/access-perks/sync-member` | `hooks/useAccessPerksSync.ts` (fires once on dashboard mount) |
+| **GRANTS TAB** | |
+| `app/grants/page.tsx` → `/microgrants` (CMS) | `app/(tabs)/grants/index.tsx` — "Available Microgrants" list (open cycles, filters `is_testing_only` for non-admins) + "My Applications" segment |
+| `app/grants/apply/page.tsx` · `components/GrantApplicationForm.tsx` · `POST /api/grants/create` | `app/(tabs)/grants/apply/index.tsx` + `app/(tabs)/grants/apply/confirm.tsx` (consent modal) |
+| `POST /api/grants/upload-document` · `POST /api/grants/document-url` · `components/grants/GrantDocuments.tsx` | `components/grants/DocumentPicker.tsx` (`expo-document-picker` + `expo-file-system`) |
+| `app/grants/my-applications/page.tsx` | `app/(tabs)/grants/my-applications.tsx` |
+| `app/grants/view/[id]/page.tsx` | `app/(tabs)/grants/[id].tsx` |
+| `app/grants/application-success/page.tsx` | `app/(tabs)/grants/application-success.tsx` |
+| `components/grants/ConnectBankButton.tsx` · `StripeAccountStatus.tsx` · `POST /api/stripe/connect` · `GET /api/stripe/connect/status` | `components/grants/StripeConnectCard.tsx` — opens Stripe onboarding in `expo-web-browser` |
+| `app/grants/connect/return/page.tsx` · `app/grants/connect/refresh/page.tsx` | `app/(tabs)/grants/connect/return.tsx` · `app/(tabs)/grants/connect/refresh.tsx` (deep-link targets `nfw://grants/connect/*`) |
+| Grant status emails (`grant-approved`, `grant-payment-sent`, …) | Push notification → `app/(tabs)/grants/[id].tsx` (requires new `POST /api/push/register` + webhook hook on web side — see Dependencies) |
+| **PERKS TAB** | |
+| `app/perks/page.tsx` (stores/offers/locations views) | `app/(tabs)/perks/index.tsx` |
+| `components/perks/PerksSearch.tsx` · `GET /api/access-perks/offers/search` · `GET /api/access-perks/rollup` | `components/perks/PerksSearchBar.tsx` |
+| `components/perks/FilterSidebar.tsx` · `GET /api/access-perks/categories` · `/categories/counts` · `/facets` | `app/(tabs)/perks/filters.tsx` (bottom-sheet modal via `presentation: 'modal'`) |
+| `components/perks/StoreCard.tsx` · `OfferCard.tsx` · `LocationCard.tsx` | `components/perks/StoreCard.tsx` · `OfferCard.tsx` · `LocationCard.tsx` |
+| `app/perks/[offerKey]/page.tsx` · `components/perks/OfferDetailPanel.tsx` · `GET /api/access-perks/offers/[offerKey]` · `GET .../uses-remaining` · `GET /api/access-perks/locations` | `app/(tabs)/perks/[offerKey].tsx` |
+| `POST /api/access-perks/offers/[offerKey]/redeem` (link / instore / instore_print / call) | `components/perks/RedeemSheet.tsx` — link → `expo-web-browser`; instore/print → `components/perks/CouponView.tsx` (QR/barcode/promo code, brightness boost); call → `Linking.openURL('tel:')` |
+| `app/perks/nfw/[slug]/page.tsx` · `components/perks/NfwPerkDetailPanel.tsx` · `GET /api/nfw-perks/slug/[slug]` · `POST /api/nfw-perks/[id]/redeem` | `app/(tabs)/perks/nfw/[slug].tsx` |
+| `GET /api/nfw-perks` · `components/perks/NfwPerkStoreCard.tsx` | `components/perks/NfwPerkCard.tsx` (NFW Exclusive toggle in `perks/index.tsx`) |
+| `GET /api/perk-collections` (collection buttons, `?collection=slug`) | `app/(tabs)/perks/collections/[slug].tsx` (deep link `nfw://perks?collection=slug` remapped here) |
+| `GET/POST/DELETE /api/perks/liked-stores` · `components/dashboard/SavedBrandsPanel.tsx` | `app/(tabs)/perks/saved.tsx` + `stores/likedStores.ts` (Zustand, optimistic) |
+| `app/perks/history/page.tsx` · `GET /api/access-perks/redemptions` · `GET /api/nfw-perks/redemptions` · `GET .../redemptions/[id]/fresh-url` · `PATCH .../redemptions/[id]` · `components/ui/ExpiredLinkModal.tsx` | `app/(tabs)/perks/history.tsx` |
+| `GET /api/perks/redemptions/check` | `hooks/useRedemptionStatus.ts` |
+| `GET /api/perks/settings` (hero banner, `is_test_mode`) | `components/perks/PerksBanner.tsx` |
+| `app/travel/page.tsx` · `app/travel/TravelClient.tsx` · `POST /api/travel/token` · `app/perks/travel/page.tsx` | `app/(tabs)/perks/travel.tsx` — `react-native-webview` hosting Travel SDK, token from `/api/travel/token`, `onShouldStartLoadWithRequest` → external browser fallback |
+| `app/perks/info/page.tsx` | *Excluded (marketing page) — link opens web in browser* |
+| **ZERO DOLLAR STORE** (root stack, reached from Dashboard + Perks) | |
+| `app/store/page.tsx` · `components/StoreClient.tsx` · `GET /api/shopify/products` · `GET /api/store/settings` · `GET /api/system-settings` | `app/store/index.tsx` (+ `components/store/StoreUnavailableModal.tsx`) |
+| `components/ProductDetailPanel.tsx` | `app/store/[productId].tsx` |
+| `components/ClaimItemModal.tsx` · `POST /api/shopify/checkout` · `GET /api/store/claims/check` | `app/store/claim/[productId].tsx` (modal) → Shopify checkout URL in `expo-web-browser` |
+| `app/store/my-claims/page.tsx` · `GET /api/store/claims/my-claims-simple` · `GET /api/shopify/orders/[id]` | `app/store/my-claims.tsx` |
+| `app/store/info/page.tsx` | *Excluded — link opens web* |
+| **SETTINGS TAB** | |
+| `components/AuthButtonCombined.tsx` dropdown (Dashboard / My Profile / Logout) | `app/(tabs)/settings/index.tsx` |
+| `app/profile/page.tsx` · `GET /api/auth/profile` · `GET /api/profile` | `app/(tabs)/settings/profile/index.tsx` |
+| `app/profile/edit/page.tsx` · `components/ProfileCompletionForm.tsx` · `POST /api/profile/update` · `GET/POST /api/profile/address/[userId]` | `app/(tabs)/settings/profile/edit.tsx` |
+| `components/profile/AvatarUpload.tsx` · `POST /api/profile/avatar` · `POST /api/profile/avatar/delete` | `components/profile/AvatarPicker.tsx` (`expo-image-picker`) |
+| `components/ManageSubscription.tsx` · membership status from `GET /api/auth/profile` | `app/(tabs)/settings/membership.tsx` — **status only**; "Upgrade" / "Manage Subscription" buttons open `https://nationalfundforwomen.org/auth/sign-up?step=3` or `/profile` in the **system browser** (`Linking.openURL`). `POST /api/portal`, `POST /api/checkout`, `POST /api/membership/upgrade`, `POST /api/checkout/resume` are **not called from mobile**. |
+| `POST /api/gift-codes/redeem` · `components/gift/RedeemGiftCodeModal.tsx` | `app/(tabs)/settings/redeem-gift-code.tsx` |
+| `components/profile/DeleteAccountModal.tsx` · `GET/POST /api/profile/request-deletion` · `POST /api/profile/cancel-deletion` | `app/(tabs)/settings/delete-account.tsx` (required by App Store Guideline 5.1.1(v)) |
+| *(new)* Notification preferences | `app/(tabs)/settings/notifications.tsx` + `stores/notifications.ts` (requires new `push_tokens` table + `POST /api/push/register` on web side) |
+| `app/share-your-story/page.tsx` · `POST /api/testimonials` | `app/share-your-story.tsx` (root stack, from Settings) |
+| `app/contact/page.tsx` · `POST /api/contact/submit` · `GET /api/contact` | `app/contact.tsx` (root stack, from Settings) |
+| `app/faq/page.tsx` · `GET /api/faq` | `app/faq.tsx` |
+| `app/privacy` · `app/terms-of-service` · `app/accessibility` · `GET /api/legal/[slug]` | `app/legal/[slug].tsx` (WebView of Termly embed) |
+| `POST /api/log/client-error` | `lib/errorReporter.ts` (global ErrorBoundary + fetch wrapper) |
+| **EXCLUDED FROM MOBILE (web-only)** | |
+| `app/admin/**` · `app/api/admin/**` (125 routes) · `app/api/cron/**` | — |
+| `app/page.tsx` · `app/[slug]/page.tsx` (page-builder CMS) · `app/preview/**` · `app/coming-soon` | — (marketing; deep links fall through to web) |
+| `app/gift-membership/**` · `POST /api/gift-checkout` | — (purchase flow stays on web; redemption is in Settings) |
+| `POST /api/checkout` · `POST /api/checkout/resume` · `GET /api/checkout/abandoned` · `POST /api/membership/upgrade` · `POST /api/portal` · `app/checkout/resume/page.tsx` | — (Stripe purchase/portal flows stay on web per Apple 3.1.1 decision) |
+| `app/articles/**` | — Phase 2 candidate |
+| `POST /api/webhook` · `/api/shopify/webhook` · `/api/storage/**` · `/api/system-settings/health-check` · `/api/test-email` · `/api/upload` | — server-only |
+
+---
+
+## `/mobile` Scaffold
+
+```
+mobile/
+  app/                       # Expo Router (as mapped above)
+    _layout.tsx
+    index.tsx
+    +not-found.tsx
+    auth/
+    (tabs)/
+      _layout.tsx            # Bottom Tabs
+      dashboard/
+      grants/
+      perks/
+      settings/
+    store/                   # root stack
+    share-your-story.tsx
+    contact.tsx
+    faq.tsx
+    legal/[slug].tsx
+  components/{dashboard,perks,grants,store,profile,banners,ui}/
+  lib/
+    supabase.ts              # supabase-js + LargeSecureStore adapter, autoRefreshToken, AppState listener
+    secureStorage.ts         # LargeSecureStore adapter
+    api.ts                   # fetch wrapper → https://nationalfundforwomen.org/api/*, injects Bearer token
+    auth/google.ts
+    errorReporter.ts
+    notifications.ts         # expo-notifications registration + handlers
+  stores/                    # Zustand: auth.ts, profile.ts, likedStores.ts, notifications.ts, ui.ts
+  hooks/                     # TanStack Query hooks per API domain
+  constants/{colors.ts,fonts.ts}
+  app.json / eas.json / package.json / tsconfig.json
+```
+
+---
+
+## Build & Deployment Architecture
+
+| | **Web app** (existing) | **Mobile app** (new) |
+|---|---|---|
+| Source location | Repo root (`app/`, `components/`, `lib/`…) | `/mobile/` subdirectory, own `package.json` |
+| Build system | **Vercel** — triggered by `git push` | **EAS Build** — `eas build` CLI or GitHub integration |
+| Build output | Serverless functions + static assets | Signed native binaries: `.ipa` (iOS), `.aab`/`.apk` (Android) |
+| Where it runs | Vercel edge/serverless | Expo cloud build farm (no local Xcode/Android Studio required for cloud builds) |
+| Deploy target | `nationalfundforwomen.org` | App Store Connect → TestFlight → App Store; Play Console → Internal Testing → Production |
+| Code signing | N/A | EAS-managed Apple certs/profiles and Android keystore |
+| Hot updates | Every push = new deploy | **EAS Update** — JS/asset changes OTA without store review; native changes need a new store build |
+| Env vars | Vercel project settings | `EXPO_PUBLIC_*` in `mobile/.env` (bundled) + EAS Secrets |
+| Cost | Existing Vercel plan | EAS free tier (limited builds/month) or Production plan for unlimited priority builds |
+
+### Expo account linkage (done 2026-09-11)
+
+| Setting | Value |
+|---|---|
+| Expo account / owner | `my-hero-creative` (CLI user `takingaction`, Google sign-in) |
+| Project slug | `nfw-app` (matches expo.dev; `app.json` and `package.json` aligned) |
+| EAS project ID | `8f7802b0-60fc-4623-809f-cf26fe7e06dd` (in `app.json` → `extra.eas.projectId`) |
+| Dashboard | https://expo.dev/accounts/my-hero-creative/projects/nfw-app |
+| CLI login | `npx expo login --browser` (Google accounts have no password) |
+| Dev on phone | `npx expo start --tunnel` — the Mac is on Ethernet and the phone on Wi-Fi; the router blocks wired↔wireless client traffic, so LAN mode times out |
+
+### Isolation within the shared repo
+- **Vercel ignores `/mobile`** once `/mobile` is added to root `tsconfig.json` `exclude` and the ESLint ignore list (see Dependencies).
+- **EAS ignores the web app**: `eas build` is run from `/mobile`; EAS uses `/mobile` as the project root.
+- **Not a monorepo**: no `workspaces`; each side installs its own deps. Shared TS types are copied, not imported (a `packages/shared` workspace is a later refactor if drift becomes a problem).
+
+### Runtime data flow
+The mobile binary contains zero backend code. It calls:
+- **Supabase** directly (`auth.nationalfundforwomen.org` for auth; RLS-protected tables for simple reads)
+- **The existing Vercel API** at `https://nationalfundforwomen.org/api/*` for everything needing server secrets (Access Perks, Shopify, Stripe Connect status, Travel token)
+
+### EAS build profiles (`eas.json`)
+
+| Profile | Purpose | API target |
+|---|---|---|
+| `development` | Dev client on device/simulator with hot reload | `http://localhost:3000` or a Vercel preview URL |
+| `preview` | Internal TestFlight / Play internal testing | `https://nationalfundforwomen.org` |
+| `production` | Store submissions | `https://nationalfundforwomen.org` |
+
+### Local development
+`npx expo start` in `/mobile` runs Metro locally; test in iOS Simulator, Android Emulator, or Expo Go. Cloud builds are needed only for push-notification testing on iOS (Expo Go can't do APNs), TestFlight, and store submission.
+
+---
+
+## Dependencies on the Web Repo (follow-up edits, not part of the scaffold)
+
+1. **Bearer-token auth for API routes.** Every `app/api/*` route uses `createClient()` from `lib/supabase/server.ts`, which reads cookies only. Mobile sends `Authorization: Bearer <access_token>`. `lib/supabase/server.ts` needs a branch that, when the header is present, builds the client with `global.headers.Authorization`. Without this, all authenticated mobile calls return 401. Routes needing server secrets cannot be bypassed by calling Supabase directly.
+2. **Push infrastructure.** New `push_tokens` table, `POST /api/push/register`, and hooks in `app/api/admin/grants/update-status` and `final-approve` to send Expo pushes.
+3. **Root `tsconfig.json` / ESLint excludes.** Add `mobile` to root `tsconfig.json` `exclude` and to the ESLint ignore config so Vercel's typecheck/lint doesn't walk mobile files.
+4. **Supabase Dashboard:** add `nfw://auth/callback` to Auth → URL Configuration → Redirect URLs.
+5. **Google Cloud Console:** add iOS bundle ID / Android package name to the OAuth client.
+
+---
+
+## Technical Notes
+
+- **`expo-secure-store` 2048-byte limit.** Supabase sessions (esp. Google OAuth with `provider_token`) routinely exceed 2 KB. Using the Supabase-documented `LargeSecureStore` pattern: a random AES-256 key per storage key is stored in SecureStore; the encrypted session blob is stored in AsyncStorage. Plaintext tokens never touch AsyncStorage.
+- **Expo Router version.** Using the Router bundled with the latest stable Expo SDK (not the SDK 50–era v3). Same file-based API, typed routes enabled.
+- **Grants "browse" page.** Web `/grants` redirects to a CMS page; mobile `grants/index.tsx` queries `grant_cycles` directly (status=open, `is_testing_only=false` for non-admins), matching the dashboard's "Available Microgrants" logic.
+- **Deep links.** URL scheme `nfw://`. Universal links / App Links for `https://nationalfundforwomen.org/perks/*`, `/grants/*`, `/store/*` are a Phase 8 item (requires `apple-app-site-association` + `assetlinks.json` served by the Next.js app).
+- **Fonts.** Playfair Display (headings/body) and DM Sans (UI/buttons) loaded via `expo-font`, matching web brand rules.
+- **Brand palette.** aubergine `#3E145F` · citrine `#F8F19A` · lilac `#B693C0` · wisteria `#7786BE` · dove `#F6F5F0` · blackberry `#2E1F38` · stone `#a3a3a3`. Green `#d4f1ad` reserved for status badges only.
