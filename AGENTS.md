@@ -14659,3 +14659,31 @@ New route not in the original manifest: `perks/store/[storeKey]` (pushed screen 
 web's in-place stores→offers view swap). Added `expo-clipboard`, `expo-linear-gradient`.
 
 **Build:** mobile `tsc` 0, `expo lint` clean, `expo-doctor` 21/21, Metro bundle 11.0 MB OK.
+
+## Session 2026-09-11 (cont.): /admin/members list disappearing after RLS hardening
+
+### Symptom
+Member list rendered, then vanished ~1s later. Started the day migration 159 was applied.
+
+### Root cause
+`components/admin/AdminMembersClient.tsx` re-fetched **all** `profiles` on mount using the
+**browser** Supabase client (for client-side search) and unconditionally did
+`setAllMembers(allData)`. That worked for months only because `profiles` had
+`SELECT USING (true)` — world-readable, no session needed. Migration 159 changed it to
+`auth.uid() = id OR is_admin(auth.uid())`. The browser client's session is not reliable on
+this app (see 2026-04-30), so `auth.uid()` resolved to NULL → 0 rows → the server-rendered
+list was replaced with `[]`. The 2026-09-11 audit covered API routes/server components but
+missed this client-component direct read. It was the only such read in the repo.
+
+### Fix
+| File | Change |
+|---|---|
+| `app/api/admin/members/list/route.ts` | **New.** `requireAdmin()` (checks `.authorized`) + service-role client; pages through `profiles` 1000 at a time with the same select/order; returns `{ members, total }`. Edge proxy already returns 401 without a session. |
+| `components/admin/AdminMembersClient.tsx` | Mount effect now `fetch("/api/admin/members/list")`. On non-OK/error it logs and **keeps `initialMembers`** (never wipes the list). Removed `@/lib/supabase/client` import. Added "Loading all members for search…" hint under the search box. |
+
+**Rule:** client components must not read cross-user data through the browser Supabase client.
+Use an `/api/admin/*` route (service role + `requireAdmin`) — the RLS client is for own-row
+reads and `auth.*` only.
+
+**Verified:** `tsc` 0 errors, `next build` ✓, `/api/admin/members/list` → 401 with no session
+and with a garbage Bearer token.

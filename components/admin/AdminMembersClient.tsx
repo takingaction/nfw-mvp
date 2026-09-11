@@ -14,7 +14,6 @@ import {
   Trash2,
   Mail,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { FreeMembershipApprovalModal } from "@/components/admin/FreeMembershipApprovalModal";
 import { DeleteMemberModal } from "@/components/admin/DeleteMemberModal";
 import { getCategory } from "@/lib/member-categories";
@@ -82,42 +81,36 @@ export default function AdminMembersClient({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [page, setPage] = useState(currentPage || 1);
 
-  // Fetch ALL members for search via pagination
+  // Fetch ALL members for client-side search.
+  // Goes through the admin API (service role) rather than the browser Supabase
+  // client: since migration 159, `profiles` is only readable by the owner or an
+  // admin, and the browser client's session is not reliable enough to depend on.
+  // On any failure we keep the server-rendered `initialMembers` instead of
+  // wiping the list.
+  const [loadingAll, setLoadingAll] = useState(true);
   useEffect(() => {
+    let cancelled = false;
     const fetchAllMembers = async () => {
-      const supabase = createClient();
-      const allData: Member[] = [];
-      const pageSize = 1000;
-      let page = 0;
-      let hasMore = true;
-
-      while (hasMore) {
-        const from = page * pageSize;
-        const { data, error } = await supabase
-          .from("profiles")
-          .select(
-            "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, is_reviewer, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted, previous_membership_level",
-          )
-          .order("joined_at", { ascending: false })
-          .range(from, from + pageSize - 1);
-
-        if (error) {
-          console.error("Error fetching members:", error);
-          break;
+      try {
+        const res = await fetch("/api/admin/members/list", { cache: "no-store" });
+        if (!res.ok) {
+          console.error("Error fetching members:", res.status, await res.text());
+          return;
         }
-
-        if (data && data.length > 0) {
-          allData.push(...data);
-          page++;
-          hasMore = data.length === pageSize;
-        } else {
-          hasMore = false;
+        const data: { members?: Member[] } = await res.json();
+        if (!cancelled && Array.isArray(data.members) && data.members.length > 0) {
+          setAllMembers(data.members);
         }
+      } catch (err) {
+        console.error("Error fetching members:", err);
+      } finally {
+        if (!cancelled) setLoadingAll(false);
       }
-
-      setAllMembers(allData);
     };
     fetchAllMembers();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Approval confirmation modal state
@@ -541,6 +534,11 @@ export default function AdminMembersClient({
               >
                 <X className="w-4 h-4" />
               </button>
+            )}
+            {loadingAll && (
+              <p className="absolute -bottom-5 left-0 text-xs text-nfw-blackberry/40">
+                Loading all members for search…
+              </p>
             )}
           </div>
           <div className="flex gap-2 flex-wrap">
