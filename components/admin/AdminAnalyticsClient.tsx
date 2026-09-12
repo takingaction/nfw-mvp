@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import Link from "next/link";
 import {
   LineChart,
   Line,
@@ -24,6 +25,9 @@ import {
   Gift,
   TrendingUp,
   Calendar,
+  ChevronDown,
+  Copy,
+  Check,
 } from "lucide-react";
 import { getCategory } from "@/lib/member-categories";
 import { parseESTDate, endOfESTDay, startOfCurrentPeriod, parseJoinedAt } from "@/lib/dates";
@@ -50,6 +54,8 @@ const DATE_RANGE_OPTIONS: DateRangeOption[] = [
 
 type Profile = {
   id: string;
+  full_name: string | null;
+  email: string | null;
   joined_at: string | null;
   subscription_status: string | null;
   membership_level: string | null;
@@ -158,6 +164,41 @@ type GrantCycle = {
   is_testing_only: boolean | string | null;
 };
 
+type UpgradeGroupKey =
+  | "free_to_contributing"
+  | "free_to_founding"
+  | "waitlist_to_contributing"
+  | "waitlist_to_founding"
+  | "waitlist_to_free"
+  | "contributing_to_founding";
+
+type UpgradeMember = {
+  profile: Profile;
+  upgradedAt: string | null;
+};
+
+type UpgradeGroup = {
+  key: UpgradeGroupKey;
+  label: string;
+  members: UpgradeMember[];
+};
+
+// UTC-safe MM/DD/YYYY (matches /admin/members and /admin/waitlist)
+function formatUtcDate(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  return `${mm}/${dd}/${d.getUTCFullYear()}`;
+}
+
+function escapeCsvField(value: string | null | undefined): string {
+  const s = value ?? "";
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
 export default function AdminAnalyticsClient({
   profiles,
   grants,
@@ -185,6 +226,8 @@ export default function AdminAnalyticsClient({
   const [dateRange, setDateRange] = useState<number | "custom">(9999);
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
+  const [expandedUpgrade, setExpandedUpgrade] = useState<UpgradeGroupKey | null>(null);
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
   const [freshdeskStats, setFreshdeskStats] = useState<{
     total: number;
     open: number;
@@ -391,64 +434,127 @@ export default function AdminAnalyticsClient({
     return paidCount > 0 ? Math.round((upgradedCount / paidCount) * 100) : 0;
   }, [paidCount, upgradedCount]);
 
-  // Upgrade stats - counts members who upgraded from one tier to another
-  // Excludes admins, incomplete profiles, and abandoned profiles
+  // Upgrade stats - members who upgraded from one tier to another.
+  // Excludes admins, incomplete profiles, and (for free→paid) abandoned profiles.
+  // Each group holds the actual member list so the card count and the
+  // expandable list below the cards can never drift apart.
+  const upgradeGroups = useMemo<UpgradeGroup[]>(() => {
+    const eligible = filteredProfiles.filter(
+      (p) => !p.is_admin && p.profile_completed === true
+    );
 
-  // free → contributing (complete free member who upgraded to contributing)
-  const freeToContributingCount = useMemo(() => {
-    return filteredProfiles.filter((p) => {
-      if (p.is_admin) return false;
-      if (p.profile_completed !== true) return false;
-      if (p.free_membership_contact_submitted !== true) return false; // excludes abandoned
-      return p.previous_membership_level === "free" && p.membership_level === "contributing";
-    }).length;
-  }, [filteredProfiles]);
+    // contributing → founding upgrade dates come from membership_upgrades
+    const upgradeDateByUser = new Map<string, string>();
+    for (const u of membershipUpgrades || []) {
+      if (!u.user_id || !u.created_at) continue;
+      if (u.from_level !== "contributing" || u.to_level !== "founding") continue;
+      const existing = upgradeDateByUser.get(u.user_id);
+      if (!existing || new Date(u.created_at) > new Date(existing)) {
+        upgradeDateByUser.set(u.user_id, u.created_at);
+      }
+    }
 
-  // free → founding (complete free member who upgraded to founding)
-  const freeToFoundingCount = useMemo(() => {
-    return filteredProfiles.filter((p) => {
-      if (p.is_admin) return false;
-      if (p.profile_completed !== true) return false;
-      if (p.free_membership_contact_submitted !== true) return false; // excludes abandoned
-      return p.previous_membership_level === "free" && p.membership_level === "founding";
-    }).length;
-  }, [filteredProfiles]);
+    const build = (
+      key: UpgradeGroupKey,
+      label: string,
+      predicate: (p: Profile) => boolean,
+      upgradedAt: (p: Profile) => string | null
+    ): UpgradeGroup => ({
+      key,
+      label,
+      members: eligible
+        .filter(predicate)
+        .map((profile) => ({ profile, upgradedAt: upgradedAt(profile) }))
+        .sort((a, b) => {
+          const ta = a.upgradedAt ? new Date(a.upgradedAt).getTime() : 0;
+          const tb = b.upgradedAt ? new Date(b.upgradedAt).getTime() : 0;
+          return tb - ta;
+        }),
+    });
 
-  // waitlist → contributing (waitlist member who upgraded directly to contributing without approval)
-  const waitlistToContributingCount = useMemo(() => {
-    return filteredProfiles.filter((p) => {
-      if (p.is_admin) return false;
-      if (p.profile_completed !== true) return false;
-      return p.previous_membership_level === "waitlist" && p.membership_level === "contributing";
-    }).length;
-  }, [filteredProfiles]);
+    const firstPaid = (p: Profile) => p.first_paid_at;
 
-  // waitlist → founding (waitlist member who upgraded directly to founding without approval)
-  const waitlistToFoundingCount = useMemo(() => {
-    return filteredProfiles.filter((p) => {
-      if (p.is_admin) return false;
-      if (p.profile_completed !== true) return false;
-      return p.previous_membership_level === "waitlist" && p.membership_level === "founding";
-    }).length;
-  }, [filteredProfiles]);
+    return [
+      build(
+        "free_to_contributing",
+        "free → contributing",
+        (p) =>
+          p.free_membership_contact_submitted === true && // excludes abandoned
+          p.previous_membership_level === "free" &&
+          p.membership_level === "contributing",
+        firstPaid
+      ),
+      build(
+        "free_to_founding",
+        "free → founding",
+        (p) =>
+          p.free_membership_contact_submitted === true && // excludes abandoned
+          p.previous_membership_level === "free" &&
+          p.membership_level === "founding",
+        firstPaid
+      ),
+      build(
+        "waitlist_to_contributing",
+        "waitlist → contributing",
+        (p) => p.previous_membership_level === "waitlist" && p.membership_level === "contributing",
+        firstPaid
+      ),
+      build(
+        "waitlist_to_founding",
+        "waitlist → founding",
+        (p) => p.previous_membership_level === "waitlist" && p.membership_level === "founding",
+        firstPaid
+      ),
+      build(
+        "waitlist_to_free",
+        "waitlist → free",
+        (p) => p.previous_membership_level === "waitlist" && p.membership_level === "free",
+        // No approval timestamp exists in the schema; fall back to join date
+        (p) => p.joined_at
+      ),
+      build(
+        "contributing_to_founding",
+        "contributing → founding",
+        (p) => p.first_paid_level === "contributing" && p.membership_level === "founding",
+        (p) => upgradeDateByUser.get(p.id) ?? null
+      ),
+    ];
+  }, [filteredProfiles, membershipUpgrades]);
 
-  // waitlist → free (waitlist member approved by admin)
-  const waitlistToFreeCount = useMemo(() => {
-    return filteredProfiles.filter((p) => {
-      if (p.is_admin) return false;
-      if (p.profile_completed !== true) return false;
-      return p.previous_membership_level === "waitlist" && p.membership_level === "free";
-    }).length;
-  }, [filteredProfiles]);
+  const expandedUpgradeGroup = useMemo(
+    () => upgradeGroups.find((g) => g.key === expandedUpgrade) ?? null,
+    [upgradeGroups, expandedUpgrade]
+  );
 
-  // contributing → founding (member who was already paying as contributing and upgraded to founding)
-  const contributingToFoundingCount = useMemo(() => {
-    return filteredProfiles.filter((p) => {
-      if (p.is_admin) return false;
-      if (p.profile_completed !== true) return false;
-      return p.first_paid_level === "contributing" && p.membership_level === "founding";
-    }).length;
-  }, [filteredProfiles]);
+  const copyUpgradeEmail = async (email: string) => {
+    try {
+      await navigator.clipboard.writeText(email);
+      setCopiedEmail(email);
+      setTimeout(() => setCopiedEmail(null), 2000);
+    } catch {
+      // clipboard unavailable — ignore
+    }
+  };
+
+  const exportUpgradeGroupCSV = (group: UpgradeGroup) => {
+    const rows: string[][] = [
+      ["Name", "Email", "Joined", "Upgraded"],
+      ...group.members.map(({ profile, upgradedAt }) => [
+        profile.full_name ?? "",
+        profile.email ?? "",
+        formatUtcDate(profile.joined_at),
+        formatUtcDate(upgradedAt),
+      ]),
+    ];
+    const csv = rows.map((r) => r.map(escapeCsvField).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `nfw-upgrades-${group.key}-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const estimatedMRR = useMemo(() => {
     return Math.round((contributingCount * 15 + foundingCount * 100) / 12);
@@ -1577,56 +1683,166 @@ export default function AdminAnalyticsClient({
               <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
                 Membership Upgrades
               </h3>
+              <p className="text-xs text-nfw-blackberry/50 mb-4 font-ui">
+                Click a card to see the members behind the number.
+              </p>
               <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-                <div className="bg-nfw-wisteria/10 p-4 text-center">
-                  <div className="text-2xl font-black text-nfw-wisteria mb-1">
-                    {freeToContributingCount}
-                  </div>
-                  <div className="text-xs font-semibold text-nfw-blackberry/60">
-                    free → contributing
-                  </div>
-                </div>
-                <div className="bg-nfw-wisteria/10 p-4 text-center">
-                  <div className="text-2xl font-black text-nfw-wisteria mb-1">
-                    {freeToFoundingCount}
-                  </div>
-                  <div className="text-xs font-semibold text-nfw-blackberry/60">
-                    free → founding
-                  </div>
-                </div>
-                <div className="bg-nfw-wisteria/10 p-4 text-center">
-                  <div className="text-2xl font-black text-nfw-wisteria mb-1">
-                    {waitlistToContributingCount}
-                  </div>
-                  <div className="text-xs font-semibold text-nfw-blackberry/60">
-                    waitlist → contributing
-                  </div>
-                </div>
-                <div className="bg-nfw-wisteria/10 p-4 text-center">
-                  <div className="text-2xl font-black text-nfw-wisteria mb-1">
-                    {waitlistToFoundingCount}
-                  </div>
-                  <div className="text-xs font-semibold text-nfw-blackberry/60">
-                    waitlist → founding
-                  </div>
-                </div>
-                <div className="bg-nfw-wisteria/10 p-4 text-center">
-                  <div className="text-2xl font-black text-nfw-wisteria mb-1">
-                    {waitlistToFreeCount}
-                  </div>
-                  <div className="text-xs font-semibold text-nfw-blackberry/60">
-                    waitlist → free
-                  </div>
-                </div>
-                <div className="bg-nfw-wisteria/10 p-4 text-center">
-                  <div className="text-2xl font-black text-nfw-wisteria mb-1">
-                    {contributingToFoundingCount}
-                  </div>
-                  <div className="text-xs font-semibold text-nfw-blackberry/60">
-                    contributing → founding
-                  </div>
-                </div>
+                {upgradeGroups.map((group) => {
+                  const isActive = expandedUpgrade === group.key;
+                  const isEmpty = group.members.length === 0;
+                  return (
+                    <button
+                      key={group.key}
+                      type="button"
+                      disabled={isEmpty}
+                      aria-expanded={isActive}
+                      onClick={() =>
+                        setExpandedUpgrade((prev) => (prev === group.key ? null : group.key))
+                      }
+                      className={`relative p-4 text-center transition-colors ${
+                        isActive
+                          ? "bg-nfw-wisteria text-white"
+                          : isEmpty
+                          ? "bg-nfw-wisteria/10 opacity-50 cursor-not-allowed"
+                          : "bg-nfw-wisteria/10 hover:bg-nfw-wisteria/20 cursor-pointer"
+                      }`}
+                    >
+                      <div
+                        className={`text-2xl font-black mb-1 ${
+                          isActive ? "text-white" : "text-nfw-wisteria"
+                        }`}
+                      >
+                        {group.members.length}
+                      </div>
+                      <div
+                        className={`text-xs font-semibold ${
+                          isActive ? "text-white/90" : "text-nfw-blackberry/60"
+                        }`}
+                      >
+                        {group.label}
+                      </div>
+                      {!isEmpty && (
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 absolute top-2 right-2 transition-transform ${
+                            isActive ? "rotate-180 text-white" : "text-nfw-wisteria/60"
+                          }`}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
+
+              {expandedUpgradeGroup && (
+                <div className="mt-4 border border-nfw-wisteria/40 bg-nfw-wisteria/5">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 border-b border-nfw-wisteria/30">
+                    <div className="font-ui font-black text-sm text-nfw-blackberry">
+                      {expandedUpgradeGroup.label}{" "}
+                      <span className="text-nfw-blackberry/50 font-semibold">
+                        — {expandedUpgradeGroup.members.length}{" "}
+                        {expandedUpgradeGroup.members.length === 1 ? "member" : "members"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => exportUpgradeGroupCSV(expandedUpgradeGroup)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-ui font-bold uppercase tracking-wide bg-nfw-aubergine text-white hover:bg-nfw-aubergine/90 transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Export CSV
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedUpgrade(null)}
+                        className="px-3 py-1.5 text-xs font-ui font-bold uppercase tracking-wide text-nfw-blackberry/60 hover:text-nfw-blackberry transition-colors"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-white">
+                        <tr className="text-left text-xs font-ui font-black uppercase tracking-wide text-nfw-blackberry/60">
+                          <th className="px-4 py-2">Name</th>
+                          <th className="px-4 py-2">Email</th>
+                          <th className="px-4 py-2 whitespace-nowrap">Joined</th>
+                          <th className="px-4 py-2 whitespace-nowrap">Upgraded</th>
+                          <th className="px-4 py-2" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {expandedUpgradeGroup.members.map(({ profile, upgradedAt }, idx) => (
+                          <tr
+                            key={profile.id}
+                            className={`border-t border-nfw-blackberry/5 ${
+                              idx % 2 === 0 ? "bg-white" : "bg-nfw-dove/40"
+                            }`}
+                          >
+                            <td className="px-4 py-2 text-nfw-blackberry font-medium">
+                              {profile.full_name || (
+                                <span className="text-nfw-blackberry/40 italic">No name</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2">
+                              {profile.email ? (
+                                <div className="flex items-center gap-1.5">
+                                  <a
+                                    href={`mailto:${profile.email}`}
+                                    className="text-nfw-aubergine hover:underline truncate max-w-[220px]"
+                                    title={profile.email}
+                                  >
+                                    {profile.email}
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => copyUpgradeEmail(profile.email!)}
+                                    className="p-1 text-nfw-blackberry/40 hover:text-nfw-aubergine transition-colors"
+                                    title="Copy email"
+                                  >
+                                    {copiedEmail === profile.email ? (
+                                      <Check className="w-3.5 h-3.5 text-green-600" />
+                                    ) : (
+                                      <Copy className="w-3.5 h-3.5" />
+                                    )}
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-nfw-blackberry/40">—</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2 text-nfw-blackberry/70 whitespace-nowrap">
+                              {formatUtcDate(profile.joined_at)}
+                            </td>
+                            <td className="px-4 py-2 text-nfw-blackberry/70 whitespace-nowrap">
+                              {formatUtcDate(upgradedAt)}
+                            </td>
+                            <td className="px-4 py-2 text-right whitespace-nowrap">
+                              <Link
+                                href="/admin/members"
+                                onClick={() => {
+                                  if (profile.email) {
+                                    sessionStorage.setItem("membersSearch", profile.email);
+                                  }
+                                }}
+                                className="text-xs font-ui font-bold text-nfw-aubergine hover:underline"
+                              >
+                                View →
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {expandedUpgradeGroup.key === "waitlist_to_free" && (
+                    <p className="px-4 py-2 text-[11px] text-nfw-blackberry/50 border-t border-nfw-wisteria/20 font-ui">
+                      No approval timestamp is stored for waitlist approvals, so &ldquo;Upgraded&rdquo; shows the join date.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

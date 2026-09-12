@@ -14941,6 +14941,45 @@ length-capped. Same Slack webhook (`SLACK_REFUND_WEBHOOK_URL`).
 **Build:** web `tsc` 0 / `next build` ✓; mobile `tsc` 0, `expo lint` clean, `expo-doctor` 21/21,
 Metro bundle 11.6 MB OK.
 
+## Session 2026-09-12: Clickable Membership Upgrade Cards on /admin/analytics
+
+### Overview
+
+The six "Membership Upgrades" stat cards on the Members tab are now clickable. Clicking one
+opens a single panel below the grid listing the members behind that number, with CSV export.
+
+### Changes
+
+| File | Change |
+|---|---|
+| `app/admin/analytics/page.tsx` | Added `full_name, email` to the profiles select (line 68). No new queries. |
+| `components/admin/AdminAnalyticsClient.tsx` | Replaced the six `*Count` memos with one `upgradeGroups` memo returning `{ key, label, members }[]` using the identical predicates. Card counts are now `group.members.length`, so counts and lists cannot drift. Added `expandedUpgrade` state, clickable cards, accordion panel, `exportUpgradeGroupCSV()`, `formatUtcDate()`, `escapeCsvField()`. |
+
+### "Upgraded" date source per group
+
+| Group | Source |
+|---|---|
+| free → contributing / founding | `profiles.first_paid_at` |
+| waitlist → contributing / founding | `profiles.first_paid_at` |
+| contributing → founding | `membership_upgrades.created_at` (latest row per user) |
+| waitlist → free | `profiles.joined_at` — **no approval timestamp exists in the schema**; the panel shows a footnote saying so |
+
+### Panel behaviour
+
+- One panel below the grid. Click a card to open, click another to swap, click the active card
+  (or Close) to collapse. Zero-count cards are disabled.
+- Table: Name · Email (mailto + copy icon) · Joined · Upgraded · "View →".
+- "View →" writes `sessionStorage.membersSearch = email` and `Link`s to `/admin/members`, which
+  already reads that key on mount and lands pre-filtered.
+- Export CSV: `nfw-upgrades-{key}-{YYYY-MM-DD}.csv` with Name, Email, Joined, Upgraded (fields
+  properly CSV-escaped — the older analytics `exportCSV` does not escape).
+- Lists derive from `filteredProfiles`, so they respect the date-range dropdown. Sorted by
+  Upgraded desc. `max-h-96 overflow-y-auto`; no pagination (≤ ~120 rows).
+
+**Build:** `tsc` 0 errors, `next build` ✓. Remaining eslint errors in `AdminAnalyticsClient.tsx`
+(unused `upgradedPercent`, `estimatedMRR`, `periodUpgradesCount`, `incompleteCount`,
+`weeklyActive`, `monthlyActive`, etc.) are pre-existing and unrelated.
+
 ## Session 2026-09-12: ZDS Monthly Limit Regression (one-per-month check deleted)
 
 ### Symptom
