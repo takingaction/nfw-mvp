@@ -12,12 +12,47 @@
       "supportsTablet": false,
       "bundleIdentifier": "org.nationalfundforwomen.app",
       "associatedDomains": [
-        "applinks:nationalfundforwomen.org"
+        "applinks:nationalfundforwomen.org",
+        "applinks:www.nationalfundforwomen.org"
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "Allow NFW to access your photos so you can set a profile picture or attach receipts to grant applications.",
-        "NSCameraUsageDescription": "Allow NFW to use your camera so you can take a profile picture or photograph receipts for grant applications."
+        "NSCameraUsageDescription": "Allow NFW to use your camera so you can take a profile picture or photograph receipts for grant applications.",
+        "NSUserNotificationsUsageDescription": "Allow NFW to notify you when there are updates to your microgrant applications.",
+        "LSApplicationQueriesSchemes": [
+          "tel",
+          "mailto"
+        ],
+        "CFBundleAllowMixedLocalizations": false
+      },
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "C617.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategorySystemBootTime",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "35F9.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryDiskSpace",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "E174.1"
+            ]
+          }
+        ]
       }
     },
     "android": {
@@ -48,6 +83,91 @@
               "scheme": "https",
               "host": "nationalfundforwomen.org",
               "pathPrefix": "/store"
+            },
+            {
+              "scheme": "https",
+              "host": "nationalfundforwomen.org",
+              "pathPrefix": "/dashboard"
+            },
+            {
+              "scheme": "https",
+              "host": "nationalfundforwomen.org",
+              "pathPrefix": "/profile"
+            },
+            {
+              "scheme": "https",
+              "host": "nationalfundforwomen.org",
+              "pathPrefix": "/contact"
+            },
+            {
+              "scheme": "https",
+              "host": "nationalfundforwomen.org",
+              "pathPrefix": "/faq"
+            },
+            {
+              "scheme": "https",
+              "host": "nationalfundforwomen.org",
+              "pathPrefix": "/share-your-story"
+            },
+            {
+              "scheme": "https",
+              "host": "nationalfundforwomen.org",
+              "pathPrefix": "/auth/confirm"
+            },
+            {
+              "scheme": "https",
+              "host": "nationalfundforwomen.org",
+              "pathPrefix": "/auth/callback"
+            },
+            {
+              "scheme": "https",
+              "host": "www.nationalfundforwomen.org",
+              "pathPrefix": "/perks"
+            },
+            {
+              "scheme": "https",
+              "host": "www.nationalfundforwomen.org",
+              "pathPrefix": "/grants"
+            },
+            {
+              "scheme": "https",
+              "host": "www.nationalfundforwomen.org",
+              "pathPrefix": "/store"
+            },
+            {
+              "scheme": "https",
+              "host": "www.nationalfundforwomen.org",
+              "pathPrefix": "/dashboard"
+            },
+            {
+              "scheme": "https",
+              "host": "www.nationalfundforwomen.org",
+              "pathPrefix": "/profile"
+            },
+            {
+              "scheme": "https",
+              "host": "www.nationalfundforwomen.org",
+              "pathPrefix": "/contact"
+            },
+            {
+              "scheme": "https",
+              "host": "www.nationalfundforwomen.org",
+              "pathPrefix": "/faq"
+            },
+            {
+              "scheme": "https",
+              "host": "www.nationalfundforwomen.org",
+              "pathPrefix": "/share-your-story"
+            },
+            {
+              "scheme": "https",
+              "host": "www.nationalfundforwomen.org",
+              "pathPrefix": "/auth/confirm"
+            },
+            {
+              "scheme": "https",
+              "host": "www.nationalfundforwomen.org",
+              "pathPrefix": "/auth/callback"
             }
           ],
           "category": [
@@ -55,6 +175,17 @@
             "DEFAULT"
           ]
         }
+      ],
+      "allowBackup": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.READ_MEDIA_IMAGES"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -87,9 +218,11 @@
         "expo-image-picker",
         {
           "photosPermission": "Allow NFW to access your photos so you can attach receipts and documents to grant applications.",
-          "cameraPermission": "Allow NFW to use your camera so you can photograph receipts and documents for grant applications."
+          "cameraPermission": "Allow NFW to use your camera so you can photograph receipts and documents for grant applications.",
+          "microphonePermission": false
         }
-      ]
+      ],
+      "expo-updates"
     ],
     "experiments": {
       "typedRoutes": true
@@ -100,6 +233,16 @@
         "projectId": "8f7802b0-60fc-4623-809f-cf26fe7e06dd"
       }
     },
-    "owner": "my-hero-creative"
+    "owner": "my-hero-creative",
+    "description": "Member app for the National Fund for Women: microgrants, perks, and the Zero Dollar Store.",
+    "primaryColor": "#3E145F",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8f7802b0-60fc-4623-809f-cf26fe7e06dd",
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_LOAD"
+    }
   }
 }

@@ -1,7 +1,7 @@
 # NFW Mobile — Migration Blueprint
 
 **Created:** 2026-09-11
-**Status:** Slices A–F complete (Login · Sign-up · Password reset · Dashboard · Grants · Perks · Zero Dollar Store · Profile & account · **Push · Universal links · Travel**). Remaining placeholders: Contact, FAQ, Share Your Story, Legal (Slice G). See "Implementation Status" below.
+**Status:** Slices A–G complete — every route in the mapping table is implemented; no `PlaceholderScreen` remains. Release runbook + store-listing draft: **`RELEASE.md`**. Store submission is gated on the Apple Developer / Play Console accounts (see RELEASE.md §1).
 
 > **Slice F needs manual setup to go live** — see "Slice F activation checklist" under Dependencies.
 
@@ -96,8 +96,18 @@
 | `app/(tabs)/settings/notifications.tsx` | **Done** | — | Single toggle (grant updates); denied → Open Settings; explains Expo Go / simulator limits |
 | `app/+native-intent.tsx` | **Done** | — | Rewrites universal links + `nfw://` URLs through `mapWebPathToAppRoute()` (22 cases unit-checked) |
 | `app/(tabs)/perks/travel.tsx` | **Done** | `POST /api/travel/token` → `/travel/embed` | WebView; re-mints on `TRAVEL_CLIENT_SESSION_EXPIRED`; partner links open in the system browser; home button reloads |
-| `app/(tabs)/perks/travel.tsx` | Placeholder | — | Slice F (WebView + `/api/travel/token`) |
-| Everything else in the mapping table | Placeholder | — | Renders `PlaceholderScreen` with its web equivalent |
+| **Slice G — Release** | | | |
+| `app/contact.tsx` · `lib/api/content.ts` | **Done** | `GET /api/contact` · `POST /api/contact/submit` | Admin-editable hero/help cards/quick links; same subject list, placeholders, success copy ("Success!" / "We will get back to you within 2-3 business days."). `free-membership` subject omitted (web-only flow). Quick links open in-app when a screen exists, else the website. Honeypot sent empty. |
+| `app/faq.tsx` · `lib/html.ts#splitMarkdownLinks` | **Done** | `GET /api/faq` | Hero → per-category independent accordions → "Still have questions?" CTA row (solid→accent, ghost→wisteria on the dark band). Markdown links in answers are tappable (5 cases unit-checked). |
+| `app/share-your-story.tsx` | **Done** | `POST /api/testimonials` | Prefill (name, email, age from DOB unless placeholder, "City, State"), five prompts + three permission checkboxes verbatim, "Age is required", inline success ("Thank you for sharing!" → Return to Dashboard). |
+| `app/legal/[slug].tsx` | **Done** | WebView of `${siteUrl}/{privacy,terms-of-service,accessibility}` | Termly is a script embed, so the public web page is loaded with injected CSS hiding nav/footer/back-to-top/cookie banner. Outbound links → system browser; error state offers Retry / Open on website. |
+| `components/ui/ErrorFallback.tsx` · root `ErrorBoundary` in `app/_layout.tsx` | **Done** | `/api/log/client-error` | Crash screen with "Try Again" (re-mounts the route); reports once to Slack. |
+| `lib/errorReporter.ts` | **Done** | `/api/log/client-error` | Now session-gated (route 401s otherwise), rate-limited (5/min) + de-duplicated; context prefixed `mobile:`; `appVersion` suffixed `-dev` in dev. Web route extended (see Dependencies) — previously every generic mobile report got a 400. |
+| `components/ui/OfflineBanner.tsx` · `lib/queryClient.ts` | **Done** | NetInfo | Citrine "You're offline" strip overlaid at the top; TanStack `onlineManager` bound to NetInfo so queries/mutations pause and resume with connectivity. |
+| `assets/*` icons · `scripts/generate-app-icons.mjs` | **Done** | `../app/icon.png` (NW monogram) | 1024² iOS icon (white mark on aubergine), splash, Android adaptive foreground/background/monochrome, favicon — generated with `sharp` from the web repo (`node mobile/scripts/generate-app-icons.mjs`). Replace the 500² source with a vector/≥1024² master when brand provides one. |
+| `app.json` · `eas.json` | **Done** | — | `runtimeVersion: appVersion`, EAS Update URL + `expo-updates`, both `www`/apex associated domains + App Link prefixes, iOS privacy manifest + notification/phone/mail usage strings, Android permission allow/block lists (no RECORD_AUDIO), `allowBackup: false`. EAS profiles: `development` (sim) · `development-device` · `preview` (apk) · `production` (aab, auto-increment) with all `EXPO_PUBLIC_*` in a shared `base`; `submit.production` scaffolded. |
+| `RELEASE.md` | **Done** | — | Account setup (Apple / Play / Expo / Supabase), build + submit + OTA commands, post-release checks, store listing draft, privacy/data-safety inventory, reviewer notes. |
+| `components/ui/PlaceholderScreen.tsx` | Kept | — | Still used by `scripts/generate-placeholders.mjs` for future routes; no route renders it. |
 
 **Removed:** the `__DEV__` preview bypass (login button, settings button, `devPreview` store flag, `AuthGate` exemption).
 
@@ -114,8 +124,10 @@
 - **Email-link deep linking.** Confirmation and recovery emails currently land on the website (`emailRedirectTo` = web URLs) because `nfw://auth/callback` isn't in Supabase's redirect allowlist yet (Dependencies #4). Once universal links ship (Slice F), point `emailRedirectTo` at the app so confirmation/reset complete in-app.
 - **Web observations (not fixed):** waitlist join failure sets no visible error; `validateGiftCode` (GET) is dead code; confirmation guard redirects to `/auth/sign-up-success` without `?email=` (disables resend); avatar "delete old file" parses a signed URL incorrectly (silent no-op); `DeleteAccountModal` has no cancel path; `/api/profile/update` accepts non-existent columns that 500.
 
-### Remaining slices
-- **G — Release:** icons/splash, Contact/FAQ/Share/Legal screens, error reporting, a11y, EAS builds, TestFlight/Play, store listings
+### Slice G notes
+- **Not automated:** first EAS builds and store submission need the Apple Developer and Play Console accounts (RELEASE.md §1). `eas build -p android --profile preview` can run today (EAS generates the keystore); iOS needs the Apple account for any device build.
+- **Web change in this slice:** `/api/log/client-error` accepts generic `{ context, message }` reports (identity from the session, never the body) and routes them to `notifyClientError()`; grant-shaped reports (`cycleId`) are unchanged.
+- **a11y pass:** every pressable in the new screens has a role/state; the offline banner is a live region. A full VoiceOver/TalkBack sweep of earlier slices is still a pre-submission task.
 
 ---
 
@@ -312,6 +324,7 @@ The mobile binary contains zero backend code. It calls:
 3. ~~Root `tsconfig.json` / ESLint excludes~~ — **done** (`8fc5a8e`).
 4. **Supabase Dashboard:** add `nfw://auth/callback` to Auth → URL Configuration → Redirect URLs (activation checklist #2).
 5. **Google Cloud Console:** add iOS bundle ID / Android package name to the OAuth client.
+6. ~~Generic client-error reports~~ — **done** in Slice G (`app/api/log/client-error/route.ts` + `notifyClientError` in `lib/slack-notifications.ts`).
 
 ---
 

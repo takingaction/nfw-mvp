@@ -1,6 +1,6 @@
 import { useFonts } from "expo-font";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, type ErrorBoundaryProps } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
@@ -8,6 +8,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthGate } from "@/components/auth/AuthGate";
+import { ErrorFallback } from "@/components/ui/ErrorFallback";
+import { OfflineBanner } from "@/components/ui/OfflineBanner";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { theme } from "@/constants/colors";
 import { fontAssets } from "@/constants/fonts";
@@ -30,7 +32,14 @@ void SplashScreen.preventAutoHideAsync();
  *  - Root stack: (tabs) · auth · store · misc root-level screens
  *
  *  - Push registration + notification tap routing (hooks/usePushNotifications)
+ *  - Root error boundary (components/ui/ErrorFallback → Slack via /api/log/client-error)
+ *  - Offline banner (components/ui/OfflineBanner) + TanStack onlineManager ↔ NetInfo
  */
+
+/** Expo Router picks this up for any uncaught render error below the root. */
+export function ErrorBoundary(props: ErrorBoundaryProps) {
+  return <ErrorFallback {...props} />;
+}
 /** Renders nothing; hosts the push hook inside the navigation tree so useRouter is available. */
 function PushBridge() {
   usePushNotifications();
@@ -79,6 +88,7 @@ export default function RootLayout() {
           <AuthGate>
             <PushBridge />
             <StatusBar style="light" />
+            <OfflineBanner />
             <Stack
               screenOptions={{
                 ...brandStackOptions,

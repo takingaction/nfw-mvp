@@ -1,6 +1,12 @@
-import { QueryClient } from "@tanstack/react-query";
+import NetInfo from "@react-native-community/netinfo";
+import { QueryClient, onlineManager } from "@tanstack/react-query";
 
 import { ApiError } from "@/lib/api";
+
+// Pause/resume queries + mutations with device connectivity (TanStack's default detector is browser-only).
+onlineManager.setEventListener((setOnline) =>
+  NetInfo.addEventListener((state) => setOnline(state.isConnected !== false && state.isInternetReachable !== false)),
+);
 
 /**
  * Shared TanStack Query client.
