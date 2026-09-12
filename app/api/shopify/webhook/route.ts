@@ -287,6 +287,9 @@ export async function POST(request: Request) {
       // Store the claim's shopify_checkout_id for deleting from pending_monthly_claims
       let claimCheckoutId: string | null = null;
 
+      // Track the specific claim ID we found (for updating only that claim, not all for user+month)
+      let foundClaimId: string | null = null;
+
       // =====================================================================
       // PRIMARY: claim_id from note (most reliable for Draft Orders)
       // Note format: claim_id:xxx|user_id:xxx|checkout_time:xxx
@@ -294,7 +297,7 @@ export async function POST(request: Request) {
       if (claimIdFromNote) {
         const { data: claimById } = await supabaseAdmin
           .from("zero_dollar_claims")
-          .select("user_id, claim_month, shopify_checkout_id")
+          .select("id, user_id, claim_month, shopify_checkout_id")
           .eq("id", claimIdFromNote)
           .limit(1);
 
@@ -302,7 +305,8 @@ export async function POST(request: Request) {
           nfwUserId = claimById[0].user_id;
           claimMonth = claimById[0].claim_month;
           claimCheckoutId = claimById[0].shopify_checkout_id;
-          console.log(`[orders/updated] Found claim via claim_id from note: user=${nfwUserId}, checkout=${claimCheckoutId}`);
+          foundClaimId = claimById[0].id;
+          console.log(`[orders/updated] Found claim via claim_id from note: user=${nfwUserId}, checkout=${claimCheckoutId}, id=${foundClaimId}`);
         }
       }
 
@@ -310,7 +314,7 @@ export async function POST(request: Request) {
       if (!nfwUserId && checkoutId) {
         const { data: claimByCheckout } = await supabaseAdmin
           .from("zero_dollar_claims")
-          .select("user_id, claim_month, shopify_checkout_id")
+          .select("id, user_id, claim_month, shopify_checkout_id")
           .eq("shopify_checkout_id", checkoutId)
           .limit(1);
 
@@ -318,7 +322,8 @@ export async function POST(request: Request) {
           nfwUserId = claimByCheckout[0].user_id;
           claimMonth = claimByCheckout[0].claim_month;
           claimCheckoutId = claimByCheckout[0].shopify_checkout_id;
-          console.log(`[orders/updated] Found claim via checkout_id: user=${nfwUserId}`);
+          foundClaimId = claimByCheckout[0].id;
+          console.log(`[orders/updated] Found claim via checkout_id: user=${nfwUserId}, id=${foundClaimId}`);
         }
       }
 
@@ -326,7 +331,7 @@ export async function POST(request: Request) {
       if (!nfwUserId) {
         const { data: claimByOrder } = await supabaseAdmin
           .from("zero_dollar_claims")
-          .select("user_id, claim_month, shopify_checkout_id")
+          .select("id, user_id, claim_month, shopify_checkout_id")
           .eq("shopify_order_id", orderId)
           .limit(1);
 
@@ -334,7 +339,8 @@ export async function POST(request: Request) {
           nfwUserId = claimByOrder[0].user_id;
           claimMonth = claimByOrder[0].claim_month;
           claimCheckoutId = claimByOrder[0].shopify_checkout_id;
-          console.log(`[orders/updated] Found claim via order_id: user=${nfwUserId}`);
+          foundClaimId = claimByOrder[0].id;
+          console.log(`[orders/updated] Found claim via order_id: user=${nfwUserId}, id=${foundClaimId}`);
         }
       }
 
@@ -365,19 +371,24 @@ export async function POST(request: Request) {
           }
         }
 
-        // Cancel the user's claim - match by user_id and claim_month regardless of status
-        // (cancelled orders may still show as 'completed' in zero_dollar_claims)
-        const { error: updateClaimError } = await supabaseAdmin
-          .from("zero_dollar_claims")
-          .update({ status: "cancelled" })
-          .eq("user_id", nfwUserId)
-          .eq("claim_month", claimMonth);
+        // Cancel ONLY the specific claim that was cancelled - never update by user_id + claim_month
+        // as that would cancel ALL claims for that user+month (including legitimate orders)
+        // Also never overwrite rejected_* status (audit trail)
+        if (foundClaimId) {
+          const { error: updateClaimError } = await supabaseAdmin
+            .from("zero_dollar_claims")
+            .update({ status: "cancelled" })
+            .eq("id", foundClaimId)
+            .not("status", "like", "rejected_%");
 
-        if (updateClaimError) {
-          console.error("[orders/updated] Failed to cancel claim:", updateClaimError);
+          if (updateClaimError) {
+            console.error("[orders/updated] Failed to cancel claim:", updateClaimError);
+          } else {
+            console.log(`[orders/updated] Cancelled claim ${foundClaimId} for user ${nfwUserId}, month ${claimMonth}`);
+          }
+        } else {
+          console.log(`[orders/updated] Cannot cancel - no specific claim ID found for order ${orderId}`);
         }
-
-        console.log(`[orders/updated] Cancelled claim for user ${nfwUserId}, month ${claimMonth}`);
       } else {
         console.log(`[orders/updated] Could not find claim to cancel for order ${orderId}`);
       }

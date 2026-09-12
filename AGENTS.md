@@ -15027,4 +15027,49 @@ Any refactor of that route must keep Steps 0 (pending lock), 1 (lifetime per pro
 - `app/api/store/claims/check/route.ts:17` — `endOfMonth` is midnight on the last day, so a
   claim later that day doesn't grey out buttons until the next page load. UI-only.
 
+## Session 2026-09-12: ZDS Cancel Handler Bug Fix
+
+### Bug
+When Shopify fires `orders/updated` with a cancellation, the cancel handler updated **ALL claims** for a user+month instead of just the specific order being cancelled.
+
+### Problem (lines 370-374 before fix)
+```typescript
+// BUGGY: cancelled ALL claims for user+month
+const { error: updateClaimError } = await supabaseAdmin
+  .from("zero_dollar_claims")
+  .update({ status: "cancelled" })
+  .eq("user_id", nfwUserId)
+  .eq("claim_month", claimMonth);
+```
+
+Impact: If a member had two orders and you cancel only one in Shopify, both claims became "cancelled". Also overwrote `rejected_monthly_limit` status with "cancelled", losing audit trail.
+
+### Fix
+1. Added `foundClaimId` tracking when claim is found via note, checkout_id, or order_id
+2. Updated all three lookup queries to select `id` 
+3. Changed cancel to use `.eq("id", foundClaimId)` instead of user+month match
+4. Added `.not("status", "like", "rejected_%")` to preserve audit trail
+
+```typescript
+// FIXED: cancels only the ONE specific claim
+if (foundClaimId) {
+  const { error: updateClaimError } = await supabaseAdmin
+    .from("zero_dollar_claims")
+    .update({ status: "cancelled" })
+    .eq("id", foundClaimId)
+    .not("status", "like", "rejected_%");
+
+  if (updateClaimError) {
+    console.error("[orders/updated] Failed to cancel claim:", updateClaimError);
+  } else {
+    console.log(`[orders/updated] Cancelled claim ${foundClaimId} for user ${nfwUserId}, month ${claimMonth}`);
+  }
+} else {
+  console.log(`[orders/updated] Cannot cancel - no specific claim ID found for order ${orderId}`);
+}
+```
+
+### Files Modified
+- `app/api/shopify/webhook/route.ts` — cancel handler now targets specific claim
+
 **Build:** `tsc` 0 errors, eslint clean on the route, `next build` ✓.
