@@ -14852,3 +14852,57 @@ activation steps below are done.
 Full table: `mobile/migration-blueprint.md` → "Slice F activation checklist".
 
 **Build:** web `tsc` 0 / `next build` ✓ (new routes: `/.well-known/*`, `/api/push/register`, `/travel/embed`), smoke-tested on a production build (404 without env, correct JSON with env, embed HTML shape, 401 unauth). Mobile `tsc` 0, `expo lint` clean, `expo-doctor` 21/21, Metro bundle 11.5 MB OK.
+
+## Session 2026-09-12: Fix Stripe Active Not Displaying on Analytics
+
+### Bug
+
+Stripe Active stat on `/admin/analytics` was not displaying data. The client was checking `data.contributing` (top-level) but the API at `/api/admin/backfill/stripe/stripe-live` returns `data.stripeLive.contributing` (nested).
+
+### Root Cause
+
+The API response format:
+```json
+{
+  "stripeLive": { "contributing": {...}, "founding": {...}, "total": {...} },
+  "lastFetchedAt": "...",
+  "cached": true
+}
+```
+
+But the client checked:
+```typescript
+if (data.contributing && data.founding && data.total) {  // Always undefined!
+  setStripeLiveStats(data);
+}
+```
+
+### Fix
+
+Updated `components/admin/AdminAnalyticsClient.tsx` lines 214-216:
+
+**Before:**
+```typescript
+if (data.contributing && data.founding && data.total) {
+  setStripeLiveStats(data);
+}
+```
+
+**After:**
+```typescript
+if (data.stripeLive?.contributing && data.stripeLive?.founding && data.stripeLive?.total) {
+  setStripeLiveStats(data.stripeLive);
+}
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/admin/AdminAnalyticsClient.tsx` | Fixed nested data access - now reads from `data.stripeLive` instead of top-level `data` |
+
+### How It Works Now
+
+1. Click **Refresh** on `/admin/backfill/stripe` - updates the `reconciliation_jobs` cache
+2. `/admin/analytics` reads from the same cache via `/api/admin/backfill/stripe/stripe-live`
+3. Data now displays correctly on analytics after backfill refresh

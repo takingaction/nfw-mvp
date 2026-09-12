@@ -211,8 +211,8 @@ export default function AdminAnalyticsClient({
         return res.json();
       })
       .then((data) => {
-        if (data.contributing && data.founding && data.total) {
-          setStripeLiveStats(data);
+        if (data.stripeLive?.contributing && data.stripeLive?.founding && data.stripeLive?.total) {
+          setStripeLiveStats(data.stripeLive);
         }
       })
       .catch((err) => {
