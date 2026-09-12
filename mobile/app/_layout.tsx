@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthGate } from "@/components/auth/AuthGate";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { theme } from "@/constants/colors";
 import { fontAssets } from "@/constants/fonts";
 import { brandStackOptions } from "@/lib/navigation/stackOptions";
@@ -28,8 +29,14 @@ void SplashScreen.preventAutoHideAsync();
  *  - Auth gate (components/auth/AuthGate.tsx)
  *  - Root stack: (tabs) · auth · store · misc root-level screens
  *
- * TODO (Phase 3): expo-notifications permission + token registration
+ *  - Push registration + notification tap routing (hooks/usePushNotifications)
  */
+/** Renders nothing; hosts the push hook inside the navigation tree so useRouter is available. */
+function PushBridge() {
+  usePushNotifications();
+  return null;
+}
+
 export default function RootLayout() {
   const initialize = useAuthStore((s) => s.initialize);
   const status = useAuthStore((s) => s.status);
@@ -70,6 +77,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthGate>
+            <PushBridge />
             <StatusBar style="light" />
             <Stack
               screenOptions={{

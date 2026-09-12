@@ -1,7 +1,9 @@
 # NFW Mobile — Migration Blueprint
 
 **Created:** 2026-09-11
-**Status:** Slices A–D complete (Login · Dashboard · Grants end-to-end · Settings · Perks · **Zero Dollar Store**). Web API accepts Bearer tokens. See "Implementation Status" below.
+**Status:** Slices A–F complete (Login · Sign-up · Password reset · Dashboard · Grants · Perks · Zero Dollar Store · Profile & account · **Push · Universal links · Travel**). Remaining placeholders: Contact, FAQ, Share Your Story, Legal (Slice G). See "Implementation Status" below.
+
+> **Slice F needs manual setup to go live** — see "Slice F activation checklist" under Dependencies.
 
 > **API base URL must be `https://www.nationalfundforwomen.org`.** The apex domain 307-redirects to `www`, and fetch strips `Authorization` on cross-origin redirects — pointing the app at the apex makes every authenticated call 401. (Fixed 2026-09-11 in `.env`, `.env.example`, `eas.json`, `lib/env.ts`.)
 **Source plan:** `../mobile-app.md`
@@ -83,6 +85,17 @@
 | `app/auth/{forgot-password,update-password,error,welcome,waitlist-confirmed}.tsx` | **Done** | Supabase auth | Update-password applies the sign-up strength rules (web has none); handles missing session. |
 | `app/(tabs)/settings/profile/{index,edit}.tsx` · `components/profile/AvatarPicker.tsx` | **Done** | `/api/profile/update`, avatar routes | View (DOB banner, avatar, membership status, info rows, danger zone) + full edit form. Avatar via camera/library with square crop, JPEG ≤ 2 MB. |
 | `app/(tabs)/settings/{membership,redeem-gift-code,delete-account}.tsx` | **Done** | web links, gift redeem, deletion routes | Membership is status-only; upgrade/portal open the website. Delete-account exposes **cancel pending request** (API exists; web modal lacks it). |
+| **Slice F — Push · Universal links · Travel** | | | |
+| Web `supabase/migrations/161_create_push_tokens.sql` | **Done** (run in SQL Editor) | — | `push_tokens` (user_id, token UNIQUE, platform, enabled, device_name, timestamps) with own-row RLS |
+| Web `app/api/push/register/route.ts` | **Done** | — | GET list · POST upsert (token regex + platform validated, 20/min) · DELETE. Cookie or Bearer. |
+| Web `lib/push.ts` | **Done** | Expo Push API (plain fetch) | `sendPushToUser` chunks of 100, deletes `DeviceNotRegistered` tokens; `notifyGrantStatus` copy per status |
+| Web push hooks | **Done** | — | `update-status` (all statuses), `final-approve` (approved + not_approved loops), `transfer` (payment_sent) — all fire-and-forget after the DB write |
+| Web `app/.well-known/{apple-app-site-association,assetlinks.json}/route.ts` | **Done** (404 until env set) | `APPLE_TEAM_ID`, `ANDROID_SHA256_CERT_FINGERPRINTS` | AASA paths: `/perks*`, `/grants*`, `/store*`, `/dashboard`, `/auth/callback`, `/auth/confirm`; excludes `/perks/info`, `/store/info`, `/grants/connect/*` (Stripe return must stay in the browser) |
+| Web `app/travel/embed/route.ts` | **Done** | — | Thin HTML host for the Travel SDK on the whitelisted domain; `?session_token=` is the only credential; relays `loaded` / `session_expired` / `error` to RN via `postMessage` |
+| `lib/notifications.ts` · `hooks/usePushNotifications.ts` | **Done** | `/api/push/register` | Silent re-registration on sign-in when permission already granted; permission is only *requested* from Settings. Tap routing via `data.url` (foreground, background, cold start). Token removed on sign-out. |
+| `app/(tabs)/settings/notifications.tsx` | **Done** | — | Single toggle (grant updates); denied → Open Settings; explains Expo Go / simulator limits |
+| `app/+native-intent.tsx` | **Done** | — | Rewrites universal links + `nfw://` URLs through `mapWebPathToAppRoute()` (22 cases unit-checked) |
+| `app/(tabs)/perks/travel.tsx` | **Done** | `POST /api/travel/token` → `/travel/embed` | WebView; re-mints on `TRAVEL_CLIENT_SESSION_EXPIRED`; partner links open in the system browser; home button reloads |
 | `app/(tabs)/perks/travel.tsx` | Placeholder | — | Slice F (WebView + `/api/travel/token`) |
 | Everything else in the mapping table | Placeholder | — | Renders `PlaceholderScreen` with its web equivalent |
 
@@ -102,7 +115,6 @@
 - **Web observations (not fixed):** waitlist join failure sets no visible error; `validateGiftCode` (GET) is dead code; confirmation guard redirects to `/auth/sign-up-success` without `?email=` (disables resend); avatar "delete old file" parses a signed URL incorrectly (silent no-op); `DeleteAccountModal` has no cancel path; `/api/profile/update` accepts non-existent columns that 500.
 
 ### Remaining slices
-- **F — Push + deep links + Travel:** `push_tokens` table + `/api/push/register` + grant-status hooks; universal links; Travel WebView
 - **G — Release:** icons/splash, Contact/FAQ/Share/Legal screens, error reporting, a11y, EAS builds, TestFlight/Play, store listings
 
 ---
@@ -280,12 +292,25 @@ The mobile binary contains zero backend code. It calls:
 
 ---
 
+## Slice F activation checklist (manual steps)
+
+| # | Step | Where | Unlocks |
+|---|---|---|---|
+| 1 | Run `supabase/migrations/161_create_push_tokens.sql` | Supabase SQL Editor | Token registration (until then `POST /api/push/register` 500s and the app logs a warning) |
+| 2 | Add `nfw://auth/callback` to **Auth → URL Configuration → Redirect URLs** | Supabase Dashboard | Google OAuth from the app (`lib/auth/google.ts` uses it as `redirectTo`) |
+| 3 | Build a **development build** (`eas build --profile development`) or TestFlight build | EAS | Receiving push — Expo Go can't receive remote notifications (SDK 53+) |
+| 4 | Set `APPLE_TEAM_ID` (Apple Developer account, 10 chars) | Vercel env | AASA file → iOS universal links open the app |
+| 5 | Set `ANDROID_SHA256_CERT_FINGERPRINTS` (`eas credentials -p android` after first build) | Vercel env | assetlinks.json → Android App Links |
+| 6 | Optional: `EXPO_ACCESS_TOKEN` (expo.dev → Access Tokens) | Vercel env | Authenticated Expo Push API (higher limits, required if "enhanced push security" is turned on for the Expo project) |
+| 7 | Confirm `www.nationalfundforwomen.org` is whitelisted with Access Development | Access Development | Travel SDK loads inside `/travel/embed` (same domain as the web `/travel` page, so likely already true) |
+| 8 | After 4: switch `emailRedirectTo` in `app/auth/sign-up/index.tsx`, `ResendConfirmation.tsx`, `forgot-password.tsx` to app-openable URLs | mobile | Confirmation / reset emails open the app directly (they intercept `/auth/confirm`) |
+
 ## Dependencies on the Web Repo (follow-up edits, not part of the scaffold)
 
-1. **Bearer-token auth for API routes.** Every `app/api/*` route uses `createClient()` from `lib/supabase/server.ts`, which reads cookies only. Mobile sends `Authorization: Bearer <access_token>`. `lib/supabase/server.ts` needs a branch that, when the header is present, builds the client with `global.headers.Authorization`. Without this, all authenticated mobile calls return 401. Routes needing server secrets cannot be bypassed by calling Supabase directly.
-2. **Push infrastructure.** New `push_tokens` table, `POST /api/push/register`, and hooks in `app/api/admin/grants/update-status` and `final-approve` to send Expo pushes.
-3. **Root `tsconfig.json` / ESLint excludes.** Add `mobile` to root `tsconfig.json` `exclude` and to the ESLint ignore config so Vercel's typecheck/lint doesn't walk mobile files.
-4. **Supabase Dashboard:** add `nfw://auth/callback` to Auth → URL Configuration → Redirect URLs.
+1. ~~Bearer-token auth for API routes~~ — **done** (`459cdc4`, `lib/supabase/server.ts`).
+2. ~~Push infrastructure~~ — **done** in Slice F (run migration 161 — see activation checklist).
+3. ~~Root `tsconfig.json` / ESLint excludes~~ — **done** (`8fc5a8e`).
+4. **Supabase Dashboard:** add `nfw://auth/callback` to Auth → URL Configuration → Redirect URLs (activation checklist #2).
 5. **Google Cloud Console:** add iOS bundle ID / Android package name to the OAuth client.
 
 ---

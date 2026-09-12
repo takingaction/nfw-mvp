@@ -1,6 +1,7 @@
 import type { Session, User } from "@supabase/supabase-js";
 import { create } from "zustand";
 
+import { unregisterPushToken } from "@/lib/notifications";
 import { supabase } from "@/lib/supabase";
 import type { Profile } from "@/types/profile";
 
@@ -134,6 +135,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
+    // Best-effort: stop pushes to this device before the session (and Bearer token) goes away.
+    await unregisterPushToken();
     await supabase.auth.signOut();
     set({ status: "unauthenticated", session: null, user: null, profile: null, profileError: null });
   },
