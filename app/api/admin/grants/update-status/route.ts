@@ -155,6 +155,16 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (grantData) {
+      // Mobile push (fire-and-forget; never blocks the admin action)
+      const { notifyGrantStatus } = await import("@/lib/push");
+      void notifyGrantStatus({
+        userId: grantData.user_id,
+        grantId,
+        status,
+        cycleName: (grantData.grant_cycles as { cycle_name?: string } | null)?.cycle_name,
+        amount: amount_approved ? `$${Number(amount_approved).toLocaleString()}` : null,
+      });
+
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("full_name")

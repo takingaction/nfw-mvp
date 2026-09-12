@@ -128,6 +128,18 @@ export async function POST(
       .update({ final_approved_at: new Date().toISOString() })
       .eq("id", cycleId);
 
+    // Mobile push notifications (fire-and-forget; emails below remain the primary channel)
+    {
+      const { notifyGrantStatus } = await import("@/lib/push");
+      const amountLabel = `$${Number(cycle.amount_per_grant).toLocaleString()}`;
+      for (const grant of approvedGrants) {
+        void notifyGrantStatus({ userId: grant.user_id, grantId: grant.id, status: "approved", cycleName: cycle.cycle_name, amount: amountLabel });
+      }
+      for (const grant of rejectedGrants) {
+        void notifyGrantStatus({ userId: grant.user_id, grantId: grant.id, status: "not_approved", cycleName: cycle.cycle_name });
+      }
+    }
+
     // Send emails to approved grants (with logging)
     let approvedSent = 0;
     let approvedFailed = 0;

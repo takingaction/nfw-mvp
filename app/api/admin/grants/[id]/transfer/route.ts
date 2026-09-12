@@ -131,6 +131,12 @@ export async function POST(
     const cycleName = (grant.grant_cycles as any)?.cycle_name || "Grant";
     const amountStr = grant.amount_approved.toLocaleString();
 
+    // Mobile push (fire-and-forget)
+    {
+      const { notifyGrantStatus } = await import("@/lib/push");
+      void notifyGrantStatus({ userId: grant.user_id, grantId, status: "payment_sent", cycleName, amount: `$${amountStr}` });
+    }
+
     // Get user's email from auth.users
     const { data: authUser } = await supabaseAdmin
       .from("auth.users")

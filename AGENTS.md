@@ -14811,3 +14811,44 @@ Decisions / parity notes:
 Remaining placeholders: Travel, Notifications, Contact, FAQ, Share Your Story, Legal (Slices F/G).
 
 **Build:** `tsc` 0, `expo lint` clean, `expo-doctor` 21/21, Metro bundle 11.3 MB OK.
+
+## Session 2026-09-11 (cont.): Mobile Slice F — Push notifications, universal links, Travel
+
+First mobile slice with **web-side changes**. Everything is additive and inert until the
+activation steps below are done.
+
+### Web
+
+| File | Purpose |
+|---|---|
+| `supabase/migrations/161_create_push_tokens.sql` | `push_tokens` (one row per device; `token` UNIQUE, `platform`, `enabled`) with own-row RLS |
+| `app/api/push/register/route.ts` | GET / POST (upsert, token regex + platform validated, 20/min) / DELETE. Cookie or Bearer. |
+| `lib/push.ts` | Expo Push API via plain fetch (no SDK). `sendPushToUser()` chunks 100, deletes `DeviceNotRegistered` tokens. `notifyGrantStatus()` has per-status copy. Never throws. |
+| `app/api/admin/grants/update-status/route.ts`, `[id]/final-approve/route.ts`, `[id]/transfer/route.ts` | `void notifyGrantStatus(...)` after each status write (fire-and-forget; emails unchanged) |
+| `app/.well-known/apple-app-site-association/route.ts` | AASA for `org.nationalfundforwomen.app`; **404 until `APPLE_TEAM_ID` is set**. Excludes `/grants/connect/*` so the Stripe return stays in the browser. |
+| `app/.well-known/assetlinks.json/route.ts` | Android App Links; **404 until `ANDROID_SHA256_CERT_FINGERPRINTS`** (comma-separated) is set |
+| `app/travel/embed/route.ts` | Thin HTML host for the Access Travel SDK. The SDK refuses non-whitelisted origins, so the mobile WebView loads this page on `www.nationalfundforwomen.org` with `?session_token=` (5-min, single-use — the only credential). Relays `loaded` / `session_expired` / `error` to RN via `postMessage`. |
+
+`.well-known` routes are `force-dynamic` so adding the env var in Vercel takes effect without a rebuild.
+
+### Mobile
+
+| Area | Files |
+|---|---|
+| Push | `lib/notifications.ts` (permission, `getExpoPushTokenAsync({ projectId })`, register/unregister, tap routing), `hooks/usePushNotifications.ts` (mounted in root layout via `PushBridge`), `app/(tabs)/settings/notifications.tsx` (the only place permission is *requested*), `stores/auth.signOut` removes the device token |
+| Deep links | `app/+native-intent.tsx` → `mapWebPathToAppRoute()` (website paths → Expo Router routes; 22 cases unit-checked). Shared with push-tap routing. |
+| Travel | `app/(tabs)/perks/travel.tsx` — `POST /api/travel/token` (Bearer) → WebView `/travel/embed`; re-mints on `TRAVEL_CLIENT_SESSION_EXPIRED`; non-SDK hosts open in the system browser |
+
+### Activation checklist (manual)
+
+1. Run migration 161 in the Supabase SQL Editor.
+2. Supabase → Auth → Redirect URLs: add `nfw://auth/callback`.
+3. Push can't be received in **Expo Go** (SDK 53+) — needs `eas build --profile development` or TestFlight.
+4. Vercel env `APPLE_TEAM_ID` (needs the Apple Developer account) → iOS universal links.
+5. Vercel env `ANDROID_SHA256_CERT_FINGERPRINTS` (`eas credentials -p android` after first Android build) → App Links.
+6. Optional Vercel env `EXPO_ACCESS_TOKEN` for authenticated Expo Push sends.
+7. After #4, point mobile `emailRedirectTo` at app-openable URLs so confirmation/reset emails open the app.
+
+Full table: `mobile/migration-blueprint.md` → "Slice F activation checklist".
+
+**Build:** web `tsc` 0 / `next build` ✓ (new routes: `/.well-known/*`, `/api/push/register`, `/travel/embed`), smoke-tested on a production build (404 without env, correct JSON with env, embed HTML shape, 401 unauth). Mobile `tsc` 0, `expo lint` clean, `expo-doctor` 21/21, Metro bundle 11.5 MB OK.
