@@ -14906,3 +14906,37 @@ if (data.stripeLive?.contributing && data.stripeLive?.founding && data.stripeLiv
 1. Click **Refresh** on `/admin/backfill/stripe` - updates the `reconciliation_jobs` cache
 2. `/admin/analytics` reads from the same cache via `/api/admin/backfill/stripe/stripe-live`
 3. Data now displays correctly on analytics after backfill refresh
+
+## Session 2026-09-11 (cont.): Mobile Slice G — Release prep
+
+Last mobile slice. Every route in `mobile/migration-blueprint.md` is now implemented; no
+`PlaceholderScreen` remains. New file **`mobile/RELEASE.md`** is the runbook (account setup,
+build/submit/OTA commands, post-release checks) plus a store-listing draft, privacy/data-safety
+inventory and reviewer notes.
+
+### Web (one route extended)
+
+`POST /api/log/client-error` previously required `cycleId`, so every generic report from the
+mobile `errorReporter` got a 400 and was dropped. It now accepts two shapes: grant-shaped
+(`cycleId` → `notifyGrantApplicationError`, unchanged) and generic
+(`{ context, message | errorMessage, stack?, extra?, platform?, appVersion? }` →
+new `notifyClientError()` in `lib/slack-notifications.ts`, 🟠 "Client Error"). Identity now
+comes from the verified session only; body `userId`/`userEmail` are ignored. Strings are
+length-capped. Same Slack webhook (`SLACK_REFUND_WEBHOOK_URL`).
+
+### Mobile
+
+| Area | Files |
+|---|---|
+| Screens | `app/contact.tsx` (admin copy + form, same subjects/strings as `ContactClient.tsx`), `app/faq.tsx` (per-category accordions, tappable markdown links), `app/share-your-story.tsx` (prompts/permissions verbatim, inline success), `app/legal/[slug].tsx` (WebView of the public web page with nav/footer/cookie banner hidden via injected CSS — Termly is a script embed) |
+| Data | `types/content.ts`, `lib/api/content.ts`, `lib/html.ts#splitMarkdownLinks` (5 cases unit-checked) |
+| Resilience | `components/ui/ErrorFallback.tsx` + `export function ErrorBoundary` in `app/_layout.tsx`; `lib/errorReporter.ts` session-gated, rate-limited (5/min) and de-duplicated; `components/ui/OfflineBanner.tsx`; TanStack `onlineManager` ↔ NetInfo in `lib/queryClient.ts` |
+| Assets | `scripts/generate-app-icons.mjs` builds the full icon set from the web `app/icon.png` NW monogram (white on aubergine) using the web repo's `sharp` — run `node mobile/scripts/generate-app-icons.mjs` from the repo root |
+| Config | `app.json`: `runtimeVersion: appVersion`, EAS Update URL + `expo-updates`, `www` + apex associated domains / App Link prefixes, iOS privacy manifest + usage strings, Android permission allow/block lists, `allowBackup: false`. `eas.json`: shared `base` env (all `EXPO_PUBLIC_*`; the Supabase key is the public *publishable* key), `development` / `development-device` / `preview` (apk) / `production` (aab, auto-increment), `submit.production` scaffold. `google-play-service-account.json` git-ignored. |
+
+**Gated on accounts (RELEASE.md §1):** Apple Developer enrollment (TestFlight, universal links
+→ `APPLE_TEAM_ID`), Play Console (`ANDROID_SHA256_CERT_FINGERPRINTS` after first build), then
+`eas build` / `eas submit`. `eas build -p android --profile preview` can run today.
+
+**Build:** web `tsc` 0 / `next build` ✓; mobile `tsc` 0, `expo lint` clean, `expo-doctor` 21/21,
+Metro bundle 11.6 MB OK.
