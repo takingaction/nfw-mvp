@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/adminCheck";
 import { getCategory } from "@/lib/member-categories";
+import { parseESTDate, endOfESTDay } from "@/lib/dates";
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -184,21 +185,13 @@ function formatCell(col: string, value: unknown): string {
   }
 }
 
-// Parse YYYY-MM-DD date string to UTC timestamp (date input returns YYYY-MM-DD)
+// Parse YYYY-MM-DD date string to UTC timestamp for EST dates
 function parseCustomDate(dateStr: string, isStart: boolean): string {
-  const parts = dateStr.split("-");
-  const year = Number(parts[0]);
-  const month = Number(parts[1]) - 1;
-  const day = Number(parts[2]);
-
-  let utcMs: number;
   if (isStart) {
-    utcMs = Date.UTC(year, month, day, 0, 0, 0, 0);
+    return parseESTDate(dateStr).toISOString();
   } else {
-    utcMs = Date.UTC(year, month, day, 23, 59, 59, 999);
+    return endOfESTDay(parseESTDate(dateStr)).toISOString();
   }
-
-  return new Date(utcMs).toISOString();
 }
 
 export async function GET(request: NextRequest) {

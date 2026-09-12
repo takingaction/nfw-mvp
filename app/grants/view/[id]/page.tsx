@@ -121,6 +121,7 @@ export default async function GrantDetailPage({
                 Submitted 
                 {grant.submitted_at
                   ? new Date(grant.submitted_at).toLocaleDateString("en-US", {
+                      timeZone: "America/New_York",
                       month: "long",
                       day: "numeric",
                       year: "numeric",
@@ -143,8 +144,8 @@ export default async function GrantDetailPage({
             <div className="bg-nfw-dove p-4 mb-6">
               <h3 className="font-ui text-sm text-nfw-blackberry mb-1">Grant Cycle</h3>
               <p className="font-serif text-sm text-nfw-blackberry/60">
-                {new Date(grant.grant_cycles.start_date).toLocaleDateString()} —{" "}
-                {new Date(grant.grant_cycles.end_date).toLocaleDateString()}
+                {new Date(grant.grant_cycles.start_date).toLocaleDateString("en-US", { timeZone: "America/New_York" })} —{" "}
+                {new Date(grant.grant_cycles.end_date).toLocaleDateString("en-US", { timeZone: "America/New_York" })}
               </p>
               <p className="font-ui text-sm text-nfw-blackberry/50 mt-1">
                 ${grant.grant_cycles.amount_per_grant?.toLocaleString()} per
@@ -216,7 +217,7 @@ export default async function GrantDetailPage({
                       Submitted for Review
                     </p>
                     <p className="font-serif text-xs text-nfw-blackberry/50">
-                      {new Date(grant.submitted_at).toLocaleString()}
+                      {new Date(grant.submitted_at).toLocaleString("en-US", { timeZone: "America/New_York" })}
                     </p>
                   </div>
                 </div>
@@ -230,7 +231,7 @@ export default async function GrantDetailPage({
                       Payment Sent
                     </p>
                     <p className="font-serif text-xs text-nfw-blackberry/50">
-                      {new Date(grant.funded_at).toLocaleString()}
+                      {new Date(grant.funded_at).toLocaleString("en-US", { timeZone: "America/New_York" })}
                     </p>
                   </div>
                 </div>

@@ -165,12 +165,13 @@ export default function RedemptionHistoryPage() {
   const formatExpiryDate = (expiresAt: string | null) => {
     if (!expiresAt) return null;
     const date = new Date(expiresAt);
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return date.toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" });
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
+      timeZone: "America/New_York",
       month: "short",
       day: "numeric",
       year: "numeric",

@@ -28,10 +28,19 @@ export default async function AdminGrantsPage() {
     .order("created_at", { ascending: false });
 
   // Mark cycles as closed if end_date has passed (belt-and-suspenders fix)
+  // Use date-only comparison in EST timezone to avoid UTC midnight issues
   const now = new Date();
+  const isDateBefore = (dateStr: string, compareDate: Date) => {
+    if (!dateStr) return false;
+    // Parse as EST by appending a time known to be in EST range
+    const [year, month, day] = dateStr.split('-').map(Number);
+    // Create date at 11:59:59 PM EST to ensure we're comparing the end of day
+    const dateEndOfDay = new Date(year, month - 1, day, 23, 59, 59);
+    return dateEndOfDay < compareDate;
+  };
   const cyclesWithClosedStatus = cycles?.map((c: any) => ({
     ...c,
-    status: c.end_date && new Date(c.end_date) < now && c.status === 'open' ? 'closed' : c.status,
+    status: isDateBefore(c.end_date, now) && c.status === 'open' ? 'closed' : c.status,
   }));
 
   // Get per-cycle grant stats via RPC - bypasses 1000 row limit

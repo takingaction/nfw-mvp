@@ -26,6 +26,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { getCategory } from "@/lib/member-categories";
+import { parseESTDate, endOfESTDay, startOfCurrentPeriod, parseJoinedAt } from "@/lib/dates";
 
 type DateRangeOption = {
   label: string;
@@ -286,55 +287,22 @@ export default function AdminAnalyticsClient({
 
     if (dateRange === "custom") {
       if (!customStartDate) return new Date(0);
-      // Parse YYYY-MM-DD and create date in UTC (date input returns YYYY-MM-DD)
-      const parts = customStartDate.split("-");
-      const utcMs = Date.UTC(
-        Number(parts[0]),
-        Number(parts[1]) - 1,
-        Number(parts[2]),
-        0,
-        0,
-        0,
-        0
-      );
-      return new Date(utcMs);
+      return parseESTDate(customStartDate);
     }
 
-    if (dateRange === -1) {
-      // Month to date - start of current month
-      return new Date(now.getFullYear(), now.getMonth(), 1);
-    }
-
-    if (dateRange === -2) {
-      // Quarter to date - start of current quarter
-      const quarterMonth = Math.floor(now.getMonth() / 3) * 3;
-      return new Date(now.getFullYear(), quarterMonth, 1);
-    }
-
-    if (dateRange === -3) {
-      // Year to date - start of current year
-      return new Date(now.getFullYear(), 0, 1);
+    if (dateRange === -1 || dateRange === -2 || dateRange === -3) {
+      const period = dateRange === -1 ? 'month' : dateRange === -2 ? 'quarter' : 'year';
+      return startOfCurrentPeriod(period);
     }
 
     // Regular day offset
     return new Date(now.getTime() - dateRange * 24 * 60 * 60 * 1000);
   }, [dateRange, customStartDate]);
 
-  // Get end date for custom range (end of end date day)
+  // Get end date for custom range (end of end date day in EST)
   const endDate = useMemo(() => {
     if (dateRange !== "custom" || !customEndDate) return new Date();
-    // Parse YYYY-MM-DD and create end-of-day in UTC (date input returns YYYY-MM-DD)
-    const parts = customEndDate.split("-");
-    const utcMs = Date.UTC(
-      Number(parts[0]),
-      Number(parts[1]) - 1,
-      Number(parts[2]),
-      23,
-      59,
-      59,
-      999
-    );
-    return new Date(utcMs);
+    return endOfESTDay(parseESTDate(customEndDate));
   }, [dateRange, customEndDate]);
 
   // Helper to check if a date is within range
@@ -359,7 +327,7 @@ export default function AdminAnalyticsClient({
   const membersByDay = useMemo(() => {
     const map: Record<string, number> = {};
     filteredProfiles.forEach((p) => {
-      const d = p.joined_at!.slice(0, 10);
+      const d = parseJoinedAt(p.joined_at!);
       map[d] = (map[d] || 0) + 1;
     });
     return Object.entries(map)

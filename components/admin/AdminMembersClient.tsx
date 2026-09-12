@@ -17,6 +17,7 @@ import {
 import { FreeMembershipApprovalModal } from "@/components/admin/FreeMembershipApprovalModal";
 import { DeleteMemberModal } from "@/components/admin/DeleteMemberModal";
 import { getCategory } from "@/lib/member-categories";
+import { formatESTDisplay } from "@/lib/dates";
 
 const ALLOWED_DELETE_EMAILS = [
   "ron@myherodesign.com",
@@ -480,11 +481,7 @@ export default function AdminMembersClient({
 
   const formatDate = (date: string | null) => {
     if (!date) return "—";
-    return new Date(date).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    return formatESTDisplay(new Date(date));
   };
 
   const currentStatus =
@@ -843,7 +840,10 @@ export default function AdminMembersClient({
                 <div className="bg-white p-3 border border-nfw-blackberry/5">
                   <p className="text-nfw-blackberry/40 mb-1">Date of Birth</p>
                   <p className="font-semibold text-nfw-blackberry">
-                    {selected.date_of_birth ? new Date(selected.date_of_birth).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : "—"}
+                    {selected.date_of_birth ? (() => {
+                      const [y, m, d] = selected.date_of_birth!.split('-').map(Number);
+                      return new Date(y, m - 1, d).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "2-digit", day: "2-digit", year: "numeric" });
+                    })() : "—"}
                   </p>
                 </div>
                 <div className="bg-white p-3 border border-nfw-blackberry/5">

@@ -91,7 +91,7 @@ export default function RecentRedemptions() {
   const formatExpiryDate = (expiresAt: string | null): string => {
     if (!expiresAt) return "";
     const date = new Date(expiresAt);
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return date.toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" });
   };
 
   const formatDate = (dateString: string) => {
@@ -99,9 +99,7 @@ export default function RecentRedemptions() {
     const now = new Date();
 
     const toLocalDate = (d: Date) => {
-      const local = new Date(d);
-      local.setMinutes(local.getMinutes() + local.getTimezoneOffset());
-      return local;
+      return new Date(d.toLocaleString("en-US", { timeZone: "America/New_York" }));
     };
 
     const isSameDay = (d1: Date, d2: Date) => {
@@ -126,7 +124,7 @@ export default function RecentRedemptions() {
 
     if (diffDays < 7) return `${diffDays} days ago`;
     if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return date.toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" });
   };
 
   const getRedemptionTypeLabel = (type: string) => {
