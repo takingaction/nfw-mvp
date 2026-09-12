@@ -153,11 +153,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check monthly limit (1 per month, any product) - THIS IS NOW THE FIRST CHECK
+    // Monthly limit checks (1 per month, any product)
     const now = new Date();
     const claimMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
     
-    // Step 0: Check for existing pending claim FIRST (before ANY inserts)
+    // Step 0: Check for existing in-progress checkout (before ANY inserts)
     const { data: existingPending } = await supabaseAdmin
       .from("pending_monthly_claims")
       .select("id")
@@ -188,7 +188,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Step 3: INSERT zero_dollar_claims FIRST to get the real UUID
+    // Step 2: Check monthly completed (1 per month, any product)
+    // This is the ONLY server-side enforcement of the one-per-month rule.
+    // pending_monthly_claims is just an in-progress lock and is released by the
+    // webhook once the order completes, so it does NOT block a second claim.
+    const { data: monthlyClaim } = await supabaseAdmin
+      .from("zero_dollar_claims")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("claim_month", claimMonth)
+      .in("status", ["completed", "fulfilled", "paid"])
+      .limit(1);
+
+    if (monthlyClaim && monthlyClaim.length > 0) {
+      return NextResponse.json(
+        { error: "You have already claimed a product this month" },
+        { status: 400 }
+      );
+    }
+
+    // Step 3: INSERT zero_dollar_claims to get the real UUID
     // We need the real claim ID BEFORE calling Shopify so we can put it in the note
     const { data: claimData, error: claimInsertError } = await supabaseAdmin
       .from("zero_dollar_claims")

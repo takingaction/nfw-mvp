@@ -14940,3 +14940,52 @@ length-capped. Same Slack webhook (`SLACK_REFUND_WEBHOOK_URL`).
 
 **Build:** web `tsc` 0 / `next build` ✓; mobile `tsc` 0, `expo lint` clean, `expo-doctor` 21/21,
 Metro bundle 11.6 MB OK.
+
+## Session 2026-09-12: ZDS Monthly Limit Regression (one-per-month check deleted)
+
+### Symptom
+Members could complete multiple Zero Dollar Store orders in the same month.
+
+### Root cause
+Commit `8319d47` (2026-09-10, "use real claim UUID in Shopify note…") reordered the checkout
+flow so the `zero_dollar_claims` INSERT runs before the Shopify call. While rewriting that
+block, the diff **replaced** "Step 2: Check monthly completed" with the new INSERT instead of
+moving it. The step comments went 0 → 1 → 3, which is how it was spotted.
+
+With that block gone there was **no server-side enforcement** of the rule, because:
+- `pending_monthly_claims` is only an *in-progress* lock — the `orders/create` webhook deletes
+  it when the order completes, so complete → lock released → checkout again.
+- The webhook no longer enforces a monthly limit (`rejected_monthly_limit` status exists but
+  nothing sets it).
+- `/api/store/claims/check` only greys out UI buttons.
+
+### Fix
+`app/api/shopify/checkout/route.ts` — restored Step 2 between the lifetime-duplicate check and
+the `zero_dollar_claims` INSERT:
+```ts
+.from("zero_dollar_claims").select("id")
+.eq("user_id", userId).eq("claim_month", claimMonth)
+.in("status", ["completed", "fulfilled", "paid"]).limit(1)
+→ 400 "You have already claimed a product this month"
+```
+Step comments now run 0–6 with no gap. No schema/webhook/client changes.
+
+**Rule:** the checkout route is the *sole* server-side enforcement point for one-per-month.
+Any refactor of that route must keep Steps 0 (pending lock), 1 (lifetime per product) and
+2 (monthly completed) intact.
+
+### Follow-ups (not done)
+- Optional defense-in-depth: partial unique index on `zero_dollar_claims (user_id, claim_month)
+  WHERE status IN ('completed','fulfilled','paid')`. Blocked until this month's duplicate rows
+  are resolved; a violation would surface as a webhook UPDATE error (needs a log line).
+- Find members who double-claimed since 2026-09-10:
+  ```sql
+  SELECT z.user_id, p.email, z.claim_month, COUNT(*) AS completed_claims
+  FROM zero_dollar_claims z JOIN profiles p ON p.id = z.user_id
+  WHERE z.status IN ('completed','fulfilled','paid') AND z.claimed_at >= '2026-09-10'
+  GROUP BY 1,2,3 HAVING COUNT(*) > 1 ORDER BY 4 DESC;
+  ```
+- `app/api/store/claims/check/route.ts:17` — `endOfMonth` is midnight on the last day, so a
+  claim later that day doesn't grey out buttons until the next page load. UI-only.
+
+**Build:** `tsc` 0 errors, eslint clean on the route, `next build` ✓.
