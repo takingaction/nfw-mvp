@@ -40,6 +40,7 @@ export default function GrantApplicationForm({
   const [showFileError, setShowFileError] = useState(false);
   const [fileErrorMessage, setFileErrorMessage] = useState("");
   const [certificationChecked, setCertificationChecked] = useState(false);
+  const [confirmError, setConfirmError] = useState("");
 
   const [formData, setFormData] = useState({
     cycle_id: cycles.length === 1 ? cycles[0].id : "",
@@ -55,6 +56,7 @@ export default function GrantApplicationForm({
   const handleOpenConfirm = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setConfirmError("");
 
     if (!formData.cycle_id) {
       setError("Please select a grant");
@@ -76,14 +78,28 @@ export default function GrantApplicationForm({
       return;
     }
 
+    if (!submitConsentChecked) {
+      setError("Please read and accept the consent text to continue");
+      return;
+    }
+
+    if (!certificationChecked) {
+      setError("Please certify your eligibility to continue");
+      return;
+    }
+
     setShowConfirm(true);
   };
 
   const handleConfirmSubmit = async () => {
-    if (!submitConsentChecked) return;
+    if (!submitConsentChecked || !certificationChecked) {
+      setConfirmError("Please read and accept the consent text and certify your eligibility to continue.");
+      return;
+    }
     if (error) return;
     setLoading(true);
     setError("");
+    setConfirmError("");
 
     try {
       const response = await fetch("/api/grants/create", {
@@ -465,7 +481,10 @@ export default function GrantApplicationForm({
                   type="checkbox"
                   id="submit-certification"
                   checked={certificationChecked}
-                  onChange={(e) => setCertificationChecked(e.target.checked)}
+                  onChange={(e) => {
+                    setCertificationChecked(e.target.checked);
+                    setConfirmError("");
+                  }}
                   className="mt-1 w-4 h-4 accent-nfw-blackberry flex-shrink-0"
                 />
                 <label
@@ -480,7 +499,10 @@ export default function GrantApplicationForm({
                   type="checkbox"
                   id="submit-consent"
                   checked={submitConsentChecked}
-                  onChange={(e) => setSubmitConsentChecked(e.target.checked)}
+                  onChange={(e) => {
+                    setSubmitConsentChecked(e.target.checked);
+                    setConfirmError("");
+                  }}
                   className="mt-1 w-4 h-4 accent-nfw-blackberry flex-shrink-0"
                 />
                 <label
@@ -512,6 +534,11 @@ export default function GrantApplicationForm({
                 </div>
               </details>
             </div>
+            {confirmError && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-700 font-serif">{confirmError}</p>
+              </div>
+            )}
             <div className="flex gap-3">
               <button
                 type="button"

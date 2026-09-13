@@ -62,6 +62,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!certification_consent) {
+      return NextResponse.json(
+        { error: "You must certify your eligibility to submit a grant application" },
+        { status: 400 },
+      );
+    }
+
     const { data: cycleData } = await supabaseAdmin
       .from("grant_cycles")
       .select("id, status, is_testing_only")

@@ -15263,3 +15263,53 @@ Added a per-cycle **Reset AI Evaluations** button for testing and re-running flo
 
 ### Build Status
 - `npm run build` ✓ (TypeScript 0 errors)
+
+## Session 2026-09-15: Grant Application Consent Validation Fixes
+
+### Goal
+
+Fix three consent validation gaps in the grant application flow:
+
+1. **Bug 1**: `handleOpenConfirm` did not check `submitConsentChecked` or `certificationChecked` before opening the confirmation modal
+2. **Bug 2**: No inline error when "Confirm & Submit" was clicked without consent checked
+3. **Bug 3**: Server-side `certification_consent` was saved but never validated — forged POST requests could bypass consent
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/GrantApplicationForm.tsx` | Added consent check in `handleOpenConfirm` before `setShowConfirm(true)`; added `confirmError` state + inline error banner in modal; clears on checkbox change |
+| `app/api/grants/create/route.ts` | Added 400 guard: returns error if `certification_consent` is falsy |
+
+### Step 1 — Modal block (`handleOpenConfirm`)
+
+```typescript
+if (!submitConsentChecked) {
+  setError("Please read and accept the consent text to continue");
+  return;
+}
+if (!certificationChecked) {
+  setError("Please certify your eligibility to continue");
+  return;
+}
+```
+
+### Step 2 — Inline modal error
+
+- Added `confirmError` state; `handleConfirmSubmit` sets it when consent fails
+- Error displayed as red banner above buttons in modal
+- Both checkboxes clear `confirmError` on change
+
+### Step 3 — Server guard
+
+```typescript
+if (!certification_consent) {
+  return NextResponse.json(
+    { error: "You must certify your eligibility to submit a grant application" },
+    { status: 400 },
+  );
+}
+```
+
+### Build Status
+- `npm run build` ✓ (TypeScript 0 errors)
