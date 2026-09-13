@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Check, AlertCircle, Lock, Eye, EyeOff, Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import GrantScoringRubric from "@/components/admin/GrantScoringRubric";
 import GrantApplicationScorer, { ScoreData } from "@/components/admin/GrantApplicationScorer";
+import AiBadge from "@/components/admin/AiBadge";
 
 interface Grant {
   id: string;
@@ -31,6 +32,9 @@ interface Grant {
   documents?: any[];
   applications_this_month?: number;
   total_available_grants?: number;
+  ai_relevance?: "relevant" | "irrelevant" | "uncertain" | "not_evaluated" | null;
+  ai_reasoning?: string | null;
+  ai_invalidated_at?: string | null;
 }
 
 export default function SecondReviewPage() {
@@ -241,6 +245,22 @@ export default function SecondReviewPage() {
   const completedCount = grants.filter((g) => g.grant_scores?.[0]?.is_complete).length;
   const totalCount = grants.length;
 
+  // Sort: non-flagged first, AI-flagged last
+  const isAiFlagged = (g: Grant) =>
+    g.ai_relevance === "irrelevant" || g.ai_relevance === "uncertain";
+  const sortedGrants = useMemo(() => {
+    return [...grants].sort((a, b) => {
+      const aFlagged = isAiFlagged(a);
+      const bFlagged = isAiFlagged(b);
+      if (aFlagged === bFlagged) {
+        return new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime();
+      }
+      return aFlagged ? 1 : -1;
+    });
+  }, [grants]);
+
+  const aiFlaggedCount = grants.filter(isAiFlagged).length;
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-nfw-dove">
@@ -346,7 +366,7 @@ export default function SecondReviewPage() {
             </div>
           </div>
           {/* Running Tally */}
-          <div className="flex items-center gap-6 text-xs">
+          <div className="flex items-center gap-6 text-xs flex-wrap">
             <span className="text-nfw-blackberry/60 font-semibold uppercase tracking-wider">Combined Status:</span>
             <div className="flex items-center gap-1">
               <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded font-bold">{combinedStatusCounts.approved}</span>
@@ -364,6 +384,12 @@ export default function SecondReviewPage() {
               <span className="px-2 py-0.5 bg-nfw-stone/30 text-nfw-blackberry/60 rounded font-bold">{combinedStatusCounts.unscored}</span>
               <span className="text-nfw-blackberry/60">Unscored</span>
             </div>
+            {aiFlaggedCount > 0 && (
+              <div className="flex items-center gap-1 ml-auto">
+                <span className="px-2 py-0.5 bg-nfw-citrine/30 text-nfw-blackberry rounded font-bold">{aiFlaggedCount}</span>
+                <span className="text-nfw-blackberry/60">🤖 AI flagged</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -437,7 +463,7 @@ export default function SecondReviewPage() {
               </button>
             </div>
             <div className="space-y-3 overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 180px)' }}>
-              {grants.filter(g => {
+              {sortedGrants.filter(g => {
                 if (statusFilter !== "all" && getCombinedStatus(g) !== statusFilter) return false;
                 if (multiAppFilter === "2plus" && (g.applications_this_month || 1) < 2) return false;
                 return true;
@@ -490,17 +516,24 @@ export default function SecondReviewPage() {
                             >
                               {visibleNames.has(grant.id) ? (grant.profiles?.full_name || "Unknown") : "••••••"}
                             </p>
-                            {grant.is_nominating && (
-                              <span
-                                className={`text-xs ${
-                                  selectedGrant === grant.id
-                                    ? "text-white/70"
-                                    : "text-nfw-blackberry/50"
-                                }`}
-                              >
-                                Nomination
-                              </span>
-                            )}
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              {grant.is_nominating && (
+                                <span
+                                  className={`text-xs ${
+                                    selectedGrant === grant.id
+                                      ? "text-white/70"
+                                      : "text-nfw-blackberry/50"
+                                  }`}
+                                >
+                                  Nomination
+                                </span>
+                              )}
+                              <AiBadge
+                                ai_relevance={grant.ai_relevance}
+                                ai_invalidated_at={grant.ai_invalidated_at}
+                                compact
+                              />
+                            </div>
                           </div>
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleNameVisibility(grant.id); }}
@@ -584,7 +617,9 @@ export default function SecondReviewPage() {
                 key={selectedGrantData.id}
                 grant={selectedGrantData}
                 reviewerType="second"
+                cycleId={cycleId}
                 onSave={handleSaveScore}
+                onAiChange={fetchGrants}
                 saving={saving}
                 hidePersonalInfo={true}
                 documents={selectedGrantData.documents}

@@ -3,6 +3,7 @@ import { requireGrantsAccess } from "@/middleware/adminCheck";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import AdminGrantReviewer from "@/components/admin/AdminGrantReviewer";
+import AiReevaluateButton from "@/components/admin/AiReevaluateButton";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,6 +42,11 @@ export default async function AdminGrantCyclePage({
   if (grantsError) {
     console.error("Error fetching grants:", grantsError);
   }
+
+  // Count of submitted grants that haven't been AI-evaluated yet
+  const unevaluatedAiCount = (grants || []).filter(
+    (g: any) => g.status === "submitted" && (g.ai_relevance === "not_evaluated" || !g.ai_relevance),
+  ).length;
 
   // Get grants in scope for second review (first score >= 7 OR first flagged)
   const grantsInScope = grants?.filter((g: any) => {
@@ -165,6 +171,11 @@ export default async function AdminGrantCyclePage({
             >
               Download CSV
             </a>
+            <AiReevaluateButton
+              cycleId={id}
+              unevaluatedCount={unevaluatedAiCount}
+              totalCount={(grants || []).filter((g: any) => g.status === "submitted").length}
+            />
           </div>
         </div>
 

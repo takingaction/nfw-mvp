@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Loader2, AlertTriangle, Check, MessageSquare, ChevronDown, Eye, EyeOff, DollarSign, Receipt, User } from "lucide-react";
+import AiBadge from "./AiBadge";
+import AiEvaluationCallout from "./AiEvaluationCallout";
 
 interface Grant {
   id: string;
@@ -42,6 +44,9 @@ interface Grant {
   documents?: any[];
   applications_this_month?: number;
   total_available_grants?: number;
+  ai_relevance?: "relevant" | "irrelevant" | "uncertain" | "not_evaluated" | null;
+  ai_reasoning?: string | null;
+  ai_invalidated_at?: string | null;
 }
 
 interface StripeCheckResult {
@@ -67,6 +72,7 @@ interface GrantCombinedScoresProps {
   onFinalize: () => Promise<void>;
   onCheckStripeStatus: () => Promise<StripeCheckResult[]>;
   onSendMoney: (grantId: string) => Promise<{ error?: string }>;
+  onAiChange?: () => void;
   loading?: boolean;
   finalizing?: boolean;
   alreadyFinalized?: boolean;
@@ -80,6 +86,7 @@ export default function GrantCombinedScores({
   onFinalize,
   onCheckStripeStatus,
   onSendMoney,
+  onAiChange,
   loading = false,
   finalizing = false,
   alreadyFinalized = false,
@@ -135,6 +142,18 @@ export default function GrantCombinedScores({
   };
 
   const maxSelectable = cycle.grants_available;
+
+  // Sort: AI-flagged apps go to the bottom (preserving rank within each group)
+  const isAiFlagged = (g: Grant) =>
+    g.ai_relevance === "irrelevant" || g.ai_relevance === "uncertain";
+  const sortedGrants = useMemo(() => {
+    return [...grants].sort((a, b) => {
+      const aFlagged = isAiFlagged(a);
+      const bFlagged = isAiFlagged(b);
+      if (aFlagged !== bFlagged) return aFlagged ? 1 : -1;
+      return (a.rank ?? 0) - (b.rank ?? 0);
+    });
+  }, [grants]);
 
   // Compute from grants (what API says) OR local state (what user just toggled)
   const getSelectedIds = () => {
@@ -478,7 +497,7 @@ export default function GrantCombinedScores({
 
       {/* Header Row */}
       <div className="bg-white border border-nfw-blackberry/10 overflow-hidden">
-        <div className={`grid gap-2 p-3 border-b border-nfw-blackberry/10 ${alreadyFinalized ? "grid-cols-[56px_48px_48px_minmax(200px,1fr)_56px_80px_64px_80px_56px_140px_90px_28px_28px]" : "grid-cols-[56px_48px_48px_minmax(180px,1fr)_56px_80px_64px_80px_56px_90px]"}`}>
+        <div className={`grid gap-2 p-3 border-b border-nfw-blackberry/10 ${alreadyFinalized ? "grid-cols-[56px_48px_48px_minmax(200px,1fr)_80px_56px_80px_64px_80px_56px_140px_90px_28px_28px]" : "grid-cols-[56px_48px_48px_minmax(180px,1fr)_80px_56px_80px_64px_80px_56px_90px]"}`}>
           <div className="text-left text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
             Rank
           </div>
@@ -490,6 +509,9 @@ export default function GrantCombinedScores({
           </div>
           <div className="text-left text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
             Applicant
+          </div>
+          <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
+            AI
           </div>
           <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
             Combined
@@ -524,7 +546,7 @@ export default function GrantCombinedScores({
 
         {/* Grant Rows */}
         <div>
-          {grants
+          {sortedGrants
             .filter((grant) => {
               if (multiAppFilter === "2plus") {
                 return (grant.applications_this_month || 1) >= 2;
@@ -542,7 +564,7 @@ export default function GrantCombinedScores({
                 {/* Header Row */}
                 <div
                   onClick={() => handleToggleExpand(grant.id)}
-                  className={`grid gap-2 p-3 border-b border-nfw-blackberry/5 cursor-pointer ${alreadyFinalized ? "grid-cols-[56px_48px_48px_minmax(200px,1fr)_56px_80px_64px_80px_56px_140px_90px_28px_28px]" : "grid-cols-[56px_48px_48px_minmax(180px,1fr)_56px_80px_64px_80px_56px_90px]"} ${isExpanded ? "bg-nfw-aubergine/5 border-l-4 border-l-nfw-aubergine" : isSelected ? "bg-nfw-citrine/20" : "bg-gray-50"}`}
+                  className={`grid gap-2 p-3 border-b border-nfw-blackberry/5 cursor-pointer ${alreadyFinalized ? "grid-cols-[56px_48px_48px_minmax(200px,1fr)_80px_56px_80px_64px_80px_56px_140px_90px_28px_28px]" : "grid-cols-[56px_48px_48px_minmax(180px,1fr)_80px_56px_80px_64px_80px_56px_90px]"} ${isExpanded ? "bg-nfw-aubergine/5 border-l-4 border-l-nfw-aubergine" : isSelected ? "bg-nfw-citrine/20" : "bg-gray-50"}`}
                 >
                   <div className="flex items-center gap-2">
                     <ChevronDown
@@ -581,6 +603,13 @@ export default function GrantCombinedScores({
                         </p>
                       )}
                     </div>
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <AiBadge
+                      ai_relevance={grant.ai_relevance}
+                      ai_invalidated_at={grant.ai_invalidated_at}
+                      compact
+                    />
                   </div>
                   <div className="flex items-center justify-center">
                     <span className="text-xl font-black text-nfw-blackberry">
@@ -742,6 +771,19 @@ export default function GrantCombinedScores({
                 <AccordionContent isOpen={isExpanded}>
                   <div className="p-4 bg-white">
                     <div className="space-y-4">
+                      {/* AI Evaluation Callout (combined page is read-only on skip/restore) */}
+                      <AiEvaluationCallout
+                        cycleId={cycle.id}
+                        grantId={grant.id}
+                        evaluation={{
+                          ai_relevance: grant.ai_relevance,
+                          ai_reasoning: grant.ai_reasoning,
+                          ai_invalidated_at: grant.ai_invalidated_at,
+                        }}
+                        onSkipped={onAiChange}
+                        onRestored={onAiChange}
+                        readOnly={alreadyFinalized}
+                      />
                       <div>
                         <h4 className="font-bold text-nfw-aubergine text-xs uppercase tracking-wider mb-1">Who Are You?</h4>
                         <p className="text-sm text-nfw-blackberry/80 font-serif">{grant.who_are_you}</p>

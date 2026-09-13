@@ -3,11 +3,14 @@
 import { useState, useEffect } from "react";
 import { Loader2, MessageSquare } from "lucide-react";
 import GrantScoreInput from "./GrantScoreInput";
+import AiEvaluationCallout from "./AiEvaluationCallout";
 
 interface GrantApplicationScorerProps {
   grant: any;
   reviewerType: "first" | "second";
+  cycleId?: string;
   onSave: (grantId: string, data: ScoreData) => void;
+  onAiChange?: () => void;
   saving?: boolean;
   hidePersonalInfo?: boolean;
   documents?: any[];
@@ -33,7 +36,9 @@ const decodeHtml = (html: string): string => {
 export default function GrantApplicationScorer({
   grant,
   reviewerType,
+  cycleId,
   onSave,
+  onAiChange,
   saving = false,
   hidePersonalInfo = false,
   documents,
@@ -208,6 +213,20 @@ export default function GrantApplicationScorer({
 
       {/* Application Content */}
       <div className="bg-nfw-dove p-3 space-y-3 text-sm">
+        {/* AI Evaluation Callout (only when AI flagged this app) */}
+        {cycleId && (
+          <AiEvaluationCallout
+            cycleId={cycleId}
+            grantId={grant.id}
+            evaluation={{
+              ai_relevance: grant.ai_relevance,
+              ai_reasoning: grant.ai_reasoning,
+              ai_invalidated_at: grant.ai_invalidated_at,
+            }}
+            onSkipped={onAiChange}
+            onRestored={onAiChange}
+          />
+        )}
         <div>
           <p className="text-xs font-semibold text-nfw-blackberry/40 uppercase tracking-wider mb-1">
             {grant.is_nominating ? "About the nominee" : "Who are you?"}

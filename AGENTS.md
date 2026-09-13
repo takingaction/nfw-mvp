@@ -15073,3 +15073,154 @@ if (foundClaimId) {
 - `app/api/shopify/webhook/route.ts` — cancel handler now targets specific claim
 
 **Build:** `tsc` 0 errors, eslint clean on the route, `next build` ✓.
+
+---
+
+## Session 2026-09-14: AI Grant Application Relevance Filter
+
+### Overview
+
+Implemented a Claude-powered system that reads each grant application against the cycle's description and flags applications that don't meet basic relevance criteria. Reviewers can "Skip & Mark Invalid" flagged apps (auto-rejecting them at finalization) or "Restore as Valid" to override.
+
+**Storage:** 6 new columns on `grants`
+**Triggers:** On submission + auto-run on "Start Scoring" + manual re-eval button
+**UI surface:** AI badge in lists (red=Irrelevant, yellow=Uncertain, "Skipped" after reviewer action) + yellow callout with Skip & Restore buttons + accordion callout on combined page
+
+### Database Migration
+
+**File:** `supabase/migrations/162_add_ai_evaluation_to_grants.sql`
+
+```sql
+ALTER TABLE grants
+  ADD COLUMN ai_relevance TEXT
+    CHECK (ai_relevance IN ('relevant', 'irrelevant', 'uncertain', 'not_evaluated'))
+    DEFAULT 'not_evaluated',
+  ADD COLUMN ai_reasoning TEXT,
+  ADD COLUMN ai_evaluated_at TIMESTAMPTZ,
+  ADD COLUMN ai_model_version TEXT,
+  ADD COLUMN ai_invalidated_at TIMESTAMPTZ,
+  ADD COLUMN ai_invalidated_by UUID REFERENCES profiles(id);
+
+CREATE INDEX idx_grants_ai_pending
+  ON grants(cycle_id, ai_relevance)
+  WHERE ai_relevance IN ('irrelevant', 'uncertain') AND ai_invalidated_at IS NULL;
+```
+
+`grants.status` CHECK constraint untouched. `ai_invalidated_at/by` records reviewer skip decisions without overwriting human scores.
+
+### Claude Wrapper — `lib/anthropic.ts`
+
+- Lazy init (matches `lib/slack-notifications.ts` pattern)
+- Single export: `evaluateGrantApplication(input)` returns `{ relevance, reasoning, model, inputTokens, outputTokens }`
+- Model: `claude-sonnet-4-5-20250929`, temperature 0, max_tokens 300, 8s timeout via AbortController
+- System prompt instructs: relevant=clear fit, irrelevant=clearly outside scope, uncertain=can't determine
+- "Be strict but fair — if even tangentially related, lean toward relevant"
+- Never throws — returns `{ relevance: 'uncertain' }` on any failure
+- Missing `ANTHROPIC_API_KEY` → logs warning, returns uncertain
+- JSON parse failure → returns uncertain
+- Strip markdown fences if Claude wraps response
+
+### New API Routes
+
+**`POST /api/admin/grants/[id]/ai-reevaluate?onlyNonRelevant=true`** — Admin only. Default re-evaluates only apps not currently 'relevant'. Pass `?onlyNonRelevant=false` to force full re-eval. Sequential with 200ms throttle. Returns `{ total, reEvaluated, failed }`.
+
+**`POST /api/admin/grants/[id]/ai-skip`** — Reviewer/admin. Body: `{ grantId, action: 'skip' | 'restore' }`.
+- `skip`: sets `status='not_approved'`, `reviewed_at=NOW()`, `ai_invalidated_at=NOW()`, `ai_invalidated_by=user.id`. **Does NOT delete `grant_scores` rows** (preserved for analytics).
+- `restore`: clears `status='submitted'`, `reviewed_at=null`, `ai_invalidated_at/by=null`.
+- Validates grant belongs to cycle. No email sent here — finalization handles emails.
+
+### AI Eval Triggers
+
+**1. On submission** (`app/api/grants/create/route.ts`)
+After grant INSERT, dynamic-imported `evaluateGrantApplication()` runs fire-and-forget. Sets `ai_relevance`, `ai_reasoning`, `ai_evaluated_at`, `ai_model_version`. `maxDuration = 60` on the route.
+
+**2. Auto-run on Start Scoring** (`app/api/admin/grants/[id]/scoring/start/route.ts`)
+After `scoring_started_at` is set, iterates submitted grants with `ai_relevance='not_evaluated'`, evaluates each, updates DB. 200ms throttle. Awaits before responding so flags populate by the time reviewer lands on first review page. `maxDuration = 300`.
+
+**3. Manual re-eval** — admin button on cycle detail page calls `/ai-reevaluate`.
+
+### New UI Components
+
+**`components/admin/AiBadge.tsx`** — Compact inline badge:
+- `irrelevant` → red "Irrelevant"
+- `uncertain` → yellow "Uncertain"
+- `relevant` (only if `showRelevant=true`) → green "Aligned"
+- `not_evaluated` → null
+- When `ai_invalidated_at` set → red "Skipped" (overrides relevance label)
+
+**`components/admin/AiEvaluationCallout.tsx`** — Yellow callout with Skip & Restore buttons:
+- Shows only when `ai_relevance` is `irrelevant` or `uncertain`
+- Display: "AI Assessment: Likely Irrelevant/Cannot Determine" + reasoning + advisory text
+- If `ai_invalidated_at` is set: shows "Marked invalid on [date]" with "Restore as Valid" button
+- Otherwise: shows red "Skip & Mark Invalid" button
+- `readOnly` prop hides buttons (used on combined page after finalization)
+- Optimistic UI — calls API in background
+
+**`components/admin/AiReevaluateButton.tsx`** — Two buttons + status text:
+- "Re-run AI Filter" → defaults to non-relevant-only
+- "Force Full Re-run" → re-evaluates all submitted
+- Auto-reload 1.5s after success
+
+### Modified UI Files
+
+**First/Second Review Pages** (`scoring/first/page.tsx`, `scoring/second/page.tsx`):
+- Imported `AiBadge`, `useMemo` for sort
+- `sortedGrants` memo: unflagged first (preserve submission order), flagged last
+- Pass `cycleId` and `onAiChange={fetchGrants}` to `GrantApplicationScorer`
+- Per-row badge next to applicant name (compact mode)
+- Tally shows `🤖 AI flagged (N)` count
+
+**Combined Scores Page** (`components/admin/GrantCombinedScores.tsx`):
+- New "AI" column header between Applicant and Combined
+- Header grid updated to include 80px AI column (both finalized and non-finalized variants)
+- Per-row badge cell in the same position
+- Sort: flagged to bottom (preserve rank within each group)
+- Accordion callout at top with `readOnly={alreadyFinalized}` so skip/restore disabled after finalize
+
+**`GrantApplicationScorer.tsx`** — Renders `AiEvaluationCallout` at top of dove-colored application content block. New props: `cycleId`, `onAiChange`.
+
+**Cycle Detail Page** (`/admin/grants/[id]/page.tsx`):
+- `<AiReevaluateButton>` added next to CSV download
+- Computes `unevaluatedAiCount` server-side for button title
+
+**`AdminGrantReviewer.tsx`**:
+- AI badge in right-side meta column of each list card
+- AI callout at top of right review panel when one is selected (advisory only — no buttons here)
+
+### CSV Export
+
+`app/api/admin/grants/[id]/export/route.ts` — 4 new columns: `AI Relevance`, `AI Reasoning`, `AI Evaluated At`, `AI Skipped At`. `ai_reasoning` whitespace-normalized for readability.
+
+### Files Created
+- `supabase/migrations/162_add_ai_evaluation_to_grants.sql`
+- `lib/anthropic.ts`
+- `app/api/admin/grants/[id]/ai-reevaluate/route.ts`
+- `app/api/admin/grants/[id]/ai-skip/route.ts`
+- `components/admin/AiBadge.tsx`
+- `components/admin/AiEvaluationCallout.tsx`
+- `components/admin/AiReevaluateButton.tsx`
+
+### Files Modified
+- `package.json` + `package-lock.json` — Added `@anthropic-ai/sdk`
+- `.env.local` — Added `ANTHROPIC_API_KEY`
+- `app/api/grants/create/route.ts`
+- `app/api/admin/grants/[id]/scoring/start/route.ts`
+- `app/api/admin/grants/[id]/scores/{first,second,combined}/route.ts`
+- `app/api/admin/grants/[id]/export/route.ts`
+- `components/admin/GrantApplicationScorer.tsx`
+- `components/admin/GrantCombinedScores.tsx`
+- `components/admin/AdminGrantReviewer.tsx`
+- `app/admin/grants/[id]/page.tsx`
+- `app/admin/grants/[id]/scoring/{first,second,combined}/page.tsx`
+
+### Deploy Steps
+1. Run migration 162 in Supabase SQL Editor
+2. Add `ANTHROPIC_API_KEY` to Vercel project env vars (already in `.env.local`)
+3. Deploy — AI evaluation will auto-populate for existing cycles when admin clicks "Start Scoring" or "Re-run AI Filter"
+
+### Cost Estimate
+~$0.015/application. For 200 apps/cycle, ~$3/cycle.
+
+### Build Status
+- `npm run build` ✓ (TypeScript 0 errors)
+- Local-only testing; not pushed to Vercel at user request

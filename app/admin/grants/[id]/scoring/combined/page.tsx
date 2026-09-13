@@ -736,6 +736,7 @@ export default function CombinedScoresPage() {
           onFinalize={handleOpenConfirmModal}
           onCheckStripeStatus={handleCheckStripeStatus}
           onSendMoney={handleSendMoney}
+          onAiChange={fetchData}
           loading={loading}
           finalizing={finalizing}
           alreadyFinalized={finalized}

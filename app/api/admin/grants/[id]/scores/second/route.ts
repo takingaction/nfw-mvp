@@ -96,6 +96,12 @@ export async function GET(
         status,
         submitted_at,
         michelle_complete,
+        ai_relevance,
+        ai_reasoning,
+        ai_evaluated_at,
+        ai_model_version,
+        ai_invalidated_at,
+        ai_invalidated_by,
         profiles:user_id (full_name, email, city, state),
         grant_scores (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, is_complete, total_score)
       `)

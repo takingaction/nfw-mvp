@@ -7,6 +7,8 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
+export const maxDuration = 60;
+
 function isValidUUID(str: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(str);
@@ -161,10 +163,10 @@ export async function POST(request: Request) {
     const { data: userData } = await supabaseAdmin.auth.admin.getUserById(user.id);
 
     if (profile && userData?.user?.email) {
-      // Fetch grant cycle name
+      // Fetch grant cycle name + description for AI evaluation and email
       const { data: cycle } = await supabaseAdmin
         .from("grant_cycles")
-        .select("cycle_name")
+        .select("cycle_name, description")
         .eq("id", cycle_id)
         .single();
 
@@ -177,6 +179,31 @@ export async function POST(request: Request) {
           applicationId: grant.id,
         }).catch(console.error);
       });
+
+      // Fire-and-forget AI relevance evaluation
+      if (cycle) {
+        import("@/lib/anthropic").then(({ evaluateGrantApplication, AI_MODEL_VERSION }) => {
+          evaluateGrantApplication({
+            cycleName: cycle.cycle_name || "",
+            cycleDescription: cycle.description || "",
+            whoAreYou: who_are_you.trim(),
+            biggestChallenge: biggest_challenge.trim(),
+            fundUsage: fund_usage.trim(),
+          }).then(async (result) => {
+            await supabaseAdmin
+              .from("grants")
+              .update({
+                ai_relevance: result.relevance,
+                ai_reasoning: result.reasoning,
+                ai_evaluated_at: new Date().toISOString(),
+                ai_model_version: result.model || AI_MODEL_VERSION,
+              })
+              .eq("id", grant.id);
+          }).catch((err) => {
+            console.error("[grants/create] AI eval error:", err);
+          });
+        });
+      }
     }
 
     return NextResponse.json({ success: true, grantId: grant.id });

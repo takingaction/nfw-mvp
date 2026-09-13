@@ -10,6 +10,7 @@ import {
   User,
   X,
 } from "lucide-react";
+import AiBadge from "./AiBadge";
 
 const decodeHtml = (html: string): string => {
   if (typeof document === "undefined") return html || "";
@@ -235,6 +236,11 @@ export default function AdminGrantReviewer({
                         Ready to Pay!
                       </span>
                     )}
+                    <AiBadge
+                      ai_relevance={grant.ai_relevance}
+                      ai_invalidated_at={grant.ai_invalidated_at}
+                      compact
+                    />
                     {grant.is_nominating && (
                       <span className="text-xs px-2 py-0.5 bg-nfw-lilac/20 text-nfw-blackberry font-medium">
                         Nomination
@@ -353,6 +359,28 @@ export default function AdminGrantReviewer({
                   </div>
                 )}
               </div>
+
+              {/* AI Evaluation Callout (advisory) */}
+              {selected.ai_relevance &&
+                selected.ai_relevance !== "not_evaluated" &&
+                selected.ai_relevance !== "relevant" && (
+                  <div className="bg-nfw-citrine/15 border-l-4 border-nfw-citrine p-3">
+                    <p className="text-xs font-bold text-nfw-blackberry uppercase tracking-wider mb-1">
+                      AI Assessment:{" "}
+                      {selected.ai_relevance === "irrelevant"
+                        ? "Likely Irrelevant"
+                        : "Cannot Determine"}
+                    </p>
+                    {selected.ai_reasoning && (
+                      <p className="text-sm text-nfw-blackberry/80 font-serif">
+                        {selected.ai_reasoning}
+                      </p>
+                    )}
+                    <p className="text-xs text-nfw-blackberry/50 mt-2">
+                      Advisory only — use your own judgment.
+                    </p>
+                  </div>
+                )}
 
               {/* Application Answers */}
               <div className="space-y-4">
