@@ -78,16 +78,6 @@ export default function GrantApplicationForm({
       return;
     }
 
-    if (!submitConsentChecked) {
-      setError("Please read and accept the consent text to continue");
-      return;
-    }
-
-    if (!certificationChecked) {
-      setError("Please certify your eligibility to continue");
-      return;
-    }
-
     setShowConfirm(true);
   };
 
