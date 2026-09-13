@@ -15224,3 +15224,42 @@ After `scoring_started_at` is set, iterates submitted grants with `ai_relevance=
 ### Build Status
 - `npm run build` ✓ (TypeScript 0 errors)
 - Local-only testing; not pushed to Vercel at user request
+
+---
+
+## Session 2026-09-14: AI Evaluation Reset Button
+
+### Overview
+
+Added a per-cycle **Reset AI Evaluations** button for testing and re-running flows. Clears the 4 AI result columns for every grant in the cycle without touching reviewer skip decisions or grant status.
+
+### Scope (chosen behavior)
+
+- **Clears:** `ai_relevance` → `not_evaluated`, `ai_reasoning` → `NULL`, `ai_evaluated_at` → `NULL`, `ai_model_version` → `NULL`
+- **Preserved:** `ai_invalidated_at`, `ai_invalidated_by`, `grants.status`, `grant_scores.*`, human reviewer actions
+
+### Files Created
+- `app/api/admin/grants/[id]/ai-reset/route.ts` — POST endpoint, admin-only via `requireAdmin()`
+- `components/admin/AiResetButton.tsx` — Confirmation modal + button with danger styling
+
+### Files Modified
+- `app/admin/grants/[id]/page.tsx` — Added `<AiResetButton>` next to `<AiReevaluateButton>`
+
+### Behavior
+
+- Button on cycle detail page shows grant count and disabled state when 0 grants
+- Click → confirmation modal showing preserved vs cleared state, two-step cancel/confirm
+- After success: status message + 1.5s auto-reload (matches `AiReevaluateButton` pattern)
+- Apps that were "Skipped" by reviewers still show "Skipped" badge after reset (reviewer audit preserved)
+- Re-running AI via the existing "Re-run AI Filter" button repopulates the cleared columns
+
+### Why this is safe
+
+- Only clears 4 nullable columns (all repopulated on next AI eval)
+- Preserves reviewer audit trail
+- Preserves grant status (no app gets un-approved accidentally)
+- Admin-only via `requireAdmin()` (matches existing pattern)
+- Per-cycle scope limits blast radius
+
+### Build Status
+- `npm run build` ✓ (TypeScript 0 errors)

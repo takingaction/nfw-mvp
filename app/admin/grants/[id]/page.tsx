@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import AdminGrantReviewer from "@/components/admin/AdminGrantReviewer";
 import AiReevaluateButton from "@/components/admin/AiReevaluateButton";
+import AiResetButton from "@/components/admin/AiResetButton";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -175,6 +176,10 @@ export default async function AdminGrantCyclePage({
               cycleId={id}
               unevaluatedCount={unevaluatedAiCount}
               totalCount={(grants || []).filter((g: any) => g.status === "submitted").length}
+            />
+            <AiResetButton
+              cycleId={id}
+              totalCount={grants?.length || 0}
             />
           </div>
         </div>
