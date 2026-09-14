@@ -57,6 +57,7 @@ const adminSections: AdminSection[] = [
       { label: "Manage Members", href: "/admin/members" },
       { label: "Manage Grants", href: "/admin/grants" },
       { label: "Waitlist Management", href: "/admin/waitlist" },
+      { label: "Deletion Requests", href: "/admin/deletion-requests" },
       { label: "Incomplete Members", href: "/admin/incomplete-members" },
       { label: "Stripe Revenue Backfill", href: "/admin/backfill/stripe" },
     ],
