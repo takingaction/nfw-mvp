@@ -94,8 +94,45 @@ export function startOfCurrentPeriod(period: 'month' | 'quarter' | 'year'): Date
 }
 
 /**
+ * Format Date as EST "MMM DD" string for chart labels (e.g., "Sep 07")
+ * Uses manual formatting to ensure consistent output regardless of locale
+ * Zero-pads day for correct alphabetical sort (07 < 10)
+ */
+export function formatESTChartLabel(date: Date): string {
+  const parts = date.toLocaleDateString("en-US", {
+    timeZone: "America/New_York",
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  }).split(' ');
+  // parts = ["Sep", "07,", "2025"] - split by space
+  // We want "Sep 07" - month is parts[0], day removes comma from parts[1]
+  const month = parts[0];
+  const day = parts[1].replace(',', '');
+  return `${month} ${day}`;
+}
+
+/**
  * Parse joined_at timestamp and return EST date key for grouping
  */
 export function parseJoinedAt(joinedAt: string): string {
-  return formatESTDateKey(new Date(joinedAt));
+  return formatESTChartLabel(new Date(joinedAt));
+}
+
+/**
+ * Format joined_at timestamp as full EST date string with year (e.g., "Sep 07 2026")
+ * Used for chart tooltips where year context is helpful
+ */
+export function formatJoinedAtFull(joinedAt: string): string {
+  const date = new Date(joinedAt);
+  const parts = date.toLocaleDateString("en-US", {
+    timeZone: "America/New_York",
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  }).split(' ');
+  const month = parts[0];
+  const day = parts[1].replace(',', '');
+  const year = parts[2];
+  return `${month} ${day} ${year}`;
 }

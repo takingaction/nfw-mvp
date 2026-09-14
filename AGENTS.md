@@ -15313,3 +15313,70 @@ if (!certification_consent) {
 
 ### Build Status
 - `npm run build` ✓ (TypeScript 0 errors)
+
+## Session 2026-09-15: Analytics New Members Chart Sort + Year on Hover Fix
+
+### Goal
+Fix alphabetical sort bug AND show year on hover tooltip for "New Members Over Time" chart
+
+### Problem
+1. **Sort bug**: "Sep 07" sorted AFTER "Oct 10" alphabetically (0 > 1 in second character)
+2. **Missing year**: Hover tooltip showed "Sep 07" without year context
+
+### Solution
+
+**Sort fix**: Changed `day: "numeric"` → `day: "2-digit"` in `formatESTChartLabel()` so dates zero-pad (07 < 10)
+
+**Year on hover**: Added `dateFull` field to `membersByDay` data using new `formatJoinedAtFull()` function
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `lib/dates.ts` | Changed `day: "numeric"` → `day: "2-digit"` in `formatESTChartLabel`; Added `formatJoinedAtFull()` returning "Sep 07 2026" |
+| `components/admin/AdminAnalyticsClient.tsx` | Updated `membersByDay` to include `dateFull` field; Added `labelFormatter` to New Members chart Tooltip |
+
+### Key Code
+
+**`lib/dates.ts`:**
+```typescript
+// Sort fix: zero-pad day for correct alphabetical sort
+export function formatESTChartLabel(date: Date): string {
+  const parts = date.toLocaleDateString("en-US", {
+    timeZone: "America/New_York",
+    month: "short",
+    day: "2-digit",  // Changed from "numeric"
+    year: "numeric",
+  }).split(' ');
+  const month = parts[0];
+  const day = parts[1].replace(',', '');
+  return `${month} ${day}`;
+}
+
+// New: full date with year for tooltips
+export function formatJoinedAtFull(joinedAt: string): string {
+  const date = new Date(joinedAt);
+  const parts = date.toLocaleDateString("en-US", {
+    timeZone: "America/New_York",
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  }).split(' ');
+  const month = parts[0];
+  const day = parts[1].replace(',', '');
+  const year = parts[2];
+  return `${month} ${day} ${year}`;
+}
+```
+
+**`AdminAnalyticsClient.tsx` (New Members chart):**
+```tsx
+<Tooltip labelFormatter={(label, payload) => payload?.[0]?.payload?.dateFull || label} />
+```
+
+### Result
+- X-axis labels: "Sep 07" (correctly sorted: 07 < 10)
+- Hover tooltip: "Sep 07 2026" (with year)
+
+### Build Status
+- `npm run build` ✓

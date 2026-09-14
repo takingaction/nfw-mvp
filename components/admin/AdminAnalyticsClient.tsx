@@ -30,7 +30,7 @@ import {
   Check,
 } from "lucide-react";
 import { getCategory } from "@/lib/member-categories";
-import { parseESTDate, endOfESTDay, startOfCurrentPeriod, parseJoinedAt } from "@/lib/dates";
+import { parseESTDate, endOfESTDay, startOfCurrentPeriod, parseJoinedAt, formatJoinedAtFull } from "@/lib/dates";
 
 type DateRangeOption = {
   label: string;
@@ -369,13 +369,16 @@ export default function AdminAnalyticsClient({
 
   const membersByDay = useMemo(() => {
     const map: Record<string, number> = {};
+    const mapDateFull: Record<string, string> = {};
     filteredProfiles.forEach((p) => {
       const d = parseJoinedAt(p.joined_at!);
+      const dFull = formatJoinedAtFull(p.joined_at!);
       map[d] = (map[d] || 0) + 1;
+      mapDateFull[d] = dFull;
     });
     return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, count]) => ({ date: date.slice(5), count }));
+      .map(([date, count]) => ({ date, dateFull: mapDateFull[date], count }));
   }, [filteredProfiles]);
 
   const membersByLevel = useMemo(() => {
@@ -1664,7 +1667,7 @@ export default function AdminAnalyticsClient({
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
+                    <Tooltip labelFormatter={(label, payload) => payload?.[0]?.payload?.dateFull || label} />
                     <Line
                       type="monotone"
                       dataKey="count"
@@ -2109,7 +2112,7 @@ export default function AdminAnalyticsClient({
                           <Cell key={i} fill={COLORS[i % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
+<Tooltip />
                       <Legend verticalAlign="bottom" height={36} />
                     </PieChart>
                   </ResponsiveContainer>
