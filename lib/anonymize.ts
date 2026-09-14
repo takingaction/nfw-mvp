@@ -46,6 +46,14 @@ export async function anonymizeUser(
 ): Promise<AnonymizationResult> {
   const errors: string[] = [];
 
+  // Capture original email BEFORE any anonymization (needed in step 11)
+  const { data: profileBeforeAnonymization } = await supabaseAdmin
+    .from("profiles")
+    .select("email, full_name")
+    .eq("id", userId)
+    .single();
+  const originalEmail = profileBeforeAnonymization?.email;
+
   try {
     // 1. Anonymize profiles table
     const anonId = hashUserId(userId);
@@ -316,7 +324,7 @@ export async function anonymizeUser(
         buyer_name: "Deleted User",
         buyer_email: `deleted_${anonId}@deleted.local`,
       })
-      .eq("buyer_email", (await supabaseAdmin.from("profiles").select("email").eq("id", userId).single()).data?.email);
+      .eq("buyer_email", originalEmail || "");
 
     await supabaseAdmin.from("deletion_log").insert({
       deletion_request_id: deletionRequestId,
