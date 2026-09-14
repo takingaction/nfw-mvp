@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import AdminGrantReviewer from "@/components/admin/AdminGrantReviewer";
 import AiReevaluateButton from "@/components/admin/AiReevaluateButton";
 import AiResetButton from "@/components/admin/AiResetButton";
+import AiBackfillButton from "@/components/admin/AiBackfillButton";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -98,6 +99,27 @@ export default async function AdminGrantCyclePage({
           <ArrowLeft className="w-4 h-4" /> Back to Grants
         </Link>
 
+        {unevaluatedAiCount > 0 && (
+          <div className="mb-6 px-4 py-3 bg-nfw-citrine/20 border-l-4 border-nfw-citrine flex items-center justify-between flex-wrap gap-3">
+            <p className="text-sm font-ui text-nfw-blackberry">
+              <strong>{unevaluatedAiCount}</strong> application
+              {unevaluatedAiCount === 1 ? "" : "s"} still need
+              {unevaluatedAiCount === 1 ? "s" : ""} AI evaluation
+              {scoringStarted
+                ? " — click 'Continue AI Backfill' to run Claude."
+                : " — these will be evaluated when you click Start Scoring."}
+            </p>
+            {scoringStarted && (
+              <div className="flex flex-col items-end">
+                <AiBackfillButton
+                  cycleId={id}
+                  initialCount={unevaluatedAiCount}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex items-start justify-between mb-8">
           <div>
             <h1 className="text-4xl font-bold text-nfw-blackberry mb-2 font-serif">
@@ -181,6 +203,12 @@ export default async function AdminGrantCyclePage({
               cycleId={id}
               totalCount={grants?.length || 0}
             />
+            {scoringStarted && unevaluatedAiCount > 0 && (
+              <AiBackfillButton
+                cycleId={id}
+                initialCount={unevaluatedAiCount}
+              />
+            )}
           </div>
         </div>
 

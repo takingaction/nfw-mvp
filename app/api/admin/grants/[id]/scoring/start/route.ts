@@ -27,13 +27,15 @@ async function runAiEvaluationForUnevaluatedGrants(cycleId: string) {
     .single();
   if (!cycle) return { total: 0, evaluated: 0, failed: 0 };
 
-  // Find all submitted grants in this cycle that have not been AI-evaluated
+  // Find all submitted grants in this cycle that have not been AI-evaluated.
+  // Match both NULL (pre-AI apps that pre-date the AI feature) and
+  // 'not_evaluated' (post-AI fresh apps that haven't been evaluated yet).
   const { data: unevaluated } = await supabaseAdmin
     .from("grants")
     .select("id, who_are_you, biggest_challenge, fund_usage")
     .eq("cycle_id", cycleId)
     .eq("status", "submitted")
-    .eq("ai_relevance", "not_evaluated");
+    .or("ai_relevance.is.null,ai_relevance.eq.not_evaluated");
 
   if (!unevaluated || unevaluated.length === 0) {
     return { total: 0, evaluated: 0, failed: 0 };

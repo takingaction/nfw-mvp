@@ -15380,3 +15380,67 @@ export function formatJoinedAtFull(joinedAt: string): string {
 
 ### Build Status
 - `npm run build` ✓
+
+---
+
+## Session 2026-09-14: Pre-AI Application Backfill + Continue AI Backfill Button
+
+### Problem
+
+Applications submitted before the AI feature shipped (i.e., before migration 162 ran) have `ai_relevance = NULL`. The auto-evaluation triggers use `.eq("ai_relevance", "not_evaluated")` which matches the literal string only — NULL rows are silently excluded. Result: pre-AI applications never get evaluated by the lazy-backfill flow on Start Scoring.
+
+Additionally, the existing Start Scoring route blocks re-runs with a 400 error if `scoring_started_at` is already set, so admins can't click Start Scoring a second time to continue backfilling large cycles.
+
+### Files Created
+- `app/api/admin/grants/[id]/ai-backfill/route.ts` — New endpoint with `POST` (run backfill) + `GET` (get current unevaluated count)
+- `components/admin/AiBackfillButton.tsx` — Cycle detail page button to trigger backfill
+
+### Files Modified
+- `app/api/admin/grants/[id]/scoring/start/route.ts` — Filter changed from `.eq("ai_relevance", "not_evaluated")` to `.or("ai_relevance.is.null,ai_relevance.eq.not_evaluated")` so pre-AI apps get caught
+- `app/admin/grants/[id]/page.tsx` — Imports `AiBackfillButton`. Adds a citrine banner above the stats row when `unevaluatedAiCount > 0`. Renders the backfill button inline in the banner + the action row (only when `scoringStarted` is true).
+
+### Backfill Endpoint Behavior
+
+`POST /api/admin/grants/[id]/ai-backfill` (admin only):
+1. Requires `scoring_started_at` to already be set (returns 400 otherwise — directs admin to click Start Scoring first, which kicks off the initial run)
+2. Queries for grants where `status='submitted'` AND (`ai_relevance IS NULL` OR `ai_relevance='not_evaluated'`)
+3. Iterates sequentially with 200ms throttle between Claude calls
+4. **Time-budget cap**: stops at 250s elapsed (leaves 50s buffer under Vercel's 300s `maxDuration`). For cycles with >~30 pre-AI apps, admins click the button multiple times to chip away at the backlog.
+5. Returns `{ total, evaluated, failed, remaining, budgetReached }`
+
+`GET /api/admin/grants/[id]/ai-backfill`:
+- Returns `{ unevaluatedCount }` for the button's count badge
+
+### Why a separate endpoint, not a Start Scoring re-run
+
+The existing Start Scoring route returns 400 if scoring has already started. That guard is correct — we don't want to re-set `scoring_started_at` or re-trigger Michelle's notification. But it means admins can't naturally click Start Scoring again to continue backfill. The new endpoint bypasses that guard while preserving the scoring_started_at semantics.
+
+### Behavior
+
+- Pre-AI app, single Start Scoring click on small cycle: evaluated inline as part of Start Scoring (now correctly matched by OR filter)
+- Pre-AI app, large cycle: first Start Scoring call evaluates everything that fits in budget, button appears saying "Continue AI Backfill (N)" — admin clicks repeatedly until count hits 0
+- Newly submitted apps (post-AI): evaluated inline by the synchronous submission flow (per the in-progress plan), never appear in backfill count
+- Apps with `ai_invalidated_at` set: never re-evaluated by backfill (reviewer skip preserved)
+- Apps with `status != 'submitted'`: never re-evaluated (correct: humans already passed them)
+
+### Verification
+
+After deploy:
+
+1. Visit any cycle that has applications from before the AI feature shipped
+2. Banner appears at top: "X applications still need AI evaluation"
+3. Click "Start Scoring" (if not already started) — initial batch runs
+4. If backfill count > 0, button appears: "Continue AI Backfill (N)"
+5. Click repeatedly until count reaches 0
+6. Visit `/admin/grants/[id]/scoring/first` — previously-unevaluated apps now have badges + sort to bottom
+
+### Edge Cases
+
+| Scenario | Behavior |
+|---|---|
+| `scoring_started_at` not set | Backfill endpoint returns 400 with helpful message — admin clicks Start Scoring first |
+| `ANTHROPIC_API_KEY` missing | All calls return 'uncertain' immediately. Banner still updates. |
+| 500+ pre-AI apps | Multiple clicks, ~30-50 apps per click depending on Claude latency |
+
+### Build Status
+- `npm run build` ✓ (TypeScript 0 errors)
