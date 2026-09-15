@@ -15444,3 +15444,101 @@ After deploy:
 
 ### Build Status
 - `npm run build` ✓ (TypeScript 0 errors)
+
+---
+
+## Session 2026-09-15: Google Tag Manager Integration
+
+### Overview
+
+Replaced direct GA4 script with Google Tag Manager (GTM) container. LinkedIn Insight Tag (Partner ID `10029516`) and future Google Ads conversions are now managed inside GTM's web UI instead of being hardcoded. Meta Pixel stays direct in `layout.tsx`.
+
+### Architecture Decisions
+
+| Tag | Source | Status |
+|-----|--------|--------|
+| Meta Pixel | Direct in `layout.tsx` | Unchanged (works fine, no need to move) |
+| GA4 | **Moved from direct → GTM** | Same measurement ID `G-MXX079LCCS`, same property, continuous data |
+| LinkedIn Insight Tag | Inside GTM | New (Partner ID `10029516`) |
+| Google Ads Conversions | Inside GTM | Future (no code change needed) |
+| GTM Container | Single ID input `GTM-XXXXXXX` in admin | New |
+
+### Files Modified (4)
+
+**1. `supabase/migrations/164_add_gtm_id_to_site_settings.sql`** (new)
+```sql
+ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS gtm_id TEXT;
+NOTIFY pgrst, 'reload';
+```
+
+**2. `app/api/site/settings/route.ts`**
+- POST: added `gtm_id` to destructure + updates object
+- Trims input, stores `null` when blank
+- GET already returns all columns via `.select("*")` — no change
+
+**3. `components/admin/SiteSettingsEditor.tsx`**
+- Added `gtmId` state
+- Client-side regex validation: `/^GTM-[A-Z0-9]+$/`
+- Save button disabled when format invalid
+- Single-line input, placeholder `GTM-XXXXXXX`
+- Helper text: "Google Tag Manager container ID from tagmanager.google.com. Leave blank to disable."
+- Green check text when valid, red error text when invalid
+- Input auto-uppercases as user types
+
+**4. `app/layout.tsx`**
+- Removed direct GA4 scripts (the `<Script id="ga4">` block and `<Script src="googletagmanager.com/gtag/js">`)
+- Added server-side fetch of `gtm_id` from `site_settings` via `supabaseAdmin`
+- Added GTM snippet (only when `gtmId` is truthy):
+  - `<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=${gtmId}"></iframe></noscript>` immediately after `<body>` opens
+  - `<Script id="gtm" strategy="afterInteractive">` with standard GTM loader snippet in body
+- Kept Meta Pixel as-is
+
+### GTM Container
+
+- **Container ID**: `GTM-M7JPT7VG` (NFW Web)
+- **Container name**: NFW Web
+- **Tags configured inside GTM**:
+  - Google Tag - GA4 Configuration (Tag ID `G-MXX079LCCS`)
+  - LinkedIn - Insight Tag (Partner ID `10029516`)
+- Both fire on All Pages trigger
+
+### Termly CMP Consent Gating
+
+**Important:** Termly CMP (already integrated in this project) gates all Google tags behind user consent. This is GDPR-compliant behavior.
+
+- On page load, Termly banner appears
+- Until user clicks Accept/Reject, GA4 + LinkedIn tags do NOT fire
+- Tag Assistant may initially report "tag not found" — this is expected
+- Once consent is granted, tags fire normally
+- The "A Consent Management Platform (CMP) may be blocking tags" warning in Tag Assistant is informational, not an error
+
+### Verification (Tested Locally)
+
+- ✅ Tag Assistant detects `GTM-M7JPT7VG` after consent is granted
+- ✅ Google Tag - GA4 Configuration fires on All Pages
+- ✅ LinkedIn - Insight Tag fires on All Pages
+- ✅ `dataLayer` object exists in browser console with `gtm.js` event
+- ✅ GA4 measurement ID continuity preserved (same `G-MXX079LCCS`)
+- ⚠️  Tag Assistant initially shows "GTM not found" until consent granted — expected behavior
+
+### To Deploy
+
+1. Run migration 164 in Supabase SQL Editor
+2. Deploy code (already passing `npm run build` with 0 TypeScript errors)
+3. Visit `/admin/pages` → Site Settings → paste `GTM-M7JPT7VG` → Save
+4. Verify production at https://www.nationalfundforwomen.org:
+   - View Source → no `googletagmanager.com/gtag/js` (direct GA4 gone)
+   - View Source → `googletagmanager.com/gtm.js?id=GTM-M7JPT7VG` present
+   - View Source → `<noscript><iframe src="https://www.googletagmanager.com/ns.html` present after `<body>`
+   - DevTools Console → `dataLayer` shows array with `gtm.js` event
+   - GA4 Realtime → user appears within 30 seconds
+   - LinkedIn Campaign Manager → Insight Tag shows recent activity
+
+### Build Status
+- `npm run build` ✓ (TypeScript 0 errors, 210/210 pages generated)
+
+### Future Tasks (No Code Changes Required)
+
+- **Google Ads Conversion Tracking**: Add tag inside GTM web UI when conversion IDs/labels are ready
+- **LinkedIn Conversion Tracking**: Set up conversion events in LinkedIn Campaign Manager
+- **GTM Server-Side Container**: Optional advanced upgrade, requires GTM 360

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Playfair_Display, DM_Sans } from "next/font/google";
 import { headers } from "next/headers";
 import Script from "next/script";
+import { createClient } from "@supabase/supabase-js";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/landing/Footer";
@@ -68,12 +69,33 @@ export default async function RootLayout({
   const pathname = headersList.get("x-pathname") || "/";
   const isPublicRoute = false; // /coming-soon is no longer a gate - homepage serves to all
 
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+  const { data: siteSettings } = await supabaseAdmin
+    .from("site_settings")
+    .select("gtm_id")
+    .eq("id", "00000000-0000-0000-0000-000000000001")
+    .maybeSingle();
+  const gtmId = siteSettings?.gtm_id?.trim() || null;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${playfairDisplay.variable} ${dmSans.variable} antialiased`}
         suppressHydrationWarning
       >
+        {gtmId && (
+          <noscript>
+            <iframe
+              src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
+              height="0"
+              width="0"
+              style={{ display: "none", visibility: "hidden" }}
+            />
+          </noscript>
+        )}
         {!isPublicRoute && <Navigation />}
         <FloatingAdminButton />
         <TermlyCMP />
@@ -99,18 +121,15 @@ export default async function RootLayout({
             fbq('track', 'PageView');
           `}
         </Script>
-        <Script id="ga4" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-MXX079LCCS');
-          `}
-        </Script>
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-MXX079LCCS"
-          strategy="afterInteractive"
-        />
+        {gtmId && (
+          <Script id="gtm" strategy="afterInteractive">
+            {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+            })(window,document,'script','dataLayer','${gtmId}');`}
+          </Script>
+        )}
         <noscript>
           <img height="1" width="1" style={{display: "none"}}
             src="https://www.facebook.com/tr?id=1265927739923182&ev=PageView&noscript=1"

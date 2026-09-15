@@ -34,7 +34,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { robots_txt, show_nfw_exclusive_button } = body;
+    const { robots_txt, show_nfw_exclusive_button, gtm_id } = body;
 
     const updates: any = {
       updated_at: new Date().toISOString()
@@ -46,6 +46,11 @@ export async function POST(request: Request) {
 
     if (typeof show_nfw_exclusive_button === "boolean") {
       updates.show_nfw_exclusive_button = show_nfw_exclusive_button;
+    }
+
+    if (typeof gtm_id === "string") {
+      const trimmed = gtm_id.trim();
+      updates.gtm_id = trimmed === "" ? null : trimmed;
     }
 
     if (Object.keys(updates).length === 1) {
