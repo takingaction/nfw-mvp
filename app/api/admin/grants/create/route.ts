@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       amount_per_grant,
       grants_available,
       is_testing_only,
+      requires_documents,
     } = await request.json();
 
     const total_funds =
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
         available_funds: total_funds,
         status: "open",
         is_testing_only: is_testing_only || false,
+        requires_documents: requires_documents || false,
       })
       .select()
       .single();

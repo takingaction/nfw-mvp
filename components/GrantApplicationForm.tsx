@@ -18,6 +18,7 @@ interface GrantCycle {
   end_date: string;
   amount_per_grant: number;
   grants_available: number;
+  requires_documents?: boolean;
 }
 
 export default function GrantApplicationForm({
@@ -86,6 +87,13 @@ export default function GrantApplicationForm({
       setConfirmError("Please read and accept the consent text and certify your eligibility to continue.");
       return;
     }
+
+    const selectedCycle = cycles.find(c => c.id === formData.cycle_id);
+    if (selectedCycle?.requires_documents && documents.length === 0) {
+      setConfirmError("This grant requires at least one supporting document. Please upload a file before submitting.");
+      return;
+    }
+
     if (error) return;
     setLoading(true);
     setError("");
@@ -374,47 +382,49 @@ export default function GrantApplicationForm({
           </p>
         </div>
 
+        {/* Document upload section - always shown */}
         <div>
           <label className={labelClass}>
-            Supporting Documents{" "}
+            Supporting Documents
             <span className="text-nfw-blackberry/40 font-normal">
-              (Optional)
+              {" "}(Optional)
             </span>
           </label>
           <p className="text-sm font-serif text-nfw-blackberry/50 mb-3">
-            Upload receipts, quotes, or other supporting documents. PDF, JPG,
-            PNG, DOC accepted.
+            {cycles.find(c => c.id === formData.cycle_id)?.requires_documents
+              ? "You must upload at least one supporting document."
+              : "Upload receipts, quotes, or other supporting documents. PDF, JPG, PNG, DOC accepted."}
           </p>
-          <input
-            key={fileInputKey}
-            type="file"
-            multiple
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-            onChange={handleFileChange}
-            className="w-full text-sm text-nfw-blackberry/60 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-ui file:bg-nfw-blackberry file:text-white hover:file:bg-nfw-blackberry/90 file:cursor-pointer cursor-pointer border border-nfw-blackberry/20 p-2"
-          />
-          {documents.length > 0 && (
-            <div className="mt-3 space-y-2">
-              {documents.map((file, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between bg-nfw-dove px-3 py-2 border border-nfw-blackberry/10"
-                >
-                  <span className="text-sm font-ui text-nfw-blackberry/70 truncate flex-1">
-                    {file.name} ({(file.size / 1024).toFixed(1)} KB)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeDocument(index)}
-                    className="ml-2 text-red-500 hover:text-red-700 text-sm font-ui"
-                  >
-                    Remove
-                  </button>
+              <input
+                key={fileInputKey}
+                type="file"
+                multiple
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                onChange={handleFileChange}
+                className="w-full text-sm text-nfw-blackberry/60 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-ui file:bg-nfw-blackberry file:text-white hover:file:bg-nfw-blackberry/90 file:cursor-pointer cursor-pointer border border-nfw-blackberry/20 p-2"
+              />
+              {documents.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {documents.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between bg-nfw-dove px-3 py-2 border border-nfw-blackberry/10"
+                    >
+                      <span className="text-sm font-ui text-nfw-blackberry/70 truncate flex-1">
+                        {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeDocument(index)}
+                        className="ml-2 text-red-500 hover:text-red-700 text-sm font-ui"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              )}
+              </div>
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">

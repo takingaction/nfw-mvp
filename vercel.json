@@ -27,6 +27,10 @@
     {
       "path": "/api/cron/process-stripe-duplicates-jobs",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/flodesk-sync",
+      "schedule": "30 * * * *"
     }
   ]
 }

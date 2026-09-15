@@ -29,6 +29,7 @@ export default function EditGrantCyclePage() {
     status: "open",
     featured_image: "",
     is_testing_only: false,
+    requires_documents: false,
   });
 
   const inputClass =
@@ -51,6 +52,7 @@ export default function EditGrantCyclePage() {
           status: data.status || "open",
           featured_image: data.featured_image || "",
           is_testing_only: data.is_testing_only || false,
+          requires_documents: data.requires_documents || false,
         });
       } catch (err: any) {
         setError(err.message);
@@ -299,6 +301,27 @@ export default function EditGrantCyclePage() {
                 </span>
                 <p className="text-xs text-nfw-blackberry/50 mt-0.5">
                   When enabled, this grant cycle will only be visible to admins. Users will not see it on the grants page.
+                </p>
+              </div>
+            </label>
+          </div>
+
+          <div className="border-t border-nfw-blackberry/10 pt-4 mt-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.requires_documents || false}
+                onChange={(e) =>
+                  setFormData({ ...formData, requires_documents: e.target.checked })
+                }
+                className="mt-0.5 w-4 h-4 accent-nfw-wisteria"
+              />
+              <div>
+                <span className="text-sm font-semibold text-nfw-blackberry">
+                  Requires Documents
+                </span>
+                <p className="text-xs text-nfw-blackberry/50 mt-0.5">
+                  When enabled, applicants must upload at least one supporting document.
                 </p>
               </div>
             </label>

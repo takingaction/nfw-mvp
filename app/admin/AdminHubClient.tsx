@@ -83,6 +83,7 @@ const adminSections: AdminSection[] = [
     headerTextColor: "text-nfw-aubergine",
     links: [
       { label: "Email Templates", href: "/admin/emails" },
+      { label: "Flodesk Sync", href: "/admin/flodesk" },
       { label: "Newsletter Signups", href: "/admin/newsletter-signups" },
       { label: "Contact Submissions", href: "/admin/contact-submissions" },
       { label: "Story Submissions", href: "/admin/story-submissions" },

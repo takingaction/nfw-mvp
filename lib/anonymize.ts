@@ -54,6 +54,20 @@ export async function anonymizeUser(
     .single();
   const originalEmail = profileBeforeAnonymization?.email;
 
+  // 0. Flodesk: remove from every synced segment and unsubscribe. Must run BEFORE the
+  //    email is overwritten so rows without a stored subscriber id can still be addressed.
+  //    Flodesk has no delete-subscriber endpoint; unsubscribe is the strongest action available.
+  try {
+    const { removeProfileFromFlodesk } = await import("@/lib/flodesk-sync");
+    const flodeskResult = await removeProfileFromFlodesk(userId, { unsubscribe: true });
+    console.log(
+      `[anonymize] Flodesk: removed from ${flodeskResult.removed} segment(s), unsubscribed=${flodeskResult.unsubscribed}`,
+    );
+  } catch (err) {
+    // Never block or fail a deletion request on a marketing-tool failure — log only.
+    console.error("[anonymize] Flodesk cleanup failed:", err);
+  }
+
   try {
     // 1. Anonymize profiles table
     const anonId = hashUserId(userId);

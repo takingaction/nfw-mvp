@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import getAdminClient from "@/lib/supabase/admin";
 import { sendWelcomeEmail } from "@/lib/email";
+import { resyncProfileNow } from "@/lib/flodesk-sync";
 
 /**
  * POST /api/admin/waitlist/approve
@@ -67,6 +68,10 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Flodesk: leave the Waitlist segment immediately (the hourly sweep is the backstop).
+    // Fire-and-forget; never throws.
+    void resyncProfileNow(memberId);
 
     // Send welcome email
     try {

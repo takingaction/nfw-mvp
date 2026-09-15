@@ -15542,3 +15542,66 @@ NOTIFY pgrst, 'reload';
 - **Google Ads Conversion Tracking**: Add tag inside GTM web UI when conversion IDs/labels are ready
 - **LinkedIn Conversion Tracking**: Set up conversion events in LinkedIn Campaign Manager
 - **GTM Server-Side Container**: Optional advanced upgrade, requires GTM 360
+
+## Session 2026-09-15: Flodesk Category Sync (Waitlist / Abandoned / Profile Incomplete)
+
+### Overview
+
+Rule-driven sync of member **categories** to Flodesk **segments**. An hourly cron adds members
+who have been in a category for `delay_days` to the rule's segment and removes them when they
+leave the category. Marketing builds workflows in Flodesk that trigger on "added to segment", so
+automation changes need no deploy.
+
+Categories come from `getCategory()` in `lib/member-categories.ts` — the same function behind
+`/admin/members`, `/admin/analytics` and the members CSV — so entry and exit are guaranteed to
+match what admins see. A member moving Profile Incomplete → Abandoned → Waitlist → Free leaves each
+segment and enters the next automatically; admins (`is_admin`) never land in any segment;
+anonymized profiles (`membership_level='deleted'` → "Unknown") exit.
+
+### Flodesk API facts (developers.flodesk.com)
+
+- Auth: `Authorization: Basic base64("<API_KEY>:")` + `User-Agent`. Private-integration key (Account → Integrations → API).
+- `POST /v1/subscribers/batch` — upsert ≤50 subscribers w/ `segment_ids`; **20 req/min**. Returns `successes[]` (with subscriber `id`) + `failures[]`.
+- `DELETE /v1/subscribers/{id_or_email}/segments`, `POST …/unsubscribe`, `GET /v1/segments` — 100 req/min.
+- No delete-subscriber endpoint → anonymization does remove-from-segments + unsubscribe.
+
+### Database — `supabase/migrations/165_create_flodesk_sync.sql`
+
+| Table | Purpose |
+|---|---|
+| `flodesk_sync_rules` | `key`, `name`, `category` (CHECK ∈ Waitlist/Abandoned/Profile Incomplete/Free/Contributing/Founding), `delay_days`, `flodesk_segment_id/_name`, `remove_on_exit`, `is_enabled`, `last_run_at`. CHECK: enabled ⇒ segment set. |
+| `flodesk_sync_members` | PK `(rule_id, profile_id)`; `status` added/removed/failed; `flodesk_subscriber_id` (so removal works after email anonymization); `attempt_count`, `last_error`. |
+
+Seeded rules (all **disabled**, no segment): `waitlist` (Waitlist, 5d), `abandoned` (Abandoned, 1d),
+`profile_incomplete` (Profile Incomplete, 1d). RLS admin-only via `public.is_admin()`.
+
+### Code
+
+| File | Purpose |
+|---|---|
+| `lib/flodesk.ts` | Plain-fetch client. Lazy `FLODESK_API_KEY`; never throws; returns `{ ok, data } \| { ok:false, error, status?, rateLimited? }`. `batchUpsertSubscribers`, `removeFromSegments`, `unsubscribeSubscriber`, `listSegments`, `testConnection`, `splitName` (skips the "Member" placeholder). |
+| `lib/flodesk-rules.ts` | `isEligibleForAdd` (in category + email + age ≥ delay), `isStillEligible` (in category), `categoryEnteredAt` (Waitlist → `waitlist_joined_at`, else `joined_at`), paginated `fetchAllSyncProfiles`. |
+| `lib/flodesk-rule-input.ts` | Payload validation shared by the rules routes (route files can't export helpers). |
+| `lib/flodesk-sync.ts` | `runFlodeskSync({ruleId?, dryRun?})` — **exits for all rules first, then additions** (so a member is in ≤1 segment after a run); batch 50 w/ 3.2s spacing, single removes 0.65s; 250s budget → reports `remaining`; 429 → stops. Failed rows retried up to 5×. `resyncProfileNow(id)` (single-profile hook), `clearRule(id)` (empty a segment), `removeProfileFromFlodesk(id, {unsubscribe})` (anonymization). |
+| `app/api/cron/flodesk-sync/route.ts` | Hourly at `:30` (`vercel.json`). `CRON_SECRET` Bearer; 200-skip if key unset. |
+| `app/api/admin/flodesk/{rules, rules/[id], rules/[id]/preview, segments, status, run}` | Admin API; all `requireAdmin()` + `.authorized`. `run` accepts `{ ruleId?, action: "sync" \| "clear" }`. |
+| `app/admin/flodesk/` | Admin page: connection card, rules list (enable toggle, Preview dry-run, Run, Edit, Clear, Delete), last-run table, recent failures. Segment dropdown is populated live from Flodesk. |
+| `app/admin/AdminHubClient.tsx` | "Flodesk Sync" link under Emails & Subscriptions. |
+| `app/api/admin/waitlist/approve/route.ts` | `void resyncProfileNow(memberId)` so approval leaves the Waitlist segment immediately (hourly sweep is the backstop). |
+| `lib/anonymize.ts` | Step 0: `removeProfileFromFlodesk(userId, { unsubscribe: true })` **before** the email is overwritten. Log-only on failure — never blocks a deletion request. |
+
+### Behaviour notes
+
+- Exit detection is a **sweep** over `sync_members` rows with status `added`; it covers every exit path (approval, Stripe webhooks, gift code, anonymization, manual SQL) with ≤1h latency. Stripe webhook sites were intentionally not hooked.
+- Disabled rule = frozen (no adds, no exits). Use **Clear** to empty a segment before disabling/deleting. Deleting a rule does not touch Flodesk.
+- `double_optin: false`. Flodesk honours its own unsubscribes on re-upsert. Profile Incomplete members have only confirmed their email — confirm privacy-policy wording before enabling that rule.
+- `sync_members` rows previously `removed` can be re-added if the member re-enters the category.
+
+### Deploy
+
+1. Run migration 165 in the Supabase SQL Editor.
+2. In Flodesk: create three segments; create an API key. Add `FLODESK_API_KEY` to Vercel (+ `.env.local` for local testing; `CRON_SECRET` is Vercel-only, add locally to hit the cron route).
+3. Deploy → `/admin/flodesk`: Edit each seeded rule → pick segment → **Preview** (compare to the matching card on `/admin/members`; differs only by the delay filter and null emails) → **Run** → verify in Flodesk → enable.
+4. Approve a test waitlist member → they leave the Waitlist segment immediately. Complete step 2 for a test Profile Incomplete account → next run moves them to Abandoned.
+
+**Build:** `tsc` 0 errors, `next build` ✓ (8 new routes). Eligibility logic unit-checked (13 category transitions). Auth smoke-tested: 401 on all new routes without a session / with a bad Bearer.
