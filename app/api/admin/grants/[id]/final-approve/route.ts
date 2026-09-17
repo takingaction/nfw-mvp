@@ -201,6 +201,7 @@ export async function POST(
           grantId: g.id,
           variables: {
             grantCycleName: cycle.cycle_name,
+            rejectionMessage: cycle.rejection_message || "",
             rejectionMessage1: cycle.rejection_message_1 || "",
             rejectionMessage2: cycle.rejection_message_2 || "",
             rejectionMessage3: cycle.rejection_message_3 || "",
