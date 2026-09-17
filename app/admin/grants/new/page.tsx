@@ -247,10 +247,10 @@ export default function NewGrantCyclePage() {
           <div className="border-t border-nfw-blackberry/10 pt-4 mt-4">
             <div className="mb-4">
               <label className={labelClass}>
-                Rejection Message <span className="text-nfw-blackberry/40 font-normal">(Optional — opening line)</span>
+                Not Approved Email Message <span className="text-nfw-blackberry/40 font-normal">(Optional — opening line)</span>
               </label>
               <p className="text-xs text-nfw-blackberry/50 mt-1">
-                Opening line shown before bullet points when an application is not approved. Use {"{{name}}"} for applicant name and {"{{grantCycleName}}"} for grant name.
+                Opening line shown before bullet points. Use {"{{name}}"} for applicant name and {"{{grantCycleName}}"} for grant name. Add links with markdown: [text](https://url.com)
               </p>
               <textarea
                 value={formData.rejection_message || ""}
@@ -262,10 +262,10 @@ export default function NewGrantCyclePage() {
             </div>
 
             <label className={labelClass}>
-              Rejection Message <span className="text-nfw-blackberry/40 font-normal">(Optional — 3 bullet points)</span>
+              Not Approved Email Message <span className="text-nfw-blackberry/40 font-normal">(Optional — 3 bullet points)</span>
             </label>
             <p className="text-xs text-nfw-blackberry/50 mb-2">
-              Shown when an application is not approved. Use {"{{name}}"} for applicant name and {"{{grantCycleName}}"} for grant name.
+              Shown when not approved. Use {"{{name}}"} for applicant name and {"{{grantCycleName}}"} for grant name. Add links with markdown: [text](https://url.com)
             </p>
             <div className="space-y-3">
               <textarea
