@@ -30,6 +30,10 @@ export default function EditGrantCyclePage() {
     featured_image: "",
     is_testing_only: false,
     requires_documents: false,
+    rejection_message: "",
+    rejection_message_1: "",
+    rejection_message_2: "",
+    rejection_message_3: "",
   });
 
   const inputClass =
@@ -53,6 +57,10 @@ export default function EditGrantCyclePage() {
           featured_image: data.featured_image || "",
           is_testing_only: data.is_testing_only || false,
           requires_documents: data.requires_documents || false,
+          rejection_message: data.rejection_message || "",
+          rejection_message_1: data.rejection_message_1 || "",
+          rejection_message_2: data.rejection_message_2 || "",
+          rejection_message_3: data.rejection_message_3 || "",
         });
       } catch (err: any) {
         setError(err.message);
@@ -325,6 +333,38 @@ export default function EditGrantCyclePage() {
                 </p>
               </div>
             </label>
+          </div>
+
+          <div className="border-t border-nfw-blackberry/10 pt-4 mt-4">
+            <label className={labelClass}>
+              Rejection Message <span className="text-nfw-blackberry/40 font-normal">(Optional — 3 bullet points)</span>
+            </label>
+            <p className="text-xs text-nfw-blackberry/50 mb-2">
+              Shown when an application is not approved. Use {"{{name}}"} for applicant name and {"{{grantCycleName}}"} for grant name.
+            </p>
+            <div className="space-y-3">
+              <textarea
+                value={formData.rejection_message_1 || ""}
+                onChange={(e) => setFormData({ ...formData, rejection_message_1: e.target.value })}
+                className="w-full px-4 py-3 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent transition-all font-ui text-sm"
+                rows={2}
+                placeholder="Bullet 1: e.g., Thank you for applying..."
+              />
+              <textarea
+                value={formData.rejection_message_2 || ""}
+                onChange={(e) => setFormData({ ...formData, rejection_message_2: e.target.value })}
+                className="w-full px-4 py-3 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent transition-all font-ui text-sm"
+                rows={2}
+                placeholder="Bullet 2: (leave blank if not needed)"
+              />
+              <textarea
+                value={formData.rejection_message_3 || ""}
+                onChange={(e) => setFormData({ ...formData, rejection_message_3: e.target.value })}
+                className="w-full px-4 py-3 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent transition-all font-ui text-sm"
+                rows={2}
+                placeholder="Bullet 3: (leave blank if not needed)"
+              />
+            </div>
           </div>
 
           <div>

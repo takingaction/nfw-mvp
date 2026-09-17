@@ -115,7 +115,7 @@ BEGIN
     not_approved_template_id,
     'email_text',
     2,
-    '{"text": "Dear {{name}}, thank you for your interest in the {{grantCycleName}} grant program. After careful review, we''re unable to move forward with your application at this time. We encourage you to apply for future grant cycles.", "text_align": "center", "font_family": "DM Sans", "font_size": 16}',
+    '{"text": "Dear {{name}}, thank you for your interest in the {{grantCycleName}} grant program. Unfortunately, we are unable to move forward with your application at this time. Here are some reasons why:\n\n\u2022 {{rejectionMessage1}}\n\u2022 {{rejectionMessage2}}\n\u2022 {{rejectionMessage3}}\n\nWe encourage you to apply for future grant cycles.", "text_align": "center", "font_family": "DM Sans", "font_size": 16}',
     true,
     'lilac'
   );

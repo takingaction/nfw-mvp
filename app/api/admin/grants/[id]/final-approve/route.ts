@@ -201,6 +201,9 @@ export async function POST(
           grantId: g.id,
           variables: {
             grantCycleName: cycle.cycle_name,
+            rejectionMessage1: cycle.rejection_message_1 || "",
+            rejectionMessage2: cycle.rejection_message_2 || "",
+            rejectionMessage3: cycle.rejection_message_3 || "",
             ctaUrl: `https://nationalfundforwomen.org/grants/my-applications`,
           },
         };

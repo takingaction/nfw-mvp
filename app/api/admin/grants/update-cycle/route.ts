@@ -38,6 +38,9 @@ export async function POST(request: NextRequest) {
       featured_image,
       is_testing_only,
       requires_documents,
+      rejection_message_1,
+      rejection_message_2,
+      rejection_message_3,
     } = await request.json();
 
     if (!cycleId)
@@ -60,6 +63,9 @@ export async function POST(request: NextRequest) {
         featured_image,
         is_testing_only,
         requires_documents,
+        rejection_message_1: rejection_message_1 || null,
+        rejection_message_2: rejection_message_2 || null,
+        rejection_message_3: rejection_message_3 || null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", cycleId);

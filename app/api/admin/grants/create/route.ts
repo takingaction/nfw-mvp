@@ -35,6 +35,9 @@ export async function POST(request: NextRequest) {
       grants_available,
       is_testing_only,
       requires_documents,
+      rejection_message_1,
+      rejection_message_2,
+      rejection_message_3,
     } = await request.json();
 
     const total_funds =
@@ -54,6 +57,9 @@ export async function POST(request: NextRequest) {
         status: "open",
         is_testing_only: is_testing_only || false,
         requires_documents: requires_documents || false,
+        rejection_message_1: rejection_message_1 || null,
+        rejection_message_2: rejection_message_2 || null,
+        rejection_message_3: rejection_message_3 || null,
       })
       .select()
       .single();

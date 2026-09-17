@@ -81,6 +81,10 @@ export async function POST(
       // Gift codes test variables
       codes: "TEST-CODE-001, TEST-CODE-002, TEST-CODE-003",
       codes_list: `<p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #F8F19A; margin: 10px 0;">TEST-CODE-001</p><p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #F8F19A; margin: 10px 0;">TEST-CODE-002</p><p style="font-family: 'DM Sans', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #F8F19A; margin: 10px 0;">TEST-CODE-003</p>`,
+      // Grant rejection test variables
+      rejectionMessage1: "We were unable to verify eligibility at this time.",
+      rejectionMessage2: "Please ensure all information submitted is accurate and complete.",
+      rejectionMessage3: "We encourage you to apply for future grant cycles.",
     };
 
     // Use the same sendEmailBySlug function as live emails
