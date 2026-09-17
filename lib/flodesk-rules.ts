@@ -22,6 +22,10 @@ export const RULE_CATEGORIES = [
   "Free",
   "Contributing",
   "Founding",
+  // Newsletter Only does NOT go through getCategory() — it is evaluated off
+  // (coming_soon_emails \ profiles.email). The sync engine branches on this
+  // value in lib/flodesk-sync.ts::runFlodeskSync().
+  "Newsletter Only",
 ] as const;
 
 export type RuleCategory = (typeof RULE_CATEGORIES)[number];

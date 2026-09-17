@@ -43,16 +43,31 @@ interface Segment {
 interface Status {
   configured: boolean;
   connection: { ok: boolean; segmentCount?: number; error?: string };
-  recentFailures: {
-    ruleId: string;
-    ruleName: string;
-    profileId: string;
-    email: string | null;
-    fullName: string | null;
-    attemptCount: number;
-    lastError: string | null;
-    updatedAt: string;
-  }[];
+  recentFailures: (
+    | {
+        type: "profile";
+        ruleId: string;
+        ruleName: string;
+        profileId: string;
+        email: string | null;
+        fullName: string | null;
+        attemptCount: number;
+        lastError: string | null;
+        updatedAt: string;
+      }
+    | {
+        type: "email";
+        ruleId: string;
+        ruleName: string;
+        profileId: null;
+        email: string | null;
+        fullName: null;
+        attemptCount: number;
+        lastError: string | null;
+        updatedAt: string;
+      }
+  )[];
+  newsletterSignupCount?: number;
 }
 
 interface Preview {
@@ -100,6 +115,8 @@ const CATEGORY_HELP: Record<string, string> = {
   Free: "Approved free members.",
   Contributing: "Paid contributing members.",
   Founding: "Paid founding members.",
+  "Newsletter Only":
+    "Emails in coming_soon_emails that have no matching profiles.email. Exits automatically when the email becomes a profile.",
 };
 
 function formatDateTime(iso: string | null): string {
@@ -399,6 +416,11 @@ export default function AdminFlodeskClient() {
                   : connectionOk
                     ? `${status?.connection.segmentCount ?? 0} segments in account`
                     : status?.connection.error}
+                {status?.configured && typeof status?.newsletterSignupCount === "number" && (
+                  <span className="block mt-1">
+                    {status.newsletterSignupCount.toLocaleString("en-US")} newsletter signup{status.newsletterSignupCount === 1 ? "" : "s"} on file (eligible = those not matching any profile)
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -474,6 +496,11 @@ export default function AdminFlodeskClient() {
                     </div>
                     <div className="mt-1 text-sm text-nfw-blackberry/70">
                       <span className="font-ui font-bold">{rule.category}</span>
+                      {rule.category === "Newsletter Only" && (
+                        <span className="ml-2 px-2 py-0.5 text-[10px] font-ui font-black uppercase tracking-wider bg-nfw-lilac text-white">
+                          Newsletter
+                        </span>
+                      )}
                       {" · "}
                       {rule.delay_days === 0 ? "immediately" : `after ${rule.delay_days} day${rule.delay_days === 1 ? "" : "s"}`}
                       {" → "}
@@ -586,11 +613,19 @@ export default function AdminFlodeskClient() {
               </thead>
               <tbody>
                 {status.recentFailures.map((f) => (
-                  <tr key={`${f.ruleId}:${f.profileId}`} className="border-t border-nfw-blackberry/10">
+                  <tr key={`${f.ruleId}:${f.type === "email" ? f.email : f.profileId}`} className="border-t border-nfw-blackberry/10">
                     <td className="py-1.5 font-serif whitespace-nowrap">{f.ruleName}</td>
                     <td className="py-1.5">
-                      <div className="font-serif">{f.fullName || "—"}</div>
-                      <div className="text-xs text-nfw-blackberry/60 font-ui">{f.email || f.profileId}</div>
+                      <div className="font-serif">
+                        {f.type === "email" ? (
+                          <span className="px-1.5 py-0.5 text-[10px] font-ui font-black uppercase tracking-wider bg-nfw-stone/40 text-nfw-blackberry/70 mr-2 align-middle">
+                            email-only
+                          </span>
+                        ) : (
+                          (f.fullName || "—")
+                        )}
+                      </div>
+                      <div className="text-xs text-nfw-blackberry/60 font-ui">{f.email || "—"}</div>
                     </td>
                     <td className="py-1.5 text-xs text-red-700 font-mono break-all">{f.lastError}</td>
                     <td className="py-1.5 text-right font-ui">{f.attemptCount}</td>

@@ -15651,3 +15651,103 @@ Seeded rules (all **disabled**, no segment): `waitlist` (Waitlist, 5d), `abandon
 4. Approve a test waitlist member → they leave the Waitlist segment immediately. Complete step 2 for a test Profile Incomplete account → next run moves them to Abandoned.
 
 **Build:** `tsc` 0 errors, `next build` ✓ (8 new routes). Eligibility logic unit-checked (13 category transitions). Auth smoke-tested: 401 on all new routes without a session / with a bad Bearer.
+
+## Session 2026-09-17: Newsletter Only Flodesk Category
+
+### Goal
+
+Add a 7th category to the existing `/admin/flodesk` rules dropdown that syncs **newsletter signups which are not also members of the site** into a Flodesk segment. Exits the segment automatically when that email later becomes a profile (any membership tier).
+
+### Decisions & Constraints
+
+- **State storage:** New parallel table `flodesk_sync_newsletter` keyed `(rule_id, email)`. Reusing `flodesk_sync_members` would require making `profile_id` nullable and changing the PK; risk of regression on existing rules was higher than the cost of one small table.
+- **Exit semantics:** "Exit when they sign up (recommended)" — when their email appears in `profiles` (any tier) the next hourly cron removes them from the Flodesk segment. This matches the existing category-rule pattern.
+- **Default delay:** 1 day (skip typos; wait for the most recent signups to either become profiles or persist).
+- **Dropdown label:** "Newsletter Only" — matches existing PascalCase category names.
+
+### Eligibility (the "Newsletter Only" set)
+
+```sql
+SELECT email FROM coming_soon_emails
+WHERE email IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM profiles WHERE LOWER(email) = LOWER(coming_soon_emails.email)
+  )
+  AND created_at <= now() - interval '1 day'  -- delay_days, may be 0
+```
+
+Computed in `fetchNewsletterEligibleSet()` (paginated past 1000). Emails are lowercased on both sides; `coming_soon_emails.email` is already normalized at insert (`app/api/coming-soon/subscribe/route.ts:38`) and `profiles.email` is populated by the `sync_profile_email` trigger from `auth.users.email`.
+
+### Database
+
+**`supabase/migrations/169_add_newsletter_only_to_flodesk_rules.sql`** (created, not yet applied):
+
+```sql
+ALTER TABLE flodesk_sync_rules DROP CONSTRAINT IF EXISTS flodesk_sync_rules_category_check;
+ALTER TABLE flodesk_sync_rules ADD CONSTRAINT flodesk_sync_rules_category_check
+  CHECK (category IN (
+    'Waitlist','Abandoned','Profile Incomplete','Free','Contributing','Founding','Newsletter Only'
+  ));
+
+CREATE TABLE IF NOT EXISTS flodesk_sync_newsletter (
+  rule_id UUID NOT NULL REFERENCES flodesk_sync_rules(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('added','removed','failed')),
+  flodesk_subscriber_id TEXT,
+  attempt_count INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT,
+  added_at TIMESTAMPTZ,
+  removed_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (rule_id, email)
+);
+
+CREATE INDEX IF NOT EXISTS idx_flodesk_sync_newsletter_rule_status
+  ON flodesk_sync_newsletter(rule_id, status);
+
+ALTER TABLE flodesk_sync_newsletter ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins manage flodesk_sync_newsletter"
+  ON flodesk_sync_newsletter FOR ALL
+  USING (public.is_admin(auth.uid()))
+  WITH CHECK (public.is_admin(auth.uid()));
+
+NOTIFY pgrst, 'reload';
+```
+
+(Filename is 169 because 168 was already taken by an earlier migration in this repo — confirmed with `ls supabase/migrations/`.)
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `supabase/migrations/169_add_newsletter_only_to_flodesk_rules.sql` | **New** — schema + RLS |
+| `lib/flodesk-rules.ts` | Appended `'Newsletter Only'` to `RULE_CATEGORIES`. Comment notes the new value bypasses `getCategory()`. |
+| `lib/flodesk-sync.ts` | Added `fetchNewsletterEligibleSet()`, `fetchNewsletterMemberRows()`, `upsertNewsletterRows()`, `toNewsletterUpsertItem()`, and `runNewsletterRule()`. Wired into Step 4b of `runFlodeskSync()` so newsletter rules run after the profile-categories additions loop. |
+| `app/api/admin/flodesk/status/route.ts` | Now joins `flodesk_sync_newsletter` for failures. `recentFailures` is a discriminated union `{ type: "profile" \| "email", … }` sorted by `updated_at`. Adds `newsletterSignupCount` (raw count of `coming_soon_emails`). |
+| `app/admin/flodesk/AdminFlodeskClient.tsx` | `Status` interface updated for the discriminated union. `CATEGORY_HELP` gains an entry. Newsletter rules render with a lilac "Newsletter" badge. Connection card surfaces signup count. Failure table shows `email-only` rows with a stone tag. |
+
+### Why the profile-categories loop is a no-op for newsletter rules
+
+The existing Step 3 (EXITS) checks `memberRows` (which is now `flodesk_sync_members` rows — always empty for a Newsletter Only rule because that rule's rows live in `flodesk_sync_newsletter`). The Step 4 (ADDITIONS) filters `profiles` via `isEligibleForAdd`, which calls `isInCategory(profile, rule)` → `getCategory(profile) === rule.category`. `getCategory()` can never return `"Newsletter Only"` so the check is always false. Existing loop safely no-ops; no extra branching in Step 3 or Step 4.
+
+### Edge Cases
+
+- **Anonymized profile later returns to newsletter list:** When `lib/anonymize.ts` runs, the profile's `email` column is wiped. The next newsletter sweep sees the email back in the eligible set and would NOT remove it from Flodesk (because no profile matches). Acceptable — an anonymized profile is, by design, indistinguishable from "no profile", and the email still represents a real person on the newsletter list. `removeProfileFromFlodesk()` no-ops on newsletter rows (correct — those rows are keyed by email, not `profile_id`).
+- **Newsletter signup deleted from `coming_soon_emails`:** Sync sweep sees email no longer in the eligible set, calls `removeFromSegments()` using the stored `flodesk_subscriber_id`. Cleans up properly.
+- **`remove_on_exit = false` on a newsletter rule:** No exits are computed; once added the email stays until a manual `clearRule()` runs. Existing behavior consistent across rule kinds.
+- **Budget overrun after category rules:** Newsletter runs after profile-categories; if the budget is exhausted, newsletter rules skip with `remaining` reported per rule.
+- **Newsletter rule with no segment:** `runFlodeskSync` filters `rules` by `Boolean(r.flodesk_segment_id)` at Step 1 — newsletter rules without a segment are dropped along with category rules.
+
+### Build Status
+
+- `npm run build` ✓ (TypeScript 0 errors; 210/210 routes generated including unchanged flodesk routes)
+- `npx eslint --max-warnings 0` on the four changed source files ✓
+- No new env vars needed. Existing hourly `/api/cron/flodesk-sync` cron picks up newsletter rules automatically.
+
+### Deploy
+
+1. Run `supabase/migrations/169_add_newsletter_only_to_flodesk_rules.sql` in the Supabase SQL Editor.
+2. Deploy code.
+3. Create the Flodesk segment in Flodesk.
+4. `/admin/flodesk` → **New rule** → category **Newsletter Only** → pick segment → **Preview** (sample emails should all be from `coming_soon_emails` with no `profiles.email` match) → **Run** once (don't enable yet) → verify in Flodesk → **Enable**.
