@@ -19,6 +19,7 @@ export default function NewGrantCyclePage() {
     grants_available: "",
     is_testing_only: false,
     requires_documents: false,
+    rejection_message: "",
     rejection_message_1: "",
     rejection_message_2: "",
     rejection_message_3: "",
@@ -244,6 +245,22 @@ export default function NewGrantCyclePage() {
           </div>
 
           <div className="border-t border-nfw-blackberry/10 pt-4 mt-4">
+            <div className="mb-4">
+              <label className={labelClass}>
+                Rejection Message <span className="text-nfw-blackberry/40 font-normal">(Optional — opening line)</span>
+              </label>
+              <p className="text-xs text-nfw-blackberry/50 mt-1">
+                Opening line shown before bullet points when an application is not approved. Use {"{{name}}"} for applicant name and {"{{grantCycleName}}"} for grant name.
+              </p>
+              <textarea
+                value={formData.rejection_message || ""}
+                onChange={(e) => setFormData({ ...formData, rejection_message: e.target.value })}
+                className="w-full px-4 py-3 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent transition-all font-ui text-sm mt-2"
+                rows={2}
+                placeholder="While we can't provide a grant at this time, we want to make sure you still feel supported:"
+              />
+            </div>
+
             <label className={labelClass}>
               Rejection Message <span className="text-nfw-blackberry/40 font-normal">(Optional — 3 bullet points)</span>
             </label>

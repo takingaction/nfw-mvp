@@ -15314,6 +15314,52 @@ if (!certification_consent) {
 ### Build Status
 - `npm run build` ✓ (TypeScript 0 errors)
 
+## Session 2026-09-16: Grant Cycle Rejection Message Field
+
+### Goal
+
+Add an optional `rejection_message` opening-line textarea to grant cycle admin forms. When set, this line is used as the introduction to rejection emails before the standard 3 bullet points, enabling warmer, more personal rejection messaging.
+
+### Database
+
+**`supabase/migrations/168_add_rejection_message_to_grant_cycles.sql`** (created, not yet applied):
+```sql
+ALTER TABLE grant_cycles ADD COLUMN rejection_message TEXT DEFAULT NULL;
+NOTIFY pgrst, 'reload';
+```
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/168_add_rejection_message_to_grant_cycles.sql` | Adds `rejection_message TEXT` column to `grant_cycles` |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/grants/new/page.tsx` | State added `rejection_message: ""`; UI section added before the 3 bullet-point textareas |
+| `app/admin/grants/[id]/edit/page.tsx` | State, load, and UI textarea added before the 3 bullet-point textareas |
+| `app/api/admin/grants/[id]/final-approve/route.ts` | Passes `rejectionMessage` template variable to `grant-not-approved` email |
+| `app/api/admin/emails/[slug]/send-test/route.ts` | Test sender includes `rejectionMessage` value |
+
+### UI Design
+
+- Label: `Rejection Message` with sub-label `(Optional — opening line)`
+- Helper text: `Use this to add a warm, personal opening line to rejection emails. Available token: {{name}} and {{grantCycleName}}`
+- Placeholder: `"While we can't provide a grant at this time, we want to make sure you still feel supported:"`
+- Uses same `font-serif` / `font-ui` / styling as the 3 existing bullet-point textareas
+
+### Email Integration
+
+- `final-approve/route.ts` passes `rejectionMessage` to the `grant-not-approved` template
+- User must add `{{rejectionMessage}}<br/><br/>` before `{{rejectionMessage1}}` in the `grant-not-approved` email template via `/admin/emails`
+
+### To Deploy
+
+1. Run migration 168 in Supabase SQL Editor
+2. Add `{{rejectionMessage}}<br/><br/>` before `{{rejectionMessage1}}` in the `grant-not-approved` email template
+
 ## Session 2026-09-15: Analytics New Members Chart Sort + Year on Hover Fix
 
 ### Goal
