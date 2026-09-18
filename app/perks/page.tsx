@@ -905,6 +905,19 @@ export default function PerksPage() {
     setCurrentPage(1);
   };
 
+  // Triggered every time the user types in the search bar. Drop any active
+  // store/location filter and return to stores view so the new query runs
+  // against the full catalog (not scoped to the previously-clicked store).
+  // Without this, searching "Dominos" while filtered to a clicked Amazon store
+  // returns 0 results because Access Perks looks for "Dominos" within Amazon's offers.
+  const handleSearchInputChange = (query: string) => {
+    setSearchQuery(query);
+    setSelectedStore(null);
+    setSelectedLocation(null);
+    setCurrentView("stores");
+    setCurrentPage(1);
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -994,7 +1007,7 @@ export default function PerksPage() {
             postalCode={searchPostalCode}
             distance={searchDistance}
             hasActiveFilters={selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0 || selectedStore !== null || selectedLocation !== null || onlineOnly}
-            onQueryChange={setSearchQuery}
+            onQueryChange={handleSearchInputChange}
             onPostalCodeChange={setSearchPostalCode}
             onDistanceChange={(dist) => {
               if (dist === "2500mi") {

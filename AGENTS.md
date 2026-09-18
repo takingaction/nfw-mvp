@@ -16337,3 +16337,79 @@ Low. Only changes the path for `response.status === 400`. All other status codes
 - Manual: type a normal query like "Dominos" → results still render
 - Manual: temporarily kill network access → red banner with details still works for actual system failures
 - Server logs: `console.warn` shows up in Vercel logs whenever Access Perks returns 400, so future contract changes are visible
+
+## Session 2026-09-18: Search Bar Resets Active Store Filter on Typing
+
+### Problem
+
+User reported: "if I type Amazon and click on a result and then search for Dominos I get no results, this is because we're in the offers area I guess but we still need a better UX".
+
+Confirmed root cause by tracing the data flow:
+
+1. User searches "Amazon" in stores view → `searchQuery = "Amazon"` → 5 Amazon stores show.
+2. User clicks on an Amazon store card → `handleStoreClick(amazonStoreKey)` runs:
+   - Saves current filters (including `searchQuery = "Amazon"`) to `savedFilters`.
+   - Sets `selectedStore = amazonStoreKey`, clears `searchQuery = ""`, switches to offers view.
+3. User is now in offers view with `selectedStore = amazonStoreKey` and `searchQuery = ""`. Shows Amazon's offers.
+4. User types "Dominos" in the search bar → `setSearchQuery("Dominos")` → useEffect fires.
+5. fetchRollup runs in offers branch. Builds params including `store_key: amazonStoreKey` (because `selectedStore` is still set). API call: `?query=Dominos&store_key=amazonStoreKey`.
+6. Access Perks looks for "Dominos" within Amazon's offers — finds none — returns 0.
+7. User sees "No Results" and assumes the search is broken.
+
+The user actually intended to start a new free-form search; they didn't realize they were scoped to Amazon.
+
+### Fix
+
+**`app/perks/page.tsx`** — add a new `handleSearchInputChange` handler that's called every time the user types in the search bar (instead of `setSearchQuery` directly). It drops any active store/location filter and returns to stores view so the new query runs against the full catalog:
+
+```typescript
+const handleSearchInputChange = (query: string) => {
+  setSearchQuery(query);
+  setSelectedStore(null);
+  setSelectedLocation(null);
+  setCurrentView("stores");
+  setCurrentPage(1);
+};
+```
+
+Then wire it up:
+
+```typescript
+<PerksSearch
+  ...
+  onQueryChange={handleSearchInputChange}
+  ...
+/>
+```
+
+The `PerksSearch` component itself doesn't need changes — it still uses `onQueryChange` to push the typed value up. The parent now does more work in that handler.
+
+### Behavior after fix
+
+| Sequence | Before | After |
+|---|---|---|
+| Search "Amazon" → click Amazon store card → type "Dominos" | "No Results" (Dominos queried within Amazon) | Returns to stores view, shows Dominos offers |
+| Search "Amazon" → click Amazon store → click "Back to stores results" → type "Spencer" | Works as expected (Back button cleared selectedStore) | Still works as expected — unchanged |
+| Search "Amazon" in stores view, then click "Offers" tab → type "Dominos" in offers view | Works (selectedStore null because never clicked a store) | Still works — typing clears selectedStore if it was set; here it wasn't, no change |
+| Search "Amazon" → click Amazon → click a specific Amazon location → type "Dominos" | "No Results" (Dominos queried within location) | Returns to stores view, shows Dominos offers |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/perks/page.tsx` | Added `handleSearchInputChange` handler. Replaced `onQueryChange={setSearchQuery}` prop on `<PerksSearch>` with `onQueryChange={handleSearchInputChange}`. |
+
+### Decisions
+
+- **Clear both `selectedStore` and `selectedLocation`**, even though only `selectedStore` causes the immediate bug. Both represent "I drilled down into a specific offer"; both should be cleared on a fresh search.
+- **Switch to `currentView = "stores"`** so the user is back in the standard search results view after typing. Matches the user's mental model of "I'm starting a new search."
+- **Reset `currentPage` to 1** because the new search starts from the beginning.
+- **Did NOT add a debounce.** Considered but rejected — the user's reported bug isn't a race condition (it works fine when they don't click a store first); it's a scoping issue. Debounce is a separate concern.
+- **Did NOT change `handleSearch`** (the Enter-key path). Kept it as-is so users who hit Enter to confirm their search get the same behavior as before.
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- Manual: search "Amazon" → click Amazon → type "Dominos" → returns to stores view with Dominos results
+- Manual: search "Amazon" → click Amazon → click Back → type "Spencer" → still works (Back button path unchanged)
+- Manual: search "Amazon" → no clicks → type "Dominos" → still works (default stores view, no filter to clear)
