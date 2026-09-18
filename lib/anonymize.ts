@@ -85,12 +85,6 @@ export async function anonymizeUser(
         zip: null,
         date_of_birth: null,
         household_income: null,
-        occupation: null,
-        industry: null,
-        company_name: null,
-        company_website: null,
-        linkedin_url: null,
-        twitter_handle: null,
         social_handles: null,
         shipping_address: null,
         identities: null,
@@ -121,6 +115,14 @@ export async function anonymizeUser(
         // deleted_at + deletion_request_id: stamped so a single SELECT on profiles
         // answers "was this row anonymized? when? via which request?". Mirrors the
         // back-link already stored on auth.users.raw_user_meta_data->>'deletion_request_id'.
+        //
+        // Fields deliberately NOT reset to null (no longer exist on profiles in production,
+        // no app code reads them anywhere — same drift pattern as bio):
+        //   bio, occupation, industry, company_name, company_website, linkedin_url,
+        //   twitter_handle
+        // See /admin/members?action=edit or /profile/edit for the full ALLOWED_FIELDS
+        // cleanup — those keys are removed there too so a profile update attempt
+        // never 500s on a missing column.
         deleted_at: new Date().toISOString(),
         deletion_request_id: deletionRequestId,
         joined_at: null, // Will be cleared

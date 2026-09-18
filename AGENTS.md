@@ -16804,3 +16804,71 @@ the API query/response field remained. The cleanup here removes those dead refer
 - Wiring up `deletion_documents_pending` for real (the document review workflow)
 - Any UI surfacing of the new `profiles.deleted_at` / `profiles.deletion_request_id` columns
 - Per-row error handling in `lib/anonymize.ts`
+
+## Session 2026-09-18: Anonymize 6 More Ghost Columns + ALLOWED_FIELDS Cleanup
+
+### Problem
+
+`Profile anonymization failed: Could not find the 'company_name' column of 'profiles' in the schema cache` — same class of crash as the earlier `bio` fix. The previous session's investigation claimed only `bio` was missing; in fact, all 7 columns created in `001_initial_schema.sql:18-29` had been manually dropped from production without a migration.
+
+### Verification (ran against production schema)
+
+| Query | Result |
+|-------|--------|
+| `information_schema.columns` for `bio, occupation, industry, company_name, company_website, linkedin_url, twitter_handle` | **Zero rows** — none of these columns exist on `profiles` |
+| Views / stored procedures referencing these fields | **Zero rows** — no DB-side references |
+| Paranoid check across all 32 other columns in step 1 UPDATE | **Zero rows missing** — confirmed step 1 will be clean after this fix |
+
+### Fixes Applied
+
+**`lib/anonymize.ts` step 1** (lines 88-93 before fix):
+- Removed the 6 ghost-column writes: `occupation: null`, `industry: null`, `company_name: null`, `company_website: null`, `linkedin_url: null`, `twitter_handle: null`
+- `bio` was already removed in commit `1294177`
+- Updated the explanatory comment block to list all 7 columns as the documented drift pattern
+
+**`app/api/profile/update/route.ts` ALLOWED_FIELDS** (lines 11-30 before fix):
+- Removed 7 entries: `bio`, `occupation`, `industry`, `company_name`, `company_website`, `linkedin_url`, `twitter_handle`
+- These were dormant 500 risks — any profile-update request that included any of these keys would 500 with the same column-missing error. No signup form or profile UI sends them, so the risk was latent but real.
+
+### Decision Log
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Restore columns vs. remove writes | Remove writes | No app code reads or writes them. Recreating columns creates permanent-NULL fields no code populates — pure maintenance debt. |
+| Include ALLOWED_FIELDS cleanup in same PR | Yes | Same one-line-per-entry edit; closes the latent-bug ticket for these 7 fields alongside the `bio` cleanup. |
+| No data backfill | n/a | Queries confirmed columns don't exist, so nothing to backfill. |
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- `grep -rn '\boccupation\b\|\bindustry\b\|\bcompany_name\b\|\bcompany_website\b\|\blinkedin_url\b\|\btwitter_handle\b' lib/ app/` — returns only the documentation comment in `lib/anonymize.ts:121-122`. All active code references removed.
+- Smoke test (after deploy): submit deletion request on a throwaway account → admin verify → admin process. All 14 steps should complete; no column-missing error.
+
+### Drift Pattern Documented
+
+For future agents: any time `anonymize.ts` step 1 hits "Could not find the column X of profiles in the schema cache," the right move is:
+1. Run Query 1 above against `information_schema.columns` to identify missing columns
+2. Run paranoid check across all columns in the step 1 UPDATE payload
+3. Remove the writes (never restore the columns — they were removed deliberately and no code reads them)
+4. Remove from `ALLOWED_FIELDS` if present in `app/api/profile/update/route.ts`
+5. Update `lib/anonymize.ts` comment block to record the drift
+
+The drift is caused by manual `DROP COLUMN` from the Supabase Dashboard SQL Editor, never via migration. The original schema had these fields from MVP inception but no UI form ever wrote them.
+
+### Files Changed
+
+- `lib/anonymize.ts` — removed 6 lines, updated comment block
+- `app/api/profile/update/route.ts` — removed 7 ALLOWED_FIELDS entries
+
+### Deploy
+
+1. Deploy code (no migrations required — all changes are deletions of references to non-existent columns).
+2. Smoke-test on a real account.
+
+### Out of Scope (Still Parked)
+
+- Per-row error handling in `lib/anonymize.ts`
+- `deletion_log` write protection
+- `contact_submissions.message` PII retention (structural gap)
+- CSV export of Activity Log
+- `deletion_documents_pending` real wiring
