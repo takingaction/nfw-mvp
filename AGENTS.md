@@ -15967,3 +15967,70 @@ User also reported "when Online Only is turned on I still see In-Store options f
 - `npm run build` ✓ (TypeScript 0 errors)
 - Manual: uncheck + 10mi with a real ZIP → Amazon (and other online-only stores) now appear; check + 10mi → online-only results, no in-store offers
 - Server route no longer has two different online-handling branches
+
+## Session 2026-09-18: Online Only — Real API Semantics + UI Label Alignment
+
+### The Docs (definitive)
+
+Looked up Access Perks API documentation for the `online` parameter:
+
+> **Param: Online** — Filter locations based on whether or not they have online exclusive offers. Can be set to `only`, `include`, or `none`. Online exclusives are offers that are only available online, and do not have a physical address associated with them. Any Geolocation based search excludes online offers by default. Use `include` to combine online offers with a location query, and `only` to show only online offers.
+>
+> When using `online=include`, you must also use a Geolocation parameter, otherwise the request will be set to `online=only`. By default the online results will be appended to the end of the response, as we essentially treat them as results that are the furthest away. You can override this with the Sort parameter.
+
+### What This Means
+
+`online=only` does **NOT** mean "show me coupons I can redeem online." It means:
+
+> **"Show me only stores/locations that are entirely online (have no physical address at all)."**
+
+A brand like Domino's has physical locations. Even if Domino's has online-redeemable coupon offers, the store itself has a physical address, so it does **not** qualify under `online=only`. That's why searching "Dominos" under Online Only correctly returns zero results.
+
+The earlier comment ("Domino's Note" in the previous session entry) about "Domino's has both online-redeemable and in-store offers in Access Perks" was speculation and was wrong. We never actually verified it. The real story is that the **store-level physical-address attribute** is what filters stores out under `online=only`, regardless of individual offers.
+
+### UX Problem
+
+The previous commits labelled the UI filter "Online Only" with helper text that implied a broader meaning:
+- Old active: "Showing online-redeemable offers only. Location is ignored."
+- Old inactive: "Show only offers you can redeem online. Local / in-store offers will be hidden."
+
+These descriptions don't match what the API actually filters. Users reasonably expect to find Domino's or other familiar brands when checking "Online Only" — but the API correctly excludes them because they have physical addresses. The mismatch causes surprise (e.g. "Dominos search returns no results" with Online Only on).
+
+### Fix
+
+Re-aligned the UI label and helper text with the actual API semantics. **No data-flow changes** — the previous session's `online=only` and `online=include` behavior was already correct per the docs.
+
+| Where | Before | After |
+|---|---|---|
+| Sidebar button title | "Online Only" | "Online-Only Merchants" |
+| Helper text — active | "Showing online-redeemable offers only. Location is ignored." | "Showing online-exclusive merchants only. Location is ignored." |
+| Helper text — inactive | "Show only offers you can redeem online. Local / in-store offers will be hidden." | "Include online-exclusive merchants (no physical address) in your location search." |
+| Active filter chip | "Online Only ✕" | "Online-Only Merchants ✕" |
+| Chip X button aria-label | "Remove Online Only filter" | "Remove Online-Only Merchants filter" |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/perks/FilterSidebar.tsx` | Updated 5 strings: button title, active helper, inactive helper, chip label, chip aria-label |
+
+### Behavior
+
+The data flow is unchanged from the previous fix. Only the user-facing strings now accurately describe what Access Perks returns:
+
+| Toggle | What the API returns | What the user now sees in the UI |
+|---|---|---|
+| Off | Physical stores near user + online-exclusive merchants appended (`online=include` + geo) | "Include online-exclusive merchants (no physical address) in your location search." |
+| On | Only online-exclusive merchants (`online=only`) | "Showing online-exclusive merchants only. Location is ignored." |
+| Domino's search, On | Zero results (physical store, doesn't qualify) | "No Results" — expected, no longer surprising |
+
+### Decisions
+
+- **Kept the variable name `onlineOnly`** — internal state, only the user-visible label changed.
+- **Did not remove the filter** — it's correctly wired now and accurately described. The filter's narrow true purpose (find Amazon-style online-exclusive merchants) is useful for members who want to browse digital-only offers without sifting through local stores.
+- **Did not add Domino's to `EXCLUDED_STORES`** — no longer necessary; the documented semantics explain why Domino's doesn't appear under `online=only`.
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- Manual: sidebar reads "Online-Only Merchants" with the new helper text; chip reads "Online-Only Merchants ✕"; aria-label updated; toggling still works the same.

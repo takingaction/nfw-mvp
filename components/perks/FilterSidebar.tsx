@@ -322,14 +322,14 @@ export default function FilterSidebar({
                   key="online-only-chip"
                   className="inline-flex items-center gap-1 px-2 py-0.5 bg-nfw-lilac/20 text-nfw-aubergine text-xs"
                 >
-                  Online Only
+                  Online-Only Merchants
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onOnlineOnlyChange?.(false);
                     }}
                     className="hover:text-nfw-blackberry"
-                    aria-label="Remove Online Only filter"
+                    aria-label="Remove Online-Only Merchants filter"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -352,15 +352,15 @@ export default function FilterSidebar({
             >
               <Globe className="w-5 h-5" />
               <div className="text-left">
-                <div className="font-ui font-medium text-sm">Online Only</div>
+                <div className="font-ui font-medium text-sm">Online-Only Merchants</div>
                 <div
                   className={`text-xs font-serif ${
                     onlineOnly ? "text-nfw-lilac" : "text-nfw-blackberry/50"
                   }`}
                 >
                   {onlineOnly
-                    ? "Showing online-redeemable offers only. Location is ignored."
-                    : "Show only offers you can redeem online. Local / in-store offers will be hidden."}
+                    ? "Showing online-exclusive merchants only. Location is ignored."
+                    : "Include online-exclusive merchants (no physical address) in your location search."}
                 </div>
               </div>
             </button>
