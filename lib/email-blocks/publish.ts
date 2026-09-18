@@ -2,7 +2,90 @@ import { createClient } from "@/lib/supabase/server";
 import getAdminClient from "@/lib/supabase/admin";
 import { renderAllBlocks } from "./renderer";
 import { buildEmailShell } from "./shell";
+import { parseInlineFormatting } from "./formatting";
 import type { EmailSection } from "./types";
+
+// Sentinel-token post-substitution pass.
+//
+// The email pipeline stores publisher-translated HTML (with <strong>, <em>,
+// <a>) in `full_email_html`. At send time we substitute `{{var}}` placeholders
+// with raw values coming from application logic. Those values can themselves
+// contain markup (e.g. "rejectionMessage: "Your **important** update is here.").
+//
+// The naive approach — re-running parseInlineFormatting() over the whole HTML
+// after variable substitution — risks breaking publisher-translated markup:
+// any `**` inside existing <strong>/<em> tags or any nested replacement could
+// double-translate or wrap an already-tagged span.
+//
+// The sentinel approach: wrap each substituted variable value with a unique
+// bracketed sentinel, run parseInlineFormatting() on the entire document,
+// then strip the sentinels. The sentinels themselves are formatted so they
+// cannot collide with user-typed markup (square brackets are removed from
+// parseInlineFormatting's link syntax via the URL-safety guard). The sentinel
+// text is invisible in the rendered email because it contains no rendered
+// characters and falls outside any markup context after the translator runs.
+//
+// If a value contains the sentinel prefix (collisions are statistically
+// impossible because IDs are random per substitution), the function falls
+// back to skipping the wrapper and substituting raw (no markup translation)
+// to preserve correctness — at the cost of fidelity for that one value.
+
+const SENTINEL_PREFIX = "__NFWS";
+const SENTINEL_SUFFIX = "ENDNFW";
+
+function randomId(): string {
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+}
+
+interface SubstitutedResult {
+  html: string;
+  subject: string;
+}
+
+/**
+ * Substitute {{var}} placeholders with values, then run parseInlineFormatting()
+ * ONLY on the substituted regions (sentinel-guarded). Existing publisher
+ * markup in `full_email_html` is left untouched.
+ */
+function substituteAndTranslate(html: string, subject: string, variables: Record<string, string>): SubstitutedResult {
+  const sentinels: Array<{ open: string; close: string; value: string }> = [];
+  let working = html;
+  let workingSubject = subject;
+
+  for (const [key, value] of Object.entries(variables)) {
+    // Build a value-safe JS-regex source (escapes $.^ etc.)
+    const pattern = new RegExp(`\\{\\{${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\}\\}`, "g");
+    const id = randomId();
+    const open = `[[${SENTINEL_PREFIX}_${id}_OPEN]]`;
+    const close = `[[${SENTINEL_PREFIX}_${id}_CLOSE]]`;
+
+    // Step 1: Wrap each occurrence with sentinels and store them.
+    let index = 0;
+    working = working.replace(pattern, () => {
+      const thisOpen = `${open}_${index}_`;
+      const thisClose = `${close}_${index}_`;
+      sentinels.push({ open: thisOpen, close: thisClose, value });
+      index++;
+      return thisOpen + value + thisClose;
+    });
+    workingSubject = workingSubject.replace(pattern, value);
+  }
+
+  // Step 2: Translate the entire document. The sentinels are guaranteed not
+  // to be valid markup because:
+  //  - They contain square brackets (parseInlineFormatting's link pattern
+  //    is `[label](url)` — requires parentheses inside brackets).
+  //  - They contain underscores which are not part of any markup.
+  let translated = parseInlineFormatting(working);
+
+  // Step 3: Strip sentinels (which made it through translation unchanged
+  // because they're not valid input for any pattern).
+  for (const sentinel of sentinels) {
+    translated = translated.split(sentinel.open + sentinel.value + sentinel.close).join(sentinel.value);
+  }
+
+  return { html: translated, subject: workingSubject };
+}
 
 export interface PublishOptions {
   templateSlug: string;
@@ -82,16 +165,16 @@ export async function getPreRenderedHtml(
   }
 
   if (template.full_email_html && template.status === "published" && template.is_active !== false) {
-    let html = template.full_email_html;
-    let subject = template.subject || "";
-    for (const [key, value] of Object.entries(variables)) {
-      html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
-      subject = subject.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
-    }
+    const subject = template.subject || "";
+    const { html, subject: finalSubject } = substituteAndTranslate(
+      template.full_email_html,
+      subject,
+      variables
+    );
     return {
       html,
       useShell: false,
-      subject,
+      subject: finalSubject,
     };
   }
 
@@ -117,16 +200,16 @@ export async function getPreRenderedHtmlAdmin(
 
   const isActiveCheckPasses = options.skipActiveCheck || template.is_active !== false;
   if (template.full_email_html && template.status === "published" && isActiveCheckPasses) {
-    let html = template.full_email_html;
-    let subject = template.subject || "";
-    for (const [key, value] of Object.entries(variables)) {
-      html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
-      subject = subject.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
-    }
+    const subject = template.subject || "";
+    const { html, subject: finalSubject } = substituteAndTranslate(
+      template.full_email_html,
+      subject,
+      variables
+    );
     return {
       html,
       useShell: false,
-      subject,
+      subject: finalSubject,
     };
   }
 

@@ -1,5 +1,6 @@
 import type { EmailSection, EmailColumnsContent } from "./types";
 import { getEmailBgColor, getEmailTextColor } from "./email-colors";
+import { parseInlineFormatting } from "./formatting";
 
 interface Props {
   section: EmailSection;
@@ -24,7 +25,7 @@ export function EmailColumnsBlock({ section }: Props): string {
       return `
         <td width="${width}" style="vertical-align: top; padding-right: ${i < columns.length - 1 ? column_gap : 0}px;">
           <div style="font-family: 'DM Sans', Arial, sans-serif; font-size: 16px; line-height: 1.6; color: ${textColor}; text-align: ${text_align};">
-            ${col.content}
+            ${parseInlineFormatting(col.content || "")}
           </div>
         </td>
       `.trim();

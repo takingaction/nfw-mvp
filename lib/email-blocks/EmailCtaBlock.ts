@@ -1,6 +1,7 @@
 import type { EmailSection, ButtonColor } from "./types";
 import { getButtonStyles } from "./utils";
 import { getEmailBgColor } from "./email-colors";
+import { parseInlineFormatting } from "./formatting";
 
 interface Props {
   section: EmailSection;
@@ -25,8 +26,8 @@ export function EmailCtaBlock({ section }: Props): string {
     <table cellpadding="0" cellspacing="0" border="0" style="margin-left: ${text_align === "center" ? "auto" : text_align === "right" ? "auto" : "0"}; margin-right: ${text_align === "center" ? "auto" : "0"};">
       <tr>
         <td>
-          <a href="${button_url}" target="_blank" style="display: inline-block; background-color: ${bg}; color: ${text}; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; text-decoration: none; padding: 12px 24px;">
-            ${button_text}
+          <a href="${button_url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: ${bg}; color: ${text}; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; text-decoration: none; padding: 12px 24px;">
+            ${parseInlineFormatting(button_text || "")}
           </a>
         </td>
       </tr>

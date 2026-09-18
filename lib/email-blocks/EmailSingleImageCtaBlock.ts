@@ -1,6 +1,7 @@
 import type { EmailSection, EmailSingleImageCtaContent, ButtonColor } from "./types";
 import { getButtonStyles } from "./utils";
 import { getEmailBgColor } from "./email-colors";
+import { parseInlineFormatting } from "./formatting";
 
 interface Props {
   section: EmailSection;
@@ -26,12 +27,12 @@ export function EmailSingleImageCtaBlock({ section }: Props): string {
   const button = button_text
     ? `
     <div style="text-align: center; color: ${text1}; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 12px 24px;">
-      ${button_text}
+      ${parseInlineFormatting(button_text || "")}
     </div>`
     : "";
 
   const buttonCell = button_url
-    ? `<a href="${button_url}" target="_blank" style="display: block; text-decoration: none;">${button}</a>`
+    ? `<a href="${button_url}" target="_blank" rel="noopener noreferrer" style="display: block; text-decoration: none;">${button}</a>`
     : button;
 
   return `

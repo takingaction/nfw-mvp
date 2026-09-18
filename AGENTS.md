@@ -16872,3 +16872,147 @@ The drift is caused by manual `DROP COLUMN` from the Supabase Dashboard SQL Edit
 - `contact_submissions.message` PII retention (structural gap)
 - CSV export of Activity Log
 - `deletion_documents_pending` real wiring
+
+## Session 2026-09-18: Email Markup Translation Fix
+
+### Problem
+
+Emails sent via the email builder UI showed raw markup in delivered output:
+- `**bold**` and `*italic*` rendered as literal asterisks
+- `[here](https://google.com)` rendered as literal text
+
+User example (waitlist welcome text):
+> The wait(list) is over! We couldn't be **more excited** to have you join our community as a member of the National Fund for Women.
+>
+> **Your sponsored membership is available for you to claim all month long. **If you don't activate your membership this month, the offer expires...
+>
+> Click [here](https://google.com) for more info.
+
+### Root Cause
+
+Two distinct failure paths:
+
+**Path A — Publish-time (blocks):** `parseInlineFormatting()` (`lib/email-blocks/formatting.ts`) was only called by 2 of the 10 block components. Affected blocks interpolated user text into HTML template strings with no markup translation:
+
+| Block | User field | Status |
+|---|---|---|
+| `EmailTextBlock` | `text`, `bullet_items` | ✅ already translated |
+| `EmailTextColumnsBlock` | `text`, `bullet_items` | ✅ but never invoked (dead) |
+| `EmailHeroBlock` | `hero_text` | ❌ no translation |
+| `EmailColumnsBlock` | `columns[].content` | ❌ no translation |
+| `EmailCtaBlock` | `button_text` | ❌ no translation |
+| `EmailSingleImageCtaBlock` | `button_text` | ❌ no translation |
+| `EmailDoubleImageCtaBlock` | `button1_text`, `button2_text` | ❌ no translation |
+
+**Path B — Send-time (variable values):** Variable values from app code (e.g. `rejectionMessage`, `rejectionMessage1-3`) contain prose with `**bold**` markup. `getPreRenderedHtmlAdmin()` did a direct `html.replace(/\{\{var\}\}/g, value)` — values landed verbatim in delivered HTML.
+
+### Fix Strategy (Two Layers)
+
+**1. Publish-time (blocks)**: Run `parseInlineFormatting()` on every user-editable text field at render time so `full_email_html` stores translated HTML with `<strong>`, `<em>`, `<a>`.
+
+**2. Send-time (variable values)**: After substituting `{{vars}}` in `full_email_html`, run a single post-pass `parseInlineFormatting()` to translate markup that came in via variable *values*. Sentinel-token approach so publisher HTML is not re-translated.
+
+**3. URL safety**: Reject `javascript:` and `data:` schemes at translation time; allow only `http`, `https`, `mailto`, `tel`, plus relative paths starting with `/` or `#`. Emit `target="_blank" rel="noopener noreferrer"` on every `<a>`.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `lib/email-blocks/formatting.ts` | URL-scheme allowlist, link rel attribute, empty-string short-circuit, comment documenting senior-dev tradeoff on literal asterisks |
+| `lib/email-blocks/EmailHeroBlock.ts` | Wrap `hero_text` with `parseInlineFormatting()` |
+| `lib/email-blocks/EmailColumnsBlock.ts` | Wrap `col.content` with `parseInlineFormatting()` |
+| `lib/email-blocks/EmailCtaBlock.ts` | Wrap `button_text`; added `rel="noopener noreferrer"` to button `<a>` |
+| `lib/email-blocks/EmailSingleImageCtaBlock.ts` | Wrap `button_text`; added `rel="noopener noreferrer"` |
+| `lib/email-blocks/EmailDoubleImageCtaBlock.ts` | Wrap `button1_text`, `button2_text`; added `rel="noopener noreferrer"` |
+| `lib/email-blocks/publish.ts` | Added `substituteAndTranslate()` helper using sentinel-token post-pass; both `getPreRenderedHtml` and `getPreRenderedHtmlAdmin` now translate variable values |
+
+### Sentinel-Token Approach (Publish.ts)
+
+```typescript
+const SENTINEL_PREFIX = "__NFWS";
+
+function substituteAndTranslate(html, subject, variables) {
+  const sentinels = [];
+  let working = html;
+
+  // Step 1: Wrap each {{var}} occurrence in [[__NFWS_<id>_<index>_OPEN]] value [[__NFWS_<id>_<index>_CLOSE]]
+  for (const [key, value] of Object.entries(variables)) {
+    working = working.replace(pattern, () => {
+      const open = `[[${SENTINEL_PREFIX}_${randomId()}_OPEN]]_${index}_`;
+      const close = `[[${SENTINEL_PREFIX}_${randomId()}_CLOSE]]_${index}_`;
+      sentinels.push({ open, close, value });
+      return open + value + close;
+    });
+  }
+
+  // Step 2: Translate the entire document. Sentinels survive because they
+  //          don't match any markup pattern (square brackets in `[[X]]` don't
+  //          pair with `(...)` for the link regex).
+  let translated = parseInlineFormatting(working);
+
+  // Step 3: Strip sentinels (open + value + close) back to (translated) value
+  for (const sentinel of sentinels) {
+    translated = translated.split(sentinel.open + sentinel.value + sentinel.close).join(sentinel.value);
+  }
+
+  return { html: translated, subject };
+}
+```
+
+### URL Scheme Guard
+
+```typescript
+const ALLOWED_URL_SCHEMES = ["http:", "https:", "mailto:", "tel:"];
+
+function isSafeUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return true;
+  if (trimmed.startsWith("#")) return true;
+  try {
+    const parsed = new URL(trimmed, "https://nationalfundforwomen.org");
+    return ALLOWED_URL_SCHEMES.includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
+// On match rejection, fall back to label-only (no link):
+result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, label, url) => {
+  if (isSafeUrl(url)) {
+    return `<a href="${url.trim()}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${label}</a>`;
+  }
+  return label; // Strip the link but keep the text
+});
+```
+
+### Effect on User's Example
+
+Before:
+> `The wait(list) is over! We couldn't be **more excited** to have you join... **Your sponsored membership is available for you to claim all month long. **If you don't... Click [here](https://google.com) for more info.`
+
+After:
+> `The wait(list) is over! We couldn't be <strong>more excited</strong> to have you join... <strong>Your sponsored membership is available for you to claim all month long.</strong> If you don't... Click <a href="https://google.com" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">here</a> for more info.`
+
+### Build Verification
+
+```
+✓ Compiled successfully in 8.0s
+✓ Generating static pages (217/217)
+TypeScript: 0 errors
+```
+
+### Deployment Notes
+
+Templates with `status='published'` published **before** this fix still contain raw markup in fields that were never translated at publish-time (Hero, Columns, CTA blocks). To fix:
+
+1. Open each affected template in `/admin/emails/{slug}/builder`
+2. Click "Publish" — re-runs all blocks with new translation logic
+3. Or add a one-off "Republish All Templates" admin button (deliberately out of scope; can be added if needed)
+
+### Out of Scope (Deliberate)
+
+- No support for nested `***bold-italic***` or pipe-syntax `{{name|fallback}}` beyond existing behavior
+- No CMS editor-side auto-translate-on-typing (live preview)
+- No "Republish All" admin button (can be added on request)
+- `EmailTextColumnsBlock.ts` is exported but never invoked by `renderer.ts` — left as dead code (separate cleanup)

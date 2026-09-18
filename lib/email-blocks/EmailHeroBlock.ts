@@ -1,4 +1,5 @@
 import type { EmailSection, EmailHeroContent } from "./types";
+import { parseInlineFormatting } from "./formatting";
 
 interface Props {
   section: EmailSection;
@@ -21,7 +22,7 @@ export function EmailHeroBlock({ section }: Props): string {
       <tr>
         <td style="padding: ${padding}; text-align: center; vertical-align: middle; background-color: ${background_overlay};" class="hero-cell">
           <p style="font-family: Georgia, 'Times New Roman', serif; font-size: 28px; font-style: italic; font-weight: 400; color: ${text_color}; line-height: 1.4; margin: 0;">
-            ${hero_text}
+            ${parseInlineFormatting(hero_text || "")}
           </p>
         </td>
       </tr>

@@ -1,6 +1,7 @@
 import type { EmailSection, EmailDoubleImageCtaContent, ButtonColor } from "./types";
 import { getButtonStyles } from "./utils";
 import { getEmailBgColor } from "./email-colors";
+import { parseInlineFormatting } from "./formatting";
 
 interface Props {
   section: EmailSection;
@@ -33,11 +34,11 @@ export function EmailDoubleImageCtaBlock({ section }: Props): string {
     if (!text) return "";
     const inner = `
     <div style="text-align: center; color: ${textColor}; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 12px 24px;">
-      ${text}
+      ${parseInlineFormatting(text)}
     </div>`;
 
     if (url) {
-      return `<a href="${url}" target="_blank" style="display: block; text-decoration: none;">${inner}</a>`;
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display: block; text-decoration: none;">${inner}</a>`;
     }
     return inner;
   };
