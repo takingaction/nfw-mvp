@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import RepublishAllButton from "./email/RepublishAllButton";
 
 type EmailTemplate = {
   id: string;
@@ -260,6 +261,16 @@ export default function AdminEmailsClient({ initialTemplates, userEmail }: Props
             Supabase Emails ({supabaseTemplates.length})
           </button>
         </div>
+        {/* Republish All button */}
+        <RepublishAllButton
+          publishedCount={templates.filter((t) => t.status === "published").length}
+          onComplete={() => {
+            // After republish, refresh the templates list so the page reflects any state changes
+            if (typeof window !== "undefined") {
+              window.location.reload();
+            }
+          }}
+        />
         {/* Seed Templates button - temporarily hidden until needed */}
         {/*
         <div className="flex items-center gap-3">
