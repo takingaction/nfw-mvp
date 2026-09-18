@@ -359,8 +359,8 @@ export default function FilterSidebar({
                   }`}
                 >
                   {onlineOnly
-                    ? "Showing online-exclusive merchants only. Location is ignored."
-                    : "Include online-exclusive merchants (no physical address) in your location search."}
+                    ? "Showing stores with online-exclusive offers only. Location is ignored."
+                    : "Include stores with online-exclusive offers alongside your location results."}
                 </div>
               </div>
             </button>

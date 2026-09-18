@@ -16034,3 +16034,59 @@ The data flow is unchanged from the previous fix. Only the user-facing strings n
 
 - `npm run build` ✓ (TypeScript 0 errors)
 - Manual: sidebar reads "Online-Only Merchants" with the new helper text; chip reads "Online-Only Merchants ✕"; aria-label updated; toggling still works the same.
+
+## Session 2026-09-18: Online Only — Race Condition Fix + Wording Correction
+
+### Problem (regression report)
+
+After deploying the previous Online Only fix, the user reported:
+
+> "If I search for Dominos first and then turn on 'Online Only' Dominos remains as a result. If I START with Online Only and search for Dominos then it doesn't show, which is correct."
+
+Two related causes:
+
+1. **Stale-data race condition.** Toggling `onlineOnly` and typing in `searchQuery` in rapid succession triggered two `fetchRollup` calls in parallel. The older response could land after the newer one, overwriting `rollupGroups` with stale data. The classic repro: search "Dominos" → fetch with `online=include&query=Dominos` → toggle Online Only ON → fetch with `online=only&query=Dominos` → the older response resolves last and leaves Domino's visible even though the new response correctly returned 0 offers.
+
+2. **Wording gap.** Previous commit (2f400b9) described the filter as "online-exclusive merchants (no physical address)." Per the Access Perks docs, `online=only` returns "locations... that have online exclusive offers" — a store with at least one online-exclusive offer qualifies regardless of whether it also has physical addresses. So a brand like Domino's that has online-exclusive offers (visible to the user's member, even if not to the test guest key) qualifies under `online=only` and appears. The "(no physical address)" wording was misleading.
+
+### Solution (senior-dev approach)
+
+Reject the user's proposed "modal + reset on toggle" UX as too destructive (loses valid search queries like "Amazon" which IS an online-exclusive store). Instead:
+
+1. **AbortController to cancel in-flight fetches** — race-safe standard React pattern. Any new fetch cancels its predecessor via the controller's `signal`. Also added a `fetchTokenRef` counter so even if a cancellation fails to fire in time (e.g. the fetch has already resolved and is in microtask queue), the response can be detected as stale and dropped before any state update.
+
+2. **Clear `rollupGroups` and `searchInfo` immediately when filter changes** — the `useEffect` that fires `fetchRollup` now does `setRollupGroups([])` and `setSearchInfo(null)` before kicking off the new fetch. This means the user never sees stale groups flash during the loading period, regardless of which fetch wins the race.
+
+3. **Correct the wording** — drop "(no physical address)" entirely; describe the filter as "stores with online-exclusive offers" so the text matches the actual API behavior.
+
+4. **Abort on unmount** — `useEffect` cleanup aborts the active controller when the component unmounts, preventing setState-after-unmount warnings.
+
+### Behavior after fix
+
+| Scenario | Behavior |
+|---|---|
+| Online Only ON, search "Dominos" from start | Correctly shows "No Results" (already worked) |
+| Search "Dominos", then toggle Online Only ON | Old request aborted; new request runs with the latest filter state. `rollupGroups` cleared immediately so no stale Domino's flashes during the loading period. |
+| Search "Amazon", then toggle Online Only ON | Race fixed: Amazon (an online-exclusive store) shows up correctly. Search query preserved. |
+| Rapid toggling of Online Only multiple times | Each toggle aborts the previous in-flight request. No flicker. Latest state always wins. |
+| Component unmount during pending fetch | Aborted cleanly, no setState warnings. |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/perks/page.tsx` | Imported `useRef`. Added `fetchControllerRef` (AbortController) and `fetchTokenRef` (counter). `useEffect` cleanup aborts on unmount. The fetch-firing `useEffect` now bumps the token and clears `rollupGroups`/`searchInfo` before kicking off fetches. `fetchAllCounts` and `fetchRollup` abort any in-flight request, attach `signal` to `fetch`, swallow `AbortError` silently, and bail out via token check before applying state. `finally` block only clears `setLoading(false)` if this request is still the active one. |
+| `components/perks/FilterSidebar.tsx` | Two helper-text strings updated to reflect actual Access Perks semantics: active and inactive copy now say "stores with online-exclusive offers" instead of "no physical address". |
+
+### Decisions
+
+- **No modal, no reset.** Considered and rejected the user's original proposal. Modal-on-toggle adds friction; silent reset destroys valid queries (e.g. "Amazon" under Online Only is meaningful and would be wiped).
+- **Did not add Domino's to `EXCLUDED_STORES`.** The actual semantics explain why Domino's may appear under Online Only (it has online-exclusive offers per the API), and excluding it would mask the real behavior rather than clarify it.
+- **Token check on top of AbortController.** Defense in depth — if the controller's `signal` doesn't propagate cleanly through a complex async chain, the token comparison still catches stale writes.
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- Manual: search "Dominos" → toggle Online Only ON → no stale Domino's visible during loading; correct empty state or correct online-exclusive results once the new fetch completes.
+- Manual: rapid toggling of Online Only → no flicker, latest state wins.
+- Manual: search "Amazon" with Online Only ON → Amazon still appears.

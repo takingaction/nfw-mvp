@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getLoginRedirectUrl } from "@/lib/redirect-utils";
 import { AlertTriangle, SlidersHorizontal, X } from "lucide-react";
@@ -247,6 +247,20 @@ export default function PerksPage() {
   const [rollupGroups, setRollupGroups] = useState<RollupGroup[]>([]);
   const [viewCounts, setViewCounts] = useState({ stores: 0, offers: 0, locations: 0 });
 
+  // Abort any in-flight rollup/counts fetch when a new one starts so that rapid
+  // filter changes (e.g. toggling Online Only after a search) don't show stale results.
+  const fetchControllerRef = useRef<AbortController | null>(null);
+  // Track the latest state used to fire a fetch, so late responses from older
+  // in-flight requests can be detected and ignored even if abort hasn't fired yet.
+  const fetchTokenRef = useRef<number>(0);
+
+  useEffect(() => {
+    // Cancel any in-flight fetch on unmount.
+    return () => {
+      fetchControllerRef.current?.abort();
+    };
+  }, []);
+
   useEffect(() => {
     fetchCategories();
     fetchFacets();
@@ -312,11 +326,25 @@ export default function PerksPage() {
     if (!searchPostalCode && searchDistance !== "2500mi") {
       return;
     }
+    // Bump the token so any in-flight response from a previous filter state
+    // can be detected as stale and ignored on resolve. We also clear the
+    // visible result list immediately so the user never sees stale groups
+    // (e.g. Domino's) flash after toggling Online Only.
+    fetchTokenRef.current += 1;
+    setRollupGroups([]);
+    setSearchInfo(null);
     fetchAllCounts(onlineOnly);
     fetchRollup(onlineOnly);
   }, [onlineOnly, selectedCategories, selectedFacets, selectedStore, selectedLocation, selectedOfferTypes, searchQuery, searchPostalCode, searchDistance, currentView, currentPage]);
 
   const fetchAllCounts = async (isOnlineOnly: boolean) => {
+    // Abort any in-flight fetch so a stale counts response doesn't overwrite
+    // a newer one.
+    fetchControllerRef.current?.abort();
+    const controller = new AbortController();
+    fetchControllerRef.current = controller;
+    const token = fetchTokenRef.current;
+
     try {
       const cacheBuster = Date.now();
       const nationwide = searchDistance === "2500mi";
@@ -330,9 +358,9 @@ export default function PerksPage() {
           : (searchPostalCode ? `&postal_code=${searchPostalCode}&distance=${searchDistance}` : "");
       const categoryParam = selectedCategories.length > 0 ? `&category_key=${selectedCategories.join(",")}` : "";
       const [storesRes, offersRes, locationsRes] = await Promise.all([
-        fetch(`/api/access-perks/rollup?rollup=stores${geoParams}${categoryParam}${nationalParam}${onlineParam}&cb=${cacheBuster}`),
-        fetch(`/api/access-perks/offers/search?per_page=1${geoParams}${categoryParam}${nationalParam}${onlineParam}&cb=${cacheBuster}`),
-        fetch(`/api/access-perks/rollup?rollup=locations${geoParams}${categoryParam}${nationalParam}${onlineParam}&cb=${cacheBuster}`),
+        fetch(`/api/access-perks/rollup?rollup=stores${geoParams}${categoryParam}${nationalParam}${onlineParam}&cb=${cacheBuster}`, { signal: controller.signal }),
+        fetch(`/api/access-perks/offers/search?per_page=1${geoParams}${categoryParam}${nationalParam}${onlineParam}&cb=${cacheBuster}`, { signal: controller.signal }),
+        fetch(`/api/access-perks/rollup?rollup=locations${geoParams}${categoryParam}${nationalParam}${onlineParam}&cb=${cacheBuster}`, { signal: controller.signal }),
       ]);
 
       const [storesData, offersData, locationsData] = await Promise.all([
@@ -341,12 +369,19 @@ export default function PerksPage() {
         locationsRes.json().catch(() => ({ info: { total_results: 0 } })),
       ]);
 
+      // Bail if a newer fetch has been kicked off since this one started.
+      if (token !== fetchTokenRef.current) return;
+
       setViewCounts({
         stores: storesData.info?.total_stores || 0,
         offers: offersData.info?.total_results || 0,
         locations: locationsData.info?.total_locations || 0,
       });
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        // Request was superseded — silent.
+        return;
+      }
       console.error("Failed to fetch view counts:", err);
     }
   };
@@ -592,6 +627,13 @@ export default function PerksPage() {
   }, [selectedCollectionId, collections]);
 
   const fetchRollup = async (isOnlineOnly: boolean) => {
+    // Abort any in-flight rollup fetch so a stale response can't overwrite
+    // the latest one (e.g. user types in search then toggles Online Only).
+    fetchControllerRef.current?.abort();
+    const controller = new AbortController();
+    fetchControllerRef.current = controller;
+    const token = fetchTokenRef.current;
+
     setLoading(true);
     setError(null);
 
@@ -649,6 +691,7 @@ export default function PerksPage() {
         const queryParams = new URLSearchParams(params);
         const response = await fetch(
           `/api/access-perks/offers/search?${queryParams.toString()}`,
+          { signal: controller.signal },
         );
 
         if (!response.ok) {
@@ -662,6 +705,9 @@ export default function PerksPage() {
         }
 
         const data = await response.json();
+
+        // A newer fetch has been kicked off since this one started — drop the response.
+        if (token !== fetchTokenRef.current) return;
 
         setRollupGroups((data.offers || []).map((offer: any) => ({ ...offer, key: offer.offer_key })));
         setSearchInfo({
@@ -716,6 +762,7 @@ export default function PerksPage() {
         const queryParams = new URLSearchParams(params);
         const response = await fetch(
           `/api/access-perks/rollup?${queryParams.toString()}`,
+          { signal: controller.signal },
         );
 
         if (!response.ok) {
@@ -729,6 +776,9 @@ export default function PerksPage() {
         }
 
         const data = await response.json();
+
+        // A newer fetch has been kicked off since this one started — drop the response.
+        if (token !== fetchTokenRef.current) return;
 
         const totalStores = data.info?.total_stores || searchInfo?.total_stores || 0;
         const totalLocations = data.info?.total_locations || searchInfo?.total_locations || 0;
@@ -755,11 +805,18 @@ export default function PerksPage() {
         }
       }
     } catch (err: any) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        // Request was superseded — silent.
+        return;
+      }
       console.error("Fetch rollup error:", err);
       setError(err.message || "Failed to load results");
       setRollupGroups([]);
     } finally {
-      setLoading(false);
+      // Only clear the loading spinner if this is still the active request.
+      if (token === fetchTokenRef.current) {
+        setLoading(false);
+      }
     }
   };
 
