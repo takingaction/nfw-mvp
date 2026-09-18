@@ -46,8 +46,13 @@ interface SubstitutedResult {
  * Substitute {{var}} placeholders with values, then run parseInlineFormatting()
  * ONLY on the substituted regions (sentinel-guarded). Existing publisher
  * markup in `full_email_html` is left untouched.
+ *
+ * Exported so `lib/email-batch.ts` (and any future batch-send path) uses the
+ * same translation-aware substitution as `getPreRenderedHtml` /
+ * `getPreRenderedHtmlAdmin`. Single source of truth: never substitute
+ * `{{vars}}` into an email HTML without going through this function.
  */
-function substituteAndTranslate(html: string, subject: string, variables: Record<string, string>): SubstitutedResult {
+export function substituteAndTranslate(html: string, subject: string, variables: Record<string, string>): SubstitutedResult {
   const sentinels: Array<{ open: string; close: string; value: string }> = [];
   let working = html;
   let workingSubject = subject;

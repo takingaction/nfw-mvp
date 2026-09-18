@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { getPreRenderedHtmlAdmin } from "./email-blocks/publish";
+import { getPreRenderedHtmlAdmin, substituteAndTranslate } from "./email-blocks/publish";
 import getAdminClient from "@/lib/supabase/admin";
 
 const FROM = "National Fund for Women <hello@nationalfundforwomen.org>";
@@ -49,20 +49,6 @@ function chunkArray<T>(array: T[], size: number): T[][] {
  */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * Replace template variables in HTML content
- */
-function replaceTemplateVariables(
-  html: string,
-  variables: Record<string, string>
-): string {
-  let result = html;
-  for (const [key, value] of Object.entries(variables)) {
-    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
-  }
-  return result;
 }
 
 /**
@@ -178,12 +164,12 @@ export async function sendBatchEmails(
       ...recipient.variables,
     };
 
-    const personalizedHtml = replaceTemplateVariables(
+    // Translate-aware substitution: runs parseInlineFormatting ONLY on the
+    // substituted regions (sentinel-guarded) so publisher markup is preserved
+    // and any markdown in variable values (e.g. `rejectionMessage1: "[here](https://x.com)"`)
+    // gets rendered as a real <a> tag.
+    const { html: personalizedHtml, subject: personalizedSubject } = substituteAndTranslate(
       template.html,
-      variables
-    );
-
-    const personalizedSubject = replaceTemplateVariables(
       template.subject,
       variables
     );
@@ -304,8 +290,12 @@ export async function sendWaitlistWelcomeEmailBatch({
     siteUrl: "https://nationalfundforwomen.org",
   };
 
-  const personalizedHtml = replaceTemplateVariables(template.html, variables);
-  const personalizedSubject = replaceTemplateVariables(template.subject, variables);
+  // Translate-aware substitution (see sendBatchEmails above).
+  const { html: personalizedHtml, subject: personalizedSubject } = substituteAndTranslate(
+    template.html,
+    template.subject,
+    variables
+  );
 
   return sendBrandedEmailBatch({
     to,
