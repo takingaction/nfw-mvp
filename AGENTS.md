@@ -15360,6 +15360,35 @@ NOTIFY pgrst, 'reload';
 1. Run migration 168 in Supabase SQL Editor
 2. Add `{{rejectionMessage}}<br/><br/>` before `{{rejectionMessage1}}` in the `grant-not-approved` email template
 
+## Session 2026-09-18: Fix `rejection_message` Save Bug
+
+### Problem
+Typing into the "Not Approved Email Message (Optional — opening line)" textarea on the grant cycle new/edit pages did not persist. Reloading the page after save always showed an empty field. The sibling bullet-point fields (`rejection_message_1/2/3`) saved correctly.
+
+### Root Cause
+The `rejection_message` opening-line field was half-wired:
+- DB column existed (migration 168).
+- Form state held it on both `/admin/grants/new` and `/admin/grants/[id]/edit`.
+- Form submission sent it (whole `formData` is JSON-stringified).
+- But neither save API route destructured it from the request body or included it in the insert/update payload. The value silently dropped.
+- `send-test/route.ts` hard-codes a `rejectionMessage` sample, so test emails masked the bug.
+- `final-approve/route.ts` reads `cycle.rejection_message` correctly — would have rendered the variable fine if the value were actually written.
+
+### Fix
+Added `rejection_message` to the destructure + insert payload in `create/route.ts` and the destructure + update payload in `update-cycle/route.ts`. Two-line change per route, slotted in next to the working sibling fields. No schema change.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/grants/create/route.ts` | Destructured `rejection_message`; added `rejection_message: rejection_message \|\| null` to insert payload |
+| `app/api/admin/grants/update-cycle/route.ts` | Destructured `rejection_message`; added `rejection_message: rejection_message \|\| null` to update payload |
+
+### Verification
+- `npm run build` ✓ (TypeScript 0 errors)
+- Manual smoke: type a value into the opening-line textarea on a new cycle → submit → reload → value persists; open an existing cycle in edit mode → value loads → save → persists
+- The `{{rejectionMessage}}` email template variable now expands to the saved value for real applicants (previously always empty)
+
 ## Session 2026-09-15: Analytics New Members Chart Sort + Year on Hover Fix
 
 ### Goal
