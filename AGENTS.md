@@ -16222,3 +16222,48 @@ Button title ("Online-Only Merchants"), chip label, and chip aria-label unchange
 - Manual: search "Amazon" with Online Only ON → Amazon offers appear with `link` redemption
 - Manual: toggle Online Only rapidly → no flicker (race fix from previous session still works)
 - Direct API verification: `GET https://offer.adcrws.com/v1/offers?query=Dominos&online=only` returns `{offers: null, total_results: null}` — confirms the fix matches Access Perks' documented behavior
+
+## Session 2026-09-18: Online Only — Fix Misleading Inactive-State Wording
+
+### Problem
+
+After the offers/search route fix, the inactive-state helper text on the Online Only toggle said "Include only online-redeemable coupons in your location results." But the toggle is OFF when reading that text — so no filtering is happening. The default Access Perks behavior (`online=include`) appends online-exclusive offers (Amazon, Spencer's online, etc.) to local results. So Amazon shows up in unfiltered results, contradicting what the inactive-state copy literally says.
+
+User reported: "if I search for Amazon without checking that button it still shows up. The wording DOES NOT MAKE SENSE IF YOU ARE INCLUDING ONLINE OPTIONS WITHOUT HAVING THAT BUTTON SELECTED."
+
+### Fix
+
+Updated the inactive-state helper text in `components/perks/FilterSidebar.tsx` to describe what activating the toggle will do (standard UX convention for filter toggles — matches the "what will happen if I click this?" mental model):
+
+| Where | Before | After |
+|---|---|---|
+| Inactive helper | "Include only online-redeemable coupons in your location results." | "Show only online-redeemable coupons. Local / in-store offers will be hidden." |
+
+Active helper, button title ("Online-Only Merchants"), chip label, and chip aria-label unchanged. Data flow unchanged.
+
+### Why this wording
+
+The inactive state describes the toggle's action ("If I click this, I'll only see online coupons; local/in-store will be hidden"). The active state describes the current state ("I'm currently only seeing online coupons"). The user now understands that Amazon appearing in unfiltered results is the default state — the filter isn't active yet, so the filter's promise hasn't been applied.
+
+### Decisions
+
+- **Did not rename the toggle.** Considered "Mix in Online Coupons" but kept the original "Online-Only Merchants" since renaming didn't fundamentally solve the confusion — the issue was wording, not naming.
+- **Did not reverse the behavior.** Considered sending `online=none` when toggle is OFF (so Amazon wouldn't appear in unfiltered results) but kept current behavior because the default OFF state being "local + online mixed" is actually more member-friendly than "only physical stores nearby." The Access Perks default of appending online results is the documented intended behavior.
+- **Did not remove the toggle.** The filter is genuinely useful for members who want to browse digital-only offers without sifting through local stores.
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- Manual: with toggle OFF, copy now reads "Show only online-redeemable coupons. Local / in-store offers will be hidden." User understands that Amazon appearing is the default state, not the toggle's effect.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/perks/FilterSidebar.tsx` | One string update in the inactive-state helper text |
+
+### Out of scope (deliberate)
+
+- Not changing data flow (`online=include` for unchecked state remains correct per Access Perks docs)
+- Not changing button title or chip
+- Not removing the toggle

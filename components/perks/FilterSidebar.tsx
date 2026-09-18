@@ -282,7 +282,7 @@ export default function FilterSidebar({
             >
                   {onlineOnly
                     ? "Showing online-redeemable coupons only. Location is ignored."
-                    : "Include only online-redeemable coupons in your location results."}
+                    : "Show only online-redeemable coupons. Local / in-store offers will be hidden."}
             </div>
           </button>
         </div>
