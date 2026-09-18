@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { ChevronDown, ChevronRight, X, SlidersHorizontal, Plane, ShoppingBag, Globe } from "lucide-react";
+import { useSearchParams, usePathname } from "next/navigation";
+import { ChevronDown, ChevronRight, X, SlidersHorizontal, Plane, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -86,6 +86,7 @@ export default function FilterSidebar({
   onCollectionChange,
 }: FilterSidebarProps) {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [expandedParents, setExpandedParents] = useState<Set<number>>(
     new Set(categories.map((c) => c.category_key))
   );
@@ -242,12 +243,22 @@ export default function FilterSidebar({
       <div className="p-4 border-b border-nfw-blackberry/10">
         <Link
           href="/travel"
-          className="flex items-center gap-3 px-4 py-3 bg-nfw-aubergine text-white rounded-lg hover:bg-nfw-aubergine/90 transition-colors"
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+            pathname === "/travel"
+              ? "bg-nfw-aubergine text-white"
+              : "bg-nfw-dove text-nfw-blackberry hover:bg-nfw-stone/20"
+          }`}
         >
           <Plane className="w-5 h-5" />
-          <div>
+          <div className="text-left">
             <div className="font-ui font-medium text-sm">Travel Benefits</div>
-            <div className="text-xs text-nfw-lilac">Hotels, Cars, Flights & More</div>
+            <div
+              className={`text-xs ${
+                pathname === "/travel" ? "text-nfw-lilac" : "text-nfw-blackberry/50"
+              }`}
+            >
+              Hotels, Cars, Flights & More
+            </div>
           </div>
         </Link>
       </div>
@@ -344,24 +355,21 @@ export default function FilterSidebar({
             <button
               onClick={() => onOnlineOnlyChange(!onlineOnly)}
               aria-pressed={onlineOnly}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              className={`w-full px-4 py-3 rounded-lg transition-colors text-left ${
                 onlineOnly
                   ? "bg-nfw-aubergine text-white"
                   : "bg-nfw-dove text-nfw-blackberry hover:bg-nfw-stone/20"
               }`}
             >
-              <Globe className="w-5 h-5" />
-              <div className="text-left">
-                <div className="font-ui font-medium text-sm">Online-Only Merchants</div>
-                <div
-                  className={`text-xs font-serif ${
-                    onlineOnly ? "text-nfw-lilac" : "text-nfw-blackberry/50"
-                  }`}
-                >
-                  {onlineOnly
-                    ? "Showing stores with online-exclusive offers only. Location is ignored."
-                    : "Include stores with online-exclusive offers alongside your location results."}
-                </div>
+              <div className="font-ui font-medium text-sm">Online-Only Merchants</div>
+              <div
+                className={`text-xs font-serif ${
+                  onlineOnly ? "text-nfw-lilac" : "text-nfw-blackberry/50"
+                }`}
+              >
+                {onlineOnly
+                  ? "Showing stores with online-exclusive offers only. Location is ignored."
+                  : "Include stores with online-exclusive offers alongside your location results."}
               </div>
             </button>
           </div>

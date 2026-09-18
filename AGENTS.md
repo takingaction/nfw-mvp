@@ -16090,3 +16090,34 @@ Reject the user's proposed "modal + reset on toggle" UX as too destructive (lose
 - Manual: search "Dominos" → toggle Online Only ON → no stale Domino's visible during loading; correct empty state or correct online-exclusive results once the new fetch completes.
 - Manual: rapid toggling of Online Only → no flicker, latest state wins.
 - Manual: search "Amazon" with Online Only ON → Amazon still appears.
+
+## Session 2026-09-18: Sidebar Card Visual Consistency Pass
+
+### Goal
+
+Make the `/perks` sidebar cards visually consistent:
+
+1. Remove the Globe icon from the Online-Only Merchants card so the text fills the card width like the others.
+2. Make Travel Benefits match the same width + toggle color pattern as the other cards above (NFW Exclusive Perks, Perk Collections).
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/perks/FilterSidebar.tsx` | Added `usePathname` to `next/navigation` import. Removed unused `Globe` from lucide-react import. Updated Travel Benefits Link to use `w-full` + toggle colors based on `pathname === "/travel"`. Removed `<Globe>` icon and outer `<div className="text-left">` wrapper from Online-Only button. |
+
+### Decisions
+
+- **Removed icon, not the rest of the layout.** The Online-Only card now stacks the title and helper text vertically inside a plain rounded button (no `flex items-center gap-3`) so the text fills the card width. Other cards still use icons because the user only asked to remove the globe from Online-Only.
+- **Travel Benefits gets the toggle pattern.** Previously it was a fixed aubergine Link regardless of the current route. Now it matches the same active/inactive pattern as NFW Exclusive and Collections:
+  - Inactive (default on `/perks`): `bg-nfw-dove text-nfw-blackberry` with `text-nfw-blackberry/50` subtitle
+  - Active (on `/travel`): `bg-nfw-aubergine text-white` with `text-nfw-lilac` subtitle
+- **Added `w-full` to Travel Benefits.** Previously it was missing `w-full`, making it slightly narrower than the other three cards. Now matches the others.
+- **Removed unused `Globe` import.** After removing the icon, the import was dead code.
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- Manual: sidebar shows Online-Only card with no icon, text fills width
+- Manual: Travel Benefits shows dove on `/perks`, aubergine on `/travel`
+- All four cards (NFW Exclusive, Collections, Travel Benefits, Online-Only) now visually consistent in width and structure
