@@ -138,35 +138,6 @@ export default function GrantScoringRubric({
             </p>
           </div>
 
-          {/* BARRIERS */}
-          <div>
-            <h4 className="font-black text-nfw-blackberry font-ui uppercase tracking-wider mb-2 text-xs">
-              BARRIERS (Y/N)
-            </h4>
-            <p className="text-xs text-nfw-blackberry/70 mb-2">
-              Does the applicant belong to a demographic experiencing disproportionate barriers to financial stability?
-            </p>
-            <div className="flex flex-wrap gap-1 text-xs">
-              {[
-                "Single mother",
-                "Caregiver",
-                "DV survivor",
-                "Disability",
-                "Health condition",
-                "Race",
-                "Immigration",
-                "ESL",
-              ].map((barrier) => (
-                <span
-                  key={barrier}
-                  className="px-2 py-0.5 bg-nfw-dove text-nfw-blackberry/60 rounded"
-                >
-                  {barrier}
-                </span>
-              ))}
-            </div>
-          </div>
-
           {/* DISCUSSION FLAG (First reviewer only) */}
           {showDiscussionFlag && (
             <div className="border-t border-nfw-blackberry/10 pt-4">

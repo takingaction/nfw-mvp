@@ -520,7 +520,7 @@ export default function GrantCombinedScores({
             Decision
           </div>
           <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
-            Barriers
+            Urgency
           </div>
           <div className="text-center text-xs font-bold text-nfw-blackberry/60 uppercase tracking-wider">
             Prior

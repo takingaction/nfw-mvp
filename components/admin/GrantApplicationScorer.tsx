@@ -309,10 +309,10 @@ export default function GrantApplicationScorer({
           description="Does the applicant detail how this grant will meaningfully benefit their life?"
         />
 
-        {/* BARRIERS */}
+        {/* URGENCY (stored in barriers_yn column) */}
         <div className="space-y-2">
           <label className="block text-xs font-semibold text-nfw-blackberry/60 uppercase tracking-wider">
-            BARRIERS (Y/N)
+            URGENCY (Y/N)
           </label>
           <div className="flex gap-2">
             <button

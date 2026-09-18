@@ -16475,3 +16475,29 @@ The `online` param is now always set to `include` (not toggled), so online-exclu
 - Not changing the mobile app's filter behavior (separate work; flag for follow-up)
 - Not adding a stricter "link-only-no-other-methods" filter (no API support)
 - Not changing the unchecked-state default behavior
+
+## Session 2026-09-18: Grant Scoring — Remove Barriers Rubric, Rename Y/N to Urgency
+
+### Change
+
+Removed the demographic "Barriers" rubric from the grant scoring pages and relabeled the Y/N reviewer control as **Urgency**. The rubric already had an "Additional Consideration: Urgency" box, so the Y/N toggle now maps directly to that guidance.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/admin/GrantScoringRubric.tsx` | Deleted the `BARRIERS (Y/N)` block (heading, "disproportionate barriers" question, and the 8 demographic chips: Single mother, Caregiver, DV survivor, Disability, Health condition, Race, Immigration, ESL). Shared component, so this removes it from first, second, and combined scoring pages. |
+| `components/admin/GrantApplicationScorer.tsx` | Label above the YES/NO buttons: `BARRIERS (Y/N)` → `URGENCY (Y/N)`. Comment updated to note the value is still stored in `barriers_yn`. |
+| `components/admin/GrantCombinedScores.tsx` | Column header `Barriers` → `Urgency`. |
+
+### Intentionally Unchanged
+
+- `grant_scores.barriers_yn` DB column, the `barriers_yn` field in TypeScript interfaces, and all three scores API routes (`scores/first`, `scores/second`, `scores/combined`). Label-only change; the Y/N value continues to persist in the same column. Renaming the column would need a migration plus ~6 file edits for no user-facing benefit.
+- CSV export — no "Barriers" label existed in `app/`.
+
+**Note for future readers:** `barriers_yn` now semantically means "Urgency (Y/N)". Don't be misled by the column name.
+
+### Verification
+
+- `tsc --noEmit` 0 errors; `next build` ✓
+- eslint on the three files: 51 problems before and after (all pre-existing `react/no-unescaped-entities` on rubric example text) — no new issues introduced
