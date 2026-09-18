@@ -17016,3 +17016,191 @@ Templates with `status='published'` published **before** this fix still contain 
 - No CMS editor-side auto-translate-on-typing (live preview)
 - No "Republish All" admin button (can be added on request)
 - `EmailTextColumnsBlock.ts` is exported but never invoked by `renderer.ts` — left as dead code (separate cleanup)
+
+## Session 2026-09-18: Bold Markup Translation Fix + Republish All Templates
+
+### Problem
+
+The previous fix (commit `2d085e1`) was incomplete. Markup was still rendering raw in delivered emails:
+
+> We couldn't be **more excited** to have you join our community as a member of the National Fund for Women.
+
+The `**more excited**` was not bold in the delivered email — the previous fix's link/bold/italic pass was effectively a no-op for bold.
+
+### Root Cause (The Escape-Step Bug)
+
+The original `parseInlineFormatting` (and the previous fix's version) contained this sequence:
+
+```typescript
+let result = text;
+// Step 1: Replace ALL literal ** with sentinel
+result = result.replace(/\*\*/g, "%%ESCAPED_BOLD%%");
+// Step 2: Bold regex tries to match **text** — but ALL ** are already gone
+result = result.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+// ... italic, link ...
+// Step 5: Restore sentinel → literal **
+result = result.replace(/%%ESCAPED_BOLD%%/g, "**");
+```
+
+By the time the bold regex runs in step 2, there are no literal `**` left to match. The bold translation never worked. The bug has existed since the email builder v1 commit (`6b5a625`).
+
+The escape step's stated intent was "leave literal `**` alone if they're not part of bold markup," but the implementation was circular — it converted everything to a sentinel, ran the regex on an empty match, then restored the sentinel to literal `**`. Net effect: **bold never translated; literal `**` preserved.**
+
+Italic and links worked because their escape-step interaction is different (single `*` is not escaped, so italic still matches; link pattern doesn't involve `*`).
+
+### Fix
+
+Removed the escape-and-restore dance. Bold now runs directly on the input text. Updated translation order for clarity:
+
+```typescript
+export function parseInlineFormatting(text: string): string {
+  if (!text) return text;
+  let result = text;
+
+  // 1. Links first so labels containing **bold** still get bolded afterwards.
+  result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, label, url) => {
+    if (isSafeUrl(url)) {
+      return `<a href="${url.trim()}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${label}</a>`;
+    }
+    return label;
+  });
+
+  // 2. Bold: **text** → <strong>text</strong>
+  result = result.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+
+  // 3. Italic: *text* → <em>text</em>
+  result = result.replace(/(?<!\\)\*([^*]+)\*/g, "<em>$1</em>");
+
+  return result;
+}
+```
+
+**Tradeoff:** The previous escape step preserved literal `**` (a defensive feature that was broken anyway). The new code translates `**any**` to bold. Email templates don't typically contain literal `**` so this is the right tradeoff. If a template author genuinely wants literal asterisks, they should use the HTML `<strong>` directly.
+
+### Republish All Templates Admin Button
+
+Templates published before this fix still contain raw markup in stored `full_email_html`. Manually opening each template and clicking Publish is impractical when there are 18+ templates. Built a one-off admin button instead.
+
+**Files Created:**
+
+| File | Purpose |
+|---|---|
+| `app/api/admin/emails/republish-all/route.ts` | POST endpoint, admin-only (`requireAdmin().authorized` check), calls `publishEmail()` for every template with `status='published'`, returns per-template results. `maxDuration = 300` |
+| `components/admin/email/RepublishAllButton.tsx` | Wisteria button at page header + confirmation modal showing success/failure counts |
+
+**Files Modified:**
+
+| File | Change |
+|---|---|
+| `components/admin/AdminEmailsClient.tsx` | Import `RepublishAllButton` and render it next to the Resend/Supabase tabs at page level. `publishedCount` derived from `templates.filter(t => t.status === "published")`. `onComplete` triggers `window.location.reload()` to refresh the page |
+| `lib/email-blocks/formatting.ts` | Removed broken escape step |
+
+### API Behavior
+
+```typescript
+POST /api/admin/emails/republish-all
+→ 200 {
+    success: true,
+    total: 18,
+    successCount: 18,
+    failedCount: 0,
+    results: [{ slug: "welcome-free", success: true }, ...]
+  }
+```
+
+Errors are captured per-template and shown in a collapsible "Show failures" details element in the modal.
+
+### Files Touched (Summary)
+
+| File | Change |
+|---|---|
+| `lib/email-blocks/formatting.ts` | Removed broken escape step, updated comments |
+| `app/api/admin/emails/republish-all/route.ts` | NEW — admin-only POST endpoint |
+| `components/admin/email/RepublishAllButton.tsx` | NEW — button + modal |
+| `components/admin/AdminEmailsClient.tsx` | Import and render RepublishAllButton |
+| `AGENTS.md` | This session entry |
+
+### Build Verification
+
+- `npm run build` ✓ — TypeScript 0 errors
+- Manual smoke test pending deploy: click "Republish All" → modal opens → confirm → see "18 succeeded, 0 failed" → done
+
+### Deploy Steps
+
+1. Run the build verification locally (already passed)
+2. Deploy code
+3. Visit `/admin/emails` → click "Republish All" → confirm → wait for "X succeeded" message
+4. Send a test email to yourself from any template — bold markup should now render correctly
+
+### Out of Scope (Deliberate)
+
+- Did not fix the pre-existing italic regex issue (`*text*` still matches anywhere in HTML, including attribute values, theoretically). Out of scope; pre-existing behavior.
+- Did not remove the dead `EmailTextColumnsBlock` export.
+- Did not add a `***bold-italic***` translation rule.
+
+---
+
+## Next Steps
+- (none)
+
+## Session 2026-09-18: Anonymize date_of_birth NOT NULL Fix
+
+### Problem
+
+`Profile anonymization failed: null value in column "date_of_birth" of relation "profiles" violates not-null constraint`
+
+Different drift class from the previous ghost-column fixes. Migration 037 added:
+- `NOT NULL` on `profiles.date_of_birth` (line 25)
+- `CHECK (date_of_birth >= '1900-01-01' AND date_of_birth <= CURRENT_DATE - INTERVAL '18 years')` (lines 31-34)
+- Same migration backfilled existing NULLs with `'1900-01-01'` (line 18) as the documented placeholder
+
+`lib/anonymize.ts` step 1 was trying to set `date_of_birth: null`, which violates the `NOT NULL`.
+
+### Why `'1900-01-01'` and not `null`
+
+Three candidates considered:
+
+1. `'1900-01-01'` — **chosen.** Same documented placeholder migration 037 itself used. Satisfies the CHECK constraint (it's the floor). Single sentinel is easier to query than scattered random values. The `ProfileBanner` at `/profile` already shows a "DOB not set" warning for any profile with this value, so anonymized rows integrate cleanly with existing UX.
+2. `null` — would require dropping the `NOT NULL`. The constraint exists for a real reason (backstops the 18+ signup guard). Not appropriate.
+3. Random date — overkill. The DOB is a coarse field; a single placeholder is sufficient for anonymization.
+
+### Fixes Applied
+
+**`lib/anonymize.ts` step 1, line 86**:
+```diff
+-        date_of_birth: null,
++        date_of_birth: "1900-01-01", // Anonymized: use documented placeholder from migration 037 (NOT NULL; CHECK >= 1900-01-01)
+```
+
+**`lib/anonymize.ts` step 1 comment block** (added Option A — separate block above the existing ghost-columns list):
+- Documents that `date_of_birth` is `NOT NULL` per migration 037, the CHECK requires `>= '1900-01-01'`, and the placeholder is the same one migration 037 line 18 backfilled with. Notes that the dashboard's existing `ProfileBanner` handles `'1900-01-01'` as "DOB not set" so no new UX work is needed.
+
+### Audit Done — Other NOT NULL Fields in Step 1
+
+Step 1 sets 27 other fields to `null`. Audited each against `information_schema.columns.is_nullable` for risk of the same crash class:
+
+- `phone_number`, `avatar_url`, `address_line1/2`, `city`, `state`, `zip`, `household_income`, `social_handles`, `shipping_address`, `identities`, `stripe_connect_account_id`, `access_perks_member_id`, `access_perks_synced_at`, `first_paid_at`, `first_paid_level`, `stripe_customer_id`, `subscription_status`, `subscription_ends_at`, `previous_membership_level`, `gift_code_redeemed`, `signup_source`, `free_membership_contact_submitted`, `waitlist_joined_at`, `waitlist_email_sent_at`, `joined_at` — all nullable. Safe.
+- Only `date_of_birth` has `NOT NULL`. Confirmed the next anonymize attempt will not hit the same crash class.
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- CHECK constraint math: `'1900-01-01' >= '1900-01-01'` is true; `'1900-01-01' <= today - 18 years` is true for any current date. Placeholder passes.
+- Smoke test on a throwaway account: submit → admin verify → admin process. All 14 steps should complete; no `date_of_birth` NOT NULL violation. `date_of_birth` will be `'1900-01-01'` post-anonymization, which the existing `ProfileBanner` already handles.
+
+### Files Changed
+
+- `lib/anonymize.ts` — line 86 value change, comment block update
+
+### Deploy
+
+1. Deploy code (no migrations required — same value already in use as the documented placeholder).
+2. Smoke-test on a real account per the verification plan above.
+
+### Out of Scope (Still Parked)
+
+- Per-row error handling in `lib/anonymize.ts`
+- `deletion_log` write protection
+- `contact_submissions.message` PII retention (structural gap)
+- CSV export of Activity Log
+- `deletion_documents_pending` real wiring

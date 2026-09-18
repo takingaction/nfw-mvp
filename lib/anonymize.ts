@@ -83,7 +83,7 @@ export async function anonymizeUser(
         city: null,
         state: null,
         zip: null,
-        date_of_birth: null,
+        date_of_birth: "1900-01-01", // Anonymized: use documented placeholder from migration 037 (NOT NULL; CHECK >= 1900-01-01)
         household_income: null,
         social_handles: null,
         shipping_address: null,
@@ -108,6 +108,12 @@ export async function anonymizeUser(
         is_reviewer: false,
         // Keep these for audit/analytics
         // id: preserved (FK constraint)
+        // date_of_birth: NOT NULL per migration 037; CHECK requires >= '1900-01-01'.
+        // Anonymized value uses the same documented placeholder that migration 037
+        // line 18 backfilled NULLs with — a single sentinel, not random. The
+        // ProfileBanner at /profile already shows a "DOB not set" warning for
+        // any profile with date_of_birth = '1900-01-01', so anonymized rows
+        // integrate cleanly with existing UX.
         // membership_level: left as-is — profiles_membership_level_check only allows
         // (free, contributing, founding, waitlist); downstream consumers (getCategory,
         // flodesk-rules) route any other value to "Unknown" so anonymized profiles
