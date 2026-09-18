@@ -948,9 +948,13 @@ export async function POST(request: Request) {
         console.log("[webhook] Processing charge.refunded event");
         const charge = event.data.object as Stripe.Charge;
         const chargeId = charge.id;
-        const refundAmount = charge.amount_refunded ? charge.amount_refunded / 100 : 0;
+        const refundAmountDollars = charge.amount_refunded ? charge.amount_refunded / 100 : 0;
+        const originalAmountDollars = charge.amount / 100;
+        const isPartialRefund = refundAmountDollars < originalAmountDollars;
 
-        console.log(`[webhook] charge.refunded: Processing charge ${chargeId}, amount: ${refundAmount}`);
+        console.log(
+          `[webhook] charge.refunded: Processing charge ${chargeId}, refund: $${refundAmountDollars} of $${originalAmountDollars} (${isPartialRefund ? "partial" : "full"})`,
+        );
 
         // Find the original payment by stripe_payment_id (which is the charge ID)
         const payment = await findPaymentByStripeId(chargeId);
@@ -960,16 +964,28 @@ export async function POST(request: Request) {
           // Send Slack alert for unmatched refund
           await notifyRefundNotMatched({
             chargeId,
-            amount: refundAmount,
+            amount: refundAmountDollars,
             error: "No matching payment found for this charge ID",
           });
           break;
         }
 
+        // Partial refunds: record the reversal row with the actual refunded amount
+        // but do NOT recalculate tier — the member is still paying for the
+        // remaining balance of their original purchase.
+        const reversalReason = isPartialRefund
+          ? `Partial refund received: $${refundAmountDollars.toFixed(2)} of $${originalAmountDollars.toFixed(2)}`
+          : `Full refund received`;
+
         const result = await recordPaymentReversal(
           payment.id,  // Pass internal payment ID, not charge ID
           "refunded",
-          `Full refund received`
+          reversalReason,
+          {
+            actualRefundAmount: refundAmountDollars,
+            // Only recalculate tier on full refund — partials leave tier untouched
+            recalculateTier: !isPartialRefund,
+          },
         );
 
         if (result.success && result.reversalId) {
@@ -978,7 +994,7 @@ export async function POST(request: Request) {
           await notifyRefundProcessed({
             userId: payment.user_id,
             email: result.userEmail || "",
-            amount: payment.amount,
+            amount: refundAmountDollars,
             oldTier: result.oldTier || "",
             newTier: result.newTier || "",
             refundType: "refunded",
@@ -1020,10 +1036,25 @@ export async function POST(request: Request) {
             break;
           }
 
+          // Disputes can be partial. dispute.amount is the disputed amount in cents;
+          // compare to the original charge amount to decide whether this is a
+          // full or partial reversal.
+          const disputeAmountDollars = dispute.amount ? dispute.amount / 100 : payment.amount;
+          const originalAmountDollars = payment.amount;
+          const isPartialDispute = disputeAmountDollars < originalAmountDollars;
+
+          const reversalReason = isPartialDispute
+            ? `Dispute lost (partial): $${disputeAmountDollars.toFixed(2)} of $${originalAmountDollars.toFixed(2)} — ${dispute.reason || "customer dispute"}`
+            : `Dispute lost: ${dispute.reason || "customer dispute"}`;
+
           const result = await recordPaymentReversal(
             payment.id,  // Pass internal payment ID, not charge ID
             "disputed",
-            `Dispute lost: ${dispute.reason || "customer dispute"}`
+            reversalReason,
+            {
+              actualRefundAmount: disputeAmountDollars,
+              recalculateTier: !isPartialDispute,
+            },
           );
 
           if (result.success && result.reversalId) {
@@ -1032,7 +1063,7 @@ export async function POST(request: Request) {
             await notifyRefundProcessed({
               userId: payment.user_id,
               email: result.userEmail || "",
-              amount: payment.amount,
+              amount: disputeAmountDollars,
               oldTier: result.oldTier || "",
               newTier: result.newTier || "",
               refundType: "disputed",

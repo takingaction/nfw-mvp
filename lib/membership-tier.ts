@@ -13,19 +13,48 @@ export interface TierResult {
   subscription_status: SubscriptionStatus;
 }
 
+export interface RecalculateOptions {
+  /**
+   * Set true when called immediately after a payment reversal (refund or dispute).
+   * When true, if `profile.previous_membership_level` is set, the tier restores to
+   * that value and `previous_membership_level` is cleared on the profile. This
+   * prevents a contributing→founding upgrade from leaving a member stuck at
+   * founding after the upgrade is refunded, and prevents the chain of "previous"
+   * tiers from going stale.
+   */
+  afterReversal?: boolean;
+}
+
 /**
  * Recalculates a member's tier based on their successful payment history.
- * 
+ *
  * Logic:
- * - Most recent successful payment determines tier
- * - founding payment → founding
- * - contributing payment → contributing  
- * - signup/renewal → free (or waitlist if they joined from waitlist)
- * - no successful payments → free
+ * - When `afterReversal` is true and `profile.previous_membership_level` is set,
+ *   restore to that tier and clear the column. This is the design intent of
+ *   `previous_membership_level`: capture the tier immediately before the upgrade
+ *   so that a refund/dispute reversal can put the member back where they were.
+ * - Otherwise, the most recent successful payment determines the tier:
+ *   founding payment → founding
+ *   contributing payment → contributing
+ *   signup/renewal → free (or waitlist if they joined from waitlist)
+ *   no successful payments → free
  */
 export async function recalculateMembershipTier(
-  userId: string
-): Promise<TierResult> {
+  userId: string,
+  options: RecalculateOptions = {}
+): Promise<TierResult & { restoredFromPrevious?: boolean }> {
+  // Get the user's profile to check waitlist status + previous tier for restoration
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .select("waitlist_joined_at, membership_level, previous_membership_level")
+    .eq("id", userId)
+    .single();
+
+  if (profileError) {
+    console.error("[recalculateMembershipTier] Error fetching profile:", profileError);
+    throw profileError;
+  }
+
   // Get all successful payments, ordered by created_at DESC
   const { data: payments, error } = await supabaseAdmin
     .from("membership_payments")
@@ -39,23 +68,36 @@ export async function recalculateMembershipTier(
     throw error;
   }
 
-  // Get the user's profile to check waitlist status
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from("profiles")
-    .select("waitlist_joined_at, membership_level")
-    .eq("id", userId)
-    .single();
-
-  if (profileError) {
-    console.error("[recalculateMembershipTier] Error fetching profile:", profileError);
-    throw profileError;
-  }
-
   // Determine membership level based on most recent successful payment
   let membership_level: MembershipLevel = "free";
   let subscription_status: SubscriptionStatus = null;
+  let restoredFromPrevious = false;
 
-  if (payments && payments.length > 0) {
+  if (options.afterReversal && profile?.previous_membership_level) {
+    // Reverse path: restore the tier they had before the upgrade that was just
+    // refunded. The previous_membership_level column is written on every upgrade
+    // path (checkout.session.completed, customer.subscription.updated, gift code
+    // redemption, waitlist approval). Clearing it on the next update prevents
+    // the chain from going stale if a future refund happens before the next
+    // upgrade.
+    const restored = profile.previous_membership_level as MembershipLevel;
+    if (restored === "free" || restored === "contributing" || restored === "founding" || restored === "waitlist") {
+      membership_level = restored;
+      restoredFromPrevious = true;
+
+      // Subscription status mirrors the restored tier: paid tiers stay active,
+      // free/waitlist have no subscription.
+      if (membership_level === "contributing" || membership_level === "founding") {
+        subscription_status = "active";
+      } else {
+        subscription_status = null;
+      }
+
+      console.log(
+        `[recalculateMembershipTier] Restoring user ${userId} to previous_membership_level=${membership_level} after reversal`,
+      );
+    }
+  } else if (payments && payments.length > 0) {
     const mostRecentPayment = payments[0];
     const paymentType = mostRecentPayment.payment_type;
     const amount = mostRecentPayment.amount;
@@ -94,23 +136,35 @@ export async function recalculateMembershipTier(
   return {
     membership_level,
     subscription_status,
+    restoredFromPrevious,
   };
 }
 
 /**
  * Updates a member's profile with the recalculated tier.
+ *
+ * When `clearPreviousLevel` is true (used during refund-driven restorations),
+ * the `previous_membership_level` column is set to NULL so the next upgrade
+ * records a fresh "before" state.
  */
 export async function updateMemberTier(
   userId: string,
-  tierResult: TierResult
+  tierResult: TierResult,
+  options: { clearPreviousLevel?: boolean } = {}
 ): Promise<void> {
+  const updates: Record<string, unknown> = {
+    membership_level: tierResult.membership_level,
+    subscription_status: tierResult.subscription_status,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (options.clearPreviousLevel) {
+    updates.previous_membership_level = null;
+  }
+
   const { error } = await supabaseAdmin
     .from("profiles")
-    .update({
-      membership_level: tierResult.membership_level,
-      subscription_status: tierResult.subscription_status,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updates)
     .eq("id", userId);
 
   if (error) {
@@ -125,10 +179,17 @@ export async function updateMemberTier(
  * Full recalculate and update in one call.
  */
 export async function recalculateAndUpdateMemberTier(
-  userId: string
-): Promise<TierResult> {
-  const tierResult = await recalculateMembershipTier(userId);
-  await updateMemberTier(userId, tierResult);
+  userId: string,
+  options: RecalculateOptions = {}
+): Promise<TierResult & { restoredFromPrevious?: boolean }> {
+  const tierResult = await recalculateMembershipTier(userId, options);
+  // When we restored from a previous tier, clear the previous_membership_level
+  // column so the next upgrade records the correct new "before" state.
+  await updateMemberTier(
+    userId,
+    tierResult,
+    { clearPreviousLevel: tierResult.restoredFromPrevious === true },
+  );
   return tierResult;
 }
 
@@ -192,11 +253,26 @@ export interface RefundResult {
 
 /**
  * Records a payment reversal (refund or dispute).
+ *
+ * By default the tier is recalculated with `afterReversal: true`, which restores
+ * the member to `profiles.previous_membership_level` (the tier they had before
+ * the upgrade that was just reversed). Pass `recalculateTier: false` to skip
+ * the tier update — used for partial refunds where the member should keep
+ * their current tier.
+ *
+ * `actualRefundAmount` (in dollars) overrides the reversal row's amount. Pass
+ * it for partial refunds so the negative-amount row reflects what was actually
+ * returned, not the full original payment. Defaults to the original payment
+ * amount when not provided (full refund).
  */
 export async function recordPaymentReversal(
   originalPaymentId: string,
   reversalType: "refunded" | "disputed",
-  reversalReason?: string
+  reversalReason?: string,
+  options: {
+    actualRefundAmount?: number;
+    recalculateTier?: boolean;
+  } = {}
 ): Promise<RefundResult> {
   // Get the original payment
   const { data: originalPayment, error: fetchError } = await supabaseAdmin
@@ -225,12 +301,15 @@ export async function recordPaymentReversal(
       ? "contributing"
       : "free";
 
+  // Default to the full original payment amount; partial refunds pass an override
+  const reversalAmount = -(options.actualRefundAmount ?? originalPayment.amount);
+
   // Insert reversal record
   const { data: reversalRecord, error: insertError } = await supabaseAdmin
     .from("membership_payments")
     .insert({
       user_id: originalPayment.user_id,
-      amount: -originalPayment.amount, // Negative amount for reversals
+      amount: reversalAmount, // Negative; equals -original for full, -actualRefundAmount for partial
       payment_type: originalPayment.payment_type,
       status: reversalType,
       stripe_payment_id: originalPayment.stripe_payment_id,
@@ -255,7 +334,9 @@ export async function recordPaymentReversal(
     };
   }
 
-  console.log(`[recordPaymentReversal] Recorded ${reversalType} for payment ${originalPaymentId}`);
+  console.log(
+    `[recordPaymentReversal] Recorded ${reversalType} for payment ${originalPaymentId} (amount: ${reversalAmount})`,
+  );
 
   // Get user email for notification
   const { data: profile } = await supabaseAdmin
@@ -264,16 +345,21 @@ export async function recordPaymentReversal(
     .eq("id", originalPayment.user_id)
     .single();
 
-  // Recalculate and update the member's tier
+  // Recalculate and update the member's tier (skipped for partial refunds)
   let tierChanged = false;
   let newTier: string | null = null;
-  try {
-    const tierResult = await recalculateAndUpdateMemberTier(originalPayment.user_id);
-    newTier = tierResult.membership_level;
-    tierChanged = oldTier !== newTier;
-  } catch (err) {
-    console.error("[recordPaymentReversal] Error updating member tier:", err);
-    // Don't fail the reversal if tier update fails
+  const shouldRecalculate = options.recalculateTier !== false;
+  if (shouldRecalculate) {
+    try {
+      const tierResult = await recalculateAndUpdateMemberTier(originalPayment.user_id, {
+        afterReversal: true,
+      });
+      newTier = tierResult.membership_level;
+      tierChanged = oldTier !== newTier;
+    } catch (err) {
+      console.error("[recordPaymentReversal] Error updating member tier:", err);
+      // Don't fail the reversal if tier update fails
+    }
   }
 
   return {

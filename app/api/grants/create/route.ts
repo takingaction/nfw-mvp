@@ -7,7 +7,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-export const maxDuration = 60;
+export const maxDuration = 15;
 
 function isValidUUID(str: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -187,29 +187,63 @@ export async function POST(request: Request) {
         }).catch(console.error);
       });
 
-      // Fire-and-forget AI relevance evaluation
+      // Fire-and-forget AI relevance evaluation.
+      //
+      // Wrapped in a Promise.race against a 6 s wall-clock timer. Vercel
+      // terminates serverless functions by aborting in-flight requests once
+      // `maxDuration` (15 s) is reached, which surfaces as
+      // APIUserAbortError("Request was aborted."). The race short-circuits
+      // before Vercel kills us, so we can persist a clean 'not_evaluated'
+      // state and let the /api/cron/ai-evaluate-pending backfill (every
+      // 5 min) pick the row up.
       if (cycle) {
-        import("@/lib/anthropic").then(({ evaluateGrantApplication, AI_MODEL_VERSION }) => {
-          evaluateGrantApplication({
-            cycleName: cycle.cycle_name || "",
-            cycleDescription: cycle.description || "",
-            whoAreYou: who_are_you.trim(),
-            biggestChallenge: biggest_challenge.trim(),
-            fundUsage: fund_usage.trim(),
-          }).then(async (result) => {
-            await supabaseAdmin
-              .from("grants")
-              .update({
-                ai_relevance: result.relevance,
-                ai_reasoning: result.reasoning,
-                ai_evaluated_at: new Date().toISOString(),
-                ai_model_version: result.model || AI_MODEL_VERSION,
+        import("@/lib/anthropic").then(
+          ({ evaluateGrantApplication, AI_MODEL_VERSION }) => {
+            const evaluationPromise = evaluateGrantApplication({
+              cycleName: cycle.cycle_name || "",
+              cycleDescription: cycle.description || "",
+              whoAreYou: who_are_you.trim(),
+              biggestChallenge: biggest_challenge.trim(),
+              fundUsage: fund_usage.trim(),
+            });
+            const timeoutMs = 6000;
+            const timeoutPromise = new Promise<{
+              relevance: "uncertain";
+              reasoning: string;
+              model: string;
+              inputTokens: number;
+              outputTokens: number;
+            }>((resolve) =>
+              setTimeout(
+                () =>
+                  resolve({
+                    relevance: "uncertain",
+                    reasoning: "AI evaluation timed out",
+                    model: AI_MODEL_VERSION,
+                    inputTokens: 0,
+                    outputTokens: 0,
+                  }),
+                timeoutMs,
+              ),
+            );
+
+            Promise.race([evaluationPromise, timeoutPromise])
+              .then(async (result) => {
+                await supabaseAdmin
+                  .from("grants")
+                  .update({
+                    ai_relevance: result.relevance,
+                    ai_reasoning: result.reasoning,
+                    ai_evaluated_at: new Date().toISOString(),
+                    ai_model_version: result.model || AI_MODEL_VERSION,
+                  })
+                  .eq("id", grant.id);
               })
-              .eq("id", grant.id);
-          }).catch((err) => {
-            console.error("[grants/create] AI eval error:", err);
-          });
-        });
+              .catch((err) => {
+                console.error("[grants/create] AI eval error:", err);
+              });
+          },
+        );
       }
     }
 

@@ -173,7 +173,20 @@ export async function evaluateGrantApplication(
     };
   } catch (err: any) {
     clearTimeout(timer);
-    if (err?.name === "AbortError") {
+    // APIUserAbortError is raised by the SDK when the underlying fetch is
+    // aborted — either by our 8 s AbortController above, or by the runtime
+    // killing the worker (Vercel terminates serverless functions by aborting
+    // in-flight requests once `maxDuration` is reached). Distinguish it from
+    // generic errors so the log isn't misleading and reviewers see a clear
+    // timeout reason instead of "AI evaluation failed".
+    //
+    // Use duck-typed message check rather than instanceof import to avoid
+    // bundling APIUserAbortError into the hot path of every submission.
+    if (
+      err?.name === "AbortError" ||
+      typeof err?.message === "string" &&
+        err.message.toLowerCase().includes("request was aborted")
+    ) {
       return fallback("AI evaluation timed out");
     }
     console.error("[anthropic] API error:", err?.message || err);
