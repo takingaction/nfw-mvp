@@ -322,9 +322,12 @@ export default function PerksPage() {
       const nationwide = searchDistance === "2500mi";
       const onlineParam = isOnlineOnly ? "&online=only" : (nationwide ? "&online=include" : "");
       const nationalParam = nationwide ? "&national=include" : "";
-      const geoParams = nationwide
-        ? "&postal_code=50001&distance=6000mi"
-        : (searchPostalCode ? `&postal_code=${searchPostalCode}&distance=${searchDistance}` : "");
+      // Online Only is location-agnostic — skip postal_code/distance entirely.
+      const geoParams = isOnlineOnly
+        ? ""
+        : nationwide
+          ? "&postal_code=50001&distance=6000mi"
+          : (searchPostalCode ? `&postal_code=${searchPostalCode}&distance=${searchDistance}` : "");
       const categoryParam = selectedCategories.length > 0 ? `&category_key=${selectedCategories.join(",")}` : "";
       const [storesRes, offersRes, locationsRes] = await Promise.all([
         fetch(`/api/access-perks/rollup?rollup=stores${geoParams}${categoryParam}${nationalParam}${onlineParam}&cb=${cacheBuster}`),
@@ -606,18 +609,22 @@ export default function PerksPage() {
           params.query = searchQuery;
         }
 
-        // Handle Nationwide or normal geolocation
-        if (searchDistance === "2500mi") {
-          // Nationwide: use postal_code=50001 + distance=6000mi as anchor
-          params.postal_code = "50001";
-          params.distance = "6000mi";
-          params.national = "include";
-          params.online = isOnlineOnly ? "only" : "include";
-        } else if (searchPostalCode) {
-          params.postal_code = searchPostalCode;
-          params.distance = searchDistance;
-          params.online = isOnlineOnly ? "only" : "include";
+        // Online Only is location-agnostic — skip postal_code/distance entirely.
+        // Otherwise: Nationwide uses anchor postal_code, else user's postal_code.
+        if (!isOnlineOnly) {
+          if (searchDistance === "2500mi") {
+            params.postal_code = "50001";
+            params.distance = "6000mi";
+            params.national = "include";
+          } else if (searchPostalCode) {
+            params.postal_code = searchPostalCode;
+            params.distance = searchDistance;
+          }
         }
+
+        // Always send online param so Access Perks returns online-only results
+        // when checked, and includes online offers alongside local when not.
+        params.online = isOnlineOnly ? "only" : "include";
 
         if (selectedCategories.length > 0) {
           params.category_key = selectedCategories.join(",");
@@ -637,10 +644,6 @@ export default function PerksPage() {
 
         if (selectedOfferTypes.length > 0) {
           params.offer_type = selectedOfferTypes.join(",");
-        }
-
-        if (isOnlineOnly && searchDistance !== "2500mi") {
-          params.online = "only";
         }
 
         const queryParams = new URLSearchParams(params);
@@ -681,17 +684,22 @@ export default function PerksPage() {
           params.query = searchQuery;
         }
 
-        // Handle Nationwide or normal geolocation
-        if (searchDistance === "2500mi") {
-          // Nationwide: use postal_code=50001 + distance=6000mi as anchor
-          params.postal_code = "50001";
-          params.distance = "6000mi";
-          params.national = "include";
-          params.online = isOnlineOnly ? "only" : "include";
-        } else if (searchPostalCode) {
-          params.postal_code = searchPostalCode;
-          params.distance = searchDistance;
+        // Online Only is location-agnostic — skip postal_code/distance entirely.
+        // Otherwise: Nationwide uses anchor postal_code, else user's postal_code.
+        if (!isOnlineOnly) {
+          if (searchDistance === "2500mi") {
+            params.postal_code = "50001";
+            params.distance = "6000mi";
+            params.national = "include";
+          } else if (searchPostalCode) {
+            params.postal_code = searchPostalCode;
+            params.distance = searchDistance;
+          }
         }
+
+        // Always send online param so Access Perks returns online-only stores/locations
+        // when checked, and includes them alongside local when not.
+        params.online = isOnlineOnly ? "only" : "include";
 
         if (selectedCategories.length > 0) {
           params.category_key = selectedCategories.join(",");
@@ -703,10 +711,6 @@ export default function PerksPage() {
 
         if (selectedOfferTypes.length > 0) {
           params.offer_types = selectedOfferTypes.join(",");
-        }
-
-        if (isOnlineOnly && searchDistance !== "2500mi") {
-          params.online = "only";
         }
 
         const queryParams = new URLSearchParams(params);
@@ -932,7 +936,7 @@ export default function PerksPage() {
             query={searchQuery}
             postalCode={searchPostalCode}
             distance={searchDistance}
-            hasActiveFilters={selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0 || selectedStore !== null || selectedLocation !== null}
+            hasActiveFilters={selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0 || selectedStore !== null || selectedLocation !== null || onlineOnly}
             onQueryChange={setSearchQuery}
             onPostalCodeChange={setSearchPostalCode}
             onDistanceChange={(dist) => {
@@ -1004,14 +1008,14 @@ export default function PerksPage() {
               >
                 <SlidersHorizontal className="w-4 h-4" />
                 Filters
-                {(selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0 || selectedStore || selectedLocation) && (
+                {(selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0 || selectedStore || selectedLocation || onlineOnly) && (
                   <span className="px-1.5 py-0.5 bg-nfw-aubergine text-white text-xs rounded">
-                    {selectedCategories.length + selectedFacets.length + selectedOfferTypes.length + (selectedStore ? 1 : 0) + (selectedLocation ? 1 : 0)}
+                    {selectedCategories.length + selectedFacets.length + selectedOfferTypes.length + (selectedStore ? 1 : 0) + (selectedLocation ? 1 : 0) + (onlineOnly ? 1 : 0)}
                   </span>
                 )}
               </button>
 
-              {(selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0 || selectedStore || selectedLocation || searchQuery || searchPostalCode) && (
+              {(selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0 || selectedStore || selectedLocation || searchQuery || searchPostalCode || onlineOnly) && (
                 <button
                   onClick={clearAllFilters}
                   className="text-sm text-nfw-blackberry/60 hover:text-nfw-blackberry flex items-center gap-1 transition-colors"

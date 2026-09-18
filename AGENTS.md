@@ -15845,3 +15845,52 @@ Added the Featured Image picker to `/admin/grants/new` (it was only on the edit 
 - Pick an image → preview shown with "Change Image" button
 - Submit → cycle created with `featured_image` populated in DB
 - Visit `/admin/grants/[id]/edit` → image shown in preview
+
+## Session 2026-09-18: Online Only Filter UX on /perks
+
+### Problem
+
+The `Online Only` checkbox on `/perks` was unintuitive: when unchecked, the page sent no `online` param to Access Perks, which defaulted to **in-store / local offers only** — silently hiding every online-redeemable merchant (e.g. Norwegian Cruise Lines). Users had no idea that toggling the box would change the result set so dramatically, and there was no visible cue that "Online Only" was an exclusive filter. Worse, location filters still applied when Online Only was on, which made no semantic sense.
+
+### Solution
+
+1. **Made Online Only truly location-agnostic.** When checked, the page no longer sends `postal_code` / `distance` to Access Perks — the result set is filtered only by `online=only` plus the user's other filters (categories, facets, offer types). The existing distance dropdown is ignored in this mode.
+2. **Promoted Online Only to a labeled toggle section** in `FilterSidebar`, matching the visual weight of NFW Exclusive Perks and Travel Benefits. Globe icon, aubergine background when active, dove when inactive. Helper text adapts to state.
+3. **Added a dismissable "Online Only" chip** in the sidebar's Selected row so users can see — and remove — the filter at a glance.
+4. **Always send `online=include` when unchecked** so the unchecked default now shows online offers alongside local, instead of the old behavior of returning only local. This makes the unchecked default feel useful rather than a missing state.
+5. **Active-filter parity:** `hasActiveFilters`, mobile Filters badge count, and the "Clear All" visibility condition all include `onlineOnly` so the filter is reflected everywhere.
+
+### Helper text copy
+
+| State | Text |
+|-------|------|
+| Active | "Showing online-redeemable offers only. Location is ignored." |
+| Inactive | "Show only offers you can redeem online. Local / in-store offers will be hidden." |
+
+### Behavior matrix (after)
+
+| Online Only | Distance | Result |
+|---|---|---|
+| Off | 10mi | Local + online offers near user |
+| Off | Nationwide | All online + nationwide local offers |
+| On | (any, ignored) | Online-redeemable only, location-agnostic |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/perks/page.tsx` | `fetchAllCounts` skips geo params when `isOnlineOnly`; offers-search + rollup branches also skip `postal_code`/`distance` and always send `online=only` or `online=include`; added `onlineOnly` to `hasActiveFilters`, mobile Filters badge count, and Clear All visibility |
+| `components/perks/FilterSidebar.tsx` | Added `Globe` icon import; replaced plain checkbox+label with a labeled toggle button (aubergine/dove variants) including state-aware helper text; added dismissable "Online Only" chip in the Selected row; included `onlineOnly` in the Selected-row conditional |
+
+### Decisions
+
+- Did not add a special empty state — per user direction, standard "No Results" is fine since the toggle's helper text now makes the exclusive behavior obvious enough.
+- Online-only state has its own search input handling (search query still applied; only geo params are stripped).
+- Active filter chip renders inline with category/facet/offer-type chips using the same `bg-nfw-lilac/20` styling — no new visual language introduced.
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- Manual: uncheck + 10mi → see local stores; check + 10mi → see online-only, postal code ignored; check + Nationwide → still online-only, distance ignored
+- Sidebar Selected row shows "Online Only ✕" chip when active
+- Mobile Filters badge count includes Online Only when active

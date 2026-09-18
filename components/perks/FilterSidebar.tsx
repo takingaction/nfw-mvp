@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChevronDown, ChevronRight, X, SlidersHorizontal, Plane, ShoppingBag } from "lucide-react";
+import { ChevronDown, ChevronRight, X, SlidersHorizontal, Plane, ShoppingBag, Globe } from "lucide-react";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -253,7 +253,7 @@ export default function FilterSidebar({
       </div>
 
       <div className="p-4 max-h-[calc(100vh-280px)] overflow-y-auto">
-        {(selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0) && (
+        {(selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0 || onlineOnly) && (
           <div className="mb-4 pb-4 border-b border-nfw-blackberry/10">
             <p className="text-xs text-nfw-blackberry/50 mb-2">Selected:</p>
             <div className="flex flex-wrap gap-1">
@@ -317,26 +317,53 @@ export default function FilterSidebar({
                   </span>
                 ) : null;
               })}
+              {onlineOnly && (
+                <span
+                  key="online-only-chip"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-nfw-lilac/20 text-nfw-aubergine text-xs"
+                >
+                  Online Only
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOnlineOnlyChange?.(false);
+                    }}
+                    className="hover:text-nfw-blackberry"
+                    aria-label="Remove Online Only filter"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
             </div>
           </div>
         )}
 
         {onOnlineOnlyChange && (
-          <div className="mb-4 pb-4 border-b border-nfw-blackberry/10">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="online-only"
-                checked={onlineOnly}
-                onCheckedChange={(checked) => onOnlineOnlyChange(checked === true)}
-                className="border-nfw-blackberry/40 data-[state=checked]:bg-nfw-aubergine data-[state=checked]:border-nfw-aubergine"
-              />
-              <label
-                htmlFor="online-only"
-                className="text-sm text-nfw-blackberry cursor-pointer hover:text-nfw-aubergine transition-colors"
-              >
-                Online Only
-              </label>
-            </div>
+          <div className="p-4 border-b border-nfw-blackberry/10">
+            <button
+              onClick={() => onOnlineOnlyChange(!onlineOnly)}
+              aria-pressed={onlineOnly}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                onlineOnly
+                  ? "bg-nfw-aubergine text-white"
+                  : "bg-nfw-dove text-nfw-blackberry hover:bg-nfw-stone/20"
+              }`}
+            >
+              <Globe className="w-5 h-5" />
+              <div className="text-left">
+                <div className="font-ui font-medium text-sm">Online Only</div>
+                <div
+                  className={`text-xs font-serif ${
+                    onlineOnly ? "text-nfw-lilac" : "text-nfw-blackberry/50"
+                  }`}
+                >
+                  {onlineOnly
+                    ? "Showing online-redeemable offers only. Location is ignored."
+                    : "Show only offers you can redeem online. Local / in-store offers will be hidden."}
+                </div>
+              </div>
+            </button>
           </div>
         )}
 
