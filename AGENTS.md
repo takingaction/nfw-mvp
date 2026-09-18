@@ -16730,3 +16730,77 @@ Investigation re-confirmed three more columns that the anonymize UPDATE payloads
 4. **Structural PII gap** — `contact_submissions.message` body may contain user-typed PII that survives anonymization (structural, not a code bug)
 5. **`freshdesk_ticket_id` linkage** — anonymization doesn't reset Freshdesk ticket linkage; tickets still associated with original email out-of-scope
 6. **`zero_dollar_claims` original columns undocumented** — table pre-dates any migration; complete set of original columns unknown
+
+
+## Session 2026-09-18: Profile Deletion Columns + Pending Documents Cleanup
+
+### Goal
+
+Two small improvements:
+
+1. Make anonymized profiles discoverable from a single SELECT on `profiles` (no need to
+   cross-reference `auth.users.raw_user_meta_data`).
+2. Eliminate the dead `deletion_documents_pending` UI surface (table is never populated;
+   feature parked for later).
+
+### Changes
+
+**New migration** `supabase/migrations/172_add_deletion_columns_to_profiles.sql`:
+- Adds `profiles.deleted_at TIMESTAMPTZ` and `profiles.deletion_request_id UUID REFERENCES deletion_requests(id)`
+- Both columns nullable; zero impact on existing rows
+- Two partial indexes (only index anonymized rows: `WHERE deleted_at IS NOT NULL`)
+- FK is default `NO ACTION` (RESTRICT) per user direction — `deletion_requests` rows cannot be hard-deleted while any profile references them
+
+**Edit** `lib/anonymize.ts` step 1 (the `profiles` UPDATE):
+- Adds `deleted_at: new Date().toISOString()` and `deletion_request_id: deletionRequestId` to the existing UPDATE payload
+- One query, atomic with the surrounding PII wipe
+- Replaces the old "deletion_requested_at does not exist" comment with a current comment explaining the two new audit fields
+
+**Edit** `app/admin/deletion-requests/AdminDeletionRequestsClient.tsx`:
+- Removes the dead `pendingDocuments: any[]` field from the `detailData` state type
+
+**Edit** `app/api/admin/deletion-requests/[id]/route.ts`:
+- Removes the dead query against `deletion_documents_pending` and the `pendingDocuments` field from the response
+
+### Cleanup note
+
+The previous investigation found a yellow "Pending Documents Review" panel in
+`AdminDeletionRequestsClient.tsx` that needed to be hidden. On re-reading the file at execution
+time, that JSX block had already been removed in a prior edit — only the unused type field and
+the API query/response field remained. The cleanup here removes those dead references.
+
+### Intentionally preserved (out of scope)
+
+- The three exported helpers in `lib/anonymize.ts` (`getDocumentsPendingDeletion`,
+  `markDocumentReviewed`, `deleteGrantDocument`) read from `deletion_documents_pending`
+  and are exported but have zero callers in `app/` or `lib/`. They are scaffolding for the
+  parked document-review workflow. Removing them would be feature work; keeping them
+  preserves the door open for when that feature is wired up.
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- After migration 172 in Supabase: `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'profiles' AND column_name IN ('deleted_at', 'deletion_request_id');` returns 2 rows
+- Smoke test on a throwaway account: submit → verify → process; `profiles.deleted_at` populated, `profiles.deletion_request_id` matching the deletion_requests UUID, `email` wiped
+- `deletion_log` unchanged — still ~14 rows per processed request
+- `/admin/deletion-requests` no longer makes a `deletion_documents_pending` query on each request detail load
+
+### Files Changed
+
+- `supabase/migrations/172_add_deletion_columns_to_profiles.sql` — **NEW**
+- `lib/anonymize.ts` — 2 new fields in step 1 UPDATE
+- `app/admin/deletion-requests/AdminDeletionRequestsClient.tsx` — removed `pendingDocuments` from type
+- `app/api/admin/deletion-requests/[id]/route.ts` — removed query + response field
+
+### Deploy
+
+1. Run migration 172 in Supabase SQL Editor.
+2. Deploy code.
+3. Order is important: migration MUST come first if the code change is in production. Reverse order is unsafe — the new fields in the UPDATE would fail with "column does not exist".
+
+### Out of scope (still parked)
+
+- CSV export of the Activity Log
+- Wiring up `deletion_documents_pending` for real (the document review workflow)
+- Any UI surfacing of the new `profiles.deleted_at` / `profiles.deletion_request_id` columns
+- Per-row error handling in `lib/anonymize.ts`

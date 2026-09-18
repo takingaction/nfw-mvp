@@ -52,12 +52,6 @@ export async function GET(
       .eq("deletion_request_id", id)
       .order("created_at", { ascending: true });
 
-    // Fetch documents pending review for this request
-    const { data: pendingDocuments, error: docsError } = await supabaseAdmin
-      .from("deletion_documents_pending")
-      .select("*")
-      .eq("deletion_request_id", id);
-
     // Check for active subscription info
     let financialHold = null;
     if (deletionRequest.profile) {
@@ -86,7 +80,6 @@ export async function GET(
     return NextResponse.json({
       request: deletionRequest,
       logs: logs || [],
-      pendingDocuments: pendingDocuments || [],
       financialHold,
       pendingGrants: pendingGrants || [],
     });

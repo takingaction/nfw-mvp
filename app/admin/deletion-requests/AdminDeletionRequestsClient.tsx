@@ -50,7 +50,6 @@ export default function AdminDeletionRequestsClient() {
   const [selectedRequest, setSelectedRequest] = useState<DeletionRequest | null>(null);
   const [detailData, setDetailData] = useState<{
     logs: LogEntry[];
-    pendingDocuments: any[];
     financialHold: any;
     pendingGrants: any[];
   } | null>(null);

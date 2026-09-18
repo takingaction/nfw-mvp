@@ -117,9 +117,12 @@ export async function anonymizeUser(
         // membership_level: left as-is — profiles_membership_level_check only allows
         // (free, contributing, founding, waitlist); downstream consumers (getCategory,
         // flodesk-rules) route any other value to "Unknown" so anonymized profiles
-        // exit all category segments cleanly. deletion_requested_at is not written
-        // here because that column does not exist; the request timestamp is already
-        // captured on deletion_requests.requested_at.
+        // exit all category segments cleanly.
+        // deleted_at + deletion_request_id: stamped so a single SELECT on profiles
+        // answers "was this row anonymized? when? via which request?". Mirrors the
+        // back-link already stored on auth.users.raw_user_meta_data->>'deletion_request_id'.
+        deleted_at: new Date().toISOString(),
+        deletion_request_id: deletionRequestId,
         joined_at: null, // Will be cleared
       })
       .eq("id", userId);
