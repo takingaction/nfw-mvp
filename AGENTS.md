@@ -17204,3 +17204,108 @@ Step 1 sets 27 other fields to `null`. Audited each against `information_schema.
 - `contact_submissions.message` PII retention (structural gap)
 - CSV export of Activity Log
 - `deletion_documents_pending` real wiring
+
+## Session 2026-09-18: Fix "Stuck at Verified" — Align DB Constraint to App Vocabulary
+
+### Problem
+
+User reported: "the user is still set under 'verified' not 'processed'" even though the 14-step anonymization completed. Admin saw a green "Account anonymized successfully" banner but the request row never moved out of the Verified tab.
+
+### Root cause
+
+`deletion_requests.status` CHECK constraint (migration 158 line 12-18) allowed:
+```
+'pending' | 'verified' | 'processing' | 'completed' | 'cancelled'
+```
+
+But every layer of the **app code** uses `"processed"`:
+- `AdminDeletionRequestsClient.tsx` — 4 sites (type union line 24, `activeTab` state line 56, switch case line 175, tab filter line 220)
+- `app/api/admin/deletion-requests/route.ts:19` — comment
+- `app/api/admin/deletion-requests/[id]/process/route.ts:62` — the update
+- `app/api/admin/deletion-requests/[id]/cancel/route.ts:37` — guard
+
+When `process/route.ts:60-67` tried to write `status='processed'`, the CHECK constraint rejected it. The `updateError` branch (lines 69-80) returned HTTP 200 with a `warning` field. The client (`AdminDeletionRequestsClient.tsx:118-122`) only checks `data.error`, not `data.warning`, so it surfaced a green "Account anonymized successfully" banner regardless. Anonymization itself was fine — only the status row update was rejected, leaving the request stuck at `verified` forever.
+
+Even the migration that introduced the schema was internally inconsistent: the status column is named `processed_at` / `processed_by` (lines 23-24 of migration 158), but the allowed CHECK value is `'completed'`. The app layer consistently says `"processed"`; the DB constraint is the odd one out.
+
+### Diagnostic before the fix (run by user)
+
+```sql
+SELECT status, COUNT(*) FROM deletion_requests GROUP BY status ORDER BY status;
+-- pending  | 1
+-- verified | 1
+```
+
+Two rows in pre-finished states. Zero `'completed'` rows in production (would have been evidence of an older version of this same bug).
+
+### Fix (Option A — recommended)
+
+Aligned the DB to match the app's vocabulary by dropping + recreating the CHECK constraint with `'processed'` instead of `'completed'`. Zero app code changes needed — every app site already said `"processed"`.
+
+### Files Created
+
+**`supabase/migrations/173_align_deletion_status_values.sql`** — drops + recreates the CHECK constraint atomically; backfills any existing `'completed'` rows to `'processed'`:
+
+```sql
+BEGIN;
+
+UPDATE deletion_requests SET status = 'processed' WHERE status = 'completed';
+
+ALTER TABLE deletion_requests
+  DROP CONSTRAINT IF EXISTS deletion_requests_status_check;
+
+ALTER TABLE deletion_requests
+  ADD CONSTRAINT deletion_requests_status_check
+  CHECK (status IN ('pending','verified','processing','processed','cancelled'));
+
+COMMIT;
+
+NOTIFY pgrst, 'reload';
+```
+
+The `BEGIN/COMMIT` wrap ensures atomicity — if anything fails between the data migration and the constraint drop, both steps rollback together.
+
+**`supabase/migrations/173_align_deletion_status_values_rollback.sql`** — inverse of the above, for if something goes wrong. Reverse the data update + restore the original constraint with `'completed'`.
+
+### Verification
+
+- Before running migration, ran the diagnostic above (confirmed: 2 rows, zero `'completed'`).
+- After migration: same diagnostic should show identical counts (UPDATE was a no-op). The CHECK now allows `'processed'`.
+- Click "Process Deletion" on the user's stuck request as admin:
+  - All 14 anonymize steps complete (already did).
+  - UPDATE on `process/route.ts:60-67` now succeeds.
+  - Row flips from `verified` to `processed`.
+  - `processed_at` and `processed_by` populated.
+  - Request moves from "Verified" tab to "Processed" tab.
+  - **No silent warning path** — clean success return at `process/route.ts:82-86`.
+- End-to-end smoke on a throwaway account: submit → verify → process. Same expected behavior, no regressions.
+- Vercel logs show no `[process] Update error:` for this request (post-fix).
+
+### Files Changed
+
+- `supabase/migrations/173_align_deletion_status_values.sql` — **NEW**
+- `supabase/migrations/173_align_deletion_status_values_rollback.sql` — **NEW**
+- **Zero app code changes.** No `npm run build` impact.
+
+### Deploy
+
+1. Run migration 173 in Supabase SQL Editor.
+2. (Don't run the rollback file unless something goes wrong.)
+3. No code deploy required.
+4. Click "Process Deletion" on the user's stuck request as admin — should now flip to `processed` cleanly.
+
+### Risk
+
+- **Low.** Constraint drop + recreate is standard Postgres. The data migration was a no-op on this 2-row dataset. The `BEGIN/COMMIT` wrap ensures atomicity.
+- **No app code changes** = zero risk of breaking existing flows.
+- **Reversible** via the rollback migration file.
+- Even if the app hadn't been using `'processed'` consistently, this would be Option A (the cleaner one-app-vocabulary-aligned fix). Confirmed 7 sites all say `"processed"` before committing to this approach.
+
+### Out of Scope (Still Parked)
+
+- Per-row error handling in `lib/anonymize.ts`
+- `deletion_log` write protection
+- `contact_submissions.message` PII retention (structural gap)
+- CSV export of Activity Log for `/admin/deletion-requests`
+- Wiring up `deletion_documents_pending` for real
+- Making `process/route.ts` more defensive about the success/warning split (the warning field is currently dead — client ignores it). Tightening the contract so the API explicitly returns success/failure rather than success+warning would prevent this class of bug from recurring. Worth a future ticket, parked.
