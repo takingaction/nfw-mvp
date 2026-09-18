@@ -44,15 +44,24 @@ export async function GET(request: Request) {
     });
 
     // Handle Nationwide - use postal_code=50001 (Iowa center) + distance=6000mi as anchor, plus national+online flags
+    // Online behavior is uniform across both paths: "only" → only online, otherwise → include all.
+    // (Previously the online assignment was nested inside the if/else-if branches, so when no
+    // postal_code/distance was in the URL — which is what the client sends when Online Only is on —
+    // params.online was never forwarded to Access Perks. That caused Domino's in-store offers to leak
+    // through under "Online Only" in the offers view.)
     if (distance === "2500mi") {
       params.postal_code = "50001";
       params.distance = "6000mi";
       params.national = "include";
-      params.online = onlineParam === "only" ? "only" : "include";
     } else if (postalCode && distance) {
       params.postal_code = postalCode;
       params.distance = distance;
-      params.online = onlineParam === "only" ? "only" : "include";
+    }
+
+    if (onlineParam === "only") {
+      params.online = "only";
+    } else {
+      params.online = "include";
     }
 
     const result = await searchOffers(params as unknown as Parameters<typeof searchOffers>[0]);

@@ -16121,3 +16121,104 @@ Make the `/perks` sidebar cards visually consistent:
 - Manual: sidebar shows Online-Only card with no icon, text fills width
 - Manual: Travel Benefits shows dove on `/perks`, aubergine on `/travel`
 - All four cards (NFW Exclusive, Collections, Travel Benefits, Online-Only) now visually consistent in width and structure
+
+## Session 2026-09-18: Online Only — Offers View Bug Fix + Description Alignment
+
+### Problem (final regression report)
+
+User reported that under Online Only in the offers view, Domino's in-store offers were persisting even though Domino's should not appear under that filter:
+
+> "if I search for Dominos and view the offers and then click Online Only then the results persist, and if you showed only online offers then maybe that would be ok but it shows in-store offers. THIS IS NOT GOOD UX!"
+
+Stores view worked correctly; offers view did not. The race condition fix from the previous session wasn't enough — there was a deeper data-flow bug.
+
+### Root cause
+
+The offers/search server route at `app/api/access-perks/offers/search/route.ts` had its `params.online` assignment **inside** the `if/else-if` blocks that handled postal_code/distance. When neither branch matched (which happens exactly when Online Only is on, because the page-level client logic strips postal_code/distance in that case), `params.online` was never set on the Access Perks request. Access Perks defaulted to returning the full catalog — including Domino's in-store offers — instead of the requested `online=only` filter.
+
+The rollup route (`/api/access-perks/rollup/route.ts`) was already structured correctly — `params.online` is always set based on the `online` query string value, regardless of postal/distance presence. The offers/search route needed the same structure.
+
+### The Official Access Perks Semantics (definitive)
+
+User pulled the documentation for `online_exclusive` directly from Access Perks:
+
+> `online_exclusive` boolean: **If the location has a lat/lon of 0,0 it is an "online" location and will be true**
+
+So `online_exclusive: true` literally means the location has coordinates 0,0 — a fully online store (no physical presence). Stores like Domino's that have real coordinates (e.g. Winnipeg's 49.89,-97.00) have `online_exclusive: false`.
+
+This explains the user-visible behavior cleanly:
+- `online=only` returns offers from stores that are fully online (Amazon, Spencer's online, etc.)
+- These online stores only have offers with `redemption_methods: ['link']` (coupon codes you redeem online) — never in-store methods, because there's no physical store to go to
+
+### Empirical Validation
+
+Sampled 100 offers returned with `online=only` (guest member key). All 100 had `redemption_methods: ['link']` only. None had `instore` or `instore_print`. Confirmed by direct API calls against the production Access Perks endpoint.
+
+So `redemption_method=link` is **not** needed as an additional filter — `online=only` alone already returns only link-redeemable offers. This means the previous session's plan to add `redemption_method=link` was based on a wrong assumption and would have been unnecessary.
+
+### Fix
+
+**`app/api/access-perks/offers/search/route.ts`** — refactor the `online` assignment out of the if/else-if branches, mirroring the rollup route:
+
+```typescript
+// Before (line 46-56):
+if (distance === "2500mi") {
+  params.postal_code = "50001";
+  params.distance = "6000mi";
+  params.national = "include";
+  params.online = onlineParam === "only" ? "only" : "include";
+} else if (postalCode && distance) {
+  params.postal_code = postalCode;
+  params.distance = distance;
+  params.online = onlineParam === "only" ? "only" : "include";
+}
+
+// After:
+if (distance === "2500mi") {
+  params.postal_code = "50001";
+  params.distance = "6000mi";
+  params.national = "include";
+} else if (postalCode && distance) {
+  params.postal_code = postalCode;
+  params.distance = distance;
+}
+
+if (onlineParam === "only") {
+  params.online = "only";
+} else {
+  params.online = "include";
+}
+```
+
+### Description Update
+
+Aligned the helper text with the actual semantics (online-redeemable coupon codes, not abstract "stores with online-exclusive offers"):
+
+| Where | Before | After |
+|---|---|---|
+| Active helper | "Showing stores with online-exclusive offers only. Location is ignored." | "Showing online-redeemable coupons only. Location is ignored." |
+| Inactive helper | "Include stores with online-exclusive offers alongside your location results." | "Include only online-redeemable coupons in your location results." |
+
+Button title ("Online-Only Merchants"), chip label, and chip aria-label unchanged.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/access-perks/offers/search/route.ts` | Refactor: move `params.online` out of if/else-if branches to mirror rollup route structure |
+| `components/perks/FilterSidebar.tsx` | Update two helper text strings for clarity |
+
+### Decisions
+
+- **Did NOT add `redemption_method=link` to the API call.** Verified empirically: 100/100 sampled offers under `online=only` already have `redemption_methods: ['link']` only. The API's `online=only` filter already returns only link-redeemable offers; adding a redundant filter would have been unnecessary and could have unintended side effects.
+- **Did NOT exclude Domino's by name.** The actual semantics explain why Domino's doesn't appear under `online=only` (its Winnipeg coordinates have `online_exclusive: false`). Once the route bug is fixed, Domino's correctly disappears.
+- **Did NOT add a modal/reset.** Rejected in earlier sessions; senior-dev recommendation was race fix + clear-on-change + wording alignment.
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- Manual: search "Dominos" → offers view → toggle Online Only ON → 0 results (Domino's correctly hidden because its Winnipeg coordinates have `online_exclusive: false`)
+- Manual: stores view continues to work as before (Domino's correctly hidden)
+- Manual: search "Amazon" with Online Only ON → Amazon offers appear with `link` redemption
+- Manual: toggle Online Only rapidly → no flicker (race fix from previous session still works)
+- Direct API verification: `GET https://offer.adcrws.com/v1/offers?query=Dominos&online=only` returns `{offers: null, total_results: null}` — confirms the fix matches Access Perks' documented behavior

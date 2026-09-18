@@ -280,9 +280,9 @@ export default function FilterSidebar({
                 onlineOnly ? "text-nfw-lilac" : "text-nfw-blackberry/50"
               }`}
             >
-              {onlineOnly
-                ? "Showing stores with online-exclusive offers only. Location is ignored."
-                : "Include stores with online-exclusive offers alongside your location results."}
+                  {onlineOnly
+                    ? "Showing online-redeemable coupons only. Location is ignored."
+                    : "Include only online-redeemable coupons in your location results."}
             </div>
           </button>
         </div>
