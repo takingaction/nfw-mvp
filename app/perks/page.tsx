@@ -348,7 +348,11 @@ export default function PerksPage() {
     try {
       const cacheBuster = Date.now();
       const nationwide = searchDistance === "2500mi";
-      const onlineParam = isOnlineOnly ? "&online=only" : (nationwide ? "&online=include" : "");
+      // Online Only filters to offers redeemable via coupon-code link. The
+      // previous `online=only` param was location-level (online_exclusive:
+      // lat/lon 0,0) and leaked in-store offers from those locations.
+      const onlineParam = nationwide ? "&online=include" : "";
+      const redemptionParam = isOnlineOnly ? "&redemption_method=link" : "";
       const nationalParam = nationwide ? "&national=include" : "";
       // Online Only is location-agnostic — skip postal_code/distance entirely.
       const geoParams = isOnlineOnly
@@ -358,9 +362,9 @@ export default function PerksPage() {
           : (searchPostalCode ? `&postal_code=${searchPostalCode}&distance=${searchDistance}` : "");
       const categoryParam = selectedCategories.length > 0 ? `&category_key=${selectedCategories.join(",")}` : "";
       const [storesRes, offersRes, locationsRes] = await Promise.all([
-        fetch(`/api/access-perks/rollup?rollup=stores${geoParams}${categoryParam}${nationalParam}${onlineParam}&cb=${cacheBuster}`, { signal: controller.signal }),
-        fetch(`/api/access-perks/offers/search?per_page=1${geoParams}${categoryParam}${nationalParam}${onlineParam}&cb=${cacheBuster}`, { signal: controller.signal }),
-        fetch(`/api/access-perks/rollup?rollup=locations${geoParams}${categoryParam}${nationalParam}${onlineParam}&cb=${cacheBuster}`, { signal: controller.signal }),
+        fetch(`/api/access-perks/rollup?rollup=stores${geoParams}${categoryParam}${nationalParam}${onlineParam}${redemptionParam}&cb=${cacheBuster}`, { signal: controller.signal }),
+        fetch(`/api/access-perks/offers/search?per_page=1${geoParams}${categoryParam}${nationalParam}${onlineParam}${redemptionParam}&cb=${cacheBuster}`, { signal: controller.signal }),
+        fetch(`/api/access-perks/rollup?rollup=locations${geoParams}${categoryParam}${nationalParam}${onlineParam}${redemptionParam}&cb=${cacheBuster}`, { signal: controller.signal }),
       ]);
 
       const [storesData, offersData, locationsData] = await Promise.all([
@@ -664,9 +668,12 @@ export default function PerksPage() {
           }
         }
 
-        // Always send online param so Access Perks returns online-only results
-        // when checked, and includes online offers alongside local when not.
-        params.online = isOnlineOnly ? "only" : "include";
+        // Always send online param so Access Perks includes online-exclusive stores alongside local.
+        // When Online Only is checked, filter to offers with `link` redemption (coupon codes redeemable online).
+        params.online = "include";
+        if (isOnlineOnly) {
+          params.redemption_method = "link";
+        }
 
         if (selectedCategories.length > 0) {
           params.category_key = selectedCategories.join(",");
@@ -743,9 +750,12 @@ export default function PerksPage() {
           }
         }
 
-        // Always send online param so Access Perks returns online-only stores/locations
-        // when checked, and includes them alongside local when not.
-        params.online = isOnlineOnly ? "only" : "include";
+        // Always send online param so Access Perks includes online-exclusive stores alongside local.
+        // When Online Only is checked, filter to offers with `link` redemption (coupon codes redeemable online).
+        params.online = "include";
+        if (isOnlineOnly) {
+          params.redemption_method = "link";
+        }
 
         if (selectedCategories.length > 0) {
           params.category_key = selectedCategories.join(",");

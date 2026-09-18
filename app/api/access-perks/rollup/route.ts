@@ -14,6 +14,7 @@ export async function GET(request: Request) {
     const offerTypes = searchParams.get("offer_types");
     const query = searchParams.get("query");
     const online = searchParams.get("online");
+    const redemptionMethod = searchParams.get("redemption_method");
 
     let isAuthenticated = false;
 
@@ -57,6 +58,13 @@ export async function GET(request: Request) {
       params.online = "only";
     } else {
       params.online = "include";
+    }
+
+    // Forward redemption_method filter (e.g. "link" for online-redeemable coupons).
+    // When the Online Only toggle is on, the client sends redemption_method=link so
+    // we filter to offers redeemable via coupon code link (not in-store or print).
+    if (redemptionMethod) {
+      params.redemption_method = redemptionMethod;
     }
 
     if (rollup) params.rollup = rollup;

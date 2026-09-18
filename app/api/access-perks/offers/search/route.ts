@@ -33,22 +33,19 @@ export async function GET(request: Request) {
     let postalCode: string | null = null;
     let distance: string | null = null;
     let onlineParam: string | null = null;
+    let redemptionParam: string | null = null;
 
     searchParams.forEach((value, key) => {
       if (key !== "member_key") {
         if (key === "postal_code") postalCode = value;
         else if (key === "distance") distance = value;
         else if (key === "online") onlineParam = value;
+        else if (key === "redemption_method") redemptionParam = value;
         else params[key] = value;
       }
     });
 
     // Handle Nationwide - use postal_code=50001 (Iowa center) + distance=6000mi as anchor, plus national+online flags
-    // Online behavior is uniform across both paths: "only" → only online, otherwise → include all.
-    // (Previously the online assignment was nested inside the if/else-if branches, so when no
-    // postal_code/distance was in the URL — which is what the client sends when Online Only is on —
-    // params.online was never forwarded to Access Perks. That caused Domino's in-store offers to leak
-    // through under "Online Only" in the offers view.)
     if (distance === "2500mi") {
       params.postal_code = "50001";
       params.distance = "6000mi";
@@ -58,10 +55,13 @@ export async function GET(request: Request) {
       params.distance = distance;
     }
 
-    if (onlineParam === "only") {
-      params.online = "only";
-    } else {
-      params.online = "include";
+    // Always include online-exclusive stores alongside local results.
+    // (Online Only filtering is done via `redemption_method`, not `online`.)
+    params.online = "include";
+
+    // Forward redemption_method filter (e.g. "link" for online-redeemable coupons).
+    if (redemptionParam) {
+      params.redemption_method = redemptionParam;
     }
 
     const result = await searchOffers(params as unknown as Parameters<typeof searchOffers>[0]);

@@ -16413,3 +16413,65 @@ The `PerksSearch` component itself doesn't need changes — it still uses `onQue
 - Manual: search "Amazon" → click Amazon → type "Dominos" → returns to stores view with Dominos results
 - Manual: search "Amazon" → click Amazon → click Back → type "Spencer" → still works (Back button path unchanged)
 - Manual: search "Amazon" → no clicks → type "Dominos" → still works (default stores view, no filter to clear)
+
+## Session 2026-09-18: Online Only — Switch Filter to `redemption_method=link`
+
+### Problem
+
+User reported an inconsistency: button is labeled "Online-Only Merchants" with helper text "Showing online-redeemable coupons only. Location is ignored." — but the actual filter is at the **location** level (`online=only`), not the **offer redemption method** level. Empirically verified that the location-level filter leaks in-store offers:
+
+- **Texas de Brazil** appears under `online=only` with `methods=['instore_print', 'instore']` — purely in-store, NO `link` method
+- **The Learning Experience** appears under `online=only` with `methods=['instore_print', 'instore', 'link']` — mixed-method offer
+
+Both of these contradict the helper text "online-redeemable coupons only." The user wants coupons they can redeem online, but the API filter is selecting locations by `online_exclusive: true` (lat/lon 0,0) regardless of which offer redemption methods those locations' offers actually have.
+
+### Fix
+
+Changed the data flow to use `redemption_method=link` as the actual filter when Online Only is on. This filters at the offer level: only offers that have `link` as one of their redemption methods are returned. Verified empirically:
+
+- Texas de Brazil: 0 (correctly filtered out — no `link` offers)
+- The Learning Experience: appears with its `link`-method offers only (the in-store-only offer that was leaking is now excluded)
+- Macy's, Amazon, Spencer's online: appear (correctly — they have `link`-redeemable coupons)
+
+The `online` param is now always set to `include` (not toggled), so online-exclusive stores (Amazon, Macy's online, etc.) always appear in unfiltered results. The Online Only toggle's job is now strictly to add the `redemption_method=link` filter on top of the default behavior.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/perks/page.tsx` | `fetchAllCounts`, `fetchRollup` offers branch, and `fetchRollup` stores/locations branch now send `redemption_method=link` instead of `online=only` when the toggle is on. `params.online` is always `"include"`. |
+| `app/api/access-perks/offers/search/route.ts` | Reads `redemption_method` from query string and forwards to Access Perks unconditionally. `params.online` is always `"include"`. |
+| `app/api/access-perks/rollup/route.ts` | Reads `redemption_method` from query string and forwards to Access Perks. |
+| `components/perks/FilterSidebar.tsx` | Button title, chip label, and chip X aria-label renamed from "Online-Only Merchants" / "Remove Online-Only Merchants filter" to "Online Coupons" / "Remove Online Coupons filter". Helper texts unchanged — they were already accurate for the new behavior. |
+
+### Behavior after fix
+
+| Toggle | API call | What user sees |
+|---|---|---|
+| Off | (no `redemption_method`) | Local stores + online-exclusive stores (Amazon etc.) — unchanged from before |
+| On | `redemption_method=link` | Only offers that have `link` as a redemption method |
+| On + Texas de Brazil | (filtered out) | Texas de Brazil doesn't appear (its offers are in-store only, no `link`) |
+| On + Domino's | Appears (because Domino's offers have `link` as one of their methods) | User can redeem Domino's coupon online via link — this is correct |
+| On + Macy's | Macy's offers with `link` redemption | Appears correctly |
+
+### Decisions
+
+- **Renamed button to "Online Coupons"** rather than keeping "Online-Only Merchants." The new label accurately describes what the filter does (offers with link redemption). The previous label was a category of stores, which is no longer accurate.
+- **Helper texts unchanged.** Active: "Showing online-redeemable coupons only. Location is ignored." Inactive: "Show only online-redeemable coupons. Local / in-store offers will be hidden." Both are now accurate descriptions of the new behavior.
+- **Mixed-method offers still appear under Online Only.** Domino's offers have `methods=['instore_print', 'instore', 'link']`. Access Perks' `redemption_method=link` includes offers that have `link` as one of their methods (it doesn't filter to offers that ONLY have link). This is correct: a Domino's offer with both `instore` and `link` methods can be redeemed online. Showing it is honest.
+- **`online` param always `"include"`.** The previous toggle between `"only"` and `"include"` was based on the misunderstanding that `online=only` filtered by offer level. With the new filter, `online` is no longer the toggle's lever.
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- Manual: Online Only + search "Dominos" → Domino's appears (its offers have `link` method); user can redeem online via link
+- Manual: Online Only + search "Texas de Brazil" → 0 results (correctly filtered out)
+- Manual: Online Only + search "Macy's" → Macy's offers appear (correctly)
+- Manual: Online Only off → all local stores + online-exclusive stores (Amazon etc.) appear (unchanged from before)
+- Button label now reads "Online Coupons"; chip reads "Online Coupons ✕"
+
+### Out of scope
+
+- Not changing the mobile app's filter behavior (separate work; flag for follow-up)
+- Not adding a stricter "link-only-no-other-methods" filter (no API support)
+- Not changing the unchecked-state default behavior

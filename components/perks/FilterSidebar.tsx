@@ -274,7 +274,7 @@ export default function FilterSidebar({
                 : "bg-nfw-dove text-nfw-blackberry hover:bg-nfw-stone/20"
             }`}
           >
-            <div className="font-ui font-medium text-sm">Online-Only Merchants</div>
+            <div className="font-ui font-medium text-sm">Online Coupons</div>
             <div
               className={`text-xs font-serif ${
                 onlineOnly ? "text-nfw-lilac" : "text-nfw-blackberry/50"
@@ -358,14 +358,14 @@ export default function FilterSidebar({
                   key="online-only-chip"
                   className="inline-flex items-center gap-1 px-2 py-0.5 bg-nfw-lilac/20 text-nfw-aubergine text-xs"
                 >
-                  Online-Only Merchants
+                  Online Coupons
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onOnlineOnlyChange?.(false);
                     }}
                     className="hover:text-nfw-blackberry"
-                    aria-label="Remove Online-Only Merchants filter"
+                    aria-label="Remove Online Coupons filter"
                   >
                     <X className="w-3 h-3" />
                   </button>
