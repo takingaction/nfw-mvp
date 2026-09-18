@@ -16267,3 +16267,73 @@ The inactive state describes the toggle's action ("If I click this, I'll only se
 - Not changing data flow (`online=include` for unchecked state remains correct per Access Perks docs)
 - Not changing button title or chip
 - Not removing the toggle
+
+## Session 2026-09-18: Trap Access Perks 400 as Empty Search Results
+
+### Problem
+
+If a user types a single character like `]` in the search bar on `/perks`, Access Perks returns a 400 with body `{"status":400,"message":"Invalid search request.","offers":null,"suggest":null,"info":null}`. The lib function `searchOffers` builds the entire response body into an `Error` message string and throws; the route handler stores that in `error`; the page renders a red "Unable to Load Results / Offers API Error: 400 - {...json...} / Try Again" banner. Surfacing raw backend JSON to the user looks broken and the "Try Again" button is misleading (no retry will help — the input itself is unparseable).
+
+### Root cause
+
+`lib/access-perks/offers.ts:searchOffers` (lines 68-72 before fix) treated `!response.ok` as a single branch — every non-2xx became a thrown Error. The route's catch block stored the message string. The page rendered it verbatim.
+
+A 400 from Access Perks is fundamentally different from a 5xx or network failure: it's the API saying "this query I cannot handle," not "I am broken." Treating them identically is bad UX.
+
+### Fix
+
+**`lib/access-perks/offers.ts`** — trap `response.status === 400` specifically and return a synthetic empty-result response matching the shape the rest of the app already expects. All other non-2xx codes still throw so the existing red error banner remains functional for actual system failures.
+
+```typescript
+if (!response.ok) {
+  const responseText = await response.text();
+  // Access Perks returns 400 for unparseable input (e.g. a search query containing
+  // characters like "]"). Treat as "no results" so the UI shows a clean empty state
+  // instead of an ugly error banner with raw API JSON. Log a warning so contract
+  // changes that introduce legitimate 4xx errors are still detectable in logs.
+  if (response.status === 400) {
+    console.warn(
+      "[searchOffers] Access Perks 400, returning empty result:",
+      responseText.substring(0, 200),
+    );
+    return {
+      offers: null,
+      info: { total_results: 0 },
+      total_results: 0,
+    };
+  }
+  throw new Error(
+    `Offers API Error: ${response.status} ${response.statusText} - ${responseText.substring(0, 200)}`,
+  );
+}
+```
+
+A new `SearchOffersResult` interface was added so `searchOffers` has an explicit return type — needed because the implicit return type created a forward-reference problem when trying to cast the empty-result object.
+
+### Behavior after fix
+
+| User input | Before | After |
+|---|---|---|
+| `]` or other special chars | Red error banner with raw JSON dumped | "No Results" — empty state, same as a no-match search |
+| Valid query, Access Perks 500+ | Red error banner with details | Red error banner (unchanged) |
+| Valid query, network failure | Red error banner | Red error banner (unchanged) |
+| Valid query with matches | Results | Results (unchanged) |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `lib/access-perks/offers.ts` | Added `SearchOffersResult` interface (explicit return type). Added 400-trap branch in `searchOffers` returning a synthetic empty result. |
+
+### Risk
+
+Low. Only changes the path for `response.status === 400`. All other status codes still throw normally. Other endpoints (`getOffer`, `getOfferUsesRemaining`, etc.) are unaffected because they don't accept arbitrary search strings.
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- Direct API verification: `GET https://offer.adcrws.com/v1/offers?query=%5D` returns 400 with `{"status":400,"message":"Invalid search request.",...}`
+- Manual: type `]` in the search box → "No Results" appears cleanly, no red banner, no raw JSON
+- Manual: type a normal query like "Dominos" → results still render
+- Manual: temporarily kill network access → red banner with details still works for actual system failures
+- Server logs: `console.warn` shows up in Vercel logs whenever Access Perks returns 400, so future contract changes are visible

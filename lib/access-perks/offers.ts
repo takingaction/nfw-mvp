@@ -36,7 +36,15 @@ export interface OfferSearchParams {
 /**
  * Search offers with filtering
  */
-export async function searchOffers(params: OfferSearchParams) {
+export interface SearchOffersResult {
+  offers: any[] | null;
+  groups?: any[];
+  info?: { total_results?: number; total_stores?: number; total_locations?: number; total_pages?: number; current_page?: number } | null;
+  total_results?: number;
+  [key: string]: any;
+}
+
+export async function searchOffers(params: OfferSearchParams): Promise<SearchOffersResult> {
   try {
     if (!process.env.ACCESS_OFFERS_TOKEN) {
       throw new Error("ACCESS_OFFERS_TOKEN environment variable is not set");
@@ -67,6 +75,21 @@ export async function searchOffers(params: OfferSearchParams) {
 
     if (!response.ok) {
       const responseText = await response.text();
+      // Access Perks returns 400 for unparseable input (e.g. a search query containing
+      // characters like "]"). Treat as "no results" so the UI shows a clean empty state
+      // instead of an ugly error banner with raw API JSON. Log a warning so contract
+      // changes that introduce legitimate 4xx errors are still detectable in logs.
+      if (response.status === 400) {
+        console.warn(
+          "[searchOffers] Access Perks 400, returning empty result:",
+          responseText.substring(0, 200),
+        );
+        return {
+          offers: null,
+          info: { total_results: 0 },
+          total_results: 0,
+        };
+      }
       throw new Error(
         `Offers API Error: ${response.status} ${response.statusText} - ${responseText.substring(0, 200)}`,
       );
