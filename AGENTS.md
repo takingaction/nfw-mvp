@@ -16662,3 +16662,71 @@ Policies are narrowly scoped to `user_id = auth.uid()` so members can only touch
 ### Side benefit (mobile app)
 
 Mobile Slice E `delete-account.tsx` uses these same endpoints with Bearer auth. The new RLS policies apply identically to Bearer-authenticated sessions, so the mobile flow is fixed by the same migration — no mobile code change.
+
+
+## Session 2026-09-18: Deletion Admin Modal + 4 Anonymize Crashes
+
+### Problem 1 — Process Deletion uses native window.confirm()
+
+`/admin/deletion-requests` called `window.confirm("Are you sure you want to process this deletion request? This action cannot be undone.")` — ugly native browser dialog, not a proper centered modal.
+
+### Problem 2 — `lib/anonymize.ts` step 1 UPDATE crashes on missing `bio` column
+
+After the RLS fix (migration 171) made the request flow work end-to-end, an admin clicking OK on the native dialog hit a red inline banner: "Profile anonymization failed: Could not find the 'bio' column of 'profiles' in the schema cache". The column was in `001_initial_schema.sql:18` but never had a migration that created or dropped it; production DB no longer has it.
+
+### Problems 3-5 — Three more latent crashes downstream of step 1
+
+Investigation re-confirmed three more columns that the anonymize UPDATE payloads reference but that don't exist in any migration. All four are silently masked by the outer `try/catch` in `lib/anonymize.ts` — admin sees "Anonymization failed" banner, request stays at `verified` with no recovery path.
+
+| Step | Column | Table | Status |
+|------|--------|-------|--------|
+| 1 | `bio` | `profiles` | Was in `001_initial_schema.sql:18`, manually dropped from production; no app code reads/writes it |
+| 3 | `[DELETED]` placeholder | `grants` (who_are_you, biggest_challenge, fund_usage) | Columns exist with `CHECK (char_length >= 10)`, placeholder is 9 chars — would fail |
+| 5 | `shipping_name`, `shipping_phone` | `zero_dollar_claims` | Ghost columns — no migration ever created them; no app code reads/writes them |
+| 8 | `phone` | `contact_submissions` | Ghost column — contact form has no phone input; no migration ever created it |
+
+### Fixes Applied
+
+**Modal refactor** (`app/admin/deletion-requests/AdminDeletionRequestsClient.tsx`):
+- Import `ConfirmModal` from `@/components/admin/ConfirmModal`
+- Add `showProcessModal` state
+- Split `handleProcess` into `handleProcessClick` (opens modal) + `handleProcess` (runs after confirm, also closes modal in `finally`)
+- Render `<ConfirmModal variant="danger" confirmLabel="OK" cancelLabel="Cancel" title="Process Deletion" message="...This action cannot be undone.">`
+- Replace button `onClick={() => handleProcess(selectedRequest.id)}` → `onClick={handleProcessClick}`
+- Modal handles Escape / backdrop / scroll lock out of the box — established pattern, used by 4 other admin components (`AdminGrantReviewer.tsx`, `AdminNfwPerks.tsx`, `AdminClaimsClient.tsx`, `ManageShopifyItems.tsx`)
+
+**`lib/anonymize.ts` one-line fixes:**
+- Step 1: drop `bio: null` (column doesn't exist, nothing reads it)
+- Step 3: `"[DELETED]"` (9 chars) → `"[REDACTED]"` (10 chars, clears `char_length >= 10` CHECK exactly — don't drop the CHECK, it's a real business rule)
+- Step 5: drop `shipping_name: null` and `shipping_phone: null` (columns never existed)
+- Step 8: drop `phone: null` (column never existed)
+
+### Decision Log
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Modal pattern | `ConfirmModal` (reusable, `variant="danger"`) | Established across 4 admin components; has Escape/backdrop/scroll-lock built in |
+| Step 3 placeholder | `"[REDACTED]"` (10 chars) | Clears CHECK exactly without padding; matches redaction convention |
+| Ghost column strategy | Remove writes | Recreating the columns would create permanent-NULL fields no code populates — pure maintenance debt |
+| No schema changes | n/a | All ghost columns never existed in production; recreating them would propagate drift |
+| Drop the grants CHECK | NO | It enforces real business rule (minimum essay length on submission); dropping to accommodate deletion would weaken schema globally |
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- `grep -rn '\bbio\b\|\bshipping_name\b\|\bshipping_phone\b' lib/ app/` returns no hits in `lib/anonymize.ts` (these are now unused references removed); only `app/api/profile/update/route.ts:14` (separate out-of-scope issue — `bio` is in `ALLOWED_FIELDS` but the column doesn't exist, so profile edits fail too. Flagged for follow-up.)
+- Manual: `/admin/deletion-requests` → Process Deletion → centered modal with exact spec copy → Cancel closes cleanly, OK triggers API → all 14 anonymize steps complete → green success banner, status flips to `processed`, `deletion_log` has 14 rows
+
+### Files Changed
+
+- `app/admin/deletion-requests/AdminDeletionRequestsClient.tsx` — modal refactor
+- `lib/anonymize.ts` — 4 one-line fixes
+
+### Out of Scope (Flagged for Follow-up)
+
+1. **Per-row error handling** — inner `for` loops in steps 3, 5, 8 should each wrap individual row UPDATEs in their own try/catch so one anomalous row doesn't kill the whole anonymization via the outer try/catch
+2. **`deletion_log` write protection** — same outer-try/catch problem; if `deletion_log` INSERT ever fails (FK, RLS, missing column), anonymization aborts
+3. **`bio` in `app/api/profile/update/route.ts:14` ALLOWED_FIELDS** — column doesn't exist in production; any user trying to update their `bio` via the profile page hits the same column-missing error
+4. **Structural PII gap** — `contact_submissions.message` body may contain user-typed PII that survives anonymization (structural, not a code bug)
+5. **`freshdesk_ticket_id` linkage** — anonymization doesn't reset Freshdesk ticket linkage; tickets still associated with original email out-of-scope
+6. **`zero_dollar_claims` original columns undocumented** — table pre-dates any migration; complete set of original columns unknown

@@ -91,7 +91,6 @@ export async function anonymizeUser(
         company_website: null,
         linkedin_url: null,
         twitter_handle: null,
-        bio: null,
         social_handles: null,
         shipping_address: null,
         identities: null,
@@ -175,9 +174,9 @@ export async function anonymizeUser(
         await supabaseAdmin
           .from("grants")
           .update({
-            who_are_you: "[DELETED]",
-            biggest_challenge: "[DELETED]",
-            fund_usage: "[DELETED]",
+            who_are_you: "[REDACTED]",
+            biggest_challenge: "[REDACTED]",
+            fund_usage: "[REDACTED]",
           })
           .eq("id", grant.id);
 
@@ -223,8 +222,6 @@ export async function anonymizeUser(
           .from("zero_dollar_claims")
           .update({
             shipping_address: null,
-            shipping_name: null,
-            shipping_phone: null,
           })
           .eq("id", claim.id);
       }
@@ -283,7 +280,6 @@ export async function anonymizeUser(
           .update({
             name: "Deleted User",
             email: `deleted_${anonId}@deleted.local`,
-            phone: null,
           })
           .eq("id", contact.id);
       }

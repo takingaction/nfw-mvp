@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -56,6 +57,7 @@ export default function AdminDeletionRequestsClient() {
   const [activeTab, setActiveTab] = useState<"all" | "pending" | "verified" | "processed">("all");
   const [processing, setProcessing] = useState(false);
   const [actionMessage, setActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [showProcessModal, setShowProcessModal] = useState(false);
 
   useEffect(() => {
     fetchRequests();
@@ -106,10 +108,13 @@ export default function AdminDeletionRequestsClient() {
     }
   };
 
+  const handleProcessClick = () => {
+    if (!selectedRequest) return;
+    setActionMessage(null);
+    setShowProcessModal(true);
+  };
+
   const handleProcess = async (id: string) => {
-    if (!confirm("Are you sure you want to process this deletion request? This action cannot be undone.")) {
-      return;
-    }
     setProcessing(true);
     setActionMessage(null);
     try {
@@ -128,6 +133,7 @@ export default function AdminDeletionRequestsClient() {
       setActionMessage({ type: "error", text: "Failed to process request" });
     } finally {
       setProcessing(false);
+      setShowProcessModal(false);
     }
   };
 
@@ -197,6 +203,17 @@ export default function AdminDeletionRequestsClient() {
             {actionMessage.text}
           </div>
         )}
+
+        <ConfirmModal
+          isOpen={showProcessModal}
+          title="Process Deletion"
+          message="Are you sure you want to process this deletion request? This action cannot be undone."
+          confirmLabel="OK"
+          cancelLabel="Cancel"
+          variant="danger"
+          onConfirm={() => selectedRequest && handleProcess(selectedRequest.id)}
+          onCancel={() => setShowProcessModal(false)}
+        />
 
         {/* Tabs */}
         <div className="mb-6 border-b border-gray-200">
@@ -375,7 +392,7 @@ export default function AdminDeletionRequestsClient() {
                     {selectedRequest.status === "verified" && (
                       <>
                         <button
-                          onClick={() => handleProcess(selectedRequest.id)}
+                          onClick={handleProcessClick}
                           disabled={processing}
                           className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
                         >
