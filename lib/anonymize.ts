@@ -113,11 +113,14 @@ export async function anonymizeUser(
         profile_completed: false,
         is_admin: false,
         is_reviewer: false,
-        deletion_requested_at: new Date().toISOString(),
         // Keep these for audit/analytics
         // id: preserved (FK constraint)
-        // membership_level: preserved as 'deleted'
-        membership_level: "deleted",
+        // membership_level: left as-is — profiles_membership_level_check only allows
+        // (free, contributing, founding, waitlist); downstream consumers (getCategory,
+        // flodesk-rules) route any other value to "Unknown" so anonymized profiles
+        // exit all category segments cleanly. deletion_requested_at is not written
+        // here because that column does not exist; the request timestamp is already
+        // captured on deletion_requests.requested_at.
         joined_at: null, // Will be cleared
       })
       .eq("id", userId);

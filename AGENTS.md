@@ -16582,3 +16582,83 @@ All routes: `const admin = await requireAdmin(); if (!admin.authorized) return 4
 
 - Grant "Add document" is only on the reviewer panel; scoring pages stay read-only.
 - `/api/grants/document-url` still doesn't bind `filePath` to `grantId` (pre-existing gap, noted 2026-09-18 research).
+
+
+## Session 2026-09-18: Profile Deletion Flow Fixes
+
+### Problem
+
+Member-initiated deletion failed at the modal with: **"Request Failed / Failed to create deletion request"**.
+
+### Root cause
+
+Migration `158_create_deletion_system.sql` enabled RLS on `deletion_requests` and only added policies for admin SELECT, admin INSERT, admin UPDATE, and service_role ALL. **No policy allows a logged-in member to INSERT or UPDATE their own deletion request.** The `POST /api/profile/request-deletion` and `POST /api/profile/cancel-deletion` routes send the cookie/Bearer Supabase client (RLS applies) and the INSERT silently fails with `42501 new row violates row-level security policy`. The route catches the error and surfaces the generic `"Failed to create deletion request"` to the modal.
+
+GET works (own-row SELECT policy exists), which is why the modal could detect existing requests but never create new ones.
+
+### Pre-existing anonymization bugs (latent, would bite admin processing)
+
+Investigation re-confirmed two bugs that would prevent the `anonymizeUser()` step from completing when an admin tried to **process** a deletion request:
+
+1. `lib/anonymize.ts:116` wrote `deletion_requested_at: new Date().toISOString()` to the `profiles` row — the column does not exist in any migration, so the UPDATE fails with `column profiles.deletion_requested_at does not exist`.
+2. `lib/anonymize.ts:120` wrote `membership_level: "deleted"` — violates `profiles_membership_level_check` (only `free|contributing|founding|waitlist` allowed, set in migration 108).
+
+The whole 14-step anonymization is wrapped in a single outer `try/catch` in `lib/anonymize.ts`, so any error in step 1 surfaces as a generic `"Anonymization failed"` and the request is stuck at `verified` with no recovery path.
+
+### Downstream verification (pre-edit)
+
+Searched `lib/` for consumers of `membership_level="deleted"`:
+
+| File | Reference | Behavior |
+|------|-----------|----------|
+| `lib/flodesk-rules.ts:106` | Comment only | Documents that "deleted" → "Unknown" exits all category segments |
+| `lib/member-categories.ts:12,44` | Reads `membership_level` as string | No case for `"deleted"` — falls through to `"Unknown"` |
+| `lib/anonymize.ts:119` | Comment only | Documented the (broken) intent to preserve as `"deleted"` |
+
+**Conclusion**: No code branches on `"deleted"` as a meaningful state. Removing the assignment is safe — the column will keep its previous value (whatever it was before anonymization), and `getCategory()` routes any non-tier value to `"Unknown"`, which Flodesk rules already treat as "exit all categories."
+
+### Fixes
+
+**1. New RLS policies** (`supabase/migrations/171_allow_users_to_manage_own_deletion_requests.sql`):
+```sql
+CREATE POLICY "Users can insert their own deletion requests"
+  ON deletion_requests FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can update their own deletion requests"
+  ON deletion_requests FOR UPDATE
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+NOTIFY pgrst, reload;
+```
+
+Policies are narrowly scoped to `user_id = auth.uid()` so members can only touch their own row. Admin and service_role policies are untouched.
+
+**2. Drop the two buggy writes** in `lib/anonymize.ts`:
+- Removed `deletion_requested_at: new Date().toISOString(),` (column does not exist; `deletion_requests.requested_at` already records when the user requested)
+- Removed `membership_level: "deleted",` (violates CHECK; downstream treats it as "Unknown" anyway)
+- Replaced both with a comment explaining the decision so the next reader knows why the lines are absent
+- `joined_at: null` on the next line is preserved (it correctly signals "no meaningful join date")
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors, 217 pages generated)
+- Manual flow: `/profile` → Danger Zone → Delete Account → confirm → success view appears, request visible at `/admin/deletion-requests`
+- Cancel flow: from mobile Slice E `delete-account.tsx` or `POST /api/profile/cancel-deletion` directly — now succeeds
+- Admin processing (smoke test on throwaway account): verify → process → all 14 steps complete, `deletion_log` has 14 rows, status → `processed`. Before the fix, step 1 crashed with column/constraint violations.
+
+### Files Changed
+
+- `supabase/migrations/171_allow_users_to_manage_own_deletion_requests.sql` — **NEW**
+- `lib/anonymize.ts` — removed 2 lines, added explanatory comment
+
+### Deploy
+
+1. Run `171_allow_users_to_manage_own_deletion_requests.sql` in the Supabase SQL Editor
+2. No code deploy strictly required for the RLS fix — the existing API routes already send correct `user_id` and `cancelled_by` values
+3. Deploy the `lib/anonymize.ts` edit when convenient so admin processing works end-to-end
+
+### Side benefit (mobile app)
+
+Mobile Slice E `delete-account.tsx` uses these same endpoints with Bearer auth. The new RLS policies apply identically to Bearer-authenticated sessions, so the mobile flow is fixed by the same migration — no mobile code change.
