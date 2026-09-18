@@ -263,6 +263,31 @@ export default function FilterSidebar({
         </Link>
       </div>
 
+      {onOnlineOnlyChange && (
+        <div className="p-4 border-b border-nfw-blackberry/10">
+          <button
+            onClick={() => onOnlineOnlyChange(!onlineOnly)}
+            aria-pressed={onlineOnly}
+            className={`w-full px-4 py-3 rounded-lg transition-colors text-left ${
+              onlineOnly
+                ? "bg-nfw-aubergine text-white"
+                : "bg-nfw-dove text-nfw-blackberry hover:bg-nfw-stone/20"
+            }`}
+          >
+            <div className="font-ui font-medium text-sm">Online-Only Merchants</div>
+            <div
+              className={`text-xs font-serif ${
+                onlineOnly ? "text-nfw-lilac" : "text-nfw-blackberry/50"
+              }`}
+            >
+              {onlineOnly
+                ? "Showing stores with online-exclusive offers only. Location is ignored."
+                : "Include stores with online-exclusive offers alongside your location results."}
+            </div>
+          </button>
+        </div>
+      )}
+
       <div className="p-4 max-h-[calc(100vh-280px)] overflow-y-auto">
         {(selectedCategories.length > 0 || selectedFacets.length > 0 || selectedOfferTypes.length > 0 || onlineOnly) && (
           <div className="mb-4 pb-4 border-b border-nfw-blackberry/10">
@@ -347,31 +372,6 @@ export default function FilterSidebar({
                 </span>
               )}
             </div>
-          </div>
-        )}
-
-        {onOnlineOnlyChange && (
-          <div className="p-4 border-b border-nfw-blackberry/10">
-            <button
-              onClick={() => onOnlineOnlyChange(!onlineOnly)}
-              aria-pressed={onlineOnly}
-              className={`w-full px-4 py-3 rounded-lg transition-colors text-left ${
-                onlineOnly
-                  ? "bg-nfw-aubergine text-white"
-                  : "bg-nfw-dove text-nfw-blackberry hover:bg-nfw-stone/20"
-              }`}
-            >
-              <div className="font-ui font-medium text-sm">Online-Only Merchants</div>
-              <div
-                className={`text-xs font-serif ${
-                  onlineOnly ? "text-nfw-lilac" : "text-nfw-blackberry/50"
-                }`}
-              >
-                {onlineOnly
-                  ? "Showing stores with online-exclusive offers only. Location is ignored."
-                  : "Include stores with online-exclusive offers alongside your location results."}
-              </div>
-            </button>
           </div>
         )}
 
