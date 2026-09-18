@@ -40,16 +40,23 @@ export async function GET(request: Request) {
     if (offerTypes) params.offer_type = offerTypes;
 
     // Handle Nationwide - use postal_code=50001 (Iowa center) + distance=6000mi as anchor, plus national+online flags
+    // Online behavior is uniform across both paths: "only" → only online, otherwise → include all.
+    // (Previously the postalCode branch overrode with "none", which silently hid every online-only store
+    // like Amazon whenever the user had a postal code and the Online Only checkbox was unchecked.)
     if (distance === "2500mi") {
       params.postal_code = "50001";
       params.distance = "6000mi";
       params.national = "include";
-      params.online = online === "only" ? "only" : "include";
     } else if (postalCode) {
       params.postal_code = postalCode;
       params.distance = distance;
       params.sort = "distance";
-      params.online = online === "only" ? "only" : "none";
+    }
+
+    if (online === "only") {
+      params.online = "only";
+    } else {
+      params.online = "include";
     }
 
     if (rollup) params.rollup = rollup;

@@ -15894,3 +15894,76 @@ The `Online Only` checkbox on `/perks` was unintuitive: when unchecked, the page
 - Manual: uncheck + 10mi → see local stores; check + 10mi → see online-only, postal code ignored; check + Nationwide → still online-only, distance ignored
 - Sidebar Selected row shows "Online Only ✕" chip when active
 - Mobile Filters badge count includes Online Only when active
+
+## Session 2026-09-18: Online Only — Server Route Bug Fix
+
+### Problem
+
+The previous commit (618575d) only fixed the **client** to send `online=include`. The server route at `app/api/access-perks/rollup/route.ts` was silently overriding the client's value: when the user had a postal code and the Online Only checkbox was unchecked, the server force-overwrote `params.online = "none"` regardless of what the client sent. Result: Amazon (and every other online-only merchant) was hidden from the stores/locations lists for any member with a profile ZIP.
+
+Reported by user: "Amazon still doesn't show up on listings when Online Only isn't turned on."
+
+### Root Cause
+
+`/api/access-perks/rollup/route.ts` line 52 (pre-fix):
+
+```typescript
+} else if (postalCode) {
+  params.postal_code = postalCode;
+  params.distance = distance;
+  params.sort = "distance";
+  params.online = online === "only" ? "only" : "none";  // <-- BUG: forced "none"
+}
+```
+
+`"none"` is the Access Perks param meaning "exclude online offers". The Nationwide branch immediately above correctly defaulted to `"include"`. `app/api/access-perks/offers/search/route.ts` was already correct — only the rollup endpoint was broken.
+
+### Fix
+
+`/api/access-perks/rollup/route.ts`: collapsed the Nationwide + postal-code branches (their only differing logic was the now-identical online handling) and moved the online decision outside the branch:
+
+```typescript
+// Handle Nationwide - use postal_code=50001 (Iowa center) + distance=6000mi as anchor, plus national+online flags
+// Online behavior is uniform across both paths: "only" → only online, otherwise → include all.
+// (Previously the postalCode branch overrode with "none", which silently hid every online-only store
+// like Amazon whenever the user had a postal code and the Online Only checkbox was unchecked.)
+if (distance === "2500mi") {
+  params.postal_code = "50001";
+  params.distance = "6000mi";
+  params.national = "include";
+} else if (postalCode) {
+  params.postal_code = postalCode;
+  params.distance = distance;
+  params.sort = "distance";
+}
+
+if (online === "only") {
+  params.online = "only";
+} else {
+  params.online = "include";
+}
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/access-perks/rollup/route.ts` | Collapse Nationwide + postal-code branches; move `params.online` decision out of the branches so it can no longer be overridden by either path. Default changed from `"none"` to `"include"` for the postal-code path. |
+
+### Behavior after fix
+
+| Online Only | Distance | Result |
+|---|---|---|
+| Off | 10mi | Local + online offers near user (Amazon visible) |
+| Off | Nationwide | All online + nationwide local offers |
+| On | (any, ignored) | Online-redeemable only, location-agnostic |
+
+### Domino's Note
+
+User also reported "when Online Only is turned on I still see In-Store options from stores like Dominos". Not addressed in this fix. Most likely Domino's has both online-redeemable and in-store offers in Access Perks, and `online=only` correctly returns only the online ones — which the user is seeing. If Domino's continues to leak in-store offers in `online=only` results after this fix, the next step is to either add "Dominos" to `EXCLUDED_STORES` in `app/perks/page.tsx` or audit the offers directly. Will investigate separately if needed.
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- Manual: uncheck + 10mi with a real ZIP → Amazon (and other online-only stores) now appear; check + 10mi → online-only results, no in-store offers
+- Server route no longer has two different online-handling branches
