@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle,
@@ -199,6 +199,15 @@ export default function AdminFlodeskClient() {
   const refreshAll = useCallback(async () => {
     await Promise.all([fetchRules(), fetchStatus()]);
   }, [fetchRules, fetchStatus]);
+
+  // Index segments by id so each rule can resolve Flodesk's authoritative
+  // subscriber count for its target segment (used for the "Flodesk: X · DB: Y"
+  // diff on the rule row).
+  const segmentsById = useMemo(() => {
+    const m = new Map<string, Segment>();
+    for (const s of segments) m.set(s.id, s);
+    return m;
+  }, [segments]);
 
   // ---- rule editing -------------------------------------------------------
 
@@ -516,6 +525,31 @@ export default function AdminFlodeskClient() {
                       <span>
                         In segment: <strong className="text-nfw-blackberry">{rule.counts.added}</strong>
                       </span>
+                      {rule.flodesk_segment_id &&
+                        (() => {
+                          const seg = segmentsById.get(rule.flodesk_segment_id!);
+                          if (!seg || seg.total_active_subscribers == null) return null;
+                          const fl = seg.total_active_subscribers;
+                          const db = rule.counts.added;
+                          const diff = fl - db;
+                          const matchClass =
+                            diff === 0
+                              ? "text-nfw-blackberry/60"
+                              : "text-amber-700";
+                          const diffLabel =
+                            diff === 0
+                              ? "match"
+                              : diff > 0
+                                ? `${diff.toLocaleString("en-US")} missing`
+                                : `${Math.abs(diff).toLocaleString("en-US")} extra`;
+                          return (
+                            <span className={matchClass} title="Flodesk total_active_subscribers vs our DB added count">
+                              Flodesk: <strong className="text-nfw-blackberry">{fl.toLocaleString("en-US")}</strong>
+                              {" · "}
+                              {diffLabel}
+                            </span>
+                          );
+                        })()}
                       <span>Removed: {rule.counts.removed}</span>
                       <span>Last run: {formatDateTime(rule.last_run_at)}</span>
                     </div>

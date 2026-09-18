@@ -30,13 +30,16 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Per-rule status counts (three head-count queries per rule; rule count is tiny)
+  // Per-rule status counts (three head-count queries per rule; rule count is tiny).
+  // Newsletter Only rules write state to flodesk_sync_newsletter instead of
+  // flodesk_sync_members, so the table is chosen by category.
   const counts: Record<string, RuleCounts> = {};
   for (const rule of rules || []) {
+    const table = rule.category === "Newsletter Only" ? "flodesk_sync_newsletter" : "flodesk_sync_members";
     const [added, removed, failed] = await Promise.all(
       (["added", "removed", "failed"] as const).map((status) =>
         admin
-          .from("flodesk_sync_members")
+          .from(table)
           .select("*", { count: "exact", head: true })
           .eq("rule_id", rule.id)
           .eq("status", status),

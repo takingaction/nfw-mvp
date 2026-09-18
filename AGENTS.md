@@ -15751,3 +15751,66 @@ The existing Step 3 (EXITS) checks `memberRows` (which is now `flodesk_sync_memb
 2. Deploy code.
 3. Create the Flodesk segment in Flodesk.
 4. `/admin/flodesk` → **New rule** → category **Newsletter Only** → pick segment → **Preview** (sample emails should all be from `coming_soon_emails` with no `profiles.email` match) → **Run** once (don't enable yet) → verify in Flodesk → **Enable**.
+
+## Session 2026-09-17 (later): Newsletter Only — accurate rule counts + Flodesk diff
+
+### Symptom
+
+After enabling a Newsletter Only rule and pressing Run, 265 subscribers ended up in the Flodesk segment as expected, but `/admin/flodesk` showed **In segment: 0** for the rule. Removed: 0, Failed: 0, Last run: Sep 17 7:30 PM. The post-Run toast message said "Added 265, removed 0, failed 0" — so the run summary was right and the static count badge was wrong.
+
+### Root cause
+
+`app/api/admin/flodesk/rules/route.ts:33-49` (now lines 33-51) hard-coded the count query against `flodesk_sync_members`. Newsletter Only rules write their state to the parallel `flodesk_sync_newsletter` table (added in the previous session's migration 169), so the count for them was always 0.
+
+The data was correct all along — `flodesk_sync_newsletter` had 265 rows with `status='added'`. The badge was just reading the wrong table.
+
+### Fix
+
+**`app/api/admin/flodesk/rules/route.ts`** — branch the count table by `rule.category`:
+
+```typescript
+const table = rule.category === "Newsletter Only" ? "flodesk_sync_newsletter" : "flodesk_sync_members";
+```
+
+Same three `(status in added/removed/failed)` count queries, same `RuleCounts` shape, no client API change.
+
+### Surfacing Flodesk's authoritative subscriber count
+
+The user said: "We need accurate fucking numbers here." Beyond making the DB count correct, we now also show **Flodesk's own `total_active_subscribers`** for the segment side-by-side with our DB count, so any future divergence is visible at-a-glance.
+
+- `app/api/admin/flodesk/segments/route.ts` was already returning `total_active_subscribers` (no API change).
+- `AdminFlodeskClient.tsx` builds a `segmentsById` memo from the already-loaded segments state.
+- Each rule row now renders `Flodesk: N · DB: M` with an amber "N missing" or "N extra" badge when they disagree.
+
+**`app/admin/flodesk/AdminFlodeskClient.tsx`** — added `useMemo` import, `segmentsById` memo, and an inline render block in the rule row. The diff logic:
+
+```typescript
+const fl = seg.total_active_subscribers;
+const db = rule.counts.added;
+const diff = fl - db;
+const matchClass = diff === 0 ? "text-nfw-blackberry/60" : "text-amber-700";
+const diffLabel = diff === 0 ? "match"
+  : diff > 0 ? `${diff.toLocaleString("en-US")} missing`
+  : `${Math.abs(diff).toLocaleString("en-US")} extra`;
+```
+
+Renders only when the rule has a `flodesk_segment_id` and the segment's `total_active_subscribers` is non-null.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/flodesk/rules/route.ts` | Branch count table by `rule.category` |
+| `app/admin/flodesk/AdminFlodeskClient.tsx` | `useMemo` import, `segmentsById` map, Flodesk-vs-DB diff rendering |
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- `npx eslint --max-warnings 0` on both changed files ✓
+- No DB changes, no migration, no env var changes
+
+### Deploy
+
+1. Deploy code.
+2. Visit `/admin/flodesk` — the Newsletter Only rule now shows **In segment: 265** and **Flodesk: 265 · match**.
+3. If a future drift appears (e.g., manual Flodesk import or a silent upsert failure), the amber "N missing" / "N extra" badge surfaces immediately.
