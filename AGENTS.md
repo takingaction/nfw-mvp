@@ -17338,3 +17338,69 @@ The `BEGIN/COMMIT` wrap ensures atomicity — if anything fails between the data
 - CSV export of Activity Log for `/admin/deletion-requests`
 - Wiring up `deletion_documents_pending` for real
 - Making `process/route.ts` more defensive about the success/warning split (the warning field is currently dead — client ignores it). Tightening the contract so the API explicitly returns success/failure rather than success+warning would prevent this class of bug from recurring. Worth a future ticket, parked.
+
+## Session 2026-09-18: Anthropic Abort Noise Fix
+
+### Problem
+
+Vercel logs showed `[anthropic] API error: Request was aborted.` on every grant application submission (~every ~30 min). No application failure — just noisy, alarming log lines.
+
+### Root Cause
+
+The fire-and-forget AI evaluation in `app/api/grants/create/route.ts` was running in a request worker with `maxDuration = 60`. Vercel terminates serverless functions by aborting in-flight requests once `maxDuration` is reached. The Anthropic SDK detected the abort via its signal listener (`client.ts:1335`) and threw `APIUserAbortError("Request was aborted.")`.
+
+The wrapper in `lib/anthropic.ts:179` only handled `err?.name === "AbortError"`. But `APIUserAbortError.name` is `"APIError"` (parent class), so the catch fell through to `console.error("[anthropic] API error:", err?.message || err)` — producing the misleading log every single submission.
+
+### Fix (3 changes)
+
+**1. `lib/anthropic.ts`** — catch block now recognizes the abort class:
+```ts
+if (
+  err?.name === "AbortError" ||
+  (typeof err?.message === "string" &&
+    err.message.toLowerCase().includes("request was aborted"))
+) {
+  return fallback("AI evaluation timed out");
+}
+```
+Duck-typed message check (rather than `instanceof APIUserAbortError`) avoids bundling the SDK error class into the hot path of every submission.
+
+**2. `app/api/grants/create/route.ts`** — wall-clock timeout before Vercel kills us:
+- `maxDuration = 60` → `maxDuration = 15` (frees Vercel resources faster)
+- Wrapped fire-and-forget AI eval in `Promise.race` against a 6 s timer
+- On timeout, persists `ai_relevance: "uncertain"` + `ai_reasoning: "AI evaluation timed out"`
+- Reviewer sees a clean timeout reason instead of `Not evaluated`
+
+**3. `app/api/cron/ai-evaluate-pending/route.ts`** (NEW) — 5-min backfill:
+- CRON_SECRET-protected GET endpoint, `maxDuration = 300`
+- Picks up all grants where `ai_relevance IS NULL OR ai_relevance = 'not_evaluated'` across all cycles
+- Paginated 100 at a time, 200ms throttle, 250s time budget (50s buffer)
+- Skips rows whose cycle was deleted (with warning log)
+- Returns `{ total, evaluated, failed, remaining, budgetReached, elapsedMs }`
+- Added to `vercel.json`: `*/5 * * * *`
+
+### Why this class of error
+
+The `maxDuration` ceiling on the request worker is unrelated to Claude response time. Even when Anthropic responds in 1-3 s, if Vercel kills the worker first (network hiccup, deploy, timeout accumulation), the abort fires. Same pattern would apply to any future long-running AI call inside a request handler.
+
+### Verification
+
+- `tsc --noEmit` 0 errors
+- `next build` ✓ (218 pages, 9 new routes including the cron)
+- Pre-existing `any` lint errors in `lib/anthropic.ts` (lines 28/30/153/174) predate this change
+- Manual smoke: submit a grant. With the fix, log shows either a clean evaluation or `[anthropic] Failed to parse response` (parse error) — never the misleading `API error: Request was aborted.`.
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `lib/anthropic.ts` | Catch block recognizes abort by message |
+| `app/api/grants/create/route.ts` | `maxDuration: 60→15`, Promise.race with 6s timer |
+| `app/api/cron/ai-evaluate-pending/route.ts` | NEW — 5-min backfill cron |
+| `vercel.json` | Added cron entry `*/5 * * * *` |
+
+### Out of Scope (Deliberate)
+
+- No changes to `scoring/start` or `ai-reevaluate` routes — those run with `maxDuration = 300` already, plenty of headroom
+- No change to AI prompt, model, or token budget
+- No migration — `ai_relevance` already exists with `not_evaluated` as a valid value
