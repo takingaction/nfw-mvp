@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
       rejection_message_1,
       rejection_message_2,
       rejection_message_3,
+      featured_image,
     } = await request.json();
 
     const total_funds =
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
         rejection_message_1: rejection_message_1 || null,
         rejection_message_2: rejection_message_2 || null,
         rejection_message_3: rejection_message_3 || null,
+        featured_image: featured_image || null,
       })
       .select()
       .single();

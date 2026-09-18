@@ -389,7 +389,7 @@ export default function EditGrantCyclePage() {
               <span className="text-nfw-blackberry/40 font-normal">(Optional)</span>
             </label>
             <p className="text-xs text-nfw-blackberry/50 mb-2">
-              Image shown in the dashboard Popular across NFW section
+              Featured image for the grant, used in the member dashboard and beyond.
             </p>
             <div className="border border-nfw-blackberry/20 p-4 bg-nfw-dove/50">
               {formData.featured_image ? (

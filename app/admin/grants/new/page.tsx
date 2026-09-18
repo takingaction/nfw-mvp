@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import MediaLibraryModal from "@/components/admin/MediaLibraryModal";
 
 export default function NewGrantCyclePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     cycle_name: "",
@@ -23,6 +25,7 @@ export default function NewGrantCyclePage() {
     rejection_message_1: "",
     rejection_message_2: "",
     rejection_message_3: "",
+    featured_image: "",
   });
 
   const inputClass =
@@ -292,6 +295,42 @@ export default function NewGrantCyclePage() {
             </div>
           </div>
 
+          <div>
+            <label className={labelClass}>
+              Featured Image{" "}
+              <span className="text-nfw-blackberry/40 font-normal">(Optional)</span>
+            </label>
+            <p className="text-xs text-nfw-blackberry/50 mb-2">
+              Featured image for the grant, used in the member dashboard and beyond.
+            </p>
+            <div className="border border-nfw-blackberry/20 p-4 bg-nfw-dove/50">
+              {formData.featured_image ? (
+                <div className="flex items-center gap-4">
+                  <img
+                    src={formData.featured_image}
+                    alt="Featured"
+                    className="w-24 h-24 object-cover rounded"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setMediaLibraryOpen(true)}
+                    className="text-nfw-aubergine hover:underline text-sm"
+                  >
+                    Change Image
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setMediaLibraryOpen(true)}
+                  className="w-full py-4 border-2 border-dashed border-nfw-blackberry/20 hover:border-nfw-aubergine text-nfw-blackberry/40 hover:text-nfw-aubergine transition-colors text-sm"
+                >
+                  + Select Featured Image
+                </button>
+              )}
+            </div>
+          </div>
+
           {error && (
             <div className="bg-red-50 border border-red-200 p-4">
               <p className="text-red-700 text-sm">{error}</p>
@@ -316,6 +355,16 @@ export default function NewGrantCyclePage() {
           </div>
         </form>
       </div>
+
+      <MediaLibraryModal
+        isOpen={mediaLibraryOpen}
+        onClose={() => setMediaLibraryOpen(false)}
+        onSelect={(url) => {
+          setFormData({ ...formData, featured_image: url });
+          setMediaLibraryOpen(false);
+        }}
+        bucket="page-builder"
+      />
     </main>
   );
 }

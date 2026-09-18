@@ -15814,3 +15814,34 @@ Renders only when the rule has a `flodesk_segment_id` and the segment's `total_a
 1. Deploy code.
 2. Visit `/admin/flodesk` — the Newsletter Only rule now shows **In segment: 265** and **Flodesk: 265 · match**.
 3. If a future drift appears (e.g., manual Flodesk import or a silent upsert failure), the amber "N missing" / "N extra" badge surfaces immediately.
+
+---
+
+## Session 2026-09-17: Grant Cycle Featured Image on New Page + Edit Page Copy Fix
+
+### Overview
+
+Added the Featured Image picker to `/admin/grants/new` (it was only on the edit page) and rewrote the descriptive text on the edit page from the awkward "Image shown in the dashboard Popular across NFW section" to a clear single-sentence description.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/grants/[id]/edit/page.tsx` | Helper text under Featured Image label: `Image shown in the dashboard Popular across NFW section` → `Featured image for the grant, used in the member dashboard and beyond.` |
+| `app/admin/grants/new/page.tsx` | Added `MediaLibraryModal` import, `mediaLibraryOpen` state, `featured_image: ""` in `formData`, full Featured Image UI block (label, helper text, preview or "+ Select Featured Image" button), and the `<MediaLibraryModal>` component mounted at page level with `bucket="page-builder"` |
+| `app/api/admin/grants/create/route.ts` | Destructured `featured_image` from request body and added `featured_image: featured_image || null` to the insert payload |
+
+### Decisions
+
+- The new page mirrors the edit page's Featured Image block exactly so behavior is consistent.
+- `bucket="page-builder"` matches the edit page (and the article / page-builder media library).
+- Helper text rewritten to single sentence (no awkward two-clause construction).
+- No new env vars, no migration, no client API change. `grant_cycles.featured_image` column already existed (added in an earlier session).
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- Visit `/admin/grants/new` — Featured Image section now appears below the rejection message block, before the submit button
+- Pick an image → preview shown with "Change Image" button
+- Submit → cycle created with `featured_image` populated in DB
+- Visit `/admin/grants/[id]/edit` → image shown in preview
