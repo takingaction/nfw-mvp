@@ -1,16 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Loader2,
   ChevronDown,
   ChevronUp,
   FileText,
   Mail,
+  Plus,
+  Trash2,
   User,
   X,
 } from "lucide-react";
 import AiBadge from "./AiBadge";
+import ConfirmModal from "./ConfirmModal";
+import { uploadWithSignedUrl } from "@/lib/admin-upload";
+
+// Must match GRANT_DOCS_ALLOWED_TYPES in lib/admin-documents.ts
+const GRANT_DOC_ACCEPT = ".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx";
+const GRANT_DOC_MAX_BYTES = 10 * 1024 * 1024;
 
 const decodeHtml = (html: string): string => {
   if (typeof document === "undefined") return html || "";
@@ -50,9 +58,12 @@ const STATUS_OPTIONS = [
 export default function AdminGrantReviewer({
   grants,
   cycle,
+  isAdmin = false,
 }: {
   grants: any[];
   cycle: any;
+  /** Admins can attach/remove supporting documents; reviewers are read-only. */
+  isAdmin?: boolean;
 }) {
   const [selected, setSelected] = useState<any>(null);
   const [filter, setFilter] = useState("all");
@@ -63,6 +74,90 @@ export default function AdminGrantReviewer({
   const [adminNotes, setAdminNotes] = useState("");
   const [localGrants, setLocalGrants] = useState(grants);
   const [sendingEmail, setSendingEmail] = useState(false);
+
+  // Document attach/remove (admin only)
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [docError, setDocError] = useState("");
+  const [viewingDocId, setViewingDocId] = useState<string | null>(null);
+  const [docToDelete, setDocToDelete] = useState<any>(null);
+  const [deletingDoc, setDeletingDoc] = useState(false);
+
+  /** Replace the documents array on both `selected` and the matching `localGrants` entry. */
+  const setGrantDocuments = (grantId: string, updater: (docs: any[]) => any[]) => {
+    setSelected((prev: any) =>
+      prev && prev.id === grantId ? { ...prev, documents: updater(prev.documents || []) } : prev,
+    );
+    setLocalGrants((prev) =>
+      prev.map((g) => (g.id === grantId ? { ...g, documents: updater(g.documents || []) } : g)),
+    );
+  };
+
+  const handleAttachDocument = async (file: File) => {
+    if (!selected) return;
+    setDocError("");
+    if (file.size > GRANT_DOC_MAX_BYTES) {
+      setDocError(`"${file.name}" is larger than 10 MB.`);
+      return;
+    }
+    setUploadingDoc(true);
+    const grantId = selected.id;
+    try {
+      const row = await uploadWithSignedUrl<any>({
+        prepareUrl: "/api/admin/grants/documents/prepare",
+        finalizeUrl: "/api/admin/grants/documents/finalize",
+        bucket: "grant-documents",
+        file,
+        extra: { grantId },
+      });
+      setGrantDocuments(grantId, (docs) => [...docs, row]);
+    } catch (err: any) {
+      setDocError(err.message || "Upload failed");
+    } finally {
+      setUploadingDoc(false);
+      if (docInputRef.current) docInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteDocument = async () => {
+    if (!docToDelete || !selected) return;
+    setDeletingDoc(true);
+    setDocError("");
+    const grantId = selected.id;
+    try {
+      const res = await fetch(`/api/admin/grants/documents/${docToDelete.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to remove document");
+      setGrantDocuments(grantId, (docs) => docs.filter((d) => d.id !== docToDelete.id));
+    } catch (err: any) {
+      setDocError(err.message || "Failed to remove document");
+    } finally {
+      setDeletingDoc(false);
+      setDocToDelete(null);
+    }
+  };
+
+  const handleViewDocument = async (doc: any) => {
+    if (!selected) return;
+    setViewingDocId(doc.id);
+    setDocError("");
+    try {
+      const res = await fetch("/api/grants/document-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filePath: doc.document_url, grantId: selected.id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "Could not open document");
+      window.open(data.url, "_blank");
+    } catch (err: any) {
+      setDocError(err.message || "Could not open document");
+    } finally {
+      setViewingDocId(null);
+    }
+  };
 
   const handleSendBankInfoEmail = async () => {
     if (!selected) return;
@@ -98,6 +193,7 @@ export default function AdminGrantReviewer({
     );
     setAdminNotes(grant.admin_notes || "");
     setError("");
+    setDocError("");
   };
 
   const handleSave = async () => {
@@ -413,48 +509,94 @@ export default function AdminGrantReviewer({
               </div>
 
               {/* Documents */}
-              {selected.documents?.length > 0 && (
+              {(isAdmin || selected.documents?.length > 0) && (
                 <div>
-                  <p className="text-xs font-semibold text-nfw-blackberry/40 uppercase tracking-wider mb-2">
-                    Documents
-                  </p>
-                  <div className="space-y-2">
-                    {selected.documents.map((doc: any) => (
-                      <div
-                        key={doc.id}
-                        className="flex items-center justify-between bg-nfw-dove p-3"
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-nfw-blackberry">
-                            {doc.file_name}
-                          </p>
-                          <p className="text-xs text-nfw-blackberry/40">
-                            {(doc.file_size / 1024).toFixed(1)} KB
-                          </p>
-                        </div>
-                        <button
-                          onClick={async () => {
-                            const res = await fetch(
-                              "/api/grants/document-url",
-                              {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  filePath: doc.document_url,
-                                  grantId: selected.id,
-                                }),
-                              },
-                            );
-                            const data = await res.json();
-                            if (data.url) window.open(data.url, "_blank");
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-nfw-blackberry/40 uppercase tracking-wider">
+                      Documents{" "}
+                      {selected.documents?.length > 0 && `(${selected.documents.length})`}
+                    </p>
+                    {isAdmin && (
+                      <>
+                        <input
+                          ref={docInputRef}
+                          type="file"
+                          accept={GRANT_DOC_ACCEPT}
+                          className="hidden"
+                          disabled={uploadingDoc}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleAttachDocument(f);
                           }}
-                          className="text-xs font-semibold text-nfw-blackberry hover:text-nfw-blackberry/70 transition-colors"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => docInputRef.current?.click()}
+                          disabled={uploadingDoc}
+                          title="Attach a supporting document on the member's behalf"
+                          className="inline-flex items-center gap-1 text-xs font-ui font-bold uppercase tracking-[0.06em] text-nfw-aubergine hover:text-nfw-aubergine/70 disabled:opacity-50 transition-colors"
                         >
-                          View
+                          {uploadingDoc ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Plus className="w-3.5 h-3.5" />
+                          )}
+                          {uploadingDoc ? "Uploading…" : "Add document"}
                         </button>
-                      </div>
-                    ))}
+                      </>
+                    )}
                   </div>
+
+                  {docError && (
+                    <p className="text-xs text-red-600 mb-2">{docError}</p>
+                  )}
+
+                  {selected.documents?.length > 0 ? (
+                    <div className="space-y-2">
+                      {selected.documents.map((doc: any) => (
+                        <div
+                          key={doc.id}
+                          className="flex items-center justify-between gap-3 bg-nfw-dove p-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-nfw-blackberry truncate">
+                              {doc.file_name}
+                            </p>
+                            <p className="text-xs text-nfw-blackberry/40 flex items-center gap-2">
+                              <span>{(doc.file_size / 1024).toFixed(1)} KB</span>
+                              {doc.uploaded_by && (
+                                <span className="inline-block px-1.5 py-0.5 bg-nfw-aubergine/10 text-nfw-aubergine font-ui font-semibold uppercase tracking-wider text-[10px]">
+                                  Added by admin
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => handleViewDocument(doc)}
+                              disabled={viewingDocId === doc.id}
+                              className="text-xs font-semibold text-nfw-blackberry hover:text-nfw-blackberry/70 disabled:opacity-50 transition-colors"
+                            >
+                              {viewingDocId === doc.id ? "Opening…" : "View"}
+                            </button>
+                            {isAdmin && doc.uploaded_by && (
+                              <button
+                                onClick={() => setDocToDelete(doc)}
+                                title="Remove this admin-added document"
+                                className="p-1 text-nfw-blackberry/40 hover:text-red-600 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-nfw-blackberry/40 italic">
+                      No supporting documents.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -601,6 +743,20 @@ export default function AdminGrantReviewer({
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!docToDelete}
+        title="Remove document?"
+        message={
+          docToDelete
+            ? `"${docToDelete.file_name}" will be permanently removed from this application.`
+            : ""
+        }
+        confirmLabel={deletingDoc ? "Removing…" : "Remove"}
+        variant="danger"
+        onConfirm={handleDeleteDocument}
+        onCancel={() => !deletingDoc && setDocToDelete(null)}
+      />
     </div>
   );
 }

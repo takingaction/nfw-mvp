@@ -17,7 +17,7 @@ export default async function AdminGrantCyclePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireGrantsAccess({ redirectOnFailure: true });
+  const { isAdmin } = await requireGrantsAccess({ redirectOnFailure: true });
   const { id } = await params;
 
   const { data: cycle } = await supabaseAdmin
@@ -212,7 +212,7 @@ export default async function AdminGrantCyclePage({
           </div>
         </div>
 
-        <AdminGrantReviewer grants={grantsWithDocs} cycle={cycle} />
+        <AdminGrantReviewer grants={grantsWithDocs} cycle={cycle} isAdmin={isAdmin} />
       </div>
     </main>
   );

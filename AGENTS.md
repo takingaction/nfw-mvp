@@ -16501,3 +16501,84 @@ Removed the demographic "Barriers" rubric from the grant scoring pages and relab
 
 - `tsc --noEmit` 0 errors; `next build` ✓
 - eslint on the three files: 51 problems before and after (all pre-existing `react/no-unescaped-entities` on rubric example text) — no new issues introduced
+
+## Session 2026-09-18: Admin Document Library + Attach Documents to Grant Applications
+
+### Overview
+
+Two related admin features:
+1. **`/admin/documents`** — upload PDFs/images/office docs to a **public** bucket and copy a permanent
+   link for use in page content, emails, etc. Tracking table shows who uploaded what and when.
+2. **Attach a supporting document to a member's microgrant application** after the fact (e.g. their
+   upload failed). Lives on the `/admin/grants/[id]` reviewer panel where the grant is already in
+   context. Uploads go straight to the **private** `grant-documents` bucket — member PII never
+   touches a public URL. Admins only; reviewers see the docs read-only.
+
+### Design decisions
+
+- **Two buckets, two entry points, one upload helper.** Library = public `admin-documents`. Grant
+  attach = private `grant-documents` (same `${grantId}/…` path layout as member uploads, so the
+  existing signed-URL viewer `/api/grants/document-url` works unchanged). No cross-bucket copy, no
+  link parsing.
+- **Signed-URL upload flow** (`prepare` → browser `uploadToSignedUrl` → `finalize`) so files > 4.5 MB
+  work despite Vercel's request body limit. Same idea as `lib/upload.ts` for videos.
+- **`grant_documents.uploaded_by`** (NULL = member upload) drives the "Added by admin" badge and
+  restricts deletion: admins can only remove docs *they* attached, never member uploads.
+- Library list reads from the `admin_documents` table, not `storage.list()` (gives uploader + search
+  + pagination, and isn't limited to fixed folders like `/api/storage/list`).
+
+### Migration `170_admin_documents.sql`
+
+- `INSERT INTO storage.buckets` → `admin-documents`, public, 25 MB, 13 mime types (pdf, jpeg/png/gif/webp,
+  doc/docx, xls/xlsx, ppt/pptx, csv, txt), `ON CONFLICT DO NOTHING`
+- `admin_documents` (id, file_name, storage_path UNIQUE, public_url, mime_type, file_size, uploaded_by →
+  profiles ON DELETE SET NULL, created_at) + RLS admin-only via `public.is_admin()`
+- `ALTER TABLE grant_documents ADD COLUMN uploaded_by UUID REFERENCES profiles(id) ON DELETE SET NULL`
+
+### Files created
+
+| File | Purpose |
+|---|---|
+| `supabase/migrations/170_admin_documents.sql` | Bucket + table + column |
+| `lib/admin-upload.ts` | Client: `uploadWithSignedUrl({ prepareUrl, finalizeUrl, bucket, file, extra })`, `formatFileSize` |
+| `lib/admin-documents.ts` | Server: bucket names, mime/size constants, `validateUploadMeta`, `sanitizeFileName`, `storageObjectExists` |
+| `app/api/admin/documents/route.ts` | GET list (`?search=&page=`, 50/page, uploader name via `profiles:uploaded_by`) |
+| `app/api/admin/documents/prepare/route.ts` | POST → validates, `createSignedUploadUrl` on `admin-documents`, path `YYYY/MM/ts-name` |
+| `app/api/admin/documents/finalize/route.ts` | POST → verifies object, `getPublicUrl`, inserts row; removes object if insert fails |
+| `app/api/admin/documents/[id]/route.ts` | DELETE → storage remove + row delete |
+| `app/api/admin/grants/documents/prepare/route.ts` | POST `{ grantId, … }` → grant must exist; 6 mime types / 10 MB (matches member upload); path `${grantId}/ts-name` |
+| `app/api/admin/grants/documents/finalize/route.ts` | POST → path must start with `${grantId}/`; inserts `grant_documents` with `document_type='admin_upload'`, `uploaded_by=admin` |
+| `app/api/admin/grants/documents/[docId]/route.ts` | DELETE → 403 unless `uploaded_by IS NOT NULL` |
+| `app/admin/documents/page.tsx` | `requireAdmin({ redirectOnFailure: true })` wrapper with privacy warning copy |
+| `app/admin/documents/AdminDocumentsClient.tsx` | Drag/drop + multi-file upload, debounced search, table with Copy link (2 s check icon) / Open / Delete (ConfirmModal warns hyperlinks will break), pagination |
+
+### Files modified
+
+| File | Change |
+|---|---|
+| `app/admin/AdminHubClient.tsx` | "Document Library" link under Content & Website |
+| `app/admin/grants/[id]/page.tsx` | Captures `isAdmin` from `requireGrantsAccess`, passes to reviewer |
+| `components/admin/AdminGrantReviewer.tsx` | New `isAdmin` prop. Documents block always renders for admins; "+ Add document" (hidden file input → signed-URL upload → appended to `selected` + `localGrants`, no reload); "Added by admin" badge; trash on admin-added docs only (ConfirmModal); View now handles errors |
+| `app/api/admin/grants/[id]/scores/{first,second,combined}/route.ts` | `uploaded_by` added to `grant_documents` select |
+| `components/admin/GrantApplicationScorer.tsx`, `GrantCombinedScores.tsx` | Read-only "Added by admin" badge |
+
+All routes: `const admin = await requireAdmin(); if (!admin.authorized) return 403`; writes via `getAdminClient()`.
+
+### Verification
+
+- `tsc --noEmit` 0 errors · `next build` ✓ (217 pages, 8 new routes) · eslint clean on all new files
+  (`AdminGrantReviewer.tsx` has pre-existing `any`/unused-import lint noise, unchanged)
+- Smoke test on production build: all four API routes → 401 without a session; `/admin/documents` → 307 to `/auth/login`
+
+### Deploy
+
+1. Run migration 170 in the Supabase SQL Editor. Confirm `admin-documents` appears under Storage and is **Public**.
+2. Deploy.
+3. Verify: upload a PDF at `/admin/documents` → Copy link → opens in an incognito window. On
+   `/admin/grants/[id]` open an application → Add document → "Added by admin" badge → View opens →
+   doc also visible on scoring pages and the member's `/grants/view/[id]`.
+
+### Not done (by choice)
+
+- Grant "Add document" is only on the reviewer panel; scoring pages stay read-only.
+- `/api/grants/document-url` still doesn't bind `filePath` to `grantId` (pre-existing gap, noted 2026-09-18 research).

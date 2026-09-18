@@ -126,7 +126,7 @@ export async function GET(
     if (grantIds.length > 0) {
       const { data: allDocs } = await supabaseAdmin
         .from("grant_documents")
-        .select("id, file_name, file_size, uploaded_at, document_url, grant_id")
+        .select("id, file_name, file_size, uploaded_at, document_url, grant_id, uploaded_by")
         .in("grant_id", grantIds);
       
       documentsByGrant = (allDocs || []).reduce((acc: Record<string, any[]>, doc: any) => {

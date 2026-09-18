@@ -811,8 +811,13 @@ export default function GrantCombinedScores({
                                   <p className="text-sm font-medium text-nfw-blackberry">
                                     {doc.file_name}
                                   </p>
-                                  <p className="text-xs text-nfw-blackberry/40">
-                                    {(doc.file_size / 1024).toFixed(1)} KB
+                                  <p className="text-xs text-nfw-blackberry/40 flex items-center gap-2">
+                                    <span>{(doc.file_size / 1024).toFixed(1)} KB</span>
+                                    {doc.uploaded_by && (
+                                      <span className="inline-block px-1.5 py-0.5 bg-nfw-aubergine/10 text-nfw-aubergine font-ui font-semibold uppercase tracking-wider text-[10px]">
+                                        Added by admin
+                                      </span>
+                                    )}
                                   </p>
                                 </div>
                                 <button

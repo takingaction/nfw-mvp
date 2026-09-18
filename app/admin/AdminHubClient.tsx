@@ -45,6 +45,7 @@ const adminSections: AdminSection[] = [
       { label: "Edit Signup Page", href: "/admin/signup" },
       { label: "Promotional Popups", href: "/admin/promotional-popups" },
       { label: "UTM Builder", href: "/admin/utm-builder" },
+      { label: "Document Library", href: "/admin/documents" },
     ],
   },
   {
