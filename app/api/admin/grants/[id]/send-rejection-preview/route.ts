@@ -99,14 +99,14 @@ export async function POST(
 
     const applicantName = applicantProfile?.full_name || "there";
 
-    // Build the base variables map first (without bodyHtml, since rendering
-    // the body requires the variables). Then compute bodyHtml using those
+    // Build the base variables map first (without body, since rendering
+    // the body requires the variables). Then compute body using those
     // variables, then merge.
     const variables: Record<string, string> = {
       grantCycleName: cycle.cycle_name,
       ctaUrl: "https://nationalfundforwomen.org/grants/my-applications",
     };
-    variables.bodyHtml = renderRejectionBody(
+    variables.body = renderRejectionBody(
       (cycle.rejection_body as unknown) as Parameters<typeof renderRejectionBody>[0],
       variables,
     );

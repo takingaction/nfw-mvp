@@ -193,7 +193,7 @@ export async function POST(
       grantCycleName: cycle.cycle_name,
       ctaUrl: "https://nationalfundforwomen.org/grants/my-applications",
     };
-    const bodyHtml = renderRejectionBody(
+    const body = renderRejectionBody(
       (cycle.rejection_body as unknown) as Parameters<typeof renderRejectionBody>[0],
       baseVariables,
     );
@@ -211,7 +211,7 @@ export async function POST(
           grantId: g.id,
           variables: {
             ...baseVariables,
-            bodyHtml,
+            body,
           },
         };
       });

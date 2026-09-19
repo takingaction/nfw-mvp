@@ -17512,8 +17512,8 @@ admin UI. Modal stays open until dismissed (no auto-close).
 | `app/admin/grants/[id]/edit/page.tsx` | Same swap as new page. `fetchCycle` reads `data.rejection_body` (or `[]` fallback). |
 | `app/api/admin/grants/create/route.ts` | Drop 4 destructure entries; add `rejection_body`. Drop 4 insert keys; add `rejection_body: Array.isArray(...) ? ... : []`. |
 | `app/api/admin/grants/update-cycle/route.ts` | Same swap. |
-| `app/api/admin/grants/[id]/send-rejection-preview/route.ts` | Drop `rejection_message_1/2/3` from cycle SELECT. New variables map: `{ grantCycleName, ctaUrl, bodyHtml }` where `bodyHtml = renderRejectionBody(cycle.rejection_body, variables)`. |
-| `app/api/admin/grants/[id]/final-approve/route.ts` | Same variables map swap in the rejectedRecipients loop. `bodyHtml` is computed once at the top from `cycle.rejection_body`, then included in every recipient's `variables`. |
+| `app/api/admin/grants/[id]/send-rejection-preview/route.ts` | Drop `rejection_message_1/2/3` from cycle SELECT. New variables map: `{ grantCycleName, ctaUrl, body }` where `body = renderRejectionBody(cycle.rejection_body, variables)`. |
+| `app/api/admin/grants/[id]/final-approve/route.ts` | Same variables map swap in the rejectedRecipients loop. `body` is computed once at the top from `cycle.rejection_body`, then included in every recipient's `variables`. |
 
 ### Files Deleted
 
@@ -17541,7 +17541,7 @@ Verified `mobile/` does not reference `rejection_message` or its sibling fields.
 
 - The variables map construction is now duplicated between
   `final-approve/route.ts` and `send-rejection-preview/route.ts` — both
-  build the same `{ grantCycleName, ctaUrl, bodyHtml }` shape. If a
+  build the same `{ grantCycleName, ctaUrl, body }` shape. If a
   third caller appears, extract to `lib/email-grant.ts` or similar.
 - `NotificationModal` is currently used only by `EmailBuilder.tsx`'s
   publish flow. If the codebase adopts it elsewhere (replacing more
