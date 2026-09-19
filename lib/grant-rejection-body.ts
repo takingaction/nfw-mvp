@@ -14,7 +14,7 @@ export interface RejectionBodyBlock {
 const REJECTION_BODY_STYLES = {
   fontFamily: "'DM Sans', Arial, sans-serif",
   fontSize: "16px",
-  color: "#3E145F",
+  color: "#FFFFFF",
   lineHeight: "1.6",
 };
 
@@ -49,7 +49,7 @@ export function renderRejectionBody(
         // own disc bullet AND the span added a second one. Using
         // list-style: disc explicitly ensures the bullet renders in email
         // clients that strip <style> and rely on inline styles.
-        return `<li style="margin: 0 0 8px 0; padding-left: 20px; list-style: disc; font-family: ${REJECTION_BODY_STYLES.fontFamily}; font-size: ${REJECTION_BODY_STYLES.fontSize}; color: ${REJECTION_BODY_STYLES.color}; line-height: ${REJECTION_BODY_STYLES.lineHeight};">${translated}</li>`;
+        return `<li style="margin: 0 0 4px 0; padding-left: 16px; list-style: disc; font-family: ${REJECTION_BODY_STYLES.fontFamily}; font-size: ${REJECTION_BODY_STYLES.fontSize}; color: ${REJECTION_BODY_STYLES.color}; line-height: ${REJECTION_BODY_STYLES.lineHeight};">${translated}</li>`;
       }
       return `<p style="margin: 0 0 16px 0; font-family: ${REJECTION_BODY_STYLES.fontFamily}; font-size: ${REJECTION_BODY_STYLES.fontSize}; color: ${REJECTION_BODY_STYLES.color}; line-height: ${REJECTION_BODY_STYLES.lineHeight};">${translated}</p>`;
     })
