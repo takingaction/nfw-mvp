@@ -34,6 +34,7 @@ export function EmailTextBlock({ section }: Props): string {
       ? `
     <ul style="margin: 0; padding: 0; list-style-type: none;">
       ${bullet_items
+        .filter((item: string) => (item ?? "").trim().length > 0)
         .map(
           (item) => `
         <li style="color: ${textColor}; font-family: ${fontFamilyValue}; font-size: ${font_size}px; line-height: ${lineHeight}; padding: 0 0 8px 0; padding-left: 20px; position: relative; text-align: ${text_align};">

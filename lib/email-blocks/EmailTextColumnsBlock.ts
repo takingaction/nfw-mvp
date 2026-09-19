@@ -44,6 +44,7 @@ export function EmailTextColumnsBlock({
       ? `
     <ul style="margin: 0; padding-left: 10px; list-style-type: disc;">
       ${bullet_items
+        .filter((item: string) => (item ?? "").trim().length > 0)
         .map(
           (item) => `
         <li style="color: ${textColor}; margin-bottom: 8px; font-family: ${fontFamilyValue}; font-size: ${font_size}px; line-height: ${lineHeight}; text-align: ${text_align};">
