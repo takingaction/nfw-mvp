@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import MediaLibraryModal from "@/components/admin/MediaLibraryModal";
+import SendRejectionPreviewButton from "@/components/admin/SendRejectionPreviewButton";
 
 export default function EditGrantCyclePage() {
   const router = useRouter();
@@ -157,13 +158,16 @@ export default function EditGrantCyclePage() {
           <ArrowLeft className="w-4 h-4" /> Back to Grants
         </Link>
 
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-nfw-blackberry mb-2 font-serif">
-            Edit Grant Cycle
-          </h1>
-          <p className="text-nfw-blackberry/60">
-            Update the details of this grant cycle.
-          </p>
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold text-nfw-blackberry mb-2 font-serif">
+              Edit Grant Cycle
+            </h1>
+            <p className="text-nfw-blackberry/60">
+              Update the details of this grant cycle.
+            </p>
+          </div>
+          <SendRejectionPreviewButton cycleId={cycleId} />
         </div>
 
         <form
