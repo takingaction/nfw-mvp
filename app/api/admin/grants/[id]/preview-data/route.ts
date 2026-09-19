@@ -32,13 +32,15 @@ export async function GET(
 
     const { id: cycleId } = await params;
 
-    // Submitted applicants on this cycle, joined with profile for name+email.
+    // Applicants on this cycle, joined with profile for name+email.
+    // Status-agnostic: the modal previews the rejection email using the
+    // cycle's actual rejection_message values; the chosen applicant's
+    // status is irrelevant (we only borrow their name for {{name}}).
     // `profiles` is FK on grants.user_id → profiles.id.
     const { data: applicants, error: applicantsError } = await supabaseAdmin
       .from("grants")
-      .select("id, profiles:user_id(full_name, email)")
+      .select("id, status, profiles:user_id(full_name, email)")
       .eq("cycle_id", cycleId)
-      .eq("status", "submitted")
       .order("created_at", { ascending: true });
 
     if (applicantsError) {
@@ -56,6 +58,7 @@ export async function GET(
       const profile = Array.isArray(g.profiles) ? g.profiles[0] : g.profiles;
       return {
         id: g.id,
+        status: g.status,
         name: profile?.full_name || "Unknown applicant",
         email: profile?.email || "",
       };

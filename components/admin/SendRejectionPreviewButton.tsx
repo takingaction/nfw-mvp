@@ -7,6 +7,7 @@ interface Applicant {
   id: string;
   name: string;
   email: string;
+  status?: string;
 }
 
 interface PreviewData {
@@ -218,13 +219,13 @@ export default function SendRejectionPreviewButton({ cycleId }: Props) {
                         <option key={a.id} value={a.id}>
                           {a.name}
                           {a.email ? ` (${a.email})` : ""}
+                          {a.status ? ` — ${a.status}` : ""}
                         </option>
                       ))}
                     </select>
                   )}
                   <p className="text-xs text-nfw-blackberry/50 mt-1">
-                    Pick the applicant whose name will fill {"{{name}}"}. No
-                    email goes to that applicant — only to the address above.
+                    Pick any applicant on this cycle — their name fills {"{{name}}"}. The email goes only to the address above; nothing is sent to them.
                   </p>
                 </div>
 
