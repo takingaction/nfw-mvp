@@ -122,6 +122,11 @@ export default function DeleteAccountModal({
                   <ul className="text-sm text-nfw-blackberry/70 space-y-1">
                     <li className="flex items-start gap-2">
                       <span className="text-red-500 mt-0.5">−</span>
+                      Your email will be permanently reserved and cannot be
+                      used to create a new account
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-red-500 mt-0.5">−</span>
                       Your personal information will be anonymized
                     </li>
                     <li className="flex items-start gap-2">

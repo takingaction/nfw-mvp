@@ -17546,3 +17546,38 @@ Verified `mobile/` does not reference `rejection_message` or its sibling fields.
 - `NotificationModal` is currently used only by `EmailBuilder.tsx`'s
   publish flow. If the codebase adopts it elsewhere (replacing more
   `window.alert()` calls), the existing pattern is in place.
+
+## Session 2026-09-18: Clean Google-Auth Anonymization + Email Reservation Notice
+
+### Two small changes for the deletion flow
+
+**Part A — Strip Google OAuth provider marker from auth.users during anonymization**
+
+Step 2 of `lib/anonymize.ts` overwrites email, phone, full_name, avatar_url, and writes deletion_request_id in user_metadata, but did not touch `user_metadata.iss`. The `iss: "https://accounts.google.com"` marker survives anonymization — the only consumer is `app/auth/callback/route.ts:34` (`isGoogle` check on signup), but it's dormant PII that signals "this account was originally Google-authenticated."
+
+**Files Changed:**
+- `lib/anonymize.ts` — added `iss: undefined` to step 2's `user_metadata` payload. Supabase Auth treats `undefined` as key deletion for JSONB fields, same convention as the existing `phone: undefined` and `avatar_url: undefined` in this same payload.
+
+**Side effect:** if a hypothetical re-registration attempt were ever made (the email-reservation chain discussed in earlier sessions), the auth callback's `isGoogle` check would now return `false` on the anonymized row. The re-registration would create the new profile with `full_name: "Member"` and `avatar_url: null` — matching what the password path does on a fresh signup. This is the correct behavior for an anonymized row.
+
+**Part B — Email reservation notice in the deletion modal**
+
+The existing `DeleteAccountModal.tsx` has a "What happens when your account is deleted" list that members see before clicking the destructive button. Members were not told that their email becomes permanently reserved (the reservation happens because the auth.users row is preserved with a placeholder email, not because of any explicit constraint).
+
+**Files Changed:**
+- `components/profile/DeleteAccountModal.tsx` — added one bullet to the existing list as the first item with a red `−` marker:
+  > "Your email will be permanently reserved and cannot be used to create a new account"
+
+The reservation is honest about the current behavior. If the underlying mechanism changes (per Options C/D from earlier sessions), this notice would need updating alongside it — which is the right outcome.
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- Manual: log in as a real member, navigate to `/profile`, click "Delete Account" in the Danger Zone. The modal renders with the new bullet at the top of the list, "Your email will be permanently reserved and cannot be used to create a new account."
+- Manual: Google-auth smoke test on a throwaway account — submit deletion, admin verify + process, then `SELECT raw_user_meta_data->>'iss' FROM auth.users WHERE id = '<uuid>';` should return NULL.
+
+### Out of Scope (Still Parked)
+
+- Option C: hard-delete auth.users after financial retention (4-6 hrs)
+- Option D: DB-level reservation via profiles.email_hash unique constraint (2-3 hrs)
+- Mobile app parallel notice (Slice E delete-account.tsx)

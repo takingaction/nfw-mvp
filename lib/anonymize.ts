@@ -159,6 +159,7 @@ export async function anonymizeUser(
           full_name: "Deleted User",
           avatar_url: undefined,
           deletion_request_id: deletionRequestId,
+          iss: undefined, // Strip Google OAuth provider marker from user_metadata
         },
       });
 
