@@ -7,7 +7,7 @@ import type { EmailBlockType } from "@/lib/email-blocks/types";
 import { VariableInserter } from "./VariableInserter";
 import { LinkInserter } from "./LinkInserter";
 import MediaLibraryModal from "@/components/admin/MediaLibraryModal";
-import { StringArrayItem } from "./StringArrayItem";
+import { FormattedTextInput } from "@/components/admin/text-editor/FormattedTextInput";
 
 interface Props {
   blockType: EmailBlockType;
@@ -19,37 +19,25 @@ export function EmailBlockEditor({ blockType, content, onChange }: Props) {
   const definition = EMAIL_BLOCK_REGISTRY[blockType];
   const [mediaField, setMediaField] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const insertAtCursor = useCallback((replacement: string, fieldKey: string) => {
-    const el = (textareaRef.current ?? inputRef.current) as HTMLInputElement | HTMLTextAreaElement | null;
+    const el = textareaRef.current;
     if (!el) return;
 
     const start = el.selectionStart ?? 0;
     const end = el.selectionEnd ?? 0;
     const text = el.value;
-    const selectedText = text.substring(start, end);
-
-    let newText: string;
-    let newCursorPos: number;
-
-    if (selectedText) {
-      newText = text.substring(0, start) + replacement + text.substring(end);
-      newCursorPos = start + replacement.length;
-    } else {
-      newText = text.substring(0, start) + replacement + text.substring(end);
-      newCursorPos = start + replacement.length;
-    }
+    const newText = text.substring(0, start) + replacement + text.substring(end);
 
     onChange({ ...content, [fieldKey]: newText });
     setTimeout(() => {
       el.focus();
-      el.setSelectionRange(newCursorPos, newCursorPos);
+      el.setSelectionRange(start + replacement.length, start + replacement.length);
     }, 0);
   }, [content, onChange]);
 
   const wrapSelection = useCallback((prefix: string, suffix: string, fieldKey: string) => {
-    const textarea = textareaRef.current as HTMLInputElement | HTMLTextAreaElement | null;
+    const textarea = textareaRef.current;
     if (!textarea) return;
 
     const start = textarea.selectionStart ?? 0;
@@ -88,21 +76,6 @@ export function EmailBlockEditor({ blockType, content, onChange }: Props) {
             {field.label}
           </label>
 
-          {field.type === "text" && (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                ref={field.key === "text" ? inputRef : undefined}
-                value={(content[field.key] as string) || ""}
-                onChange={(e) => onChange({ ...content, [field.key]: e.target.value })}
-                className="flex-1 px-3 py-2 border border-nfw-blackberry/20 text-sm text-nfw-blackberry focus:outline-none focus:border-nfw-aubergine"
-              />
-              <VariableInserter
-                onInsert={(variable) => insertAtCursor(variable, field.key)}
-              />
-            </div>
-          )}
-
           {field.type === "richtext" && (
             <div className="space-y-2">
               <div className="flex items-center gap-1 border border-nfw-blackberry/20 rounded overflow-hidden">
@@ -138,15 +111,6 @@ export function EmailBlockEditor({ blockType, content, onChange }: Props) {
                 className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm text-nfw-blackberry focus:outline-none focus:border-nfw-aubergine resize-none"
               />
             </div>
-          )}
-
-          {field.type === "url" && (
-            <input
-              type="url"
-              value={(content[field.key] as string) || ""}
-              onChange={(e) => onChange({ ...content, [field.key]: e.target.value })}
-              className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm text-nfw-blackberry focus:outline-none focus:border-nfw-aubergine"
-            />
           )}
 
           {field.type === "select" && field.options && (
@@ -195,18 +159,15 @@ export function EmailBlockEditor({ blockType, content, onChange }: Props) {
           {field.type === "string-array" && (
             <div className="space-y-2">
               {(content[field.key] as string[])?.map((item, index) => (
-                <StringArrayItem
+                <FormattedTextInput
                   key={index}
-                  item={item}
-                  index={index}
-                  fieldKey={field.key}
-                  content={content}
-                  onChange={onChange}
-                  onRemove={() => {
+                  value={item}
+                  onChange={(newText) => {
                     const arr = [...((content[field.key] as string[]) || [])];
-                    arr.splice(index, 1);
+                    arr[index] = newText;
                     onChange({ ...content, [field.key]: arr });
                   }}
+                  showLinkInserter={false}
                 />
               ))}
               <button
@@ -215,7 +176,7 @@ export function EmailBlockEditor({ blockType, content, onChange }: Props) {
                   const arr = [...((content[field.key] as string[]) || []), ""];
                   onChange({ ...content, [field.key]: arr });
                 }}
-                className="px-3 py-1 text-xs font-medium bg-nfw-wisteria/20 text-nfw-aubergine border border-nfw-wisteria/30 rounded hover:bg-nfw-wisteria/30 transition-colors"
+                className="px-3 py-1 text-xs font-medium bg-nfw-wisteria/20 text-nfw-aubergine border border-nfw-wisteria/30 rounded hover:bg-nfw-wisteria/30"
               >
                 Add {field.itemLabel || "Item"}
               </button>

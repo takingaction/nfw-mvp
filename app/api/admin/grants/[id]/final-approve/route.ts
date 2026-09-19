@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { sendGrantApprovedEmail } from "@/lib/email";
 import { sendBatchEmails } from "@/lib/email-batch";
+import { renderRejectionBody } from "@/lib/grant-rejection-body";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -188,6 +189,15 @@ export async function POST(
     }
 
     // Send batch emails to rejected grants (with logging)
+    const baseVariables: Record<string, string> = {
+      grantCycleName: cycle.cycle_name,
+      ctaUrl: "https://nationalfundforwomen.org/grants/my-applications",
+    };
+    const bodyHtml = renderRejectionBody(
+      (cycle.rejection_body as unknown) as Parameters<typeof renderRejectionBody>[0],
+      baseVariables,
+    );
+
     const rejectedRecipients = rejectedGrants
       .filter((g) => {
         const profile = Array.isArray(g.profiles) ? g.profiles[0] : g.profiles;
@@ -200,12 +210,8 @@ export async function POST(
           name: profile!.full_name || "there",
           grantId: g.id,
           variables: {
-            grantCycleName: cycle.cycle_name,
-            rejectionMessage: cycle.rejection_message || "",
-            rejectionMessage1: cycle.rejection_message_1 || "",
-            rejectionMessage2: cycle.rejection_message_2 || "",
-            rejectionMessage3: cycle.rejection_message_3 || "",
-            ctaUrl: `https://nationalfundforwomen.org/grants/my-applications`,
+            ...baseVariables,
+            bodyHtml,
           },
         };
       });

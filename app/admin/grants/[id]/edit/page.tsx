@@ -6,6 +6,8 @@ import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import MediaLibraryModal from "@/components/admin/MediaLibraryModal";
 import SendRejectionPreviewButton from "@/components/admin/SendRejectionPreviewButton";
+import { RejectionBodyEditor } from "@/components/admin/grant/RejectionBodyEditor";
+import type { RejectionBodyBlock } from "@/lib/grant-rejection-body";
 
 export default function EditGrantCyclePage() {
   const router = useRouter();
@@ -20,7 +22,19 @@ export default function EditGrantCyclePage() {
   const [confirmMessage, setConfirmMessage] = useState("");
   const [pendingStatus, setPendingStatus] = useState("");
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    cycle_name: string;
+    description: string;
+    start_date: string;
+    end_date: string;
+    amount_per_grant: string;
+    grants_available: string;
+    status: string;
+    featured_image: string;
+    is_testing_only: boolean;
+    requires_documents: boolean;
+    rejection_body: RejectionBodyBlock[];
+  }>({
     cycle_name: "",
     description: "",
     start_date: "",
@@ -31,10 +45,7 @@ export default function EditGrantCyclePage() {
     featured_image: "",
     is_testing_only: false,
     requires_documents: false,
-    rejection_message: "",
-    rejection_message_1: "",
-    rejection_message_2: "",
-    rejection_message_3: "",
+    rejection_body: [],
   });
 
   const inputClass =
@@ -58,10 +69,7 @@ export default function EditGrantCyclePage() {
           featured_image: data.featured_image || "",
           is_testing_only: data.is_testing_only || false,
           requires_documents: data.requires_documents || false,
-          rejection_message: data.rejection_message || "",
-          rejection_message_1: data.rejection_message_1 || "",
-          rejection_message_2: data.rejection_message_2 || "",
-          rejection_message_3: data.rejection_message_3 || "",
+          rejection_body: Array.isArray(data.rejection_body) ? data.rejection_body : [],
         });
       } catch (err: any) {
         setError(err.message);
@@ -340,51 +348,16 @@ export default function EditGrantCyclePage() {
           </div>
 
           <div className="border-t border-nfw-blackberry/10 pt-4 mt-4">
-            <div className="mb-4">
-              <label className={labelClass}>
-                Not Approved Email Message <span className="text-nfw-blackberry/40 font-normal">(Optional — opening line)</span>
-              </label>
-              <p className="text-xs text-nfw-blackberry/50 mt-1">
-                Opening line shown before bullet points. Use {"{{name}}"} for applicant name and {"{{grantCycleName}}"} for grant name. Add links with markdown: [text](https://url.com)
-              </p>
-              <textarea
-                value={formData.rejection_message || ""}
-                onChange={(e) => setFormData({ ...formData, rejection_message: e.target.value })}
-                className="w-full px-4 py-3 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent transition-all font-ui text-sm mt-2"
-                rows={2}
-                placeholder="While we can't provide a grant at this time, we want to make sure you still feel supported:"
-              />
-            </div>
-
             <label className={labelClass}>
-              Not Approved Email Message <span className="text-nfw-blackberry/40 font-normal">(Optional — 3 bullet points)</span>
+              Rejection Email Body <span className="text-nfw-blackberry/40 font-normal">(Optional)</span>
             </label>
             <p className="text-xs text-nfw-blackberry/50 mb-2">
-              Shown when not approved. Use {"{{name}}"} for applicant name and {"{{grantCycleName}}"} for grant name. Add links with markdown: [text](https://url.com)
+              Compose the rejection message using paragraphs and bullets. Use the B/I/Link toolbar on each block to format text. Markdown like **bold** and [link](url) renders automatically in the delivered email. Empty blocks are filtered out before sending.
             </p>
-            <div className="space-y-3">
-              <textarea
-                value={formData.rejection_message_1 || ""}
-                onChange={(e) => setFormData({ ...formData, rejection_message_1: e.target.value })}
-                className="w-full px-4 py-3 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent transition-all font-ui text-sm"
-                rows={2}
-                placeholder="Bullet 1: e.g., Thank you for applying..."
-              />
-              <textarea
-                value={formData.rejection_message_2 || ""}
-                onChange={(e) => setFormData({ ...formData, rejection_message_2: e.target.value })}
-                className="w-full px-4 py-3 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent transition-all font-ui text-sm"
-                rows={2}
-                placeholder="Bullet 2: (leave blank if not needed)"
-              />
-              <textarea
-                value={formData.rejection_message_3 || ""}
-                onChange={(e) => setFormData({ ...formData, rejection_message_3: e.target.value })}
-                className="w-full px-4 py-3 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac focus:border-transparent transition-all font-ui text-sm"
-                rows={2}
-                placeholder="Bullet 3: (leave blank if not needed)"
-              />
-            </div>
+            <RejectionBodyEditor
+              blocks={formData.rejection_body}
+              onChange={(blocks) => setFormData({ ...formData, rejection_body: blocks })}
+            />
           </div>
 
           <div>

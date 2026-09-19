@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { getPreRenderedHtmlAdmin } from "@/lib/email-blocks/publish";
 import { sendEmailBySlug } from "@/lib/email";
+import { renderRejectionBody } from "@/lib/grant-rejection-body";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -54,11 +55,11 @@ export async function POST(
       );
     }
 
-    // Load the cycle (live values for rejection_message, etc.)
+    // Load the cycle (live values for rejection_body, etc.)
     const { data: cycle, error: cycleError } = await supabaseAdmin
       .from("grant_cycles")
       .select(
-        "id, cycle_name, rejection_message, rejection_message_1, rejection_message_2, rejection_message_3",
+        "id, cycle_name, rejection_body",
       )
       .eq("id", cycleId)
       .single();
@@ -98,15 +99,17 @@ export async function POST(
 
     const applicantName = applicantProfile?.full_name || "there";
 
-    // Build variables map identical to final-approve/route.ts:202-208.
-    const variables = {
+    // Build the base variables map first (without bodyHtml, since rendering
+    // the body requires the variables). Then compute bodyHtml using those
+    // variables, then merge.
+    const variables: Record<string, string> = {
       grantCycleName: cycle.cycle_name,
-      rejectionMessage: cycle.rejection_message || "",
-      rejectionMessage1: cycle.rejection_message_1 || "",
-      rejectionMessage2: cycle.rejection_message_2 || "",
-      rejectionMessage3: cycle.rejection_message_3 || "",
       ctaUrl: "https://nationalfundforwomen.org/grants/my-applications",
     };
+    variables.bodyHtml = renderRejectionBody(
+      (cycle.rejection_body as unknown) as Parameters<typeof renderRejectionBody>[0],
+      variables,
+    );
 
     // Compute the rendered subject so we can return it to the modal AND so
     // the recipient sees the same subject the live path produces. Re-using

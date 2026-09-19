@@ -38,10 +38,7 @@ export async function POST(request: NextRequest) {
       featured_image,
       is_testing_only,
       requires_documents,
-      rejection_message,
-      rejection_message_1,
-      rejection_message_2,
-      rejection_message_3,
+      rejection_body,
     } = await request.json();
 
     if (!cycleId)
@@ -64,10 +61,7 @@ export async function POST(request: NextRequest) {
         featured_image,
         is_testing_only,
         requires_documents,
-        rejection_message: rejection_message || null,
-        rejection_message_1: rejection_message_1 || null,
-        rejection_message_2: rejection_message_2 || null,
-        rejection_message_3: rejection_message_3 || null,
+        rejection_body: Array.isArray(rejection_body) ? rejection_body : [],
         updated_at: new Date().toISOString(),
       })
       .eq("id", cycleId);

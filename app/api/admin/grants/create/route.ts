@@ -37,10 +37,7 @@ export async function POST(request: NextRequest) {
       grants_available,
       is_testing_only,
       requires_documents,
-      rejection_message,
-      rejection_message_1,
-      rejection_message_2,
-      rejection_message_3,
+      rejection_body,
       featured_image,
     } = await request.json();
 
@@ -61,10 +58,7 @@ export async function POST(request: NextRequest) {
         status: "open",
         is_testing_only: is_testing_only || false,
         requires_documents: requires_documents || false,
-        rejection_message: rejection_message || null,
-        rejection_message_1: rejection_message_1 || null,
-        rejection_message_2: rejection_message_2 || null,
-        rejection_message_3: rejection_message_3 || null,
+        rejection_body: Array.isArray(rejection_body) ? rejection_body : [],
         featured_image: featured_image || null,
       })
       .select()
