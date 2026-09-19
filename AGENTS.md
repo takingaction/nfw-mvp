@@ -17404,3 +17404,56 @@ The `maxDuration` ceiling on the request worker is unrelated to Claude response 
 - No changes to `scoring/start` or `ai-reevaluate` routes — those run with `maxDuration = 300` already, plenty of headroom
 - No change to AI prompt, model, or token budget
 - No migration — `ai_relevance` already exists with `not_evaluated` as a valid value
+
+## Session 2026-09-18: Send Grant: Not Approved Test Email Button
+
+### Goal
+Give admins a way to preview the corrected `grant-not-approved` email
+against a cycle's actual `rejection_message*` values and a real
+applicant's name — without running Finalize Approvals (which sends to
+real applicants) or running a SQL reset of an already-finalized cycle.
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `app/api/admin/grants/[id]/preview-data/route.ts` | GET. Returns submitted applicants on the cycle + the rendered `grant-not-approved` subject. Subject is computed via `getPreRenderedHtmlAdmin` so the admin sees exactly what will be delivered. |
+| `app/api/admin/grants/[id]/send-rejection-preview/route.ts` | POST. Loads cycle + applicant (with cycle-membership defense against URL tampering), builds the same variables map as `final-approve/route.ts:202-208`, computes subject via `getPreRenderedHtmlAdmin`, sends via `sendEmailBySlug("grant-not-approved", { skipActiveCheck: true })`. Returns the rendered subject in both success and failure paths so the modal can display it. |
+| `components/admin/SendRejectionPreviewButton.tsx` | Client component. Fetches preview data on modal open (skipped on subsequent opens until modal closes). Email input defaulted to admin's email. Applicant dropdown shows `"{full_name} ({email})"`. Subject preview is read-only. Body scroll is locked while modal is open. Success state shows recipient, applicant name, and delivered subject. |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/admin/grants/[id]/edit/page.tsx` | Imports `SendRejectionPreviewButton`. Renders it in the page header next to the title. |
+
+### What does NOT happen (deliberately)
+
+- No `grants.status` mutation
+- No `grant_email_log` row written
+- No email to the actual applicant whose name was used for `{{name}}`
+- No DB schema changes
+
+### Auth
+
+Both new routes use the same pattern as the other 22 admin grant routes:
+`supabase.auth.getUser()` + `select('is_admin')` + manual 401/403. The proxy
+middleware already guards `/api/admin/*` at the edge.
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- Lint: 3 pre-existing-pattern `any` usages in the new routes match the
+  established codebase style (the project has ~83,790 pre-existing
+  lint errors; lint is effectively advisory)
+- Manual flow: edit page → click button → modal opens → pick applicant →
+  send → admin's inbox receives the email with live cycle values
+- If cycle has `[here](https://google.com)` in `rejection_message_1`, the
+  email renders a real `<a>` tag (proving commit `5619387` works
+  end-to-end against live data)
+
+### Future Cleanup (out of scope, flagged)
+
+- The variables map is now duplicated between `final-approve/route.ts` and
+  the new send route. If a third caller appears, extract to
+  `lib/email-grant.ts`. Not worth doing now.
