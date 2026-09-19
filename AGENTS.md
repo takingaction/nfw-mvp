@@ -17457,3 +17457,92 @@ middleware already guards `/api/admin/*` at the edge.
 - The variables map is now duplicated between `final-approve/route.ts` and
   the new send route. If a third caller appears, extract to
   `lib/email-grant.ts`. Not worth doing now.
+
+## Session 2026-09-19: Grant Cycle Rejection Body (JSONB Blocks) + Styled Publish Modal
+
+### Goal 1: Replace 4-textfield rejection email composer with a single JSONB array
+
+Previously admins used 4 separate textareas on the grant cycle new/edit
+pages: `rejection_message` (opening line), `rejection_message_1/2/3`
+(3 bullet points). Each bullet was forced to be a `{{variable}}`
+placeholder, and the empty-block filter ran BEFORE variable substitution
+— so a bullet with `{{rejectionMessage2}}` whose value was empty still
+rendered as a literal bullet (the filter saw non-empty text, not the
+resolved empty value).
+
+The new approach: a single `rejection_body JSONB` column on
+`grant_cycles` holding an array of `{type, text}` blocks. Admins compose
+the rejection email body via a new editor — they can add as many
+paragraphs and bullets as they like, in any order. Empty-block filter
+runs AFTER variable substitution in `renderRejectionBody`, so blocks
+whose text resolves to empty disappear cleanly.
+
+### Goal 2: Style publish success/failure feedback as a proper modal
+
+Replaced `window.alert()` calls in the email builder's publish flow
+with a styled `NotificationModal` component matching the rest of the
+admin UI. Modal stays open until dismissed (no auto-close).
+
+### Database
+
+`supabase/migrations/177_grant_cycles_rejection_body.sql`:
+- Adds `rejection_body JSONB DEFAULT '[]'::jsonb` column
+- One-time backfill: converts existing 4 fields into JSONB array,
+  preserving order (opening line as paragraph, then bullets)
+- Drops `rejection_message`, `rejection_message_1/2/3` columns
+- `NOTIFY pgrst, 'reload'`
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `lib/grant-rejection-body.ts` | `RejectionBodyBlock` type, `renderRejectionBody()` that filters empty blocks, substitutes variables per block, calls `parseInlineFormatting`, returns joined HTML. Single source of truth for rejection body rendering. |
+| `components/admin/text-editor/FormattedTextInput.tsx` | Reusable text input with B/I/Link toolbar and cursor-aware insertion. Extracted from duplicated logic in `EmailBlockEditor.tsx` and `StringArrayItem.tsx` (which was deleted). Used by both the email block editor and the new rejection body editor. |
+| `components/admin/grant/RejectionBodyBlockRow.tsx` | One block in the rejection body editor: type toggle (paragraph/bullet), reorder arrows, remove button, `FormattedTextInput`. |
+| `components/admin/grant/RejectionBodyEditor.tsx` | List of blocks with add/remove/reorder. Empty state placeholder when no blocks. |
+| `components/admin/NotificationModal.tsx` | Reusable styled modal for non-confirmational alerts. Variants: success (green check, "Success" + "Published successfully!"), error (red X, "Failed to Publish" + API error message), info (dove). Single OK button. Closes on backdrop click, X click, or Escape key. Locks body scroll. |
+| `supabase/migrations/177_grant_cycles_rejection_body.sql` | Adds `rejection_body` column, backfills, drops old 4 columns. |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `components/admin/email/EmailBlockEditor.tsx` | Refactored to use `FormattedTextInput` for bullet_items. Removed inline toolbar duplication. Removed `inputRef` (no longer needed for string-array). Kept `textareaRef` for richtext. |
+| `app/admin/grants/new/page.tsx` | Removed 4 rejection_message textareas. Added `<RejectionBodyEditor>`. `formData` now uses `rejection_body: RejectionBodyBlock[]`. |
+| `app/admin/grants/[id]/edit/page.tsx` | Same swap as new page. `fetchCycle` reads `data.rejection_body` (or `[]` fallback). |
+| `app/api/admin/grants/create/route.ts` | Drop 4 destructure entries; add `rejection_body`. Drop 4 insert keys; add `rejection_body: Array.isArray(...) ? ... : []`. |
+| `app/api/admin/grants/update-cycle/route.ts` | Same swap. |
+| `app/api/admin/grants/[id]/send-rejection-preview/route.ts` | Drop `rejection_message_1/2/3` from cycle SELECT. New variables map: `{ grantCycleName, ctaUrl, bodyHtml }` where `bodyHtml = renderRejectionBody(cycle.rejection_body, variables)`. |
+| `app/api/admin/grants/[id]/final-approve/route.ts` | Same variables map swap in the rejectedRecipients loop. `bodyHtml` is computed once at the top from `cycle.rejection_body`, then included in every recipient's `variables`. |
+
+### Files Deleted
+
+| File | Reason |
+|------|--------|
+| `components/admin/email/StringArrayItem.tsx` | Behavior subsumed by `FormattedTextInput` (which is used directly by `EmailBlockEditor.tsx` for the string-array branch). 90 lines consolidated. |
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- Manual smoke (admin UI):
+  1. Visit `/admin/grants/[id]/edit` on any cycle
+  2. Scroll to rejection body section — should see paragraph/bullet toggle, add/remove/reorder buttons, B/I/Link toolbar on each block
+  3. Add a paragraph with `[here](https://google.com)` markdown — save
+  4. Send test email via existing button — link renders as `<a>` in delivered email
+  5. Add a paragraph with `{{name}}` text — save. Send test email. Variable substitutes correctly.
+  6. Leave one block empty — send test email. Empty block disappears from output (no stray bullet, no whitespace gap).
+  7. Visit `/admin/emails/grant-not-approved/builder`, click Publish — styled modal appears with green check + "Success" + "Published successfully!" + OK button. Backdrop click, X, and Escape all close it.
+
+### Mobile App Impact
+
+Verified `mobile/` does not reference `rejection_message` or its sibling fields. No mobile changes required for this session.
+
+### Future Cleanup (out of scope, flagged)
+
+- The variables map construction is now duplicated between
+  `final-approve/route.ts` and `send-rejection-preview/route.ts` — both
+  build the same `{ grantCycleName, ctaUrl, bodyHtml }` shape. If a
+  third caller appears, extract to `lib/email-grant.ts` or similar.
+- `NotificationModal` is currently used only by `EmailBuilder.tsx`'s
+  publish flow. If the codebase adopts it elsewhere (replacing more
+  `window.alert()` calls), the existing pattern is in place.
