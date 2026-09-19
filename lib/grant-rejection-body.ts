@@ -7,6 +7,17 @@ export interface RejectionBodyBlock {
   text: string;
 }
 
+// Inline styles for the rejection body, matching the surrounding email body
+// (EmailTextBlock defaults). Keeping these explicit ensures the rejection body
+// renders with the same font and color regardless of which email client is
+// used — many clients strip <style> and rely on inline styles for rendering.
+const REJECTION_BODY_STYLES = {
+  fontFamily: "'DM Sans', Arial, sans-serif",
+  fontSize: "16px",
+  color: "#3E145F",
+  lineHeight: "1.6",
+};
+
 /**
  * Render an array of body blocks to safe HTML. Empty blocks (after trim)
  * are dropped before substitution, so blocks whose text is just a variable
@@ -32,9 +43,15 @@ export function renderRejectionBody(
       const substituted = substituteVariables(b.text, variables);
       const translated = parseInlineFormatting(substituted);
       if (b.type === "bullet") {
-        return `<li style="padding: 0 0 8px 0; padding-left: 20px; position: relative;"><span style="position: absolute; left: 0; font-size: 16px;">•</span>${translated}</li>`;
+        // Use native <ul> disc bullet (list-style: disc) rather than an
+        // absolutely-positioned <span>•</span>. The span approach caused
+        // duplicate bullets because the default <ul> styling renders its
+        // own disc bullet AND the span added a second one. Using
+        // list-style: disc explicitly ensures the bullet renders in email
+        // clients that strip <style> and rely on inline styles.
+        return `<li style="margin: 0 0 8px 0; padding-left: 20px; list-style: disc; font-family: ${REJECTION_BODY_STYLES.fontFamily}; font-size: ${REJECTION_BODY_STYLES.fontSize}; color: ${REJECTION_BODY_STYLES.color}; line-height: ${REJECTION_BODY_STYLES.lineHeight};">${translated}</li>`;
       }
-      return `<p style="margin: 0 0 16px 0; line-height: 1.6;">${translated}</p>`;
+      return `<p style="margin: 0 0 16px 0; font-family: ${REJECTION_BODY_STYLES.fontFamily}; font-size: ${REJECTION_BODY_STYLES.fontSize}; color: ${REJECTION_BODY_STYLES.color}; line-height: ${REJECTION_BODY_STYLES.lineHeight};">${translated}</p>`;
     })
     .join("");
 }
