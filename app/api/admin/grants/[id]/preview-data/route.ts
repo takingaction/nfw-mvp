@@ -64,19 +64,26 @@ export async function GET(
       };
     });
 
+    // Load the cycle to get its cycle_name for the subject preview. The
+    // modal is meant to show what the recipient will actually see in the
+    // email's Subject header — so we pass the real cycle name to the
+    // template's {{grantCycleName}} placeholder rather than an empty string.
+    const { data: cycleRow } = await supabaseAdmin
+      .from("grant_cycles")
+      .select("cycle_name")
+      .eq("id", cycleId)
+      .single();
+
+    const cycleName = cycleRow?.cycle_name || "";
+
     // Compute the rendered subject line for the "grant-not-approved" template.
-    // Subject doesn't depend on variable values for this template, so any
-    // placeholder values work — we just need the rendered subject string to
-    // show the admin what will be sent.
+    // Pass the real cycle name so {{grantCycleName}} substitutes correctly.
+    // Only grantCycleName matters for the subject — other variables are
+    // irrelevant here (the preview-data route doesn't render the body).
     const preRendered = await getPreRenderedHtmlAdmin(
       "grant-not-approved",
       {
-        grantCycleName: "",
-        rejectionMessage: "",
-        rejectionMessage1: "",
-        rejectionMessage2: "",
-        rejectionMessage3: "",
-        ctaUrl: "",
+        grantCycleName: cycleName,
       },
       { skipActiveCheck: true },
     );
