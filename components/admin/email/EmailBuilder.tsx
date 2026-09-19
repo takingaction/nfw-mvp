@@ -5,6 +5,7 @@ import type { EmailSection, EmailBlockType, EmailTemplateExtended } from "@/lib/
 import { EMAIL_BLOCK_REGISTRY } from "@/lib/email-blocks/registry";
 import { EmailSectionList } from "./EmailSectionList";
 import MediaLibraryModal from "../MediaLibraryModal";
+import { NotificationModal } from "@/components/admin/NotificationModal";
 
 interface Props {
   template: EmailTemplateExtended;
@@ -38,6 +39,12 @@ export function EmailBuilder({
   const [heroImageUrl, setHeroImageUrl] = useState(template.hero_image_url || "");
   const [showHeroImageModal, setShowHeroImageModal] = useState(false);
   const [isSavingHero, setIsSavingHero] = useState(false);
+  const [publishNotification, setPublishNotification] = useState<{
+    isOpen: boolean;
+    variant: "success" | "error";
+    title: string;
+    message: string;
+  } | null>(null);
 
   const handleAddBlock = (type: EmailBlockType) => {
     const definition = EMAIL_BLOCK_REGISTRY[type];
@@ -80,9 +87,19 @@ export function EmailBuilder({
     try {
       const result = await onPublish();
       if (!result.success) {
-        alert(result.error || "Failed to publish");
+        setPublishNotification({
+          isOpen: true,
+          variant: "error",
+          title: "Failed to Publish",
+          message: result.error || "An unknown error occurred while publishing the email template.",
+        });
       } else {
-        alert("Published successfully!");
+        setPublishNotification({
+          isOpen: true,
+          variant: "success",
+          title: "Success",
+          message: "Published successfully!",
+        });
       }
     } finally {
       setIsPublishing(false);
@@ -271,6 +288,17 @@ export function EmailBuilder({
             setShowHeroImageModal(false);
           }}
           bucket="page-builder"
+        />
+      )}
+
+      {/* Publish Success/Error Notification */}
+      {publishNotification && (
+        <NotificationModal
+          isOpen={publishNotification.isOpen}
+          onClose={() => setPublishNotification(null)}
+          title={publishNotification.title}
+          message={publishNotification.message}
+          variant={publishNotification.variant}
         />
       )}
     </div>
