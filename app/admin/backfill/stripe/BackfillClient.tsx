@@ -1219,32 +1219,134 @@ export default function BackfillClient() {
     }
   }, []);
 
-  // Fetch missing from DB (Stripe subscriptions not in membership_payments) - silent version for page load
-  const fetchMissingPaymentsSilent = useCallback(async () => {
+  // Read the latest non-expired completed missing-payments job from cache.
+  // This is the page-mount path: returns instantly with the last cron result,
+  // or { status: "none" } if no cache yet. Never fires Stripe calls itself.
+  const fetchMissingPaymentsFromCache = useCallback(async () => {
     setMissingPaymentsLoading(true);
     try {
       const res = await fetch("/api/admin/backfill/stripe/missing-payments");
       if (res.ok) {
         const data = await res.json();
-        setMissingPayments(data);
+        if (data.cached) {
+          setMissingPayments(data);
+        } else if (data.status === "expired") {
+          setMessage("Missing payments cache expired. Click Refresh to recompute.");
+          setMissingPayments(null);
+        }
+        // status === "none" → leave state as-is, UI shows placeholder
       }
     } catch (error) {
-      console.error("Failed to fetch missing payments:", error);
+      console.error("Failed to fetch missing payments cache:", error);
     } finally {
       setMissingPaymentsLoading(false);
     }
   }, []);
 
-  // Fetch missing from DB - with confirmation modal (for button clicks)
+  // Silent refresh — same as fetchMissingPaymentsFromCache, used after
+  // sync/rematch mutations to re-read the just-completed job row from
+  // cache without re-triggering the modal.
+  const refreshMissingPaymentsData = fetchMissingPaymentsFromCache;
+
+  // Poll a running missing-payments job until completion (or timeout).
+  // Uses the same pattern as stripe-only / reconciliation jobs in this file.
+  const pollMissingPaymentsJob = useCallback(async (jobId: string) => {
+    const maxPolls = 210; // 7 minutes at 2s intervals — leaves room for the worker
+    let polls = 0;
+
+    const poll = async () => {
+      if (polls >= maxPolls) {
+        setMessage(
+          "Missing payments polling timed out. The cron runs every 10 minutes, so check back shortly."
+        );
+        setMissingPaymentsLoading(false);
+        setIsOperationRunning(false);
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `/api/admin/backfill/stripe/missing-payments?jobId=${jobId}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+
+          if (data.status === "completed") {
+            setMissingPayments(data);
+            const partialMsg = data.error ? ` (${data.error})` : "";
+            showSuccess(
+              "Missing Payments Refreshed",
+              `Processed ${data.processed ?? 0} Stripe subscriptions${
+                partialMsg ? `\n${partialMsg}` : ""
+              }`
+            );
+            setMissingPaymentsLoading(false);
+            setIsOperationRunning(false);
+          } else if (data.status === "failed") {
+            showError("Missing Payments Refresh Failed", data.error || "Unknown error");
+            setMissingPaymentsLoading(false);
+            setIsOperationRunning(false);
+          } else {
+            polls++;
+            setTimeout(poll, 2000);
+          }
+        } else {
+          polls++;
+          setTimeout(poll, 2000);
+        }
+      } catch (error) {
+        polls++;
+        if (polls < maxPolls) setTimeout(poll, 2000);
+      }
+    };
+
+    poll();
+  }, [showSuccess, showError]);
+
+  // Fetch missing from DB - with confirmation modal (for the manual button).
+  // POST creates a job; the cron worker (or the next cron run) handles the
+  // actual Stripe loop. We poll until completion.
   const fetchMissingPayments = useCallback(async () => {
     showConfirm(
       "Refresh Missing Payments",
-      "Refresh the list of missing payments from Stripe?",
+      "This will scan all active Stripe subscriptions and find any not in our payments database. May take a minute.",
       async () => {
-        await fetchMissingPaymentsSilent();
+        setMissingPaymentsLoading(true);
+        setIsOperationRunning(true);
+        try {
+          const res = await fetch(
+            "/api/admin/backfill/stripe/missing-payments",
+            { method: "POST" }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (data.jobId) {
+              setMessage(
+                `Missing payments job ${
+                  data.status === "pending" ? "queued" : "already running"
+                }. Waiting for completion...`
+              );
+              await pollMissingPaymentsJob(data.jobId);
+            } else {
+              showError("Missing Payments Failed", data.error || "No job id returned");
+              setMissingPaymentsLoading(false);
+              setIsOperationRunning(false);
+            }
+          } else {
+            const data = await res.json().catch(() => ({}));
+            showError("Missing Payments Failed", data.error || `HTTP ${res.status}`);
+            setMissingPaymentsLoading(false);
+            setIsOperationRunning(false);
+          }
+        } catch (error: any) {
+          console.error("Failed to trigger missing payments job:", error);
+          showError("Missing Payments Failed", error?.message || "Network error");
+          setMissingPaymentsLoading(false);
+          setIsOperationRunning(false);
+        }
       }
     );
-  }, [fetchMissingPaymentsSilent]);
+  }, [pollMissingPaymentsJob, showConfirm, showSuccess, showError]);
 
   // Sync All missing payments - insert them into membership_payments
   const handleSyncAll = async () => {
@@ -1271,7 +1373,7 @@ export default function BackfillClient() {
             // Refresh all sections: Members tab (Status), Stripe Data tab (Reconciliation), Payments tab (MissingPayments)
             await Promise.all([
               fetchStatus(),         // Refresh Members tab stats
-              fetchMissingPayments(), // Refresh Payments tab
+              refreshMissingPaymentsData(), // Refresh Payments tab (silent cache read, no modal)
               fetchReconciliation(), // Refresh Stripe Data tab
             ]);
           } else {
@@ -1306,7 +1408,7 @@ export default function BackfillClient() {
       const data = await res.json();
       if (data.success) {
         showSuccess("Re-matched", data.message);
-        fetchMissingPayments();
+        refreshMissingPaymentsData();
         fetchReconciliation();
       } else {
         showError("Re-match Failed", data.message);
@@ -1334,7 +1436,7 @@ export default function BackfillClient() {
       const data = await res.json();
       if (data.success) {
         showSuccess("Synced", data.message);
-        fetchMissingPayments();
+        refreshMissingPaymentsData();
         fetchReconciliation();
         fetchStatus();
       } else {
@@ -1364,7 +1466,7 @@ export default function BackfillClient() {
       const data = await res.json();
       if (data.success) {
         showSuccess("Synced", data.message);
-        fetchMissingPayments();
+        refreshMissingPaymentsData();
         fetchReconciliation();
         fetchStatus();
       } else {
@@ -1441,11 +1543,11 @@ export default function BackfillClient() {
   useEffect(() => {
     fetchStatus();
     fetchGiftCodes();
-    fetchMissingPaymentsSilent();
+    fetchMissingPaymentsFromCache();
     fetchOurDb();
     fetchDuplicates();
     fetchMissingFromBackfill();
-  }, [fetchStatus, fetchGiftCodes, fetchMissingPaymentsSilent, fetchOurDb, fetchDuplicates, fetchMissingFromBackfill]);
+  }, [fetchStatus, fetchGiftCodes, fetchMissingPaymentsFromCache, fetchOurDb, fetchDuplicates, fetchMissingFromBackfill]);
 
   // Delete single payment
   const handleDeletePayment = async () => {

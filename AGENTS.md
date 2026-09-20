@@ -17620,3 +17620,121 @@ silent timeouts. Stripe load from the cron: ~28 list calls × 144 runs/day ≈ 4
 
 `/admin/analytics` "Stripe Active" reads the same cache row via `/api/admin/backfill/stripe/stripe-live`,
 so it also stays within 10 minutes of live without anyone clicking anything.
+
+---
+
+## Session 2026-09-20: missing-payments Timeout — Cron + Job Refactor
+
+### Problem
+
+`/api/admin/backfill/stripe/missing-payments` was returning 504 `FUNCTION_INVOCATION_TIMEOUT`
+after 300 s on every visit to `/admin/backfill/stripe`. The route was wired into the page-mount
+`useEffect` via `fetchMissingPaymentsSilent()`.
+
+Root causes:
+1. Sequential `setTimeout(25)` after **every Stripe subscription** in the inner loop (line 136).
+   At ~2,700 active subs × 8 statuses = 21,600 sleeps × 25 ms = **540 s of dead idle time**,
+   ignoring network latency entirely.
+2. Looped 8 subscription statuses (`active`, `past_due`, `canceled`, `unpaid`, `trialing`,
+   `incomplete`, `incomplete_expired`, `paused`) when only `active` can produce the $15 / $100
+   invoices we track.
+3. Unpaginated `profiles(id, email)` query (silent 1000-row cap).
+4. No `maxDuration` set on the route, unlike `reconcile/route.ts:18`.
+5. Page-mount `useEffect` fired the slow route on every navigation.
+
+### Solution
+
+Moved `missing-payments` to the established cron + job-table pattern used by `reconciliation_jobs`,
+`stripe_only_jobs`, `stripe_duplicates_jobs`, `sync_all_jobs`. Page load now reads cache instantly;
+admin clicks POST a job that the cron worker (or the next 10-min cron tick) processes.
+
+### Database — `supabase/migrations/174_create_missing_payments_jobs.sql`
+
+```sql
+CREATE TABLE missing_payments_jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending','processing','completed','failed')),
+  triggered_by TEXT NOT NULL DEFAULT 'cron',  -- 'cron' | 'admin'
+  stripe_subscriptions_total INTEGER NOT NULL DEFAULT 0,
+  stripe_subscriptions_processed INTEGER NOT NULL DEFAULT 0,
+  missing_contributing_count INTEGER NOT NULL DEFAULT 0,
+  missing_founding_count INTEGER NOT NULL DEFAULT 0,
+  contributing_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+  founding_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+  summary_json JSONB,
+  elapsed_ms INTEGER,
+  error_message TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ   -- completed_at + 24h
+);
+```
+
+RLS admin-only SELECT via `public.is_admin()`. Writes go through routes using `supabaseAdmin`.
+
+### Files Created
+
+| File | Purpose |
+|---|---|
+| `supabase/migrations/174_create_missing_payments_jobs.sql` | Job table |
+| `app/api/cron/process-missing-payments-jobs/route.ts` | Background worker |
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `app/api/admin/backfill/stripe/missing-payments/route.ts` | Rewritten. POST creates job / returns existing. GET cache (no params) returns latest non-expired completed row or `{ status: "none" }`. GET `?jobId=X` returns the row for polling. `maxDuration = 60`. |
+| `vercel.json` | Added cron entry `*/10 * * * *` |
+| `app/admin/backfill/stripe/BackfillClient.tsx` | Replaced `fetchMissingPaymentsSilent` (sync) with `fetchMissingPaymentsFromCache` (instant GET) + `pollMissingPaymentsJob` (kick off + poll) + `refreshMissingPaymentsData` alias for post-mutation refreshes (sync-single / sync-by-email / sync-all / rematch handlers). Page-mount no longer fires Stripe calls. |
+
+### Worker (`process-missing-payments-jobs/route.ts`)
+
+- `CRON_SECRET` Bearer auth (matches `process-reconciliation-jobs`).
+- Stale-job recovery: any `processing` job older than 15 minutes is marked `failed`.
+- Atomic claim: `UPDATE ... SET status='processing' WHERE id=? AND status='pending'` so two crons don't double-pick.
+- `maxDuration = 300` with self-imposed **250 s budget** (`TIME_BUDGET_MS = 250_000`).
+- **Active-only** status (was 8 statuses — 8× fewer list calls).
+- **Concurrent customer lookups** in batches of **25** with 100 ms inter-batch sleep (was per-sub `setTimeout(25)`).
+- Bounded `Promise.all` for the lookup loop; uses `Promise.allSettled` so one failed customer doesn't fail the whole batch.
+- Paginated profiles query (`range` loop) replaces the silent 1000-row cap.
+- 24h `expires_at` cache TTL, matches `reconciliation_jobs` pattern.
+- Partial-result handling: if 250 s budget is hit, marks `status='completed'` with a friendly `error_message` hint so the UI shows "Click Refresh to continue."
+
+### Client (`BackfillClient.tsx`)
+
+- Page-mount uses `fetchMissingPaymentsFromCache` — instant GET, never fires Stripe calls.
+- Manual "Refresh" button shows confirmation modal, POSTs a job, starts polling at 2 s intervals with a 7-min cap.
+- Post-mutation sync handlers (sync-single, sync-by-email, sync-all, rematch) re-read the just-completed job row via `refreshMissingPaymentsData` (no modal).
+- Existing `MissingAccount` and `MissingPaymentsResponse` types preserved so the rest of the table UI keeps working.
+
+### Behavior After Fix
+
+| Scenario | Behavior |
+|---|---|
+| Visit `/admin/backfill/stripe` | Cache-only GET. Renders latest completed row instantly. No Stripe call. |
+| Click "Refresh Missing Payments" → confirm | POST creates job, modal polls every 2 s until completed/failed. |
+| Two admins click within seconds | Second POST reuses the existing `pending`/`processing` job. Both poll the same `jobId`. |
+| Cron fires while admin-triggered job is running | Cron skips (only picks `pending`). |
+| Stripe 429 / API error | Worker writes `status='failed'` + `error_message`. UI surfaces the error. |
+| Dataset grows past 250 s | Job completes as `partial`. UI shows count + "Refresh to continue" hint. |
+| 24h cache expires | Page-mount GET returns `{ status: 'expired' }`. UI shows placeholder; next cron refreshes. |
+
+### Build Verification
+
+- `tsc --noEmit` 0 errors
+- `next build` ✓ (both new routes registered: `/api/admin/backfill/stripe/missing-payments` and `/api/cron/process-missing-payments-jobs`)
+
+### Deploy
+
+1. Run migration 174 in the Supabase SQL Editor.
+2. Deploy code (4 files).
+3. Vercel cron picks up `process-missing-payments-jobs` on the next 10-min boundary.
+4. End-to-end smoke: visit `/admin/backfill/stripe` (renders instantly), click Refresh (modal polls), confirm table populates.
+
+### Out of Scope (Parked)
+
+- Same async treatment for the sibling `sync-missing-payments` route (the **insert** counterpart — same architecture applies but isn't causing timeouts yet).
+- Existing `stripe-only-jobs/route.ts` still uses the throw-style `if (!admin)` truthy check against `requireAdmin()`. Pre-existing latent bug from the September 11 audit — flagged for separate cleanup.
+
