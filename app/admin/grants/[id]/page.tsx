@@ -73,6 +73,22 @@ export default async function AdminGrantCyclePage({
     .select("*")
     .in("grant_id", grants?.map((g) => g.id) || []);
 
+  // Fetch the in-flight AI job (if any) for this cycle. Used by the
+  // citrine banner so the copy reflects reality when cron is mid-tick.
+  // 2026-09-20: previously the banner always said "click 'Continue AI
+  // Backfill' to run Claude" even when the cron worker was actively
+  // processing the cycle — confusing for the admin who'd click and see
+  // nothing happen. Now the banner says "Claude is currently evaluating"
+  // and the button (separately) shows its own progress.
+  const { data: inflightAiJob } = await supabaseAdmin
+    .from("ai_backfill_jobs")
+    .select("id, status, processed_count, total_count")
+    .eq("cycle_id", id)
+    .in("status", ["pending", "processing"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   const grantsWithDocs =
     grants?.map((g) => ({
       ...g,
@@ -120,11 +136,13 @@ export default async function AdminGrantCyclePage({
               <strong>{unevaluatedAiCount}</strong> application
               {unevaluatedAiCount === 1 ? "" : "s"} still need
               {unevaluatedAiCount === 1 ? "s" : ""} AI evaluation
-              {scoringStarted
-                ? isAdmin
-                  ? " — click 'Continue AI Backfill' to run Claude."
-                  : "."
-                : " — these will be evaluated when you click Start Scoring."}
+              {inflightAiJob
+                ? ` — Claude is currently evaluating (${inflightAiJob.processed_count}/${inflightAiJob.total_count}).`
+                : scoringStarted
+                  ? isAdmin
+                    ? " — click 'Continue AI Backfill' to run Claude."
+                    : "."
+                  : " — these will be evaluated when you click Start Scoring."}
             </p>
             {scoringStarted && isAdmin && (
               <AiBackfillButton
