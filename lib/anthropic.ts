@@ -23,7 +23,13 @@ export interface GrantEvaluationInput {
 }
 
 const MODEL = "claude-sonnet-4-5-20250929";
-const TIMEOUT_MS = 8000;
+// 18s matches p99 Claude Sonnet 4.5 latency under load. Was 8s — too
+// aggressive: a single slow response caused the SDK to throw
+// APIUserAbortError, the catch translated it to "AI evaluation timed out",
+// and the grant got stuck at ai_relevance='uncertain' with no auto-recovery.
+// 2026-09-20 bump. The inline race timer in app/api/grants/create/route.ts
+// stays under this value so a single request never deadlocks the worker.
+const TIMEOUT_MS = 18000;
 
 let cachedClient: any | null = null;
 

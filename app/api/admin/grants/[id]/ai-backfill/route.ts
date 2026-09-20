@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/adminCheck";
 
 const supabaseAdmin = createClient(
@@ -7,16 +7,19 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-export const maxDuration = 300;
+export const dynamic = "force-dynamic";
 
-const TIME_BUDGET_MS = 250_000; // 250s — leaves 50s buffer for Vercel 300s limit
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
+/**
+ * POST /api/admin/grants/[id]/ai-backfill
+ *
+ * Trigger-only: race-guarded job creation. The actual Claude calls happen
+ * in /api/cron/process-ai-backfill-jobs.
+ *
+ * Preserves the original guard: refuses if grant_cycles.scoring_started_at
+ * is NULL (i.e. Start Scoring hasn't been clicked for this cycle).
+ */
 export async function POST(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -27,10 +30,9 @@ export async function POST(
 
     const { id: cycleId } = await params;
 
-    // Confirm the cycle exists
     const { data: cycle } = await supabaseAdmin
       .from("grant_cycles")
-      .select("cycle_name, description, scoring_started_at")
+      .select("id, scoring_started_at")
       .eq("id", cycleId)
       .single();
 
@@ -51,95 +53,68 @@ export async function POST(
       );
     }
 
-    // Lazy import so a missing key / SDK doesn't break the rest of the route
-    const { evaluateGrantApplication, AI_MODEL_VERSION } = await import(
-      "@/lib/anthropic"
-    );
-
-    // Find all submitted grants in this cycle that have not been AI-evaluated
-    // Match both NULL (pre-AI apps) and 'not_evaluated' (post-AI, fresh apps)
-    const { data: unevaluated } = await supabaseAdmin
-      .from("grants")
-      .select("id, who_are_you, biggest_challenge, fund_usage")
+    // Race guard
+    const { data: existing } = await supabaseAdmin
+      .from("ai_backfill_jobs")
+      .select("id, status, created_at")
       .eq("cycle_id", cycleId)
-      .eq("status", "submitted")
-      .or("ai_relevance.is.null,ai_relevance.eq.not_evaluated");
+      .in("status", ["pending", "processing"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (!unevaluated || unevaluated.length === 0) {
+    if (existing) {
       return NextResponse.json({
-        success: true,
-        total: 0,
-        evaluated: 0,
-        failed: 0,
-        remaining: 0,
-        budgetReached: false,
-        message: "No grants need AI evaluation.",
+        jobId: existing.id,
+        status: existing.status,
+        message:
+          "A backfill job is already running for this cycle. Polling existing job.",
       });
     }
 
-    let evaluated = 0;
-    let failed = 0;
-    const startTime = Date.now();
-    let budgetReached = false;
+    const { data: job, error } = await supabaseAdmin
+      .from("ai_backfill_jobs")
+      .insert({
+        cycle_id: cycleId,
+        status: "pending",
+        progress: "Queued — backfill will run on the next cron tick",
+      })
+      .select("id, status")
+      .single();
 
-    for (const g of unevaluated) {
-      try {
-        const result = await evaluateGrantApplication({
-          cycleName: cycle.cycle_name || "",
-          cycleDescription: cycle.description || "",
-          whoAreYou: g.who_are_you || "",
-          biggestChallenge: g.biggest_challenge || "",
-          fundUsage: g.fund_usage || "",
-        });
-        await supabaseAdmin
-          .from("grants")
-          .update({
-            ai_relevance: result.relevance,
-            ai_reasoning: result.reasoning,
-            ai_evaluated_at: new Date().toISOString(),
-            ai_model_version: result.model || AI_MODEL_VERSION,
-          })
-          .eq("id", g.id);
-        evaluated++;
-      } catch (err) {
-        console.error(`[ai-backfill] AI eval failed for grant ${g.id}:`, err);
-        failed++;
-      }
-
-      // Time budget check (after every call so we don't overrun)
-      if (Date.now() - startTime > TIME_BUDGET_MS) {
-        console.log(
-          `[ai-backfill] Time budget reached after ${evaluated + failed}/${unevaluated.length}`,
-        );
-        budgetReached = true;
-        break;
-      }
-
-      // Gentle throttle to stay well under Claude's rate limit
-      await sleep(200);
+    if (error || !job) {
+      console.error("[ai-backfill] Failed to create job:", error);
+      return NextResponse.json(
+        { error: "Failed to create backfill job" },
+        { status: 500 },
+      );
     }
 
-    const remaining = unevaluated.length - evaluated - failed;
-
-    console.log(
-      `[ai-backfill] Complete: ${evaluated}/${unevaluated.length} succeeded, ${failed} failed, ${remaining} remaining${budgetReached ? " (budget reached)" : ""}`,
-    );
-
     return NextResponse.json({
-      success: true,
-      total: unevaluated.length,
-      evaluated,
-      failed,
-      remaining,
-      budgetReached,
+      jobId: job.id,
+      status: job.status,
+      message:
+        "Job created. Processing will happen on the next cron run (within 5 minutes).",
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("[ai-backfill] POST error:", err);
+    return NextResponse.json(
+      { error: err?.message || "Unexpected error" },
+      { status: 500 },
+    );
   }
 }
 
-// GET endpoint returns the current backfill count without running anything.
-// Useful for the cycle detail page to know whether to show the backfill button.
+/**
+ * GET /api/admin/grants/[id]/ai-backfill
+ *
+ * Returns either the in-flight job state (?jobId=…) or the most recent
+ * non-expired completed job for this cycle.
+ *
+ * Side note: this endpoint is also called by the cycle detail page on mount
+ * to display the current backfill count. That existing behavior is preserved
+ * by returning the most recent completed job's counts.
+ */
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -151,20 +126,100 @@ export async function GET(
     }
 
     const { id: cycleId } = await params;
+    const url = new URL(request.url);
+    const jobId = url.searchParams.get("jobId");
 
-    const { count, error } = await supabaseAdmin
+    if (jobId) {
+      const { data: job } = await supabaseAdmin
+        .from("ai_backfill_jobs")
+        .select(
+          "id, status, current_phase, processed_count, total_count, succeeded_count, failed_count, progress, error_message, completed_at, expires_at",
+        )
+        .eq("id", jobId)
+        .eq("cycle_id", cycleId)
+        .maybeSingle();
+
+      if (!job) {
+        return NextResponse.json({ error: "Job not found" }, { status: 404 });
+      }
+
+      return NextResponse.json({
+        jobId: job.id,
+        status: job.status,
+        phase: job.current_phase,
+        processed: job.processed_count,
+        total: job.total_count,
+        succeeded: job.succeeded_count,
+        failed: job.failed_count,
+        progress: job.progress,
+        error: job.error_message,
+        completedAt: job.completed_at,
+      });
+    }
+
+    // No jobId — return current unevaluated count + the most recent
+    // non-expired completed job for context. The cycle detail page reads
+    // unevaluatedCount to drive the badge; clients that just want job
+    // progress should pass ?jobId=…
+    const { count, error: countError } = await supabaseAdmin
       .from("grants")
       .select("id", { count: "exact", head: true })
       .eq("cycle_id", cycleId)
       .eq("status", "submitted")
       .or("ai_relevance.is.null,ai_relevance.eq.not_evaluated");
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (countError) {
+      console.error("[ai-backfill] Count query failed:", countError);
+      return NextResponse.json(
+        { error: "Failed to fetch unevaluated count" },
+        { status: 500 },
+      );
     }
 
-    return NextResponse.json({ unevaluatedCount: count ?? 0 });
+    const unevaluatedCount = count ?? 0;
+
+    // Look up the most recent pending|processing|non-expired-completed job
+    // for context — clients may want to know if a job is currently running
+    const { data: latest } = await supabaseAdmin
+      .from("ai_backfill_jobs")
+      .select(
+        "id, status, processed_count, total_count, succeeded_count, failed_count, completed_at, expires_at",
+      )
+      .eq("cycle_id", cycleId)
+      .in("status", ["pending", "processing", "completed"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!latest) {
+      return NextResponse.json({
+        jobId: null,
+        status: "no_jobs",
+        unevaluatedCount,
+      });
+    }
+
+    const isExpired =
+      latest.status === "completed" &&
+      latest.expires_at &&
+      new Date(latest.expires_at) < new Date();
+
+    return NextResponse.json({
+      jobId: latest.id,
+      status: latest.status,
+      processed: latest.processed_count,
+      total: latest.total_count,
+      succeeded: latest.succeeded_count,
+      failed: latest.failed_count,
+      completedAt: latest.completed_at,
+      isExpired,
+      unevaluatedCount,
+    });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("[ai-backfill] GET error:", err);
+    return NextResponse.json(
+      { error: err?.message || "Unexpected error" },
+      { status: 500 },
+    );
   }
 }

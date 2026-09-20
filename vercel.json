@@ -43,6 +43,14 @@
     {
       "path": "/api/cron/process-missing-payments-jobs",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/process-ai-reevaluate-jobs",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/process-ai-backfill-jobs",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

@@ -6,6 +6,7 @@ import AdminGrantReviewer from "@/components/admin/AdminGrantReviewer";
 import AiReevaluateButton from "@/components/admin/AiReevaluateButton";
 import AiResetButton from "@/components/admin/AiResetButton";
 import AiBackfillButton from "@/components/admin/AiBackfillButton";
+import { formatESTDisplay } from "@/lib/dates";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -126,8 +127,8 @@ export default async function AdminGrantCyclePage({
               {cycle.cycle_name}
             </h1>
             <p className="text-nfw-blackberry/60">
-              {new Date(cycle.start_date).toLocaleDateString()} —{" "}
-              {new Date(cycle.end_date).toLocaleDateString()} • $
+              {formatESTDisplay(new Date(cycle.start_date))} —{" "}
+              {formatESTDisplay(new Date(cycle.end_date))} • $
               {cycle.amount_per_grant?.toLocaleString()} per grant •{" "}
               {cycle.grants_available} available
             </p>

@@ -15,6 +15,7 @@ import {
 import AiBadge from "./AiBadge";
 import ConfirmModal from "./ConfirmModal";
 import { uploadWithSignedUrl } from "@/lib/admin-upload";
+import { formatESTDisplay } from "@/lib/dates";
 
 // Must match GRANT_DOCS_ALLOWED_TYPES in lib/admin-documents.ts
 const GRANT_DOC_ACCEPT = ".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx";
@@ -344,7 +345,7 @@ export default function AdminGrantReviewer({
                     )}
                     <p className="text-xs text-nfw-blackberry/40">
                       {grant.submitted_at
-                        ? new Date(grant.submitted_at).toLocaleDateString()
+                        ? formatESTDisplay(new Date(grant.submitted_at))
                         : "No date"}
                     </p>
                   </div>

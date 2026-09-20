@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { GripVertical, Check } from "lucide-react";
 import DeleteCycleButton from "./DeleteCycleButton";
+import { formatESTDisplay } from "@/lib/dates";
 
 const decodeHtml = (html: string): string => {
   if (typeof document === "undefined") return html || "";
@@ -163,8 +164,8 @@ export default function SortableCycleList({ cycles, cycleStats }: Props) {
                       )}
                     </div>
                     <p className="text-sm text-nfw-blackberry/50">
-                      {new Date(cycle.start_date).toLocaleDateString()} —{" "}
-                      {new Date(cycle.end_date).toLocaleDateString()}
+                      {formatESTDisplay(new Date(cycle.start_date))} —{" "}
+                      {formatESTDisplay(new Date(cycle.end_date))}
                     </p>
                   </div>
                   <div className="text-right">

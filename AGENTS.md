@@ -17738,3 +17738,139 @@ RLS admin-only SELECT via `public.is_admin()`. Writes go through routes using `s
 - Same async treatment for the sibling `sync-missing-payments` route (the **insert** counterpart — same architecture applies but isn't causing timeouts yet).
 - Existing `stripe-only-jobs/route.ts` still uses the throw-style `if (!admin)` truthy check against `requireAdmin()`. Pre-existing latent bug from the September 11 audit — flagged for separate cleanup.
 
+## Session 2026-09-20: AI Re-eval 504 + Hydration Crash + Stuck Timed-Out Grants (Option C in full)
+
+### Symptoms reported by the user
+
+1. **504 + JSON parse error** on `/api/admin/grants/3a3ffe11-…/ai-reevaluate:1` — `Failed to load resource: the server responded with a status of 504`. The browser's `fetch` got Vercel's HTML timeout error page and threw because it expected JSON.
+2. **`React error #418`** on `/admin/grants/3a3ffe11-…` — "hydration failed because the server rendered text didn't match the client". Three `toLocaleDateString()` calls without a locale argument.
+3. **"AI Assessment: Cannot Determine"** with reasoning "AI evaluation timed out" displayed in the reviewer panel on grants that were stuck at `ai_relevance='uncertain'` from before today's fix.
+
+### Root causes
+
+**504**: `/api/admin/grants/[id]/ai-reevaluate` was a synchronous 300 s-budget chunked loop. With ~100 grants × 200 ms throttle × 1-3 s Claude latency, any cycle with many apps routinely overran `maxDuration=300`. Vercel returned the HTML timeout page; `fetch().json()` threw.
+
+**React #418**: Three call sites rendered dates with no locale argument — server emitted text in the Vercel container's locale, browser emitted text in the user's locale, the texts disagreed at hydration:
+- `app/admin/grants/[id]/page.tsx:129-130` (cycle `start_date`/`end_date`)
+- `components/admin/AdminGrantReviewer.tsx:347` (`grant.submitted_at`)
+- `components/admin/SortableCycleList.tsx:166-167` (same bug on `/admin/grants` index)
+
+**"Cannot Determine / timed out"**: `lib/anthropic.ts` had an 8 s AbortController and `app/api/grants/create/route.ts` had a 6 s inline `Promise.race` timeout. Under load, Claude's p99 latency regularly exceeds 8 s, the SDK threw `APIUserAbortError`, the catch translated it to `uncertain + "AI evaluation timed out"`. Same vulnerability existed in `/api/admin/grants/[id]/ai-backfill` — one Claude latency spike away from 504.
+
+### Fix — Option C in full
+
+| Workstream | What changed |
+|---|---|
+| **A. Hydration fix** | Three call sites swapped to `formatESTDisplay` from `lib/dates.ts` (already had `'en-US'` + `America/New_York`). Same pattern already used elsewhere in the codebase. |
+| **B. AI re-eval → cron** | New table `ai_reevaluate_jobs` + trigger + cron worker + polling button. Mirrors the `process-stripe-only-jobs` pattern exactly. |
+| **C. AI backfill → cron** | Same shape — new table `ai_backfill_jobs` + trigger + cron worker + polling button. |
+| **D. Timeout bump (Option B)** | `lib/anthropic.ts` AbortController 8 s → 18 s. `app/api/grants/create/route.ts` `maxDuration` 15 s → 120 s; inline race timer 6 s → 16 s. |
+| **E. Reset + re-run (Option A)** | New migration `175_recover_timed_out_grants.sql` documents the SQL preview query and the bulk-reset option (commented out — admin clicks are preferred for the confirmation step). |
+
+### Files Created
+
+| Path | Purpose |
+|---|---|
+| `supabase/migrations/175_create_ai_reevaluate_jobs.sql` | Job tracking table for re-eval |
+| `supabase/migrations/175_recover_timed_out_grants.sql` | Recovery SQL (preview query + commented bulk-reset) |
+| `supabase/migrations/176_create_ai_backfill_jobs.sql` | Job tracking table for backfill |
+| `app/api/cron/process-ai-reevaluate-jobs/route.ts` | Background worker for re-eval |
+| `app/api/cron/process-ai-backfill-jobs/route.ts` | Background worker for backfill |
+
+### Files Modified
+
+| Path | Change |
+|---|---|
+| `app/admin/grants/[id]/page.tsx` | Import `formatESTDisplay`; swap lines 129-130 |
+| `components/admin/AdminGrantReviewer.tsx` | Import `formatESTDisplay`; swap line 347 |
+| `components/admin/SortableCycleList.tsx` | Import `formatESTDisplay`; swap lines 166-167 |
+| `app/api/admin/grants/[id]/ai-reevaluate/route.ts` | Rewrite: trigger + status, race-guard against existing pending job |
+| `app/api/admin/grants/[id]/ai-backfill/route.ts` | Rewrite: trigger + status, preserves the `scoring_started_at` guard |
+| `components/admin/AiReevaluateButton.tsx` | Rewrite: poll every 2 s, max 4 min, progress UI |
+| `components/admin/AiBackfillButton.tsx` | Rewrite: poll every 2 s, preserves badge + count behavior |
+| `lib/anthropic.ts` | `TIMEOUT_MS` 8000 → 18000 |
+| `app/api/grants/create/route.ts` | `maxDuration` 15 → 120; inline `timeoutMs` 6000 → 16000 |
+| `vercel.json` | Added cron entries `*/5 * * * *` for both new workers |
+
+### Worker contract
+
+**`ai_reevaluate_jobs` columns** — `cycle_id, force_full, status, current_phase, processed_count, total_count, succeeded_count, failed_count, cycle_grants_json (snapshot of grant IDs in scope), last_processed_id (cursor), progress, error_message, lifecycle timestamps, expires_at (24 h cache TTL)`.
+
+**`ai_backfill_jobs` columns** — Same shape minus `force_full`; `grant_ids_json` instead of `cycle_grants_json`.
+
+**Phase machine** (mirrors `process-stripe-only-jobs`):
+1. `pending` → `evaluate`: snapshot in-scope grant IDs into JSONB.
+2. `evaluate`: 25 grants/tick, 200 ms throttle, 250 s budget. Cursor via `last_processed_id`. Per-grant `evaluateGrantApplication` failures increment `failed_count` (don't abort the batch).
+3. `completed`: set `expires_at = NOW() + 24h`, clear snapshot JSONB.
+
+**Safety nets**:
+- Stale `processing` rows older than 30 min → `failed` (matches the 5 other job-table conventions).
+- Atomic claim via `UPDATE … WHERE status='pending'`.
+- Race-guarded POST: if a `pending|processing` job exists for the same cycle, return its id rather than creating a duplicate.
+
+### Re-eval preserve-on-restore rule
+
+The original synchronous route had this rule preserved in the new worker:
+
+```typescript
+if (wasPreviouslyIrrelevant && !reviewerAlreadyInvalidated) {
+  // Was auto-flagged irrelevant; new eval says it's relevant — restore.
+  updatePayload.ai_invalidated_at = null;
+  updatePayload.ai_invalidated_by = null;
+}
+// else: leave ai_invalidated_at alone (reviewer decision is sticky)
+```
+
+Reviewer skip decisions (`ai_invalidated_at/by`) are preserved across re-evals; only auto-flagged irrelevant rows can be restored to relevant by a re-eval.
+
+### Backfill GET response shape
+
+The cycle detail page still calls `GET /ai-backfill` on mount for the badge. The new GET preserves the existing `unevaluatedCount` field so the badge keeps working:
+
+```json
+{
+  "jobId": "...",
+  "status": "completed",
+  "processed": 100, "total": 100, "succeeded": 95, "failed": 5,
+  "completedAt": "...",
+  "unevaluatedCount": 0
+}
+```
+
+When no jobs have ever run, `unevaluatedCount` is still returned so the badge displays the current database count.
+
+### Build Verification
+
+- `npm run build` ✓ (0 TypeScript errors, all 4 new routes registered: `/api/admin/grants/[id]/ai-backfill`, `/api/admin/grants/[id]/ai-reevaluate`, `/api/cron/process-ai-backfill-jobs`, `/api/cron/process-ai-reevaluate-jobs`)
+- One TypeScript fix during build: `grantIds.indexOf(g)` → `(grants || []).indexOf(g)` in both workers — `grantIds` is `string[]` but `g` is a grant object. Same bug existed in both files, fixed in lockstep.
+
+### Deploy Steps
+
+1. Run migrations 175 (`ai_reevaluate_jobs`) and 176 (`ai_backfill_jobs`) in Supabase SQL Editor.
+2. Deploy code (5 files modified, 5 created).
+3. Vercel cron picks up both new workers on the next 5-min boundary.
+
+### Post-Deploy Recovery (Option A)
+
+Run the preview query in `175_recover_timed_out_grants.sql` to see how many grants are stuck. For each affected cycle:
+
+1. Visit `/admin/grants/{cycleId}`.
+2. Click **Reset AI Evaluations** (existing button from 2026-09-14 — clears `ai_relevance`, `ai_reasoning`, `ai_evaluated_at` back to not-evaluated/NULL while preserving reviewer skip decisions).
+3. Click **Re-run AI Filter**. The new cron worker picks up the cycle within 5 minutes.
+4. Repeat until the preview query returns zero rows.
+
+(If too many cycles are affected to click through one-by-one, the migration file documents a commented-out bulk `UPDATE` that does the same thing — admin clicks remain preferred for the confirmation step.)
+
+### Known Follow-ups (Parked)
+
+- `app/api/admin/grants/retry-failed` (2026-09-07) has the same latency profile — manual Resend loop with 110 ms delay × hundreds of failures. Should be moved to the cron + job-table pattern, separate ticket.
+- The 16 s submit timer is now generous. If users complain about submit hangs, revisit with a streaming approach or move inline eval into a new `ai_reevaluate_jobs` variant (`triggered_by='submit'`).
+- `app/api/admin/backfill/stripe/stripe-only-jobs/route.ts` still uses the throw-style `if (!admin)` truthy check against `requireAdmin()` — pre-existing latent bug from the 2026-09-11 audit, unrelated to this fix.
+
+### Out of Scope
+
+- Hydration checks elsewhere in the admin pages — only the three call sites identified in the diagnosis were patched. Other `toLocaleDateString()` matches in `AdminClaimsClient`, `AdminArticlesClient`, `AdminAnalyticsClient` are in pure client components or render after the hydration window closes, so they don't 418.
+- Mobile app — unchanged.
+- `grants` schema — operational tables only (`ai_reevaluate_jobs`, `ai_backfill_jobs`).
+- LastPass extension noise — confirmed ignore per user.
+

@@ -7,7 +7,12 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-export const maxDuration = 15;
+// 120s — was 15s but the inline AI eval (Promise.race with 6s timeout) was
+// cutting things too tight when the submit handler also does cycle lookup,
+// profile update, grant insert and document upload serially. 2026-09-20
+// bump. The inline timeout itself is 16s now (lib/anthropic.ts aborts at
+// 18s) so 120s leaves generous headroom for everything else.
+export const maxDuration = 120;
 
 function isValidUUID(str: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -206,7 +211,12 @@ export async function POST(request: Request) {
               biggestChallenge: biggest_challenge.trim(),
               fundUsage: fund_usage.trim(),
             });
-            const timeoutMs = 6000;
+            // 16s — must stay under lib/anthropic.ts's TIMEOUT_MS (18s) so
+            // the SDK's own AbortController doesn't fire first. Was 6s — too
+            // tight, every Claude latency spike > 6s would silently mark the
+            // app ai_relevance='uncertain' with reasoning "AI evaluation
+            // timed out". Bumped 2026-09-20 to reduce false-positive timeouts.
+            const timeoutMs = 16000;
             const timeoutPromise = new Promise<{
               relevance: "uncertain";
               reasoning: string;
