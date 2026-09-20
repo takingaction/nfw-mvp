@@ -93,6 +93,7 @@ interface ReconciliationSummary {
     contributing: { count: number; total: number; true_total?: number };
     founding: { count: number; total: number; true_total?: number };
     total: { count: number; total: number; true_total?: number };
+    fetchedAt?: string;
   };
   our_db: {
     contributing: { count: number; total: number };
@@ -813,7 +814,8 @@ export default function BackfillClient() {
     }
   }, []);
 
-  // Refresh Reconciliation - direct fetch from Stripe (~2 seconds)
+  // Refresh Reconciliation - direct fetch from Stripe (~40s at ~2,700 active subs).
+  // The same work runs automatically every 10 min via /api/cron/refresh-reconciliation.
   const handleRefreshReconciliation = useCallback(async () => {
     setReconciliationLoading(true);
     setMessage("Fetching fresh data from Stripe...");
@@ -1757,6 +1759,22 @@ export default function BackfillClient() {
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-ui font-bold text-nfw-aubergine">Reconciliation</h3>
           <div className="flex gap-2 items-center">
+            {reconciliation?.summary?.stripe_live?.fetchedAt && (
+              <span
+                className="text-xs text-nfw-blackberry/50 font-ui mr-1"
+                title="Auto-refreshes every 10 minutes via cron, or on demand with Refresh"
+              >
+                Last refreshed:{" "}
+                {new Date(reconciliation.summary.stripe_live.fetchedAt).toLocaleString("en-US", {
+                  timeZone: "America/New_York",
+                  month: "short",
+                  day: "2-digit",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}{" "}
+                ET
+              </span>
+            )}
             <button
               onClick={handleRefreshReconciliation}
               disabled={reconciliationLoading}

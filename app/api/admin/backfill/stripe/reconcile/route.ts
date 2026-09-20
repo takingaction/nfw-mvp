@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { refreshStripeLiveCache } from "@/lib/stripe-reconciliation";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
@@ -13,6 +14,8 @@ const supabaseAdmin = createAdminClient(
 );
 
 export const dynamic = "force-dynamic";
+// fresh=true pages all active Stripe subscriptions (~40s at ~2,700 subs); csv is slower still.
+export const maxDuration = 300;
 
 export async function GET(request: Request) {
   try {
@@ -183,89 +186,13 @@ async function handleFreshStripeFetch(supabase: any, supabaseAdmin: any) {
   try {
     console.log("[reconcile] Fresh fetch requested - fetching directly from Stripe");
 
-    // Fetch all active subscriptions directly from Stripe
-    const subscriptions: any[] = [];
-    let hasMore = true;
-    let startingAfter: string | undefined;
-
-    while (hasMore) {
-      const params: any = { limit: 100, status: "active" };
-      if (startingAfter) params.starting_after = startingAfter;
-
-      const response = await stripe.subscriptions.list(params);
-      subscriptions.push(...response.data);
-
-      hasMore = response.has_more;
-      if (hasMore && response.data.length > 0) {
-        startingAfter = response.data[response.data.length - 1].id;
-      }
-      // Small delay to be nice to Stripe
-      await new Promise(r => setTimeout(r, 50));
-    }
-
-    // Calculate totals
-    let contributingCount = 0;
-    let contributingTotal = 0;
-    let foundingCount = 0;
-    let foundingTotal = 0;
-
-    for (const sub of subscriptions) {
-      const priceId = sub.items?.data?.[0]?.price?.id;
-      const priceAmount = sub.items?.data?.[0]?.price?.unit_amount || 0;
-
-      const isFounding = priceAmount === 10000 ||
-        priceId === process.env.STRIPE_PRICE_FOUNDING ||
-        (priceAmount === 100 && sub.items?.data?.[0]?.price?.recurring?.interval === 'year');
-
-      if (isFounding) {
-        foundingCount++;
-        foundingTotal += 100;
-      } else {
-        contributingCount++;
-        contributingTotal += 15;
-      }
-    }
-
-    const stripeLiveData = {
-      contributing: { count: contributingCount, true_total: contributingTotal, total: contributingTotal },
-      founding: { count: foundingCount, true_total: foundingTotal, total: foundingTotal },
-      total: { count: contributingCount + foundingCount, true_total: contributingTotal + foundingTotal, total: contributingTotal + foundingTotal },
-      fetchedAt: new Date().toISOString(),
-    };
-
-    // Update/create cache entry
-    const { data: existingCache } = await supabaseAdmin
-      .from("reconciliation_jobs")
-      .select("id")
-      .eq("job_type", "stripe_live")
-      .eq("status", "completed")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    if (existingCache) {
-      await supabaseAdmin
-        .from("reconciliation_jobs")
-        .update({
-          status: "completed",
-          progress: "Completed",
-          completed_at: new Date().toISOString(),
-          stripe_live_json: stripeLiveData,
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        })
-        .eq("id", existingCache.id);
-    } else {
-      await supabaseAdmin
-        .from("reconciliation_jobs")
-        .insert({
-          job_type: "stripe_live",
-          status: "completed",
-          progress: "Completed",
-          completed_at: new Date().toISOString(),
-          stripe_live_json: stripeLiveData,
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        });
-    }
+    // Fetch Stripe subscriptions, tally tiers, and write the stripe_live cache row.
+    // Shared with /api/cron/refresh-reconciliation (runs every 10 minutes).
+    const stripeLiveData = await refreshStripeLiveCache();
+    const contributingCount = stripeLiveData.contributing.count;
+    const contributingTotal = stripeLiveData.contributing.total;
+    const foundingCount = stripeLiveData.founding.count;
+    const foundingTotal = stripeLiveData.founding.total;
 
     // Fetch our_db fresh
     const { data: allPayments } = await supabase

@@ -17581,3 +17581,42 @@ The reservation is honest about the current behavior. If the underlying mechanis
 - Option C: hard-delete auth.users after financial retention (4-6 hrs)
 - Option D: DB-level reservation via profiles.email_hash unique constraint (2-3 hrs)
 - Mobile app parallel notice (Slice E delete-account.tsx)
+
+## Session 2026-09-19: Auto-refresh Stripe Reconciliation Cache (10-min cron)
+
+### Goal
+
+The aubergine **Refresh** button in the Reconciliation card on `/admin/backfill/stripe`
+(`GET /api/admin/backfill/stripe/reconcile?fresh=true`) was the only thing that updated the
+Stripe Live cache. No cron did this — `process-reconciliation-jobs` only drains jobs an admin
+queued via the separate "Refresh Stripe" button. Now the same work runs every 10 minutes.
+
+### Changes
+
+| File | Change |
+|---|---|
+| `lib/stripe-reconciliation.ts` | **New.** `refreshStripeLiveCache()` — pages all `active` Stripe subscriptions, tallies contributing ($15) / founding ($100), upserts the latest completed `reconciliation_jobs` row (`job_type='stripe_live'`) with `stripe_live_json`, `completed_at`, 24h `expires_at`. Extracted verbatim from `handleFreshStripeFetch()`. Throws on cache-write error (the route previously ignored it). |
+| `app/api/admin/backfill/stripe/reconcile/route.ts` | `handleFreshStripeFetch()` now calls the shared lib, then builds the our-DB/difference/verified response as before. Added `maxDuration = 300` (was default). |
+| `app/api/cron/refresh-reconciliation/route.ts` | **New.** `CRON_SECRET` Bearer, `maxDuration = 120`. Skips (200, `skipped: true`) if a `stripe_live` job is `pending`/`processing` so it doesn't race an admin-queued background job. Otherwise calls `refreshStripeLiveCache()` and returns counts + `elapsedMs`. |
+| `vercel.json` | `{ "path": "/api/cron/refresh-reconciliation", "schedule": "*/10 * * * *" }` |
+| `app/admin/backfill/stripe/BackfillClient.tsx` | "Last refreshed: Sep 19, 11:27 PM ET" indicator next to the Refresh button, read from `summary.stripe_live.fetchedAt` (already returned by both cached and fresh paths). `en-US` + fixed `America/New_York` to avoid the hydration mismatch this page hit before. Added `fetchedAt?` to the `ReconciliationSummary` type. |
+
+No migration, no new env vars (`CRON_SECRET` already set in Vercel).
+
+### Verified
+
+- `tsc` 0 errors, `next build` ✓ (218 pages, new route registered), eslint clean on the two new files
+- Local prod server: 401 with no / wrong Bearer; 200 with the secret →
+  `contributing=2564 founding=150 total=$53460` in **40,261 ms**, cache row updated
+- The Refresh button path is unchanged in behavior (same function, same cache row)
+
+### Note on timing
+
+Older entries describe the fresh fetch as "~2 seconds". At ~2,700 active subscriptions it is
+28 Stripe pages ≈ **40 s**. Both routes now have explicit `maxDuration` so growth won't cause
+silent timeouts. Stripe load from the cron: ~28 list calls × 144 runs/day ≈ 4k calls/day.
+
+### Downstream
+
+`/admin/analytics` "Stripe Active" reads the same cache row via `/api/admin/backfill/stripe/stripe-live`,
+so it also stays within 10 minutes of live without anyone clicking anything.
