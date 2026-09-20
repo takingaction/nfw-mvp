@@ -158,15 +158,19 @@ export async function GET(
       });
     }
 
-    // No jobId — return the most recent non-expired completed job for this cycle
+    // No jobId — return the most recent non-expired job for this cycle.
+    // Includes pending|processing so the page can detect an in-flight cron
+    // job on mount and gate the button. Completed-only would miss that
+    // case and let the admin click "Re-run AI Filter" thinking nothing is
+    // running, when actually the cron worker is mid-tick.
     const { data: latest } = await supabaseAdmin
       .from("ai_reevaluate_jobs")
       .select(
-        "id, status, processed_count, total_count, succeeded_count, failed_count, completed_at, expires_at",
+        "id, status, force_full, processed_count, total_count, succeeded_count, failed_count, completed_at, expires_at",
       )
       .eq("cycle_id", cycleId)
-      .eq("status", "completed")
-      .order("completed_at", { ascending: false })
+      .in("status", ["pending", "processing", "completed"])
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -174,16 +178,19 @@ export async function GET(
       return NextResponse.json({
         jobId: null,
         status: "no_jobs",
-        message: "No completed jobs found",
+        message: "No jobs found",
       });
     }
 
     const isExpired =
-      latest.expires_at && new Date(latest.expires_at) < new Date();
+      latest.status === "completed" &&
+      latest.expires_at &&
+      new Date(latest.expires_at) < new Date();
 
     return NextResponse.json({
       jobId: latest.id,
       status: latest.status,
+      forceFull: latest.force_full,
       processed: latest.processed_count,
       total: latest.total_count,
       succeeded: latest.succeeded_count,
