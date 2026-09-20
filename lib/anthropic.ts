@@ -12,6 +12,15 @@ export interface EvaluationResult {
   model: string;
   inputTokens: number;
   outputTokens: number;
+  /**
+   * Indicates whether the failure mode is one that a future retry might
+   * resolve. Currently set only when the Anthropic SDK throws a 429 (rate
+   * limit); parse failures, aborts, and generic errors default to false.
+   * 2026-09-30: added so downstream callers (cron worker, future retry
+   * logic) can distinguish transient infrastructure failures from real
+   * model-side problems without re-parsing the reasoning string.
+   */
+  retryable?: boolean;
 }
 
 export interface GrantEvaluationInput {
@@ -179,23 +188,70 @@ export async function evaluateGrantApplication(
     };
   } catch (err: any) {
     clearTimeout(timer);
+
     // APIUserAbortError is raised by the SDK when the underlying fetch is
-    // aborted — either by our 8 s AbortController above, or by the runtime
-    // killing the worker (Vercel terminates serverless functions by aborting
-    // in-flight requests once `maxDuration` is reached). Distinguish it from
-    // generic errors so the log isn't misleading and reviewers see a clear
-    // timeout reason instead of "AI evaluation failed".
+    // aborted — either by our TIMEOUT_MS AbortController above, or by the
+    // runtime killing the worker (Vercel terminates serverless functions
+    // by aborting in-flight requests once `maxDuration` is reached).
+    // Distinguish it from generic errors so the log isn't misleading and
+    // reviewers see a clear timeout reason instead of "AI evaluation failed".
     //
     // Use duck-typed message check rather than instanceof import to avoid
     // bundling APIUserAbortError into the hot path of every submission.
-    if (
+    const isAbort =
       err?.name === "AbortError" ||
-      typeof err?.message === "string" &&
-        err.message.toLowerCase().includes("request was aborted")
-    ) {
+      (typeof err?.message === "string" &&
+        err.message.toLowerCase().includes("request was aborted"));
+    if (isAbort) {
       return fallback("AI evaluation timed out");
     }
-    console.error("[anthropic] API error:", err?.message || err);
+
+    // 2026-09-30: distinguish Anthropic rate-limit (429) from generic
+    // failures. A burst of `uncertain + "AI evaluation failed"` rows
+    // appeared in production — earlier grants in the cycle had evaluated
+    // fine, but later ones (where the worker's request volume pushed past
+    // the tier-4 Sonnet 4.5 rate limit) returned the generic fallback and
+    // we couldn't tell why from the existing `[anthropic] API error:`
+    // log line. Anthropic's SDK exposes the HTTP status as err.status; we
+    // also check err?.response?.status / err?.statusCode as belt-and-braces
+    // because the SDK has occasionally changed the field location between
+    // versions. Marking `retryable: true` lets a future cron retry
+    // distinguish transient infrastructure failures from real model-side
+    // problems (parse errors, content filters) that retrying would just
+    // churn. Today no caller consumes retryable yet — this is the
+    // diagnostic-first half of a two-step fix.
+    const status =
+      err?.status ?? err?.response?.status ?? err?.statusCode ?? null;
+
+    if (status === 429) {
+      // warn rather than error: 429s are intermittent and expected on
+      // bursty workloads. Using error floods Vercel dashboards.
+      console.warn(
+        `[anthropic] 429 rate limit hit (model=${MODEL}) — downstream should retry`,
+      );
+      return {
+        relevance: "uncertain",
+        reasoning: "AI evaluation rate-limited (will retry)",
+        model: MODEL,
+        inputTokens: 0,
+        outputTokens: 0,
+        retryable: true,
+      };
+    }
+
+    // Generic failure path. Include status + response body snippet (first
+    // 200 chars) so we can diagnose non-429 errors without spelunking. The
+    // snippet is bounded; the response body is from Anthropic, never
+    // user-submitted content, so this is PII-safe.
+    const bodySnippet =
+      typeof err?.response?.data === "string"
+        ? err.response.data.slice(0, 200)
+        : typeof err?.message === "string"
+          ? err.message.slice(0, 200)
+          : "";
+    console.error(
+      `[anthropic] API error: status=${status ?? "unknown"} message=${err?.message || err} body=${bodySnippet}`,
+    );
     return fallback("AI evaluation failed");
   }
 }
