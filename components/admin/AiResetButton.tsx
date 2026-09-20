@@ -37,7 +37,7 @@ export default function AiResetButton({ cycleId, totalCount }: AiResetButtonProp
   };
 
   return (
-    <>
+    <div className="flex flex-col items-start gap-1">
       <button
         onClick={() => {
           setMessage(null);
@@ -52,7 +52,7 @@ export default function AiResetButton({ cycleId, totalCount }: AiResetButtonProp
       </button>
 
       {message && (
-        <p className="text-xs text-nfw-blackberry/70 max-w-xs text-right">
+        <p className="text-xs text-nfw-blackberry/70 max-w-prose text-left">
           {message}
         </p>
       )}
@@ -60,7 +60,7 @@ export default function AiResetButton({ cycleId, totalCount }: AiResetButtonProp
       {/* Confirmation Modal */}
       {confirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white max-w-md w-full p-6 shadow-xl">
+          <div className="relative bg-white max-w-md w-full p-6 shadow-xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-red-100 flex items-center justify-center flex-shrink-0">
                 <ShieldAlert className="w-5 h-5 text-red-600" />
@@ -133,6 +133,6 @@ export default function AiResetButton({ cycleId, totalCount }: AiResetButtonProp
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

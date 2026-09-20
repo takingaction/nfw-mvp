@@ -17874,3 +17874,52 @@ Run the preview query in `175_recover_timed_out_grants.sql` to see how many gran
 - `grants` schema — operational tables only (`ai_reevaluate_jobs`, `ai_backfill_jobs`).
 - LastPass extension noise — confirmed ignore per user.
 
+
+## Session 2026-09-20: Grant Cycle Page Header — Responsive Rework
+
+### Problem
+
+`/admin/grants/[id]` crammed 3 scoring links + 2 stat numbers + Download CSV + 4 AI
+buttons + their inline status text into one right-aligned `flex gap-6` row with no
+breakpoints. Buttons wrapped unpredictably on desktop and the page was unusable on mobile.
+"Continue AI Backfill" rendered twice (citrine banner + button cluster). The `❌ Unexpected
+token 'A'` text the user saw was the old synchronous re-eval route's Vercel timeout — fixed
+separately by commit `01b0be7` (cron+job refactor), not by this change.
+
+### New layout (top → bottom)
+
+1. Back link · citrine AI banner (unchanged, conditional)
+2. **Title + stats** — `flex flex-col md:flex-row md:justify-between`. `h1` is
+   `text-3xl sm:text-4xl`; the meta line is `flex flex-wrap` with each fact in its own
+   `<span>` + `·` separators so it wraps by fact, not mid-phrase. Stats are two white
+   bordered cards (Applications / Ready to Pay); side-by-side under the title on mobile,
+   right-aligned on `md+`.
+3. **Scoring workflow strip** — white card, label, `grid grid-cols-1 sm:grid-cols-3 gap-2`
+   with step badges `1 / 2 / 3`; locked steps show a `Lock` icon, `aria-disabled`,
+   `tabIndex=-1`, `pointer-events-none`, and a title tooltip. Download CSV sits at the
+   right on `lg+`, full-width beneath on mobile.
+4. **AI Evaluation strip** — dove card with a `Sparkles` label and "N of M submitted not
+   yet evaluated" hint, containing Re-run / Force Full / Reset. `flex flex-wrap`; status
+   messages render left-aligned under their own button.
+
+### Fixes bundled in
+
+| Fix | Detail |
+|---|---|
+| Reviewer gating | CSV, the AI strip, and the banner's Backfill button are behind `isAdmin`. Their API routes were already `requireAdmin`, so reviewers (`is_reviewer`) previously saw buttons that 403'd. Banner copy drops the "click 'Continue AI Backfill'" tail for reviewers. |
+| Duplicate Backfill | Removed from the button cluster; lives in the banner only. |
+| Phantom color | "View Finalized" used `bg-nfw-green/20 border-nfw-green` — `nfw-green` is **not** in `tailwind.config.ts`, so the button rendered unstyled on finalized cycles. Now `bg-green-100 border-green-600 text-green-800` (status-green convention). |
+| Reset modal X | `AiResetButton` close button was `absolute` inside a panel without `relative`, so it anchored to the viewport. Added `relative`. |
+| Loose flex children | `AiResetButton` / `AiBackfillButton` returned bare fragments, so in a `flex-wrap` parent their `<p>` message became a sibling flex item. Both now wrap in `flex flex-col`. |
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `app/admin/grants/[id]/page.tsx` | Header restructure, `p-4 sm:p-8`, `isAdmin` gating, step badges/locks, green fix, `submittedCount`/`totalCount` helpers |
+| `components/admin/AiReevaluateButton.tsx` | Class-only: `items-end`→`items-start`, `flex-wrap` on button row, messages `text-left max-w-prose` |
+| `components/admin/AiResetButton.tsx` | `flex flex-col` wrapper, left-aligned message, `relative` on modal panel |
+| `components/admin/AiBackfillButton.tsx` | `flex flex-col items-start sm:items-end` wrapper, message `text-left sm:text-right` |
+
+No API, schema, or mobile-app changes. `tsc` 0 errors, `next build` ✓ (218 pages).
+Remaining eslint hits in these files are pre-existing `no-explicit-any`.

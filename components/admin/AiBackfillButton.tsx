@@ -174,7 +174,7 @@ export default function AiBackfillButton({
   const progressLabel = renderProgressLabel();
 
   return (
-    <>
+    <div className="flex flex-col items-start sm:items-end gap-1">
       <button
         onClick={handleBackfill}
         disabled={loading || count === 0}
@@ -206,10 +206,10 @@ export default function AiBackfillButton({
         </p>
       )}
       {!loading && message && (
-        <p className="text-xs text-nfw-blackberry/70 max-w-xs text-right">
+        <p className="text-xs text-nfw-blackberry/70 max-w-prose text-left sm:text-right">
           {message}
         </p>
       )}
-    </>
+    </div>
   );
 }

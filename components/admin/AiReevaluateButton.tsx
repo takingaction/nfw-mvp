@@ -148,8 +148,8 @@ export default function AiReevaluateButton({
   const progressLabel = renderProgressLabel();
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex gap-2">
+    <div className="flex flex-col items-start gap-1">
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={() => handleClick(false)}
           disabled={loading}
@@ -185,7 +185,7 @@ export default function AiReevaluateButton({
         <p className="text-xs text-nfw-blackberry/60 font-ui">{progressLabel}</p>
       )}
       {!loading && message && (
-        <p className="text-xs text-nfw-blackberry/70 max-w-xs text-right">
+        <p className="text-xs text-nfw-blackberry/70 max-w-prose text-left">
           {message}
         </p>
       )}
