@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 const decodeHtml = (html: string): string => {
   if (typeof document === "undefined") return html || "";
@@ -10,6 +11,18 @@ const decodeHtml = (html: string): string => {
   div.innerHTML = html || "";
   return div.textContent || "";
 };
+
+/**
+ * Reads a fetch Response as JSON without throwing on parse failure.
+ * Returns `null` if the body isn't JSON (e.g. Vercel's HTML 413/504 page).
+ */
+async function safeReadJson(res: Response): Promise<{ error?: string } | null> {
+  try {
+    return (await res.json()) as { error?: string };
+  } catch {
+    return null;
+  }
+}
 
 interface GrantCycle {
   id: string;
@@ -209,22 +222,109 @@ export default function GrantApplicationForm({
 
     if (documents.length > 0) {
       setUploadingDocs(true);
+      const supabase = createClient();
+      const cycleName =
+        cycles.find((c) => c.id === formData.cycle_id)?.cycle_name || "unknown";
+
       for (const file of documents) {
-        const fd = new FormData();
-        fd.append("file", file);
-        fd.append("grantId", grantId);
-        const uploadRes = await fetch("/api/grants/upload-document", {
-          method: "POST",
-          body: fd,
-        });
-        const uploadData = await uploadRes.json();
-        if (!uploadRes.ok) {
-          console.error("Upload failed:", uploadData.error);
-          setError(
-            `Failed to upload ${file.name}: ${uploadData.error}`,
-          );
+        let prep: { path: string; token: string };
+        try {
+          const prepRes = await fetch("/api/grants/upload-document/prepare", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              grantId,
+              fileName: file.name,
+              mimeType: file.type,
+              fileSize: file.size,
+            }),
+          });
+          if (!prepRes.ok) {
+            const errBody = await safeReadJson(prepRes);
+            throw new Error(errBody?.error || `HTTP ${prepRes.status}`);
+          }
+          prep = (await prepRes.json()) as { path: string; token: string };
+        } catch (prepErr: any) {
+          const errorCode = "UPLOAD_PREPARE_FAILED";
+          const errMsg = prepErr?.message || "Unknown error";
+          setError(`Failed to start upload for ${file.name}: ${errMsg}`);
           setLoading(false);
           setUploadingDocs(false);
+          fetch("/api/log/client-error", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId,
+              userEmail,
+              cycleId: formData.cycle_id,
+              cycleName,
+              errorMessage: `Upload prepare failed for ${file.name}: ${errMsg}`,
+              errorCode,
+              timestamp: new Date().toISOString(),
+            }),
+          }).catch(console.error);
+          return;
+        }
+
+        const { error: uploadErr } = await supabase.storage
+          .from("grant-documents")
+          .uploadToSignedUrl(prep.path, prep.token, file, { contentType: file.type });
+        if (uploadErr) {
+          const errorCode = "UPLOAD_TRANSFER_FAILED";
+          setError(`Failed to upload ${file.name}: ${uploadErr.message}`);
+          setLoading(false);
+          setUploadingDocs(false);
+          fetch("/api/log/client-error", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId,
+              userEmail,
+              cycleId: formData.cycle_id,
+              cycleName,
+              errorMessage: `Upload transfer failed for ${file.name}: ${uploadErr.message}`,
+              errorCode,
+              timestamp: new Date().toISOString(),
+            }),
+          }).catch(console.error);
+          return;
+        }
+
+        try {
+          const finRes = await fetch("/api/grants/upload-document/finalize", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              grantId,
+              path: prep.path,
+              fileName: file.name,
+              mimeType: file.type,
+              fileSize: file.size,
+            }),
+          });
+          if (!finRes.ok) {
+            const errBody = await safeReadJson(finRes);
+            throw new Error(errBody?.error || `HTTP ${finRes.status}`);
+          }
+        } catch (finErr: any) {
+          const errorCode = "UPLOAD_FINALIZE_FAILED";
+          const errMsg = finErr?.message || "Unknown error";
+          setError(`Failed to save ${file.name}: ${errMsg}`);
+          setLoading(false);
+          setUploadingDocs(false);
+          fetch("/api/log/client-error", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId,
+              userEmail,
+              cycleId: formData.cycle_id,
+              cycleName,
+              errorMessage: `Upload finalize failed for ${file.name}: ${errMsg}`,
+              errorCode,
+              timestamp: new Date().toISOString(),
+            }),
+          }).catch(console.error);
           return;
         }
       }

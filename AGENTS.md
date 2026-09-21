@@ -18212,3 +18212,78 @@ Performance: adds ~40s to the 10-min cron (~810 customer lookups × 50ms). `maxD
 - `npm run build` ✓ — 0 TypeScript errors, all routes registered unchanged
 - **No migration required** — the `missing_from_db` column already exists in `reconciliation_jobs` from migration 153
 - After deploy: within ~10 minutes the cron will populate the cache and the "In Stripe, No Profile" + "Missing from DB" + "Stripe Only" cards will render with data
+
+---
+
+## Session 2026-09-21: Grant Document Upload — Restore the 10 MB Promise
+
+### Symptom
+
+Slack logger:
+```
+Grant Application Error
+• User: mzamoraortega@gmail.com (750b6d5b-a6c8-4742-97c7-d166ba9b2d18)
+• Cycle: Ladies Night Out (3a3ffe11-371a-4237-8507-7940f415c886)
+• Error: Unexpected token 'R', "Request En"... is not valid JSON
+• Time: 2026-09-20T21:13:06.719Z
+• Stack: SyntaxError: Unexpected token 'R', "Request En"... is not valid JSON
+```
+
+The "R" is "Request Entity Too Large" / "Request En..." — Vercel's HTML body from a rejected multipart upload.
+
+### Root cause
+
+`app/api/grants/upload-document/route.ts` accepted the **entire file** via `request.formData()`. Vercel Serverless Functions have a **4.5 MB hard request body limit**. The route advertised a 10 MB cap; the form told users 10 MB; the actual ceiling was 4.5 MB. A 5–10 MB PDF or large iPhone photo hit Vercel's wall, returned an HTML 413/504 page, the browser's `fetch(...).json()` threw `SyntaxError`, and the user saw a raw error instead of "file too large."
+
+### Same class of bug, different endpoint
+
+The same class of failure was fixed for `/api/grants/create` on 2026-09-21 (commit `61aef80`): inline Anthropic call exhausted `maxDuration`, Vercel killed the worker, `response.json()` threw. That fix only hardened `response.json()` parsing on the *create* path; the *upload* path stayed raw.
+
+The signed-URL pattern already existed for `/api/admin/grants/documents/{prepare,finalize}` (commit `eb46a7e` family). It was never applied to the member upload route.
+
+### Fix — signed-URL retrofit for member uploads
+
+Mirrored the admin flow 1:1 for the member path. Browser uploads **directly to Supabase Storage** via a signed URL token — Vercel is out of the data plane for the file bytes, so the 4.5 MB limit only applies to the tiny `{ grantId, fileName, fileSize, mimeType }` JSON on `prepare`.
+
+**New files (2):**
+
+| File | Purpose |
+|---|---|
+| `app/api/grants/upload-document/prepare/route.ts` | Member-auth (cookie server client). Validates `grantId` belongs to the calling user via `admin.from("grants").select("id, user_id")`. Calls `validateUploadMeta(body, GRANT_DOCS_ALLOWED_TYPES, GRANT_DOCS_MAX_BYTES)` (shared from `lib/admin-documents.ts`). Calls `admin.storage.from("grant-documents").createSignedUploadUrl(path)`. Returns `{ path, token }`. `maxDuration = 10`. |
+| `app/api/grants/upload-document/finalize/route.ts` | Member-auth. Path must start with `${grantId}/` (anti-cross-tenant). Verifies the object exists via `storageObjectExists()` (shared). Inserts `grant_documents` row with `document_type: "supporting_doc"`, `uploaded_by: NULL` (NULL = member upload per the established convention from migration 170). `maxDuration = 10`. On insert error, best-effort `storage.remove([path])` so we don't leak a stored object with no DB row. |
+
+**Files modified (1):**
+
+| File | Change |
+|---|---|
+| `components/GrantApplicationForm.tsx` | Replaced the multipart `fetch("/api/grants/upload-document", { body: fd })` loop (old lines 210-231) with: `fetch /prepare` → `supabase.storage.uploadToSignedUrl(path, token, file, { contentType })` → `fetch /finalize`. Added a `safeReadJson(res)` helper that returns `null` on parse failure instead of throwing. Each of the three stages has its own try/catch with a distinct `errorCode` (`UPLOAD_PREPARE_FAILED`, `UPLOAD_TRANSFER_FAILED`, `UPLOAD_FINALIZE_FAILED`) so Slack alerts self-classify future failures. Per-file failure aborts the loop with a clear user message + Slack alert; the grant row is already saved at that point so partial completion is recoverable on retry. |
+
+**Files NOT changed (intentional):**
+
+- `app/api/grants/upload-document/route.ts` — legacy direct-multipart route stays. It's no longer called by the form, but remains functional as a documented fallback. Removing it is a separate ticket.
+- `lib/admin-documents.ts` — already exports `GRANT_DOCS_BUCKET`, `GRANT_DOCS_MAX_BYTES`, `GRANT_DOCS_ALLOWED_TYPES`, `validateUploadMeta`, `sanitizeFileName`, `storageObjectExists`. Comment at line 25: "Mirrors `app/api/grants/upload-document/route.ts` (member upload)" — confirmed both paths can share these constants without duplication.
+- `lib/admin-upload.ts` — `uploadWithSignedUrl()` is generic enough to handle member uploads too, but the form's stage-distinct error handling (per-stage `errorCode`) wanted inlined control flow rather than a single helper.
+
+### What it buys
+
+- **Real 10 MB cap end-to-end.** Vercel is out of the data plane; the only ceiling is the bucket's `file_size_limit` in Supabase (which the admin path already implies is ≥ 10 MB — admin grants documents have succeeded at that size since `eb46a7e`).
+- **Backwards-compatible.** Path layout `${grantId}/${Date.now()}-${sanitizedName}` is unchanged. Every existing viewer (`/api/grants/document-url`, scoring pages, `/grants/view/[id]`) keeps working on the new uploads.
+- **Three distinct failure modes.** Future Slack alerts tell you whether `prepare` (validation/auth), `upload` (network/Supabase), or `finalize` (DB insert/storage race) broke, instead of one opaque `JSON.parse failed`.
+- **Honest 4.5 MB → 10 MB.** The user-facing copy at `GrantApplicationForm.tsx:261` ("Maximum file size is 10MB.") becomes true instead of aspirational.
+
+### Build / Deploy
+
+- `npm run build` ✓ — 0 TypeScript errors. Both new routes registered: `/api/grants/upload-document/prepare`, `/api/grants/upload-document/finalize`. Legacy `/api/grants/upload-document` still listed.
+- `npx eslint --max-warnings 0` on the two new server routes: clean. The 8 errors reported on `GrantApplicationForm.tsx` are all pre-existing (lines 128/247/309: `any` types; lines 397/509/539: unescaped apostrophes in user-facing strings). My edits added none.
+- **No migration required** — `grant-documents` bucket already exists (created out-of-band in the Supabase dashboard per prior notes). `grant_documents` table unchanged. `lib/admin-documents.ts` constants unchanged.
+- **No new env vars.**
+- After deploy: 1 MB PDF → 2 trips through the prepare/finalize endpoints + a single direct browser-to-Supabase transfer. 9.5 MB PDF → works (previously 504'd silently). 12 MB PDF → friendly modal: "Maximum file size is 10MB." with no `JSON.parse` trap.
+
+### Out of Scope (Parked)
+
+- Removing the legacy `/api/grants/upload-document` direct-multipart route. Leave as documented fallback; deprecation ticket can come later.
+- Mobile app — `mobile/lib/api/grants.ts` already uses signed-URL-style upload per AGENTS.md Slice C. Web fix doesn't affect mobile.
+- Bucket limit bump in Supabase dashboard (only needed if dashboard `file_size_limit < 10 MB`; admin path's success at 10 MB implies it's already ≥ 10 MB).
+
+---
+
