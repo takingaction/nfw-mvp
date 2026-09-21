@@ -347,13 +347,13 @@ export async function GET(request: Request): Promise<NextResponse> {
       .eq("status", "processing")
       .lt("started_at", staleThreshold);
 
-    // Pick the oldest pending job. If none exists, auto-create one so the
-    // Missing-from-DB cache stays warm on a fresh install (matches the
-    // pattern in process-stripe-duplicates-jobs).
+    // Pick the oldest pending OR processing job (chunked resume — matches the
+    // pattern in process-stripe-only-jobs). If none exists, auto-create one so
+    // the Missing-from-DB cache stays warm on a fresh install.
     let { data: job } = await supabaseAdmin
       .from("missing_payments_jobs")
-      .select("id")
-      .eq("status", "pending")
+      .select("id, status")
+      .in("status", ["pending", "processing"])
       .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
@@ -362,7 +362,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       const { data: created } = await supabaseAdmin
         .from("missing_payments_jobs")
         .insert({ status: "pending", triggered_by: "cron" })
-        .select("id")
+        .select("id, status")
         .single();
       job = created;
       console.log("[process-missing-payments] No pending jobs — auto-created one");

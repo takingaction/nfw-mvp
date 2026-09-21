@@ -55,8 +55,19 @@ export async function POST(request: Request) {
       .single();
 
     if (error || !job) {
+      // Map Postgres error codes to actionable messages so admins (and Slack
+      // alerts) don't have to spelunk Vercel logs for every INSERT failure.
       console.error("[missing-payments] Failed to create job:", error);
-      return NextResponse.json({ error: "Failed to create job" }, { status: 500 });
+      const code = (error as { code?: string } | null)?.code;
+      let message = "Failed to create job";
+      if (code === "42P01") {
+        message = "Database table missing — run migration 174";
+      } else if (code === "23505") {
+        message = "A pending job already exists (race with cron auto-create) — refresh and retry";
+      } else if (code === "42501") {
+        message = "Service role key lacks insert permission — check SUPABASE_SERVICE_ROLE_KEY";
+      }
+      return NextResponse.json({ error: message, code: code || "UNKNOWN" }, { status: 500 });
     }
 
     return NextResponse.json({

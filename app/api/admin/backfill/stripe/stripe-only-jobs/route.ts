@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   const admin = await requireAdmin();
-  if (!admin) {
+  if (!admin.authorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       .in("status", ["pending", "processing"])
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (existingJob) {
       return NextResponse.json({
@@ -41,6 +41,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error || !job) {
+      console.error("[trigger-stripe-only] INSERT failed:", error);
       return NextResponse.json({ error: "Failed to create job" }, { status: 500 });
     }
 
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   const admin = await requireAdmin();
-  if (!admin) {
+  if (!admin.authorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -72,7 +73,7 @@ export async function GET(request: Request) {
         .from("stripe_only_jobs")
         .select("*")
         .eq("id", jobId)
-        .single();
+        .maybeSingle();
 
       if (!job) {
         return NextResponse.json({ error: "Job not found" }, { status: 404 });
@@ -94,7 +95,7 @@ export async function GET(request: Request) {
       .select("*")
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (!latestJob) {
       return NextResponse.json({ status: "no_jobs", message: "No jobs found" });

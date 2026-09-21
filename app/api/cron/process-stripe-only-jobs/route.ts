@@ -12,9 +12,13 @@ const supabaseAdmin = createAdminClient(
 );
 
 export const dynamic = "force-dynamic";
+// Vercel Pro default for serverless functions is 60 s, which is too tight for
+// the 8-status subscription enumeration + Stripe API latency on a full cycle.
+// 300 s matches the missing-payments worker.
+export const maxDuration = 300;
 
 const DELAY_MS = 50;
-const CUSTOMERS_PER_RUN = 50; // Process 50 customers per cron run (~60 seconds)
+const CUSTOMERS_PER_RUN = 50; // Chunked: each cron tick processes this many customers and persists cursor.
 
 async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));

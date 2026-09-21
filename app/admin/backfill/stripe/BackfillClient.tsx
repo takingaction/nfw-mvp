@@ -458,12 +458,15 @@ export default function BackfillClient() {
 
   // Poll for stripe-only job completion
   const pollStripeOnlyJob = useCallback(async (jobId: string) => {
-    const maxPolls = 120;
+    // The Stripe Only job is processed by a cron running every 5 min, and the
+    // worker can take several cron ticks (300 s budget each) to finish a full
+    // cycle. 12 min gives ~2 cron ticks + headroom.
+    const maxPolls = 360; // 12 min at 2 s/poll
     let polls = 0;
 
     const poll = async () => {
       if (polls >= maxPolls) {
-        setMessage("Stripe Only polling timed out. Check back in a few minutes.");
+        setMessage("Stripe Only polling timed out. Check back in 10-15 minutes — the cron may still be processing.");
         setStripeOnlyLoading(false);
         setIsOperationRunning(false);
         return;

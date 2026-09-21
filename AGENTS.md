@@ -18287,3 +18287,84 @@ Mirrored the admin flow 1:1 for the member path. Browser uploads **directly to S
 
 ---
 
+---
+
+## Session 2026-09-21: Stripe Only still 0 + Missing Payments Failed
+
+### Symptoms
+
+After deploying the previous session's fixes, two new failures on `/admin/backfill/stripe`:
+
+1. **Stripe Only** still shows `0` even after clicking "Generate Stripe Data" and waiting.
+2. **Missing Payments Failed / Failed to create job** — the Refresh button on the "Missing from DB" card returns an error.
+
+### Failure 1 Root Cause
+
+`app/api/cron/process-stripe-only-jobs/route.ts:14` declared `export const dynamic = "force-dynamic"` but **had no `maxDuration` export**. Vercel Pro defaults to 60 s for serverless functions. The worker's Phase 2 (8 subscription statuses × ~30 pages × 50 ms sleeps = ~12 s of pure sleeps + Stripe API latency) routinely exceeds 60 s.
+
+When Vercel killed the worker mid-loop, the job sat in `processing`. The cron only marked it `failed` after 30 minutes (line 361). Meanwhile, the client polling timed out at 4 minutes (`maxPolls = 120 × 2 s`) and `setStripeOnly` never fired (it only fires on `status === "completed"`). Card header stuck at `Stripe Only (0)`.
+
+### Failure 2 Root Cause
+
+`app/api/admin/backfill/stripe/missing-payments/route.ts:51-60` — the INSERT failed and returned `{ error: "Failed to create job" }` with a generic message. The auth check was already correct (`requireAdmin().authorized`) and the client was correct (`supabaseAdmin`). Without Vercel logs we couldn't pinpoint the cause; the fix was to make future failures self-diagnosing via Postgres error-code mapping.
+
+### Fix #1 — Give the Stripe Only cron enough time
+
+`app/api/cron/process-stripe-only-jobs/route.ts`:
+
+Added `export const maxDuration = 300;` next to the existing `dynamic = "force-dynamic"`. Matches the missing-payments worker. The `CUSTOMERS_PER_RUN = 50` chunked behavior is preserved — the cron now has 5× the runtime budget per tick, so a full cycle finishes in 3-4 ticks instead of timing out every tick.
+
+### Fix #2 — Increase the client polling timeout
+
+`app/admin/backfill/stripe/BackfillClient.tsx:460-470`:
+
+Changed `const maxPolls = 120;` (4 minutes) to `const maxPolls = 360;` (12 minutes). The Stripe Only job is processed by a cron running every 5 minutes and can take several 300 s ticks to complete. 12 min gives ~2 cron ticks + headroom. Updated the timeout message from "Check back in a few minutes" to "Check back in 10-15 minutes — the cron may still be processing."
+
+### Fix #3 — Fix the latent `if (!admin)` truthy bug
+
+`app/api/admin/backfill/stripe/stripe-only-jobs/route.ts`:
+
+Both POST (line 14) and GET (line 61) used the throw-style `if (!admin)` pattern from the 2026-09-11 audit — `requireAdmin()` returns `{ authorized: false }`, and `!object` is always `false`, so the auth check **never fired**. Changed both to `if (!admin.authorized)` to match the established pattern in `missing-payments/route.ts:29`.
+
+Also changed three `.single()` calls to `.maybeSingle()` (PGRST116 trap on empty results — same fix pattern used in `refresh-reconciliation/route.ts`).
+
+### Fix #4 — Postgres error-code mapping for INSERT failures
+
+`app/api/admin/backfill/stripe/missing-payments/route.ts:57-71`:
+
+Mapped the three Postgres error codes that could plausibly cause a "Failed to create job" INSERT failure:
+
+| Code | Meaning | User message |
+|------|---------|--------------|
+| 42P01 | undefined_table | "Database table missing — run migration 174" |
+| 23505 | unique_violation | "A pending job already exists (race with cron auto-create) — refresh and retry" |
+| 42501 | insufficient_privilege | "Service role key lacks insert permission — check SUPABASE_SERVICE_ROLE_KEY" |
+| other | — | "Failed to create job" (with `code` field for future debugging) |
+
+### Fix #5 — Cron picks up `processing` jobs for chunked resume
+
+`app/api/cron/process-missing-payments-jobs/route.ts:355-369`:
+
+Changed `.eq("status", "pending")` to `.in("status", ["pending", "processing"])` so the cron can resume a chunked job across ticks rather than only processing `pending` jobs. Matches the pattern already established by `process-stripe-only-jobs`.
+
+Also fixed the auto-create path's `.select("id")` → `.select("id, status")` so the returned object matches the now-narrower inferred type.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/cron/process-stripe-only-jobs/route.ts` | +6 lines: `maxDuration = 300` + updated comment |
+| `app/admin/backfill/stripe/BackfillClient.tsx` | +3 lines: `maxPolls = 360`, updated timeout copy |
+| `app/api/admin/backfill/stripe/stripe-only-jobs/route.ts` | -4 / +4 lines: `if (!admin)` → `if (!admin.authorized)` (2 places), 3× `.single()` → `.maybeSingle()`, added `console.error` on INSERT failure |
+| `app/api/admin/backfill/stripe/missing-payments/route.ts` | +14 lines: Postgres error-code mapping |
+| `app/api/cron/process-missing-payments-jobs/route.ts` | +2 lines: `pending` → `pending,processing`, `select("id")` → `select("id, status")` |
+
+### Build / Deploy
+
+- `npm run build` ✓ — 0 TypeScript errors
+- **No migration required.**
+- After deploy: click "Generate Stripe Data" once → cron will run within 5 min, take <60 s with the new 300 s cap, complete, and the card populates. Expected first-render within ~10 min of click.
+
+### Out of Scope (Flagged)
+
+- The stripe-duplicates cron has the same "no auto-create" gap (process-stripe-duplicates-jobs) — same fix pattern, can be done separately if needed.
