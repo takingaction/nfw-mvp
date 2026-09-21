@@ -28,6 +28,7 @@ export interface StripeLiveData {
 }
 
 const STRIPE_PAGE_DELAY_MS = 50;
+const CUSTOMER_LOOKUP_DELAY_MS = 50;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 let stripeClient: Stripe | null = null;
@@ -59,8 +60,13 @@ export async function refreshStripeLiveCache(): Promise<StripeLiveData> {
   const stripe = getStripe();
   const supabaseAdmin = getSupabaseAdmin();
 
-  // Fetch all active subscriptions directly from Stripe
+  // Fetch all active subscriptions directly from Stripe. While we iterate, also
+  // collect a per-email tier map so we can compute "In Stripe, No Profile" once
+  // the page-loop finishes. Stripe doesn't put email on the subscription object,
+  // so any sub without `billing_details.email` requires a customer lookup
+  // (~70% of subs trigger this — adds ~40s for 2,700 active subs).
   const subscriptions: Stripe.Subscription[] = [];
+  const stripeEmailMap = new Map<string, "contributing" | "founding">(); // first occurrence wins
   let hasMore = true;
   let startingAfter: string | undefined;
 
@@ -70,6 +76,40 @@ export async function refreshStripeLiveCache(): Promise<StripeLiveData> {
 
     const response = await stripe.subscriptions.list(params);
     subscriptions.push(...response.data);
+
+    for (const sub of response.data) {
+      const item = sub.items?.data?.[0];
+      const priceAmount = item?.price?.unit_amount || 0;
+      const isFounding =
+        priceAmount === 10000 ||
+        item?.price?.id === process.env.STRIPE_PRICE_FOUNDING ||
+        (priceAmount === 100 && item?.price?.recurring?.interval === "year");
+      const tier: "contributing" | "founding" = isFounding ? "founding" : "contributing";
+
+      // Resolve email from the subscription first, then the customer.
+      const subAny = sub as any;
+      let email: string = subAny.billing_details?.email || "";
+      if (!email) {
+        const customerId = typeof sub.customer === "string" ? sub.customer : null;
+        if (customerId) {
+          try {
+            const customer = await stripe.customers.retrieve(customerId);
+            if (!customer.deleted && customer.email) {
+              email = customer.email;
+            }
+          } catch {
+            // Customer lookup failed; leave email empty.
+          }
+          await sleep(CUSTOMER_LOOKUP_DELAY_MS);
+        }
+      }
+      if (email) {
+        const lower = email.toLowerCase();
+        if (!stripeEmailMap.has(lower)) {
+          stripeEmailMap.set(lower, tier);
+        }
+      }
+    }
 
     hasMore = response.has_more;
     if (hasMore && response.data.length > 0) {
@@ -103,6 +143,39 @@ export async function refreshStripeLiveCache(): Promise<StripeLiveData> {
     }
   }
 
+  // "In Stripe, No Profile" — fetch all contributing/founding profile emails
+  // (paginated past 1000), then diff against the Stripe email set.
+  const profileEmails = new Set<string>();
+  let profilePage = 0;
+  const profilePageSize = 1000;
+  let profileHasMore = true;
+  while (profileHasMore) {
+    const from = profilePage * profilePageSize;
+    const { data: profileBatch, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("email")
+      .in("membership_level", ["contributing", "founding"])
+      .not("email", "is", null)
+      .range(from, from + profilePageSize - 1);
+    if (profileError) {
+      throw new Error(`Failed to load profile emails: ${profileError.message}`);
+    }
+    for (const p of profileBatch || []) {
+      if (p.email) profileEmails.add(p.email.toLowerCase());
+    }
+    if (!profileBatch || profileBatch.length < profilePageSize) {
+      profileHasMore = false;
+    } else {
+      profilePage++;
+    }
+  }
+
+  const missingFromDb: string[] = [];
+  for (const email of stripeEmailMap.keys()) {
+    if (!profileEmails.has(email)) missingFromDb.push(email);
+  }
+  missingFromDb.sort();
+
   const stripeLiveData: StripeLiveData = {
     contributing: { count: contributingCount, true_total: contributingTotal, total: contributingTotal },
     founding: { count: foundingCount, true_total: foundingTotal, total: foundingTotal },
@@ -125,7 +198,7 @@ export async function refreshStripeLiveCache(): Promise<StripeLiveData> {
     .eq("status", "completed")
     .order("created_at", { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (existingCache) {
     const { error } = await supabaseAdmin
@@ -135,6 +208,7 @@ export async function refreshStripeLiveCache(): Promise<StripeLiveData> {
         progress: "Completed",
         completed_at: now,
         stripe_live_json: stripeLiveData,
+        missing_from_db: missingFromDb,
         expires_at: expiresAt,
       })
       .eq("id", existingCache.id);
@@ -146,6 +220,7 @@ export async function refreshStripeLiveCache(): Promise<StripeLiveData> {
       progress: "Completed",
       completed_at: now,
       stripe_live_json: stripeLiveData,
+      missing_from_db: missingFromDb,
       expires_at: expiresAt,
     });
     if (error) throw new Error(`Failed to insert stripe_live cache: ${error.message}`);

@@ -379,22 +379,34 @@ export async function GET(request: Request): Promise<NextResponse> {
       }
     }
 
-    // Find pending or processing job
-    const { data: job } = await supabaseAdmin
+    // Find pending or processing job. If neither exists, auto-create a pending
+    // job so the Stripe Only cache populates within ~10 min of deploy on a
+    // fresh install (matches process-missing-payments-jobs).
+    let { data: job } = await supabaseAdmin
       .from("stripe_only_jobs")
       .select("id, status")
       .in("status", ["pending", "processing"])
       .order("created_at", { ascending: true })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (!job) {
-      console.log("[process-stripe-only] No pending jobs found");
-      return NextResponse.json({ success: true, message: "No pending jobs" });
+      const { data: created } = await supabaseAdmin
+        .from("stripe_only_jobs")
+        .insert({ status: "pending" })
+        .select("id, status")
+        .single();
+      job = created;
+      console.log("[process-stripe-only] No pending jobs — auto-created one");
+    }
+
+    if (!job) {
+      console.log("[process-stripe-only] Auto-create insert returned no row");
+      return NextResponse.json({ success: true, message: "Auto-create yielded nothing" });
     }
 
     console.log(`[process-stripe-only] Processing job ${job.id}`);
-    
+
     // Ensure job is in processing state
     if (job.status === "pending") {
       await supabaseAdmin

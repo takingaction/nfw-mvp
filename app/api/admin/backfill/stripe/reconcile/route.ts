@@ -250,11 +250,28 @@ async function handleFreshStripeFetch(supabase: any, supabaseAdmin: any) {
 
     console.log("[reconcile] Fresh fetch complete:", stripeLiveData);
 
+    // After refreshStripeLiveCache() succeeded, the cache row now carries the
+    // freshly-populated missing_from_db column. Re-read the latest completed
+    // stripe_live row so the response matches what /admin/backfill/stripe reads
+    // from the same cache.
+    let missingFromDb: string[] = [];
+    const { data: refreshedCache } = await supabaseAdmin
+      .from("reconciliation_jobs")
+      .select("missing_from_db")
+      .eq("job_type", "stripe_live")
+      .eq("status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (refreshedCache?.missing_from_db) {
+      missingFromDb = [...new Set(refreshedCache.missing_from_db as string[])];
+    }
+
     return NextResponse.json({
       summary: { stripe_live: stripeLiveData, our_db: ourDb, difference },
       verified,
       problematic_payments: problematicPayments,
-      missing_from_db: [],
+      missing_from_db: missingFromDb,
       cached: false,
       fresh: true,
     });

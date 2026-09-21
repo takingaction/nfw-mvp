@@ -18141,3 +18141,74 @@ Both GET branches (with and without `?jobId=`) now return `unevaluatedCount` + `
 - eslint: pre-existing patterns on the route files unchanged; new file (`AiEvaluationPanel.tsx`) clean.
 - Local: `/admin/grants/[id]` shows no banner; AI strip shows one number that updates every 10 s while any job (or the global cron) is in flight; fractions gone; both buttons show plain "Queued…" / "Evaluating…".
 - Vercel logs post-deploy: `process-ai-backfill-jobs` advances `processed_count` past 25 each tick; the stuck 25/551 row drains naturally; once the global cron + backfill finish, `ai_relevance IS NULL` is gone and the strip reads `0 of 637`.
+---
+
+## Session 2026-09-21: Backfill Stripe Cards Never Populated
+
+### Symptoms
+
+On `/admin/backfill/stripe`, three cards never showed data:
+
+1. **In Stripe, No Profile** (`reconciliation.missing_from_db`)
+2. **Missing from DB** (`missingPayments`)
+3. **Stripe Only (0)** (`stripeOnly`)
+
+### Root Causes (three independent bugs)
+
+**Bug #1 — Critical:** `refreshStripeLiveCache()` in `lib/stripe-reconciliation.ts` never wrote the `reconciliation_jobs.missing_from_db` column. The card reads the column on every code path that populates the cache, but no code path ever populated it. The schema defined the column in migration 153 but it was permanently `NULL`.
+
+**Bug #1b — Related:** `handleFreshStripeFetch()` in `app/api/admin/backfill/stripe/reconcile/route.ts:257` hardcoded `missing_from_db: []` in its response, so even after Fix #1, clicking the aubergine "Refresh" button would still produce an empty "In Stripe, No Profile" card.
+
+**Bug #2 — UX gap:** The "Missing from DB" card and its empty-state were both `&&`-guarded by `missingPayments !== null`, so on a fresh install (no `missing_payments_jobs` row yet) the entire card silently disappeared. Same pattern for "Stripe Only (0)": empty-state copy said "No Stripe Only charges found" when it really meant "we haven't looked yet."
+
+**Bug #3 — Missing auto-create:** Neither `process-missing-payments-jobs` nor `process-stripe-only-jobs` auto-created a `pending` job on first run; the cron only picked the oldest `pending` row. Pattern that DOES work (per `process-stripe-duplicates-jobs`): if no pending row, INSERT one with `triggered_by="cron"`.
+
+### Fix #1 — Populate `missing_from_db`
+
+`lib/stripe-reconciliation.ts`:
+- During the existing subscription iteration, also build `stripeEmailMap: Map<string, "contributing"|"founding">` (first occurrence wins) by resolving email from `sub.billing_details.email` first, falling back to `stripe.customers.retrieve(sub.customer)` with a 50ms `sleep()` between calls
+- After the loop, paginated fetch of `profiles.email WHERE membership_level IN ("contributing", "founding") AND email IS NOT NULL` (1000-row pages to bypass Supabase's default cap)
+- Compute `missingFromDb = [...stripeEmailMap.keys()].filter(e => !profileEmails.has(e)).sort()`
+- Persist `missing_from_db` in both UPDATE and INSERT branches of the cache write
+- Changed `.single()` to `.maybeSingle()` on the existence check (would otherwise 0-out and error `PGRST116` on fresh DBs)
+
+Performance: adds ~40s to the 10-min cron (~810 customer lookups × 50ms). `maxDuration = 120` already buffers.
+
+### Fix #1b — Fresh fetch re-reads from cache
+
+`app/api/admin/backfill/stripe/reconcile/route.ts:handleFreshStripeFetch()`:
+- After `refreshStripeLiveCache()` writes the cache, re-read the latest completed `stripe_live` row and extract `missing_from_db`
+- Returns that array instead of the hardcoded `[]`
+- Dedupes on the way out via `[...new Set(arr)]`
+
+### Fix #2 — Empty-state placeholder cards
+
+`app/admin/backfill/stripe/BackfillClient.tsx`:
+- New orange-bordered "Missing from DB (—)" card renders when `missingPayments === null && !missingPaymentsLoading`; includes an inline Refresh button and helper text "Click Refresh above to compute, or wait for the 10-minute cron."
+- Improved the existing "No Stripe Only charges found" empty-state copy to distinguish "we haven't looked yet" (`stripeOnlyGeneratedAt` falsy) vs "no unmatched charges were found" (post-generation empty result).
+
+### Fix #3 — Crons auto-create `pending` rows
+
+`app/api/cron/process-missing-payments-jobs/route.ts`:
+- After the lookup, if `job` is null, INSERT `{ status: "pending", triggered_by: "cron" }` and pick up the new id
+- The existing second `if (!job)` guard handles the unlikely null-after-insert case
+
+`app/api/cron/process-stripe-only-jobs/route.ts`:
+- Same shape. `stripe_only_jobs` table does NOT have a `triggered_by` column (unlike `missing_payments_jobs`), so the INSERT is bare `{ status: "pending" }`.
+- Added a follow-up `if (!job)` guard + early-return after the new auto-create INSERT (TypeScript build required).
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `lib/stripe-reconciliation.ts` | +79 lines: stripeEmailMap build, customer-retrieve loop with rate-limited sleep, paginated profile email fetch, missing_from_db computation, write to cache row, `.single()` -> `.maybeSingle()` |
+| `app/api/admin/backfill/stripe/reconcile/route.ts` | +19 lines: handleFreshStripeFetch re-reads missing_from_db from updated cache row instead of hardcoded `[]` |
+| `app/admin/backfill/stripe/BackfillClient.tsx` | +36 lines: "Missing from DB" empty-state placeholder card (renders when `missingPayments === null`); "Stripe Only" empty-state copy improved |
+| `app/api/cron/process-missing-payments-jobs/route.ts` | +16 lines: auto-INSERT pending row if none exists |
+| `app/api/cron/process-stripe-only-jobs/route.ts` | +24 lines: auto-INSERT pending row if none exists + null-guard TypeScript fix |
+
+### Build / Deploy
+
+- `npm run build` ✓ — 0 TypeScript errors, all routes registered unchanged
+- **No migration required** — the `missing_from_db` column already exists in `reconciliation_jobs` from migration 153
+- After deploy: within ~10 minutes the cron will populate the cache and the "In Stripe, No Profile" + "Missing from DB" + "Stripe Only" cards will render with data

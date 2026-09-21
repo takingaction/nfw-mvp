@@ -2224,12 +2224,44 @@ export default function BackfillClient() {
           </div>
         ) : (
           <div className="p-8 text-center text-nfw-blackberry/50 font-ui text-sm">
-            {stripeOnlyLoading ? "Loading..." : "No Stripe Only charges found"}
+            {stripeOnlyLoading
+              ? "Loading..."
+              : stripeOnlyGeneratedAt
+                ? "No Stripe-only charges found"
+                : "No data yet. Click \"Generate Stripe Data\" to scan Stripe for unmatched charges."}
           </div>
         )}
       </div>
 
-      {/* Missing from DB (Stripe subscriptions not in membership_payments) */}
+      {/* Missing from DB (Stripe subscriptions not in membership_payments) - empty state placeholder when no job has ever run */}
+      {missingPayments === null && !missingPaymentsLoading && (
+        <div className="bg-white rounded-lg border border-orange-200 overflow-hidden">
+          <div className="flex justify-between items-center p-4 border-b border-nfw-dove bg-orange-50">
+            <div>
+              <h3 className="font-ui font-bold text-orange-700">
+                Missing from DB (—)
+              </h3>
+              <p className="text-xs text-orange-600 mt-1">
+                Active Stripe subscriptions NOT in our membership_payments table
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={fetchMissingPayments}
+                disabled={missingPaymentsLoading}
+                className="text-sm bg-nfw-wisteria text-white px-3 py-1 rounded hover:bg-nfw-wisteria/90 disabled:opacity-50"
+              >
+                {missingPaymentsLoading ? "Working..." : "Refresh"}
+              </button>
+            </div>
+          </div>
+          <div className="p-8 text-center text-nfw-blackberry/60 font-ui text-sm">
+            No data yet. Click <span className="font-bold">Refresh</span> above to compute, or wait for the 10-minute cron.
+          </div>
+        </div>
+      )}
+
+      {/* Missing from DB (Stripe subscriptions not in membership_payments) - populated state */}
       {missingPayments && (missingPayments.summary?.total_count ?? 0) > 0 && (
         <div className="bg-white rounded-lg border border-orange-200 overflow-hidden">
           <div className="flex justify-between items-center p-4 border-b border-nfw-dove bg-orange-50">
