@@ -10,8 +10,13 @@ const supabaseAdmin = createClient(
 // 120s — was 15s but the inline AI eval (Promise.race with 6s timeout) was
 // cutting things too tight when the submit handler also does cycle lookup,
 // profile update, grant insert and document upload serially. 2026-09-20
-// bump. The inline timeout itself is 16s now (lib/anthropic.ts aborts at
-// 18s) so 120s leaves generous headroom for everything else.
+// bump.
+//
+// 2026-09-21: the inline AI eval was removed entirely (replaced by a queue
+// row + cron). This makes the worker exit as soon as the response streams,
+// so Vercel can no longer kill the response mid-flight. The 120s ceiling
+// now applies only to the cycle lookup, profile fetch, grant insert,
+// fire-and-forget email, and queue insert (sub-second in practice).
 export const maxDuration = 120;
 
 function isValidUUID(str: string): boolean {
@@ -30,16 +35,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    // Hardened: a malformed JSON body used to fall through to the outer
+    // catch which returned a generic 500 (HTML body). Form submitted that
+    // to Slack as "The string did not match the expected pattern." 2026-09-21.
+    let body: Record<string, unknown>;
+    try {
+      body = (await request.json()) as Record<string, unknown>;
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: 400 },
+      );
+    }
     const {
       cycle_id,
       who_are_you,
       biggest_challenge,
       fund_usage,
       certification_consent,
-    } = body;
+    } = body as {
+      cycle_id?: unknown;
+      who_are_you?: unknown;
+      biggest_challenge?: unknown;
+      fund_usage?: unknown;
+      certification_consent?: unknown;
+    };
 
-    if (!cycle_id || !isValidUUID(cycle_id)) {
+    if (typeof cycle_id !== "string" || !isValidUUID(cycle_id)) {
       return NextResponse.json(
         { error: "Invalid cycle ID" },
         { status: 400 },
@@ -148,20 +170,45 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
+      // Surface every field PostgREST gives us so future incidents
+      // can be diagnosed from Vercel logs without spelunking.
+      // (Previously we logged `message` only — that hid the
+      // `code` and meant every Slack alert read as raw Postgres text.)
       console.error("[grants/create] Supabase error:", {
         message: error.message,
+        code: error.code,
         details: error.details,
         hint: error.hint,
-        code: error.code,
       });
-      console.error("[grants/create] Insert payload:", {
+      // Sanitized payload — lengths, not text. Lengths alone are enough
+      // to diagnose CHECK/char_length failures (e.g., essay under 10
+      // chars) without leaking PII to logs.
+      console.error("[grants/create] Sanitized payload:", {
         user_id: user.id,
         cycle_id,
-        status: "submitted",
+        who_are_you_len: typeof who_are_you === "string" ? who_are_you.trim().length : 0,
+        biggest_challenge_len: typeof biggest_challenge === "string" ? biggest_challenge.trim().length : 0,
+        fund_usage_len: typeof fund_usage === "string" ? fund_usage.trim().length : 0,
+        certification_consent: Boolean(certification_consent),
       });
+      // Map common Postgres codes to user-friendly text. Anything
+      // unknown falls back to the raw message so we don't hide
+      // genuinely new failure modes from the user (and from support).
+      const friendly =
+        error.code === "22P02"
+          ? "We couldn't process one of your answers. Please refresh and try again."
+          : error.code === "23505"
+            ? "You've already applied to this grant cycle."
+            : error.code === "23514"
+              ? "One of your answers didn't meet the minimum length. Please review and resubmit."
+              : error.code === "23502"
+                ? "One of the required fields was missing. Please refresh and try again."
+                : error.code === "42501"
+                  ? "You don't have permission to submit. Please contact support."
+                  : "Failed to submit grant application. Please try again or contact support.";
       return NextResponse.json(
-        { error: error.message || "Failed to submit grant application" },
-        { status: 500 },
+        { error: friendly, code: error.code },
+        { status: error.code === "22P02" || error.code === "23514" ? 400 : error.code === "23505" ? 409 : 500 },
       );
     }
 
@@ -175,14 +222,14 @@ export async function POST(request: Request) {
     const { data: userData } = await supabaseAdmin.auth.admin.getUserById(user.id);
 
     if (profile && userData?.user?.email) {
-      // Fetch grant cycle name + description for AI evaluation and email
+      // Fetch grant cycle name + description for the confirmation email
       const { data: cycle } = await supabaseAdmin
         .from("grant_cycles")
         .select("cycle_name, description")
         .eq("id", cycle_id)
         .single();
 
-      // Fire-and-forget email - don't block the response
+      // Fire-and-forget confirmation email — does not block the response.
       import("@/lib/email").then(({ sendGrantApplicationReceivedEmail }) => {
         sendGrantApplicationReceivedEmail({
           to: userData.user!.email!,
@@ -191,73 +238,41 @@ export async function POST(request: Request) {
           applicationId: grant.id,
         }).catch(console.error);
       });
+    }
 
-      // Fire-and-forget AI relevance evaluation.
-      //
-      // Wrapped in a Promise.race against a 6 s wall-clock timer. Vercel
-      // terminates serverless functions by aborting in-flight requests once
-      // `maxDuration` (15 s) is reached, which surfaces as
-      // APIUserAbortError("Request was aborted."). The race short-circuits
-      // before Vercel kills us, so we can persist a clean 'not_evaluated'
-      // state and let the /api/cron/ai-evaluate-pending backfill (every
-      // 5 min) pick the row up.
-      if (cycle) {
-        import("@/lib/anthropic").then(
-          ({ evaluateGrantApplication, AI_MODEL_VERSION }) => {
-            const evaluationPromise = evaluateGrantApplication({
-              cycleName: cycle.cycle_name || "",
-              cycleDescription: cycle.description || "",
-              whoAreYou: who_are_you.trim(),
-              biggestChallenge: biggest_challenge.trim(),
-              fundUsage: fund_usage.trim(),
-            });
-            // 16s — must stay under lib/anthropic.ts's TIMEOUT_MS (18s) so
-            // the SDK's own AbortController doesn't fire first. Was 6s — too
-            // tight, every Claude latency spike > 6s would silently mark the
-            // app ai_relevance='uncertain' with reasoning "AI evaluation
-            // timed out". Bumped 2026-09-20 to reduce false-positive timeouts.
-            const timeoutMs = 16000;
-            const timeoutPromise = new Promise<{
-              relevance: "uncertain";
-              reasoning: string;
-              model: string;
-              inputTokens: number;
-              outputTokens: number;
-            }>((resolve) =>
-              setTimeout(
-                () =>
-                  resolve({
-                    relevance: "uncertain",
-                    reasoning: "AI evaluation timed out",
-                    model: AI_MODEL_VERSION,
-                    inputTokens: 0,
-                    outputTokens: 0,
-                  }),
-                timeoutMs,
-              ),
-            );
+    // AI evaluation is now queued (2026-09-21) instead of inlined in
+    // the request worker. The previous inline Anthropic call could not
+    // finish before Vercel killed the response stream on slow Anthropic
+    // responses, which surfaced to the user as "The string did not
+    // match the expected pattern." (the browser-level JSON.parse error
+    // when the upstream response was an HTML 504 page).
+    //
+    // The grant row is now written synchronously before the queue row.
+    // If the queue insert fails (e.g. ANTHROPIC_API_KEY missing, network
+    // hiccup), we log and continue — the user still gets a successful
+    // submission, and the existing app/api/cron/ai-evaluate-pending
+    // worker (every 5 min) will pick up any rows that never got queued
+    // by scanning for NULL ai_relevance.
+    const { error: queueErr } = await supabaseAdmin
+      .from("grant_ai_eval_queue")
+      .insert({ grant_id: grant.id, cycle_id })
+      .select("id")
+      .single();
 
-            Promise.race([evaluationPromise, timeoutPromise])
-              .then(async (result) => {
-                await supabaseAdmin
-                  .from("grants")
-                  .update({
-                    ai_relevance: result.relevance,
-                    ai_reasoning: result.reasoning,
-                    ai_evaluated_at: new Date().toISOString(),
-                    ai_model_version: result.model || AI_MODEL_VERSION,
-                  })
-                  .eq("id", grant.id);
-              })
-              .catch((err) => {
-                console.error("[grants/create] AI eval error:", err);
-              });
-          },
+    if (queueErr) {
+      // 23505 = unique_violation (already queued; OK to ignore)
+      if (queueErr.code !== "23505") {
+        console.error(
+          "[grants/create] queue insert failed (will be picked up by ai-evaluate-pending backfill):",
+          { code: queueErr.code, message: queueErr.message },
         );
       }
     }
 
-    return NextResponse.json({ success: true, grantId: grant.id });
+    return NextResponse.json({
+      success: true,
+      grantId: grant.id,
+    });
   } catch (err) {
     console.error("[grants/create] Unexpected error:", err);
     return NextResponse.json(

@@ -17923,3 +17923,122 @@ separately by commit `01b0be7` (cron+job refactor), not by this change.
 
 No API, schema, or mobile-app changes. `tsc` 0 errors, `next build` ✓ (218 pages).
 Remaining eslint hits in these files are pre-existing `no-explicit-any`.
+
+---
+
+## Session 2026-09-21: Decouple AI eval from grant submit worker + harden JSON parse
+
+### Symptom (root cause actually a Transport issue)
+
+User report: applicant `saoirsefinn13@icloud.com` on cycle `Small Business Startup Fund` saw **"The string did not match the expected pattern"** after submitting their grant at `2026-09-20T02:34:01Z`. Slack logger message confirmed; stack trace pointed at `json@native code`.
+
+**Initial misdiagnosis:** I assumed this was Postgres `22P02 invalid_text_representation`. It was not. The phrase matches a specific V8/WebKit `JSON.parse` error message: "JSON.parse: The string did not match the expected pattern." That fires only when `response.json()` is called against a non-JSON body.
+
+**Actual root cause:** The grant `INSERT` succeeded (verified by `SELECT … FROM grants WHERE user_id = …`). The inline Anthropic SDK call inside `app/api/grants/create/route.ts` (lines 195-257 before this session) was making the request worker run long enough that **Vercel killed the response stream mid-flight** with an HTML 504 page. The browser-side `fetch(...).json()` then threw the SyntaxError, which surfaced to the user as the misleading literal Postgres-styled message.
+
+The form's catch block then forwarded the SyntaxError to `/api/log/client-error`, which is what produced the Slack alert.
+
+### Why the AI eval was in the request worker in the first place
+
+History: AGENTS.md records a 2026-09-20 bump from `maxDuration=15` to `120`, plus a 16 s inline race timer, plus a 2026-09-20 cron+job refactor for `scoring/start` and re-eval. The grant-create path was never moved to that pattern. Today's submission picked the worst-case path: grant row + Anthropic call both ran in the worker; Anthropic peaked >16 s; race timer fired on the client; Vercel killed the response; user saw a JSON-parse error on the resulting HTML.
+
+### Structural fix (P1, approved)
+
+Move grant AI evaluation out of the request worker into a queued cron pattern. The submission worker now returns the moment the grant row is written. Same pattern as `process-ai-reevaluate-jobs`, `process-ai-backfill-jobs`, `process-reconciliation-jobs`, etc.
+
+**`supabase/migrations/178_grant_ai_eval_queue.sql`** — new table:
+- `grant_ai_eval_queue (id, grant_id FK→grants ON DELETE CASCADE, cycle_id FK→grant_cycles, status CHECK IN ('pending','processing','completed','failed'), attempts, last_error, queued_at, started_at, completed_at, expires_at, UNIQUE(grant_id))`
+- Partial index on `queued_at WHERE status='pending'` for the cron
+- RLS admin-only via `public.is_admin(auth.uid())` (cron worker writes via `supabaseAdmin` and bypasses RLS, matching every other job-table in the codebase)
+
+**`app/api/cron/process-ai-eval-queue/route.ts`** — new worker:
+- `CRON_SECRET` Bearer auth, `maxDuration=120`, time budget 100 s
+- Stale-recovery: any `processing` row older than 5 min is bumped back to `pending`
+- Atomic claim via `UPDATE … SET status='processing' WHERE id=? AND status='pending'`
+- Per-job: lookup grant → lookup cycle → call `evaluateGrantApplication` (existing `lib/anthropic.ts`) → persist `ai_relevance / ai_reasoning / ai_evaluated_at / ai_model_version` to `grants`
+- Failed rows marked `failed` with `last_error` set; retry policy not implemented (future ticket)
+
+**`vercel.json`** — added cron entry: `{ "path": "/api/cron/process-ai-eval-queue", "schedule": "*/2 * * * * *" }`. Existing `process-ai-evaluate-pending` worker (every 5 min, scans `grants` directly) is left as a backstop for any rows that arrive before the migration runs.
+
+### Hardened JSON parse (the actual user-facing bug)
+
+`components/GrantApplicationForm.tsx` (lines 125-205):
+- Wrapped `await response.json()` in try/catch. Parse failure now produces a friendly fallback message specific to whether the upstream HTTP was 2xx or 4xx/5xx. Logs `errorCode: "JSON_PARSE_FAILED"` + `httpStatus` to Slack.
+- Added network-failure handler for `fetch()` itself (offline, DNS, etc.)
+- Forwards `httpStatus` and `errorCode` through `/api/log/client-error` to Slack
+
+This is the actual fix for the literal "did not match the expected pattern" message — the user now gets "We couldn't process your submission (HTTP 504). Please try again or contact support." instead of the raw SyntaxError.
+
+### Hardened server-side JSON parse
+
+`app/api/grants/create/route.ts`:
+- Wrapped `await request.json()` in try/catch; malformed body returns `{ error: "Invalid request body" }` with status 400 instead of falling through to a generic HTML 500.
+
+### Expanded error logging + Postgres error-code mapping
+
+`app/api/grants/create/route.ts` error path (was lines 150-166, now restructured):
+- `console.error` now logs `code`, `details`, `hint`, plus a sanitized payload (`who_are_you_len`, etc. — lengths only, no PII). Previously only `message` was logged, which meant every Slack alert read as raw Postgres text.
+- User-facing error messages are now mapped by Postgres error code:
+  | Code | User message |
+  |---|---|
+  | 22P02 | "We couldn't process one of your answers. Please refresh and try again." |
+  | 23505 | "You've already applied to this grant cycle." |
+  | 23514 | "One of your answers didn't meet the minimum length. Please review and resubmit." |
+  | 23502 | "One of the required fields was missing. Please refresh and try again." |
+  | 42501 | "You don't have permission to submit. Please contact support." |
+- Status codes: 22P02/23514 → 400, 23505 → 409, others → 500.
+
+### Slack observability (P2, approved)
+
+`lib/slack-notifications.ts`:
+- `notifyGrantApplicationError` accepts optional `httpStatus: number`
+- Slack message body now includes `• HTTP: ${status}` when present, distinct from the existing `• Code: ${errorCode}` line
+- Goes one step further in diagnosability: future "JSON.parse failed on a 504 HTML body" incidents will show both `Code: JSON_PARSE_FAILED` and `HTTP: 504` in the Slack alert, so support can distinguish transport failures from real server-side errors without Vercel log spelunking.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `supabase/migrations/178_grant_ai_eval_queue.sql` | NEW |
+| `app/api/cron/process-ai-eval-queue/route.ts` | NEW |
+| `app/api/grants/create/route.ts` | Removed inline Anthropic call; queue insert instead; hardened `request.json()`; expanded `console.error` with code/hint/details/sanitized payload; Postgres-code→friendly-message mapping |
+| `components/GrantApplicationForm.tsx` | Hardened `response.json()` parse with HTTP-status-aware fallback; network-failure handler; forwarded `errorCode` + `httpStatus` to `/api/log/client-error` |
+| `app/api/log/client-error/route.ts` | Accepts and forwards `httpStatus` to Slack |
+| `lib/slack-notifications.ts` | `httpStatus?: number` on `GrantApplicationErrorParams`, rendered in Slack body |
+| `vercel.json` | Added `process-ai-eval-queue` cron at `*/2 * * * * *` |
+
+### Files NOT changed (intentionally)
+
+- `app/grants/application-success/page.tsx` — initially modified to add a "AI relevance review in progress" banner driven by an `?aiPending=1` query param. **Reverted** on review because it would have shown to every grant submitter for ~2 minutes after every submission; on follow-up review this was deemed inappropriate UX noise. The AI evaluation is a reviewer-side concern (admin scoring pages) and was being miswired into the user flow. Reverted to its pre-existing static state. See "Banner removal" below.
+
+### Build verification
+
+- `npm run build` ✓ — 0 TypeScript errors. New route `/api/cron/process-ai-eval-queue` registered. The application-success page compiles identically to its prior static state.
+- All admin/grant routes (`/api/admin/grants/create`, `/api/grants/create`, `/api/cron/process-ai-eval-queue`, `/api/log/client-error`, `/grants/application-success`) register unchanged in the build output.
+- After banner removal: `grep -rn aiPending app/ components/ lib/` returns zero matches.
+
+### Deploy
+
+1. Run `supabase/migrations/178_grant_ai_eval_queue.sql` in the Supabase SQL Editor.
+2. Deploy code (5 modified files + 2 new files). Vercel picks up the new cron entry automatically.
+3. Smoke-test: submit a grant; form should redirect immediately to a static `Application Submitted!` page with NO `?aiPending=1` in the URL.
+4. Within ~2 minutes, `grants.ai_relevance` should populate via the cron. Reviewers see the badge on `/admin/grants/[id]/scoring/*` pages as before.
+
+### P3 — root-cause investigation (deferred)
+
+Manual Vercel deployment timeline check + log filter for `path=/api/grants/create` at `2026-09-20T02:33:48Z` ±60s to confirm whether the user's 504 was a cold-start on the old `maxDuration=15s` worker size (since bumped to 120s). No code required for this — it is purely a log review.
+
+---
+
+## Banner removal (2026-09-21, immediately after initial commit above)
+
+User explicitly required that no banner ever show to a user submitting a grant. Reverted all four touches:
+
+| File | Removed |
+|---|---|
+| `app/api/grants/create/route.ts` | `aiPending` field on success response body |
+| `components/GrantApplicationForm.tsx` | `aiHint` variable + `&aiPending=1` query string concatenation |
+| `components/GrantApplicationForm.tsx` | `aiPending?: boolean` on the `CreateGrantResponse` interface |
+| `app/grants/application-success/page.tsx` | Citrine `aiPending` banner JSX block; reverted to original sync component (no `searchParams`) |
+
+Verification post-removal: `grep -rn aiPending app/ components/ lib/` returns zero matches. `npm run build` ✓ 0 TypeScript errors. The success page now renders byte-identical to its pre-2026-09-21 state. The AI cron and queue (P1) and the Slack observability (P2) remain — neither produces any user-facing surface.

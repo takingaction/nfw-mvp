@@ -53,6 +53,12 @@ export async function POST(request: Request) {
         cycleName: asString(body.cycleName) ?? "unknown",
         errorMessage,
         errorCode: asString(body.errorCode, 100),
+        // 2026-09-21: forward the HTTP status code so Slack alerts include
+        // the response shape (4xx vs 5xx vs JSON-parse failure on HTML).
+        httpStatus:
+          typeof body.httpStatus === "number"
+            ? body.httpStatus
+            : undefined,
         stack,
       });
     } else if (context) {

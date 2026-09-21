@@ -51,6 +51,10 @@
     {
       "path": "/api/cron/process-ai-backfill-jobs",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/process-ai-eval-queue",
+      "schedule": "*/2 * * * *"
     }
   ]
 }

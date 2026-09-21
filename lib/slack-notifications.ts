@@ -7,6 +7,10 @@ interface GrantApplicationErrorParams {
   cycleName: string;
   errorMessage: string;
   errorCode?: string;
+  // 2026-09-21: optional HTTP status so the Slack message can
+  // distinguish "JSON parse failed on a 504 HTML body" (which is
+  // what bit us on 2026-09-20) from a clean 4xx JSON body.
+  httpStatus?: number;
   stack?: string;
 }
 
@@ -21,7 +25,7 @@ export async function notifyGrantApplicationError(
     return;
   }
 
-  const { userId, userEmail, cycleId, cycleName, errorMessage, errorCode, stack } = params;
+  const { userId, userEmail, cycleId, cycleName, errorMessage, errorCode, httpStatus, stack } = params;
 
   const blocks: {
     type: string;
@@ -31,7 +35,7 @@ export async function notifyGrantApplicationError(
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `🔴 *Grant Application Error*\n• User: ${userEmail} (${userId})\n• Cycle: ${cycleName} (${cycleId})\n• Error: ${errorMessage}${errorCode ? `\n• Code: ${errorCode}` : ""}\n• Time: ${new Date().toISOString()}\n• Please investigate`,
+        text: `🔴 *Grant Application Error*\n• User: ${userEmail} (${userId})\n• Cycle: ${cycleName} (${cycleId})\n• Error: ${errorMessage}${errorCode ? `\n• Code: ${errorCode}` : ""}${typeof httpStatus === "number" ? `\n• HTTP: ${httpStatus}` : ""}\n• Time: ${new Date().toISOString()}\n• Please investigate`,
       },
     },
   ];

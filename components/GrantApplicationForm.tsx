@@ -99,8 +99,9 @@ export default function GrantApplicationForm({
     setError("");
     setConfirmError("");
 
+    let response: Response;
     try {
-      const response = await fetch("/api/grants/create", {
+      response = await fetch("/api/grants/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -111,39 +112,77 @@ export default function GrantApplicationForm({
           certification_consent: certificationChecked,
         }),
       });
+    } catch (networkErr: any) {
+      // Network failure (offline, DNS, etc.) — never reached the server.
+      setError(
+        "We couldn't reach the server. Check your connection and try again.",
+      );
+      setLoading(false);
+      setUploadingDocs(false);
+      return;
+    }
 
-      const data = await response.json();
-      if (data.error) throw new Error(data.error);
-
-      const grantId = data.grantId;
-
-      if (documents.length > 0) {
-        setUploadingDocs(true);
-        for (const file of documents) {
-          const fd = new FormData();
-          fd.append("file", file);
-          fd.append("grantId", grantId);
-          const uploadRes = await fetch("/api/grants/upload-document", {
-            method: "POST",
-            body: fd,
-          });
-          const uploadData = await uploadRes.json();
-          if (!uploadRes.ok) {
-            console.error("Upload failed:", uploadData.error);
-            throw new Error(
-              `Failed to upload ${file.name}: ${uploadData.error}`,
-            );
-          }
-        }
-      }
-
-      router.push(`/grants/application-success?id=${grantId}`);
-    } catch (err: any) {
-      setError(err.message || "Failed to submit application");
+    // Hardened JSON parse: a non-OK HTTP response with a non-JSON body
+    // (e.g. Vercel's HTML 504 page) used to throw "The string did not
+    // match the expected pattern." at the parse step and bubble the
+    // raw SyntaxError to the user. Show a friendlier fallback instead.
+    // (2026-09-21: bug from the saoirsefinn13@icloud.com incident.)
+    interface CreateGrantResponse {
+      success?: boolean;
+      error?: string;
+      code?: string;
+      grantId?: string;
+    }
+    let rawJson: unknown = null;
+    try {
+      rawJson = await response.json();
+    } catch {
+      const friendly = response.ok
+        ? "We had trouble confirming your submission. Please check 'My Applications' in a moment — your draft may have been saved."
+        : `We couldn't process your submission (HTTP ${response.status}). Please try again or contact support.`;
+      setError(friendly);
       setLoading(false);
       setUploadingDocs(false);
 
-      const cycleName = cycles.find((c) => c.id === formData.cycle_id)?.cycle_name || "unknown";
+      fetch("/api/log/client-error", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          userEmail,
+          cycleId: formData.cycle_id,
+          cycleName:
+            cycles.find((c) => c.id === formData.cycle_id)?.cycle_name ||
+            "unknown",
+          errorMessage: `JSON.parse failed (HTTP ${response.status})`,
+          errorCode: "JSON_PARSE_FAILED",
+          httpStatus: response.status,
+          timestamp: new Date().toISOString(),
+        }),
+      }).catch(console.error);
+      return;
+    }
+
+    const data: CreateGrantResponse | null =
+      rawJson !== null && typeof rawJson === "object"
+        ? (rawJson as CreateGrantResponse)
+        : null;
+    const apiError =
+      typeof data?.error === "string" && data.error.length > 0
+        ? data.error
+        : null;
+
+    if (!response.ok || apiError) {
+      const errMsg = apiError ?? `HTTP ${response.status}`;
+      const errCode = data?.code ?? null;
+      const httpStatus = response.status;
+
+      setError(errMsg);
+      setLoading(false);
+      setUploadingDocs(false);
+
+      const cycleName =
+        cycles.find((c) => c.id === formData.cycle_id)?.cycle_name || "unknown";
       fetch("/api/log/client-error", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -152,13 +191,46 @@ export default function GrantApplicationForm({
           userEmail,
           cycleId: formData.cycle_id,
           cycleName,
-          errorMessage: err.message || "Unknown error",
-          errorCode: err.code,
-          stack: err.stack,
+          errorMessage: errMsg,
+          errorCode: errCode,
+          httpStatus,
           timestamp: new Date().toISOString(),
         }),
       }).catch(console.error);
+      return;
     }
+
+    const grantId = data?.grantId;
+    if (!grantId) {
+      setError("We received an unexpected response. Please try again.");
+      setLoading(false);
+      return;
+    }
+
+    if (documents.length > 0) {
+      setUploadingDocs(true);
+      for (const file of documents) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("grantId", grantId);
+        const uploadRes = await fetch("/api/grants/upload-document", {
+          method: "POST",
+          body: fd,
+        });
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) {
+          console.error("Upload failed:", uploadData.error);
+          setError(
+            `Failed to upload ${file.name}: ${uploadData.error}`,
+          );
+          setLoading(false);
+          setUploadingDocs(false);
+          return;
+        }
+      }
+    }
+
+    router.push(`/grants/application-success?id=${grantId}`);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
