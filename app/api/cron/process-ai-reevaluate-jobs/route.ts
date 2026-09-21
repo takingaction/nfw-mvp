@@ -7,6 +7,11 @@ const supabaseAdmin = createClient(
 );
 
 export const dynamic = "force-dynamic";
+// 2026-09 banner removal: without maxDuration, Vercel kills ticks at the
+// default 10s while Claude is mid-call and the cursor never advances.
+// Pair with the 250s self-budget so we always stop a few seconds before
+// this ceiling and the DB write at the end actually flushes.
+export const maxDuration = 300;
 
 // Chunking settings
 const GRANTS_PER_TICK = 25;          // Process 25 grants per cron tick (~5-30s of work)
@@ -70,8 +75,12 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
 
     if (!job.force_full) {
       // Only re-evaluate apps that are not currently 'relevant' (matches
-      // the original route's ?onlyNonRelevant=true default behavior)
-      query = query.neq("ai_relevance", "relevant");
+      // the original route's ?onlyNonRelevant=true default behavior).
+      // 2026-09 banner removal: the simple `.neq("relevant")` excluded
+      // NULL rows in Postgres, which left any grant still being processed
+      // by the global cron untouched — silently widening the gap between
+      // "Re-run AI Filter" and what the AI strip counted. Include NULL.
+      query = query.or("ai_relevance.is.null,ai_relevance.neq.relevant");
     }
 
     const { data: grants, error } = await query;
@@ -179,9 +188,26 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
     let newFailed = job.failed_count;
     let lastProcessed: string | null = cursor;
     let budgetReached = false;
+    let processedThisTick = 0;
+    const tickStart = startIndex;
 
     for (const g of grants || []) {
       try {
+        // 2026-09 banner removal: skip-if-already-done guard. After
+        // enrollment, the global ai-evaluate-pending cron or a sibling
+        // worker may have already updated this row. Force Full should
+        // re-run regardless, matching the old synchronous route's
+        // behavior.
+        if (
+          !job.force_full &&
+          g.ai_relevance === "relevant"
+        ) {
+          processedThisTick++;
+          lastProcessed = g.id;
+          await sleep(THROTTLE_MS);
+          continue;
+        }
+
         const result = await evaluateGrantApplication({
           cycleName,
           cycleDescription,
@@ -224,12 +250,29 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
         );
         newFailed++;
       }
+      processedThisTick++;
       lastProcessed = g.id;
+
+      // 2026-09 banner removal: persist progress after every grant so a
+      // Vercel kill mid-tick doesn't lose the cursor and force the next
+      // tick to re-run everything from the same slice.
+      const newProcessedCount = tickStart + processedThisTick;
+      await supabaseAdmin
+        .from("ai_reevaluate_jobs")
+        .update({
+          processed_count: newProcessedCount,
+          last_processed_id: lastProcessed,
+          succeeded_count: newSucceeded,
+          failed_count: newFailed,
+          progress: `Processed ${newProcessedCount}/${job.total_count}...`,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", job.id);
 
       // Time budget check
       if (Date.now() - startTime > TIME_BUDGET_MS) {
         console.log(
-          `[process-ai-reevaluate] Time budget reached after processing ${(grants || []).indexOf(g) + 1}/${grantIds.length} in this tick`,
+          `[process-ai-reevaluate] Time budget reached after processing ${processedThisTick} in this tick`,
         );
         budgetReached = true;
         break;
@@ -239,35 +282,26 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
       await sleep(THROTTLE_MS);
     }
 
-    const newProcessedCount = endIndex;
+    const newProcessedCount = tickStart + processedThisTick;
     const isDone = newProcessedCount >= allIds.length && !budgetReached;
 
-    await supabaseAdmin
-      .from("ai_reevaluate_jobs")
-      .update({
-        processed_count: newProcessedCount,
-        last_processed_id: lastProcessed,
-        succeeded_count: newSucceeded,
-        failed_count: newFailed,
-        progress: isDone
-          ? `Completed: ${newSucceeded}/${job.total_count} (${newFailed} failed)`
-          : `Processed ${newProcessedCount}/${job.total_count}...`,
-        // If we exhausted the list, mark completed; otherwise leave as
-        // 'processing' so the next cron tick resumes
-        ...(isDone
-          ? {
-              status: "completed",
-              current_phase: "completed",
-              completed_at: new Date().toISOString(),
-              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-              cycle_grants_json: null,
-            }
-          : {}),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", job.id);
-
     if (isDone) {
+      await supabaseAdmin
+        .from("ai_reevaluate_jobs")
+        .update({
+          processed_count: newProcessedCount,
+          last_processed_id: lastProcessed,
+          succeeded_count: newSucceeded,
+          failed_count: newFailed,
+          progress: `Completed: ${newSucceeded}/${job.total_count} (${newFailed} failed)`,
+          status: "completed",
+          current_phase: "completed",
+          completed_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          cycle_grants_json: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", job.id);
       return { done: true, phase: "completed" };
     }
 

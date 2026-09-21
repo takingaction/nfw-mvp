@@ -130,6 +130,11 @@ export async function GET(
     const url = new URL(request.url);
     const jobId = url.searchParams.get("jobId");
 
+    // Live counts come back on every response so the client can re-render
+    // the AI strip from a single request, regardless of which branch
+    // handled the call.
+    const counts = await fetchCycleCounts(cycleId);
+
     if (jobId) {
       const { data: job } = await supabaseAdmin
         .from("ai_reevaluate_jobs")
@@ -141,7 +146,10 @@ export async function GET(
         .maybeSingle();
 
       if (!job) {
-        return NextResponse.json({ error: "Job not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Job not found" },
+          { status: 404 },
+        );
       }
 
       return NextResponse.json({
@@ -155,6 +163,8 @@ export async function GET(
         progress: job.progress,
         error: job.error_message,
         completedAt: job.completed_at,
+        unevaluatedCount: counts.unevaluatedCount,
+        submittedCount: counts.submittedCount,
       });
     }
 
@@ -179,6 +189,8 @@ export async function GET(
         jobId: null,
         status: "no_jobs",
         message: "No jobs found",
+        unevaluatedCount: counts.unevaluatedCount,
+        submittedCount: counts.submittedCount,
       });
     }
 
@@ -197,6 +209,8 @@ export async function GET(
       failed: latest.failed_count,
       completedAt: latest.completed_at,
       isExpired,
+      unevaluatedCount: counts.unevaluatedCount,
+      submittedCount: counts.submittedCount,
     });
   } catch (err: any) {
     console.error("[ai-reevaluate] GET error:", err);
@@ -205,4 +219,37 @@ export async function GET(
       { status: 500 },
     );
   }
+}
+
+/**
+ * Two head-count queries in parallel. Returns the numbers that drive the
+ * client UI: how many submitted applications exist and how many of those
+ * still need AI evaluation.
+ *
+ * Uses head:true since we only need counts, not rows. Both predicates
+ * match what AiReevaluateButton displays. The "or" filter for NULL ||
+ * 'not_evaluated' mirrors the page.tsx server-side filter exactly so
+ * server and client stay in sync within one tick of the global cron.
+ */
+async function fetchCycleCounts(
+  cycleId: string,
+): Promise<{ unevaluatedCount: number; submittedCount: number }> {
+  const [submittedRes, unevaluatedRes] = await Promise.all([
+    supabaseAdmin
+      .from("grants")
+      .select("id", { count: "exact", head: true })
+      .eq("cycle_id", cycleId)
+      .eq("status", "submitted"),
+    supabaseAdmin
+      .from("grants")
+      .select("id", { count: "exact", head: true })
+      .eq("cycle_id", cycleId)
+      .eq("status", "submitted")
+      .or("ai_relevance.is.null,ai_relevance.eq.not_evaluated"),
+  ]);
+
+  return {
+    submittedCount: submittedRes.count ?? 0,
+    unevaluatedCount: unevaluatedRes.count ?? 0,
+  };
 }

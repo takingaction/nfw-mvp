@@ -7,164 +7,155 @@ interface AiReevaluateButtonProps {
   cycleId: string;
   unevaluatedCount: number;
   totalCount: number;
+  /**
+   * Optional callback fired on every status fetch (mount snapshot, poll
+   * tick). Parent (AiEvaluationPanel) owns the displayed count + "live"
+   * indicator so there's only one number on the page.
+   */
+  onSnapshot?: (snapshot: {
+    inFlight: boolean;
+    unevaluatedCount: number;
+    submittedCount: number;
+  }) => void;
 }
 
 interface JobStatus {
   jobId: string | null;
   status: string;
   forceFull?: boolean;
-  phase?: string | null;
-  processed?: number;
-  total?: number;
-  succeeded?: number;
-  failed?: number;
-  progress?: string | null;
   error?: string | null;
-  isExpired?: boolean;
+  // Live counts from the server (added 2026-09 banner removal):
+  unevaluatedCount?: number;
+  submittedCount?: number;
 }
 
-const POLL_INTERVAL_MS = 2000;
-const MAX_POLLS = 120; // 4 minutes — well above worst-case reeval
+// Slowed from 2s → 10s. An admin who watches the page shouldn't get
+// hammered, but a long-running cron job (hundreds of grants × ~1-3s each)
+// can take an hour, so polling has to survive long enough to outlast it
+// and continue tracking the live count while the page stays open.
+const POLL_INTERVAL_MS = 10_000;
 
 export default function AiReevaluateButton({
   cycleId,
   unevaluatedCount,
   totalCount,
+  onSnapshot,
 }: AiReevaluateButtonProps) {
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [jobProgress, setJobProgress] = useState<JobStatus | null>(null);
-  const [lastResult, setLastResult] = useState<{
-    total: number;
-    reEvaluated: number;
-    failed: number;
-  } | null>(null);
-
-  // Mount-time snapshot: surface any in-flight job (cron or another admin's
-  // click) so the button can disable and show progress. Replaces the old
-  // "trust the badge alone" behavior that let users double-click into
-  // confusing duplicate-job states.
   const [activeJob, setActiveJob] = useState<JobStatus | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    const fetchSnapshot = async () => {
+  // Track the polling task so we can cancel it on unmount (page nav away)
+  // or when a new job is queued. Without this the previous polling chain
+  // keeps fetching in the background and racing state updates.
+  const pollAbortRef = useRef<AbortController | null>(null);
+
+  const pushSnapshot = (job: JobStatus | null) => {
+    if (!onSnapshot) return;
+    onSnapshot({
+      inFlight: !!job?.jobId && (job.status === "pending" || job.status === "processing"),
+      unevaluatedCount:
+        job?.unevaluatedCount ?? unevaluatedCount,
+      submittedCount:
+        job?.submittedCount ?? totalCount,
+    });
+  };
+
+  const stopPolling = () => {
+    if (pollAbortRef.current) {
+      pollAbortRef.current.abort();
+      pollAbortRef.current = null;
+    }
+  };
+
+  /**
+   * Mirror GET behaviour into a polling loop with a single owner. The
+   * server returns either a job (with live counts) or just counts. We
+   * surface whichever the server gave us via onSnapshot.
+   */
+  const pollStatus = async (abort: AbortController): Promise<void> => {
+    while (!abort.signal.aborted) {
       try {
-        const res = await fetch(`/api/admin/grants/${cycleId}/ai-reevaluate`);
-        if (!res.ok || cancelled) return;
-        const data: JobStatus = await res.json();
-        if (cancelled) return;
-        if (
-          data.jobId &&
-          (data.status === "pending" || data.status === "processing")
-        ) {
-          setActiveJob(data);
+        const res = await fetch(
+          `/api/admin/grants/${cycleId}/ai-reevaluate`,
+          { signal: abort.signal },
+        );
+        if (abort.signal.aborted) return;
+
+        if (!res.ok) {
+          // Don't surface HTTP errors — the admin's session may have
+          // expired or the cycle may have been removed. Keep trying
+          // silently; their own button clicks will surface real errors.
+          await sleep(POLL_INTERVAL_MS);
+          continue;
         }
-      } catch {
-        // Keep stale state silently
+
+        const data: JobStatus = await res.json();
+        if (abort.signal.aborted) return;
+
+        const wasInFlight =
+          !!activeJob?.jobId &&
+          (activeJob.status === "pending" || activeJob.status === "processing");
+
+        const isInFlight =
+          !!data.jobId && (data.status === "pending" || data.status === "processing");
+
+        setActiveJob(data);
+        pushSnapshot(data);
+
+        // Job finished while we were watching → refresh page so other
+        // parts of the UI (reviewer panels, totals) catch up.
+        if (
+          wasInFlight &&
+          data.jobId === activeJob?.jobId &&
+          !isInFlight
+        ) {
+          if (data.status === "completed") {
+            setMessage(
+              `✅ Re-run completed. Updating page…`,
+            );
+            setTimeout(() => window.location.reload(), 800);
+            return;
+          }
+          if (data.status === "failed") {
+            setMessage(
+              `❌ ${data.error || "Re-evaluation job failed"}`,
+            );
+            return;
+          }
+        }
+
+        // No job running but work still to do? That's the global
+        // ai-evaluate-pending cron draining the backlog — keep watching
+        // so the live count keeps ticking down.
+        if (!isInFlight && (data.unevaluatedCount ?? 0) === 0) {
+          return;
+        }
+      } catch (err) {
+        // AbortError is expected on unmount; everything else is silent.
+        if ((err as Error).name === "AbortError") return;
       }
-    };
-    void fetchSnapshot();
+      await sleep(POLL_INTERVAL_MS);
+    }
+  };
+
+  // Mount → start polling, hand ownership to the ref so unmount can stop it.
+  useEffect(() => {
+    const abort = new AbortController();
+    pollAbortRef.current = abort;
+    void pollStatus(abort);
     return () => {
-      cancelled = true;
+      abort.abort();
+      if (pollAbortRef.current === abort) {
+        pollAbortRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cycleId]);
 
-  /**
-   * Poll the existing in-flight job's status endpoint until completion.
-   * Shared between the click handler (when server returns an existing jobId
-   * because one is already running) and the auto-watch effect (when the
-   * page mounts with an in-flight job).
-   */
-  const pollsRef = useRef(0);
-  const pollExistingJob = async (jobId: string): Promise<void> => {
-    pollsRef.current = 0;
-    setLoading(true);
-
-    const poll = async (): Promise<void> => {
-      if (pollsRef.current >= MAX_POLLS) {
-        setMessage(
-          `⏱ Job ${jobId.slice(0, 8)} is still running in the background. Reload later to see results.`,
-        );
-        setLoading(false);
-        return;
-      }
-      pollsRef.current++;
-
-      const statusRes = await fetch(
-        `/api/admin/grants/${cycleId}/ai-reevaluate?jobId=${encodeURIComponent(jobId)}`,
-      );
-      const status: JobStatus = await statusRes.json();
-
-      if (!statusRes.ok) {
-        setMessage(`❌ ${status.error || "Failed to fetch job status"}`);
-        setLoading(false);
-        return;
-      }
-
-      setJobProgress(status);
-
-      if (status.status === "completed") {
-        const total = status.total ?? 0;
-        const succeeded = status.succeeded ?? 0;
-        const failed = status.failed ?? 0;
-        setLastResult({
-          total,
-          reEvaluated: succeeded,
-          failed,
-        });
-        setMessage(
-          `✅ Re-ran AI on ${succeeded}/${total} grants${failed ? ` (${failed} failed)` : ""}. Refreshing…`,
-        );
-        setActiveJob(null);
-        setTimeout(() => window.location.reload(), 1500);
-        return;
-      }
-
-      if (status.status === "failed") {
-        setMessage(
-          `❌ ${status.error || "Job failed (see Vercel logs for details)"}`,
-        );
-        setActiveJob(null);
-        setLoading(false);
-        return;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-      await poll();
-    };
-
-    await poll();
-  };
-
-  // Mount-time watch: if activeJob is set, watch it automatically so the
-  // admin sees progress without having clicked anything.
-  useEffect(() => {
-    if (!activeJob?.jobId) return;
-    if (activeJob.status !== "pending" && activeJob.status !== "processing")
-      return;
-    void pollExistingJob(activeJob.jobId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeJob?.jobId, activeJob?.status]);
-
   const runReeval = async (forceFull = false): Promise<void> => {
     setMessage(null);
-
-    // Re-engage polling on the in-flight job instead of POSTing again. The
-    // server would dedupe anyway, but the round-trip is unnecessary and the
-    // UX is more honest: "I'm watching the running job, not starting a new one."
-    if (
-      activeJob?.jobId &&
-      (activeJob.status === "pending" || activeJob.status === "processing")
-    ) {
-      await pollExistingJob(activeJob.jobId);
-      return;
-    }
-
     setLoading(true);
-    setJobProgress(null);
-
     try {
       const triggerRes = await fetch(
         `/api/admin/grants/${cycleId}/ai-reevaluate`,
@@ -176,72 +167,54 @@ export default function AiReevaluateButton({
       );
       const triggerData = await triggerRes.json();
       if (!triggerRes.ok) {
-        throw new Error(triggerData.error || "Failed to start AI re-evaluation");
+        throw new Error(
+          triggerData.error || "Failed to start AI re-evaluation",
+        );
       }
-
-      const jobId: string = triggerData.jobId;
-      if (!jobId) {
-        throw new Error("Server returned no jobId");
-      }
-
-      await pollExistingJob(jobId);
+      // Existing job race-guard: server returns the id of whatever job
+      // is already running. Cancel our background polling and start
+      // a fresh one tied to that jobId.
+      stopPolling();
+      const abort = new AbortController();
+      pollAbortRef.current = abort;
+      void pollStatus(abort);
+      setMessage("✅ Triggered — checking status…");
     } catch (err: any) {
       setMessage(`❌ ${err?.message || "Failed to re-run AI filter"}`);
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleClick = (forceFull = false) => {
-    void runReeval(forceFull);
-  };
-
-  // Visual state: is the button currently observing an in-flight job (from
-  // any source — cron, another admin's click, this admin's earlier click)?
   const isInFlight =
     !!activeJob?.jobId &&
     (activeJob.status === "pending" || activeJob.status === "processing");
 
-  const renderProgressLabel = (): string | null => {
-    // Prefer the live jobProgress (per-tick accuracy) when polling.
-    const source = jobProgress ?? activeJob;
-    if (!source) return null;
-    if (source.status === "pending") return "Queued — waiting for cron…";
-    if (source.status === "processing") {
-      if (
-        typeof source.processed === "number" &&
-        typeof source.total === "number" &&
-        source.total > 0
-      ) {
-        return `Processing: ${source.processed}/${source.total}`;
-      }
-      return "Processing…";
-    }
-    return null;
-  };
-
-  const progressLabel = renderProgressLabel();
+  const progressLabel = isInFlight
+    ? activeJob?.status === "pending"
+      ? "Queued — waiting for cron…"
+      : "Evaluating…"
+    : null;
 
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex gap-2">
         <button
-          onClick={() => handleClick(false)}
+          onClick={() => void runReeval(false)}
           disabled={loading || isInFlight}
           className="px-3 py-1.5 bg-nfw-citrine text-nfw-blackberry font-ui text-xs font-bold hover:bg-nfw-citrine/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors"
           title={
             isInFlight
-              ? "A re-eval job is already running for this cycle — viewing its progress."
+              ? "A re-eval job is already running for this cycle."
               : unevaluatedCount > 0
-                ? `Re-run AI on ${unevaluatedCount} not-yet-relevant grants`
-                : "Re-run AI on non-relevant grants"
+              ? `Re-run AI on ${unevaluatedCount} not-yet-relevant grants`
+              : "Re-run AI on non-relevant grants"
           }
         >
-          {loading || isInFlight ? (
-            <>
-              <Loader2 className="w-3 h-3 animate-spin" />
-              {progressLabel ?? "Running..."}
-            </>
-          ) : (
+          {(loading || isInFlight) && (
+            <Loader2 className="w-3 h-3 animate-spin" />
+          )}
+          {progressLabel ?? (
             <>
               <Sparkles className="w-3 h-3" />
               Re-run AI Filter
@@ -249,7 +222,7 @@ export default function AiReevaluateButton({
           )}
         </button>
         <button
-          onClick={() => handleClick(true)}
+          onClick={() => void runReeval(true)}
           disabled={loading || isInFlight || totalCount === 0}
           className="px-3 py-1.5 bg-nfw-stone/20 text-nfw-blackberry font-ui text-xs font-medium hover:bg-nfw-stone/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title={
@@ -261,19 +234,15 @@ export default function AiReevaluateButton({
           Force Full Re-run
         </button>
       </div>
-      {(loading || isInFlight) && progressLabel && (
-        <p className="text-xs text-nfw-blackberry/60 font-ui">{progressLabel}</p>
-      )}
       {!loading && !isInFlight && message && (
         <p className="text-xs text-nfw-blackberry/70 max-w-xs text-right">
           {message}
         </p>
       )}
-      {!loading && !isInFlight && !message && lastResult && (
-        <p className="text-xs text-nfw-blackberry/50">
-          Last: {lastResult.reEvaluated}/{lastResult.total} re-evaluated
-        </p>
-      )}
     </div>
   );
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

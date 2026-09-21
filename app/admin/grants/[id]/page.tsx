@@ -1,11 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import { requireGrantsAccess } from "@/middleware/adminCheck";
 import Link from "next/link";
-import { ArrowLeft, Lock, Sparkles } from "lucide-react";
+import { ArrowLeft, Lock } from "lucide-react";
 import AdminGrantReviewer from "@/components/admin/AdminGrantReviewer";
-import AiReevaluateButton from "@/components/admin/AiReevaluateButton";
-import AiResetButton from "@/components/admin/AiResetButton";
-import AiBackfillButton from "@/components/admin/AiBackfillButton";
+import AiEvaluationPanel from "@/components/admin/AiEvaluationPanel";
 import { formatESTDisplay } from "@/lib/dates";
 
 const supabaseAdmin = createClient(
@@ -73,22 +71,6 @@ export default async function AdminGrantCyclePage({
     .select("*")
     .in("grant_id", grants?.map((g) => g.id) || []);
 
-  // Fetch the in-flight AI job (if any) for this cycle. Used by the
-  // citrine banner so the copy reflects reality when cron is mid-tick.
-  // 2026-09-20: previously the banner always said "click 'Continue AI
-  // Backfill' to run Claude" even when the cron worker was actively
-  // processing the cycle — confusing for the admin who'd click and see
-  // nothing happen. Now the banner says "Claude is currently evaluating"
-  // and the button (separately) shows its own progress.
-  const { data: inflightAiJob } = await supabaseAdmin
-    .from("ai_backfill_jobs")
-    .select("id, status, processed_count, total_count")
-    .eq("cycle_id", id)
-    .in("status", ["pending", "processing"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
   const grantsWithDocs =
     grants?.map((g) => ({
       ...g,
@@ -129,29 +111,6 @@ export default async function AdminGrantCyclePage({
         >
           <ArrowLeft className="w-4 h-4" /> Back to Grants
         </Link>
-
-        {unevaluatedAiCount > 0 && (
-          <div className="mb-6 px-4 py-3 bg-nfw-citrine/20 border-l-4 border-nfw-citrine flex items-center justify-between flex-wrap gap-3">
-            <p className="text-sm font-ui text-nfw-blackberry">
-              <strong>{unevaluatedAiCount}</strong> application
-              {unevaluatedAiCount === 1 ? "" : "s"} still need
-              {unevaluatedAiCount === 1 ? "s" : ""} AI evaluation
-              {inflightAiJob
-                ? ` — Claude is currently evaluating (${inflightAiJob.processed_count}/${inflightAiJob.total_count}).`
-                : scoringStarted
-                  ? isAdmin
-                    ? " — click 'Continue AI Backfill' to run Claude."
-                    : "."
-                  : " — these will be evaluated when you click Start Scoring."}
-            </p>
-            {scoringStarted && isAdmin && (
-              <AiBackfillButton
-                cycleId={id}
-                initialCount={unevaluatedAiCount}
-              />
-            )}
-          </div>
-        )}
 
         {/* ── Title + stats ─────────────────────────────────────────── */}
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-6">
@@ -273,27 +232,12 @@ export default async function AdminGrantCyclePage({
 
         {/* ── AI Evaluation (admin only) ───────────────────────────── */}
         {isAdmin && (
-          <div className="bg-nfw-dove border border-nfw-blackberry/10 p-3 sm:p-4 mb-8">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-              <p className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wide font-ui font-bold text-nfw-blackberry/50">
-                <Sparkles className="w-3.5 h-3.5" />
-                AI Evaluation
-              </p>
-              {unevaluatedAiCount > 0 && (
-                <p className="text-xs font-ui text-nfw-blackberry/50">
-                  {unevaluatedAiCount} of {submittedCount} submitted not yet evaluated
-                </p>
-              )}
-            </div>
-            <div className="flex flex-wrap items-start gap-2">
-              <AiReevaluateButton
-                cycleId={id}
-                unevaluatedCount={unevaluatedAiCount}
-                totalCount={submittedCount}
-              />
-              <AiResetButton cycleId={id} totalCount={totalCount} />
-            </div>
-          </div>
+          <AiEvaluationPanel
+            cycleId={id}
+            initialUnevaluatedCount={unevaluatedAiCount}
+            initialSubmittedCount={submittedCount}
+            totalCount={totalCount}
+          />
         )}
 
         <AdminGrantReviewer grants={grantsWithDocs} cycle={cycle} isAdmin={isAdmin} />

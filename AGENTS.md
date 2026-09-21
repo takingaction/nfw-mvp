@@ -18042,3 +18042,102 @@ User explicitly required that no banner ever show to a user submitting a grant. 
 | `app/grants/application-success/page.tsx` | Citrine `aiPending` banner JSX block; reverted to original sync component (no `searchParams`) |
 
 Verification post-removal: `grep -rn aiPending app/ components/ lib/` returns zero matches. `npm run build` ✓ 0 TypeScript errors. The success page now renders byte-identical to its pre-2026-09-21 state. The AI cron and queue (P1) and the Slack observability (P2) remain — neither produces any user-facing surface.
+
+---
+
+## Session 2026-09-25: Drop AI Banner + Make AI Strip the Single Source of Truth
+
+### Problem
+
+`/admin/grants/[id]` showed **two numbers that could never agree** for the AI backlog:
+
+- A citrine banner at the top: **`381 of 637 submitted not yet evaluated`**, with a suffix `— Claude is currently evaluating (25/551).` and a "Continue AI Backfill" button.
+- A dove strip lower down: same `381 of 637`, with `Re-run AI Filter` / `Force Full Re-run` / `Reset` buttons.
+- The `(25/551)` was rendered **twice** — once in the banner suffix and once inside/under the backfill button — both of them stale snapshots from an `ai_backfill_jobs` row.
+
+`381` was a live count from `grants` (recomputed on every page render). `25/551` was a frozen `ai_backfill_jobs.processed_count / total_count` from a job that had stalled days ago.
+
+### Root Causes
+
+1. **No `maxDuration` on the cron workers.** `process-ai-backfill-jobs` and `process-ai-reevaluate-jobs` were silently capped by Vercel at the default 10 s, while a single Claude call routinely runs 1–18 s. Ticks were dying mid-loop.
+2. **Cursor written once per chunk, not per grant.** The `processed_count` / `last_processed_id` UPDATE sat at the bottom of `processJobChunk`. On Vercel kill mid-loop, every individual grant `UPDATE` had flushed, but the cursor never advanced, so the next tick re-ran the same 25 grants (burning credits), got killed, etc. **Forever at 25 / 551** until the 30-min stale check flipped it to `failed`.
+3. **`processed_count = endIndex` over-reported on budget-exit.** When `Date.now() - startTime > TIME_BUDGET_MS` tripped in the middle of the chunk, the write set `processed_count = endIndex` regardless of how many grants actually finished. Future ticks would skip past unprocessed rows.
+4. **No `skip-if-already-done` guard inside the loop.** The submit-time AI eval, the global `ai-evaluate-pending` cron (`*/5 * * * *`), the per-cycle backfill job, and the per-cycle re-eval job **all race on the same rows**. Whenever one of them finishes a row, the others kept re-Chaude-ing it on every subsequent tick.
+5. **Re-eval enrollment excluded NULL rows.** `query.neq("ai_relevance", "relevant")` silently excludes NULL in Postgres. Any grant still being processed by the global cron (`ai_relevance IS NULL`) was invisible to Re-run AI Filter, widening the gap between "what the strip counts" and "what the button does."
+6. **Duplicate label inside the button.** `AiBackfillButton` rendered `Processing: X/Y` inside the `<button>` *and* in a `<p>` underneath it. Same stale number, twice on screen.
+
+### Fix
+
+#### A. Remove the banner, make the strip the single source of truth
+
+| File | Change |
+|---|---|
+| `app/admin/grants/[id]/page.tsx` | Removed `AiBackfillButton` import, the `inflightAiJob` query (formerly lines 76‑90), and the citrine banner block. Replaced the inline AI-strip body with `<AiEvaluationPanel cycleId initialUnevaluatedCount initialSubmittedCount totalCount />`. |
+| `components/admin/AiBackfillButton.tsx` | **Deleted** (only consumer was the banner). |
+| `components/admin/AiEvaluationPanel.tsx` | **New** (client). Owns one `unevaluatedCount / submittedCount / inFlight` triple. The button calls `onSnapshot({…})`; the panel renders the line. Single source of truth — there is only one number on the page. |
+
+#### B. `AiReevaluateButton` — drop fractions, add `onSnapshot`, polish polling
+
+- Progress labels collapse to `Queued — waiting for cron…` or `Evaluating…` — no more `Processing: 25/551`.
+- New `onSnapshot` prop. Fired on the mount snapshot and on every poll tick.
+- Polling interval **2 s → 10 s**; **120-poll cap → no cap**. A 551-grant job at 25/tick is ~110 min; the previous 4-min cap meant live progress always lost to a "reload later" message.
+- Single ownership via `pollAbortRef` — re-clicking Re-run cancels the previous loop; unmount cancels too; `AbortError` silenced.
+- Keeps `window.location.reload()` on completion so the reviewer panels catch up.
+
+#### C. `/api/admin/grants/[id]/ai-reevaluate` GET — counts on every response
+
+Added `fetchCycleCounts(cycleId)` helper that runs **two `head:true` count queries in parallel**:
+
+```ts
+supabaseAdmin.from("grants").select("id", { count: "exact", head: true })
+  .eq("cycle_id", cycleId).eq("status", "submitted")
+  // .or("ai_relevance.is.null,ai_relevance.eq.not_evaluated")  // second query only
+```
+
+Both GET branches (with and without `?jobId=`) now return `unevaluatedCount` + `submittedCount`. One request per poll tick → server-side count + job status in the same payload.
+
+#### D. `process-ai-backfill-jobs` — fix the stall
+
+- `export const maxDuration = 300;` (was missing entirely → killed at default 10 s).
+- `persistProgress()` helper called **per grant** inside the chunk loop (was once at the end). On Vercel kill, cursor is honest and the next tick picks up correctly.
+- `tickStart + processedThisTick` (was `endIndex`) so the cursor matches the actual work done, not the chunk size, when the time budget trips mid-tick.
+- **Skip-if-already-done guard** inside the chunk:
+  ```ts
+  if (g.ai_relevance && g.ai_relevance !== "not_evaluated") { skip }
+  ```
+  Stops re-Chaude-ing rows the global cron / submit-time eval already finished.
+- 250 s self-budget keeps us under the 300 s `maxDuration` ceiling.
+
+#### E. `process-ai-reevaluate-jobs` — same shape of fixes + NULL enrollment
+
+- `maxDuration = 300` (was missing).
+- Per-grant cursor write inside the loop.
+- `tickStart + processedThisTick` for honest budget-exit counting.
+- Skip-if-already-done: **only when not force_full**, mirrors the original synchronous route.
+- **Enrollment filter:** `query.neq("ai_relevance", "relevant")` → `query.or("ai_relevance.is.null,ai_relevance.neq.relevant")`. Re-run AI Filter now targets every grant the strip counts, including NULL rows.
+- Auto-restore rule preserved unchanged: stale reviewer skip decisions stay sticky.
+
+### Not Doing (By Choice)
+
+- Not dropping `ai_backfill_jobs`, its API route, or its cron — orphaned but harmless. The worker fix lets the stuck 25/551 job finish on its own (you asked to "wait and see"). Can be removed in a follow-up.
+- No SQL to cancel the stuck job. If you change your mind: `UPDATE ai_backfill_jobs SET status='failed', error_message='Cancelled manually', completed_at=NOW() WHERE status IN ('pending','processing');`
+
+### Files Touched
+
+| File | Change |
+|---|---|
+| `app/admin/grants/[id]/page.tsx` | Banner + import + `inflightAiJob` removed; new `<AiEvaluationPanel>` slot |
+| `components/admin/AiEvaluationPanel.tsx` | **New** — owns the displayed count |
+| `components/admin/AiReevaluateButton.tsx` | Fractions dropped, `onSnapshot` added, polling unbounded, abort-controlled |
+| `components/admin/AiBackfillButton.tsx` | **Deleted** |
+| `app/api/admin/grants/[id]/ai-reevaluate/route.ts` | `fetchCycleCounts()` helper, both GET branches return counts |
+| `app/api/cron/process-ai-backfill-jobs/route.ts` | maxDuration=300, per-grant cursor, skip-if-already-done, correct processed_count |
+| `app/api/cron/process-ai-reevaluate-jobs/route.ts` | maxDuration=300, per-grant cursor, skip-if-already-done (non force_full), correct processed_count, NULL enrollment via `.or()` |
+
+### Verification
+
+- `tsc --noEmit` 0 errors
+- `next build` ✓
+- eslint: pre-existing patterns on the route files unchanged; new file (`AiEvaluationPanel.tsx`) clean.
+- Local: `/admin/grants/[id]` shows no banner; AI strip shows one number that updates every 10 s while any job (or the global cron) is in flight; fractions gone; both buttons show plain "Queued…" / "Evaluating…".
+- Vercel logs post-deploy: `process-ai-backfill-jobs` advances `processed_count` past 25 each tick; the stuck 25/551 row drains naturally; once the global cron + backfill finish, `ai_relevance IS NULL` is gone and the strip reads `0 of 637`.

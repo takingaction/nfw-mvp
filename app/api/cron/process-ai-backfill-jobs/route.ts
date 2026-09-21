@@ -7,6 +7,11 @@ const supabaseAdmin = createClient(
 );
 
 export const dynamic = "force-dynamic";
+// 2026-09 banner removal: without maxDuration, Vercel kills ticks at the
+// default 10s while Claude is mid-call and the cursor never advances.
+// Pair with the 250s self-budget so we always stop a few seconds before
+// this ceiling and the DB write at the end actually flushes.
+export const maxDuration = 300;
 
 const GRANTS_PER_TICK = 25;
 const THROTTLE_MS = 200;
@@ -30,20 +35,55 @@ interface Job {
   started_at: string | null;
 }
 
-async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string }> {
+/**
+ * Persist per-grant progress so a Vercel kill mid-tick doesn't lose the
+ * cursor and force the next tick to re-run everything. Cheap (one COUNT
+ * against a single id), and essential for long-running batches.
+ */
+async function persistProgress(
+  jobId: string,
+  payload: {
+    processed_count: number;
+    succeeded_count: number;
+    failed_count: number;
+    last_processed_id: string | null;
+    progress: string;
+    completed?: Record<string, unknown>;
+  },
+): Promise<void> {
+  const { completed, ...rest } = payload;
+  await supabaseAdmin
+    .from("ai_backfill_jobs")
+    .update({
+      ...rest,
+      ...(completed ?? {}),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", jobId);
+}
+
+async function processJobChunk(
+  job: Job,
+): Promise<{ done: boolean; phase: string }> {
   const cycleId = job.cycle_id;
   const phase = job.current_phase || "pending";
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    console.log("[process-ai-backfill] ANTHROPIC_API_KEY not configured, skipping");
-    await supabaseAdmin
-      .from("ai_backfill_jobs")
-      .update({
+    console.log(
+      "[process-ai-backfill] ANTHROPIC_API_KEY not configured, skipping",
+    );
+    await persistProgress(job.id, {
+      processed_count: job.processed_count,
+      succeeded_count: job.succeeded_count,
+      failed_count: job.failed_count,
+      last_processed_id: job.last_processed_id,
+      progress: "ANTHROPIC_API_KEY not configured",
+      completed: {
         status: "failed",
         error_message: "ANTHROPIC_API_KEY not configured",
         completed_at: new Date().toISOString(),
-      })
-      .eq("id", job.id);
+      },
+    });
     return { done: true, phase: "failed" };
   }
 
@@ -57,7 +97,6 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
       `[process-ai-backfill] PHASE 1: Enrolling unevaluated grants for cycle ${cycleId}`,
     );
 
-    // Same filter the original synchronous route used
     const { data: grants, error } = await supabaseAdmin
       .from("grants")
       .select("id")
@@ -74,39 +113,38 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
 
     if (ids.length === 0) {
       console.log("[process-ai-backfill] No grants need AI evaluation");
-      await supabaseAdmin
-        .from("ai_backfill_jobs")
-        .update({
+      await persistProgress(job.id, {
+        processed_count: 0,
+        succeeded_count: 0,
+        failed_count: 0,
+        last_processed_id: null,
+        progress: "No grants needed evaluation",
+        completed: {
           status: "completed",
           current_phase: "completed",
           total_count: 0,
-          succeeded_count: 0,
-          failed_count: 0,
-          progress: "No grants needed evaluation",
           completed_at: new Date().toISOString(),
           expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           grant_ids_json: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", job.id);
+        },
+      });
       return { done: true, phase: "completed" };
     }
 
-    await supabaseAdmin
-      .from("ai_backfill_jobs")
-      .update({
+    await persistProgress(job.id, {
+      processed_count: 0,
+      succeeded_count: 0,
+      failed_count: 0,
+      last_processed_id: ids[0] ?? null,
+      progress: `Enrolled ${ids.length} grants. Starting evaluation...`,
+      completed: {
         status: "processing",
         current_phase: "evaluate",
         grant_ids_json: ids,
         total_count: ids.length,
-        processed_count: 0,
-        succeeded_count: 0,
-        failed_count: 0,
-        progress: `Enrolled ${ids.length} grants. Starting evaluation...`,
         started_at: job.started_at || new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", job.id);
+      },
+    });
 
     return { done: false, phase: "evaluate" };
   }
@@ -122,18 +160,20 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
       console.log(
         `[process-ai-backfill] Job ${job.id} completed: ${job.succeeded_count}/${job.total_count} succeeded`,
       );
-      await supabaseAdmin
-        .from("ai_backfill_jobs")
-        .update({
+      await persistProgress(job.id, {
+        processed_count: job.processed_count,
+        succeeded_count: job.succeeded_count,
+        failed_count: job.failed_count,
+        last_processed_id: job.last_processed_id,
+        progress: `Completed: ${job.succeeded_count}/${job.total_count} (${job.failed_count} failed)`,
+        completed: {
           status: "completed",
           current_phase: "completed",
-          progress: `Completed: ${job.succeeded_count}/${job.total_count} (${job.failed_count} failed)`,
           completed_at: new Date().toISOString(),
           expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           grant_ids_json: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", job.id);
+        },
+      });
       return { done: true, phase: "completed" };
     }
 
@@ -149,7 +189,7 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
     const grantIds = allIds.slice(startIndex, endIndex);
     const { data: grants, error: fetchError } = await supabaseAdmin
       .from("grants")
-      .select("id, who_are_you, biggest_challenge, fund_usage")
+      .select("id, who_are_you, biggest_challenge, fund_usage, ai_relevance")
       .in("id", grantIds);
 
     if (fetchError) {
@@ -161,10 +201,33 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
     let newSucceeded = job.succeeded_count;
     let newFailed = job.failed_count;
     let lastProcessed: string | null = cursor;
+    let processedThisTick = 0;
     let budgetReached = false;
 
+    // Track where we are in `grants` (the chunk we just fetched) so the
+    // "processed_this_tick" count is honest even when we exit mid-tick.
+    const tickStart = startIndex;
+    let tickIndex = 0;
+
     for (const g of grants || []) {
+      tickIndex++;
       try {
+        // 2026-09 banner removal: skip-if-already-done guard. We re-read
+        // ai_relevance inside the chunk because submit-time AI eval or
+        // the global ai-evaluate-pending cron may have already covered
+        // this grant between enrollment and the actual Claude call.
+        // Backfill scope is "not in (NULL, 'not_evaluated')" — skip if
+        // the row already has a real status.
+        if (
+          g.ai_relevance &&
+          g.ai_relevance !== "not_evaluated"
+        ) {
+          processedThisTick++;
+          lastProcessed = g.id;
+          await sleep(THROTTLE_MS);
+          continue;
+        }
+
         const result = await evaluateGrantApplication({
           cycleName,
           cycleDescription,
@@ -189,11 +252,23 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
         );
         newFailed++;
       }
+      processedThisTick++;
       lastProcessed = g.id;
+
+      // Persist progress per grant so a Vercel kill mid-tick keeps the
+      // cursor honest and the next tick picks up correctly.
+      const newProcessedCount = tickStart + processedThisTick;
+      await persistProgress(job.id, {
+        processed_count: newProcessedCount,
+        succeeded_count: newSucceeded,
+        failed_count: newFailed,
+        last_processed_id: lastProcessed,
+        progress: `Processed ${newProcessedCount}/${job.total_count}...`,
+      });
 
       if (Date.now() - startTime > TIME_BUDGET_MS) {
         console.log(
-          `[process-ai-backfill] Time budget reached after processing ${(grants || []).indexOf(g) + 1}/${grantIds.length} in this tick`,
+          `[process-ai-backfill] Time budget reached after processing ${processedThisTick} in this tick`,
         );
         budgetReached = true;
         break;
@@ -202,33 +277,24 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
       await sleep(THROTTLE_MS);
     }
 
-    const newProcessedCount = endIndex;
+    const newProcessedCount = tickStart + processedThisTick;
     const isDone = newProcessedCount >= allIds.length && !budgetReached;
 
-    await supabaseAdmin
-      .from("ai_backfill_jobs")
-      .update({
+    if (isDone) {
+      await persistProgress(job.id, {
         processed_count: newProcessedCount,
-        last_processed_id: lastProcessed,
         succeeded_count: newSucceeded,
         failed_count: newFailed,
-        progress: isDone
-          ? `Completed: ${newSucceeded}/${job.total_count} (${newFailed} failed)`
-          : `Processed ${newProcessedCount}/${job.total_count}...`,
-        ...(isDone
-          ? {
-              status: "completed",
-              current_phase: "completed",
-              completed_at: new Date().toISOString(),
-              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-              grant_ids_json: null,
-            }
-          : {}),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", job.id);
-
-    if (isDone) {
+        last_processed_id: lastProcessed,
+        progress: `Completed: ${newSucceeded}/${job.total_count} (${newFailed} failed)`,
+        completed: {
+          status: "completed",
+          current_phase: "completed",
+          completed_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          grant_ids_json: null,
+        },
+      });
       return { done: true, phase: "completed" };
     }
     return { done: false, phase: "evaluate" };
@@ -248,7 +314,9 @@ export async function GET(request: Request) {
 
     console.log("[process-ai-backfill] Starting processor...");
 
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const thirtyMinutesAgo = new Date(
+      Date.now() - 30 * 60 * 1000,
+    ).toISOString();
     const { data: staleJobs } = await supabaseAdmin
       .from("ai_backfill_jobs")
       .select("id")
