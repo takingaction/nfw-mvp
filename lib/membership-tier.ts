@@ -46,7 +46,7 @@ export async function recalculateMembershipTier(
   // Get the user's profile to check waitlist status + previous tier for restoration
   const { data: profile, error: profileError } = await supabaseAdmin
     .from("profiles")
-    .select("waitlist_joined_at, membership_level, previous_membership_level")
+    .select("waitlist_joined_at, membership_level, previous_membership_level, subscription_status")
     .eq("id", userId)
     .single();
 
@@ -117,7 +117,24 @@ export async function recalculateMembershipTier(
       subscription_status = "active";
     }
   } else {
-    // No successful payments
+    // No successful payments remain. Check for ANY payment record (success or
+    // reversed) before defaulting to free — an automated demotion to free should
+    // never happen if the user has ever had a payment on file. Preserves current
+    // state for admin review instead.
+    const { data: anyPayments } = await supabaseAdmin
+      .from("membership_payments")
+      .select("id")
+      .eq("user_id", userId)
+      .limit(1);
+    if (anyPayments && anyPayments.length > 0) {
+      return {
+        membership_level: (profile?.membership_level ?? "free") as MembershipLevel,
+        subscription_status: (profile?.subscription_status ?? null) as SubscriptionStatus,
+        restoredFromPrevious: false,
+      };
+    }
+
+    // No payments at all — safe to default to free.
     membership_level = "free";
     subscription_status = null;
 

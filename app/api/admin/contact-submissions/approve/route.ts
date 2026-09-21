@@ -81,6 +81,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User is no longer a free member" }, { status: 400 });
     }
 
+    // Guard: refuse to approve free membership for a member with payment history.
+    // Catches the case where membership_level was flipped to free by a refund/cancel
+    // path but the member actually paid (e.g. via Stripe) — admin must review manually.
+    const { data: successfulPayment } = await supabaseAdmin
+      .from("membership_payments")
+      .select("id")
+      .eq("user_id", profile.id)
+      .eq("status", "succeeded")
+      .limit(1);
+    if (successfulPayment && successfulPayment.length > 0) {
+      console.warn(
+        "[approve/free-membership] Refusing: member has successful payments",
+        profile.id,
+        profile.email,
+      );
+      return NextResponse.json(
+        { error: "Member has paid — cannot approve as free" },
+        { status: 400 },
+      );
+    }
+
     // Approve the free membership
     console.log("[approve/free-membership] Approving profile:", profile.id);
     const { error: updateError } = await supabaseAdmin

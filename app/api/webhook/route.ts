@@ -736,6 +736,25 @@ export async function POST(request: Request) {
           if (authUser) {
             console.log("[webhook] Found auth user:", authUser.id, "- updating profile to free");
 
+            // Guard: refuse to demote a paying member to free. Requires admin manual
+            // review before any tier change. Slack alert via existing notifier.
+            const { data: successfulPayment } = await supabaseAdmin
+              .from("membership_payments")
+              .select("id")
+              .eq("user_id", authUser.id)
+              .eq("status", "succeeded")
+              .limit(1);
+            if (successfulPayment && successfulPayment.length > 0) {
+              console.error(
+                `[webhook] customer.subscription.deleted blocked for ${authUser.id} (${customer.email}) — has successful payments. Manual review required.`,
+              );
+              await notifyRefundNotMatched({
+                chargeId: customerId,
+                error: "subscription.deleted on a paying member",
+              });
+              break;
+            }
+
             await supabaseAdmin
               .from("profiles")
               .update({
