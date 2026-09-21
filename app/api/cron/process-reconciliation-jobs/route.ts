@@ -12,6 +12,11 @@ const supabaseAdmin = createAdminClient(
 );
 
 export const dynamic = "force-dynamic";
+// Vercel Pro default is 60 s, which is too tight for the subscription
+// enumeration + ~810 customer-email lookups for missing_from_db. 300 s
+// matches the other job workers (process-stripe-only-jobs,
+// process-missing-payments-jobs).
+export const maxDuration = 300;
 
 const DELAY_MS = 100; // Delay between Stripe API calls
 
@@ -19,7 +24,10 @@ async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Process stripe_live job - fetch all Stripe subscriptions and calculate totals
+// Process stripe_live job - fetch all Stripe subscriptions, calculate totals,
+// and populate the "In Stripe, No Profile" set so the cache row carries both
+// stripe_live_json AND missing_from_db (matching what refreshStripeLiveCache
+// writes for the 10-min cron path and the manual Refresh button).
 async function processStripeLiveJob(jobId: string): Promise<void> {
   console.log(`[process-reconciliation] Processing stripe_live job ${jobId}`);
 
@@ -27,7 +35,7 @@ async function processStripeLiveJob(jobId: string): Promise<void> {
     // Update job status to processing
     await supabaseAdmin
       .from("reconciliation_jobs")
-      .update({ 
+      .update({
         status: "processing",
         progress: "Fetching Stripe subscriptions..."
       })
@@ -35,6 +43,7 @@ async function processStripeLiveJob(jobId: string): Promise<void> {
 
     // Fetch all active subscriptions
     const subscriptions: any[] = [];
+    const stripeEmailMap = new Map<string, "contributing" | "founding">(); // first occurrence wins
     let hasMore = true;
     let startingAfter: string | undefined;
 
@@ -44,6 +53,40 @@ async function processStripeLiveJob(jobId: string): Promise<void> {
 
       const response = await stripe.subscriptions.list(params);
       subscriptions.push(...response.data);
+
+      // Resolve each sub's email for the missing_from_db set.
+      for (const sub of response.data) {
+        const item = sub.items?.data?.[0];
+        const priceAmount = item?.price?.unit_amount || 0;
+        const isFounding =
+          priceAmount === 10000 ||
+          item?.price?.id === process.env.STRIPE_PRICE_FOUNDING ||
+          (priceAmount === 100 && item?.price?.recurring?.interval === "year");
+        const tier: "contributing" | "founding" = isFounding ? "founding" : "contributing";
+
+        const subAny = sub as any;
+        let email: string = subAny.billing_details?.email || "";
+        if (!email) {
+          const customerId = typeof sub.customer === "string" ? sub.customer : null;
+          if (customerId) {
+            try {
+              const customer = await stripe.customers.retrieve(customerId);
+              if (!customer.deleted && customer.email) {
+                email = customer.email;
+              }
+            } catch {
+              // Customer lookup failed; leave email empty.
+            }
+            await sleep(50);
+          }
+        }
+        if (email) {
+          const lower = email.toLowerCase();
+          if (!stripeEmailMap.has(lower)) {
+            stripeEmailMap.set(lower, tier);
+          }
+        }
+      }
 
       hasMore = response.has_more;
       if (hasMore && response.data.length > 0) {
@@ -68,7 +111,7 @@ async function processStripeLiveJob(jobId: string): Promise<void> {
       // Determine tier based on price
       // $15/month = contributing, $100/year or $100/month = founding
       // Or check if it's the founding price env var
-      const isFounding = priceAmount === 10000 || 
+      const isFounding = priceAmount === 10000 ||
         priceId === process.env.STRIPE_PRICE_FOUNDING ||
         (priceAmount === 100 && sub.items?.data?.[0]?.price?.recurring?.interval === 'year');
 
@@ -81,6 +124,39 @@ async function processStripeLiveJob(jobId: string): Promise<void> {
       }
     }
 
+    // Fetch all profile emails (paginated past 1000) so we can compute the
+    // "In Stripe, No Profile" set. Same logic as refreshStripeLiveCache.
+    const profileEmails = new Set<string>();
+    let profilePage = 0;
+    const profilePageSize = 1000;
+    let profileHasMore = true;
+    while (profileHasMore) {
+      const from = profilePage * profilePageSize;
+      const { data: profileBatch, error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .select("email")
+        .in("membership_level", ["contributing", "founding"])
+        .not("email", "is", null)
+        .range(from, from + profilePageSize - 1);
+      if (profileError) {
+        throw new Error(`Failed to load profile emails: ${profileError.message}`);
+      }
+      for (const p of profileBatch || []) {
+        if (p.email) profileEmails.add(p.email.toLowerCase());
+      }
+      if (!profileBatch || profileBatch.length < profilePageSize) {
+        profileHasMore = false;
+      } else {
+        profilePage++;
+      }
+    }
+
+    const missingFromDb: string[] = [];
+    for (const email of stripeEmailMap.keys()) {
+      if (!profileEmails.has(email)) missingFromDb.push(email);
+    }
+    missingFromDb.sort();
+
     const stripeLiveData = {
       contributing: { count: contributingCount, true_total: contributingTotal },
       founding: { count: foundingCount, true_total: foundingTotal },
@@ -88,7 +164,8 @@ async function processStripeLiveJob(jobId: string): Promise<void> {
       fetchedAt: new Date().toISOString(),
     };
 
-    // Update job with results
+    // Update job with results — stripe_live_json AND missing_from_db so the
+    // 'In Stripe, No Profile' card populates from this path too.
     await supabaseAdmin
       .from("reconciliation_jobs")
       .update({
@@ -96,11 +173,16 @@ async function processStripeLiveJob(jobId: string): Promise<void> {
         progress: "Completed",
         completed_at: new Date().toISOString(),
         stripe_live_json: stripeLiveData,
+        missing_from_db: missingFromDb,
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hour cache
       })
       .eq("id", jobId);
 
-    console.log(`[process-reconciliation] stripe_live job ${jobId} completed:`, stripeLiveData);
+    console.log(
+      `[process-reconciliation] stripe_live job ${jobId} completed:`,
+      stripeLiveData,
+      `missing_from_db=${missingFromDb.length}`,
+    );
 
   } catch (error: any) {
     console.error(`[process-reconciliation] Error processing stripe_live job ${jobId}:`, error);

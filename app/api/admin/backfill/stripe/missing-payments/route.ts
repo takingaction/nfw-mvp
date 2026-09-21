@@ -60,12 +60,24 @@ export async function POST(request: Request) {
       console.error("[missing-payments] Failed to create job:", error);
       const code = (error as { code?: string } | null)?.code;
       let message = "Failed to create job";
-      if (code === "42P01") {
+      if (!code) {
+        // Supabase JS client throws plain Error objects (no .code) for
+        // network/auth/SDK-init failures. Don't surface the misleading
+        // "Failed to create job" verbatim — tell the admin it's transient.
+        message = "Transient Supabase error — please try again in a moment";
+      } else if (code === "42P01") {
         message = "Database table missing — run migration 174";
       } else if (code === "23505") {
         message = "A pending job already exists (race with cron auto-create) — refresh and retry";
       } else if (code === "42501") {
         message = "Service role key lacks insert permission — check SUPABASE_SERVICE_ROLE_KEY";
+      } else if (code === "08006" || code === "40001") {
+        // 08006 = connection_failure, 40001 = serialization_failure (deadlock).
+        message = "Supabase connection issue — please try again in a moment";
+      } else {
+        // Unmapped Postgres code — surface it so future diagnostics don't
+        // require another round of "Failed to create job" spelunking.
+        message = `Failed to create job (code: ${code})`;
       }
       return NextResponse.json({ error: message, code: code || "UNKNOWN" }, { status: 500 });
     }

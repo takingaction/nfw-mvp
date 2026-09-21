@@ -18368,3 +18368,70 @@ Also fixed the auto-create path's `.select("id")` → `.select("id, status")` so
 ### Out of Scope (Flagged)
 
 - The stripe-duplicates cron has the same "no auto-create" gap (process-stripe-duplicates-jobs) — same fix pattern, can be done separately if needed.
+---
+
+## Session 2026-09-21: Persistent "Failed to create job" + cards still empty
+
+### Symptoms
+
+After deploying the previous session's fixes, the user reported:
+
+1. Same "Missing Payments Failed / Failed to create job" modal still appearing
+2. Cards on `/admin/backfill/stripe` still not populating with data
+
+### Root Causes (3 new bugs)
+
+**Bug #1 (Critical) — `process-reconciliation-jobs` had no `maxDuration`.**
+
+`app/api/cron/process-reconciliation-jobs/route.ts:14` declared `export const dynamic = "force-dynamic"` but had no `maxDuration` export. Same class of bug I fixed for `process-stripe-only-jobs` in the previous session. Vercel Pro default 60 s killed the worker mid-Phase-2 (sub fetch + customer-email lookups), so admin-triggered `stripe_live` background jobs never reached `completed` status. Without `completed` jobs, the cache row never updates, and `setReconciliation()` on the client is never called with data the cards read from.
+
+**Bug #2 — Unmapped Postgres error code surfaces the verbatim "Failed to create job" string.**
+
+`app/api/admin/backfill/stripe/missing-payments/route.ts:51-60` mapped only 42P01 / 23505 / 42501. Unmapped codes (and `error.code === undefined` for Supabase SDK transient errors) fell through to the literal `"Failed to create job"` string. Supabase JS client throws plain `Error` objects with no `.code` for network/SDK-init failures — so the most common transient failure surfaced the misleading default.
+
+**Bug #3 — `process-reconciliation-jobs:processStripeLiveJob` did not write `missing_from_db`.**
+
+The success-path UPDATE at lines 96-106 wrote `stripe_live_json` and `expires_at`, but not `missing_from_db`. So even when the worker ran successfully, the "In Stripe, No Profile" card had no data to read on the admin-triggered `Refresh Stripe` background-job path. The card only populated from the 10-min `refresh-reconciliation` cron (different file, fixed previously).
+
+### Fix #1 — Give `process-reconciliation-jobs` enough time
+
+`app/api/cron/process-reconciliation-jobs/route.ts:14-19`:
+
+Added `export const maxDuration = 300;` next to the existing `dynamic = "force-dynamic"`. Matches the other job workers (`process-stripe-only-jobs`, `process-missing-payments-jobs`, `refresh-reconciliation`). 300 s is the buffer needed for ~810 customer-email lookups added by the previous session's `missing_from_db` work.
+
+### Fix #2 — Cover unmapped codes and SDK transient errors
+
+`app/api/admin/backfill/stripe/missing-payments/route.ts:57-79`:
+
+Added fallback for `!error.code` (SDK transient errors) with the message `"Transient Supabase error — please try again in a moment"`. Added cases for `08006` (connection_failure) and `40001` (serialization_failure / deadlock) with `"Supabase connection issue — please try again in a moment"`. Unmapped Postgres codes now surface as `"Failed to create job (code: {code})"` so future failures don't require Vercel log spelunking.
+
+### Fix #3 — `processStripeLiveJob` writes `missing_from_db`
+
+`app/api/cron/process-reconciliation-jobs/route.ts:27-225`:
+
+Refactored `processStripeLiveJob` to populate `missing_from_db` alongside `stripe_live_json` on the job's own row (matching what `refreshStripeLiveCache` writes for the 10-min cron path):
+
+- During the existing Stripe subscription loop, now also builds `stripeEmailMap` (resolving email from `sub.billing_details.email` first, falling back to `stripe.customers.retrieve()` for the ~70% of subs without it, 50ms inter-call sleep)
+- After the tier-totals loop, paginated fetch of `profiles.email WHERE membership_level IN ('contributing', 'founding') AND email IS NOT NULL` (1000-row pages to bypass Supabase's default cap)
+- Compute `missingFromDb = [...stripeEmailMap.keys()].filter(e => !profileEmails.has(e)).sort()`
+- Write `missing_from_db: missingFromDb` in the success-path UPDATE
+
+Duplicates ~50 lines of logic from `lib/stripe-reconciliation.ts:refreshStripeLiveCache()`. Refactoring to share the helper would have required a contract change (the helper targets the latest completed row; this worker targets a specific jobId). Accepted the duplication in exchange for keeping the contract intact.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/cron/process-reconciliation-jobs/route.ts` | +1 line: `maxDuration = 300`; +90 lines: stripeEmailMap build, customer-retrieve loop with 50ms sleep, paginated profile email fetch, missing_from_db computation, write to job row |
+| `app/api/admin/backfill/stripe/missing-payments/route.ts` | +8 lines: cover 08006, 40001, and `!code` fallback |
+
+### Build / Deploy
+
+- `npm run build` ✓ — 0 TypeScript errors
+- **No migration required**
+- After deploy: admin-triggered `Refresh Reconciliation` and `Refresh Stripe` buttons now complete within 60 s (Fix #1 unblocks them). All three cache-write paths (10-min cron, manual Refresh button, admin-triggered background job) now populate `missing_from_db` consistently (Fix #3). Future "Failed to create job" errors self-diagnose via Fix #2's error-code mapping.
+
+### Out of Scope (Flagged)
+
+- The "Stripe Only (0)" card still being empty was likely the same root cause as #1. With that fixed, the Stripe Only worker (already fixed in previous session with `maxDuration=300`) should now run to completion.
+- Surface `lastCronError` from completed-but-failed jobs in the cards themselves (not just in Vercel logs) — separate UX task.
