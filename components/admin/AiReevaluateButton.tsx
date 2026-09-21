@@ -125,10 +125,14 @@ export default function AiReevaluateButton({
           }
         }
 
-        // No job running but work still to do? That's the global
-        // ai-evaluate-pending cron draining the backlog — keep watching
-        // so the live count keeps ticking down.
-        if (!isInFlight && (data.unevaluatedCount ?? 0) === 0) {
+        // Exit the polling loop when there's genuinely nothing left to wait
+        // for. Covers three terminal states:
+        //   1. no job row exists AND the live count is zero
+        //   2. a completed job AND the live count is zero
+        //   3. a stale/failed job AND the live count is zero (the worker
+        //      couldn't do more but the global cron / a sibling worker
+        //      already covered everything)
+        if ((data.unevaluatedCount ?? 0) === 0) {
           return;
         }
       } catch (err) {
@@ -186,7 +190,15 @@ export default function AiReevaluateButton({
     }
   };
 
+  // Treat the cycle as "done" from the user's perspective when:
+  //   (a) there's no in-flight job row, OR
+  //   (b) the latest server-snapshot says zero grants still need
+  //       evaluation. Covers the common case where the global cron or a
+  //       sibling worker has drained the backlog while a stale per-cycle
+  //       job row lingers (e.g. cancelled manually).
+  const noWorkLeft = (activeJob?.unevaluatedCount ?? 0) === 0;
   const isInFlight =
+    !noWorkLeft &&
     !!activeJob?.jobId &&
     (activeJob.status === "pending" || activeJob.status === "processing");
 

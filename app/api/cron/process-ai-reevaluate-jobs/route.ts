@@ -193,14 +193,19 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
 
     for (const g of grants || []) {
       try {
-        // 2026-09 banner removal: skip-if-already-done guard. After
-        // enrollment, the global ai-evaluate-pending cron or a sibling
-        // worker may have already updated this row. Force Full should
-        // re-run regardless, matching the old synchronous route's
-        // behavior.
+        // 2026-09-25 banner followup: skip-if-already-done guard. The global
+        // ai-evaluate-pending cron or a sibling worker may have already updated
+        // this row between enrollment and the actual Claude call. The previous
+        // version only skipped rows with `ai_relevance === "relevant"`, which
+        // meant irrelevant / uncertain rows (set by the global cron) were
+        // re-Chaude'd anyway, wasting credits and overwriting the global cron's
+        // work. Mirrors the backfill worker's guard: any grant with a real
+        // ai_relevance value (not NULL, not 'not_evaluated') is already
+        // evaluated. Force Full re-runs everything regardless.
         if (
           !job.force_full &&
-          g.ai_relevance === "relevant"
+          g.ai_relevance &&
+          g.ai_relevance !== "not_evaluated"
         ) {
           processedThisTick++;
           lastProcessed = g.id;
