@@ -59,6 +59,7 @@ export async function POST(request: Request) {
       // alerts) don't have to spelunk Vercel logs for every INSERT failure.
       console.error("[missing-payments] Failed to create job:", error);
       const code = (error as { code?: string } | null)?.code;
+      const details = (error as { message?: string } | null)?.message;
       let message = "Failed to create job";
       if (!code) {
         // Supabase JS client throws plain Error objects (no .code) for
@@ -67,6 +68,14 @@ export async function POST(request: Request) {
         message = "Transient Supabase error — please try again in a moment";
       } else if (code === "42P01") {
         message = "Database table missing — run migration 174";
+      } else if (code === "PGRST205") {
+        // PostgREST schema cache references a table that doesn't exist on
+        // the DB. Surface the missing table name from the error message so
+        // the admin knows exactly which migration to run.
+        const missing = details?.match(/'([^']+)'/)?.[1];
+        message = missing
+          ? `PostgREST schema cache stale — table ${missing} not found on DB. Run the matching migration in Supabase SQL Editor, then \`NOTIFY pgrst, 'reload';\``
+          : "PostgREST schema cache stale — run `NOTIFY pgrst, 'reload';` in Supabase SQL Editor";
       } else if (code === "23505") {
         message = "A pending job already exists (race with cron auto-create) — refresh and retry";
       } else if (code === "42501") {
@@ -79,7 +88,10 @@ export async function POST(request: Request) {
         // require another round of "Failed to create job" spelunking.
         message = `Failed to create job (code: ${code})`;
       }
-      return NextResponse.json({ error: message, code: code || "UNKNOWN" }, { status: 500 });
+      return NextResponse.json(
+        { error: message, code: code || "UNKNOWN", details },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({

@@ -18435,3 +18435,57 @@ Duplicates ~50 lines of logic from `lib/stripe-reconciliation.ts:refreshStripeLi
 
 - The "Stripe Only (0)" card still being empty was likely the same root cause as #1. With that fixed, the Stripe Only worker (already fixed in previous session with `maxDuration=300`) should now run to completion.
 - Surface `lastCronError` from completed-but-failed jobs in the cards themselves (not just in Vercel logs) — separate UX task.
+---
+
+## Session 2026-09-21: PGRST205 — missing_payments_jobs table not in production
+
+### Symptoms
+
+User reported the "Missing Payments Failed" modal persisting after running `NOTIFY pgrst, 'reload';`. The error code returned was `PGRST205`.
+
+### Root Cause
+
+`PGRST205` is PostgREST's "table not found in the schema cache" error. The migration `supabase/migrations/174_create_missing_payments_jobs.sql` had been committed on disk but never executed in the user's Supabase database. The other four job-table migrations (153-157) had been run, but 174+ were missing — including the one that backs the entire `/admin/backfill/stripe` Missing from DB flow.
+
+User confirmed via the diagnostic SQL queries I asked them to run:
+
+```sql
+SELECT table_schema, table_name
+FROM information_schema.tables
+WHERE table_schema = 'public';
+```
+
+Of the 8 tables my Query 2 flagged as MISSING, only `missing_payments_jobs` was actively breaking user-facing flows. The others were either mobile-only (`push_tokens`), not in any migration file (`payment_payments`, `recipient_membership_codes`, `coming_soon_subscribers`), or unused.
+
+### Fix
+
+User ran migration 174 in the Supabase SQL Editor. That created the `missing_payments_jobs` table, indexes, RLS policy, and ended with `NOTIFY pgrst, 'reload';` to refresh the schema cache.
+
+After deploy, the "Missing from DB" card should populate within 10 minutes of the next `process-missing-payments-jobs` cron tick (every 10 min). The "In Stripe, No Profile" and "Stripe Only" cards populate from their own crons (10 min and 5 min respectively).
+
+### Diagnostic improvement (this commit)
+
+The 4-line improvement to `app/api/admin/backfill/stripe/missing-payments/route.ts`:
+
+1. Capture `error.message` from the failed Supabase call as `details`.
+2. Add explicit `PGRSTXXX` case to the error-code mapping that parses the missing table name from `details` (regex match on single-quoted string in the standard PostgREST message format) and surfaces it in the admin-facing error message:
+   > "PostgREST schema cache stale — table public.missing_payments_jobs not found on DB. Run the matching migration in Supabase SQL Editor, then `NOTIFY pgrst, 'reload';`"
+3. Always include `details` in the 500 response body so the admin-facing modal shows the actual PostgREST error message (not just the code).
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/backfill/stripe/missing-payments/route.ts` | +13 lines: capture `error.message` as `details`; add explicit `PGRST205` case with table-name extraction; include `details` in response body |
+
+### Build / Deploy
+
+- `npm run build` ✓ — 0 TypeScript errors
+- **No migration required** (user already ran 174)
+- After deploy: future PGRST205 errors will tell the admin exactly which table is missing instead of forcing a support round-trip
+
+### Out of Scope (flagged for follow-up)
+
+- **Operational hygiene:** how did we end up with 30+ migrations on disk that were never executed in production? The disconnect between "files committed" and "DB up to date" was the root cause of this issue. Possible mitigations: pre-deploy CI check, admin UI "Sync pending migrations" button, deploy checklist. Separate conversation.
+- **Other missing tables** (`push_tokens`, `monthly_claims`, `pending_auth`) don't block any current user flow — only address when their respective features need them.
+- The reconciliation_jobs and stripe_only_jobs cards should populate from cron ticks within 5-10 minutes of deploy (the recent maxDuration=300 and missing_from_db-write fixes already landed in earlier commits).
