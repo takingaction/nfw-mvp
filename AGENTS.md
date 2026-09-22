@@ -18575,3 +18575,73 @@ if (insertError) {
 - The same SELECT-then-INSERT race likely exists in `app/api/admin/backfill/stripe/sync-customer/route.ts` and `app/api/admin/backfill/stripe/insert-missing/route.ts`. Apply same fix if those routes also surface 23505 errors.
 - The proper long-term fix is replacing the SELECT-then-INSERT pattern with `.upsert({...}, { onConflict: 'stripe_invoice_id', ignoreDuplicates: true })` so concurrent inserts become no-ops at the DB layer instead of relying on error-handling-as-flow-control. Not done in this commit because the friendly-message fix resolves the immediate user-visible symptom and matches the existing codebase pattern.
 - The cron `process-missing-payments-jobs` does NOT insert into `membership_payments` (only SELECTs from it at line 68-93), so no race there.
+---
+
+## Session 2026-09-21: Frozen "Last refreshed" timestamp — orphan `processing` row
+
+### Symptoms
+
+User reported "Last refreshed: Sep 21, 1:55 PM ET" never updates — same timestamp shown on multiple manual Refresh clicks, even though the page otherwise appears to work.
+
+### Root Cause
+
+A single `stripe_live` `reconciliation_jobs` row (`5c91a907-6b50-4f2a-a1c2-79a82039e321`) was stuck in `processing` status for 4.5+ hours (created `2026-09-21 22:02:36`).
+
+This orphan row blocked the entire refresh pipeline:
+
+1. **`refresh-reconciliation` cron** (every 10 min) has an in-flight guard at lines 39-45 that bails out if any `stripe_live` job is `pending|processing`. Every tick since 22:02:36 has been skipping.
+2. **`process-reconciliation-jobs` cron** (every 5 min) only picks `status = 'pending'` rows (line 370), so the stuck `processing` row was never picked up again — it's orphaned.
+3. **User's manual Refresh clicks** (`handleRefreshReconciliation` → `/reconcile?fresh=true` → `refreshStripeLiveCache()`) don't check for stuck rows, so they SHOULD have updated row `9b88ab7f-c620-4b5f-83b7-13b8513ce920` (the latest completed row) in place — but Query 1 showed no new completed rows after 17:54:16. The user's clicks were either being silently aborted at Vercel/proxy level (browser timeout during the ~200s direct fetch) or hitting some other gate. Diagnosing that is out of scope for this fix.
+
+The displayed timestamp on the UI never moved past 17:55:44 because the cache row `9b88ab7f…` had not been updated since then, and `refresh-reconciliation` (which would have updated it via `refreshStripeLiveCache`) had been SKIPPING every cron tick.
+
+### Fixes Applied
+
+**Fix 1 (immediate relief, run by user in Supabase SQL Editor):**
+
+```sql
+UPDATE reconciliation_jobs
+SET status = 'failed',
+    completed_at = NOW(),
+    error = 'Manually marked failed (was stuck in processing for 4.5 hours)'
+WHERE id = '5c91a907-6b50-4f2a-a1c2-79a82039e321';
+```
+
+Marks the stuck row `failed` so the cron can resume.
+
+**Fix 2 (permanent fix, this commit — code change):**
+
+Added a stale-job recovery block at the top of `app/api/cron/process-reconciliation-jobs/route.ts` (right after the auth check, before the existing job-pickup queries). Mirrors `process-missing-payments-jobs:339-348`. Any `stripe_live` or `payment_verify` row stuck in `processing` for >15 minutes gets marked `failed` automatically.
+
+```ts
+const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+await supabaseAdmin
+  .from("reconciliation_jobs")
+  .update({
+    status: "failed",
+    completed_at: new Date().toISOString(),
+    error: "Stale: previous run did not complete within 15 minutes",
+  })
+  .in("job_type", ["stripe_live", "payment_verify"])
+  .eq("status", "processing")
+  .lt("created_at", fifteenMinutesAgo);
+```
+
+The block runs BEFORE the SELECT queries so a stuck row is cleared before the in-flight guard in `refresh-reconciliation/route.ts:39-45` runs.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `app/api/cron/process-reconciliation-jobs/route.ts` | +12 lines: stale-job recovery block |
+
+### Build / Deploy
+
+- `npm run build` ✓ — 0 TypeScript errors
+- After deploy: any future stuck row is auto-cleared within 15 min. The `refresh-reconciliation` cron resumes normal operation within 10 min of deploy, and the "Last refreshed" timestamp starts updating again.
+
+### Out of Scope (Flagged)
+
+- **Fix 3 (background-job for Refresh button)**: Convert `handleRefreshReconciliation` from the 200s synchronous direct fetch to the background-job + poll pattern. ~80 lines. The 10-min cron handles updates automatically, so this is UX polish, not a bug fix.
+- **Customer email lookup parallelization**: `refreshStripeLiveCache` does ~1,890 sequential `stripe.customers.retrieve()` calls with 50ms sleeps after each, totaling ~200s. Parallelizing with `Promise.all` in batches of 25 would cut runtime to ~10-30s. Separate ticket.
+- **Investigation of why the user's manual clicks didn't create new completed rows** — likely browser or Vercel timing out the long-running request, but not blocking the immediate fix.

@@ -362,6 +362,23 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     console.log("[process-reconciliation] Starting reconciliation jobs processor...");
 
+    // Mark stale processing rows as failed (15-minute threshold). Mirrors
+    // process-missing-payments-jobs:339-348 to prevent orphan rows from
+    // blocking the cron indefinitely. Must run before the SELECT queries
+    // below — otherwise a stuck `processing` row gates every cron tick via
+    // the in-flight guard in refresh-reconciliation/route.ts.
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    await supabaseAdmin
+      .from("reconciliation_jobs")
+      .update({
+        status: "failed",
+        completed_at: new Date().toISOString(),
+        error: "Stale: previous run did not complete within 15 minutes",
+      })
+      .in("job_type", ["stripe_live", "payment_verify"])
+      .eq("status", "processing")
+      .lt("created_at", fifteenMinutesAgo);
+
     // Process stripe_live jobs first
     const { data: stripeLiveJob } = await supabaseAdmin
       .from("reconciliation_jobs")
