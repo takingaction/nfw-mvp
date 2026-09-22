@@ -29,6 +29,7 @@ export interface StripeLiveData {
 
 const STRIPE_PAGE_DELAY_MS = 50;
 const CUSTOMER_LOOKUP_DELAY_MS = 50;
+const CUSTOMER_LOOKUP_BATCH_SIZE = 25; // concurrency cap per batch; well under Stripe's 100 req/sec
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 let stripeClient: Stripe | null = null;
@@ -62,11 +63,19 @@ export async function refreshStripeLiveCache(): Promise<StripeLiveData> {
 
   // Fetch all active subscriptions directly from Stripe. While we iterate, also
   // collect a per-email tier map so we can compute "In Stripe, No Profile" once
-  // the page-loop finishes. Stripe doesn't put email on the subscription object,
-  // so any sub without `billing_details.email` requires a customer lookup
-  // (~70% of subs trigger this — adds ~40s for 2,700 active subs).
+  // the page-loop finishes.
+  //
+  // Email resolution: Stripe subscriptions don't carry email directly. When
+  // billing_details.email is missing we batch-look-up the customer
+  // asynchronously after pagination completes. Sequential lookups cost
+  // ~200s for ~1,890 calls (~70% of 2,700 active subs at 50ms each) which
+  // exceeds Vercel's 120s ceiling on refresh-reconciliation. Batching in
+  // chunks of 25 brings this to ~15s of Stripe API time while staying under
+  // the 100 req/sec rate limit.
   const subscriptions: Stripe.Subscription[] = [];
   const stripeEmailMap = new Map<string, "contributing" | "founding">(); // first occurrence wins
+  const subsNeedingEmailLookup: { customerId: string; tier: "contributing" | "founding" }[] = [];
+
   let hasMore = true;
   let startingAfter: string | undefined;
 
@@ -86,28 +95,21 @@ export async function refreshStripeLiveCache(): Promise<StripeLiveData> {
         (priceAmount === 100 && item?.price?.recurring?.interval === "year");
       const tier: "contributing" | "founding" = isFounding ? "founding" : "contributing";
 
-      // Resolve email from the subscription first, then the customer.
       const subAny = sub as any;
-      let email: string = subAny.billing_details?.email || "";
-      if (!email) {
-        const customerId = typeof sub.customer === "string" ? sub.customer : null;
-        if (customerId) {
-          try {
-            const customer = await stripe.customers.retrieve(customerId);
-            if (!customer.deleted && customer.email) {
-              email = customer.email;
-            }
-          } catch {
-            // Customer lookup failed; leave email empty.
-          }
-          await sleep(CUSTOMER_LOOKUP_DELAY_MS);
-        }
-      }
-      if (email) {
-        const lower = email.toLowerCase();
+      const billingEmail: string = subAny.billing_details?.email || "";
+      if (billingEmail) {
+        const lower = billingEmail.toLowerCase();
         if (!stripeEmailMap.has(lower)) {
           stripeEmailMap.set(lower, tier);
         }
+        continue;
+      }
+
+      // Email missing from subscription — schedule a customer lookup for the
+      // post-pagination batch loop.
+      const customerId = typeof sub.customer === "string" ? sub.customer : null;
+      if (customerId) {
+        subsNeedingEmailLookup.push({ customerId, tier });
       }
     }
 
@@ -116,6 +118,34 @@ export async function refreshStripeLiveCache(): Promise<StripeLiveData> {
       startingAfter = response.data[response.data.length - 1].id;
     }
     await sleep(STRIPE_PAGE_DELAY_MS);
+  }
+
+  // Batched customer lookups. Promise.allSettled keeps every successful
+  // lookup even if individual calls fail (transient Stripe 5xx, rate
+  // limits, etc.) — matches the previous try/catch-and-continue semantics.
+  console.log(
+    `[refreshStripeLiveCache] Batched lookups for ${subsNeedingEmailLookup.length} customers in chunks of ${CUSTOMER_LOOKUP_BATCH_SIZE}`,
+  );
+  for (let i = 0; i < subsNeedingEmailLookup.length; i += CUSTOMER_LOOKUP_BATCH_SIZE) {
+    const batch = subsNeedingEmailLookup.slice(i, i + CUSTOMER_LOOKUP_BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map((entry) => stripe.customers.retrieve(entry.customerId)),
+    );
+    for (let j = 0; j < results.length; j++) {
+      const r = results[j];
+      if (r.status !== "fulfilled") continue;
+      const customer = r.value;
+      if (customer.deleted || !customer.email) continue;
+      const lower = customer.email.toLowerCase();
+      if (!stripeEmailMap.has(lower)) {
+        // First-occurrence tier wins; if a customer has multiple subs across
+        // tiers (rare), the first sub we encountered determines the tier.
+        stripeEmailMap.set(lower, batch[j].tier);
+      }
+    }
+    if (i + CUSTOMER_LOOKUP_BATCH_SIZE < subsNeedingEmailLookup.length) {
+      await sleep(CUSTOMER_LOOKUP_DELAY_MS);
+    }
   }
 
   // Calculate totals

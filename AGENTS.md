@@ -18645,3 +18645,82 @@ The block runs BEFORE the SELECT queries so a stuck row is cleared before the in
 - **Fix 3 (background-job for Refresh button)**: Convert `handleRefreshReconciliation` from the 200s synchronous direct fetch to the background-job + poll pattern. ~80 lines. The 10-min cron handles updates automatically, so this is UX polish, not a bug fix.
 - **Customer email lookup parallelization**: `refreshStripeLiveCache` does ~1,890 sequential `stripe.customers.retrieve()` calls with 50ms sleeps after each, totaling ~200s. Parallelizing with `Promise.all` in batches of 25 would cut runtime to ~10-30s. Separate ticket.
 - **Investigation of why the user's manual clicks didn't create new completed rows** — likely browser or Vercel timing out the long-running request, but not blocking the immediate fix.
+---
+
+## Session 2026-09-22: Cron timeout — parallelize customer-email lookup
+
+### Symptoms
+
+User reported "Last refreshed: Sep 21, 1:55 PM ET" never updated on `/admin/backfill/stripe` after deploying the previous session's stale-job recovery. Diagnostic queries showed:
+- Query A (rows in last hour): zero rows
+- Query C (status counts): 1 `failed`, 78 `completed`, zero `processing`
+- Stuck `processing` row from earlier had been manually marked failed by user
+
+User pulled the actual Vercel error from logs:
+
+```
+2026-09-22 03:32:36.289 [error] Vercel Runtime Timeout Error:
+Task timed out after 120 seconds
+```
+
+### Root Cause
+
+`refreshStripeLiveCache()` (in `lib/stripe-reconciliation.ts`) and `processStripeLiveJob()` (in `app/api/cron/process-reconciliation-jobs/route.ts`) share the same bug pattern: a sequential `for` loop that calls `stripe.customers.retrieve()` per subscription, followed by a 50ms `sleep()`.
+
+For ~2,700 active Stripe subscriptions at ~70% missing `billing_details.email` (i.e., ~1,890 customer lookups), sequential calls take:
+- 1,890 calls × 50ms sleep = ~95s of pure dead time
+- Plus ~50-100ms Stripe API latency per call = another 95-190s
+
+**Total runtime: ~200s**. The `refresh-reconciliation` cron has `maxDuration = 120` (prior session set it to 120 expecting the work to fit). Every cron tick has been timing out at 120s, killing the worker before the cache write happens. The 17:55:44 timestamp the user was seeing was the last successful run BEFORE the missing-from-db email lookup was added.
+
+My earlier `maxDuration = 120` increase was a half-fix — it bumped the budget but did not address the underlying 200s runtime.
+
+### Fix C3 — Parallelize customer-email lookup
+
+Same pattern in both `refreshStripeLiveCache` and `processStripeLiveJob`:
+
+1. **Two-pass structure**: Pass 1 (cheap, in-memory) collects `(customerId, tier)` pairs for subs without billing email during pagination. Pass 2 (heavy I/O) batch-resolves them with `Promise.allSettled` in chunks of 25.
+
+2. **`Promise.allSettled`** instead of `Promise.all`: keeps every successful lookup even if individual calls fail (transient Stripe 5xx, rate limits, etc.) — matches the previous `try`/`catch`-and-continue semantics.
+
+3. **No sleep between calls within a batch** — Stripe `customers.retrieve` rate limit is 100 req/sec; 25 parallel calls + 50ms sleep between batches = ~22 calls/sec, well under the limit.
+
+### Expected runtime after fix
+
+| Phase | Before | After |
+|---|---|---|
+| Subscription pagination (28 × 50ms) | ~1.4s + API latency | unchanged |
+| Customer email lookups (1,890 calls) | sequential × 50ms = ~95-190s | 76 batches × (parallel call + sleep) = ~15s |
+| Profile email pagination | ~1s | unchanged |
+| UPDATE/INSERT cache | <1s | unchanged |
+| **Total** | **~110-200s (killed at 120s)** | **~20s (well under ceiling)** |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `lib/stripe-reconciliation.ts` | +25 lines: `CUSTOMER_LOOKUP_BATCH_SIZE = 25` constant; two-pass structure replacing per-page inline customer lookups with batched parallel resolution |
+| `app/api/cron/process-reconciliation-jobs/route.ts` | +30 lines: same pattern in `processStripeLiveJob`; removed duplicate `Found {n} active subscriptions` log that was preserved from the original structure |
+
+### Build / Deploy
+
+- `npm run build` ✓ — 0 TypeScript errors
+
+### Verification
+
+After deploy, within 10 min of the next `refresh-reconciliation` cron tick:
+- Function should complete in ~15-25s (was timing out at 120s)
+- A new `completed` stripe_live row should appear with current `completed_at`
+- Run:
+  ```sql
+  SELECT id, completed_at, stripe_live_json->>'fetchedAt' AS fetchedAt
+  FROM reconciliation_jobs
+  WHERE job_type = 'stripe_live' AND status = 'completed'
+  ORDER BY completed_at DESC LIMIT 1;
+  ```
+  Should show a recent timestamp.
+
+### Out of Scope (Flagged)
+
+- **Fix 3** (background-job pattern for the aubergine "Refresh" button): separate UX improvement.
+- Investigating why the user's earlier manual clicks appeared not to create new DB rows. Once this fix lands, manual clicks should succeed and we can re-test whether the earlier mystery was a real bug or just the same 120s timeout.

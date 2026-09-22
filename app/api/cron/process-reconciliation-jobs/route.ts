@@ -18,7 +18,9 @@ export const dynamic = "force-dynamic";
 // process-missing-payments-jobs).
 export const maxDuration = 300;
 
-const DELAY_MS = 100; // Delay between Stripe API calls
+const DELAY_MS = 100; // Delay between Stripe subscription page fetches
+const CUSTOMER_LOOKUP_BATCH_SIZE = 25; // concurrency cap; well under Stripe's 100 req/sec
+const CUSTOMER_LOOKUP_DELAY_MS = 50; // sleep between customer-lookup batches
 
 async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -41,9 +43,18 @@ async function processStripeLiveJob(jobId: string): Promise<void> {
       })
       .eq("id", jobId);
 
-    // Fetch all active subscriptions
+    // Fetch all active subscriptions. While we iterate, also collect the set of
+    // (customerId, tier) pairs whose email isn't on the subscription object.
+    // Customer lookups for those happen in a single batched pass after the
+    // pagination completes. Sequential calls would take ~200s for ~1,890
+    // lookups (~70% of 2,700 active subs lack billing_details.email at 50ms
+    // per call) which exceeds Vercel's 120s ceiling. Batching in chunks of
+    // 25 caps Stripe API usage at ~22 calls/sec, well under the 100 req/sec
+    // rate limit.
     const subscriptions: any[] = [];
     const stripeEmailMap = new Map<string, "contributing" | "founding">(); // first occurrence wins
+    const subsNeedingEmailLookup: { customerId: string; tier: "contributing" | "founding" }[] = [];
+
     let hasMore = true;
     let startingAfter: string | undefined;
 
@@ -54,7 +65,6 @@ async function processStripeLiveJob(jobId: string): Promise<void> {
       const response = await stripe.subscriptions.list(params);
       subscriptions.push(...response.data);
 
-      // Resolve each sub's email for the missing_from_db set.
       for (const sub of response.data) {
         const item = sub.items?.data?.[0];
         const priceAmount = item?.price?.unit_amount || 0;
@@ -65,26 +75,20 @@ async function processStripeLiveJob(jobId: string): Promise<void> {
         const tier: "contributing" | "founding" = isFounding ? "founding" : "contributing";
 
         const subAny = sub as any;
-        let email: string = subAny.billing_details?.email || "";
-        if (!email) {
-          const customerId = typeof sub.customer === "string" ? sub.customer : null;
-          if (customerId) {
-            try {
-              const customer = await stripe.customers.retrieve(customerId);
-              if (!customer.deleted && customer.email) {
-                email = customer.email;
-              }
-            } catch {
-              // Customer lookup failed; leave email empty.
-            }
-            await sleep(50);
-          }
-        }
-        if (email) {
-          const lower = email.toLowerCase();
+        const billingEmail: string = subAny.billing_details?.email || "";
+        if (billingEmail) {
+          const lower = billingEmail.toLowerCase();
           if (!stripeEmailMap.has(lower)) {
             stripeEmailMap.set(lower, tier);
           }
+          continue;
+        }
+
+        // Email missing from subscription — schedule a customer lookup for
+        // the post-pagination batch loop.
+        const customerId = typeof sub.customer === "string" ? sub.customer : null;
+        if (customerId) {
+          subsNeedingEmailLookup.push({ customerId, tier });
         }
       }
 
@@ -97,6 +101,34 @@ async function processStripeLiveJob(jobId: string): Promise<void> {
     }
 
     console.log(`[process-reconciliation] Found ${subscriptions.length} active subscriptions`);
+    console.log(
+      `[process-reconciliation] Batched lookups for ${subsNeedingEmailLookup.length} customers in chunks of ${CUSTOMER_LOOKUP_BATCH_SIZE}`,
+    );
+
+    // Batched customer lookups. Promise.allSettled keeps every successful
+    // lookup even if individual calls fail (transient Stripe 5xx, rate
+    // limits, etc.) — matches the previous try/catch-and-continue semantics.
+    for (let i = 0; i < subsNeedingEmailLookup.length; i += CUSTOMER_LOOKUP_BATCH_SIZE) {
+      const batch = subsNeedingEmailLookup.slice(i, i + CUSTOMER_LOOKUP_BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map((entry) => stripe.customers.retrieve(entry.customerId)),
+      );
+      for (let j = 0; j < results.length; j++) {
+        const r = results[j];
+        if (r.status !== "fulfilled") continue;
+        const customer = r.value;
+        if (customer.deleted || !customer.email) continue;
+        const lower = customer.email.toLowerCase();
+        if (!stripeEmailMap.has(lower)) {
+          // First occurrence wins; a customer with multiple subs (rare)
+          // gets whichever tier we saw first.
+          stripeEmailMap.set(lower, batch[j].tier);
+        }
+      }
+      if (i + CUSTOMER_LOOKUP_BATCH_SIZE < subsNeedingEmailLookup.length) {
+        await sleep(CUSTOMER_LOOKUP_DELAY_MS);
+      }
+    }
 
     // Calculate totals by tier
     let contributingCount = 0;
