@@ -75,6 +75,13 @@ export function sanitizeFileName(name: string): string {
 /**
  * Confirms an object exists in a bucket after a signed-URL upload.
  * Rejects paths that escape their folder.
+ *
+ * Uses `info()` rather than `list()` because Supabase Storage can have
+ * a multi-second propagation lag between an `uploadToSignedUrl` write
+ * and the folder-index entry returned by `list()` — causing finalize
+ * to report "Uploaded file not found" even though the file is in the
+ * bucket. `info()` reads the object's metadata directly and is not
+ * subject to folder-index lag.
  */
 export async function storageObjectExists(
   supabase: SupabaseClient,
@@ -82,12 +89,7 @@ export async function storageObjectExists(
   path: string,
 ): Promise<boolean> {
   if (!path || path.includes("..") || path.startsWith("/")) return false;
-  const slash = path.lastIndexOf("/");
-  const dir = slash === -1 ? "" : path.slice(0, slash);
-  const base = slash === -1 ? path : path.slice(slash + 1);
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .list(dir, { search: base, limit: 10 });
-  if (error || !data) return false;
-  return data.some((f) => f.name === base);
+  const { data, error } = await supabase.storage.from(bucket).info(path);
+  if (error) return false;
+  return !!data;
 }

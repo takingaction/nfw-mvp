@@ -18777,3 +18777,105 @@ Button label: `Has Admin Docs`. Count uses raw `grants` (not the filtered set), 
 - Filter for "any documents" or "only-member uploads" (the three filter values mirror the established `uploaded_by` semantics; one is enough)
 - Audit logging for which admin attaches docs to which applications
 
+---
+
+## Session 2026-09-22: Grant Upload Finalize "File Not Found" — Replace `list()` with `info()`
+
+### Symptoms (two related Slack incidents)
+
+| Slack timestamp | User | Cycle | File | Error code | Stage failed |
+|---|---|---|---|---|---|
+| `2026-09-22T08:38:04.785Z` | jessicatbrune@gmail.com | Out of Office Grant (`f8fdcf0a-…`) | `Completede medical Cert..pdf` | `UPLOAD_FINALIZE_FAILED` | server-side existence check |
+| `2026-09-21T22:47:23.497Z` | jess.hustleandheart@gmail.com | Ladies Night Out (`3a3ffe11-…`) | `Genetics progress.pdf` | `UPLOAD_TRANSFER_FAILED` | browser-side SDK call |
+
+Both incidents had the same visible-to-member consequence: their grant row was saved (the create call already succeeded) but the supporting document never persisted, and there is no self-recovery path because the apply form blocks re-submission (`/api/grants/create:145` returns 409 "You have already applied for this grant cycle") and `/grants/view/[id]` only displays documents read-only.
+
+### Diagnostic — confirmed for incident #1
+
+User ran the recommended SQL in the Supabase SQL editor:
+
+```sql
+SELECT name, bucket_id, created_at, metadata->>'size' AS size_bytes
+FROM storage.objects
+WHERE bucket_id = 'grant-documents'
+  AND name LIKE 'f8fdcf0a-74b2-40a2-923e-b187412ddece/%' ORDER BY created_at DESC LIMIT 20;
+```
+
+**Zero rows.** The file genuinely never reached the bucket.
+
+**For incident #2**, the same query against the second cycle id returned zero rows as well. The client SDK threw `Load failed` mid-`uploadToSignedUrl` — the most common cause is the user navigating away / closing the tab during upload, since the data plane never received the bytes. No server-side fix is possible for that failure class; it's a client-transport issue.
+
+### Where the failures show in the code
+
+**Incident #1 (`UPLOAD_FINALIZE_FAILED`)** — the failure site I fixed — lives at `app/api/grants/upload-document/finalize/route.ts:73-79`. The form's client code (`components/GrantApplicationForm.tsx:269-291`) only triggers `UPLOAD_TRANSFER_FAILED` when the SDK throws an `uploadErr`; since the SDK returned `{ data, error: null }`, the form proceeded to finalize, where the server-side `storageObjectExists()` returned `false` and surfaced "Uploaded file not found in storage. Please try again."
+
+The original `storageObjectExists` (in `lib/admin-documents.ts`) verified presence by calling `storage.list(dir, { search: base, limit: 10 })`. Supabase Storage can have a multi-second propagation lag between an `uploadToSignedUrl` write and the folder-index entry returned by `list()`. The form only fires finalize after the SDK reports the upload succeeded; if it does, the file is in the bucket — but `list()` may not see it yet. This is the **dominant** failure mode for the finalize-time "file not found" symptom.
+
+### Fix — switch the existence check from `list()` to `info()`
+
+Verified the Supabase JS SDK source (`storage-js/StorageFileApi.ts`):
+
+- `uploadToSignedUrl` uses `PUT /object/upload/sign/{bucketId}/{path}?token={token}` and returns `{ data, error }` where `error: null` means the data plane accepted the bytes.
+- `info()` reads the object's metadata directly (`HEAD /object/info/{path}`) without going through the folder-index — no propagation lag.
+
+The fix is one function in `lib/admin-documents.ts`:
+
+```ts
+// Before
+const { data } = await supabase.storage
+  .from(bucket).list(dir, { search: base, limit: 10 });
+if (error || !data) return false;
+return data.some((f) => f.name === base);
+
+// After
+const { data, error } = await supabase.storage.from(bucket).info(path);
+if (error) return false;
+return !!data;
+```
+
+The path-traversal guard (`..`, leading `/`, empty path) is preserved. Both caller paths get the fix in lockstep because they share the helper:
+
+- `app/api/grants/upload-document/finalize/route.ts:73` (member uploads)
+- `app/api/admin/grants/documents/finalize/route.ts:57` (admin attaches via reviewer panel)
+
+JSDoc updated to explain the metadata-lag rationale so the next reader doesn't try to "optimize" it back to `list()`.
+
+### What this fix does NOT address (flagged for follow-up)
+
+1. **Incident #2 (`UPLOAD_TRANSFER_FAILED`) — `Load failed` mid-upload.** Client-side SDK error; the data plane never received the bytes. No server-side fix exists. The only meaningful improvement would be a small client-side UX patch: when `uploadErr.message` matches `/load failed/i`, rephrase to "your connection was interrupted or the page was refreshed. Please try uploading again." Out of scope for this commit.
+2. **No resume-upload flow.** When finalize fails, the user is stranded: the grant row is saved, no documents are attached, the create API blocks re-submission, and `/grants/view/[id]` only displays documents read-only. Recovery today requires admin action. A "Resume document upload" page or a create-API exemption for grants with zero docs is a separate feature.
+3. **`uploadToSignedUrl` silent-success edge case.** Rare scenario where the SDK returns `{data, error: null}` but the data plane silently dropped the upload (transient 5xx). The form would still proceed to finalize. Could be defended against with a single retry-on-finalize-fail, but it's not the documented behavior of Supabase Storage and not the cause of either incident.
+
+### Recovery for the two stranded members
+
+Both members' grants are saved but have no `grant_documents` rows. The recovery path is the existing admin "Add document" button on the reviewer panel — admin obtains the file via email/DM and uploads via the prepared signed-URL flow (which itself uses the fixed `storageObjectExists`).
+
+| Member | Cycle | File | Path |
+|---|---|---|---|
+| jessicatbrune@gmail.com (`cf190ba5-…`) | `f8fdcf0a-74b2-40a2-923e-b187412ddece` (Out of Office Grant) | `Completede medical Cert..pdf` | `/admin/grants/f8fdcf0a-74b2-40a2-923e-b187412ddece` → select row → "Add document" |
+| jess.hustleandheart@gmail.com (`4e026a2c-…`) | `3a3ffe11-371a-4237-8507-7940f415c886` (Ladies Night Out) | `Genetics progress.pdf` | `/admin/grants/3a3ffe11-371a-4237-8507-7940f415c886` → select row → "Add document" |
+
+### Verification
+
+- `npm run build` ✓ — 0 TypeScript errors, 220/220 pages compiled in 7.2s
+- The 2 `/api/admin/grants/*` "Warning" lines and the `workspace root` warning are pre-existing Next.js framework warnings unrelated to the change
+- Smoke-test after deploy: any member completes a fresh upload (signed URL round-trip + finalize) — should succeed without "Uploaded file not found" even on the very first finalize call
+- Admin "Add document" path continues to work (uses the same helper)
+
+### Files changed
+
+- `lib/admin-documents.ts:75-95` — `storageObjectExists` rewrite + JSDoc explaining metadata-lag rationale
+- `AGENTS.md` — this session entry
+
+### Deploy
+
+1. Pull request with the single-file change
+2. No migration required (no schema change)
+3. No new env vars (uses existing `SUPABASE_SERVICE_ROLE_KEY` via `getAdminClient()`)
+
+### Out of scope (carried from this session)
+
+- Resume-from-upload-failure flow for members
+- UX patch for `Load failed` messaging
+- Bulk recovery tooling for stranded grants (would need a one-off script to list `grants.id` with zero `grant_documents` rows over a date range)
+
