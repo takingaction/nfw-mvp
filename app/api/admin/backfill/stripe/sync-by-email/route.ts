@@ -181,7 +181,18 @@ export async function POST(request: Request) {
         });
 
       if (insertError) {
-        console.error("[sync-by-email] Error inserting:", insertError);
+        // 23505 unique_violation happens when another sync (concurrent click,
+        // a prior sync-single round, or a previous sync-by-email on the same
+        // email) already inserted this invoice. The DB UNIQUE constraint on
+        // stripe_invoice_id is the safety net — treat the duplicate as a
+        // success-equivalent: the row is already there, the customer is
+        // effectively no longer missing, just not visible to this sync call.
+        const code = (insertError as { code?: string }).code;
+        if (code === "23505") {
+          console.log(`[sync-by-email] Invoice ${payment.stripe_invoice_id} already exists — treating as skipped`);
+        } else {
+          console.error("[sync-by-email] Error inserting:", insertError);
+        }
         skipped++;
       } else {
         inserted++;

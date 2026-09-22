@@ -18489,3 +18489,89 @@ The 4-line improvement to `app/api/admin/backfill/stripe/missing-payments/route.
 - **Operational hygiene:** how did we end up with 30+ migrations on disk that were never executed in production? The disconnect between "files committed" and "DB up to date" was the root cause of this issue. Possible mitigations: pre-deploy CI check, admin UI "Sync pending migrations" button, deploy checklist. Separate conversation.
 - **Other missing tables** (`push_tokens`, `monthly_claims`, `pending_auth`) don't block any current user flow — only address when their respective features need them.
 - The reconciliation_jobs and stripe_only_jobs cards should populate from cron ticks within 5-10 minutes of deploy (the recent maxDuration=300 and missing_from_db-write fixes already landed in earlier commits).
+---
+
+## Session 2026-09-21: Sync Failed — 23505 unique_violation race
+
+### Symptoms
+
+User clicked a "Sync" button on the "Missing from DB" card after migration 174 ran successfully and the cards populated. Modal showed:
+
+```
+Sync Failed
+duplicate key value violates unique constraint "membership_payments_stripe_invoice_id_unique"
+```
+
+### Root Cause
+
+Both `app/api/admin/backfill/stripe/sync-single/route.ts` and `app/api/admin/backfill/stripe/sync-by-email/route.ts` use a SELECT-then-INSERT pattern:
+
+```ts
+// Check if already exists
+const { data: existing } = await supabaseAdmin
+  .from("membership_payments")
+  .select("id")
+  .eq("stripe_invoice_id", payment.stripe_invoice_id)
+  .limit(1);
+
+if (existing && existing.length > 0) { skipped++; continue; }
+
+// Race window — another sync inserts the same row between our SELECT and INSERT
+const { error: insertError } = await supabaseAdmin
+  .from("membership_payments")
+  .insert({ stripe_invoice_id: payment.stripe_invoice_id, ... });
+```
+
+Migration 147 added `UNIQUE (stripe_invoice_id)` to `membership_payments` as a safety net. That constraint catches the race but returns the raw Postgres error message to the client — confusing for admins.
+
+The race is hit when:
+- User double-clicks Sync
+- User clicks Sync on the same customer from two different sync routes
+- User has the page open in two tabs and clicks Sync in both
+- A prior partial sync left rows behind that the dedupe-then-insert logic doesn't see (e.g., a different process inserted concurrently)
+
+### Fix Applied
+
+**Both routes** (`sync-single/route.ts` and `sync-by-email/route.ts`):
+
+When `insertError.code === "23505"`, log the duplicate invoice ID and treat it as `skipped` rather than a hard error. The DB UNIQUE constraint is the safety net — the duplicate row exists in `membership_payments`, so the customer's row in the "Missing from DB" card was already going to disappear on the next cron tick or page refresh.
+
+```ts
+if (insertError) {
+  // 23505 unique_violation happens when another sync (concurrent click,
+  // a prior sync-single round, or sync-by-email on the same email)
+  // already inserted this invoice. The DB UNIQUE constraint on
+  // stripe_invoice_id is the safety net — treat the duplicate as a
+  // success-equivalent: the row is already there, the customer is
+  // effectively no longer missing, just not visible to this sync call.
+  const code = (insertError as { code?: string }).code;
+  if (code === "23505") {
+    console.log(`[sync-single] Invoice ${payment.stripe_invoice_id} already exists — treating as skipped`);
+  } else {
+    console.error("[sync-single] Error inserting:", insertError);
+  }
+  skipped++;
+}
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/admin/backfill/stripe/sync-single/route.ts` | +10 lines: 23505 detection, log duplicate invoice ID, treat as skipped |
+| `app/api/admin/backfill/stripe/sync-by-email/route.ts` | Same as above, mirror changes |
+
+### Behavior After Fix
+
+| Scenario | Before | After |
+|----------|--------|-------|
+| First sync of an invoice | INSERT succeeds, `inserted++` | Same |
+| Second concurrent sync of same invoice | 23505 error → "Sync Failed" modal | 23505 logged at info level, treated as skipped, success return |
+| Genuine error (network, RLS, etc.) | Same raw error surfaced | Same raw error surfaced (still goes to console.error) |
+| Card refresh after dup sync | Customer still showed up (broken) | Customer now correctly absent from card |
+
+### Out of Scope (Flagged)
+
+- The same SELECT-then-INSERT race likely exists in `app/api/admin/backfill/stripe/sync-customer/route.ts` and `app/api/admin/backfill/stripe/insert-missing/route.ts`. Apply same fix if those routes also surface 23505 errors.
+- The proper long-term fix is replacing the SELECT-then-INSERT pattern with `.upsert({...}, { onConflict: 'stripe_invoice_id', ignoreDuplicates: true })` so concurrent inserts become no-ops at the DB layer instead of relying on error-handling-as-flow-control. Not done in this commit because the friendly-message fix resolves the immediate user-visible symptom and matches the existing codebase pattern.
+- The cron `process-missing-payments-jobs` does NOT insert into `membership_payments` (only SELECTs from it at line 68-93), so no race there.
