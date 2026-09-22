@@ -96,7 +96,7 @@ export default function GrantCombinedScores({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [visibleNames, setVisibleNames] = useState<Set<string>>(new Set());
   const [localSelected, setLocalSelected] = useState<Set<string>>(new Set());
-  const [multiAppFilter, setMultiAppFilter] = useState<"all" | "2plus">("all");
+  const [multiAppFilter, setMultiAppFilter] = useState<"all" | "2plus" | "adminDocs">("all");
 
   // Stripe status state
   const [stripeResults, setStripeResults] = useState<Record<string, StripeCheckResult>>({});
@@ -475,6 +475,16 @@ export default function GrantCombinedScores({
         >
           2+ Apps ({grants.filter((g) => (g.applications_this_month || 1) >= 2).length})
         </button>
+        <button
+          onClick={() => setMultiAppFilter(m => m === "adminDocs" ? "all" : "adminDocs")}
+          className={`px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+            multiAppFilter === "adminDocs"
+              ? "bg-nfw-aubergine text-white"
+              : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
+          }`}
+        >
+          Has Admin Docs ({grants.filter((g) => g.documents?.some((d: any) => d.uploaded_by)).length})
+        </button>
       </div>
 
       {/* Decision Legend */}
@@ -550,6 +560,9 @@ export default function GrantCombinedScores({
             .filter((grant) => {
               if (multiAppFilter === "2plus") {
                 return (grant.applications_this_month || 1) >= 2;
+              }
+              if (multiAppFilter === "adminDocs") {
+                return !!(grant.documents?.some((d: any) => d.uploaded_by));
               }
               return true;
             })

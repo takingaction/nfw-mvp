@@ -48,7 +48,7 @@ export default function FirstReviewPage() {
   const [isFirstComplete, setIsFirstComplete] = useState(false);
   const [visibleNames, setVisibleNames] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "runner_up" | "not_approved" | "unscored">("all");
-  const [multiAppFilter, setMultiAppFilter] = useState<"all" | "2plus">("all");
+  const [multiAppFilter, setMultiAppFilter] = useState<"all" | "2plus" | "adminDocs">("all");
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
 
@@ -88,6 +88,8 @@ export default function FirstReviewPage() {
     not_approved: grants.filter(g => getStatus(g) === "not_approved").length,
     unscored: grants.filter(g => getStatus(g) === "unscored").length,
   };
+
+  const adminDocsCount = grants.filter(g => g.documents?.some((d: any) => d.uploaded_by)).length;
 
   const toggleNameVisibility = (grantId: string) => {
     const newVisible = new Set(visibleNames);
@@ -459,11 +461,25 @@ export default function FirstReviewPage() {
                   ({grants.filter(g => (g.applications_this_month || 1) >= 2).length})
                 </span>
               </button>
+              <button
+                onClick={() => { setStatusFilter("all"); setMultiAppFilter(m => m === "adminDocs" ? "all" : "adminDocs"); }}
+                className={`px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                  multiAppFilter === "adminDocs"
+                    ? "bg-nfw-aubergine text-white"
+                    : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
+                }`}
+              >
+                Has Admin Docs
+                <span className={`text-xs ${multiAppFilter === "adminDocs" ? "opacity-70" : "opacity-50"}`}>
+                  ({adminDocsCount})
+                </span>
+              </button>
             </div>
             <div className="space-y-3 overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 180px)' }}>
               {sortedGrants.filter(g => {
                 if (statusFilter !== "all" && getStatus(g) !== statusFilter) return false;
                 if (multiAppFilter === "2plus" && (g.applications_this_month || 1) < 2) return false;
+                if (multiAppFilter === "adminDocs" && !g.documents?.some((d: any) => d.uploaded_by)) return false;
                 return true;
               }).map((grant) => {
                 const score = grant.grant_scores?.[0];

@@ -18724,3 +18724,56 @@ After deploy, within 10 min of the next `refresh-reconciliation` cron tick:
 
 - **Fix 3** (background-job pattern for the aubergine "Refresh" button): separate UX improvement.
 - Investigating why the user's earlier manual clicks appeared not to create new DB rows. Once this fix lands, manual clicks should succeed and we can re-test whether the earlier mystery was a real bug or just the same 120s timeout.
+
+## Session 2026-09-22: "Has Admin Docs" Filter on Scoring Pages
+
+### Goal
+
+Add a filter button to `/admin/grants/[id]/scoring/{first,second,combined}` showing only applications where an admin attached a document, alongside the existing `Approved / Runner Up / Not Approved / Unscored / 2+ Apps` buttons.
+
+### Match Condition
+
+`g.documents?.some(d => d.uploaded_by)` — `uploaded_by IS NOT NULL` per the convention documented in `app/api/grants/upload-document/finalize/route.ts:19` (member uploads leave `uploaded_by` NULL; admin uploads set it to the admin's UUID). The `documents` array with `uploaded_by` is already returned by all three scores endpoints (`scores/first/route.ts:128`, `scores/second/route.ts:117`, `scores/combined/route.ts:129`) — no API or schema changes needed.
+
+### Pattern (mirrors `2+ Apps`)
+
+Mutually-exclusive three-way toggle with `statusFilter` and `multiAppFilter`:
+- Clicking `Has Admin Docs` → `setStatusFilter("all"); setMultiAppFilter(m => m === "adminDocs" ? "all" : "adminDocs")`
+- Clicking `2+ Apps` → `setStatusFilter("all"); setMultiAppFilter(m => m === "2plus" ? "all" : "2plus")`
+- Clicking any status filter → `setStatusFilter(f); setMultiAppFilter("all")`
+
+Active state: `bg-nfw-aubergine text-white` (same as `2+ Apps`, distinct from the four status buttons' `bg-nfw-blackberry text-white`).
+
+Button label: `Has Admin Docs`. Count uses raw `grants` (not the filtered set), so the badge always shows the total eligible count regardless of other active filters.
+
+### State Type Extension
+
+`multiAppFilter` type went from `"all" | "2plus"` → `"all" | "2plus" | "adminDocs"` on all three pages. The existing toggle expression `m => m === "2plus" ? "all" : "2plus"` was not changed — it still only handles `2plus`; the new `adminDocs` value is handled by its own toggle expression on the new button.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `app/admin/grants/[id]/scoring/first/page.tsx` | State type, `adminDocsCount`, button JSX after `2+ Apps`, filter line in `.filter(g => …)` |
+| `app/admin/grants/[id]/scoring/second/page.tsx` | Same edits (uses `getCombinedStatus` instead of `getStatus` — unrelated to this filter) |
+| `components/admin/GrantCombinedScores.tsx` | Same edits. Combined page has no `statusFilter`, so the new button's `onClick` only clears `multiAppFilter` (no `setStatusFilter("all")` call). Filter line added to the `.filter(grant => …)` chain. |
+
+### What Was NOT Changed
+
+- API endpoints (no schema/data shape changes)
+- Database (no migration — `uploaded_by` was added in migration 170)
+- Filter persistence (still resets to `"all"` on mount, matching existing pattern)
+- The other two filter categories (status + `2+ Apps`) — only extended to coexist with the new option
+
+### Verification
+
+- `npm run build` ✓ — 0 TypeScript errors, 218 pages
+- Three filter buttons coexist on each page; only one can be active at a time
+- Combined page correctly clears `multiAppFilter` (no status filter exists on combined to clear)
+
+### Out of Scope
+
+- URL parameter or sessionStorage persistence (matches existing pattern; not done)
+- Filter for "any documents" or "only-member uploads" (the three filter values mirror the established `uploaded_by` semantics; one is enough)
+- Audit logging for which admin attaches docs to which applications
+
