@@ -1,6 +1,37 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import {
+  GRANT_DOCS_BUCKET,
+  GRANT_DOCS_ALLOWED_TYPES,
+  GRANT_DOCS_MAX_BYTES,
+  storageObjectExists,
+} from "@/lib/admin-documents";
+
+interface DocumentUpload {
+  path: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+}
+
+function validateUploadMeta(
+  up: DocumentUpload,
+): { ok: true } | { ok: false; error: string } {
+  if (!up.path || up.path.includes("..") || up.path.startsWith("/")) {
+    return { ok: false, error: "Invalid document path" };
+  }
+  if (!up.fileName || typeof up.fileName !== "string") {
+    return { ok: false, error: "Missing file name" };
+  }
+  if (!up.mimeType || !GRANT_DOCS_ALLOWED_TYPES.includes(up.mimeType)) {
+    return { ok: false, error: "File type not supported" };
+  }
+  if (typeof up.fileSize !== "number" || up.fileSize <= 0 || up.fileSize > GRANT_DOCS_MAX_BYTES) {
+    return { ok: false, error: "File size invalid" };
+  }
+  return { ok: true };
+}
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -53,12 +84,14 @@ export async function POST(request: Request) {
       biggest_challenge,
       fund_usage,
       certification_consent,
+      document_uploads,
     } = body as {
       cycle_id?: unknown;
       who_are_you?: unknown;
       biggest_challenge?: unknown;
       fund_usage?: unknown;
       certification_consent?: unknown;
+      document_uploads?: unknown;
     };
 
     if (typeof cycle_id !== "string" || !isValidUUID(cycle_id)) {
@@ -96,9 +129,37 @@ export async function POST(request: Request) {
       );
     }
 
+    // Parse + validate document_uploads (upload-first flow, 2026-09-23).
+    // Each path must follow the upload-first convention
+    // `${cycle_id}/pending/${user.id}/...` to prevent cross-tenant
+    // smuggling of forged document paths from a different user's bucket.
+    const documentUploads: DocumentUpload[] = Array.isArray(document_uploads)
+      ? (document_uploads as DocumentUpload[]).filter(
+          (u): u is DocumentUpload =>
+            !!u && typeof u === "object" &&
+            typeof u.path === "string" &&
+            typeof u.fileName === "string" &&
+            typeof u.mimeType === "string" &&
+            typeof u.fileSize === "number",
+        )
+      : [];
+    const allowedPrefix = `${cycle_id}/pending/${user.id}/`;
+    for (const up of documentUploads) {
+      if (!up.path.startsWith(allowedPrefix)) {
+        return NextResponse.json(
+          { error: "Invalid document path" },
+          { status: 400 },
+        );
+      }
+      const v = validateUploadMeta(up);
+      if (!v.ok) {
+        return NextResponse.json({ error: v.error }, { status: 400 });
+      }
+    }
+
     const { data: cycleData } = await supabaseAdmin
       .from("grant_cycles")
-      .select("id, status, is_testing_only")
+      .select("id, status, is_testing_only, requires_documents")
       .eq("id", cycle_id)
       .single();
 
@@ -112,6 +173,16 @@ export async function POST(request: Request) {
     if (cycleData.status !== "open") {
       return NextResponse.json(
         { error: "This grant cycle is not accepting applications" },
+        { status: 400 },
+      );
+    }
+
+    // Server-side enforcement (was previously only client-side). Members
+    // who bypass the form (curl, JS-disabled, future API clients) cannot
+    // submit a zero-document application to a requires_documents cycle.
+    if (cycleData.requires_documents && documentUploads.length === 0) {
+      return NextResponse.json(
+        { error: "This grant cycle requires at least one supporting document" },
         { status: 400 },
       );
     }
@@ -210,6 +281,60 @@ export async function POST(request: Request) {
         { error: friendly, code: error.code },
         { status: error.code === "22P02" || error.code === "23514" ? 400 : error.code === "23505" ? 409 : 500 },
       );
+    }
+
+    // Atomic grant_documents inserts. Each path was previously verified
+    // by the form's signed URL upload; we double-check existence here to
+    // close the forged-path attack surface (member A claiming to upload
+    // a file under member B's cycle folder). If any insert fails, we
+    // roll back the grant row so the user is never left with an
+    // orphan grant that the apply form would then block them from
+    // re-submitting (409).
+    if (documentUploads.length > 0) {
+      const existenceResults = await Promise.all(
+        documentUploads.map((up) => storageObjectExists(supabaseAdmin, GRANT_DOCS_BUCKET, up.path)),
+      );
+      if (existenceResults.some((exists) => !exists)) {
+        // Roll back the grant row before returning.
+        await supabaseAdmin.from("grants").delete().eq("id", grant.id);
+        return NextResponse.json(
+          { error: "One or more uploaded files could not be verified in storage. Please try uploading again." },
+          { status: 400 },
+        );
+      }
+
+      const docRows = documentUploads.map((up) => ({
+        grant_id: grant.id,
+        document_type: "supporting_doc",
+        document_url: up.path,
+        file_name: up.fileName,
+        file_size: up.fileSize,
+      }));
+
+      const { error: docsError } = await supabaseAdmin
+        .from("grant_documents")
+        .insert(docRows);
+
+      if (docsError) {
+        console.error("[grants/create] grant_documents insert failed, rolling back grant:", docsError);
+        // Best-effort rollback of the grant row. If this DELETE also
+        // fails, the orphan-grant cleanup cron (added 2026-09-23) will
+        // surface it in the daily Slack report.
+        await supabaseAdmin.from("grants").delete().eq("id", grant.id);
+        // Best-effort cleanup of the storage objects so we don't leak
+        // uploads for a grant that no longer exists.
+        try {
+          await supabaseAdmin.storage
+            .from(GRANT_DOCS_BUCKET)
+            .remove(documentUploads.map((up) => up.path));
+        } catch (cleanupErr) {
+          console.error("[grants/create] storage cleanup after rollback failed:", cleanupErr);
+        }
+        return NextResponse.json(
+          { error: "Failed to attach supporting documents. Please try again or contact support." },
+          { status: 500 },
+        );
+      }
     }
 
     // Fetch user email and profile for the confirmation email
