@@ -79,6 +79,7 @@ export default function SecondReviewPage() {
   }, []);
 
   const getCombinedStatus = (grant: Grant): "approved" | "runner_up" | "not_approved" | "unscored" => {
+    if (grant.ai_invalidated_at) return "not_approved";
     const secondScore = grant.grant_scores?.[0];
     const isSecondComplete = secondScore?.is_complete === true;
 

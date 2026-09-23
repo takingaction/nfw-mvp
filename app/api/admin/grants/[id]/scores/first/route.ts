@@ -201,6 +201,20 @@ export async function POST(
       is_complete,
     } = body;
 
+    // Guard: skipped grants cannot be scored. Must be restored on First Review first.
+    const { data: grantCheck } = await supabaseAdmin
+      .from("grants")
+      .select("ai_invalidated_at")
+      .eq("id", grantId)
+      .single();
+
+    if (grantCheck?.ai_invalidated_at) {
+      return NextResponse.json(
+        { error: "Grant is skipped and cannot be scored. Restore it on the First Review page first." },
+        { status: 403 }
+      );
+    }
+
     // Calculate total score
     const total_score = (urgency_score || 0) + (authenticity_score || 0) + (impact_score || 0);
     console.log("[scores/first POST] Calculated total_score:", total_score);

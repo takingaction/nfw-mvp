@@ -5,6 +5,7 @@ interface GrantScoreInputProps {
   value: number | null;
   onChange: (value: number | null) => void;
   description?: string;
+  disabled?: boolean;
 }
 
 const SCORE_OPTIONS = [0, 0.5, 1, 1.5, 2, 2.5, 3];
@@ -14,6 +15,7 @@ export default function GrantScoreInput({
   value,
   onChange,
   description,
+  disabled = false,
 }: GrantScoreInputProps) {
   return (
     <div className="space-y-2">
@@ -31,8 +33,9 @@ export default function GrantScoreInput({
           <button
             key={score}
             type="button"
+            disabled={disabled}
             onClick={() => onChange(value === score ? null : score)}
-            className={`w-10 h-10 text-sm font-bold rounded transition-all ${
+            className={`w-10 h-10 text-sm font-bold rounded transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               value === score
                 ? "bg-nfw-aubergine text-white"
                 : "bg-nfw-dove text-nfw-blackberry hover:bg-nfw-aubergine/20"

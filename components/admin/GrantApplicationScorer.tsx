@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, MessageSquare } from "lucide-react";
+import { Loader2, MessageSquare, Lock } from "lucide-react";
 import GrantScoreInput from "./GrantScoreInput";
 import AiEvaluationCallout from "./AiEvaluationCallout";
 
@@ -44,6 +44,7 @@ export default function GrantApplicationScorer({
   documents,
 }: GrantApplicationScorerProps) {
   const existingScore = grant.grant_scores?.[0];
+  const isSkipped = !!grant.ai_invalidated_at;
 
   const [urgency_score, setUrgency_score] = useState<number | null>(
     existingScore?.urgency_score ?? null
@@ -85,8 +86,9 @@ export default function GrantApplicationScorer({
     }
   };
 
-  // Auto-save when values change
+  // Auto-save when values change (skipped grants cannot be saved)
   useEffect(() => {
+    if (isSkipped) return;
     const timer = setTimeout(() => {
       const totalScore =
         (urgency_score ?? 0) +
@@ -122,7 +124,7 @@ export default function GrantApplicationScorer({
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes]);
+  }, [urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, isSkipped]);
 
   const handleSave = async (data: ScoreData) => {
     console.log("[GrantApplicationScorer] handleSave called for grant", grant.id, data);
@@ -293,11 +295,20 @@ export default function GrantApplicationScorer({
 
       {/* Scoring */}
       <div className="space-y-4 pt-2">
+        {isSkipped && (
+          <div className="bg-red-50 border border-red-200 p-3 flex items-start gap-2">
+            <Lock className="w-4 h-4 text-red-700 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-red-700 font-ui">
+              This grant was skipped. Scoring is locked. Restore it from the callout below to edit scoring.
+            </p>
+          </div>
+        )}
         <GrantScoreInput
           label="Criteria 1: Intent & Feasibility"
           value={urgency_score}
           onChange={setUrgency_score}
           description="Does the applicant present a clear, realistic plan for how the grant funds will be spent and executed?"
+          disabled={isSkipped}
         />
 
         <GrantScoreInput
@@ -305,6 +316,7 @@ export default function GrantApplicationScorer({
           value={authenticity_score}
           onChange={setAuthenticity_score}
           description="Does the applicant provide a clear, personal narrative of their need? Do they include a 'who', 'what', and 'why' in the context of their individual current circumstances?"
+          disabled={isSkipped}
         />
 
         <GrantScoreInput
@@ -312,6 +324,7 @@ export default function GrantApplicationScorer({
           value={impact_score}
           onChange={setImpact_score}
           description="Does the applicant detail how this grant will meaningfully benefit their life?"
+          disabled={isSkipped}
         />
 
         {/* URGENCY (stored in barriers_yn column) */}
@@ -322,8 +335,9 @@ export default function GrantApplicationScorer({
           <div className="flex gap-2">
             <button
               type="button"
+              disabled={isSkipped}
               onClick={() => setBarriers_yn(true)}
-              className={`flex-1 py-2 text-sm font-bold rounded transition-all ${
+              className={`flex-1 py-2 text-sm font-bold rounded transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                 barriers_yn === true
                   ? "bg-nfw-aubergine text-white"
                   : "bg-nfw-dove text-nfw-blackberry hover:bg-nfw-aubergine/20"
@@ -333,8 +347,9 @@ export default function GrantApplicationScorer({
             </button>
             <button
               type="button"
+              disabled={isSkipped}
               onClick={() => setBarriers_yn(false)}
-              className={`flex-1 py-2 text-sm font-bold rounded transition-all ${
+              className={`flex-1 py-2 text-sm font-bold rounded transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                 barriers_yn === false
                   ? "bg-nfw-blackberry text-white"
                   : "bg-nfw-dove text-nfw-blackberry hover:bg-nfw-blackberry/10"
@@ -352,9 +367,10 @@ export default function GrantApplicationScorer({
               <input
                 type="checkbox"
                 id={`discussion-${grant.id}`}
+                disabled={isSkipped}
                 checked={needs_discussion}
                 onChange={(e) => setNeeds_discussion(e.target.checked)}
-                className="w-4 h-4 accent-yellow-500"
+                className="w-4 h-4 accent-yellow-500 disabled:opacity-40 disabled:cursor-not-allowed"
               />
               <label
                 htmlFor={`discussion-${grant.id}`}
@@ -365,11 +381,12 @@ export default function GrantApplicationScorer({
             </div>
             {needs_discussion && (
               <textarea
+                disabled={isSkipped}
                 value={discussion_notes}
                 onChange={(e) => setDiscussion_notes(e.target.value)}
                 placeholder="Explain why this application needs discussion..."
                 rows={3}
-                className="w-full px-3 py-2 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac text-sm resize-none"
+                className="w-full px-3 py-2 border border-nfw-blackberry/20 text-nfw-blackberry placeholder-nfw-blackberry/30 bg-white focus:outline-none focus:ring-2 focus:ring-nfw-lilac text-sm resize-none disabled:opacity-40 disabled:cursor-not-allowed"
               />
             )}
           </div>
@@ -388,6 +405,7 @@ export default function GrantApplicationScorer({
 
         {/* RESET BUTTON */}
         <button
+          disabled={isSkipped}
           onClick={async () => {
             if (!confirm("Reset all scoring data for this application?")) return;
             setUrgency_score(null);
@@ -407,7 +425,7 @@ export default function GrantApplicationScorer({
               is_complete: false,
             });
           }}
-          className="w-full py-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+          className="w-full py-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Reset Scoring
         </button>

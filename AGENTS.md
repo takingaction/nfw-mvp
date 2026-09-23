@@ -19127,3 +19127,59 @@ If a future session is tempted to "auto-cleanup" orphan grant rows anywhere, the
 
 `npm run build` ✓ — 0 TypeScript errors.
 
+---
+
+## Session 2026-09-25: Skipped Grant Lockout — Reviewability, Scoring, and Filter Fix
+
+### Goal
+
+Fix three related defects around the "Skip & Mark Invalid" flow:
+
+1. **Filter button mismatch** — the "Not Approved" filter button on First Review and Second Review pages did not include skipped grants. They were silently absent from the user's mental model of "which grants are out."
+2. **Display leak on Review 2 / Combined Scores** — skipped grants with `first_score >= 7` (or flagged) still appeared on those pages and could be approved by accident via the combined-page checkbox. The skip was advisory rather than a hard lock.
+3. **Score-write leak** — nothing prevented the auto-save handler from writing new scores to a skipped grant. A reviewer could type into inputs after a skip, hit auto-save, and the API would silently accept the update.
+
+### Final Semantics (Confirmed with User)
+
+- **Skipped grants cannot be scored.** Auto-save is blocked at the API level. UI inputs are visibly disabled with a Lock banner explaining why. The only path back is "Restore as Valid" on First Review, which clears `ai_invalidated_at` and re-enables editing (existing scores are preserved — Option 1).
+- **Skipped grants do not appear on Review 2 or Combined Scores.** Filter is `ai_invalidated_at IS NULL AND (firstTotal >= 7 || firstFlagged)`.
+- **Skipped grants appear under "Not Approved" filter button** on First Review and Second Review pages.
+- **At Finalize**, skipped grants are in `allGrants`, not in `approvedGrantIds`, flow into `rejectedGrants`, and receive the not-approved email via `sendBatchEmails({ templateSlug: "grant-not-approved" })`. No additional email logic needed.
+- **No banner on Review 2 or Combined Scores** — the silent absence matches the existing behavior of low-scoring grants and doesn't add visual noise.
+
+### Code Changes
+
+| File | Change |
+|------|--------|
+| `app/api/admin/grants/[id]/scores/first/route.ts` (POST) | Added `ai_invalidated_at` check before upsert; returns 403 with friendly message if skipped. |
+| `app/api/admin/grants/[id]/scores/second/route.ts` (POST) | Same guard. |
+| `app/api/admin/grants/[id]/scores/second/route.ts` (GET) | Added `if (g.ai_invalidated_at) return false;` to the filter at line 144-148. |
+| `app/api/admin/grants/[id]/scores/combined/route.ts` (GET) | Added `if (g.ai_invalidated_at) return false;` to `grantsForDisplay` filter at line 175-182. |
+| `app/admin/grants/[id]/scoring/first/page.tsx` `getStatus` | Added `if (grant.ai_invalidated_at) return "not_approved";` at the top. |
+| `app/admin/grants/[id]/scoring/second/page.tsx` `getCombinedStatus` | Same change. |
+| `components/admin/GrantScoreInput.tsx` | Added `disabled?: boolean` prop; score buttons get `disabled:opacity-40 disabled:cursor-not-allowed`. |
+| `components/admin/GrantApplicationScorer.tsx` | Added `isSkipped = !!grant.ai_invalidated_at`; red Lock banner above scoring inputs when skipped; passed `disabled={isSkipped}` to all three `GrantScoreInput`s; disabled URGENCY Y/N buttons, discussion checkbox/textarea, and Reset Scoring button; auto-save `useEffect` early-returns when skipped (defense in depth). |
+
+### Files NOT Changed
+
+- `app/api/admin/grants/[id]/ai-skip/route.ts` — skip write was already correct (sets `status = "not_approved"` + `ai_invalidated_at/by`).
+- `app/api/admin/grants/[id]/tentative-approve/route.ts` — no defense-in-depth needed because skipped grants never reach the combined-page checkbox.
+- `app/api/admin/grants/[id]/final-approve/route.ts` — already routes skipped grants to `rejectedGrants` via the existing "not in `approvedGrantIds`" partition.
+- No schema changes, no migration, no new env vars.
+
+### Verification Plan
+
+1. Test cycle with 6 grants covering all combinations: low-score unflagged, low-score flagged, high-score unflagged unskipped, high-score flagged unskipped, high-score unflagged skipped, high-score flagged skipped.
+2. First Review page → "Not Approved" filter count includes all skipped grants.
+3. Click Skip on the 2 high-score grants → AI callout shows "Restore as Valid" button; scoring inputs disabled with red Lock banner.
+4. POST to scores/first or scores/second via curl → 403 with new error message.
+5. Second Review page → skipped grants absent regardless of score.
+6. Combined Scores page → same: skipped grants absent.
+7. Click Restore on a skipped grant → inputs re-enable, banner disappears, scores intact, grant reappears on Review 2 and Combined.
+8. Finalize Approvals without checking any boxes → all 6 grants get the not-approved email.
+
+### Build
+
+`npm run build` ✓ — 0 TypeScript errors, all routes compile.
+
+

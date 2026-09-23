@@ -173,7 +173,9 @@ export async function GET(
     }
 
     // Filter to only grants in scope for second review (first score >= 7 OR first flagged)
+    // Skipped grants (ai_invalidated_at set) are excluded — they must be restored on First Review first.
     const grantsForDisplay = grants?.filter((g: any) => {
+      if (g.ai_invalidated_at) return false;
       const firstScore = g.grant_scores?.find((s: any) => s.reviewer_name === "first");
       if (!firstScore) return false;
       const totalScore = firstScore.total_score || 0;

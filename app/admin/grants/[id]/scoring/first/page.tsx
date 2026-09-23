@@ -74,6 +74,7 @@ export default function FirstReviewPage() {
   }, []);
 
   const getStatus = (grant: Grant): "approved" | "runner_up" | "not_approved" | "unscored" => {
+    if (grant.ai_invalidated_at) return "not_approved";
     const score = grant.grant_scores?.[0];
     if (!score || score.is_complete !== true) return "unscored";
     const subtotal = (score.urgency_score ?? 0) + (score.authenticity_score ?? 0) + (score.impact_score ?? 0);

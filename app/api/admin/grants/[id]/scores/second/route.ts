@@ -137,11 +137,13 @@ export async function GET(
     });
 
     // Filter: only show grants where first reviewer scored >= 7 (approved) OR first reviewer flagged them
+    // Skipped grants (ai_invalidated_at set) are excluded — they must be restored on First Review first.
     const filteredGrants = grantsWithSeparatedScores?.map((g) => ({
       ...g,
       applications_this_month: applicationsThisMonth[g.user_id] || 1,
       total_available_grants: totalAvailableGrants,
     })).filter((g) => {
+      if (g.ai_invalidated_at) return false;
       const firstTotal = g.first_score?.total_score || 0;
       const firstFlagged = g.first_score?.needs_discussion === true;
       return firstTotal >= 7 || firstFlagged;
@@ -196,6 +198,20 @@ export async function POST(
       discussion_notes,
       is_complete,
     } = body;
+
+    // Guard: skipped grants cannot be scored. Must be restored on First Review first.
+    const { data: grantCheck } = await supabaseAdmin
+      .from("grants")
+      .select("ai_invalidated_at")
+      .eq("id", grantId)
+      .single();
+
+    if (grantCheck?.ai_invalidated_at) {
+      return NextResponse.json(
+        { error: "Grant is skipped and cannot be scored. Restore it on the First Review page first." },
+        { status: 403 }
+      );
+    }
 
     // Calculate total score
     const total_score = (urgency_score || 0) + (authenticity_score || 0) + (impact_score || 0);
