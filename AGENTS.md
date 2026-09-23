@@ -18879,3 +18879,193 @@ Both members' grants are saved but have no `grant_documents` rows. The recovery 
 - UX patch for `Load failed` messaging
 - Bulk recovery tooling for stranded grants (would need a one-off script to list `grants.id` with zero `grant_documents` rows over a date range)
 
+---
+
+## Session 2026-09-23: Upload-First Rework + Orphan Cleanup Cron
+
+### Problem
+
+The grant application flow had a structural defect: it called `/api/grants/create` FIRST (creating the grant row), THEN attempted to upload each document. If any upload failed mid-flight, the user was left with:
+
+- An orphaned grant row (no documents attached)
+- A 409 "You have already applied for this grant cycle" on every retry, blocking re-application
+- No recovery path except admin manual intervention
+
+Confirmed by SQL diagnostics on the Small Business Startup Fund cycle after jessicatbrune, jess.hustleandheart, hollyadavis, and amrjrl2004 incidents: zero rows in `storage.objects` for each grantId/cycleId, meaning the uploads never reached storage. The grant row was created, the upload failed, the user was stranded.
+
+Three incident classes surfaced over the prior week:
+
+| Error code | Stage | Meaning |
+|---|---|---|
+| `UPLOAD_FINALIZE_FAILED` | finalize | `storage.list()` metadata lag (fixed in commit `166110c` via `info()`) |
+| `UPLOAD_TRANSFER_FAILED` | transfer (browser) | Real `fetch()` rejection — network, CORS, or tab-close |
+| `UPLOAD_PREPARE_FAILED` | prepare | API auth or token issue |
+
+The structural defect was independent of any of these classes: even a 100%-successful upload left the user stranded if any one file in a multi-file upload failed.
+
+### Fix — Upload-First, Three-Commit Deploy, Plus Orphan Cron
+
+Four commits shipped to `main` in order:
+
+| SHA | Subject |
+|---|---|
+| `5b0717e` | feat: prepare route accepts cycleId for upload-first flow |
+| `b556e03` | feat: upload documents BEFORE grant row is created |
+| `ad664b7` | feat: create route accepts document_uploads with atomic rollback |
+| `f3109dd` | feat: daily orphan-grant cleanup cron (report-only) |
+
+### 1. Prepare route — adds cycleId mode
+
+`app/api/grants/upload-document/prepare/route.ts` now accepts either `grantId` (legacy) or `cycleId` (new). When `cycleId` is provided:
+
+- Files are stored at `${cycleId}/pending/${userId}/${ts}-${filename}` (the `pending/` subfolder makes these findable for cleanup later)
+- Ownership is validated against the cycle + profile (not against a grants row that doesn't exist yet)
+- Double-submission guard: 409 if user already has a grants row for this cycle
+
+Backward-compatible: legacy callers sending `grantId` continue to work unchanged.
+
+### 2. Form reorder — uploads first
+
+`components/GrantApplicationForm.tsx` `handleConfirmSubmit` reorders:
+
+1. For each file: call `prepare` (cycleId mode) → `uploadToSignedUrl` → track the uploaded path + metadata
+2. If any upload fails: stop, show a friendly error, return. **No grant row is created.**
+3. Only if every upload succeeded: call `create` with `document_uploads: [{path, fileName, mimeType, fileSize}, ...]`
+4. Only if `create` succeeds: redirect to success page
+
+UX changes alongside the reorder:
+
+- Replaces raw SDK strings (`Failed to fetch` / `Load failed`) with "your connection was interrupted or the page was refreshed. Please try uploading again."
+- Adds "Your application has not been submitted. Please try again." to every upload failure message so members know no grant was created
+- Network failure on the create call now states "Your files are uploaded but the application was not submitted." — so the user knows the files aren't lost; admin can attach them via the reviewer panel if needed
+
+### 3. Create route — atomic + server-side enforcement
+
+`app/api/grants/create/route.ts` now:
+
+- **Accepts `document_uploads: [{path, fileName, mimeType, fileSize}]`** in the body
+- **Server-side `requires_documents` enforcement** — was previously only client-side. A member who bypasses the form (curl, JS-disabled) can no longer submit a zero-document application to a requires_documents cycle. Returns 400.
+- **Path-prefix validation** — each `document_uploads[i].path` must start with `${cycle_id}/pending/${user_id}/`. Closes the forged-path attack surface.
+- **File metadata validation** — each upload's mimeType must be in `GRANT_DOCS_ALLOWED_TYPES`, fileSize must be ≤ `GRANT_DOCS_MAX_BYTES` (10 MB). Closes the attack where a forged request claims a 1 GB file was "uploaded."
+- **Storage existence check** — each path is verified via `storageObjectExists` (which uses `info()` since commit `166110c`). On any failure, the grant row is deleted before returning 400.
+- **Atomic grant + documents insert** — wraps the existing `grants` INSERT and the new `grant_documents` INSERTs in a single try/catch. On any failure of the documents INSERT, the grant row is rolled back via DELETE, AND the storage objects are cleaned up via `storage.remove` so we don't leak uploads for a grant that no longer exists.
+
+Backward-compatible: old form that sends no `document_uploads` parses to `[]`. For optional cycles, behavior preserved. For required cycles, the new server-side check returns 400 (which the old form would never have sent without documents anyway).
+
+### 4. Orphan cleanup cron — report-only
+
+New files:
+
+- `supabase/migrations/179_cleanup_orphaned_grants.sql` — creates:
+  - `cleanup_orphan_grants_log` table (write-only by the cron)
+  - `find_orphan_grant_candidates()` SECURITY DEFINER function with `search_path = pg_catalog, public` (resilient to RLS drift; service-role client works correctly)
+- `app/api/cron/cleanup-orphaned-grants/route.ts` — `GET` handler with `CRON_SECRET` Bearer auth, RPC call, log write, Slack alert
+
+`vercel.json` — adds `{ path: "/api/cron/cleanup-orphaned-grants", schedule: "0 4 * * *" }` (daily 04:00 UTC).
+
+### Detection Criteria
+
+A grant is flagged as a cleanup candidate if and only if:
+
+```
+grant has zero grant_documents rows
+  AND cycle.requires_documents = true
+  AND grant.submitted_at < NOW() - INTERVAL '24 hours'
+```
+
+The 24h delay gives in-flight upload-first submissions time to complete before they get flagged. Cycles with `requires_documents = false` are intentionally NOT flagged — zero documents is a legitimate submission state for optional cycles.
+
+### Cron Action — Strictly Read-Only
+
+- **Does not delete anything.** No `DELETE FROM grants` anywhere. The cron only reads + writes to the audit log table.
+- **Does not modify the storage bucket.** No `storage.remove` calls. Pending uploads under `${cycleId}/pending/${userId}/…` for cycles that successfully completed upload-first stay in storage.
+- **Does not send emails to affected members.** No outbound communication. Slack only.
+- **Does not auto-recover documents.** No attempt to find files in storage and re-attach them.
+
+### Cron Logging
+
+Always logs the run via `cleanup_orphan_grants_log`:
+
+```sql
+INSERT INTO cleanup_orphan_grants_log (detected_count, orphan_grants, notes)
+VALUES ({count}, {candidates_jsonb}, NULL);
+```
+
+Even runs with zero candidates produce a log row, so admins can verify the cron is actually firing on schedule. **Operational monitor:** if there's no row dated today, the cron didn't run.
+
+### Cron Slack Alert — Only When Candidates Exist
+
+Runs with zero candidates are silent (no Slack noise); the log row still records the run. When candidates exist, the cron calls `notifyClientError` (the generic Slack notifier) with the candidate list grouped by cycle, first 10 with grant_id + user_id prefixes + hours-since-submit. Reuses existing `SLACK_REFUND_WEBHOOK_URL` — no new Slack integration needed.
+
+### Pre-deploy SQL Check
+
+To find which of the four stranded members will surface in the first cron run:
+
+```sql
+SELECT id, cycle_name, requires_documents
+FROM grant_cycles
+WHERE id IN (
+  'f8fdcf0a-74b2-40a2-923e-b187412ddece',  -- jessicatbrune, Out of Office Grant
+  '3a3ffe11-371a-4237-8507-7940f415c886',  -- jess.hustleandheart, Ladies Night Out
+  'a52d9360-610b-4320-bc32-31b3d5b66b44'   -- hollyadavis + amrjrl2004, Small Business Startup Fund
+);
+```
+
+Any cycle with `requires_documents = true` will surface in the first cron run. The rest still need manual recovery via the reviewer panel as we've been doing.
+
+### User-Experience Matrix (Before vs After)
+
+| Scenario | Before | After |
+|---|---|---|
+| Member uploads 1 file, upload succeeds | Creates grant, attaches doc, redirects to success | Same |
+| Member uploads 1 file, upload fails (network) | Creates orphan grant, user stranded on apply page | Stays on apply page, sees clear error message, **no grant created**, can retry |
+| Member uploads 2 files, first succeeds, second fails | Creates orphan grant + 1 doc, user stranded | First upload isolated; second fails; user retries both files; **no grant created** |
+| Member closes tab mid-upload | Creates orphan grant | No orphan; upload-first means tab-close leaves no grant row |
+| Member submits with 0 files to required cycle | Form blocks client-side, but JS-disabled member could bypass | Form blocks client-side AND server-side rejects with 400 |
+| Member forges `document_uploads: ["fake/path"]` in curl | Phantom document recorded | Storage existence check rejects; no rows created |
+| Pre-Change orphan grants (4 stranded members) | Manually discoverable only via Slack alerts | Daily Slack report lists them under `requires_documents=true` cycles (for those whose cycles have the flag) |
+
+### Risk Assessment
+
+- **Low overall.** Each commit is independently deployable. If anything misbehaves in production, the relevant commit can be reverted without touching the others.
+- The form commit + create-route commit together fix the user pain. The cron commit is a separate concern (cleanup, not prevention) and could be deployed days later.
+- No new env vars. No new buckets. One new schema table (`cleanup_orphan_grants_log`) + one new function (`find_orphan_grant_candidates`).
+
+### Build Verification
+
+`npm run build` ✓ clean — 0 TypeScript errors, 220/220 pages compiled in 8.5s. The 2 `/api/admin/grants/*` "Warning" lines and the `workspace root` warning are pre-existing framework warnings unrelated to the change.
+
+### Deploy Steps (Required in Order)
+
+1. Run `supabase/migrations/179_cleanup_orphaned_grants.sql` in the Supabase SQL Editor. The cron will return 500 until the function exists.
+2. Deploy code (commits `5b0717e` through `f3109dd` are already pushed). Vercel picks up the new cron entry automatically.
+3. First cron run is ~04:00 UTC the day after deploy.
+
+### Operational Monitoring
+
+To detect a broken cron:
+
+```sql
+SELECT run_at, detected_count
+FROM cleanup_orphan_grants_log
+ORDER BY run_at DESC
+LIMIT 7;
+```
+
+If there's no row dated today, the cron didn't run. Check Vercel function logs for `/api/cron/cleanup-orphaned-grants`.
+
+### Recovery Flow for Pre-Existing Orphans
+
+When the cron reports a candidate, admins have two options:
+
+1. **Attach the missing document** — use the "Add document" button on the reviewer panel at `/admin/grants/[cycleId]`, get the file from the member via email/DM. Preserves the application.
+2. **Delete the orphan row** — open Supabase dashboard, delete the row from `grants`. Any storage objects under `${cycleId}/pending/${userId}/…` become orphans too — can be cleaned up manually or by a future cron. Frees the cycle slot for the member to re-apply.
+
+### What Was NOT Changed (Out of Scope)
+
+- Mobile app's grant application flow (Slice C of the mobile migration) — separate code path; can mirror later
+- Resume-upload flow on `/grants/view/[id]` — no longer needed for new submissions since orphan grants don't exist post-deploy
+- Auto-delete for orphan grants — different feature; requires explicit policy decision. Could be added as a gated query param to the existing cron.
+- Bulk-recovery tooling for the four stranded grants — admin reviewer panel is sufficient for the current backlog
+- `requires_documents` value check for the four stranded cycles — to be done by user via the SQL query above to confirm which cron run will surface
+
