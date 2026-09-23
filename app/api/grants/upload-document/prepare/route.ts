@@ -11,10 +11,19 @@ import {
 
 /**
  * POST /api/grants/upload-document/prepare
- * Body: { grantId, fileName, mimeType, fileSize }
+ * Body: { grantId? OR cycleId?, fileName, mimeType, fileSize }
  * Member-authenticated. Returns a signed upload URL into the PRIVATE
- * grant-documents bucket under `${grantId}/…` so the existing signed-URL
- * viewer (/api/grants/document-url) works unchanged.
+ * grant-documents bucket.
+ *
+ * Two modes:
+ *  - { grantId } — legacy flow: a grants row already exists; the path is
+ *    `${grantId}/…` and ownership is validated against the grants row.
+ *  - { cycleId } — upload-first flow (2026-09-23): files are uploaded
+ *    BEFORE the grant row is created. Path is `${cycleId}/pending/…` and
+ *    membership is validated against the cycle. The grant row is created
+ *    separately and /api/grants/create moves the pending file into the
+ *    grant's folder (or inserts grant_documents rows referencing the
+ *    pending paths).
  *
  * Replaces the legacy /api/grants/upload-document (multipart) flow so files
  * over Vercel's 4.5 MB Serverless request body limit can succeed.
@@ -39,8 +48,12 @@ export async function POST(request: NextRequest) {
   }
 
   const grantId = typeof body.grantId === "string" ? body.grantId : "";
-  if (!grantId) {
-    return NextResponse.json({ error: "Missing grantId" }, { status: 400 });
+  const cycleId = typeof body.cycleId === "string" ? body.cycleId : "";
+  if (!grantId && !cycleId) {
+    return NextResponse.json({ error: "Missing grantId or cycleId" }, { status: 400 });
+  }
+  if (grantId && cycleId) {
+    return NextResponse.json({ error: "Provide grantId OR cycleId, not both" }, { status: 400 });
   }
 
   const validated = validateUploadMeta(body, GRANT_DOCS_ALLOWED_TYPES, GRANT_DOCS_MAX_BYTES);
@@ -50,23 +63,87 @@ export async function POST(request: NextRequest) {
 
   const admin = getAdminClient();
 
-  const { data: grant, error: grantError } = await admin
-    .from("grants")
-    .select("id, user_id")
-    .eq("id", grantId)
-    .maybeSingle();
-  if (grantError) {
-    console.error("[grants/upload-document/prepare] grant lookup error:", grantError);
-    return NextResponse.json({ error: grantError.message }, { status: 500 });
-  }
-  if (!grant) {
-    return NextResponse.json({ error: "Grant application not found" }, { status: 404 });
-  }
-  if (grant.user_id !== user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (grantId) {
+    // Legacy flow: validate ownership against the grants row.
+    const { data: grant, error: grantError } = await admin
+      .from("grants")
+      .select("id, user_id")
+      .eq("id", grantId)
+      .maybeSingle();
+    if (grantError) {
+      console.error("[grants/upload-document/prepare] grant lookup error:", grantError);
+      return NextResponse.json({ error: grantError.message }, { status: 500 });
+    }
+    if (!grant) {
+      return NextResponse.json({ error: "Grant application not found" }, { status: 404 });
+    }
+    if (grant.user_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const path = `${grantId}/${Date.now()}-${sanitizeFileName(validated.meta.fileName)}`;
+    const { data, error } = await admin.storage
+      .from(GRANT_DOCS_BUCKET)
+      .createSignedUploadUrl(path);
+    if (error || !data) {
+      console.error("[grants/upload-document/prepare] signed url error:", error);
+      return NextResponse.json(
+        { error: error?.message || "Could not create upload URL" },
+        { status: 500 },
+      );
+    }
+    return NextResponse.json({ path: data.path, token: data.token });
   }
 
-  const path = `${grantId}/${Date.now()}-${sanitizeFileName(validated.meta.fileName)}`;
+  // cycleId flow: validate membership via profile; verify cycle exists & is open.
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("is_admin, membership_level, is_approved_free_member, profile_completed")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (profileError) {
+    console.error("[grants/upload-document/prepare] profile lookup error:", profileError);
+    return NextResponse.json({ error: profileError.message }, { status: 500 });
+  }
+  if (!profile?.profile_completed) {
+    return NextResponse.json({ error: "Profile incomplete" }, { status: 403 });
+  }
+
+  const { data: cycle, error: cycleError } = await admin
+    .from("grant_cycles")
+    .select("id, status, is_testing_only")
+    .eq("id", cycleId)
+    .maybeSingle();
+  if (cycleError) {
+    console.error("[grants/upload-document/prepare] cycle lookup error:", cycleError);
+    return NextResponse.json({ error: cycleError.message }, { status: 500 });
+  }
+  if (!cycle) {
+    return NextResponse.json({ error: "Grant cycle not found" }, { status: 404 });
+  }
+  if (cycle.status !== "open") {
+    return NextResponse.json({ error: "Grant cycle is not open" }, { status: 400 });
+  }
+  if (cycle.is_testing_only && !profile.is_admin) {
+    return NextResponse.json({ error: "Cycle not available" }, { status: 403 });
+  }
+
+  // Defense-in-depth: prevent double-submission in the new upload-first flow.
+  // The /api/grants/create route also enforces this, but a malicious
+  // client could upload-then-fail-upload-then-succeed in a loop otherwise.
+  const { data: existing } = await admin
+    .from("grants")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("cycle_id", cycleId)
+    .maybeSingle();
+  if (existing) {
+    return NextResponse.json(
+      { error: "You have already applied for this grant cycle." },
+      { status: 409 },
+    );
+  }
+
+  const path = `${cycleId}/pending/${user.id}/${Date.now()}-${sanitizeFileName(validated.meta.fileName)}`;
 
   const { data, error } = await admin.storage
     .from(GRANT_DOCS_BUCKET)
