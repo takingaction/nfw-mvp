@@ -95,6 +95,19 @@ export default function GrantApplicationForm({
     setShowConfirm(true);
   };
 
+  // Helper: map raw upload SDK errors to user-friendly copy. Supabase JS
+  // storage SDK throws "Failed to fetch" (Chrome/Edge) or "Load failed"
+  // (Safari) when the underlying browser fetch() rejects — most commonly
+  // because the connection was interrupted or the page was refreshed.
+  // Both are user-actionable; neither tells the user what to do.
+  const friendlyUploadError = (raw: string): string => {
+    const lower = raw.toLowerCase();
+    if (lower.includes("failed to fetch") || lower.includes("load failed")) {
+      return "your connection was interrupted or the page was refreshed. Please try uploading again.";
+    }
+    return raw;
+  };
+
   const handleConfirmSubmit = async () => {
     if (!submitConsentChecked || !certificationChecked) {
       setConfirmError("Please read and accept the consent text and certify your eligibility to continue.");
@@ -112,6 +125,116 @@ export default function GrantApplicationForm({
     setError("");
     setConfirmError("");
 
+    // Reordered flow (was: create → upload). We now upload every file first,
+    // and only create the grant row if every upload succeeded. This closes
+    // the structural defect where a mid-upload failure left the user
+    // stranded on the apply page with an orphaned grant row that the
+    // /api/grants/create route would then block them from re-applying for
+    // (409). The paths of successfully uploaded files are passed to
+    // /api/grants/create as document_paths; the server inserts the
+    // grant_documents rows in the same handler and rolls back the grant
+    // row if any document insert fails.
+    const cycleName =
+      cycles.find((c) => c.id === formData.cycle_id)?.cycle_name || "unknown";
+    const supabase = createClient();
+    const uploadedPaths: Array<{ path: string; fileName: string; mimeType: string; fileSize: number }> = [];
+    let uploadFailed = false;
+
+    if (documents.length > 0) {
+      setUploadingDocs(true);
+
+      for (const file of documents) {
+        // 1. Prepare (cycleId mode: files are uploaded before the grant
+        // row is created; the path becomes `${cycleId}/pending/...`).
+        let prep: { path: string; token: string };
+        try {
+          const prepRes = await fetch("/api/grants/upload-document/prepare", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              cycleId: formData.cycle_id,
+              fileName: file.name,
+              mimeType: file.type,
+              fileSize: file.size,
+            }),
+          });
+          if (!prepRes.ok) {
+            const errBody = await safeReadJson(prepRes);
+            throw new Error(errBody?.error || `HTTP ${prepRes.status}`);
+          }
+          prep = (await prepRes.json()) as { path: string; token: string };
+        } catch (prepErr: any) {
+          const errorCode = "UPLOAD_PREPARE_FAILED";
+          const errMsg = prepErr?.message || "Unknown error";
+          setError(`We couldn't upload ${file.name} — ${errMsg}. Your application has not been submitted. Please try again.`);
+          setLoading(false);
+          setUploadingDocs(false);
+          uploadFailed = true;
+          fetch("/api/log/client-error", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId,
+              userEmail,
+              cycleId: formData.cycle_id,
+              cycleName,
+              errorMessage: `Upload prepare failed for ${file.name}: ${errMsg}`,
+              errorCode,
+              timestamp: new Date().toISOString(),
+            }),
+          }).catch(console.error);
+          break;
+        }
+
+        // 2. Transfer (signed URL upload directly to Supabase Storage)
+        const { error: uploadErr } = await supabase.storage
+          .from("grant-documents")
+          .uploadToSignedUrl(prep.path, prep.token, file, { contentType: file.type });
+        if (uploadErr) {
+          const errorCode = "UPLOAD_TRANSFER_FAILED";
+          const friendly = friendlyUploadError(uploadErr.message);
+          setError(
+            `We couldn't upload ${file.name} — ${friendly} Your application has not been submitted. Please try again.`,
+          );
+          setLoading(false);
+          setUploadingDocs(false);
+          uploadFailed = true;
+          fetch("/api/log/client-error", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId,
+              userEmail,
+              cycleId: formData.cycle_id,
+              cycleName,
+              errorMessage: `Upload transfer failed for ${file.name}: ${uploadErr.message}`,
+              errorCode,
+              timestamp: new Date().toISOString(),
+            }),
+          }).catch(console.error);
+          break;
+        }
+
+        // Track the uploaded path so /api/grants/create can attach the row.
+        // finalize is deferred to the server (it owns the grant_id now).
+        uploadedPaths.push({
+          path: prep.path,
+          fileName: file.name,
+          mimeType: file.type,
+          fileSize: file.size,
+        });
+      }
+
+      // If any upload failed, do NOT proceed to create. The user is still
+      // on the apply page; their retry will start fresh.
+      if (uploadFailed) {
+        return;
+      }
+    }
+
+    // 3. Create the grant row + attach all successfully uploaded documents.
+    //    The server rolls back the grant row if any document insert fails,
+    //    so even a half-failed call here leaves no orphaned grant.
     let response: Response;
     try {
       response = await fetch("/api/grants/create", {
@@ -123,12 +246,20 @@ export default function GrantApplicationForm({
           nominee_name: null,
           nominee_email: null,
           certification_consent: certificationChecked,
+          // document_uploads carries the storage path + file metadata so
+          // /api/grants/create can insert the grant_documents rows in the
+          // same handler (atomic with the grant row insert). The path uses
+          // the upload-first convention `${cycleId}/pending/${userId}/...`.
+          document_uploads: uploadedPaths,
         }),
       });
     } catch (networkErr: any) {
       // Network failure (offline, DNS, etc.) — never reached the server.
+      // Files already in storage; they'll be cleaned up by the next
+      // /api/admin/grants/[id]/documents/prepare call (which validates
+      // existence) or by an admin via the reviewer panel.
       setError(
-        "We couldn't reach the server. Check your connection and try again.",
+        "We couldn't reach the server. Your files are uploaded but the application was not submitted. Please check your connection and try again.",
       );
       setLoading(false);
       setUploadingDocs(false);
@@ -151,7 +282,7 @@ export default function GrantApplicationForm({
       rawJson = await response.json();
     } catch {
       const friendly = response.ok
-        ? "We had trouble confirming your submission. Please check 'My Applications' in a moment — your draft may have been saved."
+        ? "We had trouble confirming your submission. Your files are uploaded. Please check 'My Applications' in a moment — your draft may have been saved."
         : `We couldn't process your submission (HTTP ${response.status}). Please try again or contact support.`;
       setError(friendly);
       setLoading(false);
@@ -164,9 +295,7 @@ export default function GrantApplicationForm({
           userId,
           userEmail,
           cycleId: formData.cycle_id,
-          cycleName:
-            cycles.find((c) => c.id === formData.cycle_id)?.cycle_name ||
-            "unknown",
+          cycleName,
           errorMessage: `JSON.parse failed (HTTP ${response.status})`,
           errorCode: "JSON_PARSE_FAILED",
           httpStatus: response.status,
@@ -194,8 +323,6 @@ export default function GrantApplicationForm({
       setLoading(false);
       setUploadingDocs(false);
 
-      const cycleName =
-        cycles.find((c) => c.id === formData.cycle_id)?.cycle_name || "unknown";
       fetch("/api/log/client-error", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -218,116 +345,6 @@ export default function GrantApplicationForm({
       setError("We received an unexpected response. Please try again.");
       setLoading(false);
       return;
-    }
-
-    if (documents.length > 0) {
-      setUploadingDocs(true);
-      const supabase = createClient();
-      const cycleName =
-        cycles.find((c) => c.id === formData.cycle_id)?.cycle_name || "unknown";
-
-      for (const file of documents) {
-        let prep: { path: string; token: string };
-        try {
-          const prepRes = await fetch("/api/grants/upload-document/prepare", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              grantId,
-              fileName: file.name,
-              mimeType: file.type,
-              fileSize: file.size,
-            }),
-          });
-          if (!prepRes.ok) {
-            const errBody = await safeReadJson(prepRes);
-            throw new Error(errBody?.error || `HTTP ${prepRes.status}`);
-          }
-          prep = (await prepRes.json()) as { path: string; token: string };
-        } catch (prepErr: any) {
-          const errorCode = "UPLOAD_PREPARE_FAILED";
-          const errMsg = prepErr?.message || "Unknown error";
-          setError(`Failed to start upload for ${file.name}: ${errMsg}`);
-          setLoading(false);
-          setUploadingDocs(false);
-          fetch("/api/log/client-error", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId,
-              userEmail,
-              cycleId: formData.cycle_id,
-              cycleName,
-              errorMessage: `Upload prepare failed for ${file.name}: ${errMsg}`,
-              errorCode,
-              timestamp: new Date().toISOString(),
-            }),
-          }).catch(console.error);
-          return;
-        }
-
-        const { error: uploadErr } = await supabase.storage
-          .from("grant-documents")
-          .uploadToSignedUrl(prep.path, prep.token, file, { contentType: file.type });
-        if (uploadErr) {
-          const errorCode = "UPLOAD_TRANSFER_FAILED";
-          setError(`Failed to upload ${file.name}: ${uploadErr.message}`);
-          setLoading(false);
-          setUploadingDocs(false);
-          fetch("/api/log/client-error", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId,
-              userEmail,
-              cycleId: formData.cycle_id,
-              cycleName,
-              errorMessage: `Upload transfer failed for ${file.name}: ${uploadErr.message}`,
-              errorCode,
-              timestamp: new Date().toISOString(),
-            }),
-          }).catch(console.error);
-          return;
-        }
-
-        try {
-          const finRes = await fetch("/api/grants/upload-document/finalize", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              grantId,
-              path: prep.path,
-              fileName: file.name,
-              mimeType: file.type,
-              fileSize: file.size,
-            }),
-          });
-          if (!finRes.ok) {
-            const errBody = await safeReadJson(finRes);
-            throw new Error(errBody?.error || `HTTP ${finRes.status}`);
-          }
-        } catch (finErr: any) {
-          const errorCode = "UPLOAD_FINALIZE_FAILED";
-          const errMsg = finErr?.message || "Unknown error";
-          setError(`Failed to save ${file.name}: ${errMsg}`);
-          setLoading(false);
-          setUploadingDocs(false);
-          fetch("/api/log/client-error", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId,
-              userEmail,
-              cycleId: formData.cycle_id,
-              cycleName,
-              errorMessage: `Upload finalize failed for ${file.name}: ${errMsg}`,
-              errorCode,
-              timestamp: new Date().toISOString(),
-            }),
-          }).catch(console.error);
-          return;
-        }
-      }
     }
 
     router.push(`/grants/application-success?id=${grantId}`);
