@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const DELAY_MS = 50;
-const CUSTOMERS_PER_RUN = 50; // Chunked: each cron tick processes this many customers and persists cursor.
+const CUSTOMERS_PER_RUN = 250; // Chunked: each cron tick processes this many customers and persists cursor. Tuned to fit under Vercel's 300 s ceiling; at ~100 ms per Stripe call that's ~25 s of API time with comfortable headroom.
 
 async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));

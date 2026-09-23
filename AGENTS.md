@@ -19182,4 +19182,117 @@ Fix three related defects around the "Skip & Mark Invalid" flow:
 
 `npm run build` ✓ — 0 TypeScript errors, all routes compile.
 
+---
+
+## Session 2026-09-23: Abandoned Checkout Banner Showing for Paid Members
+
+### Problem
+
+Multiple members (e.g. `brennamichel21@gmail.com`, `lawanda.johnson89@yahoo.com`, member `889750fc-c61e-41d4-904b-4477c256d39f`) reported seeing the "You have an incomplete membership purchase. Complete it now" banner on `/dashboard` even though they were already active contributing/founding members with valid Stripe subscriptions.
+
+### Root Cause
+
+`abandoned_checkouts` rows were being created by `checkout.session.expired` and never cleared by `checkout.session.completed` in several scenarios:
+
+1. **Cross-tier mismatch:** User abandoned a contributing checkout, then completed a founding checkout. The recovery fallback matched by `user_id + membership_level`, so the contributing abandoned row stayed orphaned.
+2. **Webhook event reordering:** `checkout.session.expired` firing after `checkout.session.completed` for the same session inserts a new abandoned row that no further completion event will clear.
+3. **Session ID drift on resume:** The `/api/checkout/resume` route attempts to UPDATE the abandoned row's `stripe_session_id` via the user-context Supabase client, but migration 089 only grants SELECT RLS to users — the UPDATE silently fails, so the abandoned row keeps the old session id while the user completes a new session.
+
+### Diagnostic SQL Results (run in Supabase SQL Editor)
+
+```sql
+SELECT COUNT(*) FROM abandoned_checkouts ac
+JOIN profiles p ON p.id = ac.user_id
+WHERE ac.recovered_at IS NULL
+  AND p.membership_level IN ('contributing', 'founding')
+  AND p.subscription_status = 'active';
+-- 185 rows
+```
+
+185 paid members affected; 0 cancelling members; 21 truly-abandoned rows preserved correctly.
+
+### Fix
+
+**Fix 1 — Banner suppression (Layer 1)**
+
+Two-file change ensures paid members never see the banner regardless of data inconsistencies.
+
+`app/dashboard/page.tsx` line 209:
+```ts
+const isPaidMember =
+  profile?.membership_level === "contributing" || profile?.membership_level === "founding";
+const hasAbandonedCheckout =
+  !isPaidMember && (abandonedCheckoutResult?.data?.length ?? 0) > 0;
+```
+
+`app/api/checkout/abandoned/route.ts`: added a profile-membership-level check before the abandoned_checkouts query; returns `{ hasAbandoned: false }` immediately for paid members.
+
+**Fix 2 — Recovery logic (Layer 2)**
+
+`app/api/webhook/route.ts` lines 271-306: replaced the two-step lookup (stripe_session_id, then user_id+membership_level fallback) with a single user_id match. On successful checkout, all active abandoned records for the user are now marked recovered in one query.
+
+```ts
+if (userId) {
+  const { data: abandonedRecords } = await supabaseAdmin
+    .from("abandoned_checkouts")
+    .select("id")
+    .eq("user_id", userId)
+    .is("recovered_at", null);
+
+  if (abandonedRecords && abandonedRecords.length > 0) {
+    await supabaseAdmin
+      .from("abandoned_checkouts")
+      .update({ recovered_at: new Date().toISOString() })
+      .in("id", abandonedRecords.map((r) => r.id));
+    console.log(
+      `[webhook] Recovered ${abandonedRecords.length} abandoned checkout(s) for user:`,
+      userId,
+    );
+  }
+}
+```
+
+**Fix 3 — Data cleanup (Layer 3)**
+
+One-time SQL to mark the 185 currently-orphaned abandoned rows as recovered for active paid members. Run in Supabase SQL Editor:
+
+```sql
+UPDATE abandoned_checkouts ac
+SET recovered_at = NOW()
+WHERE ac.recovered_at IS NULL
+  AND ac.user_id IN (
+    SELECT id FROM profiles
+    WHERE membership_level IN ('contributing', 'founding')
+      AND subscription_status = 'active'
+  );
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/dashboard/page.tsx` | Banner suppressed for paid members |
+| `app/api/checkout/abandoned/route.ts` | API returns `{hasAbandoned: false}` for paid members |
+| `app/api/webhook/route.ts` | Recovery by user_id alone (handles cross-tier + reordering) |
+
+### Build
+
+`npx tsc --noEmit` ✓ — 0 TypeScript errors
+`npx next build` ✓ — passed
+
+### Deploy Order
+
+1. Deploy code (Fixes 1 and 2) — banner disappears on next page load for affected members
+2. Run Fix 3 SQL — clears the 185 underlying rows so data is clean
+
+### What's NOT Changing
+
+- `checkout.session.expired` handler stays as-is — Fix 2's user_id-only recovery handles all orphan scenarios
+- The 21 truly-abandoned rows remain active — banner correctly shows for them, "Resume Checkout" works
+- No schema changes, no migration, no new env vars, no API signature changes
+- No new Stripe webhook events (per user decision)
+- `app/api/contact/submit/route.ts` free-membership request flow unchanged
+
+
+
 

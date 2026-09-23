@@ -268,40 +268,28 @@ export async function POST(request: Request) {
             }
           }
 
-          // Mark abandoned checkout as recovered if exists
-          if (userId && session.id) {
-            const { data: abandoned } = await supabaseAdmin
+          // Mark ALL abandoned checkouts as recovered for this user.
+          // Previously this used a two-step lookup (stripe_session_id, then user_id +
+          // membership_level fallback). That left orphaned rows when the user changed
+          // tiers between attempts (e.g., abandoned contributing, paid founding), or
+          // when checkout.session.expired fired after checkout.session.completed for
+          // the same session. Recovering by user_id alone handles all of these.
+          if (userId) {
+            const { data: abandonedRecords } = await supabaseAdmin
               .from("abandoned_checkouts")
               .select("id")
-              .eq("stripe_session_id", session.id)
               .eq("user_id", userId)
-              .is("recovered_at", null)
-              .single();
+              .is("recovered_at", null);
 
-            if (abandoned) {
+            if (abandonedRecords && abandonedRecords.length > 0) {
               await supabaseAdmin
                 .from("abandoned_checkouts")
                 .update({ recovered_at: new Date().toISOString() })
-                .eq("id", abandoned.id);
-              console.log("[webhook] Marked abandoned checkout as recovered:", abandoned.id);
-            } else if (userId && membershipLevel) {
-              // Fallback: match by user_id + membershipLevel if session ID lookup found nothing
-              // This handles cases where user had an abandoned checkout but completed with a different session ID
-              const { data: abandonedByUser } = await supabaseAdmin
-                .from("abandoned_checkouts")
-                .select("id")
-                .eq("user_id", userId)
-                .eq("membership_level", membershipLevel)
-                .is("recovered_at", null)
-                .single();
-
-              if (abandonedByUser) {
-                await supabaseAdmin
-                  .from("abandoned_checkouts")
-                  .update({ recovered_at: new Date().toISOString() })
-                  .eq("id", abandonedByUser.id);
-                console.log("[webhook] Marked abandoned checkout as recovered (user+level fallback):", abandonedByUser.id);
-              }
+                .in("id", abandonedRecords.map((r) => r.id));
+              console.log(
+                `[webhook] Recovered ${abandonedRecords.length} abandoned checkout(s) for user:`,
+                userId,
+              );
             }
           }
 

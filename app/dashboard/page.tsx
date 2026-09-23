@@ -206,7 +206,14 @@ export default async function DashboardPage({
   }
 
   // Check for abandoned checkout for the banner display
-  const hasAbandonedCheckout = (abandonedCheckoutResult?.data?.length ?? 0) > 0;
+  // Suppress banner entirely for paid members — orphaned abandoned_checkouts rows can exist
+  // after a successful checkout due to webhook race conditions (e.g., checkout.session.expired
+  // firing after checkout.session.completed, or session_id drift on resume). Paid members
+  // shouldn't see "incomplete purchase" banners.
+  const isPaidMember =
+    profile?.membership_level === "contributing" || profile?.membership_level === "founding";
+  const hasAbandonedCheckout =
+    !isPaidMember && (abandonedCheckoutResult?.data?.length ?? 0) > 0;
 
   // Show pending/waitlist banner if free or waitlist member has submitted contact but not yet approved
   const isPendingFreeMember =
