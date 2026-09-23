@@ -19069,3 +19069,61 @@ When the cron reports a candidate, admins have two options:
 - Bulk-recovery tooling for the four stranded grants — admin reviewer panel is sufficient for the current backlog
 - `requires_documents` value check for the four stranded cycles — to be done by user via the SQL query above to confirm which cron run will surface
 
+---
+
+## Session 2026-09-23: Remove redundant defense-in-depth 409 in prepare route
+
+### Symptom
+
+Slack alert for mrs.darlene.gonzalez@gmail.com on Small Business Startup Fund:
+
+```
+UPLOAD_PREPARE_FAILED: "You have already applied for this grant cycle."
+```
+
+Investigation: the error string is produced by the new cycleId-branch check added in commit `5b0717e` — a query against `grants` for an existing row with `(user_id, cycle_id)` followed by a 409 if found.
+
+### Root cause
+
+User confirmation revealed the user **already has a completed application with documents** for that cycle (pre-existing). The check I added in `5b0717e` was unsafe because it didn't distinguish between:
+
+- (A) A genuine orphan row from a prior failed attempt (zero `grant_documents`) — correct to clean up.
+- (B) A real, completed application (one or more `grant_documents`) — **must NOT be deleted**.
+
+The check returned 409 in both cases, blocking B from retrying prepare if their retry was a network blip or browser refresh during the upload flow.
+
+The original concern that motivated the check — that a malicious client could "upload-then-fail-upload-then-succeed in a loop" — was unfounded: prepare is a storage-IO helper that only writes pending files under `${cycleId}/pending/${userId}/${ts}-${filename}`. Multiple pending uploads per user/cycle are harmless (different timestamps mean no collision; they become storage orphans, not DB state). The actual duplicate-application defense lives at `create/route.ts` line 198-211 (against the `grants` table) and at the DB-level unique constraint added in `supabase/migrations/060_fix_grants_unique_constraint.sql`.
+
+### Fix
+
+Removed the redundant check in commit `5b0717e` from `app/api/grants/upload-document/prepare/route.ts` (cycleId branch). The function now proceeds directly to issuing a signed storage URL.
+
+### Why this is safe
+
+- The Postgres `grants_user_id_cycle_id_unique` constraint (migration 060) is the authoritative defense — a duplicate INSERT into `grants` fails with `23505 unique_violation`, which `create/route.ts` lines 197-213 already maps to a friendly 409 message.
+- The app-level check in `create/route.ts` line 145-149 is the second layer. It fires at the natural point in the flow (after uploads have visibly succeeded), where seeing "You've already applied for this grant cycle" is informative rather than confusing.
+- Removing prepare's check does not enable any attack: prepare writes only storage bytes; it cannot create a duplicate grants row.
+
+### What was NOT applied (rejected Option 2)
+
+Earlier plan proposed auto-deleting stale orphan rows in prepare with a 5-minute threshold. **This would have deleted mrs.darlene's real application** in the same situation. Catastrophic data loss. Rejected per user correction.
+
+If a future session is tempted to "auto-cleanup" orphan grant rows anywhere, the rule is: **never delete a `grants` row whose `grant_documents` count is non-zero**, and even for zero-doc rows, never delete without an explicit user-driven action (e.g. clicking "Reset" in a UI). The orphan cron surfaces these in Slack for human review; it does not delete them.
+
+### What happens for each case after this fix
+
+| Scenario | Behavior |
+|---|---|
+| Member with no prior submission | prepare succeeds → uploads succeed → create succeeds → 200 |
+| Member with real, completed prior application (mrs.darlene) | prepare succeeds → uploads succeed → create hits `if (existing)` → 409 with friendly message at the natural point in the flow |
+| Member with stale orphan row from prior failed attempt (zero docs) | prepare succeeds → uploads succeed → create hits `if (existing)` → 409. Cron surfaces them at 04:00 UTC for admin recovery via reviewer panel. |
+| Genuine concurrent double-submit (two tabs) | Both prepare succeed → first create succeeds → second create hits unique constraint → `23505` → friendly 409 |
+
+### Files changed
+
+- `app/api/grants/upload-document/prepare/route.ts` — removed lines 130-144 (the `existing` grant check + the 409 return) and replaced with a comment explaining why the check is intentionally absent.
+
+### Build
+
+`npm run build` ✓ — 0 TypeScript errors.
+

@@ -127,22 +127,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Cycle not available" }, { status: 403 });
   }
 
-  // Defense-in-depth: prevent double-submission in the new upload-first flow.
-  // The /api/grants/create route also enforces this, but a malicious
-  // client could upload-then-fail-upload-then-succeed in a loop otherwise.
-  const { data: existing } = await admin
-    .from("grants")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("cycle_id", cycleId)
-    .maybeSingle();
-  if (existing) {
-    return NextResponse.json(
-      { error: "You have already applied for this grant cycle." },
-      { status: 409 },
-    );
-  }
-
+  // Note: duplicate-application prevention lives in /api/grants/create
+  // (where the grants row is actually INSERTed) and at the unique
+  // constraint on grants.(user_id, cycle_id). We intentionally do NOT
+  // block at prepare time — prepare is a storage-IO helper, and a
+  // member with a real, completed previous application needs to be
+  // able to retry a failed prepare (e.g. network blip mid-upload,
+  // browser refresh) without seeing a confusing 409 in the middle of
+  // their upload flow. The create API's 409 surfaces cleanly at the
+  // natural end of the flow if there's truly nothing to do.
   const path = `${cycleId}/pending/${user.id}/${Date.now()}-${sanitizeFileName(validated.meta.fileName)}`;
 
   const { data, error } = await admin.storage
