@@ -1,3 +1,4 @@
+import { blockIfViewingAs } from "@/lib/view-as";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import getAdminClient from "@/lib/supabase/admin";
@@ -22,6 +23,9 @@ import {
 export const maxDuration = 10;
 
 export async function POST(request: NextRequest) {
+  const viewAsBlocked = blockIfViewingAs(request);
+  if (viewAsBlocked) return viewAsBlocked;
+
   const supabase = await createServerClient();
   const {
     data: { user },

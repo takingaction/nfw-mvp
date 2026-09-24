@@ -13,6 +13,7 @@ import YourZeroDollarStoreSection from "@/components/dashboard/YourZeroDollarSto
 import { ProfileBanner } from "@/components/profile/ProfileBanner";
 import { AbandonedCheckoutBanner } from "@/components/dashboard/AbandonedCheckoutBanner";
 import { PendingFreeMembershipBanner } from "@/components/dashboard/PendingFreeMembershipBanner";
+import { getImpersonationContext } from "@/lib/impersonation";
 import ConnectBankButton from "@/components/grants/ConnectBankButton";
 
 export const metadata = {
@@ -108,8 +109,10 @@ async function getSavings(userId: string) {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { next?: string };
+  searchParams: Promise<{ next?: string }>;
 }) {
+  const sp = await searchParams;
+  const viewAsCtx = await getImpersonationContext();
   const supabase = await createClient();
 
   const {
@@ -119,9 +122,19 @@ export default async function DashboardPage({
 
   if (error || !user) {
     // Redirect to login, preserving the attempted URL as next
-    const nextUrl = searchParams?.next || "/dashboard";
+    const nextUrl = sp?.next || "/dashboard";
     redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
   }
+
+  // View-as support: cookie-based. The view_as cookie (if present) is
+  // validated by the helper; if invalid or absent, we render as the caller.
+  // No URL params needed on the read path — the cookie is the source of truth.
+  const viewAsUserId = viewAsCtx?.targetUserId ?? null;
+  const viewAsTargetName = viewAsCtx?.targetFullName ?? null;
+  const viewAsTargetEmail = viewAsCtx?.targetEmail ?? null;
+
+  const effectiveUserId = viewAsUserId ?? user.id;
+  const isViewingAs = viewAsUserId !== null;
 
   const supabaseAdmin = createSupabaseAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -132,7 +145,7 @@ export default async function DashboardPage({
     supabase
       .from("profiles")
       .select("*, joined_at")
-      .eq("id", user.id)
+      .eq("id", effectiveUserId)
       .single(),
     supabaseAdmin
       .from("dashboard_settings")
@@ -142,18 +155,18 @@ export default async function DashboardPage({
     supabaseAdmin
       .from("store_likes")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", effectiveUserId)
       .order("created_at", { ascending: false }),
     supabaseAdmin
       .from("grants")
       .select("*, grant_cycles(cycle_name, amount_per_grant, end_date, featured_image)")
-      .eq("user_id", user.id)
+      .eq("user_id", effectiveUserId)
       .order("created_at", { ascending: false })
       .limit(10),
     supabaseAdmin
       .from("zero_dollar_claims")
       .select("*, shopify_product_id, order_status_url, shopify_order_id")
-      .eq("user_id", user.id)
+      .eq("user_id", effectiveUserId)
       .in("status", ["completed", "fulfilled", "paid", "cancelled"])
       .order("claimed_at", { ascending: false })
       .limit(10),
@@ -166,7 +179,7 @@ export default async function DashboardPage({
     supabaseAdmin
       .from("abandoned_checkouts")
       .select("id")
-      .eq("user_id", user.id)
+      .eq("user_id", effectiveUserId)
       .is("recovered_at", null)
       .limit(1),
   ]);
@@ -188,21 +201,25 @@ export default async function DashboardPage({
 
   const profile = profileResult?.data;
 
-  if (!profile?.profile_completed) {
-    redirect("/auth/sign-up?step=1");
-  } else if (!profile?.membership_level) {
-    redirect("/auth/sign-up?step=3");
-  }
+  // When viewing as another member, skip profile-completion redirects so the
+  // admin sees the target's actual state (including incomplete profiles).
+  if (!isViewingAs) {
+    if (!profile?.profile_completed) {
+      redirect("/auth/sign-up?step=1");
+    } else if (!profile?.membership_level) {
+      redirect("/auth/sign-up?step=3");
+    }
 
-  // If free member has NULL contact_submitted (never started free flow), redirect to step 3
-  // This catches users who have database default 'free' but never interacted with step 3
-  // Skip if is_approved_free_member === TRUE (grandfathered or admin-approved members)
-  if (
-    profile?.membership_level === "free" &&
-    profile?.is_approved_free_member !== true &&
-    profile?.free_membership_contact_submitted === null
-  ) {
-    redirect("/auth/sign-up?step=3");
+    // If free member has NULL contact_submitted (never started free flow), redirect to step 3
+    // This catches users who have database default 'free' but never interacted with step 3
+    // Skip if is_approved_free_member === TRUE (grandfathered or admin-approved members)
+    if (
+      profile?.membership_level === "free" &&
+      profile?.is_approved_free_member !== true &&
+      profile?.free_membership_contact_submitted === null
+    ) {
+      redirect("/auth/sign-up?step=3");
+    }
   }
 
   // Check for abandoned checkout for the banner display
@@ -221,7 +238,7 @@ export default async function DashboardPage({
     profile?.is_approved_free_member !== true &&
     profile?.free_membership_contact_submitted === true;
 
-  const savings = await getSavings(user.id);
+  const savings = await getSavings(effectiveUserId);
   const settings = dashboardSettingsResult?.data || {};
   const likedStores = likedStoresResult?.data || [];
   const userGrants = grantsResult?.data || [];
@@ -296,7 +313,7 @@ export default async function DashboardPage({
 
   return (
     <main className="min-h-screen">
-      <AccessPerksSync userId={user.id} />
+      <AccessPerksSync userId={effectiveUserId} />
       <ProfileBanner profile={profile} />
       <AbandonedCheckoutBanner
         showRequestFreeMembershipLink={

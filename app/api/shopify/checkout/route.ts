@@ -1,3 +1,4 @@
+import { blockIfViewingAs } from "@/lib/view-as";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
@@ -60,6 +61,9 @@ async function createDraftOrderShopify(variantId: string, quantity: number, clai
 }
 
 export async function POST(request: NextRequest) {
+  const viewAsBlocked = blockIfViewingAs(request);
+  if (viewAsBlocked) return viewAsBlocked;
+
   try {
     // Rate limiting
     const ip = request.headers.get("x-forwarded-for") ?? "unknown";

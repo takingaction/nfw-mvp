@@ -1,3 +1,4 @@
+import { blockIfViewingAs } from "@/lib/view-as";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
@@ -35,6 +36,9 @@ const ALLOWED_OBJECTS = ["social_handles"];
 const ALLOWED_BOOLEANS = ["profile_completed", "is_approved_free_member", "free_membership_contact_submitted"];
 
 export async function POST(request: NextRequest) {
+  const viewAsBlocked = blockIfViewingAs(request);
+  if (viewAsBlocked) return viewAsBlocked;
+
   try {
     const ip = request.headers.get("x-forwarded-for") ?? "unknown";
     const { success } = rateLimit(`profile-update:${ip}`, 10, 60_000);

@@ -1,3 +1,4 @@
+import { blockIfViewingAs } from "@/lib/view-as";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
@@ -9,6 +10,9 @@ interface RouteParams {
 }
 
 export async function POST(request: Request, { params }: RouteParams) {
+  const viewAsBlocked = blockIfViewingAs(request);
+  if (viewAsBlocked) return viewAsBlocked;
+
   const ip = request.headers.get("x-forwarded-for") ?? "unknown";
   const { success } = rateLimit(`redeem:${ip}`, 10, 60_000);
   if (!success) {

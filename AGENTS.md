@@ -19295,4 +19295,245 @@ WHERE ac.recovered_at IS NULL
 
 
 
+## Session 2026-09-25 (abandoned iteration 1): Admin "Run as Member" Impersonation
+
+### Overview
+
+A signed HTTP-only cookie (`nfw_impersonation`) holds an `impersonation_sessions.id` plus an HMAC. When present and valid, `lib/supabase/server.ts:createClient()` returns a request-scoped Supabase client that runs queries as the TARGET user (admin's real auth cookies untouched). All member-facing pages render as the target; writes are blocked.
+
+### Architecture
+
+- Admin clicks "Act as" in `/admin/members` → modal captures reason → POST `/api/admin/impersonation/start`
+- Server validates admin + target + reason, closes any open session for that admin, inserts row, sets cookie
+- `lib/supabase/server.ts:tryImpersonationClient()` calls GoTrue admin REST `POST /auth/v1/admin/users/{uid}/sessions` with service-role key, then builds a stateless Supabase client bound to the target's access token (same shadowing trick the Bearer branch uses)
+- Per-request, the impersonation cookie's HMAC is verified, the row is fetched, and the target client is returned
+- `<ImpersonationBanner>` mounted in `app/layout.tsx` shows on every page when active
+- "Stop" button POSTs `/api/admin/impersonation/stop`, clears the cookie, hard-reloads
+
+### Files Created
+
+| Path | Purpose |
+|---|---|
+| `supabase/migrations/181_impersonation_sessions.sql` | Audit table + RLS via `public.is_admin()` |
+| `lib/impersonation.ts` | HMAC sign/verify, cookie read/write, context resolver, allowlist |
+| `lib/impersonation-blocklist.ts` | `blockWriteIfImpersonating()` for every server route handler |
+| `app/api/admin/impersonation/start/route.ts` | POST: validates admin/target/reason, inserts row, sets cookie |
+| `app/api/admin/impersonation/stop/route.ts` | POST: closes session, clears cookie (safe to call when inactive) |
+| `app/api/admin/impersonation/active/route.ts` | GET: `{ active, target, sessionId }` for banner state |
+| `app/api/admin/impersonation/log/route.ts` | GET: paginated, filterable audit log (admin-only) |
+| `app/admin/impersonation-log/page.tsx` | Audit log view (server wrapper) |
+| `app/admin/impersonation-log/AdminImpersonationLogClient.tsx` | Audit table + filters + CSV export |
+| `components/admin/ImpersonationBanner.tsx` | Persistent top banner; Stop + Audit Log buttons |
+| `components/admin/ImpersonationModal.tsx` | Reason capture + confirmation |
+
+### Files Modified
+
+| Path | Change |
+|---|---|
+| `lib/supabase/server.ts` | `tryImpersonationClient()` branch added at the top of `createClient()` |
+| `proxy.ts` | No change required — `/admin/*` and `/api/admin/*` were already gated on real admin session |
+| `app/layout.tsx` | Mount `<ImpersonationBanner />` (renders nothing when inactive) |
+| `components/admin/AdminMembersClient.tsx` | UserSquare icon + `<ImpersonationModal>` |
+| `app/admin/AdminHubClient.tsx` | "Impersonation Log" link in Members & Grants section |
+| API routes (17 total) | Added `blockWriteIfImpersonating(request, route_name)` at the top of every handler that performs a write |
+
+### Blocklist Enforcement
+
+Every server API route that performs a write returns `423 Locked` when an impersonation session is active:
+
+| Route | Reason string in audit |
+|---|---|
+| `app/api/grants/create/route.ts` | `/api/grants/create` |
+| `app/api/grants/upload-document/prepare/route.ts` | `/api/grants/upload-document/prepare` |
+| `app/api/grants/upload-document/finalize/route.ts` | `/api/grants/upload-document/finalize` |
+| `app/api/access-perks/offers/[offerKey]/redeem/route.ts` | `/api/access-perks/offers/[offerKey]/redeem` |
+| `app/api/nfw-perks/[id]/redeem/route.ts` | `/api/nfw-perks/[id]/redeem` |
+| `app/api/gift-codes/redeem/route.ts` | `/api/gift-codes/redeem` |
+| `app/api/shopify/checkout/route.ts` | `/api/shopify/checkout` |
+| `app/api/profile/update/route.ts` | `/api/profile/update` |
+| `app/api/profile/avatar/route.ts` | `/api/profile/avatar` |
+| `app/api/profile/avatar/delete/route.ts` | `/api/profile/avatar/delete` |
+| `app/api/profile/request-deletion/route.ts` | `/api/profile/request-deletion` |
+| `app/api/profile/cancel-deletion/route.ts` | `/api/profile/cancel-deletion` |
+| `app/api/auth/update-password/route.ts` | `/api/auth/update-password` |
+| `app/api/auth/login/route.ts` | `/api/auth/login` |
+| `app/api/stripe/connect/route.ts` | `/api/stripe/connect` |
+
+**Reads are always allowed.** `GET /api/profile/route.ts` and `GET /api/profile/address/[userId]/route.ts` are NOT gated.
+
+### Allowlist
+
+Only these two admins may be impersonated as a target (in `lib/impersonation.ts:IMPERSONATABLE_ADMIN_EMAILS`):
+- `kelsey@nationalfundforwomen.org`
+- `ron@myherodesign.com`
+
+All non-admin members are impersonatable.
+
+### Retention
+
+7-year retention enforced via `retention_expires_at` generated column. No DELETE policy — rows are immutable.
+
+### Env vars required
+
+_None. The URL-state approach uses the existing `SUPABASE_SERVICE_ROLE_KEY` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` env vars._
+
+### Operational notes
+
+- Target session is request-scoped, minted on every server render that has the cookie. Heavy server pages will mint many sessions during dev — this is harmless but uses GoTrue API quota. Add caching later if needed.
+- Mid-session target deletion: `tryImpersonationClient()` falls back to admin session if the GoTrue endpoint returns non-2xx.
+- Cookie is HTTP-only, SameSite=Lax, secure in production. Cookie lifetime: 8h idle default. DB row end + admin Stop are authoritative.
+- Concurrent member session risk: writes blocked outright during impersonation. Reads are safe (RLS evaluates as target either way).
+
+### Verification matrix
+
+| Scenario | Expected |
+|---|---|
+| Admin clicks "Act as member" with valid reason | Cookie set, banner visible, member pages render as target |
+| Admin POSTs `/api/access-perks/offers/X/redeem` while impersonating | 423 with JSON `{ error: "This action is blocked..." }` |
+| Admin opens `/grants/apply` | Page renders as target; submit button visibly disabled (blocklist + forms) |
+| Admin clicks "Stop impersonating" | Cookie cleared, page reloads, banner gone, queries resolve as admin |
+| Admin tries to impersonate themselves | 403 |
+| Admin tries to impersonate a non-allowlisted admin | 403 |
+| Member account anonymized mid-impersonation | tryImpersonationClient returns null → admin session falls through |
+| Cookie tampered | HMAC fails → falls back to admin session |
+
+### What was NOT shipped
+
+- No CSV export from audit log per session (whole-list export only)
+- No Slack/email notifications on session start/stop
+- No automatic session expiry timer (punted to v2 — DB row close + admin Stop are enough)
+- No per-member `is_impersonatable` flag (everyone except the two head admins is impersonatable by default)
+- No mobile app changes (mobile doesn't have impersonation support — out of scope)
+
+
+## Session 2026-09-25: Admin "View as Member" Feature
+
+### Overview
+
+Admin "View as Member" lets an admin view any member's dashboard, applications, profile, claims, etc. as that member sees it. State is **cookie-based**: a signed HTTP-only cookie (`nfw_view_as`) holds the `admin_view_logs.id` plus an HMAC. Server components read the cookie via `getImpersonationContext()` and use the resolved target user id for data queries. All internal Links work as-is because the state isn't in the URL.
+
+**Why cookie, not URL:** a URL-state approach was tried first but failed because every internal hardcoded `<Link>` strips the `?view_as=` query param, so admins couldn't navigate between view_as pages without losing the impersonation state. The cookie approach is server-side: the middleware doesn't need to rewrite URLs, and every page just reads the cookie.
+
+**Why a signed cookie and not a Supabase session:** the previous attempt tried minting a target Supabase session via a GoTrue admin endpoint and failed. We're not minting anything. The cookie value is a UUID pointer to an audit-log row, signed with `VIEW_AS_COOKIE_SECRET` (HMAC-SHA256) so it can't be forged client-side. Data fetching uses the existing service-role key (admin anyway) and RLS evaluates correctly for the target user.
+
+### Architecture
+
+- Admin clicks the View icon (UserSquare) in `/admin/members` → modal captures reason + initial page → POST `/api/admin/members/[id]/view-as` validates admin + target + reason and inserts an `admin_view_logs` row → server signs `<sessionId>.<hmac>` and sets the `nfw_view_as` HTTP-only cookie on the response → client navigates to the chosen initial page (no `?view_as=` in URL).
+- Every server component calls `getImpersonationContext()` (in `lib/impersonation.ts`) which reads the cookie, verifies the HMAC, and looks up the row in `admin_view_logs`. If valid, the resolved `targetUserId` is used for data queries instead of the caller's user id.
+- The `<ViewingAsMemberBanner>` is mounted once in `app/layout.tsx` as a sibling of `<Navigation>`. It reads the cookie server-side, so it persists across all internal navigations without re-mounting.
+- "Exit Preview" button POSTs `/api/admin/view-as/stop` to clear the cookie, then hard-navigates to the initial page.
+- Member-facing write API routes use a separate `view_as` block guard that checks for a query-string param. As defense in depth, the same check is in `proxy.ts` which sets `Cache-Control: private, no-store` headers when `?view_as=` is present in the URL (dormant in the cookie flow but kept for future use).
+
+### Cookie shape
+
+```
+nfw_view_as = <sessionId>.<hmacHex>
+```
+
+Where `<sessionId>` is the UUID of a row in `admin_view_logs` and `<hmacHex>` is `HMAC-SHA256(VIEW_AS_COOKIE_SECRET, <sessionId>)`. The cookie is HTTP-only, SameSite=Lax, `secure` in production, `Path=/`, `Max-Age=28800` (8 hours). If the secret is missing or the HMAC fails, `getImpersonationContext()` returns `null` and pages render as the caller's own session.
+
+### Files Created
+
+| Path | Purpose |
+|---|---|
+| `supabase/migrations/182_create_admin_view_logs.sql` | Audit table (replaces deleted 181); `BEFORE INSERT` trigger computes `retention_expires_at` because Postgres rejects `GENERATED ALWAYS AS (... + INTERVAL ...)` with 42P17 "expression not immutable" |
+| `lib/impersonation.ts` | `getImpersonationContext()` (cookie reader), `setImpersonationCookieHeader` / `clearImpersonationCookieHeader` (cookie writers), `canImpersonateTarget()` (allowlist), `IMPERSONATABLE_ADMIN_EMAILS` |
+| `app/api/admin/members/[id]/view-as/route.ts` | Start: validate admin + target + reason, insert audit row, set signed cookie on response |
+| `app/api/admin/view-as/stop/route.ts` | Stop: clear the `nfw_view_as` cookie (idempotent — safe to call when inactive) |
+| `app/api/admin/view-as/log/route.ts` | Audit log read (admin-only, paginated + filterable + CSV export) |
+| `components/admin/ViewingAsMemberBanner.tsx` | Server-component wrapper that calls `getImpersonationContext()` and renders the client banner |
+| `components/admin/ViewingAsMemberBannerClient.tsx` | "use client" interactive component (red background, z-60, "Exit Preview" button calls stop endpoint) |
+| `app/admin/view-as-log/page.tsx` | Audit log page wrapper |
+| `app/admin/view-as-log/AdminViewAsLogClient.tsx` | Audit log table client with filters, pagination, CSV export |
+
+### Files Modified
+
+| Path | Change |
+|---|---|
+| `proxy.ts` | Added defensive Cache-Control headers for `?view_as=` (dormant in cookie flow but kept for future use) |
+| `app/layout.tsx` | Mounts `<ViewingAsMemberBanner initialPage={pathname}>` as a sibling of `<Navigation>` (renders nothing if no valid cookie) |
+| `app/dashboard/page.tsx` | Reads `viewAsCtx?.targetUserId` for `effectiveUserId` in queries; removed inline banner mount |
+| `app/grants/my-applications/page.tsx` | Same; removed inline banner; removed `buildViewAsUrl` calls on internal links (not needed in cookie flow) |
+| `app/grants/view/[id]/page.tsx` | Same; removed inline banner; plain hrefs on View Details / Connect Bank Account |
+| `app/profile/page.tsx` | Same; removed inline banner |
+| `app/store/my-claims/page.tsx` | Same; removed inline banner; `viewAsUserId` prop threaded through Suspense wrapper |
+| `app/admin/AdminHubClient.tsx` | Added "View As Member Log" link in Members & Grants section |
+| `app/api/grants/create/route.ts` | Added `blockIfViewingAs` guard |
+| `app/api/grants/upload-document/{finalize,prepare}/route.ts` | Added `blockIfViewingAs` guard |
+| `app/api/profile/{update,avatar,avatar/delete,request-deletion,cancel-deletion}/route.ts` | Added `blockIfViewingAs` guard |
+| `app/api/auth/update-password/route.ts` | Added `blockIfViewingAs` guard |
+| `app/api/gift-codes/redeem/route.ts` | Added `blockIfViewingAs` guard |
+| `app/api/membership/upgrade/route.ts` | Added `blockIfViewingAs` guard |
+| `app/api/nfw-perks/[id]/redeem/route.ts` | Added `blockIfViewingAs` guard |
+| `app/api/access-perks/offers/[offerKey]/redeem/route.ts` | Added `blockIfViewingAs` guard |
+| `app/api/shopify/checkout/route.ts` | Added `blockIfViewingAs` guard |
+| `app/api/stripe/connect/route.ts` | Added `blockIfViewingAs` guard |
+| `components/admin/AdminMembersClient.tsx` | Added UserSquare (View) action on each row; reordered action column to "View → Mail → Trash → Edit" with a single flex row, fixed 32px button heights, vertical alignment |
+
+### Files Deleted (previous URL-state approach cleanup)
+
+- `app/api/admin/impersonation/{start,stop,active,log}/route.ts` (4 files)
+- `app/admin/impersonation-log/{page.tsx,AdminImpersonationLogClient.tsx}`
+- `components/admin/{ImpersonationBanner,ImpersonationModal}.tsx`
+- `supabase/migrations/181_impersonation_sessions.sql` (had the broken `GENERATED ALWAYS AS` retention column — replaced by 182 with the trigger fix)
+- `lib/impersonation-blocklist.ts` (URL-based block guard — superseded by `view-as`'s `blockIfViewingAs`)
+
+### Env vars
+
+- **`VIEW_AS_COOKIE_SECRET`** (required) — HMAC secret, min 32 chars. Add to Vercel env vars + local `.env.local`. If missing, cookie validation fails closed (admin sees their own data).
+- The existing `SUPABASE_SERVICE_ROLE_KEY` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are reused.
+
+### Allowlist
+
+Only these two admins may be impersonated as a target (in `lib/impersonation.ts:IMPERSONATABLE_ADMIN_EMAILS`):
+- `kelsey@nationalfundforwomen.org`
+- `ron@myherodesign.com`
+
+All non-admin members are impersonatable. Admins cannot impersonate themselves (rejected at the start endpoint).
+
+### Retention
+
+7-year retention enforced via `retention_expires_at` column populated by a `BEFORE INSERT` trigger (Postgres 42P17 fix; see migration 182).
+
+### Banner placement and styling
+
+The `<ViewingAsMemberBanner>` is mounted in `app/layout.tsx` as a sibling of `<Navigation>`. It uses `z-[60]` so it sits above the nav's `z-50` dropdowns. Background is `bg-red-600` for clear visual distinction from the aubergine nav. The "Exit Preview" button is `bg-white text-red-600`. No eye emoji — the banner's wording ("VIEWING AS [name] · Writes are blocked") is sufficient on its own.
+
+### Known limitations
+
+- **/perks page is NOT supported.** It's a client component with internal fetch logic. To support view_as there, the perks API routes would need to accept view_as and the page would need to read it. Future enhancement.
+- **Audit log `ended_at` is not recorded.** When admin clicks "Exit Preview", the stop endpoint clears the cookie but does not update `ended_at` on the audit row. The row remains "active" in `admin_view_logs` until 7-year retention. (v1 simplification; can add a transactional update in `stop/route.ts` later.)
+- **The perks page banner is not displayed** because we didn't add view_as support there. If admin navigates to /perks while viewing, they see admin's own perks data without a banner. Future enhancement.
+
+### Verification matrix
+
+| Scenario | Expected |
+|---|---|
+| Admin clicks View on a member, enters reason ≥5 chars, picks Dashboard, submits | Lands on `/dashboard`, banner shows red, cookie set |
+| Banner shows target name, email, "Writes are blocked", Exit Preview | UI correct, z-60 above nav dropdowns |
+| Admin navigates from `/dashboard` to `/grants/my-applications` (hardcoded Link) | Banner persists, target's grants shown — no `?view_as=` in URL because state is in cookie |
+| Admin navigates to `/profile`, `/store/my-claims` | Banner persists, target's data shown |
+| Admin tries to POST to a write API route while in view_as mode (e.g. `/api/profile/update?view_as=...`) | API returns 423 with JSON `{ error: "Writes are blocked..." }` |
+| Admin tries to view as themselves | 403 |
+| Admin tries to view as a non-allowlisted admin | 403 |
+| Admin clicks "Exit Preview" | Stop endpoint clears cookie, hard-navigates to initial page, banner gone, queries resolve as admin |
+| Member's account is anonymized mid-view_as | `getImpersonationContext()` returns null (row gone), admin sees their own session |
+| Cookie is tampered with | HMAC fails, page renders admin's own session |
+| Non-admin visits any `?view_as=` URL | RLS refuses admin lookup in `getImpersonationContext`, banner never renders, page shows caller's own data |
+
+### Deploy steps
+
+1. Run `supabase/migrations/182_create_admin_view_logs.sql` in Supabase SQL Editor
+2. Add `VIEW_AS_COOKIE_SECRET` (≥32 chars) to Vercel env vars + local `.env.local`
+3. Deploy
+4. Test: /admin/members → click View → enter reason → submit → confirm dashboard renders target's data with red banner
+5. Verify audit log at /admin/view-as-log
+6. Click "Exit Preview" → confirm cookie cleared and admin's own data renders
+
+### What was NOT shipped
+
+- /perks page view_as support (client component, would need API changes)
+- ended_at recording on exit (v1 simplification; admin's exit time is not logged)
+- Analytics exclusion (no analytics currently installed; add when added)
+- Mobile app (mobile doesn't have admin pages)
 

@@ -13,6 +13,7 @@ import {
   Check,
   Trash2,
   Mail,
+  UserSquare,
 } from "lucide-react";
 import { FreeMembershipApprovalModal } from "@/components/admin/FreeMembershipApprovalModal";
 import { DeleteMemberModal } from "@/components/admin/DeleteMemberModal";
@@ -133,6 +134,14 @@ export default function AdminMembersClient({
   const [updatingEmail, setUpdatingEmail] = useState(false);
   const [emailUpdateError, setEmailUpdateError] = useState<string | null>(null);
 
+  // View-as modal state
+  const [showViewAsModal, setShowViewAsModal] = useState(false);
+  const [viewAsMember, setViewAsMember] = useState<Member | null>(null);
+  const [viewAsReason, setViewAsReason] = useState("");
+  const [viewAsInitialPage, setViewAsInitialPage] = useState("/dashboard");
+  const [startingViewAs, setStartingViewAs] = useState(false);
+  const [viewAsError, setViewAsError] = useState<string | null>(null);
+
   const copyEmail = async (email: string) => {
     try {
       await navigator.clipboard.writeText(email);
@@ -140,6 +149,48 @@ export default function AdminMembersClient({
       setTimeout(() => setCopiedEmail(null), 2000);
     } catch (err) {
       console.error("Failed to copy email:", err);
+    }
+  };
+
+  const openViewAs = (member: Member) => {
+    setViewAsMember(member);
+    setViewAsReason("");
+    setViewAsInitialPage("/dashboard");
+    setViewAsError(null);
+    setShowViewAsModal(true);
+  };
+
+  const startViewAs = async () => {
+    if (!viewAsMember) return;
+    const trimmedReason = viewAsReason.trim();
+    if (trimmedReason.length < 5 || trimmedReason.length > 500) {
+      setViewAsError("Reason must be between 5 and 500 characters");
+      return;
+    }
+    setStartingViewAs(true);
+    setViewAsError(null);
+    try {
+      const res = await fetch(`/api/admin/members/${viewAsMember.id}/view-as`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reason: trimmedReason,
+          initial_page: viewAsInitialPage,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setViewAsError(data?.error || `Request failed (${res.status})`);
+        setStartingViewAs(false);
+        return;
+      }
+      // The server set the nfw_view_as cookie. Hard-navigate to the chosen
+      // initial page. The next render will read the cookie server-side and
+      // render as the target. No URL params needed.
+      window.location.href = viewAsInitialPage;
+    } catch (err) {
+      setViewAsError(err instanceof Error ? err.message : "Unknown error");
+      setStartingViewAs(false);
     }
   };
 
@@ -727,30 +778,39 @@ export default function AdminMembersClient({
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => openEdit(member)}
-                        className="text-xs font-semibold text-nfw-blackberry hover:text-nfw-blackberry/70 underline transition-colors"
-                      >
-                        Edit
-                      </button>
-                      {ALLOWED_DELETE_EMAILS.includes(currentUserEmail?.toLowerCase() || "") && (
-                        <>
-                          <button
-                            onClick={() => openEmailUpdate(member)}
-                            className="ml-3 text-xs font-semibold text-nfw-aubergine hover:text-nfw-aubergine/70 transition-colors"
-                            title="Update email"
-                          >
-                            <Mail className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => openDelete(member)}
-                            className="ml-3 text-xs font-semibold text-red-600 hover:text-red-700 transition-colors"
-                            title="Delete member"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
+                      <div className="flex items-center gap-2 h-8">
+                        <button
+                          onClick={() => openViewAs(member)}
+                          className="inline-flex items-center justify-center w-8 h-8 text-[#7c3aed] hover:text-[#6d28d9] transition-colors"
+                          title="View as this member"
+                        >
+                          <UserSquare className="w-4 h-4" />
+                        </button>
+                        {ALLOWED_DELETE_EMAILS.includes(currentUserEmail?.toLowerCase() || "") && (
+                          <>
+                            <button
+                              onClick={() => openEmailUpdate(member)}
+                              className="inline-flex items-center justify-center w-8 h-8 text-nfw-aubergine hover:text-nfw-aubergine/70 transition-colors"
+                              title="Update email"
+                            >
+                              <Mail className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => openDelete(member)}
+                              className="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-700 transition-colors"
+                              title="Delete member"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => openEdit(member)}
+                          className="inline-flex items-center h-8 px-2 text-xs font-semibold text-nfw-blackberry hover:text-nfw-blackberry/70 underline transition-colors"
+                        >
+                          Edit
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -1235,6 +1295,93 @@ export default function AdminMembersClient({
                 className="flex-1 py-2.5 bg-nfw-aubergine text-white text-sm font-bold hover:bg-nfw-aubergine/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {updatingEmail ? "Updating..." : "Update Email"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View As Member Modal */}
+      {showViewAsModal && viewAsMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => !startingViewAs && setShowViewAsModal(false)} />
+          <div className="relative bg-white border border-nfw-blackberry/20 max-w-lg w-full p-6 shadow-2xl">
+            <h3 className="text-xl font-serif text-nfw-blackberry font-black mb-2">
+              View as this member?
+            </h3>
+            <p className="font-serif text-sm text-nfw-blackberry/70 mb-4">
+              You will see the site as{" "}
+              <span className="font-black">
+                {viewAsMember.full_name || viewAsMember.email}
+              </span>
+              . Writes are blocked while viewing. The session is logged to the
+              audit trail.
+            </p>
+            <div className="mb-4">
+              <label
+                htmlFor="view-as-reason"
+                className="block text-xs font-ui font-black tracking-wider uppercase text-nfw-blackberry mb-1"
+              >
+                Reason <span className="text-[#ef4444]">*</span>
+              </label>
+              <textarea
+                id="view-as-reason"
+                value={viewAsReason}
+                onChange={(e) => setViewAsReason(e.target.value)}
+                placeholder="e.g. Investigating ticket #A82: missing $500 AC Repairs grant on dashboard"
+                rows={3}
+                className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm font-serif text-nfw-blackberry placeholder-nfw-blackberry/40 focus:outline-none focus:ring-2 focus:ring-nfw-aubergine/40 focus:border-transparent"
+                maxLength={500}
+                required
+              />
+              <div className="text-xs text-nfw-blackberry/50 mt-1 text-right">
+                {viewAsReason.trim().length}/500
+              </div>
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor="view-as-page"
+                className="block text-xs font-ui font-black tracking-wider uppercase text-nfw-blackberry mb-1"
+              >
+                Start on
+              </label>
+              <select
+                id="view-as-page"
+                value={viewAsInitialPage}
+                onChange={(e) => setViewAsInitialPage(e.target.value)}
+                className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm font-ui text-nfw-blackberry focus:outline-none focus:ring-2 focus:ring-nfw-aubergine/40 focus:border-transparent"
+              >
+                <option value="/dashboard">Dashboard</option>
+                <option value="/grants/my-applications">My Applications</option>
+                <option value="/profile">Profile</option>
+                <option value="/store/my-claims">My Claims (Store)</option>
+              </select>
+            </div>
+            {viewAsError && (
+              <p className="mb-3 text-sm font-serif text-[#ef4444]" role="alert">
+                {viewAsError}
+              </p>
+            )}
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowViewAsModal(false)}
+                disabled={startingViewAs}
+                className="px-4 py-2 font-ui text-xs uppercase tracking-wider text-nfw-blackberry/70 hover:text-nfw-blackberry disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={startViewAs}
+                disabled={
+                  startingViewAs ||
+                  viewAsReason.trim().length < 5 ||
+                  viewAsReason.trim().length > 500
+                }
+                className="px-4 py-2 bg-nfw-aubergine text-white font-ui text-xs uppercase tracking-wider hover:bg-nfw-blackberry disabled:opacity-50"
+              >
+                {startingViewAs ? "Starting..." : "View As Member"}
               </button>
             </div>
           </div>

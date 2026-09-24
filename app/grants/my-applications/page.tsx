@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getImpersonationContext } from "@/lib/impersonation";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,18 +25,26 @@ function decodeHtml(html: string): string {
 export default async function MyApplicationsPage({
   searchParams,
 }: {
-  searchParams: { next?: string };
+  searchParams: Promise<{ next?: string }>;
 }) {
+  const sp = await searchParams;
   const supabase = await createServerClient();
+  const viewAsCtx = await getImpersonationContext();
   const {
     data: { user },
     error,
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    const nextUrl = searchParams?.next || "/grants/my-applications";
+    const nextUrl = sp?.next || "/grants/my-applications";
     redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
   }
+
+  // View-as: cookie-based. If a valid nfw_view_as cookie is present, the
+  // session is the target's, not the caller's. No URL params needed.
+  const viewAsUserId = viewAsCtx?.targetUserId ?? null;
+  const effectiveUserId = viewAsUserId ?? user.id;
+  const isViewingAs = viewAsUserId !== null;
 
   const { data: grants } = await supabaseAdmin
     .from("grants")
@@ -49,7 +58,7 @@ export default async function MyApplicationsPage({
       )
     `,
     )
-    .eq("user_id", user.id)
+    .eq("user_id", effectiveUserId)
     .order("created_at", { ascending: false });
 
   const statusCounts = {
@@ -89,12 +98,14 @@ export default async function MyApplicationsPage({
                 Track your microgrant applications and their status
               </p>
             </div>
-            <Link
-              href="/grants/apply"
-              className="bg-nfw-aubergine text-nfw-dove px-5 py-2.5 font-ui text-sm font-black tracking-[0.06em] uppercase hover:bg-nfw-blackberry transition-colors"
-            >
-              + New Application
-            </Link>
+            {!isViewingAs && (
+              <Link
+                href="/grants/apply"
+                className="bg-nfw-aubergine text-nfw-dove px-5 py-2.5 font-ui text-sm font-black tracking-[0.06em] uppercase hover:bg-nfw-blackberry transition-colors"
+              >
+                + New Application
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -243,12 +254,12 @@ export default async function MyApplicationsPage({
                   </Link>
                   {grant.status === "approved" &&
                     !grant.stripe_connect_account_id && (
-                      <Link
-                        href={`/grants/view/${grant.id}`}
-                        className="font-ui text-sm text-green-600 hover:text-green-700 transition-colors"
-                      >
-                        Connect Bank Account
-                      </Link>
+                        <Link
+                          href={`/grants/view/${grant.id}`}
+                          className="font-ui text-sm text-green-600 hover:text-green-700 transition-colors"
+                        >
+                          Connect Bank Account
+                        </Link>
                     )}
                 </div>
               </div>

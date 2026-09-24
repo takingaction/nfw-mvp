@@ -80,6 +80,19 @@ export async function proxy(request: NextRequest) {
   // Set pathname header
   supabaseResponse.headers.set("x-pathname", request.nextUrl.pathname);
 
+  // View-as cache control (defense in depth).
+  // We use cookie-based view-as now (?view_as= is gone from the URL), so this
+  // rule is dormant in the current flow. It remains in case any future
+  // surface reintroduces the param, or for legacy URLs that still carry it.
+  // Detection via URL only — the HttpOnly cookie is invisible to middleware.
+  if (request.nextUrl.searchParams.has("view_as")) {
+    supabaseResponse.headers.set(
+      "Cache-Control",
+      "private, no-store, no-cache, must-revalidate, max-age=0",
+    );
+    supabaseResponse.headers.set("Pragma", "no-cache");
+  }
+
   return supabaseResponse;
 }
 

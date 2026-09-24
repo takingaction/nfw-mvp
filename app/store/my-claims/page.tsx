@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import MyClaimsClient from "@/components/MyClaimsClient";
 import { Suspense } from "react";
 import Link from "next/link";
+import { getImpersonationContext } from "@/lib/impersonation";
 
 export const metadata = {
   title: "My Claims | Zero Dollar Store",
@@ -11,8 +12,10 @@ export const metadata = {
 
 async function MyClaimsContent({
   nextUrl,
+  viewAsUserId,
 }: {
   nextUrl?: string;
+  viewAsUserId: string | null;
 }) {
   const supabase = await createClient();
   const {
@@ -23,24 +26,30 @@ async function MyClaimsContent({
     redirect(`/auth/login?next=${encodeURIComponent(nextUrl || "/store/my-claims")}`);
   }
 
+  // View-as: cookie-based. The parent component passes the resolved target
+  // (or null) so we don't re-resolve the cookie here. Cookie validity is
+  // already enforced at the parent call site.
+  const isViewingAs = viewAsUserId !== null;
+  const effectiveUserId = viewAsUserId ?? user.id;
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("full_name, membership_level, profile_completed")
-    .eq("id", user.id)
+    .eq("id", effectiveUserId)
     .single();
 
   if (!profile) {
     redirect("/profile");
   }
 
-  if (!profile?.profile_completed) {
+  if (!isViewingAs && !profile?.profile_completed) {
     redirect(`/auth/sign-up?step=1&next=${encodeURIComponent(nextUrl || "/store/my-claims")}`);
   }
 
   const { data: claims, error } = await supabase
     .from("zero_dollar_claims")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", effectiveUserId)
     .order("claimed_at", { ascending: false });
 
   if (error) {
@@ -101,12 +110,15 @@ async function MyClaimsContent({
   );
 }
 
-export default function MyClaimsPage({
+export default async function MyClaimsPage({
   searchParams,
 }: {
-  searchParams: { next?: string };
+  searchParams: Promise<{ next?: string }>;
 }) {
-  const nextUrl = searchParams?.next;
+  const sp = await searchParams;
+  const viewAsCtx = await getImpersonationContext();
+  const nextUrl = sp?.next;
+  const viewAsUserId = viewAsCtx?.targetUserId ?? null;
   return (
     <Suspense
       fallback={
@@ -128,7 +140,10 @@ export default function MyClaimsPage({
         </main>
       }
     >
-      <MyClaimsContent nextUrl={nextUrl} />
+      <MyClaimsContent
+        nextUrl={nextUrl}
+        viewAsUserId={viewAsUserId}
+      />
     </Suspense>
   );
 }

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import ProfileClient from "./ProfileClient";
+import { getImpersonationContext } from "@/lib/impersonation";
 
 export const metadata = {
   title: "My Profile",
@@ -10,8 +11,10 @@ export const metadata = {
 export default async function ProfilePage({
   searchParams,
 }: {
-  searchParams: { next?: string };
+  searchParams: Promise<{ next?: string }>;
 }) {
+  const sp = await searchParams;
+  const viewAsCtx = await getImpersonationContext();
   const supabase = await createClient();
 
   const {
@@ -20,14 +23,18 @@ export default async function ProfilePage({
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    const nextUrl = searchParams?.next || "/profile";
+    const nextUrl = sp?.next || "/profile";
     redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
   }
+
+  // View-as: cookie-based. Reads the target from the nfw_view_as cookie.
+  const viewAsUserId = viewAsCtx?.targetUserId ?? null;
+  const effectiveUserId = viewAsUserId ?? user.id;
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", user.id)
+    .eq("id", effectiveUserId)
     .single();
 
   const membershipLevel = profile?.membership_level || "free";
@@ -37,12 +44,14 @@ export default async function ProfilePage({
     : null;
 
   return (
-    <ProfileClient
-      profile={profile}
-      user={user}
-      membershipLevel={membershipLevel}
-      subscriptionStatus={subscriptionStatus}
-      subscriptionEndsAt={subscriptionEndsAt}
-    />
+    <>
+      <ProfileClient
+        profile={profile}
+        user={user}
+        membershipLevel={membershipLevel}
+        subscriptionStatus={subscriptionStatus}
+        subscriptionEndsAt={subscriptionEndsAt}
+      />
+    </>
   );
 }

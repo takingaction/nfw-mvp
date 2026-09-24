@@ -10,6 +10,7 @@ import BackToTop from "@/components/BackToTop";
 import TermlyCMP from "@/components/TermlyCMP";
 import PromotionalPopupWrapper from "@/components/popup/PromotionalPopupWrapper";
 import FloatingAdminButton from "@/components/admin/FloatingAdminButton";
+import ViewingAsMemberBanner from "@/components/admin/ViewingAsMemberBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -97,6 +98,7 @@ export default async function RootLayout({
           </noscript>
         )}
         {!isPublicRoute && <Navigation />}
+        {!isPublicRoute && <ViewingAsMemberBanner initialPage={pathname} />}
         <FloatingAdminButton />
         <TermlyCMP />
         <PromotionalPopupWrapper />

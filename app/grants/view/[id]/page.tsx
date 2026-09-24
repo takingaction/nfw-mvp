@@ -5,6 +5,7 @@ import Link from "next/link";
 import GrantDocuments from "@/components/grants/GrantDocuments";
 import ConnectBankButton from "@/components/grants/ConnectBankButton";
 import StripeAccountStatus from "@/components/grants/StripeAccountStatus";
+import { getImpersonationContext } from "@/lib/impersonation";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,9 +30,11 @@ export default async function GrantDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: { next?: string };
+  searchParams: Promise<{ next?: string }>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
+  const viewAsCtx = await getImpersonationContext();
 
   const supabase = await createServerClient();
   const {
@@ -40,9 +43,12 @@ export default async function GrantDetailPage({
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    const nextUrl = searchParams?.next || `/grants/view/${id}`;
+    const nextUrl = sp?.next || `/grants/view/${id}`;
     redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
   }
+
+  // View-as: cookie-based. Reads the target from the nfw_view_as cookie.
+  const viewAsUserId = viewAsCtx?.targetUserId ?? null;
 
   const { data: grant } = await supabaseAdmin
     .from("grants")
@@ -60,7 +66,6 @@ export default async function GrantDetailPage({
     `,
     )
     .eq("id", id)
-    .eq("user_id", user.id)
     .single();
 
   if (!grant) {

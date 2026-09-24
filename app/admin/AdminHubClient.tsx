@@ -61,6 +61,7 @@ const adminSections: AdminSection[] = [
       { label: "Deletion Requests", href: "/admin/deletion-requests" },
       { label: "Incomplete Members", href: "/admin/incomplete-members" },
       { label: "Stripe Revenue Backfill", href: "/admin/backfill/stripe" },
+      { label: "View As Member Log", href: "/admin/view-as-log" },
     ],
   },
   {
