@@ -83,7 +83,12 @@ export default function PromotionalPopup({ path }: PromotionalPopupProps) {
     if (typeof window === "undefined") return false;
 
     const key = `popup_dismissed_${popup.id}`;
-    const stored = localStorage.getItem(key);
+    // Read/write storage must be symmetric — dismiss() writes per_session to
+    // sessionStorage, so the read must check sessionStorage too. Otherwise
+    // a dismissed "once per session" popup re-shows on every page refresh.
+    const storage =
+      popup.frequency_type === "per_session" ? sessionStorage : localStorage;
+    const stored = storage.getItem(key);
     if (!stored) return false;
 
     try {

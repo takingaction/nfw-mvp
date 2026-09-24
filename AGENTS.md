@@ -19631,5 +19631,80 @@ The "Missing from DB" card was also flagged by the user as confusing. Rows show 
 
 When a cron consistently dies at the same line count across many attempts, the deadlock-loop hypothesis (auto-create → restart from scratch → die same way) is usually the cause. Look at the cleanup logic and the auto-create condition, not just the work loop itself.
 
+## Session 2026-09-25: Promotional Popup "Once Per Session" Re-Shows on Refresh
+
+### Problem
+
+The dashboard's promotional popup was configured as `frequency_type = "per_session"` ("Once per session" in `/admin/promotional-popups`). Dismissing it correctly hid it for the rest of the tab session — **but every page refresh brought it back**. User's words: "something in our last few commits fucked this."
+
+### Root Cause
+
+Storage-backend asymmetry in `components/popup/PromotionalPopup.tsx`:
+
+| Function | Line | Behavior for `per_session` |
+|---|---|---|
+| `dismiss()` | 127 | Writes `{ sessionDismissed: true }` to **`sessionStorage`** — correct |
+| `isDismissed()` | 86 | Reads only from **`localStorage`** — wrong, never finds the value |
+
+So: dismiss writes to `sessionStorage`, but the read at the next page mount checks `localStorage`, finds nothing, returns `false` (not dismissed), and re-shows the popup. Every refresh.
+
+### Why Recent Commits Aren't To Blame
+
+`components/popup/PromotionalPopup.tsx` last touched at commit `70d26e6` (Sept 9) for the show/hide animation rewrite. The `dismiss()` / `isDismissed()` mismatch has been latent in the file the entire time. Possible reasons it surfaced now: popup was recently reconfigured from `once` to `per_session`, or the user is now testing with the popup at the foreground of their workflow. The structural bug is the same regardless of when it surfaced.
+
+### Storage-Frequency-Type Audit (what works, what doesn't)
+
+| `frequency_type` | Write (dismiss) | Read (isDismissed) | Status |
+|---|---|---|---|
+| `once` | localStorage | localStorage | ✅ |
+| `per_session` | **sessionStorage** | **localStorage** | ❌ — fixed this session |
+| `daily` | localStorage | localStorage | ✅ (but literal-string coincidence — see follow-up) |
+| `weekly` | localStorage | localStorage | ✅ |
+| `limited` | localStorage | localStorage | ✅ |
+| `every_visit` | no-op | no-op | ✅ |
+
+### Fix (Minimal, Targeted)
+
+`components/popup/PromotionalPopup.tsx` — `isDismissed()` now selects the storage backend based on `frequency_type`, matching what `dismiss()` already does:
+
+```typescript
+const storage =
+  popup.frequency_type === "per_session" ? sessionStorage : localStorage;
+const stored = storage.getItem(key);
+```
+
+Single change. No schema, API, or admin UI changes. No behavior change for the four frequency types that already worked correctly.
+
+### Verification (Post-Deploy)
+
+| Action | Expected |
+|---|---|
+| Dismiss `per_session` popup → refresh (`Cmd+R`) | Popup stays hidden ✅ |
+| Dismiss `per_session` → close tab → reopen dashboard | Popup re-appears ✅ (correct per-session semantics — sessionStorage cleared on tab close) |
+| Dismiss `once` popup → refresh | Popup stays hidden ✅ (unchanged from before fix) |
+| Switch popup to `every_visit` | Popup shows every load (unchanged) |
+
+Build verification: `npm run build` ✓, `npx tsc --noEmit` ✓.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `components/popup/PromotionalPopup.tsx` | `isDismissed()` storage backend selection — added 5 lines including comment |
+
+### Follow-up (Out of Scope, Flagged)
+
+These are pre-existing smells I noticed while tracing the bug. None caused today's complaint; recommend separate tickets:
+
+1. **`daily` case uses `dismissedAt: "daily"` literal** in both write (line 132-138) and read (line 104). Works by coincidence — the literal "daily" matches itself. Should use an actual ISO timestamp like the `weekly` case does, with a real date comparison.
+2. **No cleanup of stale storage entries.** If an admin changes a popup's `frequency_type` (e.g., `per_session` → `once`), the old `sessionStorage` key persists harmlessly but accumulates over the user's session. Minor.
+3. **`every_visit` `dismiss()` is a no-op** (line 160-161) — correct, but the dismissal-tracking state (`dismissed = true`, `popups.filter`) still runs and queues the next popup. Could short-circuit.
+4. **Storage key uses `popup.id` only** — not namespaced by frequency_type. Multiple popups with the same UUID across read-only localStorage and read-only sessionStorage could in theory collide if the same ID is configured for both. Not currently possible (admin form sets one frequency per popup) but worth a defensive `popup_dismissed_<freq>_<id>` key shape long-term.
+
+### Commit
+
+- `fix: read sessionStorage for per_session popups to match dismiss write`
+
+
 
 
