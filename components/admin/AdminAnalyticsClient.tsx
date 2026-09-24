@@ -569,9 +569,14 @@ export default function AdminAnalyticsClient({
   }, [contributingCount, foundingCount]);
 
   // Verified revenue from membership_payments table (actual Stripe data)
+  // Defensive: filter out $0 adjustment invoices. Stripe emits $0 paid
+  // invoices for period reconciliations and payment-method retries; they
+  // should never count as revenue. Belt-and-suspenders alongside the
+  // server-side guards in lib/stripe-payments.ts.
   const verifiedPeriodRevenue = useMemo(() => {
     if (!membershipPayments || membershipPayments.length === 0) return 0;
     return membershipPayments
+      .filter((p) => (p.amount ?? 0) > 0)
       .filter((p) => {
         if (!p.created_at) return false;
         const paymentDate = new Date(p.created_at);
@@ -583,7 +588,9 @@ export default function AdminAnalyticsClient({
   // Verified lifetime revenue from membership_payments table (actual Stripe data)
   const verifiedLifetimeRevenue = useMemo(() => {
     if (!membershipPayments || membershipPayments.length === 0) return 0;
-    return membershipPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    return membershipPayments
+      .filter((p) => (p.amount ?? 0) > 0)
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
   }, [membershipPayments]);
 
   // Period upgrades count

@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import {
+  mapBillingReasonToPaymentType,
+  shouldRecordPayment,
+} from "@/lib/stripe-payments";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
@@ -14,18 +18,8 @@ const supabaseAdmin = createAdminClient(
 
 export const dynamic = "force-dynamic";
 
-function mapBillingReasonToPaymentType(billingReason: string | null): string {
-  switch (billingReason) {
-    case "subscription_create":
-      return "signup";
-    case "subscription_cycle":
-      return "renewal";
-    case "subscription_update":
-      return "upgrade";
-    default:
-      return "renewal";
-  }
-}
+// Local `mapBillingReasonToPaymentType` removed in favor of the shared
+// helper at `@/lib/stripe-payments`.
 
 export async function POST(request: Request) {
   try {
@@ -104,8 +98,12 @@ export async function POST(request: Request) {
           limit: 10,
         });
 
-        // Find the first paid invoice (subscription_create or subscription_cycle)
-        const paidInvoice = invoices.data.find(inv => inv.status === "paid");
+        // Find the first paid invoice with amount_paid > 0. The same
+        // `shouldRecordPayment` helper used by the per-customer sync
+        // ensures we never accept a $0 adjustment invoice as a "paid
+        // renewal" — Stripe emits those for period reconciliations and
+        // they aren't real revenue events.
+        const paidInvoice = invoices.data.find(shouldRecordPayment);
 
         if (!paidInvoice) {
           console.log(`[sync-missing-payments] No paid invoice found for customer ${stripeCustomerId} (${row.email})`);

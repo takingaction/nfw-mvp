@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import {
+  mapBillingReasonToPaymentType,
+  shouldRecordPayment,
+} from "@/lib/stripe-payments";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
@@ -83,6 +87,15 @@ async function syncPaymentsForCustomer(
       const status = invoice.status;
       const date = new Date(invoice.created * 1000).toISOString();
 
+      // Skip $0 adjustment invoices — see shouldRecordPayment rationale
+      // in lib/stripe-payments.ts. Stripe emits `subscription_cycle`
+      // adjustment invoices that net to zero (period reconciliations,
+      // payment-method retries, $1.50 promos, etc.). Recording them as
+      // renewals pollutes Verified Revenue and renewals-count badges.
+      if (!shouldRecordPayment(invoice)) {
+        continue;
+      }
+
       let errorMessage: string | null = null;
       // Invoices with status "open" and a next_payment_attempt have failed payments
       if (status === "open" && invoice.next_payment_attempt) {
@@ -90,12 +103,7 @@ async function syncPaymentsForCustomer(
         hasFailed = true;
       }
 
-      // Note: Refund detection on invoices requires looking at related charges
-      // For simplicity, we skip refund tracking on invoices
-
-      const paymentType = invoice.billing_reason === "subscription_create" ? "signup" :
-                         invoice.billing_reason === "subscription_cycle" ? "renewal" :
-                         invoice.billing_reason === "subscription_update" ? "upgrade" : "renewal";
+      const paymentType = mapBillingReasonToPaymentType(invoice.billing_reason);
 
       if (status === "paid") {
         totalAmount += amount;
@@ -142,18 +150,9 @@ async function syncPaymentsForCustomer(
   }
 }
 
-function mapBillingReasonToPaymentType(billingReason: string | null): string {
-  switch (billingReason) {
-    case "subscription_create":
-      return "signup";
-    case "subscription_cycle":
-      return "renewal";
-    case "subscription_update":
-      return "upgrade";
-    default:
-      return "renewal"; // fallback for manual or unknown
-  }
-}
+// Local `mapBillingReasonToPaymentType` removed in favor of the shared
+// helper at `@/lib/stripe-payments`, so the same rule is enforced across
+// every backfill route and cron.
 
 async function insertMembershipPaymentsIfNeeded(
   profileId: string | null,
@@ -167,7 +166,7 @@ async function insertMembershipPaymentsIfNeeded(
   let skipped = 0;
 
   for (const payment of allPaymentsJson) {
-    if (payment.status !== "paid") {
+    if (payment.status !== "paid" || payment.amount <= 0) {
       skipped++;
       continue;
     }

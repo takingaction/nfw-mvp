@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import {
+  mapBillingReasonToPaymentType,
+  shouldRecordPayment,
+} from "@/lib/stripe-payments";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
@@ -78,6 +82,12 @@ async function syncPaymentsForCustomer(
     let latestSucceededPayment: { date: string; amount: number; status: string; payment_type: string } | null = null;
 
     for (const invoice of invoices) {
+      // Skip $0 adjustment invoices — see shouldRecordPayment in
+      // lib/stripe-payments.ts. Same rule as every other backfill route.
+      if (!shouldRecordPayment(invoice)) {
+        continue;
+      }
+
       const amount = invoice.amount_paid / 100;
       const status = invoice.status;
       const date = new Date(invoice.created * 1000).toISOString();
@@ -88,9 +98,7 @@ async function syncPaymentsForCustomer(
         hasFailed = true;
       }
 
-      const paymentType = invoice.billing_reason === "subscription_create" ? "signup" :
-                         invoice.billing_reason === "subscription_cycle" ? "renewal" :
-                         invoice.billing_reason === "subscription_update" ? "upgrade" : "renewal";
+      const paymentType = mapBillingReasonToPaymentType(invoice.billing_reason);
 
       if (status === "paid") {
         totalAmount += amount;
@@ -134,18 +142,8 @@ async function syncPaymentsForCustomer(
   }
 }
 
-function mapBillingReasonToPaymentType(billingReason: string | null): string {
-  switch (billingReason) {
-    case "subscription_create":
-      return "signup";
-    case "subscription_cycle":
-      return "renewal";
-    case "subscription_update":
-      return "upgrade";
-    default:
-      return "renewal";
-  }
-}
+// Local `mapBillingReasonToPaymentType` removed in favor of the shared
+// helper at `@/lib/stripe-payments`.
 
 async function insertMembershipPaymentsIfNeeded(
   profileId: string | null,
@@ -159,7 +157,7 @@ async function insertMembershipPaymentsIfNeeded(
   let skipped = 0;
 
   for (const payment of allPaymentsJson) {
-    if (payment.status !== "paid") {
+    if (payment.status !== "paid" || payment.amount <= 0) {
       skipped++;
       continue;
     }
