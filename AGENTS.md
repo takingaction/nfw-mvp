@@ -19537,3 +19537,99 @@ The `<ViewingAsMemberBanner>` is mounted in `app/layout.tsx` as a sibling of `<N
 - Analytics exclusion (no analytics currently installed; add when added)
 - Mobile app (mobile doesn't have admin pages)
 
+## Session 2026-09-24: Stripe-Only Card Stuck — Phase 2 Status Reduction
+
+### Problem
+
+The "Stripe Only" card on `/admin/backfill/stripe` stayed empty for days. Diagnostic queries showed 88+ rows in `stripe_only_jobs` with `error: "Job timed out"` and `processed_count: 1250` — every failed run died at exactly the same customer count. The card never populated.
+
+### Initial (wrong) hypothesis
+
+I first diagnosed the bottleneck as `CUSTOMERS_PER_RUN = 50` being too small per cron tick. With ~3,258 customers and 5-min cron intervals, the job would take ~5 hours. Proposed and applied a one-line bump to `CUSTOMERS_PER_RUN = 250`.
+
+That change was committed/deployed but had no effect: the card stayed empty.
+
+### Real root cause
+
+Phase 2 (the customer enumeration step in `processJobChunk`) loops through **8 Stripe subscription statuses**:
+
+```ts
+const statuses: Array<"active" | "past_due" | "canceled" | "unpaid" | "trialing" | "incomplete" | "incomplete_expired" | "paused"> =
+  ["active", "past_due", "canceled", "unpaid", "trialing", "incomplete", "incomplete_expired", "paused"];
+```
+
+Each status triggers a paginated `stripe.subscriptions.list` with `limit: 100`. Phase 2 has **no chunking** (no `CUSTOMERS_PER_RUN` applied at this stage). Across 8 statuses × ~30 pages × ~100ms API latency + 50ms sleep per call, Phase 2 alone exceeds Vercel's 300 s `maxDuration`.
+
+Each cron tick dies mid-Phase-2 → job stays `processing`. The stale-cleanup at line 365-383 marks it `failed` 30 min later. Auto-create at line 397-405 inserts a new `pending` row. The new auto-created jobs have **no `last_processed_id`** (a fresh row), so Phase 2 restarts from scratch. Loop forever.
+
+The 1250 customer counts on failed rows are misleading — they reflect Phase 3 progress from older jobs that DID get past Phase 2 (back when the dataset was smaller). Today's workers die in Phase 2 before ever advancing to Phase 3.
+
+### Fix
+
+**File:** `app/api/cron/process-stripe-only-jobs/route.ts:122-125`
+
+Reduced Phase 2 status enumeration from 8 to 2:
+
+```ts
+// Before
+const statuses: Array<"active" | "past_due" | "canceled" | "unpaid" | "trialing" | "incomplete" | "incomplete_expired" | "paused"> =
+  ["active", "past_due", "canceled", "unpaid", "trialing", "incomplete", "incomplete_expired", "paused"];
+
+// After
+const statuses: Array<"active" | "past_due"> =
+  ["active", "past_due"];
+```
+
+**Rationale:** Only `active` and `past_due` subscriptions can carry recent $15 / $100 membership charges that the "Stripe Only" card needs to surface. `trialing` / `incomplete` / `paused` never have those amounts. `canceled` / `unpaid` historical charges are out of scope for the card (which shows current revenue gaps, not historical). 75% less work in Phase 2 → fits in one cron tick.
+
+### Coverage tradeoff
+
+A charge that originated from a `canceled` subscription won't surface in the Stripe Only card. Acceptable because:
+- Canceled members' charges are historical; the card is for current revenue gaps
+- A separate reconciliation-jobs flow handles already-paid revenue correctly via `billing_reason: subscription_create / subscription_cycle / subscription_update`
+
+### Diagnostic SQL to verify
+
+```sql
+SELECT id, status, current_phase, processed_count, total_count, error, completed_at
+FROM stripe_only_jobs
+ORDER BY created_at DESC LIMIT 5;
+```
+
+After deploy, expect:
+- New `pending` row created within 5 min
+- Phase 2 completes in one tick (status transitions `enum_customers` → `fetch_charges`)
+- Processed customer count advances 50/tick in Phase 3
+- Job reaches `status: completed` within ~30-60 min of deploy
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `app/api/cron/process-stripe-only-jobs/route.ts` | Phase 2 status array: 8 statuses → 2 (`active` + `past_due`). Type narrowed from 8-union to 2-union. 6-line comment block added explaining the 88-failure history. |
+
+### Build
+
+- `npm run build` ✓ — 0 TypeScript errors, 221/221 routes generated
+- `npx tsc --noEmit` ✓ — exit 0
+- One array literal changed; no logic changes
+
+### What was NOT changed
+
+- `CUSTOMERS_PER_RUN` remained at `50` (was reverted; not the actual bottleneck)
+- Phase 3 chunk size (irrelevant until Phase 2 completes)
+- The `last_processed_id` resume logic (still in place; only useful if Phase 2 actually completes)
+- No schema migration (Phase 2 reduction is purely a runtime decision)
+- No new env vars
+- Phase 4 (`computing`) — completes in one tick once Phase 3 finishes
+
+### Adjacent observation (not addressed in this session)
+
+The "Missing from DB" card was also flagged by the user as confusing. Rows show "Has Profile" badge AND appear on a card titled "Missing from DB" simultaneously. The card filters on `membership_payments.email ∈ stripe_emails`, not on `profiles.email ∈ stripe_emails` — these are orthogonal. A profile existing doesn't mean a payment row exists, which is exactly what the card surfaces. UX clarification (card copy / column rename) is a separate task.
+
+### Lesson
+
+When a cron consistently dies at the same line count across many attempts, the deadlock-loop hypothesis (auto-create → restart from scratch → die same way) is usually the cause. Look at the cleanup logic and the auto-create condition, not just the work loop itself.
+
+
+

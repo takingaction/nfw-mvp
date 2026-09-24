@@ -119,8 +119,14 @@ async function processJobChunk(jobId: string): Promise<{ done: boolean; phase: s
     console.log("[process-stripe-only] PHASE 2: Enumerating Stripe customers...");
     
     const allCustomerIds: string[] = progressData.allCustomerIds || [];
-    const statuses: Array<"active" | "past_due" | "canceled" | "unpaid" | "trialing" | "incomplete" | "incomplete_expired" | "paused"> =
-      ["active", "past_due", "canceled", "unpaid", "trialing", "incomplete", "incomplete_expired", "paused"];
+    // Reduced from 8 statuses to 2 (active + past_due). All 8 statuses could not
+    // fit Phase 2 in Vercel's 300 s ceiling — 88 cron runs timed out at the same
+    // 1250-customer checkpoint before this. Only active + past_due subscriptions
+    // can carry recent $15 / $100 membership charges that the "Stripe Only" card
+    // needs to surface; trialing / incomplete / paused never have those amounts,
+    // and canceled / unpaid historical charges are out of scope for the card.
+    const statuses: Array<"active" | "past_due"> =
+      ["active", "past_due"];
 
     // Find last processed status and cursor
     const lastStatus = job.last_processed_id?.split("|")[0] || statuses[0];
