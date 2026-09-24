@@ -19705,6 +19705,156 @@ These are pre-existing smells I noticed while tracing the bug. None caused today
 
 - `fix: read sessionStorage for per_session popups to match dismiss write`
 
+---
+
+## Session 2026-09-24: Cycle-Closed UX Fix (Parts A + B + C)
+
+### Problem
+
+15 Slack alerts from 2026-09-23, grouped into two flavors of cycle-closure UX problems on `/grants/apply`:
+
+| Error string | Code / HTTP | Count |
+|---|---|---|
+| `You have already applied for this grant cycle.` | `UPLOAD_PREPARE_FAILED` (mrs.darlene — pre-fix stale event) | 2 |
+| `You have already applied for this grant cycle.` | HTTP 409 (neighbor.nadia — correct duplicate guard) | 2 |
+| `Grant cycle is not open` | `UPLOAD_PREPARE_FAILED` | 6 |
+| `This grant cycle is not accepting applications` | HTTP 400 | 5 |
+
+The first two are unrelated (pre-existing 409 fix and a working duplicate guard). The last two share a root cause:
+
+Members had the apply form open before the auto-close cron at `supabase/migrations/086_auto_open_close_grant_cycles.sql` ran at 04:00 UTC. They clicked Submit minutes or hours after the cron closed their selected cycle. The API correctly rejected the submission, but the error message gave them no actionable next step — they saw a generic red banner, retried, got the same error, gave up, and emailed support.
+
+### SQL Diagnostic (run before fix)
+
+```sql
+SELECT id, cycle_name, status, end_date, requires_documents
+FROM grant_cycles
+WHERE id IN (
+  'f8fdcf0a-74b2-40a2-923e-b187412ddece',
+  'a52d9360-610b-4320-bc32-31b3d5b66b44',
+  '3a3ffe11-371a-4237-8507-7940f415c886'
+);
+```
+
+Confirmed: all three cycles `status = 'closed'`, `end_date = 2026-09-23 00:00 UTC`, `requires_documents = false`. The cycles closed naturally — no admin intervention. The auto-close cron is doing exactly what it should. **The problem was purely UX.**
+
+### Why this matters for the orphan cron (commit `f3109dd`)
+
+The orphan cron targets `requires_documents = true` cycles with zero documents. All three cycles above have `requires_documents = false`, so the cron does **not** surface these alerts — they're not orphans. The cron is intentionally scoped narrow so it doesn't flag legitimate zero-document submissions on optional cycles. The Slack alerts from yesterday are the only signal that there's a UX issue here.
+
+### Fix — Three-Commit Deploy
+
+| SHA | Subject |
+|---|---|
+| `bc8c835` | feat: cycle-closed 400 returns code+cycleStatus+cycleEndDate |
+| `d380dee` | feat: form renders clear cycle-closed message + "Back to all cycles" CTA |
+| `d22b82f` | feat: pre-submit live cycle check via /api/grants/cycles/open |
+
+### Part A — API cycle-closed responses
+
+`app/api/grants/upload-document/prepare/route.ts` (cycleId branch, line 127) and `app/api/grants/create/route.ts` (line 177) now return:
+
+```json
+{
+  "error": "This grant cycle closed while you were filling out your application. Your files weren't uploaded. Pick a different cycle to continue.",
+  "code": "CYCLE_NOT_OPEN",
+  "cycleStatus": "closed",
+  "cycleEndDate": "2026-09-23T00:00:00+00"
+}
+```
+
+The `code` field is the discriminator the form uses to render a clearer message and CTA. `cycleStatus` carries the actual status string (could be `closed`, `draft`, etc. in future admin states). `cycleEndDate` is included so a future analytics job could tell whether the closure was natural (end_date passed) or admin-initiated (end_date still in future).
+
+The legacy `grantId` branch in `prepare/route.ts` is unchanged — it queries the grants row, not the cycle, so cycle closure doesn't affect it. Cycle status for legacy callers is gated in `/api/grants/create`.
+
+### Part B — Form surfaces cycle-closed case clearly
+
+`components/GrantApplicationForm.tsx`:
+
+- New state: `cycleClosed` (boolean).
+- New helper: `isCycleClosedPayload(body)` returns true when `body.code === 'CYCLE_NOT_OPEN'`.
+- New `Link` import + `Back to all cycles` button rendered inside the existing red error banner when `cycleClosed === true`. Links to `/grants/apply`.
+- Three detection sites:
+  1. Upload loop's prepare error path (before the `throw new Error(...)` inside the `if (!prepRes.ok)` block)
+  2. Create handler's `!response.ok || apiError` branch (sets `cycleClosed` when `errCode === 'CYCLE_NOT_OPEN'`)
+  3. Create handler's JSON-parse-failed branch (sets `cycleClosed` defensively when `response.status === 400`)
+- `cycleClosed` resets to `false` at the start of each `handleConfirmSubmit` so retries start fresh.
+- `safeReadJson` return type widened from `{ error?: string }` to `{ error?: string; code?: string }` so the new field is accessible.
+
+### Part C — Pre-submit live cycle check
+
+New file: `app/api/grants/cycles/open/route.ts` — `GET` returns `{ cycles: Array<...> }` filtered by:
+
+```
+status = 'open'
+end_date >= today (UTC date compare)
+is_testing_only only included for admins
+```
+
+Mirrors the SSR-time filter in `app/grants/apply/page.tsx:46` exactly so the form sees the same cycle list the apply page initially rendered.
+
+`components/GrantApplicationForm.tsx` `handleConfirmSubmit` now does a single GET to this endpoint before any prepare/upload work begins:
+
+```ts
+try {
+  const liveRes = await fetch("/api/grants/cycles/open", { cache: "no-store" });
+  if (liveRes.ok) {
+    const liveData = await liveRes.json();
+    const stillOpen = (liveData.cycles ?? []).some(
+      (c: { id: string }) => c.id === formData.cycle_id,
+    );
+    if (!stillOpen) {
+      setCycleClosed(true);
+      setError("This grant cycle closed while you were filling out your application. ...");
+      setLoading(false);
+      setUploadingDocs(false);
+      return;
+    }
+  }
+} catch {
+  // Fail open — proceed with the upload. Part B's UX still catches
+  // the cycle-closed case if the API surfaces it.
+}
+```
+
+**Fail open by design.** If `/api/grants/cycles/open` errors (network, Vercel cold start), the form proceeds with the upload. The worst case is the existing UX — Part B's mid-flow friendly error — not a regression. Part C is purely a UX optimization on top of Part B's correctness guarantee.
+
+### Behavior matrix
+
+| Scenario | Before | After |
+|---|---|---|
+| Member's cycle is open, member submits | Succeeds | Succeeds (Part C confirms open before any work) |
+| Member opened form 30 min ago, cycle auto-closed 5 min ago, member clicks Confirm | Generic 400 mid-flow after ~30s of upload | Part C catches before any upload starts; instant cycle-closed banner with "Back to all cycles" |
+| Member has stale network during submit, Part C fails open | Same as before — Part B's mid-flow friendly error | Same |
+| Member has already applied successfully, retry attempt | Hits 409 at `/api/grants/create` (Part A's enhanced 409 also has `code: 'CYCLE_NOT_OPEN'` only when status differs; for duplicate applications, the legacy 409 fires) | Same — duplicate guard works as before |
+| Admin closes a cycle mid-application (test scenario) | Generic 400 mid-flow | Part C catches at submit; banner with CTA |
+
+### What was NOT changed
+
+- The duplicate-application guard at `/api/grants/create/route.ts:147` is unchanged. Real duplicate submissions still get a clean 409 at the natural end of the flow (after uploads complete), not in the middle.
+- The orphan cron (`commit f3109dd`) is unchanged — it still targets `requires_documents = true` cycles only, intentionally.
+- The mobile app (Slice C of mobile migration) is a separate code path; can mirror later.
+- The auto-close cron (`086_auto_open_close_grant_cycles.sql`) is unchanged. Could be moved later in the day or could add a "cycle closes in 24h" warning email — both are separate features.
+
+### Deploy Steps (already executed)
+
+1. Commits `bc8c835`, `d380dee`, `d22b82f` pushed to `origin/main` in order.
+2. Each commit is independently deployable and revertable. Part C's failure mode is benign (fail open).
+3. No new env vars. No schema change. No mobile impact.
+
+### Build Verification
+
+`npm run build` ✓ — 0 TypeScript errors. All 221 routes registered (one new: `/api/grants/cycles/open`).
+
+### Operational Monitoring
+
+To verify Part C is working post-deploy:
+
+- Member reports a successful submit immediately after a cycle's 04:00 UTC close — they should see the cycle-closed banner before any upload starts, not after.
+- Member with a 5-second network blip on the `/api/grants/cycles/open` request — they should still see Part B's mid-flow friendly error, not a regression.
+
+No additional monitoring needed. The existing Slack alerts will tell us if Part A/B/C is misbehaving.
+
 
 
 
