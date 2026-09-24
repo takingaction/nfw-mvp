@@ -145,6 +145,41 @@ export default function GrantApplicationForm({
     setCycleClosed(false);
     setConfirmError("");
 
+    // Pre-submit live cycle check (Part C of the cycle-closed UX fix,
+    // 2026-09-23). Catches cycles that closed between when the apply
+    // page rendered and when the member clicked Confirm — typically
+    // because the auto-close cron in supabase/migrations/086_auto_open_close_grant_cycles.sql
+    // ran at 04:00 UTC after the cycle's end_date.
+    //
+    // Fails open: if this endpoint errors out (network, Vercel cold
+    // start), we proceed with the upload. The worst case is the
+    // existing UX — the member sees a real cycle-closed 400 mid-flow
+    // with Part B's friendly message. This is a UX optimization, not
+    // a correctness guarantee.
+    try {
+      const liveRes = await fetch("/api/grants/cycles/open", {
+        cache: "no-store",
+      });
+      if (liveRes.ok) {
+        const liveData = await liveRes.json();
+        const stillOpen = (liveData.cycles ?? []).some(
+          (c: { id: string }) => c.id === formData.cycle_id,
+        );
+        if (!stillOpen) {
+          setCycleClosed(true);
+          setError(
+            "This grant cycle closed while you were filling out your application. Your files weren't uploaded. Pick a different cycle to continue.",
+          );
+          setLoading(false);
+          setUploadingDocs(false);
+          return;
+        }
+      }
+    } catch {
+      // Fail open — proceed with the upload. Part B's UX still
+      // catches the cycle-closed case if the API surfaces it.
+    }
+
     // Reordered flow (was: create → upload). We now upload every file first,
     // and only create the grant row if every upload succeeded. This closes
     // the structural defect where a mid-upload failure left the user
