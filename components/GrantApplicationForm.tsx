@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -16,12 +17,29 @@ const decodeHtml = (html: string): string => {
  * Reads a fetch Response as JSON without throwing on parse failure.
  * Returns `null` if the body isn't JSON (e.g. Vercel's HTML 413/504 page).
  */
-async function safeReadJson(res: Response): Promise<{ error?: string } | null> {
+async function safeReadJson(
+  res: Response,
+): Promise<{ error?: string; code?: string } | null> {
   try {
-    return (await res.json()) as { error?: string };
+    return (await res.json()) as { error?: string; code?: string };
   } catch {
     return null;
   }
+}
+
+/**
+ * Detects the cycle-closed payload added in commit bc8c835 to both
+ * /api/grants/upload-document/prepare and /api/grants/create. Returns
+ * true when the response carries `code: "CYCLE_NOT_OPEN"`. The form
+ * uses this to render a clear message + "Back to all cycles" CTA
+ * instead of the generic red banner.
+ */
+function isCycleClosedPayload(body: unknown): boolean {
+  return (
+    !!body &&
+    typeof body === "object" &&
+    (body as { code?: unknown }).code === "CYCLE_NOT_OPEN"
+  );
 }
 
 interface GrantCycle {
@@ -46,6 +64,7 @@ export default function GrantApplicationForm({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [cycleClosed, setCycleClosed] = useState(false);
   const [uploadingDocs, setUploadingDocs] = useState(false);
   const [documents, setDocuments] = useState<File[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
@@ -123,6 +142,7 @@ export default function GrantApplicationForm({
     if (error) return;
     setLoading(true);
     setError("");
+    setCycleClosed(false);
     setConfirmError("");
 
     // Reordered flow (was: create → upload). We now upload every file first,
@@ -160,6 +180,16 @@ export default function GrantApplicationForm({
           });
           if (!prepRes.ok) {
             const errBody = await safeReadJson(prepRes);
+            if (isCycleClosedPayload(errBody)) {
+              // Cycle closed while the member was filling out the form
+              // (the auto-close cron ran between when the page rendered
+              // and when they hit Confirm). Set the dedicated flag so
+              // the banner can render a "Back to all cycles" CTA, and
+              // throw so the surrounding loop's existing error path
+              // still triggers the Slack logger and the loading-state
+              // resets below.
+              setCycleClosed(true);
+            }
             throw new Error(errBody?.error || `HTTP ${prepRes.status}`);
           }
           prep = (await prepRes.json()) as { path: string; token: string };
@@ -284,6 +314,12 @@ export default function GrantApplicationForm({
       const friendly = response.ok
         ? "We had trouble confirming your submission. Your files are uploaded. Please check 'My Applications' in a moment — your draft may have been saved."
         : `We couldn't process your submission (HTTP ${response.status}). Please try again or contact support.`;
+      // Cycle-closed responses are normally valid JSON, but if a Vercel
+      // HTML 504 page sneaks in here, the member still needs the
+      // "Back to all cycles" CTA. Detect the status code as a fallback.
+      if (response.status === 400) {
+        setCycleClosed(true);
+      }
       setError(friendly);
       setLoading(false);
       setUploadingDocs(false);
@@ -318,6 +354,15 @@ export default function GrantApplicationForm({
       const errMsg = apiError ?? `HTTP ${response.status}`;
       const errCode = data?.code ?? null;
       const httpStatus = response.status;
+
+      // The cycle-closed 400 from /api/grants/create (and the matching
+      // 400 from /api/grants/upload-document/prepare, captured earlier
+      // in the upload loop) carries `code: "CYCLE_NOT_OPEN"`. Set the
+      // dedicated flag so the banner renders a "Back to all cycles"
+      // CTA instead of the generic red box.
+      if (errCode === "CYCLE_NOT_OPEN") {
+        setCycleClosed(true);
+      }
 
       setError(errMsg);
       setLoading(false);
@@ -618,6 +663,14 @@ export default function GrantApplicationForm({
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
             <p className="text-sm font-serif">{error}</p>
+            {cycleClosed && (
+              <Link
+                href="/grants/apply"
+                className="inline-block mt-3 bg-nfw-blackberry text-white px-4 py-2 font-ui text-sm font-semibold hover:bg-nfw-blackberry/90 transition-colors"
+              >
+                Back to all cycles
+              </Link>
+            )}
           </div>
         )}
 
