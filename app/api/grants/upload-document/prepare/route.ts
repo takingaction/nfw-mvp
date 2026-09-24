@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
 
   const { data: cycle, error: cycleError } = await admin
     .from("grant_cycles")
-    .select("id, status, is_testing_only")
+    .select("id, status, is_testing_only, end_date")
     .eq("id", cycleId)
     .maybeSingle();
   if (cycleError) {
@@ -125,7 +125,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Grant cycle not found" }, { status: 404 });
   }
   if (cycle.status !== "open") {
-    return NextResponse.json({ error: "Grant cycle is not open" }, { status: 400 });
+    // 2026-09-23: cycle-closed UX. The form (Part B of this change)
+    // uses `code` + `cycleStatus` + `cycleEndDate` to render a clear,
+    // actionable error and a "Back to all cycles" CTA. Members hit
+    // this path when the cron in supabase/migrations/086_auto_open_close_grant_cycles.sql
+    // closed the cycle while they had a form open in another tab.
+    return NextResponse.json(
+      {
+        error:
+          cycle.status === "closed"
+            ? "This grant cycle closed while you were filling out your application. Your files weren't uploaded. Pick a different cycle to continue."
+            : `This grant cycle is currently "${cycle.status}". Please pick a different cycle.`,
+        code: "CYCLE_NOT_OPEN",
+        cycleStatus: cycle.status,
+        cycleEndDate: cycle.end_date,
+      },
+      { status: 400 },
+    );
   }
   if (cycle.is_testing_only && !profile.is_admin) {
     return NextResponse.json({ error: "Cycle not available" }, { status: 403 });
