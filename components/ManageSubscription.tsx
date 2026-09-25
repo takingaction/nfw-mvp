@@ -8,11 +8,16 @@ export default function ManageSubscription({
 }: {
   membershipLevel: string;
 }) {
-  const [loading, setLoading] = useState(false);
+  // Separate flags so each button spins independently when both are shown
+  // (contributing members see Upgrade + Manage Subscription).
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const anyLoading = upgradeLoading || portalLoading;
+
   const handleUpgrade = async () => {
-    setLoading(true);
+    setUpgradeLoading(true);
     setError("");
 
     try {
@@ -26,16 +31,16 @@ export default function ManageSubscription({
         window.location.href = data.url;
       } else {
         setError(data.error || "Failed to upgrade");
-        setLoading(false);
+        setUpgradeLoading(false);
       }
     } catch (err: any) {
       setError(err.message || "Failed to upgrade");
-      setLoading(false);
+      setUpgradeLoading(false);
     }
   };
 
   const handleManageSubscription = async () => {
-    setLoading(true);
+    setPortalLoading(true);
     setError("");
 
     try {
@@ -49,9 +54,20 @@ export default function ManageSubscription({
       window.location.href = data.url;
     } catch (err: any) {
       setError(err.message || "Failed to open subscription portal");
-      setLoading(false);
+      setPortalLoading(false);
     }
   };
+
+  const manageSubscriptionButton = (
+    <button
+      onClick={handleManageSubscription}
+      disabled={anyLoading}
+      className="bg-nfw-dove text-nfw-blackberry px-4 py-2 hover:bg-nfw-lilac/20 disabled:opacity-50 font-medium transition-colors border border-nfw-blackberry/10 flex items-center gap-2"
+    >
+      {portalLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+      {portalLoading ? "Loading..." : "Manage Subscription"}
+    </button>
+  );
 
   // Free/Waitlist: go to step 3
   if (membershipLevel === "free" || membershipLevel === "waitlist") {
@@ -65,18 +81,21 @@ export default function ManageSubscription({
     );
   }
 
-  // Contributing: show prorated upgrade option
+  // Contributing: prorated upgrade option + access to the billing portal
   if (membershipLevel === "contributing") {
     return (
       <div>
-        <button
-          onClick={handleUpgrade}
-          disabled={loading}
-          className="bg-nfw-aubergine text-white px-4 py-2 hover:bg-nfw-aubergine/90 disabled:opacity-50 font-medium transition-colors flex items-center gap-2"
-        >
-          {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-          {loading ? "Upgrading..." : "Upgrade to Founding - $85"}
-        </button>
+        <div className="flex flex-col items-start gap-2">
+          <button
+            onClick={handleUpgrade}
+            disabled={anyLoading}
+            className="bg-nfw-aubergine text-white px-4 py-2 hover:bg-nfw-aubergine/90 disabled:opacity-50 font-medium transition-colors flex items-center gap-2"
+          >
+            {upgradeLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {upgradeLoading ? "Upgrading..." : "Upgrade to Founding - $85"}
+          </button>
+          {manageSubscriptionButton}
+        </div>
         {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
       </div>
     );
@@ -85,14 +104,7 @@ export default function ManageSubscription({
   // Founding: show manage subscription
   return (
     <div>
-      <button
-        onClick={handleManageSubscription}
-        disabled={loading}
-        className="bg-nfw-dove text-nfw-blackberry px-4 py-2 hover:bg-nfw-lilac/20 disabled:opacity-50 font-medium transition-colors border border-nfw-blackberry/10 flex items-center gap-2"
-      >
-        {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-        {loading ? "Loading..." : "Manage Subscription"}
-      </button>
+      {manageSubscriptionButton}
       {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
     </div>
   );

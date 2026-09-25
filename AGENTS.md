@@ -19996,3 +19996,11 @@ Web `tsc` 0 / `next build` ✓ (222 pages, 2 new routes) / eslint clean on new f
 1. Run `196_grant_cycle_exceptions.sql` in Supabase SQL Editor.
 2. Deploy.
 3. Smoke: closed cycle hidden without pass (forced POST → 400 `CYCLE_NOT_OPEN`); issue pass → member sees cycle with note → submits → pass "Used"; retry → 409; revoke/expiry rejected; issuing blocked after "Mark Review Complete".
+
+## Session 2026-09-25: Manage Subscription Button for Contributing Members on /profile
+
+Contributing members only had "Upgrade to Founding - $85" on `/profile`, so they couldn't open the Stripe billing portal (update card, cancel). `components/ManageSubscription.tsx` now shows a light-dove **Manage Subscription** button under the upgrade button for contributing members only. It calls the existing `/api/portal`, which already works for any logged-in user with a Stripe customer under their email.
+
+- The shared `loading` flag is split into `upgradeLoading` / `portalLoading` so each button spins on its own. Both are disabled while either request is running.
+- The founding member's button is unchanged, now rendered from a shared `manageSubscriptionButton` element. Free and waitlist members still see "Upgrade Today".
+- No API or schema changes. `tsc` 0 errors, `next build` ✓.
