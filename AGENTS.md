@@ -20024,3 +20024,14 @@ Parser checked: none/garbage/tampered → false; valid and URL-encoded → true.
 - `/api/grants/cycles/open` (GET) also carries the guard, so it now 423s in View As; the apply form treats non-OK as fail-open and submit is blocked anyway.
 - `lib/view-as.ts` now imports `lib/impersonation.ts` (`next/headers`, `crypto`) — server-only; verified no client/edge importers.
 - `tsc` 0 errors, `next build` ✓.
+
+## Session 2026-09-25: Billing Button Errors → Modal (profile + dashboard)
+
+The 423 View As message rendered inline inside `ManageSubscription`, which sits in a `flex justify-between` row on `/profile` (`ProfileClient.tsx:61`), so a long error squeezed the membership badge. Errors now use the existing `NotificationModal` (`components/admin/NotificationModal.tsx`) instead of inline text / `alert()`.
+
+| File | Change |
+|---|---|
+| `components/ManageSubscription.tsx` | Removed inline `error` state/`<p>`. New `notice` state → `<NotificationModal>`. `code === "WRITE_BLOCKED_WHILE_VIEWING_AS"` → info "Preview Mode" modal; any other failure (incl. network / non-JSON) → error "Something went wrong" with server message or fallback. Spinners reset on failure. |
+| `components/dashboard/MembershipCard.tsx` | Both `alert()` calls in `handleUpgrade` replaced with the same modal + same View As check. Free → step 3 redirect unchanged. |
+
+Notes: the red View As banner (`z-[60]`) stays above the modal backdrop (`z-50`), so Exit Preview remains clickable while the modal is open (intentional). `tsc` 0, `next build` ✓. Remaining eslint hits in both files are pre-existing (`<a>` to `/auth/sign-up`, unused `getBadgeUrl`, `<img>`).

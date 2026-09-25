@@ -2,6 +2,17 @@
 
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { NotificationModal } from "@/components/admin/NotificationModal";
+
+const VIEW_AS_BLOCKED_CODE = "WRITE_BLOCKED_WHILE_VIEWING_AS";
+const VIEW_AS_BLOCKED_MESSAGE =
+  "Writes are blocked while viewing as another member. Please exit preview first.";
+
+type Notice = {
+  title: string;
+  message: string;
+  variant: "info" | "error";
+};
 
 export default function ManageSubscription({
   membershipLevel,
@@ -12,50 +23,61 @@ export default function ManageSubscription({
   // (contributing members see Upgrade + Manage Subscription).
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
-  const [error, setError] = useState("");
+  // Errors are shown in a modal (not inline) so the Membership Status row
+  // layout never shifts.
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   const anyLoading = upgradeLoading || portalLoading;
 
+  const showFailure = (data: { error?: string; code?: string } | null, fallback: string) => {
+    if (data?.code === VIEW_AS_BLOCKED_CODE) {
+      setNotice({ title: "Preview Mode", message: VIEW_AS_BLOCKED_MESSAGE, variant: "info" });
+    } else {
+      setNotice({
+        title: "Something went wrong",
+        message: data?.error || fallback,
+        variant: "error",
+      });
+    }
+  };
+
   const handleUpgrade = async () => {
     setUpgradeLoading(true);
-    setError("");
 
     try {
       const response = await fetch("/api/membership/upgrade", {
         method: "POST",
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
 
-      if (data.success && data.url) {
+      if (data?.success && data?.url) {
         // Redirect to Stripe Checkout
         window.location.href = data.url;
-      } else {
-        setError(data.error || "Failed to upgrade");
-        setUpgradeLoading(false);
+        return;
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to upgrade");
-      setUpgradeLoading(false);
+      showFailure(data, "Failed to upgrade. Please try again.");
+    } catch {
+      showFailure(null, "Failed to upgrade. Please try again.");
     }
+    setUpgradeLoading(false);
   };
 
   const handleManageSubscription = async () => {
     setPortalLoading(true);
-    setError("");
 
     try {
       const response = await fetch("/api/portal", { method: "POST" });
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
 
-      if (data.error) {
-        throw new Error(data.error);
+      if (response.ok && data?.url) {
+        window.location.href = data.url;
+        return;
       }
-
-      window.location.href = data.url;
-    } catch (err: any) {
-      setError(err.message || "Failed to open subscription portal");
-      setPortalLoading(false);
+      showFailure(data, "Failed to open subscription portal. Please try again.");
+    } catch {
+      showFailure(null, "Failed to open subscription portal. Please try again.");
     }
+    setPortalLoading(false);
   };
 
   const manageSubscriptionButton = (
@@ -67,6 +89,16 @@ export default function ManageSubscription({
       {portalLoading && <Loader2 className="w-4 h-4 animate-spin" />}
       {portalLoading ? "Loading..." : "Manage Subscription"}
     </button>
+  );
+
+  const noticeModal = (
+    <NotificationModal
+      isOpen={notice !== null}
+      onClose={() => setNotice(null)}
+      title={notice?.title ?? ""}
+      message={notice?.message ?? ""}
+      variant={notice?.variant ?? "info"}
+    />
   );
 
   // Free/Waitlist: go to step 3
@@ -84,7 +116,7 @@ export default function ManageSubscription({
   // Contributing: prorated upgrade option + access to the billing portal
   if (membershipLevel === "contributing") {
     return (
-      <div>
+      <>
         <div className="flex flex-col items-start gap-2">
           <button
             onClick={handleUpgrade}
@@ -96,16 +128,16 @@ export default function ManageSubscription({
           </button>
           {manageSubscriptionButton}
         </div>
-        {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-      </div>
+        {noticeModal}
+      </>
     );
   }
 
   // Founding: show manage subscription
   return (
-    <div>
+    <>
       {manageSubscriptionButton}
-      {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-    </div>
+      {noticeModal}
+    </>
   );
 }

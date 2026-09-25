@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { NotificationModal } from "@/components/admin/NotificationModal";
 
 type MembershipCardProps = {
   memberName: string;
@@ -23,6 +24,11 @@ export default function MembershipCard({
   badgeFoundingUrl,
 }: MembershipCardProps) {
   const [upgrading, setUpgrading] = useState(false);
+  const [notice, setNotice] = useState<{
+    title: string;
+    message: string;
+    variant: "info" | "error";
+  } | null>(null);
 
   const joinedDate = joinedAt ? new Date(joinedAt) : null;
   const joinedMonth = joinedDate ? joinedDate.toLocaleDateString("en-US", { month: "short" }) : "";
@@ -66,19 +72,35 @@ export default function MembershipCard({
       const response = await fetch("/api/membership/upgrade", {
         method: "POST",
       });
-      const data = await response.json();
-      if (data.success && data.url) {
+      const data = await response.json().catch(() => null);
+      if (data?.success && data?.url) {
         // Redirect to Stripe Checkout
         window.location.href = data.url;
+        return;
+      }
+      if (data?.code === "WRITE_BLOCKED_WHILE_VIEWING_AS") {
+        setNotice({
+          title: "Preview Mode",
+          message:
+            "Writes are blocked while viewing as another member. Please exit preview first.",
+          variant: "info",
+        });
       } else {
-        alert(data.error || "Failed to create upgrade session");
-        setUpgrading(false);
+        setNotice({
+          title: "Something went wrong",
+          message: data?.error || "Failed to create upgrade session. Please try again.",
+          variant: "error",
+        });
       }
     } catch (err) {
       console.error("Upgrade error:", err);
-      alert("Failed to upgrade. Please try again.");
-      setUpgrading(false);
+      setNotice({
+        title: "Something went wrong",
+        message: "Failed to upgrade. Please try again.",
+        variant: "error",
+      });
     }
+    setUpgrading(false);
   };
 
   return (
@@ -137,6 +159,14 @@ export default function MembershipCard({
       <Link href="/profile" className="text-sm text-nfw-blackberry/60 hover:text-nfw-aubergine underline font-ui">
         Manage membership
       </Link>
+
+      <NotificationModal
+        isOpen={notice !== null}
+        onClose={() => setNotice(null)}
+        title={notice?.title ?? ""}
+        message={notice?.message ?? ""}
+        variant={notice?.variant ?? "info"}
+      />
     </div>
   );
 }
