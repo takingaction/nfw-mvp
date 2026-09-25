@@ -10,6 +10,8 @@
  * `buildViewAsUrl` helper here is the single place to do that correctly.
  */
 
+import { hasValidViewAsCookie } from "@/lib/impersonation";
+
 const VIEW_AS_PARAM = "view_as";
 
 /** True if the param is present and non-empty. Treats whitespace-only as absent. */
@@ -34,7 +36,15 @@ export function hasViewAs(viewAsUserId: string | null | undefined): boolean {
  */
 export function blockIfViewingAs(request: Request): Response | null {
   const url = new URL(request.url);
-  if (url.searchParams.has(VIEW_AS_PARAM)) {
+  // Two signals, either blocks:
+  //  1. Legacy `?view_as=` query param (URL-state approach, kept for safety).
+  //  2. The signed `nfw_view_as` cookie — the CURRENT View As mechanism.
+  //     Before 2026-09-25 only (1) was checked, so every guard was dormant
+  //     and writes silently acted on the admin's own account.
+  if (
+    url.searchParams.has(VIEW_AS_PARAM) ||
+    hasValidViewAsCookie(request.headers.get("cookie"))
+  ) {
     return new Response(
       JSON.stringify({
         error:

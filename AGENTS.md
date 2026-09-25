@@ -20004,3 +20004,23 @@ Contributing members only had "Upgrade to Founding - $85" on `/profile`, so they
 - The shared `loading` flag is split into `upgradeLoading` / `portalLoading` so each button spins on its own. Both are disabled while either request is running.
 - The founding member's button is unchanged, now rendered from a shared `manageSubscriptionButton` element. Free and waitlist members still see "Upgrade Today".
 - No API or schema changes. `tsc` 0 errors, `next build` ✓.
+
+## Session 2026-09-25: View As Write-Block Actually Enforced (cookie detection)
+
+### Problem
+Testing the new contributing "Manage Subscription" button while viewing as a paying member returned "No subscription found". `/api/portal` identifies the caller via `supabase.auth.getUser()`, so it looked up the **admin's** email in Stripe. More importantly, this exposed that `blockIfViewingAs()` (`lib/view-as.ts`) only checked the legacy `?view_as=` query param. The current View As uses the signed `nfw_view_as` cookie, so **all 16 write-route guards were dormant**: in View As, writes (e.g. "Upgrade to Founding") silently acted on the admin's own account.
+
+### Fix (server-side only, no UI change)
+| File | Change |
+|---|---|
+| `lib/impersonation.ts` | New sync `hasValidViewAsCookie(cookieHeader)`: parses the `Cookie` header, verifies the HMAC (no DB round-trip). Signed cookie alone blocks; a stale-but-signed cookie over-blocking is the safe failure. |
+| `lib/view-as.ts` | `blockIfViewingAs()` blocks on `?view_as=` **or** a valid `nfw_view_as` cookie → 423 `WRITE_BLOCKED_WHILE_VIEWING_AS`. Fixes all 16 existing guards at once. |
+| `app/api/portal/route.ts` | Added the guard (previously unguarded). |
+
+Parser checked: none/garbage/tampered → false; valid and URL-encoded → true.
+
+### Notes
+- In View As, billing/write buttons still render but return the 423 message ("Writes are blocked while viewing as another member…"), shown by `ManageSubscription`'s error line. Disabled-button UI deliberately not done.
+- `/api/grants/cycles/open` (GET) also carries the guard, so it now 423s in View As; the apply form treats non-OK as fail-open and submit is blocked anyway.
+- `lib/view-as.ts` now imports `lib/impersonation.ts` (`next/headers`, `crypto`) — server-only; verified no client/edge importers.
+- `tsc` 0 errors, `next build` ✓.

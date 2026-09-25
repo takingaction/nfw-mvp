@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
+import { blockIfViewingAs } from "@/lib/view-as";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
 });
 
 export async function POST(request: Request) {
+  // Admin "View as Member": the portal would open the ADMIN's own Stripe
+  // customer (lookup is by the caller's email), so block it outright.
+  const viewAsBlocked = blockIfViewingAs(request);
+  if (viewAsBlocked) return viewAsBlocked;
+
   try {
     const supabase = await createClient();
 

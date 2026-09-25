@@ -126,6 +126,35 @@ function verify(sessionId: string, sig: string): boolean {
 }
 
 /**
+ * Synchronous check: does this request carry a validly-signed `nfw_view_as`
+ * cookie? Used by the API write blocklist (lib/view-as.ts#blockIfViewingAs),
+ * which must run without a DB round-trip.
+ *
+ * A valid signature is sufficient to block writes: the cookie can only be
+ * minted by /api/admin/members/[id]/view-as and is cleared by
+ * /api/admin/view-as/stop. We intentionally do NOT check `admin_view_logs`
+ * here — blocking too eagerly (stale-but-signed cookie) is the safe failure.
+ */
+export function hasValidViewAsCookie(cookieHeader: string | null): boolean {
+  if (!cookieHeader) return false;
+  for (const part of cookieHeader.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq === -1) continue;
+    if (part.slice(0, eq).trim() !== VIEW_AS_COOKIE_NAME) continue;
+    let value = part.slice(eq + 1).trim();
+    try {
+      value = decodeURIComponent(value);
+    } catch {
+      return false;
+    }
+    const [sessionId, signature] = value.split(".");
+    if (!sessionId || !signature) return false;
+    return verify(sessionId, signature);
+  }
+  return false;
+}
+
+/**
  * Resolve the current impersonation context if the request's signed cookie
  * points at an open `admin_view_logs` row.
  *
