@@ -19707,6 +19707,100 @@ These are pre-existing smells I noticed while tracing the bug. None caused today
 
 ---
 
+## Session 2026-09-24 (later): Stripe-Only Still 0 — Fix the Real Bug (updated_at Trigger)
+
+### What went wrong before
+
+The earlier 8→2 status reduction (`911059b`) was correctly motivated, but it addressed the wrong bottleneck. After deploy, the card still showed 0 and 88+ rows in `stripe_only_jobs` continued to fail with `error: "Job timed out"` at `processed_count: 1250`.
+
+### The real root cause (now identified)
+
+User shared this diagnostic SQL:
+
+```sql
+SELECT id, status, processed_count,
+       pg_column_size(progress_data) AS progress_data_bytes,
+       updated_at - created_at AS time_alive
+FROM stripe_only_jobs ORDER BY created_at DESC LIMIT 3;
+```
+
+Result for ALL rows: `updated_at == created_at` (00:00:00 delta). Every job has `updated_at` frozen at creation time.
+
+The cron was actually completing work — checkpoints were writing `processed_count`, `progress_data`, and the progress string. But every other table in the codebase has a `BEFORE UPDATE` trigger on `updated_at` (`pages`, `page_sections`, `site_header`, `site_footer`, `naw_perks`, `naw_perk_redemptions`, `deletion_requests`, `promotional_popups`, `perk_collections`). **`stripe_only_jobs` is the only job-table that doesn't have one** — documented in `supabase/migrations/156_chunked_stripe_only_jobs.sql`.
+
+So the 30-min stale-cleanup at `app/api/cron/process-stripe-only-jobs/route.ts:404-410` was matching every row whose `updated_at` (== `created_at`) was older than 30 min. After 25 successful ticks (`50 × 25 = 1250`), the row sat there, and exactly 30 min after `created_at` the cleanup marked it `failed`. Auto-create made a new row, and the loop continued forever.
+
+### Why my prior fix appeared to have no effect
+
+Reducing Phase 2 from 8 to 2 statuses was a strict improvement on Phase 2 work, but Phase 2 was already completing successfully — every failed row shows `current_phase: fetch_charges`, meaning Phase 2 finished long before the 30-min stale-cleanup fired. The actual kill mechanism was the stale-cleanup checking an `updated_at` that no trigger ever refreshed.
+
+### The fix
+
+Two coordinated pieces:
+
+**1. Migration to add the trigger**
+
+`supabase/migrations/195_stripe_only_jobs_updated_at_trigger.sql` (new file) reuses the shared `touch_updated_at()` function already in place from `supabase/migrations/076_fix_search_path_for_functions.sql` (pinned to `pg_catalog, public` for the linter-compliant search_path):
+
+```sql
+DROP TRIGGER IF EXISTS trg_touch_stripe_only_jobs_updated_at ON stripe_only_jobs;
+
+CREATE TRIGGER trg_touch_stripe_only_jobs_updated_at
+  BEFORE UPDATE ON stripe_only_jobs
+  FOR EACH ROW EXECUTE FUNCTION touch_updated_at();
+
+NOTIFY pgrst, 'reload';
+```
+
+**2. Defense-in-depth code changes to the cron**
+
+Five UPDATE sites in `app/api/cron/process-stripe-only-jobs/route.ts` — Phase 1→2 transition (line 105), Phase 2→3 transition (line 200), Phase 3 done → compute (line 277), Phase 3 partial checkpoint (line 300), Phase 4 completion (line 365) — each now:
+- Captures `.error` from the update result and `console.error`s if present (was previously swallowed by the outer try/catch, which never wrote to the row's `error` column)
+- Adds explicit `updated_at: new Date().toISOString()` field (defense in depth against trigger ever being dropped)
+- Two of the five include the existing success log line with `else` branch — the partial checkpoint at line 313 used to log unconditionally, even when the write threw
+
+The stale-cleanup block at line 404-410 also got a comment explaining the trigger dependency so the next reader doesn't strip the trigger thinking it's redundant.
+
+### Files Created
+
+| File | Purpose |
+|---|---|
+| `supabase/migrations/195_stripe_only_jobs_updated_at_trigger.sql` | Adds `BEFORE UPDATE` trigger on `stripe_only_jobs` using shared `touch_updated_at()` |
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `app/api/cron/process-stripe-only-jobs/route.ts` | Five UPDATE sites wrapped with explicit `.error` checking + `console.error` on failure + explicit `updated_at` field. Stale-cleanup doc comment added. |
+
+### Build Verification
+
+- `npx tsc --noEmit` ✓ — exit 0
+- `npm run build` ✓ — 222/222 routes generated in 11.5s
+- Final diff: 1 new file + 103 insertions / 65 deletions in 1 file
+
+### Why This Wasn't Found Earlier
+
+I had been chasing Vercel's 300 s `maxDuration` as the bottleneck because Vercel did show timeout errors in earlier sessions. But the actual failure pattern — same `processed_count: 1250` on every job — was a structural indicator that Vercel timeouts weren't the issue. The 30-min stale-cleanup was the actual mechanism. Should have spotted this pattern earlier by comparing `updated_at` to `created_at` on the failed jobs.
+
+### Deploy Steps
+
+1. Run `supabase/migrations/195_stripe_only_jobs_updated_at_trigger.sql` in Supabase SQL Editor.
+2. Deploy code.
+3. The current `processing` job (`a2e150fd`) needs to be left to run normally — within 5 min the next cron tick will see `updated_at = NOW()` after the trigger fires and the stale-cleanup will start ignoring it correctly. Within ~30-60 min the existing job should advance past 1250, complete Phase 3, and the card will populate.
+
+### What's NOT Changed
+
+- No other job-tables were missing the trigger; verified via `grep "touch_updated_at" supabase/migrations/*.sql` — only `stripe_only_jobs` was inconsistent.
+- The auto-create-then-fail loop will self-heal: as soon as the trigger fires, `updated_at` advances every tick, and the 30-min stale-cleanup stops firing on healthy jobs.
+- The 88+ failed rows from the prior days will sit there until natural TTL or a manual cleanup. They're inert (status: failed, doesn't match the cron lookup predicate `.in("status", ["pending", "processing"])`).
+
+### Lesson
+
+Look at diagnostic patterns BEFORE forming hypotheses. The repeated 1250-customer ceiling was structural evidence pointing at the stale-cleanup; the 300 s timeout hypothesis was plausible but not consistent with the data. Always validate a hypothesis against the actual numbers, not against plausible-sounding mechanisms.
+
+---
+
 ## Session 2026-09-24: Cycle-Closed UX Fix (Parts A + B + C)
 
 ### Problem

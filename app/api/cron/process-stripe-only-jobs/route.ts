@@ -102,14 +102,20 @@ async function processJobChunk(jobId: string): Promise<{ done: boolean; phase: s
     console.log(`[process-stripe-only] Loaded ${allProfiles.length} profiles, ${profileEmails.size} emails`);
 
     // Move to phase 2
-    await supabaseAdmin
-      .from("stripe_only_jobs")
-      .update({
-        current_phase: "enum_customers",
-        progress_data: { profileEmails: Array.from(profileEmails) },
-        progress: "Enumerating Stripe customers...",
-      })
-      .eq("id", jobId);
+    {
+      const { error: phase1Err } = await supabaseAdmin
+        .from("stripe_only_jobs")
+        .update({
+          current_phase: "enum_customers",
+          progress_data: { profileEmails: Array.from(profileEmails) },
+          progress: "Enumerating Stripe customers...",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", jobId);
+      if (phase1Err) {
+        console.error("[process-stripe-only] Phase 1 -> 2 write failed:", phase1Err);
+      }
+    }
 
     return { done: false, phase: "enum_customers" };
   }
@@ -191,22 +197,28 @@ async function processJobChunk(jobId: string): Promise<{ done: boolean; phase: s
     console.log(`[process-stripe-only] Total unique customers: ${allCustomerIds.length}`);
 
     // Move to phase 3 (fetch charges)
-    await supabaseAdmin
-      .from("stripe_only_jobs")
-      .update({
-        current_phase: "fetch_charges",
-        progress_data: { 
-          ...progressData, 
-          allCustomerIds,
-          allCharges: [],
-          processedChargeIds: [] 
-        },
-        processed_count: 0,
-        total_count: allCustomerIds.length,
-        last_processed_id: null,
-        progress: `Fetching charges for ${allCustomerIds.length} customers...`,
-      })
-      .eq("id", jobId);
+    {
+      const { error: phase2Err } = await supabaseAdmin
+        .from("stripe_only_jobs")
+        .update({
+          current_phase: "fetch_charges",
+          progress_data: {
+            ...progressData,
+            allCustomerIds,
+            allCharges: [],
+            processedChargeIds: []
+          },
+          processed_count: 0,
+          total_count: allCustomerIds.length,
+          last_processed_id: null,
+          progress: `Fetching charges for ${allCustomerIds.length} customers...`,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", jobId);
+      if (phase2Err) {
+        console.error("[process-stripe-only] Phase 2 -> 3 write failed:", phase2Err);
+      }
+    }
 
     return { done: false, phase: "fetch_charges" };
   }
@@ -260,39 +272,55 @@ async function processJobChunk(jobId: string): Promise<{ done: boolean; phase: s
 
     if (isDone) {
       console.log(`[process-stripe-only] Charge fetching complete: ${allCharges.length} charges`);
-      
+
       // Move to computing phase
-      await supabaseAdmin
-        .from("stripe_only_jobs")
-        .update({
-          current_phase: "computing",
-          progress_data: { 
-            ...progressData, 
-            allCharges,
-            processedChargeIds: Array.from(processedChargeIds)
-          },
-          processed_count: newProcessedCount,
-          progress: "Computing results...",
-        })
-        .eq("id", jobId);
+      {
+        const { error: phase3DoneErr } = await supabaseAdmin
+          .from("stripe_only_jobs")
+          .update({
+            current_phase: "computing",
+            progress_data: {
+              ...progressData,
+              allCharges,
+              processedChargeIds: Array.from(processedChargeIds)
+            },
+            processed_count: newProcessedCount,
+            progress: "Computing results...",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", jobId);
+        if (phase3DoneErr) {
+          console.error("[process-stripe-only] Phase 3 done -> compute write failed:", phase3DoneErr);
+        }
+      }
 
       return { done: false, phase: "computing" };
     } else {
       // Save checkpoint and let next cron run continue
-      await supabaseAdmin
-        .from("stripe_only_jobs")
-        .update({
-          processed_count: newProcessedCount,
-          progress_data: { 
-            ...progressData, 
-            allCharges,
-            processedChargeIds: Array.from(processedChargeIds)
-          },
-          progress: `Processed ${newProcessedCount}/${allCustomerIds.length} customers...`,
-        })
-        .eq("id", jobId);
+      {
+        const { error: checkpointErr } = await supabaseAdmin
+          .from("stripe_only_jobs")
+          .update({
+            processed_count: newProcessedCount,
+            progress_data: {
+              ...progressData,
+              allCharges,
+              processedChargeIds: Array.from(processedChargeIds)
+            },
+            progress: `Processed ${newProcessedCount}/${allCustomerIds.length} customers...`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", jobId);
+        if (checkpointErr) {
+          console.error(
+            `[process-stripe-only] Phase 3 checkpoint write failed at ${newProcessedCount}/${allCustomerIds.length}:`,
+            checkpointErr,
+          );
+        } else {
+          console.log(`[process-stripe-only] Checkpoint saved at ${newProcessedCount}/${allCustomerIds.length}`);
+        }
+      }
 
-      console.log(`[process-stripe-only] Checkpoint saved at ${newProcessedCount}/${allCustomerIds.length}`);
       return { done: false, phase: "fetch_charges" };
     }
   }
@@ -334,19 +362,25 @@ async function processJobChunk(jobId: string): Promise<{ done: boolean; phase: s
     console.log(`[process-stripe-only] Matched: ${matchCount}, Stripe-only: ${stripeOnlyCharges.length}`);
 
     // Store results
-    await supabaseAdmin
-      .from("stripe_only_jobs")
-      .update({
-        status: "completed",
-        current_phase: "completed",
-        progress: "Completed",
-        completed_at: new Date().toISOString(),
-        charges_json: stripeOnlyCharges,
-        total: total,
-        expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-        progress_data: null,
-      })
-      .eq("id", jobId);
+    {
+      const { error: phase4Err } = await supabaseAdmin
+        .from("stripe_only_jobs")
+        .update({
+          status: "completed",
+          current_phase: "completed",
+          progress: "Completed",
+          completed_at: new Date().toISOString(),
+          charges_json: stripeOnlyCharges,
+          total: total,
+          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          progress_data: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", jobId);
+      if (phase4Err) {
+        console.error("[process-stripe-only] Phase 4 completion write failed:", phase4Err);
+      }
+    }
 
     console.log(`[process-stripe-only] Job ${jobId} completed`);
     return { done: true, phase: "completed" };
@@ -367,7 +401,11 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     console.log("[process-stripe-only] Starting stripe-only jobs processor...");
 
-    // Mark stale processing jobs as failed (older than 30 minutes)
+    // Mark stale processing jobs as failed (older than 30 minutes).
+    // Relies on the trg_touch_stripe_only_jobs_updated_at trigger
+    // (migration 195) to refresh updated_at on every UPDATE; without it,
+    // every job was being marked as timed out exactly 30 min after
+    // creation regardless of actual progress.
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     const { data: staleJobs } = await supabaseAdmin
       .from("stripe_only_jobs")
