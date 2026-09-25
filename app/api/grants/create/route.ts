@@ -8,6 +8,11 @@ import {
   GRANT_DOCS_MAX_BYTES,
   storageObjectExists,
 } from "@/lib/admin-documents";
+import {
+  checkCycleEligibility,
+  CYCLE_LOCK_COLUMNS,
+  markPassUsed,
+} from "@/lib/grant-eligibility";
 
 interface DocumentUpload {
   path: string;
@@ -163,7 +168,7 @@ export async function POST(request: Request) {
 
     const { data: cycleData } = await supabaseAdmin
       .from("grant_cycles")
-      .select("id, status, is_testing_only, requires_documents, end_date")
+      .select(`id, status, is_testing_only, requires_documents, end_date, ${CYCLE_LOCK_COLUMNS}`)
       .eq("id", cycle_id)
       .single();
 
@@ -174,7 +179,10 @@ export async function POST(request: Request) {
       );
     }
 
-    if (cycleData.status !== "open") {
+    // Late Submission Passes (migration 196): closed cycles are allowed
+    // only with a live pass and while first review isn't locked.
+    const eligibility = await checkCycleEligibility(user.id, cycleData);
+    if (!eligibility.ok) {
       // 2026-09-23: cycle-closed UX. The form (Part B of this change)
       // uses `code` + `cycleStatus` + `cycleEndDate` to render a clear,
       // actionable error and a "Back to all cycles" CTA. Members hit
@@ -353,6 +361,13 @@ export async function POST(request: Request) {
           { status: 500 },
         );
       }
+    }
+
+    // Consume the late-submission pass only after the grant + documents
+    // are committed. A rollback above returns early, leaving the pass
+    // unused so the member can retry within the window.
+    if (eligibility.viaPass && eligibility.pass) {
+      await markPassUsed(eligibility.pass.id, grant.id);
     }
 
     // Fetch user email and profile for the confirmation email

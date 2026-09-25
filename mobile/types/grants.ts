@@ -11,6 +11,9 @@ export interface GrantCycle {
   is_testing_only: boolean | null;
   featured_image: string | null;
   display_order: number | null;
+  /** Late Submission Pass (web migration 196) — closed cycle this member may still apply to. */
+  viaPass?: boolean;
+  passExpiresAt?: string;
 }
 
 /**

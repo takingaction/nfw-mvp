@@ -9,6 +9,7 @@ import {
   sanitizeFileName,
   validateUploadMeta,
 } from "@/lib/admin-documents";
+import { checkCycleEligibility, CYCLE_LOCK_COLUMNS } from "@/lib/grant-eligibility";
 
 /**
  * POST /api/grants/upload-document/prepare
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
 
   const { data: cycle, error: cycleError } = await admin
     .from("grant_cycles")
-    .select("id, status, is_testing_only, end_date")
+    .select(`id, status, is_testing_only, end_date, ${CYCLE_LOCK_COLUMNS}`)
     .eq("id", cycleId)
     .maybeSingle();
   if (cycleError) {
@@ -124,7 +125,11 @@ export async function POST(request: NextRequest) {
   if (!cycle) {
     return NextResponse.json({ error: "Grant cycle not found" }, { status: 404 });
   }
-  if (cycle.status !== "open") {
+  // Late Submission Passes (migration 196): a closed cycle is allowed
+  // through only if the member holds a live pass and first review isn't
+  // locked. Everyone else gets the unchanged CYCLE_NOT_OPEN response.
+  const eligibility = await checkCycleEligibility(user.id, cycle);
+  if (!eligibility.ok) {
     // 2026-09-23: cycle-closed UX. The form (Part B of this change)
     // uses `code` + `cycleStatus` + `cycleEndDate` to render a clear,
     // actionable error and a "Back to all cycles" CTA. Members hit

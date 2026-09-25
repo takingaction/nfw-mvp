@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorScreen, LoadingScreen, Screen } from "@/components/ui/Screen";
 import { Body, Caption, Eyebrow, Heading, Label } from "@/components/ui/Typography";
 import { env } from "@/lib/env";
-import { useMyGrants, useOpenGrantCycles } from "@/lib/queries/grants";
+import { useMyGrants, useApplicableGrantCycles } from "@/lib/queries/grants";
 import { useAuthStore } from "@/stores/auth";
 import { canAccessMemberBenefits } from "@/types/profile";
 
@@ -26,7 +26,7 @@ export default function GrantsScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const profile = useAuthStore((s) => s.profile);
-  const cycles = useOpenGrantCycles();
+  const cycles = useApplicableGrantCycles();
   const grants = useMyGrants();
   const [refreshing, setRefreshing] = useState(false);
 

@@ -1,4 +1,5 @@
 import { api, apiGet, apiPost } from "@/lib/api";
+import type { GrantCycle } from "@/types/grants";
 
 /**
  * Typed wrappers for the grant application + Stripe Connect routes.
@@ -16,6 +17,11 @@ export interface CreateGrantBody {
   biggest_challenge: string;
   fund_usage: string;
   certification_consent: boolean;
+}
+
+/** Cycles the member may apply to, incl. Late Submission Pass cycles. */
+export function getApplicableGrantCycles() {
+  return apiGet<{ cycles: GrantCycle[] }>("/api/grants/cycles/open");
 }
 
 export function createGrant(body: CreateGrantBody) {

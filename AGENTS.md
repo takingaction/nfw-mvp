@@ -19952,3 +19952,47 @@ No additional monitoring needed. The existing Slack alerts will tell us if Part 
 
 
 
+
+## Session 2026-09-25: Late Submission Passes (private applications to closed cycles)
+
+### Goal
+Let an admin allow specific members to apply to a **closed** grant cycle without reopening it publicly (e.g. their upload failed before the deadline).
+
+### Decisions
+- Per-member pass, **12-hour** fixed expiry, **single-use**, revocable, reason required.
+- Admin sends the link manually: `https://www.nationalfundforwomen.org/grants/apply?cycleId=<id>`.
+- **Not allowed once first review is complete** (`scoring_completed_at`, or `final_approved_at` / `is_finalized`) — enforced at issue time AND use time.
+- Cycle status/end_date untouched; auto-close cron untouched; cycle stays invisible to everyone without a pass.
+- Mobile supported (Grants tab + apply screen); dashboard "Available Microgrants" strip stays public-only.
+
+### Database — `supabase/migrations/196_grant_cycle_exceptions.sql` (+ rollback)
+`grant_cycle_exceptions` (cycle_id, user_id, granted_by, reason ≥5 chars, expires_at, used_at, used_grant_id, revoked_at, revoked_by, created_at). Partial unique index = one live (unused, unrevoked) pass per member per cycle. RLS admin-only via `public.is_admin()`; member-side access only through service-role code.
+
+### Core helper — `lib/grant-eligibility.ts`
+`isFirstReviewLocked`, `getActivePass`, `checkCycleEligibility(userId, cycle)` (open → ok; closed → ok only with live pass and review not locked), `listPassCyclesForUser`, `markPassUsed` (guarded `WHERE used_at IS NULL`), `getPassStatus`, `CYCLE_LOCK_COLUMNS`, `LATE_PASS_DURATION_HOURS = 12`.
+
+### Gates (all use the helper)
+| File | Change |
+|---|---|
+| `app/api/grants/upload-document/prepare/route.ts` | cycleId branch: `status !== "open"` → `checkCycleEligibility`. Same `CYCLE_NOT_OPEN` response when denied. |
+| `app/api/grants/create/route.ts` | Same swap; after grant + documents commit, `markPassUsed`. Rollback paths return early → pass stays unused. 409 duplicate guard unchanged. |
+| `app/api/grants/cycles/open/route.ts` | Appends pass cycles tagged `{ viaPass, passExpiresAt }`; select widened (start_date, status, is_testing_only, featured_image) for mobile. |
+| `app/grants/apply/page.tsx` | Merges pass cycles; `?cycleId=` preselect; `?cycleId=` preserved through login/sign-up redirects; `searchParams` now awaited (Next 16). |
+
+### UI
+- `components/GrantApplicationForm.tsx`: `initialCycleId` prop; wisteria "Late submission approved — expires [ET]" note on pass cycles.
+- `components/admin/LateSubmissionPassesCard.tsx` (admin-only, on `/admin/grants/[id]`): issue form (email + reason), copy-link panel, pass table with status + Revoke (ConfirmModal). Disabled with explanation when first review is locked.
+- Admin API: `GET/POST /api/admin/grants/[id]/exceptions`, `DELETE /api/admin/grants/[id]/exceptions/[passId]` (soft revoke). All `requireAdmin()` + `.authorized`. POST blocks: not found, ineligible member (incomplete profile / waitlist / unapproved free), already applied, review locked, testing-only cycle, existing live pass (23505). Expired unused passes auto-revoked before re-issue.
+- Mobile: `useApplicableGrantCycles` (calls `/api/grants/cycles/open`) replaces `useOpenGrantCycles` on Grants tab + apply screen; `components/grants/LatePassNote.tsx`; `GrantCycle` type gains `viaPass` / `passExpiresAt`.
+
+### Notes
+- Mobile creates the grant before uploading docs (legacy `grantId` upload route, no cycle check), so the pass is consumed at create — same doc-after-create behavior mobile already had.
+- Late applications are normal `grants` rows → AI queue + scoring pages pick them up automatically.
+
+### Build
+Web `tsc` 0 / `next build` ✓ (222 pages, 2 new routes) / eslint clean on new files. Mobile `tsc` 0 / `expo lint` clean.
+
+### Deploy
+1. Run `196_grant_cycle_exceptions.sql` in Supabase SQL Editor.
+2. Deploy.
+3. Smoke: closed cycle hidden without pass (forced POST → 400 `CYCLE_NOT_OPEN`); issue pass → member sees cycle with note → submits → pass "Used"; retry → 409; revoke/expiry rejected; issuing blocked after "Mark Review Complete".

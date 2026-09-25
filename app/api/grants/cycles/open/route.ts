@@ -1,6 +1,7 @@
 import { blockIfViewingAs } from "@/lib/view-as";
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { listPassCyclesForUser } from "@/lib/grant-eligibility";
 
 /**
  * GET /api/grants/cycles/open
@@ -15,6 +16,8 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
  *   - status = 'open'
  *   - end_date >= today (UTC date string compare)
  *   - is_testing_only only included for admins
+ *   - PLUS closed cycles the member holds a live Late Submission Pass for
+ *     (migration 196), tagged { viaPass: true, passExpiresAt }
  *
  * Used by components/GrantApplicationForm handleConfirmSubmit to
  * detect a cycle that closed between when the apply page rendered
@@ -53,7 +56,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from("grant_cycles")
-    .select("id, cycle_name, description, end_date, amount_per_grant, grants_available, requires_documents, display_order")
+    .select("id, cycle_name, description, start_date, end_date, amount_per_grant, grants_available, requires_documents, display_order, status, is_testing_only, featured_image")
     .eq("status", "open")
     .order("display_order", { ascending: true })
     .order("end_date", { ascending: true });
@@ -78,5 +81,27 @@ export async function GET(request: Request) {
     (c: { end_date: string }) => c.end_date >= todayStr,
   );
 
-  return NextResponse.json({ cycles: openCycles });
+  // Late Submission Passes: add closed cycles this member may still apply to.
+  const passCycles = await listPassCyclesForUser(user.id);
+  const openIds = new Set(openCycles.map((c: { id: string }) => c.id));
+  const extra = passCycles
+    .filter((c) => !openIds.has(c.id))
+    .map((c) => ({
+      id: c.id,
+      cycle_name: c.cycle_name,
+      description: c.description,
+      start_date: c.start_date,
+      end_date: c.end_date,
+      amount_per_grant: c.amount_per_grant,
+      grants_available: c.grants_available,
+      requires_documents: c.requires_documents,
+      display_order: c.display_order,
+      status: c.status,
+      is_testing_only: c.is_testing_only,
+      featured_image: c.featured_image,
+      viaPass: true,
+      passExpiresAt: c.passExpiresAt,
+    }));
+
+  return NextResponse.json({ cycles: [...openCycles, ...extra] });
 }

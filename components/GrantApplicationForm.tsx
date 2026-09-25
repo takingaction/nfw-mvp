@@ -50,16 +50,41 @@ interface GrantCycle {
   amount_per_grant: number;
   grants_available: number;
   requires_documents?: boolean;
+  // Late Submission Pass (migration 196): cycle is closed publicly but this
+  // member may still apply until passExpiresAt.
+  viaPass?: boolean;
+  passExpiresAt?: string;
+}
+
+function formatPassExpiry(iso: string): string {
+  return new Date(iso).toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }) + " ET";
+}
+
+function LatePassNote({ expiresAt }: { expiresAt?: string }) {
+  if (!expiresAt) return null;
+  return (
+    <p className="inline-block text-xs font-ui font-bold text-nfw-blackberry bg-nfw-wisteria/20 border border-nfw-wisteria/40 px-2 py-1 mt-2">
+      Late submission approved — expires {formatPassExpiry(expiresAt)}
+    </p>
+  );
 }
 
 export default function GrantApplicationForm({
   userId,
   userEmail,
   cycles,
+  initialCycleId,
 }: {
   userId: string;
   userEmail: string;
   cycles: GrantCycle[];
+  initialCycleId?: string;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -76,7 +101,7 @@ export default function GrantApplicationForm({
   const [confirmError, setConfirmError] = useState("");
 
   const [formData, setFormData] = useState({
-    cycle_id: cycles.length === 1 ? cycles[0].id : "",
+    cycle_id: initialCycleId ?? (cycles.length === 1 ? cycles[0].id : ""),
     who_are_you: "",
     biggest_challenge: "",
     fund_usage: "",
@@ -541,6 +566,7 @@ export default function GrantApplicationForm({
                           {decodeHtml(cycle.description)}
                         </p>
                       )}
+                      {cycle.viaPass && <LatePassNote expiresAt={cycle.passExpiresAt} />}
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
@@ -568,6 +594,7 @@ export default function GrantApplicationForm({
                     return new Date(+y, +m - 1, +d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
                   })() : 'TBD'}
                 </p>
+                {selectedCycle.viaPass && <LatePassNote expiresAt={selectedCycle.passExpiresAt} />}
               </div>
               <div className="text-right">
                 <p className="text-2xl font-black text-nfw-blackberry font-ui">

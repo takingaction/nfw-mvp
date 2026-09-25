@@ -7,10 +7,13 @@ import { colors, theme } from "@/constants/colors";
 import { fonts } from "@/constants/fonts";
 import { decodeHtml, formatCurrency, formatDateLong } from "@/lib/format";
 import type { GrantCycle } from "@/types/grants";
+import { LatePassNote } from "@/components/grants/LatePassNote";
 
 type Props = {
   cycle: Pick<GrantCycle, "id" | "cycle_name" | "amount_per_grant" | "end_date" | "featured_image"> & {
     description?: string | null;
+    viaPass?: boolean;
+    passExpiresAt?: string;
   };
   onPress: () => void;
   /** Compact = horizontal-strip size on the dashboard; default = full-width list card. */
@@ -39,6 +42,7 @@ export function GrantCycleCard({ cycle, onPress, compact }: Props) {
           <Text style={styles.amount}>{formatCurrency(cycle.amount_per_grant)}</Text>
           <Caption>Deadline: {formatDateLong(cycle.end_date)}</Caption>
         </View>
+        {cycle.viaPass && cycle.passExpiresAt ? <LatePassNote expiresAt={cycle.passExpiresAt} /> : null}
       </View>
     </PressableCard>
   );

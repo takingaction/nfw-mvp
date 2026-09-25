@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import GrantApplicationForm from "@/components/GrantApplicationForm";
+import { listPassCyclesForUser } from "@/lib/grant-eligibility";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,8 +12,14 @@ const supabaseAdmin = createClient(
 export default async function ApplyForGrantPage({
   searchParams,
 }: {
-  searchParams: { next?: string };
+  searchParams: Promise<{ next?: string; cycleId?: string }>;
 }) {
+  const params = await searchParams;
+  // Preserve ?cycleId= (Late Submission Pass links) through login/sign-up redirects.
+  const selfUrl = params?.cycleId
+    ? `/grants/apply?cycleId=${encodeURIComponent(params.cycleId)}`
+    : "/grants/apply";
+  const nextTarget = params?.next || selfUrl;
   const supabase = await createServerClient();
   const {
     data: { user },
@@ -20,8 +27,7 @@ export default async function ApplyForGrantPage({
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    const nextUrl = searchParams?.next || "/grants/apply";
-    redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
+    redirect(`/auth/login?next=${encodeURIComponent(nextTarget)}`);
   }
 
   // Check profile completion and membership level
@@ -32,11 +38,11 @@ export default async function ApplyForGrantPage({
     .single();
 
   if (!profile?.profile_completed) {
-    redirect(`/auth/sign-up?step=1&next=${encodeURIComponent(searchParams?.next || "/grants/apply")}`);
+    redirect(`/auth/sign-up?step=1&next=${encodeURIComponent(nextTarget)}`);
   } else if ((profile?.membership_level === "free" && profile?.is_approved_free_member !== true) || profile?.membership_level === "waitlist") {
-    redirect(`/auth/sign-up?step=3&next=${encodeURIComponent(searchParams?.next || "/grants/apply")}`);
+    redirect(`/auth/sign-up?step=3&next=${encodeURIComponent(nextTarget)}`);
   } else if (profile?.membership_level && !["free", "contributing", "founding", "waitlist"].includes(profile.membership_level)) {
-    redirect(`/auth/sign-up?step=3&next=${encodeURIComponent(searchParams?.next || "/grants/apply")}`);
+    redirect(`/auth/sign-up?step=3&next=${encodeURIComponent(nextTarget)}`);
   }
 
   // Build query - admins see all cycles, non-admins don't see testing-only cycles
@@ -57,7 +63,20 @@ export default async function ApplyForGrantPage({
   // Server-side filter: exclude grants where end_date is in the past
   // (Supabase date filters can be unreliable, so we filter in JS after fetch)
   const todayStr = new Date().toISOString().split('T')[0];
-  const validCycles = cycles?.filter(c => c.end_date >= todayStr) || [];
+  const openCycles = cycles?.filter(c => c.end_date >= todayStr) || [];
+
+  // Late Submission Passes (migration 196): closed cycles this member may
+  // still apply to. Invisible to everyone else.
+  const passCycles = await listPassCyclesForUser(user!.id);
+  const openIds = new Set(openCycles.map((c) => c.id));
+  const validCycles = [
+    ...openCycles,
+    ...passCycles.filter((c) => !openIds.has(c.id)),
+  ];
+  const initialCycleId =
+    params?.cycleId && validCycles.some((c) => c.id === params.cycleId)
+      ? params.cycleId
+      : undefined;
 
   return (
     <main className="min-h-screen bg-nfw-dove">
@@ -75,7 +94,7 @@ export default async function ApplyForGrantPage({
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {validCycles && validCycles.length > 0 ? (
-          <GrantApplicationForm userId={user!.id} userEmail={user!.email || ""} cycles={validCycles} />
+          <GrantApplicationForm userId={user!.id} userEmail={user!.email || ""} cycles={validCycles} initialCycleId={initialCycleId} />
         ) : (
           <div className="bg-nfw-citrine/20 border border-nfw-citrine p-6">
             <h3 className="font-serif text-lg font-semibold text-nfw-blackberry mb-2">

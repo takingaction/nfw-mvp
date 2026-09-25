@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Lock } from "lucide-react";
 import AdminGrantReviewer from "@/components/admin/AdminGrantReviewer";
 import AiEvaluationPanel from "@/components/admin/AiEvaluationPanel";
+import LateSubmissionPassesCard from "@/components/admin/LateSubmissionPassesCard";
 import { formatESTDisplay } from "@/lib/dates";
 
 const supabaseAdmin = createClient(
@@ -239,6 +240,9 @@ export default async function AdminGrantCyclePage({
             totalCount={totalCount}
           />
         )}
+
+        {/* ── Late Submission Passes (admin only) ───────────────────── */}
+        {isAdmin && <LateSubmissionPassesCard cycleId={id} />}
 
         <AdminGrantReviewer grants={grantsWithDocs} cycle={cycle} isAdmin={isAdmin} />
       </div>

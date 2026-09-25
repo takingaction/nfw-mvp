@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { createGrant, getStripeConnectStatus, type CreateGrantBody } from "@/lib/api/grants";
+import { createGrant, getApplicableGrantCycles, getStripeConnectStatus, type CreateGrantBody } from "@/lib/api/grants";
 
 import { todayIsoDate } from "@/lib/format";
 import { queryKeys } from "@/lib/queries/keys";
@@ -38,6 +38,24 @@ export function useOpenGrantCycles() {
       // Defense in depth — the pg_cron auto-close job has failed before (AGENTS.md 2026-07-23).
       const today = todayIsoDate();
       return (data ?? []).filter((c) => c.end_date >= today) as GrantCycle[];
+    },
+  });
+}
+
+/**
+ * Cycles this member can apply to right now — web: GET /api/grants/cycles/open.
+ * Same as useOpenGrantCycles plus closed cycles the member holds a Late
+ * Submission Pass for (flagged `viaPass`). Used by the Grants tab and the
+ * apply screen; the dashboard strip stays on the public list.
+ */
+export function useApplicableGrantCycles() {
+  const userId = useAuthStore((s) => s.user?.id);
+  return useQuery({
+    queryKey: queryKeys.applicableGrantCycles(userId ?? "anon"),
+    enabled: !!userId,
+    queryFn: async (): Promise<GrantCycle[]> => {
+      const { cycles } = await getApplicableGrantCycles();
+      return cycles;
     },
   });
 }

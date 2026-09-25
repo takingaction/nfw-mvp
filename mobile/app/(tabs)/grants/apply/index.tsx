@@ -17,9 +17,10 @@ import { ApiError } from "@/lib/api";
 import { logGrantError, uploadGrantDocument, type PendingDocument } from "@/lib/api/grants";
 import { env } from "@/lib/env";
 import { decodeHtml, formatCurrency, formatDateLong } from "@/lib/format";
-import { useCreateGrant, useOpenGrantCycles } from "@/lib/queries/grants";
+import { useCreateGrant, useApplicableGrantCycles } from "@/lib/queries/grants";
 import { useAuthStore } from "@/stores/auth";
 import type { GrantCycle } from "@/types/grants";
+import { LatePassNote } from "@/components/grants/LatePassNote";
 import { canAccessMemberBenefits } from "@/types/profile";
 
 const REMINDERS = [
@@ -48,7 +49,7 @@ export default function GrantApplyScreen() {
   const { cycleId } = useLocalSearchParams<{ cycleId?: string }>();
   const profile = useAuthStore((s) => s.profile);
   const user = useAuthStore((s) => s.user);
-  const cycles = useOpenGrantCycles();
+  const cycles = useApplicableGrantCycles();
   const createGrant = useCreateGrant();
 
   const [selectedCycleId, setSelectedCycleId] = useState<string>(cycleId ?? "");
@@ -311,6 +312,7 @@ function CycleCard({ cycle, selected, onPress, disabled }: { cycle: GrantCycle; 
         <Text style={styles.cycleName}>{decodeHtml(cycle.cycle_name)}</Text>
         <Caption>Deadline: {cycle.end_date ? formatDateLong(cycle.end_date) : "TBD"}</Caption>
         {cycle.description ? <Caption style={{ marginTop: 4 }}>{decodeHtml(cycle.description)}</Caption> : null}
+        {cycle.viaPass && cycle.passExpiresAt ? <LatePassNote expiresAt={cycle.passExpiresAt} /> : null}
       </View>
       <Text style={styles.cycleAmount}>{formatCurrency(cycle.amount_per_grant)}</Text>
     </Pressable>
