@@ -59,6 +59,10 @@
     {
       "path": "/api/cron/cleanup-orphaned-grants",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/waitlist-acceptance",
+      "schedule": "0 5 * * *"
     }
   ]
 }

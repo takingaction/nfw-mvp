@@ -30,6 +30,7 @@ export async function GET() {
           email,
           waitlist_joined_at,
           waitlist_email_sent_at,
+          waitlist_acceptance_sent_at,
           is_approved_free_member,
           membership_level,
           joined_at

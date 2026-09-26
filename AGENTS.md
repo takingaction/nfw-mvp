@@ -20038,3 +20038,92 @@ The 423 View As message rendered inline inside `ManageSubscription`, which sits 
 | `components/dashboard/MembershipCard.tsx` | Both `alert()` calls in `handleUpgrade` replaced with the same modal + same View As check. Free → step 3 redirect unchanged. |
 
 Notes: the red View As banner (`z-[60]`) stays above the modal backdrop (`z-50`), so Exit Preview remains clickable while the modal is open (intentional). `tsc` 0, `next build` ✓. Remaining eslint hits in both files are pre-existing (`<a>` to `/auth/sign-up`, unused `getBadgeUrl`, `<img>`).
+
+---
+
+## Session 2026-09-26: Two-Step Waitlist Approval (Token + Email Link)
+
+Replaced the "admin clicks Approve → profile immediately becomes free" flow with a two-step flow: admin creates a 30-day `waitlist_acceptance_tokens` row and sends an email with a link; member clicks the link to accept.
+
+### Flow
+
+```
+Admin clicks Approve
+  → waitlist_acceptance_tokens row (expires_at = NOW() + 30 days)
+  → profiles.waitlist_acceptance_sent_at = NOW() (level stays 'waitlist')
+  → email via slug `welcome-free` with {{acceptUrl}} → /auth/accept-waitlist?token=X
+
+Member clicks email link
+  → /auth/accept-waitlist page (server component, calls service-role directly)
+  → atomically marks token used_at
+  → upgrades profile to membership_level='free', is_approved_free_member=true,
+    profile_completed=true, previous_membership_level='waitlist'
+  → resyncProfileNow() exits Flodesk Waitlist segment
+  → redirects to /auth/welcome (new "You're a Free Member!" branch)
+
+Day 23 — cron sends reminder email (slug `waitlist-reminder`)
+Day 30 — cron moves member to end of queue (waitlist_joined_at = NOW()),
+          clears waitlist_acceptance_sent_at, marks token expired_processed_at
+```
+
+### Decisions
+
+- **URL flow (Option C):** Email link → `/auth/accept-waitlist?token=X` (page). `/api/waitlist/accept` exists as a thin wrapper for admin/observability but is NOT on the email link. Page calls service-role directly to avoid a fetch roundtrip.
+- **Upgrade-before-accept guard:** If `profile.membership_level !== 'waitlist'` when the member clicks the link, redirect to `?error=already_upgraded` (token NOT marked used — admin can audit/reissue).
+- **Logged-out users:** Page checks `auth.getUser()` first → redirect to `/auth/login?next=<encoded accept-waitlist URL>` → Supabase callback returns them here.
+- **Welcome destination:** `/auth/welcome` shows new "You're a Free Member!" branch (between the paid-member and default branches).
+- **Silent move on expiry:** No email sent when cron expires a token — by design, member just ends up back at end of queue.
+
+### Files Created
+
+| Path | Purpose |
+|---|---|
+| `supabase/migrations/197_waitlist_acceptance_tokens.sql` | New table + 3 partial indexes (one-live, reminder, expired) + RLS via `public.is_admin()` + `profiles.waitlist_acceptance_sent_at` column |
+| `supabase/migrations/198_seed_waitlist_reminder_template.sql` | DO $$ block: inserts `waitlist-reminder` template (is_active=false, status='draft') and copies sections from `welcome-free` since those sections live only in the live DB |
+| `app/api/waitlist/accept/route.ts` | Thin wrapper. Service-role. Marks token used_at, upgrades profile, fires Flodesk resync. Used by admin/testing only — page is the primary entry. |
+| `app/auth/accept-waitlist/page.tsx` | Primary entry. Server component. Reads `searchParams` for token + error. Calls service-role directly. Error states: `invalid`, `expired`, `stale`, `already_upgraded`. Success → redirect to `/auth/welcome`. |
+| `app/api/cron/waitlist-acceptance/route.ts` | Daily cron. `CRON_SECRET` Bearer auth. `maxDuration=120`. Two tasks: (A) day-23 reminders with `fetchTemplateWithActiveCheck` pre-flight, (B) day-30 expiry (resets waitlist_joined_at, marks token expired_processed_at). |
+
+### Files Modified
+
+| Path | Change |
+|---|---|
+| `app/api/admin/waitlist/approve/route.ts` | Full rewrite. Auth via cookie session + `is_admin` check. Creates token (not profile upgrade). Handles 23505 conflict → 400 "approval already pending". Sends `sendWaitlistApprovalEmail` with `acceptUrl`. Does NOT call `resyncProfileNow` (member stays in Waitlist segment until they accept). |
+| `app/auth/welcome/page.tsx` | New `isApprovedFreeMember` branch: badge "Membership Activated" + title "You're a Free Member!". Combined profile lookup so `membershipLevel` derives from the same query. |
+| `lib/email.ts` | Added `sendWaitlistApprovalEmail({ to, name, acceptUrl })` (slug `welcome-free`, populates `{{acceptUrl}}` plus standard welcome vars) and `sendWaitlistReminderEmail({ to, name, acceptUrl, expiresAt })` (slug `waitlist-reminder`). |
+| `vercel.json` | Added `waitlist-acceptance` cron entry at `0 5 * * *` (UTC). |
+| `app/api/admin/bulk/waitlist/route.ts` | GET select now includes `waitlist_acceptance_sent_at`. |
+| `app/admin/waitlist/AdminWaitlistClient.tsx` | Added `waitlist_acceptance_sent_at` to `WaitlistMember` interface + `daysUntilExpiry()` helper. Actions column: third state "Sent · X days left" (citrine badge, e.g. "Sent · 18 days left" or "Sent · expired 2d ago"). Approve button hidden when approval email already sent. |
+| `app/api/admin/emails/[slug]/send-test/route.ts` | Added `acceptUrl` and `expiresAt` test variables so admin can preview both `welcome-free` and `waitlist-reminder` templates with working buttons/dates. |
+
+### Idempotency Notes
+
+- Partial unique index `idx_waitlist_tokens_one_live` on `(user_id) WHERE used_at IS NULL AND expired_processed_at IS NULL` — prevents admin double-click (23505 → friendly 400).
+- Atomic `used_at` update uses `.is("used_at", null)` guard — second concurrent click from member loses the race → `?error=stale` page.
+- Cron idempotency: partial indexes on reminder/expiry mean re-running the same cron tick produces no duplicate work (uses `reminder_sent_at` / `expired_processed_at` columns as guards).
+- `resyncProfileNow` failure during acceptance: token is rolled back to unused (compensating action) so member can retry.
+
+### Build Verification
+
+`npm run build` ✓ — 0 TypeScript errors. All four new routes registered:
+- `/api/cron/waitlist-acceptance`
+- `/api/waitlist/accept`
+- `/api/waitlist` (existing — unchanged)
+- `/auth/accept-waitlist`
+
+### Deploy Steps
+
+1. Run migration `197` in Supabase SQL Editor.
+2. Run migration `198` in Supabase SQL Editor. Confirms `waitlist-reminder` template appears under `/admin/emails` with sections copied from `welcome-free`.
+3. Deploy code.
+4. Visit `/admin/emails/waitlist-reminder/builder`: customize copy, add `{{acceptUrl}}` CTA button, **Publish**.
+5. On `/admin/emails/waitlist-reminder`: toggle **Enable** (sets `is_active = true`).
+6. On `/admin/emails/welcome-free/builder`: add `{{acceptUrl}}` as a CTA button link, re-**Publish**.
+7. Smoke-test: approve a test waitlist member → email arrives with working link → click → land on `/auth/welcome` showing "You're a Free Member!"
+
+### Out of Scope (Flagged)
+
+- **No suppression of `sendWelcomeEmail` callers** — the `welcome-free` slug still serves both the new token-based flow (via `sendWaitlistApprovalEmail`) and any other caller that happens to invoke `sendWelcomeEmail({ membershipType: 'free' })`. Admin should verify the welcome-free template only sends through the token path going forward.
+- **No "Send Reminder" admin button** — admins can't manually trigger a day-23 reminder; the cron is the only path.
+- **No re-issue endpoint** — if a token is marked used (or expired-processed) and the member loses access, admin must manually re-create by resetting `profiles.waitlist_acceptance_sent_at = NULL` in Supabase (or wait for expiry + re-approve).
+- **Cron pre-flight skips silently when template inactive** — operators won't get a Slack alert if the reminder template gets disabled. Acceptable trade-off for safety; admin should monitor Slack alerts on the cron path via Vercel function logs.

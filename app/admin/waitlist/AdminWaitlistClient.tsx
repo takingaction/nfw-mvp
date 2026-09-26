@@ -8,9 +8,26 @@ interface WaitlistMember {
   email: string;
   waitlist_joined_at: string | null;
   waitlist_email_sent_at: string | null;
+  waitlist_acceptance_sent_at: string | null;
   is_approved_free_member: boolean;
   membership_level: string;
   joined_at: string;
+}
+
+const APPROVAL_WINDOW_DAYS = 30;
+
+/**
+ * Calculate the number of days remaining for a waitlist acceptance email.
+ * Returns:
+ *   - positive integer: days until expiry
+ *   - 0: expiring today
+ *   - negative integer: expired N days ago
+ */
+function daysUntilExpiry(sentAt: string | null): number {
+  if (!sentAt) return 0;
+  const ms = Date.now() - new Date(sentAt).getTime();
+  const days = Math.floor(ms / (24 * 60 * 60 * 1000));
+  return APPROVAL_WINDOW_DAYS - days;
 }
 
 interface Stats {
@@ -314,6 +331,20 @@ export default function AdminWaitlistClient() {
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-ui bg-green-100 text-green-700">
                           Approved ({member.membership_level})
                         </span>
+                      ) : member.waitlist_acceptance_sent_at ? (
+                        (() => {
+                          const daysLeft = daysUntilExpiry(member.waitlist_acceptance_sent_at);
+                          const expired = daysLeft <= 0;
+                          return (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-ui bg-nfw-citrine/30 text-nfw-blackberry">
+                              {expired
+                                ? `Sent · expired ${Math.abs(daysLeft)}d ago`
+                                : daysLeft === 1
+                                ? `Sent · 1 day left`
+                                : `Sent · ${daysLeft} days left`}
+                            </span>
+                          );
+                        })()
                       ) : (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-ui bg-nfw-wisteria/20 text-nfw-wisteria">
                           Pending
@@ -323,7 +354,7 @@ export default function AdminWaitlistClient() {
                     <td className="px-4 py-4">
                       {!member.is_approved_free_member && (
                         <div className="flex gap-2">
-                          {!member.waitlist_email_sent_at && (
+                          {!member.waitlist_acceptance_sent_at && !member.waitlist_email_sent_at && (
                             <button
                               onClick={() => handleSendSingle(member.id)}
                               className="text-sm font-ui text-nfw-aubergine hover:text-nfw-aubergine/80 underline"
@@ -331,12 +362,14 @@ export default function AdminWaitlistClient() {
                               Send Email
                             </button>
                           )}
-                          <button
-                            onClick={() => handleApprove(member.id)}
-                            className="px-3 py-1 bg-green-600 text-white rounded text-xs font-ui hover:bg-green-700"
-                          >
-                            Approve
-                          </button>
+                          {!member.waitlist_acceptance_sent_at && (
+                            <button
+                              onClick={() => handleApprove(member.id)}
+                              className="px-3 py-1 bg-green-600 text-white rounded text-xs font-ui hover:bg-green-700"
+                            >
+                              Approve
+                            </button>
+                          )}
                         </div>
                       )}
                     </td>

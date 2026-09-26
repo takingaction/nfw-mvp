@@ -10,33 +10,38 @@ export default async function WelcomePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  let profile: { profile_completed: boolean | null; membership_level: string | null } | null = null;
   if (user) {
-    const { data: profile } = await supabase
+    const { data } = await supabase
       .from("profiles")
       .select("profile_completed, membership_level")
       .eq("id", user.id)
       .single();
+    profile = data;
 
     if (!profile?.profile_completed) {
       redirect("/auth/sign-up?step=1");
     }
   }
 
-  const membershipLevel = user ? (await supabase
-    .from("profiles")
-    .select("membership_level")
-    .eq("id", user!.id)
-    .single()).data?.membership_level : null;
+  const membershipLevel = profile?.membership_level ?? null;
 
   const isPaidMember = membershipLevel === "contributing" || membershipLevel === "founding";
+  const isApprovedFreeMember = membershipLevel === "free" && profile?.profile_completed === true;
 
   const getWelcomeContent = () => {
     if (isPaidMember) {
       return {
         badge: "Membership Activated",
-        title: membershipLevel === "founding" 
-          ? "You're a Founding Member!" 
+        title: membershipLevel === "founding"
+          ? "You're a Founding Member!"
           : "You're a Contributing Member!",
+      };
+    }
+    if (isApprovedFreeMember) {
+      return {
+        badge: "Membership Activated",
+        title: "You're a Free Member!",
       };
     }
     return {

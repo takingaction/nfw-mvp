@@ -1334,6 +1334,94 @@ export async function sendWaitlistWelcomeEmail({
 }
 
 // =============================================================================
+// WAITLIST APPROVAL EMAIL (sent when admin approves a waitlist member)
+// =============================================================================
+//
+// Two-step waitlist approval flow:
+//   1. Admin clicks Approve in /admin/waitlist
+//      → creates waitlist_acceptance_tokens row (30 days)
+//      → sends this email with the acceptUrl link
+//   2. Member clicks the link within 30 days
+//      → /auth/accept-waitlist page marks token used
+//      → profile upgraded from waitlist to free membership
+//
+// Uses the existing `welcome-free` template so the email body and design
+// stay consistent with the legacy "immediate conversion" flow. Admin can
+// add the {{acceptUrl}} CTA button via /admin/emails/welcome-free/builder.
+
+export async function sendWaitlistApprovalEmail({
+  to,
+  name,
+  acceptUrl,
+}: {
+  to: string;
+  name: string;
+  acceptUrl: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const slug = "welcome-free";
+  const siteUrl = "https://nationalfundforwomen.org";
+
+  const variables: Record<string, string> = {
+    name: name || "there",
+    email: to,
+    member_id: "PENDING", // Not yet a member — placeholder for template compat
+    membership_tier: "Free",
+    renewal_date: "",
+    site_url: siteUrl,
+    dashboard_url: `${siteUrl}/dashboard`,
+    perks_url: `${siteUrl}/perks`,
+    store_url: `${siteUrl}/store`,
+    grants_url: `${siteUrl}/grants`,
+    signup_url: `${siteUrl}/auth/sign-up?step=3`,
+    gift_url: `${siteUrl}/gift-membership`,
+    faq_url: `${siteUrl}/faq`,
+    acceptUrl,
+  };
+
+  return sendEmailBySlug(slug, {
+    to,
+    name: variables.name,
+    variables,
+    errorContext: "sendWaitlistApprovalEmail",
+  });
+}
+
+// =============================================================================
+// WAITLIST REMINDER EMAIL (sent by cron at day 23 of 30-day acceptance window)
+// =============================================================================
+//
+// Uses `waitlist-reminder` template. Pre-flight check inside the cron
+// (fetchTemplateWithActiveCheck) skips sending if the template is inactive
+// or has no published content — so this function never runs for a bad state.
+
+export async function sendWaitlistReminderEmail({
+  to,
+  name,
+  acceptUrl,
+  expiresAt,
+}: {
+  to: string;
+  name: string;
+  acceptUrl: string;
+  expiresAt: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const slug = "waitlist-reminder";
+
+  const variables: Record<string, string> = {
+    name: name || "there",
+    acceptUrl,
+    expiresAt,
+  };
+
+  return sendEmailBySlug(slug, {
+    to,
+    name: variables.name,
+    variables,
+    errorContext: "sendWaitlistReminderEmail",
+  });
+}
+
+// =============================================================================
 // SECOND REVIEWER NOTIFICATION EMAIL
 // =============================================================================
 
