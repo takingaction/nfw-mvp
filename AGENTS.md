@@ -19801,6 +19801,73 @@ Look at diagnostic patterns BEFORE forming hypotheses. The repeated 1250-custome
 
 ---
 
+## Session 2026-09-26: Stripe-Only Card Auto-Fetch on Mount
+
+### Problem
+
+After the `updated_at` trigger fix shipped in `fa6e8dc`, the `stripe_only_jobs` cron completed cleanly and wrote `charges_json` to the latest job. Despite the data being present in the DB (most recent completed job had 1 charge; earlier jobs had 1-2), the "Stripe Only" card on `/admin/backfill/stripe` continued to render "(0)" on page load. The user had to click the "Generate Stripe Data" button once per browser session for the card to populate.
+
+### Root Cause
+
+`BackfillClient.tsx:387-401` had a `useEffect` that loaded Stripe Only data ONLY from `sessionStorage` on mount:
+
+```ts
+useEffect(() => {
+  const cached = sessionStorage.getItem("stripeOnlyCharges");
+  // ... hydrates state from sessionStorage only
+}, []);
+```
+
+If the user had never clicked "Generate Stripe Data" in the current browser session — or had refreshed the page since last clicking it — `sessionStorage` was empty, the `stripeOnly` state stayed `[]`, and the card rendered "(0)" even though the DB had valid data.
+
+The cron job, the API endpoint at `app/api/admin/backfill/stripe/stripe-only-jobs/route.ts:106-114`, and the render logic at `BackfillClient.tsx:2142` (`Stripe Only ({stripeOnly.length})`) were all correct. Only the page-mount hydration was missing.
+
+The "Stripe Only" card's data definition is unchanged: it surfaces charges from `charges_json` whose Stripe billing email is NOT in our `profiles` table (a narrow filter that catches Stripe customers without a profile at all). This is intentionally distinct from the broader reconciliation gap surfaced by the "Missing from DB" card (which catches Stripe customers WITH a profile but missing a `membership_payments` row).
+
+### Fix
+
+**Single file: `app/admin/backfill/stripe/BackfillClient.tsx`**
+
+Added a second `useEffect` immediately after the sessionStorage one that calls `GET /api/admin/backfill/stripe/stripe-only-jobs` on mount and populates state from the response:
+
+- Uses a `cancelled` flag for unmount safety
+- Falls through silently if the response is non-OK, the status is not "completed", or `data.charges` is not an array (defensive against API drift)
+- Skips if `sessionStorage` already has values, so users who clicked "Generate Stripe Data" earlier in the session don't get their fresh cached data overwritten by an older DB read
+- Persists the API response to `sessionStorage` so subsequent navigations within the same session are instant
+
+### Files Changed
+
+| File | Change |
+|---|---|
+| `app/admin/backfill/stripe/BackfillClient.tsx` | New `useEffect` (31 lines) immediately after the sessionStorage-only one. No state, no setters, no dependencies added. |
+
+### Build
+
+- `npx tsc --noEmit` ✓ exit 0
+- `npm run build` ✓ compiled successfully in 8.9s
+- Single-file change, 31 insertions / 0 deletions
+
+### What's NOT changed
+
+- **Backend**: `app/api/admin/backfill/stripe/stripe-only-jobs/route.ts` already returns `charges`, `total`, `status`, `isExpired` correctly. No changes needed.
+- **Data scope**: Cron continues to populate `charges_json` with charges whose email has no `profiles` row. Card definition unchanged.
+- **Manual "Generate Stripe Data" button**: Still works the same way; poll handler at lines 480-487 still writes to sessionStorage.
+- **Other cards** (Members, Payments, Tools): Not affected.
+
+### Verification Plan
+
+1. Deploy to production
+2. Hard-refresh `/admin/backfill/stripe` in a fresh browser session (clears sessionStorage)
+3. Card should auto-populate with the latest completed job's data without clicking "Generate Stripe Data"
+4. Click "Generate Stripe Data" — verify the existing poll handler still updates the card with fresher data
+5. Hard-refresh again — verify sessionStorage hydration takes precedence (the value just polled)
+
+### Lesson
+
+When a card "shows 0" but the DB has data, check the **page-mount hydration path** before assuming the data layer is broken. Three different layers can each independently break the data flow: cron (writes DB), API (reads DB), frontend (renders state). Pinpointing which layer is wrong requires a curl test of the API endpoint, not just a SQL query of the DB.
+
+---
+
 ## Session 2026-09-24: Cycle-Closed UX Fix (Parts A + B + C)
 
 ### Problem

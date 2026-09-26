@@ -400,6 +400,37 @@ export default function BackfillClient() {
     }
   }, []);
 
+  // Fetch latest Stripe Only data from API on mount so the card populates
+  // automatically on page load. sessionStorage takes precedence if already
+  // populated (e.g., user clicked "Generate Stripe Data" earlier in the session).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/backfill/stripe/stripe-only-jobs");
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        // Don't overwrite valid sessionStorage values from this session.
+        if (sessionStorage.getItem("stripeOnlyCharges")) return;
+        if (data.status === "completed" && Array.isArray(data.charges)) {
+          setStripeOnly(data.charges);
+          setStripeOnlyTotal(data.total || 0);
+          setStripeOnlyGeneratedAt(
+            data.completedAt ? new Date(data.completedAt).getTime() : Date.now(),
+          );
+          sessionStorage.setItem("stripeOnlyCharges", JSON.stringify(data.charges));
+          sessionStorage.setItem("stripeOnlyTotal", String(data.total || 0));
+          sessionStorage.setItem("stripeOnlyGeneratedAt", String(Date.now()));
+        }
+      } catch (err) {
+        console.error("[backfill] Failed to fetch Stripe Only data on mount:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Load cached Export Email CSV data
   useEffect(() => {
     const cached = sessionStorage.getItem("exportEmailCsv");
