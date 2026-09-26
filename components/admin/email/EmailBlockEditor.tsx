@@ -19,9 +19,10 @@ export function EmailBlockEditor({ blockType, content, onChange }: Props) {
   const definition = EMAIL_BLOCK_REGISTRY[blockType];
   const [mediaField, setMediaField] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const insertAtCursor = useCallback((replacement: string, fieldKey: string) => {
-    const el = textareaRef.current;
+    const el = (textareaRef.current ?? inputRef.current) as HTMLInputElement | HTMLTextAreaElement | null;
     if (!el) return;
 
     const start = el.selectionStart ?? 0;
@@ -76,6 +77,21 @@ export function EmailBlockEditor({ blockType, content, onChange }: Props) {
             {field.label}
           </label>
 
+          {field.type === "text" && (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                ref={field.key === "text" ? inputRef : undefined}
+                value={(content[field.key] as string) || ""}
+                onChange={(e) => onChange({ ...content, [field.key]: e.target.value })}
+                className="flex-1 px-3 py-2 border border-nfw-blackberry/20 text-sm text-nfw-blackberry focus:outline-none focus:border-nfw-aubergine"
+              />
+              <VariableInserter
+                onInsert={(variable) => insertAtCursor(variable, field.key)}
+              />
+            </div>
+          )}
+
           {field.type === "richtext" && (
             <div className="space-y-2">
               <div className="flex items-center gap-1 border border-nfw-blackberry/20 rounded overflow-hidden">
@@ -111,6 +127,15 @@ export function EmailBlockEditor({ blockType, content, onChange }: Props) {
                 className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm text-nfw-blackberry focus:outline-none focus:border-nfw-aubergine resize-none"
               />
             </div>
+          )}
+
+          {field.type === "url" && (
+            <input
+              type="url"
+              value={(content[field.key] as string) || ""}
+              onChange={(e) => onChange({ ...content, [field.key]: e.target.value })}
+              className="w-full px-3 py-2 border border-nfw-blackberry/20 text-sm text-nfw-blackberry focus:outline-none focus:border-nfw-aubergine"
+            />
           )}
 
           {field.type === "select" && field.options && (
