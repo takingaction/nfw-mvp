@@ -62,7 +62,8 @@ export default function LateSubmissionPassesCard({ cycleId }: { cycleId: string 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [issuedFor, setIssuedFor] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  // Which copy button was last clicked, so only that one shows "Copied".
+  const [copied, setCopied] = useState<"header" | "issued" | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<Pass | null>(null);
   const [extendTarget, setExtendTarget] = useState<Pass | null>(null);
   const [notice, setNotice] = useState("");
@@ -107,18 +108,18 @@ export default function LateSubmissionPassesCard({ cycleId }: { cycleId: string 
       setIssuedFor(data?.pass?.member?.full_name || email);
       setEmail("");
       setReason("");
-      setCopied(false);
+      setCopied(null);
       await load();
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleCopy = async () => {
+  const handleCopy = async (source: "header" | "issued") => {
     try {
       await navigator.clipboard.writeText(applyLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopied(source);
+      setTimeout(() => setCopied(null), 2000);
     } catch {
       /* clipboard unavailable — link is visible for manual copy */
     }
@@ -172,6 +173,27 @@ export default function LateSubmissionPassesCard({ cycleId }: { cycleId: string 
       <p className="text-sm font-serif text-nfw-blackberry/60 mb-3">
         Let a specific member apply to this cycle for 12 hours without reopening it publicly.
         {cycleStatus === "open" && " (This cycle is currently open — passes only matter once it closes.)"}
+      </p>
+
+      {/* Persistent apply link — same URL for every pass on this cycle. */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3 bg-nfw-dove border border-nfw-blackberry/10 p-2">
+        <span className="text-[11px] uppercase tracking-wide font-ui font-bold text-nfw-blackberry/50 flex-shrink-0">
+          Apply link
+        </span>
+        <code className="flex-1 min-w-0 truncate bg-white border border-nfw-blackberry/10 px-2 py-1.5 text-xs text-nfw-blackberry">
+          {applyLink}
+        </code>
+        <button
+          type="button"
+          onClick={() => handleCopy("header")}
+          className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white border border-nfw-blackberry/20 text-nfw-blackberry font-ui text-xs font-bold hover:bg-nfw-dove flex-shrink-0"
+        >
+          {copied === "header" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          {copied === "header" ? "Copied" : "Copy link"}
+        </button>
+      </div>
+      <p className="text-xs font-ui text-nfw-blackberry/50 -mt-2 mb-3">
+        Only works for members with an active pass — anyone else sees the cycle as closed.
       </p>
 
       {locked ? (
@@ -229,11 +251,11 @@ export default function LateSubmissionPassesCard({ cycleId }: { cycleId: string 
             </code>
             <button
               type="button"
-              onClick={handleCopy}
+              onClick={() => handleCopy("issued")}
               className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white border border-green-300 text-green-800 font-ui text-xs font-bold hover:bg-green-100"
             >
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              {copied ? "Copied" : "Copy link"}
+              {copied === "issued" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied === "issued" ? "Copied" : "Copy link"}
             </button>
           </div>
         </div>
