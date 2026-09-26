@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, Copy, KeyRound, Lock } from "lucide-react";
+import { Check, ChevronDown, Copy, KeyRound, Lock } from "lucide-react";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 
 /**
@@ -51,7 +51,11 @@ const STATUS_STYLES: Record<PassStatus, string> = {
   revoked: "bg-red-100 text-red-700",
 };
 
-export default function LateSubmissionPassesCard({ cycleId }: { cycleId: string }) {
+export default function LateSubmissionPassesCard({
+  cycleId,
+}: {
+  cycleId: string;
+}) {
   const [passes, setPasses] = useState<Pass[]>([]);
   const [locked, setLocked] = useState(false);
   const [cycleStatus, setCycleStatus] = useState<string>("");
@@ -67,12 +71,16 @@ export default function LateSubmissionPassesCard({ cycleId }: { cycleId: string 
   const [revokeTarget, setRevokeTarget] = useState<Pass | null>(null);
   const [extendTarget, setExtendTarget] = useState<Pass | null>(null);
   const [notice, setNotice] = useState("");
+  // Collapsed by default so the card doesn't dominate the cycle page.
+  const [expanded, setExpanded] = useState(false);
 
   const applyLink = `${SITE_URL}/grants/apply?cycleId=${cycleId}`;
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/admin/grants/${cycleId}/exceptions`, { cache: "no-store" });
+      const res = await fetch(`/api/admin/grants/${cycleId}/exceptions`, {
+        cache: "no-store",
+      });
       const data = await res.json().catch(() => null);
       if (res.ok && data) {
         setPasses(data.passes ?? []);
@@ -129,9 +137,12 @@ export default function LateSubmissionPassesCard({ cycleId }: { cycleId: string 
     if (!revokeTarget) return;
     const target = revokeTarget;
     setRevokeTarget(null);
-    const res = await fetch(`/api/admin/grants/${cycleId}/exceptions/${target.id}`, {
-      method: "DELETE",
-    });
+    const res = await fetch(
+      `/api/admin/grants/${cycleId}/exceptions/${target.id}`,
+      {
+        method: "DELETE",
+      },
+    );
     if (!res.ok) {
       const data = await res.json().catch(() => null);
       setError(data?.error || "Failed to revoke pass");
@@ -145,9 +156,12 @@ export default function LateSubmissionPassesCard({ cycleId }: { cycleId: string 
     setExtendTarget(null);
     setError("");
     setNotice("");
-    const res = await fetch(`/api/admin/grants/${cycleId}/exceptions/${target.id}`, {
-      method: "PATCH",
-    });
+    const res = await fetch(
+      `/api/admin/grants/${cycleId}/exceptions/${target.id}`,
+      {
+        method: "PATCH",
+      },
+    );
     const data = await res.json().catch(() => null);
     if (!res.ok) {
       setError(data?.error || `Failed to extend pass (HTTP ${res.status})`);
@@ -162,166 +176,245 @@ export default function LateSubmissionPassesCard({ cycleId }: { cycleId: string 
   const inputClass =
     "w-full px-3 py-2 border border-nfw-blackberry/20 bg-white text-sm font-ui text-nfw-blackberry focus:outline-none focus:border-nfw-aubergine disabled:bg-gray-100 disabled:cursor-not-allowed";
 
+  const activeCount = passes.filter((p) => p.status === "active").length;
+  const totalCount = passes.length;
+  const summary = locked
+    ? "Locked"
+    : totalCount === 0
+      ? null
+      : activeCount === totalCount
+        ? `${activeCount} active`
+        : `${activeCount} active · ${totalCount} total`;
+
   return (
-    <div className="bg-white border border-nfw-blackberry/10 p-3 sm:p-4 mb-4">
-      <div className="flex items-center gap-2 mb-1">
-        <KeyRound className="w-4 h-4 text-nfw-aubergine" />
-        <p className="text-[11px] uppercase tracking-wide font-ui font-bold text-nfw-blackberry/50">
+    <div className="bg-white border border-nfw-blackberry/10 mb-4">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        aria-controls={`late-passes-${cycleId}`}
+        className="w-full flex items-center gap-2 px-3 sm:px-4 py-3 text-left hover:bg-nfw-dove/50 transition-colors"
+      >
+        <KeyRound className="w-4 h-4 text-nfw-aubergine flex-shrink-0" />
+        <span className="text-[11px] uppercase tracking-wide font-ui font-bold text-nfw-blackberry/50">
           Late submission passes
-        </p>
-      </div>
-      <p className="text-sm font-serif text-nfw-blackberry/60 mb-3">
-        Let a specific member apply to this cycle for 12 hours without reopening it publicly.
-        {cycleStatus === "open" && " (This cycle is currently open — passes only matter once it closes.)"}
-      </p>
-
-      {/* Persistent apply link — same URL for every pass on this cycle. */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3 bg-nfw-dove border border-nfw-blackberry/10 p-2">
-        <span className="text-[11px] uppercase tracking-wide font-ui font-bold text-nfw-blackberry/50 flex-shrink-0">
-          Apply link
         </span>
-        <code className="flex-1 min-w-0 truncate bg-white border border-nfw-blackberry/10 px-2 py-1.5 text-xs text-nfw-blackberry">
-          {applyLink}
-        </code>
-        <button
-          type="button"
-          onClick={() => handleCopy("header")}
-          className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white border border-nfw-blackberry/20 text-nfw-blackberry font-ui text-xs font-bold hover:bg-nfw-dove flex-shrink-0"
-        >
-          {copied === "header" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-          {copied === "header" ? "Copied" : "Copy link"}
-        </button>
-      </div>
-      <p className="text-xs font-ui text-nfw-blackberry/50 -mt-2 mb-3">
-        Only works for members with an active pass — anyone else sees the cycle as closed.
-      </p>
-
-      {locked ? (
-        <div className="flex items-start gap-2 bg-nfw-dove border border-nfw-blackberry/10 p-3 text-sm font-ui text-nfw-blackberry/70">
-          <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
-          First review is complete for this cycle, so late submissions are no longer allowed.
-        </div>
-      ) : (
-        <form onSubmit={handleIssue} className="grid grid-cols-1 md:grid-cols-[1fr_1.5fr_auto] gap-2 items-start">
-          <input
-            type="email"
-            required
-            placeholder="Member email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className={inputClass}
-            disabled={submitting}
-          />
-          <input
-            type="text"
-            required
-            minLength={5}
-            placeholder="Reason (e.g. upload failed before deadline)"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            className={inputClass}
-            disabled={submitting}
-          />
-          <button
-            type="submit"
-            disabled={submitting || !email || reason.trim().length < 5}
-            className="w-full md:w-auto px-4 py-2 bg-nfw-aubergine text-white font-ui text-sm font-medium hover:bg-nfw-aubergine/90 disabled:opacity-50 disabled:cursor-not-allowed"
+        {!loading && summary && (
+          <span
+            className={`text-[11px] font-ui font-bold px-2 py-0.5 ${
+              locked
+                ? "bg-nfw-stone/40 text-nfw-blackberry/70"
+                : activeCount > 0
+                  ? "bg-green-100 text-green-800"
+                  : "bg-nfw-dove text-nfw-blackberry/60"
+            }`}
           >
-            {submitting ? "Granting…" : "Grant 12-hour pass"}
-          </button>
-        </form>
-      )}
+            {summary}
+          </span>
+        )}
+        <ChevronDown
+          className={`w-4 h-4 ml-auto text-nfw-blackberry/50 transition-transform duration-300 ${
+            expanded ? "rotate-180" : ""
+          }`}
+        />
+      </button>
 
-      {error && (
-        <p className="mt-2 text-sm font-ui text-red-700 bg-red-50 border border-red-200 px-3 py-2">{error}</p>
-      )}
+      <div
+        id={`late-passes-${cycleId}`}
+        className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
+          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        }`}
+      >
+        <div className="overflow-hidden min-h-0">
+          <div className="px-3 sm:px-4 pb-3 sm:pb-4 border-t border-nfw-blackberry/10 pt-3">
+            <p className="text-sm font-serif text-nfw-blackberry/60 mb-3">
+              Let a specific member apply to this cycle for 12 hours without
+              reopening it publicly.
+              {cycleStatus === "open" &&
+                " (This cycle is currently open — passes only matter once it closes.)"}
+            </p>
 
-      {notice && (
-        <p className="mt-2 text-sm font-ui text-green-800 bg-green-50 border border-green-200 px-3 py-2">{notice}</p>
-      )}
+            {/* Persistent apply link — same URL for every pass on this cycle. */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3 bg-nfw-dove border border-nfw-blackberry/10 p-2">
+              <span className="text-[11px] uppercase tracking-wide font-ui font-bold text-nfw-blackberry/50 flex-shrink-0">
+                Apply link
+              </span>
+              <code className="flex-1 min-w-0 truncate bg-white border border-nfw-blackberry/10 px-2 py-1.5 text-xs text-nfw-blackberry">
+                {applyLink}
+              </code>
+              <button
+                type="button"
+                onClick={() => handleCopy("header")}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white border border-nfw-blackberry/20 text-nfw-blackberry font-ui text-xs font-bold hover:bg-nfw-dove flex-shrink-0"
+              >
+                {copied === "header" ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+                {copied === "header" ? "Copied" : "Copy link"}
+              </button>
+            </div>
+            <p className="text-xs font-ui text-nfw-blackberry/50 -mt-2 mb-3">
+              Only works for members with an active pass — anyone else sees the
+              cycle as closed.
+            </p>
 
-      {issuedFor && (
-        <div className="mt-3 bg-green-50 border border-green-200 p-3">
-          <p className="text-sm font-ui text-green-800 mb-2">
-            Pass granted for <strong>{issuedFor}</strong>. Send them this link:
-          </p>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <code className="flex-1 min-w-0 truncate bg-white border border-green-200 px-2 py-1.5 text-xs">
-              {applyLink}
-            </code>
-            <button
-              type="button"
-              onClick={() => handleCopy("issued")}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white border border-green-300 text-green-800 font-ui text-xs font-bold hover:bg-green-100"
-            >
-              {copied === "issued" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              {copied === "issued" ? "Copied" : "Copy link"}
-            </button>
+            {locked ? (
+              <div className="flex items-start gap-2 bg-nfw-dove border border-nfw-blackberry/10 p-3 text-sm font-ui text-nfw-blackberry/70">
+                <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                First review is complete for this cycle, so late submissions are
+                no longer allowed.
+              </div>
+            ) : (
+              <form
+                onSubmit={handleIssue}
+                className="grid grid-cols-1 md:grid-cols-[1fr_1.5fr_auto] gap-2 items-start"
+              >
+                <input
+                  type="email"
+                  required
+                  placeholder="Member email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={inputClass}
+                  disabled={submitting}
+                />
+                <input
+                  type="text"
+                  required
+                  minLength={5}
+                  placeholder="Reason (e.g. upload failed before deadline)"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  className={inputClass}
+                  disabled={submitting}
+                />
+                <button
+                  type="submit"
+                  disabled={submitting || !email || reason.trim().length < 5}
+                  className="w-full md:w-auto px-4 py-2 bg-nfw-aubergine text-white font-ui text-sm font-medium hover:bg-nfw-aubergine/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submitting ? "Granting…" : "Grant 12-hour pass"}
+                </button>
+              </form>
+            )}
+
+            {error && (
+              <p className="mt-2 text-sm font-ui text-red-700 bg-red-50 border border-red-200 px-3 py-2">
+                {error}
+              </p>
+            )}
+
+            {notice && (
+              <p className="mt-2 text-sm font-ui text-green-800 bg-green-50 border border-green-200 px-3 py-2">
+                {notice}
+              </p>
+            )}
+
+            {issuedFor && (
+              <div className="mt-3 bg-green-50 border border-green-200 p-3">
+                <p className="text-sm font-ui text-green-800 mb-2">
+                  Pass granted for <strong>{issuedFor}</strong>. Send them this
+                  link:
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <code className="flex-1 min-w-0 truncate bg-white border border-green-200 px-2 py-1.5 text-xs">
+                    {applyLink}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy("issued")}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white border border-green-300 text-green-800 font-ui text-xs font-bold hover:bg-green-100"
+                  >
+                    {copied === "issued" ? (
+                      <Check className="w-3.5 h-3.5" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                    {copied === "issued" ? "Copied" : "Copy link"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!loading && passes.length > 0 && (
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-sm font-ui">
+                  <thead>
+                    <tr className="text-left text-[11px] uppercase tracking-wide text-nfw-blackberry/50 border-b border-nfw-blackberry/10">
+                      <th className="py-2 pr-3">Member</th>
+                      <th className="py-2 pr-3">Reason</th>
+                      <th className="py-2 pr-3">Granted</th>
+                      <th className="py-2 pr-3">Expires</th>
+                      <th className="py-2 pr-3">Status</th>
+                      <th className="py-2" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {passes.map((p) => (
+                      <tr
+                        key={p.id}
+                        className="border-b border-nfw-blackberry/5 align-top"
+                      >
+                        <td className="py-2 pr-3">
+                          <p className="text-nfw-blackberry">
+                            {p.member?.full_name || "—"}
+                          </p>
+                          <p className="text-xs text-nfw-blackberry/50">
+                            {p.member?.email}
+                          </p>
+                        </td>
+                        <td className="py-2 pr-3 text-nfw-blackberry/70 max-w-xs break-words">
+                          {p.reason}
+                        </td>
+                        <td className="py-2 pr-3 text-xs text-nfw-blackberry/60 whitespace-nowrap">
+                          {formatET(p.created_at)}
+                          {p.grantedBy?.full_name && (
+                            <p>by {p.grantedBy.full_name}</p>
+                          )}
+                        </td>
+                        <td className="py-2 pr-3 text-xs text-nfw-blackberry/60 whitespace-nowrap">
+                          {formatET(p.expires_at)}
+                        </td>
+                        <td className="py-2 pr-3">
+                          <span
+                            className={`inline-block px-2 py-0.5 text-xs font-bold capitalize ${STATUS_STYLES[p.status]}`}
+                          >
+                            {p.status}
+                          </span>
+                        </td>
+                        <td className="py-2 text-right whitespace-nowrap">
+                          <div className="inline-flex items-center gap-3">
+                            {p.status !== "used" && !locked && (
+                              <button
+                                type="button"
+                                onClick={() => setExtendTarget(p)}
+                                className="text-xs font-bold text-nfw-aubergine hover:underline"
+                              >
+                                Extend
+                              </button>
+                            )}
+                            {p.status === "active" && (
+                              <button
+                                type="button"
+                                onClick={() => setRevokeTarget(p)}
+                                className="text-xs font-bold text-red-700 hover:underline"
+                              >
+                                Revoke
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
-      )}
-
-      {!loading && passes.length > 0 && (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm font-ui">
-            <thead>
-              <tr className="text-left text-[11px] uppercase tracking-wide text-nfw-blackberry/50 border-b border-nfw-blackberry/10">
-                <th className="py-2 pr-3">Member</th>
-                <th className="py-2 pr-3">Reason</th>
-                <th className="py-2 pr-3">Granted</th>
-                <th className="py-2 pr-3">Expires</th>
-                <th className="py-2 pr-3">Status</th>
-                <th className="py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {passes.map((p) => (
-                <tr key={p.id} className="border-b border-nfw-blackberry/5 align-top">
-                  <td className="py-2 pr-3">
-                    <p className="text-nfw-blackberry">{p.member?.full_name || "—"}</p>
-                    <p className="text-xs text-nfw-blackberry/50">{p.member?.email}</p>
-                  </td>
-                  <td className="py-2 pr-3 text-nfw-blackberry/70 max-w-xs break-words">{p.reason}</td>
-                  <td className="py-2 pr-3 text-xs text-nfw-blackberry/60 whitespace-nowrap">
-                    {formatET(p.created_at)}
-                    {p.grantedBy?.full_name && <p>by {p.grantedBy.full_name}</p>}
-                  </td>
-                  <td className="py-2 pr-3 text-xs text-nfw-blackberry/60 whitespace-nowrap">
-                    {formatET(p.expires_at)}
-                  </td>
-                  <td className="py-2 pr-3">
-                    <span className={`inline-block px-2 py-0.5 text-xs font-bold capitalize ${STATUS_STYLES[p.status]}`}>
-                      {p.status}
-                    </span>
-                  </td>
-                  <td className="py-2 text-right whitespace-nowrap">
-                    <div className="inline-flex items-center gap-3">
-                      {p.status !== "used" && !locked && (
-                        <button
-                          type="button"
-                          onClick={() => setExtendTarget(p)}
-                          className="text-xs font-bold text-nfw-aubergine hover:underline"
-                        >
-                          Extend
-                        </button>
-                      )}
-                      {p.status === "active" && (
-                        <button
-                          type="button"
-                          onClick={() => setRevokeTarget(p)}
-                          className="text-xs font-bold text-red-700 hover:underline"
-                        >
-                          Revoke
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      </div>
 
       <ConfirmModal
         isOpen={!!extendTarget}
