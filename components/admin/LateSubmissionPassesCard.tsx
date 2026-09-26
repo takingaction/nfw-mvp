@@ -64,6 +64,8 @@ export default function LateSubmissionPassesCard({ cycleId }: { cycleId: string 
   const [issuedFor, setIssuedFor] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState<Pass | null>(null);
+  const [extendTarget, setExtendTarget] = useState<Pass | null>(null);
+  const [notice, setNotice] = useState("");
 
   const applyLink = `${SITE_URL}/grants/apply?cycleId=${cycleId}`;
 
@@ -88,6 +90,7 @@ export default function LateSubmissionPassesCard({ cycleId }: { cycleId: string 
   const handleIssue = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setNotice("");
     setIssuedFor(null);
     setSubmitting(true);
     try {
@@ -131,6 +134,26 @@ export default function LateSubmissionPassesCard({ cycleId }: { cycleId: string 
     if (!res.ok) {
       const data = await res.json().catch(() => null);
       setError(data?.error || "Failed to revoke pass");
+    }
+    await load();
+  };
+
+  const handleExtend = async () => {
+    if (!extendTarget) return;
+    const target = extendTarget;
+    setExtendTarget(null);
+    setError("");
+    setNotice("");
+    const res = await fetch(`/api/admin/grants/${cycleId}/exceptions/${target.id}`, {
+      method: "PATCH",
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      setError(data?.error || `Failed to extend pass (HTTP ${res.status})`);
+    } else {
+      setNotice(
+        `Pass for ${target.member?.full_name || target.member?.email || "member"} extended until ${formatET(data.pass.expires_at)}. The apply link is unchanged.`,
+      );
     }
     await load();
   };
@@ -191,6 +214,10 @@ export default function LateSubmissionPassesCard({ cycleId }: { cycleId: string 
         <p className="mt-2 text-sm font-ui text-red-700 bg-red-50 border border-red-200 px-3 py-2">{error}</p>
       )}
 
+      {notice && (
+        <p className="mt-2 text-sm font-ui text-green-800 bg-green-50 border border-green-200 px-3 py-2">{notice}</p>
+      )}
+
       {issuedFor && (
         <div className="mt-3 bg-green-50 border border-green-200 p-3">
           <p className="text-sm font-ui text-green-800 mb-2">
@@ -245,16 +272,27 @@ export default function LateSubmissionPassesCard({ cycleId }: { cycleId: string 
                       {p.status}
                     </span>
                   </td>
-                  <td className="py-2 text-right">
-                    {p.status === "active" && (
-                      <button
-                        type="button"
-                        onClick={() => setRevokeTarget(p)}
-                        className="text-xs font-bold text-red-700 hover:underline"
-                      >
-                        Revoke
-                      </button>
-                    )}
+                  <td className="py-2 text-right whitespace-nowrap">
+                    <div className="inline-flex items-center gap-3">
+                      {p.status !== "used" && !locked && (
+                        <button
+                          type="button"
+                          onClick={() => setExtendTarget(p)}
+                          className="text-xs font-bold text-nfw-aubergine hover:underline"
+                        >
+                          Extend
+                        </button>
+                      )}
+                      {p.status === "active" && (
+                        <button
+                          type="button"
+                          onClick={() => setRevokeTarget(p)}
+                          className="text-xs font-bold text-red-700 hover:underline"
+                        >
+                          Revoke
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -262,6 +300,15 @@ export default function LateSubmissionPassesCard({ cycleId }: { cycleId: string 
           </table>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!extendTarget}
+        title="Extend Pass"
+        message={`Give ${extendTarget?.member?.full_name || extendTarget?.member?.email || "this member"} 12 more hours (from now) to apply?${extendTarget?.status === "revoked" ? " This will also undo the revocation." : ""} The apply link stays the same.`}
+        confirmLabel="Extend 12 hours"
+        onConfirm={handleExtend}
+        onCancel={() => setExtendTarget(null)}
+      />
 
       <ConfirmModal
         isOpen={!!revokeTarget}

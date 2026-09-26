@@ -19985,6 +19985,9 @@ Let an admin allow specific members to apply to a **closed** grant cycle without
 - Admin API: `GET/POST /api/admin/grants/[id]/exceptions`, `DELETE /api/admin/grants/[id]/exceptions/[passId]` (soft revoke). All `requireAdmin()` + `.authorized`. POST blocks: not found, ineligible member (incomplete profile / waitlist / unapproved free), already applied, review locked, testing-only cycle, existing live pass (23505). Expired unused passes auto-revoked before re-issue.
 - Mobile: `useApplicableGrantCycles` (calls `/api/grants/cycles/open`) replaces `useOpenGrantCycles` on Grants tab + apply screen; `components/grants/LatePassNote.tsx`; `GrantCycle` type gains `viaPass` / `passExpiresAt`.
 
+### Extend (added same day)
+`PATCH /api/admin/grants/[id]/exceptions/[passId]` sets `expires_at = NOW() + 12h` and clears `revoked_at/revoked_by` (works on active, expired, revoked — revoked = undo). Blocked on used passes, first-review lock, member already applied, or another live pass (23505 on the partial unique index). No history columns by design. "Extend" button on non-used rows in `LateSubmissionPassesCard` with ConfirmModal; link unchanged.
+
 ### Notes
 - Mobile creates the grant before uploading docs (legacy `grantId` upload route, no cycle check), so the pass is consumed at create — same doc-after-create behavior mobile already had.
 - Late applications are normal `grants` rows → AI queue + scoring pages pick them up automatically.
