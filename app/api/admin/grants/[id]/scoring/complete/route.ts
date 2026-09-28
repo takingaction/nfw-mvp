@@ -35,32 +35,53 @@ export async function POST(
 
     const { id: cycleId } = await params;
 
-    // Check if first scoring is complete for all grants
-    const { data: grants } = await supabaseAdmin
-      .from("grants")
-      .select("id, rachel_complete")
-      .eq("cycle_id", cycleId);
+    // Load every grant in the cycle with its embedded scores, paged 1000 at a
+    // time. Do NOT use `.in("grant_id", ids)` here: with hundreds of grants the
+    // UUID list overflows the request URL, the query fails, and (previously)
+    // every grant was reported as unscored.
+    const PAGE_SIZE = 1000;
+    const grants: Array<{
+      id: string;
+      ai_invalidated_at: string | null;
+      grant_scores: Array<{ reviewer_name: string; is_complete: boolean | null }> | null;
+    }> = [];
+    for (let page = 0; ; page++) {
+      const from = page * PAGE_SIZE;
+      const { data, error } = await supabaseAdmin
+        .from("grants")
+        .select("id, ai_invalidated_at, grant_scores!left(reviewer_name, is_complete)")
+        .eq("cycle_id", cycleId)
+        .order("id", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
 
-    if (!grants || grants.length === 0) {
+      if (error) {
+        console.error("[scoring/complete] Failed to load grants:", error);
+        return NextResponse.json(
+          { error: `Failed to load applications: ${error.message}` },
+          { status: 500 },
+        );
+      }
+      if (!data || data.length === 0) break;
+      grants.push(...(data as typeof grants));
+      if (data.length < PAGE_SIZE) break;
+    }
+
+    if (grants.length === 0) {
       return NextResponse.json({ error: "No grants found" }, { status: 404 });
     }
 
-    // Check if all grants have been scored (is_complete = true on grant_scores)
-    const { data: scores } = await supabaseAdmin
-      .from("grant_scores")
-      .select("grant_id, is_complete")
-      .eq("reviewer_name", "first")
-      .in("grant_id", grants.map(g => g.id));
+    // An application is done if the first reviewer's score is complete, or it
+    // was skipped ("Skip & Mark Invalid") — skipped grants have locked score
+    // inputs and are auto-rejected at finalization.
+    const isDone = (g: (typeof grants)[number]) =>
+      !!g.ai_invalidated_at ||
+      (g.grant_scores ?? []).some(
+        (s) => s.reviewer_name === "first" && s.is_complete === true,
+      );
 
-    const grantsWithScores = new Set(scores?.map(s => s.grant_id) || []);
-    const allScored = grants.every(g => 
-      scores?.some(s => s.grant_id === g.id && s.is_complete === true)
-    );
+    const incompleteCount = grants.filter((g) => !isDone(g)).length;
 
-    if (!allScored) {
-      const incompleteCount = grants.filter(g => 
-        !scores?.some(s => s.grant_id === g.id && s.is_complete === true)
-      ).length;
+    if (incompleteCount > 0) {
       return NextResponse.json({
         error: `${incompleteCount} application(s) have not been scored yet`,
         incomplete_count: incompleteCount,

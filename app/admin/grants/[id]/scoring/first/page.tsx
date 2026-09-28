@@ -73,6 +73,11 @@ export default function FirstReviewPage() {
     checkAccess();
   }, []);
 
+  // Done for "Mark Review Complete" purposes: first score complete, or skipped.
+  // Must match the check in /api/admin/grants/[id]/scoring/complete.
+  const isGrantDone = (grant: Grant): boolean =>
+    !!grant.ai_invalidated_at || grant.grant_scores?.[0]?.is_complete === true;
+
   const getStatus = (grant: Grant): "approved" | "runner_up" | "not_approved" | "unscored" => {
     if (grant.ai_invalidated_at) return "not_approved";
     const score = grant.grant_scores?.[0];
@@ -193,39 +198,41 @@ export default function FirstReviewPage() {
 
     setCompleting(true);
     try {
-      // First, mark all unscored grants with 0
-      const unscoredGrants = grants.filter(
-        (g) => !g.grant_scores || g.grant_scores.length === 0
-      );
+      // Only save grants that still need it: not skipped and not already
+      // complete. Already-complete grants are left untouched so their real
+      // completed_at timestamps are preserved. Unscored grants are saved with
+      // zeros; partially scored grants are completed with their current scores.
+      const needsSave = grants.filter((g) => !isGrantDone(g));
 
-      for (const grant of unscoredGrants) {
-        await handleSaveScore(grant.id, {
-          urgency_score: 0,
-          authenticity_score: 0,
-          impact_score: 0,
-          barriers_yn: false,
-          needs_discussion: false,
-          discussion_notes: "",
-        });
-      }
-
-      // Then mark each as complete
-      for (const grant of grants) {
+      for (const grant of needsSave) {
+        const existing = grant.grant_scores?.[0];
         const scoreData: ScoreData = {
-          urgency_score: grant.grant_scores?.[0]?.urgency_score ?? 0,
-          authenticity_score: grant.grant_scores?.[0]?.authenticity_score ?? 0,
-          impact_score: grant.grant_scores?.[0]?.impact_score ?? 0,
-          barriers_yn: grant.grant_scores?.[0]?.barriers_yn ?? false,
-          needs_discussion: grant.grant_scores?.[0]?.needs_discussion ?? false,
-          discussion_notes: grant.grant_scores?.[0]?.discussion_notes ?? "",
+          urgency_score: existing?.urgency_score ?? 0,
+          authenticity_score: existing?.authenticity_score ?? 0,
+          impact_score: existing?.impact_score ?? 0,
+          barriers_yn: existing?.barriers_yn ?? false,
+          needs_discussion: existing?.needs_discussion ?? false,
+          discussion_notes: existing?.discussion_notes ?? "",
           is_complete: true,
         };
 
-        await fetch(`/api/admin/grants/${cycleId}/scores/first`, {
+        const saveRes = await fetch(`/api/admin/grants/${cycleId}/scores/first`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ grantId: grant.id, ...scoreData }),
         });
+
+        if (!saveRes.ok) {
+          let message = `Failed to save score (HTTP ${saveRes.status})`;
+          try {
+            const body = await saveRes.json();
+            if (body?.error) message = body.error;
+          } catch {
+            // non-JSON body; keep default message
+          }
+          const name = grant.profiles?.full_name || grant.id;
+          throw new Error(`Could not save score for ${name}: ${message}`);
+        }
       }
 
       // Call the complete endpoint to notify Michelle
@@ -253,7 +260,7 @@ export default function FirstReviewPage() {
 
   const selectedGrantData = grants.find((g) => g.id === selectedGrant);
 
-  const completedCount = grants.filter((g) => g.grant_scores?.[0]?.is_complete).length;
+  const completedCount = grants.filter(isGrantDone).length;
   const totalCount = grants.length;
 
   // Sort: non-flagged first (preserve submission order), AI-flagged last

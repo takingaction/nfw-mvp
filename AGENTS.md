@@ -20194,3 +20194,25 @@ Day 30 — cron moves member to end of queue (waitlist_joined_at = NOW()),
 - **No "Send Reminder" admin button** — admins can't manually trigger a day-23 reminder; the cron is the only path.
 - **No re-issue endpoint** — if a token is marked used (or expired-processed) and the member loses access, admin must manually re-create by resetting `profiles.waitlist_acceptance_sent_at = NULL` in Supabase (or wait for expiry + re-approve).
 - **Cron pre-flight skips silently when template inactive** — operators won't get a Slack alert if the reminder template gets disabled. Acceptable trade-off for safety; admin should monitor Slack alerts on the cron path via Vercel function logs.
+
+## Session 2026-09-28: Mark Review Complete Fails on Large Cycles ("751 application(s) have not been scored yet")
+
+### Problem
+On `/admin/grants/3a3ffe11-…/scoring/first` (751 applications, all scored), clicking **Mark Review Complete** returned "751 application(s) have not been scored yet."
+
+### Root cause
+`scoring/complete/route.ts` fetched scores with `.in("grant_id", <751 UUIDs>)`. That puts ~28 KB of IDs in the request URL, which exceeds the gateway limit, so the query failed. The error wasn't checked, `scores` was `null`, and every grant counted as incomplete. The scoring page itself uses an embedded `grant_scores!left(...)` join, which is why it showed everything as scored. `scoring/second-complete/route.ts` had the same `.in()` pattern (not yet hit).
+
+### Fix
+| File | Change |
+|---|---|
+| `app/api/admin/grants/[id]/scoring/complete/route.ts` | One embedded query (`grants` + `grant_scores!left`), paged 1000 rows at a time, errors return 500. A grant is done if its `first` score has `is_complete = true` **or** it's skipped (`ai_invalidated_at` set). |
+| `app/api/admin/grants/[id]/scoring/second-complete/route.ts` | Same pattern; completion computed from the embedded `second` score. Skipped grants excluded from second-review scope (matches the Review 2 page). |
+| `app/admin/grants/[id]/scoring/first/page.tsx` | `handleCompleteReview` no longer re-saves all grants (751 sequential POSTs that reset every `completed_at`). It only saves grants that aren't done (unscored → zeros, partial → completed with current scores); skipped grants are skipped. Any failed save stops and shows an error. `completedCount` uses the same `isGrantDone` rule as the API. |
+
+**Rule:** never pass a cycle-sized ID list to `.in(...)`. Use an embedded join filtered by `cycle_id`, and page with `.range()`.
+
+### Known follow-up (not fixed)
+The `grant_documents` lookups in `scores/first`, `scores/second`, and `scores/combined` GET routes still use `.in("grant_id", grantIds)` with errors ignored. On large cycles, documents likely silently don't appear on scoring pages. Same fix pattern applies.
+
+`tsc` 0 errors, `next build` ✓.
