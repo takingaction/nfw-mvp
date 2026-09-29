@@ -50,7 +50,7 @@ export async function GET(
       .from("deletion_log")
       .select("*")
       .eq("deletion_request_id", id)
-      .order("created_at", { ascending: true });
+      .order("performed_at", { ascending: true });
 
     // Check for active subscription info
     let financialHold = null;

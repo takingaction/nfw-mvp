@@ -20216,3 +20216,50 @@ On `/admin/grants/3a3ffe11-…/scoring/first` (751 applications, all scored), cl
 The `grant_documents` lookups in `scores/first`, `scores/second`, and `scores/combined` GET routes still use `.in("grant_id", grantIds)` with errors ignored. On large cycles, documents likely silently don't appear on scoring pages. Same fix pattern applies.
 
 `tsc` 0 errors, `next build` ✓.
+
+## Session 2026-09-18: Fix "No activity yet" — Sort Column Name Bug
+
+### Problem
+
+Activity Log panel at `/admin/deletion-requests` always showed "No activity yet" even for processed requests with confirmed log rows in the database.
+
+### Root cause
+
+`deletion_log` table was created by migration 158 with the column named `performed_at` (line 51 of that migration), not `created_at`. The API at `app/api/admin/deletion-requests/[id]/route.ts:53` was sorting by `.order("created_at", { ascending: true })`. The `created_at` column doesn't exist on `deletion_log`, so PostgREST returned an error response which the route handler didn't surface as a UI-friendly error. The client received an empty logs array and rendered "No activity yet".
+
+### Diagnostic verification
+
+User ran two SQL queries:
+
+1. `SELECT * FROM deletion_log WHERE deletion_request_id IN (SELECT id FROM deletion_requests WHERE email = 'ronpassaro@aol.com');` — returned 16+ rows for the user's processed request (1 verify + 14 anonymize steps + retention step). The data was there.
+
+2. `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'deletion_log';` — confirmed the columns are `id, deletion_request_id, user_id, action, table_name, record_identifier, details, performed_by, performed_at`. No `created_at` column exists.
+
+### Fix
+
+Single-line change in `app/api/admin/deletion-requests/[id]/route.ts:53`:
+
+```diff
+-      .order("created_at", { ascending: true });
++      .order("performed_at", { ascending: true });
+```
+
+### Verification
+
+- `npm run build` ✓ (TypeScript 0 errors)
+- After deploy: reload `/admin/deletion-requests`, click the row for any processed request → Activity Log panel now shows all 16+ rows in chronological order.
+
+### Files Changed
+
+- `app/api/admin/deletion-requests/[id]/route.ts` — one column-name change
+
+### Out of Scope (Still Parked)
+
+- CSV export of the Activity Log
+- Codebase-wide audit for other `created_at` references on tables that don't have one
+- Per-row error handling in `lib/anonymize.ts`
+- `deletion_log` write protection
+- `contact_submissions.message` PII retention
+- `deletion_documents_pending` real wiring
+- Options C and D from the email-reservation conversation
+- Mobile app parallel notice
