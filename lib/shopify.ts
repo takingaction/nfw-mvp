@@ -137,8 +137,8 @@ export type ShopifyCheckout = {
 };
 
 export const PRODUCTS_QUERY = `
-  query Products($first: Int!) {
-    products(first: $first) {
+  query Products($first: Int!, $after: String) {
+    products(first: $first, after: $after) {
       edges {
         node {
           id
@@ -181,9 +181,67 @@ export const PRODUCTS_QUERY = `
           }
         }
       }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `;
+
+export const PRODUCTS_PAGE_SIZE = 250;
+
+type ProductsConnection = {
+  products: {
+    edges: Array<{ node: ShopifyProduct }>;
+    pageInfo: { hasNextPage: boolean; endCursor: string | null };
+  };
+};
+
+/**
+ * Fetches every product from the shop via cursor pagination.
+ *
+ * Single-page GraphQL queries (e.g. `products(first: 50)`) silently drop rows
+ * once the shop outgrows the limit, which causes:
+ *   - /admin/shopify to render fewer rows than the DB actually has
+ *   - /api/admin/shopify/sync to UPSERT only the visible page, then DELETE
+ *     still-existing products because they weren't in the response
+ *
+ * Loops until pageInfo.hasNextPage is false.
+ */
+export async function fetchAllProducts(): Promise<ShopifyProduct[]> {
+  const all: ShopifyProduct[] = [];
+
+  // Hard ceiling protects against runaway loops if Shopify ever returns
+  // hasNextPage=true with a null/invalid cursor. 100 pages × 250 = 25k products.
+  const MAX_PAGES = 100;
+
+  let after: string | null | undefined;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const data: ProductsConnection = await shopifyFetch<ProductsConnection>({
+      query: PRODUCTS_QUERY,
+      variables: { first: PRODUCTS_PAGE_SIZE, after },
+    });
+
+    for (const { node } of data.products.edges) {
+      all.push(node);
+    }
+
+    if (!data.products.pageInfo.hasNextPage) {
+      return all;
+    }
+    const endCursor = data.products.pageInfo.endCursor;
+    if (!endCursor) {
+      // Defensive: hasNextPage=true but no cursor would loop forever.
+      console.warn("[fetchAllProducts] hasNextPage=true with no endCursor; stopping pagination");
+      return all;
+    }
+    after = endCursor;
+  }
+
+  console.warn(`[fetchAllProducts] Hit MAX_PAGES (${MAX_PAGES}); returning ${all.length} products`);
+  return all;
+}
 
 export const PRODUCT_BY_HANDLE_QUERY = `
   query ProductByHandle($handle: String!) {

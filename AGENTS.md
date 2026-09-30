@@ -20263,3 +20263,51 @@ Single-line change in `app/api/admin/deletion-requests/[id]/route.ts:53`:
 - `deletion_documents_pending` real wiring
 - Options C and D from the email-reservation conversation
 - Mobile app parallel notice
+
+---
+
+## Session 2026-09-30: Shopify Products Pagination Fix (70 of 70 instead of 50)
+
+### Problem
+
+`/admin/shopify` reported "70 items synced" after a manual Sync, but the table only rendered 50 products. Shop has 70 products → sync wrote 70 mappings to `shopify_product_mappings` → admin page called `GET /api/shopify/products?admin_view=true` → that route called Shopify with `first: 50` → 20 mappings orphaned, table rendered 50 rows.
+
+### Root cause
+
+Both product endpoints used single-page GraphQL queries with no `pageInfo` cursor:
+
+| Route | File | Old `first` |
+|---|---|---|
+| Admin list | `app/api/shopify/products/route.ts:37` | 50 |
+| Sync upsert | `app/api/admin/shopify/sync/route.ts:19` | 250 |
+
+`PRODUCTS_QUERY` in `lib/shopify.ts` did not request `pageInfo { hasNextPage endCursor }`, so neither caller was capable of fetching the next page even if they wanted to. Worse: once the shop outgrows 250 products, the sync route would UPSERT only the visible 250 rows, then DELETE the rest from `shopify_product_mappings` because they weren't in the response. Silent data loss.
+
+### Fix
+
+| File | Change |
+|---|---|
+| `lib/shopify.ts` | `PRODUCTS_QUERY` now takes `$after: String` and returns `pageInfo { hasNextPage endCursor }`. New `PRODUCTS_PAGE_SIZE = 250`. New `ProductsConnection` type. New `fetchAllProducts()` helper loops until `hasNextPage = false`. Defensive: hard ceiling at 100 pages (25k products), warns on `hasNextPage=true` with null `endCursor`, warns on MAX_PAGES hit. |
+| `app/api/shopify/products/route.ts` | Swapped direct `shopifyFetch` call for `fetchAllProducts()`. Dropped now-unused `ShopifyProduct` import. |
+| `app/api/admin/shopify/sync/route.ts` | Same swap. Dropped now-unused `ShopifyProduct` import. |
+
+### Build verification
+
+- `npm run build` ✓ — 0 TypeScript errors, 222/222 routes generated
+- One transient Turbopack Google Font resolution error during the run (unrelated, pre-existing environment issue with offline font fetching); cleared on retry.
+
+### Behavior after fix
+
+| Scenario | Before | After |
+|---|---|---|
+| Shop has 70 products, admin visits `/admin/shopify` | 50 rows rendered, 20 mappings orphaned | 70 rows rendered, all mappings shown |
+| Shop has 70 products, sync runs | 70 mappings upserted (sync used `first: 250`) | 70 mappings upserted (same code path) |
+| Shop grows to 300 products, sync runs | 250 upserted, 50 mappings **deleted** from DB | 300 upserted, no false deletes |
+| Shop has 5,000 products | Sync would loop forever missing data | Sync stops at MAX_PAGES (25k) with a warning log |
+| `products(first: 250, after: null)` then `products(first: 250, after: "...")` | Loop until exhausted | Same |
+
+### Out of Scope (Parked)
+
+- Other Admin API GraphQL endpoints with `first:` limits (none currently paginate — verified via `grep` for `pageInfo|hasNextPage|endCursor` in `app/`). If future Shopify queries are added, they should use the same `fetchAllProducts()`-style helper or a generalized `paginateAll()` helper.
+- No SKU/variant-level pagination; `PRODUCTS_QUERY` uses `variants(first: 10)` which is correct for our use case but would silently miss variants on a product with >10 variants. Not currently a concern (no such products exist in the store).
+- The `featured` filter in `app/api/shopify/products/route.ts` runs in-memory after the full fetch — fine for the 70-row store but means a "Featured" admin view still pulls all rows. Not worth changing since the admin view always loads the full set anyway.

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { shopifyFetch, PRODUCTS_QUERY, ShopifyProduct, getShopifyAccessToken } from "@/lib/shopify";
+import { fetchAllProducts, getShopifyAccessToken } from "@/lib/shopify";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { MOCK_PRODUCTS, transformShopifyProduct, MockProduct } from "@/lib/mock-shopify";
@@ -26,16 +26,13 @@ export async function GET(request: NextRequest) {
 
     const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN;
     const clientId = process.env.SHOPIFY_CLIENT_ID;
-    useRealShopify = !!(shopDomain && clientId && 
+    useRealShopify = !!(shopDomain && clientId &&
                            clientId !== "your-shopify-client-id" &&
                            !shopDomain.includes("placeholder"));
 
     if (useRealShopify) {
       try {
-        const data = await shopifyFetch<{ products: { edges: Array<{ node: ShopifyProduct }> } }>({
-          query: PRODUCTS_QUERY,
-          variables: { first: 50 },
-        });
+        const allNodes = await fetchAllProducts();
 
         const { data: mappings } = await supabaseAdmin
           .from("shopify_product_mappings")
@@ -43,7 +40,7 @@ export async function GET(request: NextRequest) {
 
         const mappingMap = new Map((mappings || []).map(m => [m.shopify_product_id, m]));
 
-        products = data.products.edges.map(({ node }) => {
+        products = allNodes.map((node) => {
           const rawMapping = mappingMap.get(node.id);
           const mapping = rawMapping ? {
             shopifyProductId: rawMapping.shopify_product_id,

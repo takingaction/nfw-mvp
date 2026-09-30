@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { shopifyFetch, PRODUCTS_QUERY, ShopifyProduct } from "@/lib/shopify";
+import { fetchAllProducts } from "@/lib/shopify";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/adminCheck";
 
@@ -14,15 +14,12 @@ export async function POST() {
     if (!adminCheck.authorized) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
-    const data = await shopifyFetch<{ products: { edges: Array<{ node: ShopifyProduct }> } }>({
-      query: PRODUCTS_QUERY,
-      variables: { first: 250 },
-    });
+    const allNodes = await fetchAllProducts();
 
     let syncedCount = 0;
     const shopifyProductIds: string[] = [];
 
-    for (const { node } of data.products.edges) {
+    for (const node of allNodes) {
       const firstVariant = node.variants.edges[0]?.node;
       shopifyProductIds.push(node.id);
 
