@@ -2,6 +2,7 @@ import { blockIfViewingAs } from "@/lib/view-as";
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { listPassCyclesForUser } from "@/lib/grant-eligibility";
+import { todayInNewYork } from "@/lib/dates";
 
 /**
  * GET /api/grants/cycles/open
@@ -14,7 +15,7 @@ import { listPassCyclesForUser } from "@/lib/grant-eligibility";
  *
  * Cycle inclusion rules:
  *   - status = 'open'
- *   - end_date >= today (UTC date string compare)
+ *   - end_date >= today in America/New_York (open through 11:59 PM ET)
  *   - is_testing_only only included for admins
  *   - PLUS closed cycles the member holds a live Late Submission Pass for
  *     (migration 196), tagged { viaPass: true, passExpiresAt }
@@ -76,9 +77,9 @@ export async function GET(request: Request) {
 
   // Filter out past-dated cycles in JS (the apply page does this too
   // because Supabase date filters can be unreliable on ISO strings).
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = todayInNewYork();
   const openCycles = (cycles ?? []).filter(
-    (c: { end_date: string }) => c.end_date >= todayStr,
+    (c: { end_date: string }) => String(c.end_date).split("T")[0] >= todayStr,
   );
 
   // Late Submission Passes: add closed cycles this member may still apply to.

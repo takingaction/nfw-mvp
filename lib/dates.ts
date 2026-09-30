@@ -45,6 +45,40 @@ export function formatESTDisplay(date: Date): string {
 }
 
 /**
+ * Today's calendar date in America/New_York as "YYYY-MM-DD".
+ * Use this (not `new Date().toISOString()`, which is UTC) whenever comparing
+ * against date-only columns like grant_cycles.start_date / end_date.
+ * Handles DST correctly via Intl.
+ */
+export function todayInNewYork(now: Date = new Date()): string {
+  // en-CA formats as YYYY-MM-DD
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
+/**
+ * Format a date-only value ("2026-10-22" or "2026-10-22T00:00:00+00") as
+ * "Oct 22, 2026" exactly as written — no timezone shift.
+ * `new Date("2026-10-22")` is UTC midnight, which renders as Oct 21 in New York;
+ * never use it for date-only columns.
+ */
+export function formatDateOnly(value: string | null | undefined): string {
+  if (!value) return "";
+  const [y, m, d] = value.split("T")[0].split("-").map(Number);
+  if (!y || !m || !d) return "";
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/**
  * Format Date as EST for input fields (e.g., "09/15/2026")
  */
 export function formatESTInput(date: Date): string {

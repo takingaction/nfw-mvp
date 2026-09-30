@@ -3,6 +3,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import GrantApplicationForm from "@/components/GrantApplicationForm";
 import { listPassCyclesForUser } from "@/lib/grant-eligibility";
+import { todayInNewYork } from "@/lib/dates";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -60,10 +61,11 @@ export default async function ApplyForGrantPage({
 
   const { data: cycles } = await cyclesQuery;
 
-  // Server-side filter: exclude grants where end_date is in the past
-  // (Supabase date filters can be unreliable, so we filter in JS after fetch)
-  const todayStr = new Date().toISOString().split('T')[0];
-  const openCycles = cycles?.filter(c => c.end_date >= todayStr) || [];
+  // Server-side filter: exclude grants whose end_date is before today in
+  // New York time (cycles accept applications through 11:59 PM ET on end_date).
+  const todayStr = todayInNewYork();
+  const openCycles =
+    cycles?.filter((c) => String(c.end_date).split("T")[0] >= todayStr) || [];
 
   // Late Submission Passes (migration 196): closed cycles this member may
   // still apply to. Invisible to everyone else.

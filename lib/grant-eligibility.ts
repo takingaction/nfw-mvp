@@ -5,7 +5,8 @@
  * publicly. Server-only: uses the service-role client.
  *
  * Rules:
- *   - Normal: cycle.status === "open" (unchanged from before passes existed).
+ *   - Normal: cycle.status === "open" AND end_date >= today (New York time).
+ *             The end_date check is the hard 11:59 PM ET deadline (2026-09-30).
  *   - Pass:   member holds a pass that is not revoked, not used, not expired,
  *             AND first review is not locked for the cycle.
  *
@@ -14,6 +15,7 @@
  * application after that point would never get a first-reviewer score.
  */
 import getAdminClient from "@/lib/supabase/admin";
+import { todayInNewYork } from "@/lib/dates";
 
 export const LATE_PASS_DURATION_HOURS = 12;
 
@@ -33,6 +35,17 @@ export interface LatePass {
 }
 
 export type PassStatus = "active" | "used" | "expired" | "revoked";
+
+/**
+ * True once the cycle's end_date is before today in New York time.
+ * Cycles accept applications through 11:59:59 PM ET on end_date. This is the
+ * hard deadline at submission time — it does not depend on the status cron
+ * (sync_grant_cycle_statuses) having run. Missing end_date → not past.
+ */
+export function isPastEndDate(cycle: { end_date?: string | null }): boolean {
+  if (!cycle.end_date) return false;
+  return String(cycle.end_date).split("T")[0] < todayInNewYork();
+}
 
 export function isFirstReviewLocked(cycle: CycleLockFields): boolean {
   return Boolean(cycle.scoring_completed_at || cycle.final_approved_at || cycle.is_finalized);
@@ -82,9 +95,14 @@ export interface EligibilityResult {
  */
 export async function checkCycleEligibility(
   userId: string,
-  cycle: { id: string; status: string } & CycleLockFields,
+  cycle: { id: string; status: string; end_date?: string | null } & CycleLockFields,
 ): Promise<EligibilityResult> {
-  if (cycle.status === "open") return { ok: true, viaPass: false, pass: null };
+  // Open + not past end_date (NY time) → allowed. An "open" cycle past its
+  // end_date falls through to the pass check, same as a closed cycle.
+  // start_date is deliberately NOT checked so admins can open a cycle early.
+  if (cycle.status === "open" && !isPastEndDate(cycle)) {
+    return { ok: true, viaPass: false, pass: null };
+  }
   if (isFirstReviewLocked(cycle)) return { ok: false, viaPass: false, pass: null };
   const pass = await getActivePass(userId, cycle.id);
   if (!pass) return { ok: false, viaPass: false, pass: null };

@@ -9,7 +9,7 @@ import {
   sanitizeFileName,
   validateUploadMeta,
 } from "@/lib/admin-documents";
-import { checkCycleEligibility, CYCLE_LOCK_COLUMNS } from "@/lib/grant-eligibility";
+import { checkCycleEligibility, isPastEndDate, CYCLE_LOCK_COLUMNS } from "@/lib/grant-eligibility";
 
 /**
  * POST /api/grants/upload-document/prepare
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          cycle.status === "closed"
+          cycle.status === "closed" || isPastEndDate(cycle)
             ? "This grant cycle closed while you were filling out your application. Your files weren't uploaded. Pick a different cycle to continue."
             : `This grant cycle is currently "${cycle.status}". Please pick a different cycle.`,
         code: "CYCLE_NOT_OPEN",

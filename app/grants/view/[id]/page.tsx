@@ -6,6 +6,7 @@ import GrantDocuments from "@/components/grants/GrantDocuments";
 import ConnectBankButton from "@/components/grants/ConnectBankButton";
 import StripeAccountStatus from "@/components/grants/StripeAccountStatus";
 import { getImpersonationContext } from "@/lib/impersonation";
+import { formatDateOnly } from "@/lib/dates";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -149,8 +150,8 @@ export default async function GrantDetailPage({
             <div className="bg-nfw-dove p-4 mb-6">
               <h3 className="font-ui text-sm text-nfw-blackberry mb-1">Grant Cycle</h3>
               <p className="font-serif text-sm text-nfw-blackberry/60">
-                {new Date(grant.grant_cycles.start_date).toLocaleDateString("en-US", { timeZone: "America/New_York" })} —{" "}
-                {new Date(grant.grant_cycles.end_date).toLocaleDateString("en-US", { timeZone: "America/New_York" })}
+                {formatDateOnly(grant.grant_cycles.start_date)} —{" "}
+                {formatDateOnly(grant.grant_cycles.end_date)}
               </p>
               <p className="font-ui text-sm text-nfw-blackberry/50 mt-1">
                 ${grant.grant_cycles.amount_per_grant?.toLocaleString()} per

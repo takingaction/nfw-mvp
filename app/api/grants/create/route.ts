@@ -10,6 +10,7 @@ import {
 } from "@/lib/admin-documents";
 import {
   checkCycleEligibility,
+  isPastEndDate,
   CYCLE_LOCK_COLUMNS,
   markPassUsed,
 } from "@/lib/grant-eligibility";
@@ -192,7 +193,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            cycleData.status === "closed"
+            cycleData.status === "closed" || isPastEndDate(cycleData)
               ? "This grant cycle closed while you were filling out your application. Your files weren't uploaded. Pick a different cycle to continue."
               : `This grant cycle is currently "${cycleData.status}". Please pick a different cycle.`,
           code: "CYCLE_NOT_OPEN",

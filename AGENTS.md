@@ -20311,3 +20311,41 @@ Both product endpoints used single-page GraphQL queries with no `pageInfo` curso
 - Other Admin API GraphQL endpoints with `first:` limits (none currently paginate — verified via `grep` for `pageInfo|hasNextPage|endCursor` in `app/`). If future Shopify queries are added, they should use the same `fetchAllProducts()`-style helper or a generalized `paginateAll()` helper.
 - No SKU/variant-level pagination; `PRODUCTS_QUERY` uses `variants(first: 10)` which is correct for our use case but would silently miss variants on a product with >10 variants. Not currently a concern (no such products exist in the store).
 - The `featured` filter in `app/api/shopify/products/route.ts` runs in-memory after the full fetch — fine for the 70-row store but means a "Featured" admin view still pulls all rows. Not worth changing since the admin view always loads the full set anyway.
+
+## Session 2026-09-30: Grant Cycles Open/Close on New York Time
+
+### Problem
+Cycle `8f2727f3-…` was saved as Oct 1 – Oct 22 (correct in DB), but `/admin/grants` showed Sep 30 – Oct 21. Worse, real behavior used UTC: the cycle dropped off the apply page at **8 PM ET** on the end date, and the status cron (`0 5 * * *`, `CURRENT_DATE`) opened/closed at ~1 AM ET.
+
+### Root causes
+- `new Date("2026-10-22")` = UTC midnight → renders as Oct 21 in New York. Used for date-only columns in 4 display sites.
+- "Today" computed as `new Date().toISOString().split("T")[0]` (UTC date) in the apply page, `/api/grants/cycles/open`, and the edit page.
+- `sync_grant_cycle_statuses()` compared against `CURRENT_DATE` (UTC).
+
+### Rule
+Cycles accept applications **12:00 AM ET on start_date through 11:59:59 PM ET on end_date**. For date-only columns always use `formatDateOnly()` to display and `todayInNewYork()` to compare. Never `new Date(dateOnlyString)` or UTC `toISOString()` dates.
+
+### Changes
+| File | Change |
+|---|---|
+| `lib/dates.ts` | New `todayInNewYork()` (Intl, DST-safe, `YYYY-MM-DD`) and `formatDateOnly()` (no timezone shift) |
+| `components/admin/SortableCycleList.tsx`, `app/admin/grants/[id]/page.tsx`, `components/dashboard/YourMicrograntsSection.tsx`, `app/grants/view/[id]/page.tsx` | Display via `formatDateOnly` |
+| `app/grants/apply/page.tsx`, `app/api/grants/cycles/open/route.ts` | Filter `end_date >= todayInNewYork()` |
+| `app/admin/grants/[id]/edit/page.tsx` | Open-early / past-end warnings use NY date; past-end warning now says submissions stay blocked and points to extending the end date or Late Submission Passes |
+| `lib/grant-eligibility.ts` | New `isPastEndDate()`. `checkCycleEligibility()` now requires `status === "open"` **and** not past end_date; past-end open cycles fall through to the pass check. **No start_date check** (admins may open early on purpose). |
+| `app/api/grants/create/route.ts`, `upload-document/prepare/route.ts` | Past-end-date denials use the "cycle closed" message (same `CYCLE_NOT_OPEN` code, form banner unchanged) |
+| `supabase/migrations/199_grant_cycles_new_york_time.sql` (+ rollback) | `sync_grant_cycle_statuses()` uses `(now() AT TIME ZONE 'America/New_York')::date`, `search_path = pg_catalog, public`; rescheduled to `0 4,5 * * *` (midnight EDT / EST; other run is a no-op) |
+
+Hard deadline is enforced at submission, independent of the cron. No grace period. Boundary verified: 2026-10-23T03:59:59Z allowed, 04:00:00Z blocked.
+
+### Deploy
+1. Deploy code.
+2. Run migration 199 in the Supabase SQL Editor.
+3. Verify: `SELECT jobname, schedule FROM cron.job;` → `sync-grant-cycle-statuses | 0 4,5 * * *`.
+
+### Not done
+- Mobile `mobile/lib/queries/grants.ts:40` still uses a UTC "today" (needs app release).
+- Scoring routes derive "month" from `new Date(cycle.end_date)` (minor off-by-one on the 1st).
+- The cron still re-opens any *closed* cycle whose window includes today (pre-existing behavior) — manually closing an in-window cycle is undone at the next midnight run.
+
+**Build:** `tsc` 0 errors, `next build` ✓.

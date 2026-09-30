@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { formatDateOnly } from "@/lib/dates";
 
 const decodeHtml = (html: string): string => {
   if (typeof document === "undefined") return html || "";
@@ -121,7 +122,7 @@ export default function YourMicrograntsSection({
                   )}
                   {grant.grant_cycles?.end_date && (
                     <p className="text-white/50 font-ui text-xs">
-                      Deadline: {new Date(grant.grant_cycles.end_date).toLocaleDateString()}
+                      Deadline: {formatDateOnly(grant.grant_cycles.end_date)}
                     </p>
                   )}
                 </Link>
@@ -171,7 +172,7 @@ export default function YourMicrograntsSection({
                     ${cycle.amount_per_grant.toLocaleString()}
                   </p>
                   <p className="text-white/50 font-ui text-xs">
-                    Deadline: {new Date(cycle.end_date).toLocaleDateString()}
+                    Deadline: {formatDateOnly(cycle.end_date)}
                   </p>
                 </Link>
               ))}

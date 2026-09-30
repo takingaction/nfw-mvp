@@ -5,7 +5,7 @@ import { ArrowLeft, Lock } from "lucide-react";
 import AdminGrantReviewer from "@/components/admin/AdminGrantReviewer";
 import AiEvaluationPanel from "@/components/admin/AiEvaluationPanel";
 import LateSubmissionPassesCard from "@/components/admin/LateSubmissionPassesCard";
-import { formatESTDisplay } from "@/lib/dates";
+import { formatDateOnly } from "@/lib/dates";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -121,8 +121,8 @@ export default async function AdminGrantCyclePage({
             </h1>
             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-nfw-blackberry/60">
               <span>
-                {formatESTDisplay(new Date(cycle.start_date))} —{" "}
-                {formatESTDisplay(new Date(cycle.end_date))}
+                {formatDateOnly(cycle.start_date)} —{" "}
+                {formatDateOnly(cycle.end_date)}
               </span>
               <span aria-hidden="true">·</span>
               <span>${cycle.amount_per_grant?.toLocaleString("en-US")} per grant</span>
