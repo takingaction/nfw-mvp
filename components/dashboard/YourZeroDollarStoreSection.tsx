@@ -131,12 +131,19 @@ function LatestOfferingCard({ product }: { product: LatestProduct }) {
             <img
               src={product.imageUrl}
               alt={product.title}
-              className={`w-full h-full object-cover ${isDraft ? "grayscale opacity-60" : ""}`}
+              className={`w-full h-full object-cover ${isDraft ? "grayscale contrast-110" : ""}`}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-nfw-dove">
               <Gift className="w-8 h-8 text-white/30" />
             </div>
+          )}
+          {product.imageUrl && isDraft && (
+            // Citrine duotone: multiply over greyscale maps white → #F8F19A, keeps darks dark
+            <div
+              className="absolute inset-0 bg-nfw-citrine mix-blend-multiply pointer-events-none"
+              aria-hidden="true"
+            />
           )}
           {isDraft && (
             <div className="absolute top-3 left-3">

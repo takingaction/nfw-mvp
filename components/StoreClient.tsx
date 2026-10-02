@@ -278,11 +278,22 @@ export default function StoreClient({
                         src={product.imageUrl}
                         alt={product.title}
                         className={`w-full h-full object-cover ${
-                          !product.availableForSale || product.status === "DRAFT" ? "grayscale opacity-60" : ""
+                          product.status === "DRAFT"
+                            ? "grayscale contrast-110"
+                            : !product.availableForSale
+                              ? "grayscale opacity-60"
+                              : ""
                         }`}
                       />
                     ) : (
                       <div className="w-full h-full bg-nfw-powder/20" />
+                    )}
+                    {product.imageUrl && product.status === "DRAFT" && (
+                      // Citrine duotone: multiply over greyscale maps white → #F8F19A, keeps darks dark
+                      <div
+                        className="absolute inset-0 bg-nfw-citrine mix-blend-multiply pointer-events-none"
+                        aria-hidden="true"
+                      />
                     )}
                     {!product.availableForSale && (
                       <div className="absolute top-3 left-3">
