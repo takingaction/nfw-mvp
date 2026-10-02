@@ -20387,3 +20387,32 @@ Slack alerts on Oct 1 showed three error patterns. SQL verification confirmed al
 
 - Mobile app's `DocumentPicker` upload path (separate code, no retry/dedupe there yet)
 - DB-backed alert log table for global de-dupe
+
+## Session 2026-10-02: AI Flag Feedback — Docs Rule, Mark as Valid, Score Sort, Skip Keeps Status
+
+Programs feedback on the AI relevance filter (9/30).
+
+### 1. AI no longer judges documentation
+Claude never sees attachments (only cycle name/description + 3 answers), but read "must submit X" in cycle descriptions and flagged apps that didn't *mention* their docs. `lib/anthropic.ts` system prompt now explicitly says attachments are out of scope, document requirements are enforced by the system (`requires_documents`, server-side), and to never flag for missing/unmentioned docs. **Admins re-run their own cycles** (Force Full Re-run) to clear existing false flags.
+
+### 2. "Mark as Valid"
+- Migration `200_grant_ai_validation.sql` (+ rollback): `grants.ai_validated_at`, `ai_validated_by`.
+- `POST /api/admin/grants/[id]/ai-skip` actions: `skip`, `restore`, `validate`, `unvalidate`. Validate clears skip and vice versa (mutually exclusive). AI verdict + reasoning are preserved; re-runs and Reset AI never touch the validated columns.
+- `lib/grant-ai-flags.ts` (client-safe) is the single source of truth: `aiRaisedFlag`, `isAiValidated`, `isAiSkipped`, `isAiFlagPending` (flagged, not validated, not skipped → "AI flagged (N)" count), `sortsToBottom` (pending OR skipped). Replaced the 3 page-local `isAiFlagged` copies.
+- `AiBadge`: green **"Valid"** badge, tooltip "AI flagged this as X. A reviewer marked it valid on [date]." `AiEvaluationCallout`: green "Mark as Valid" + red "Skip & Mark Invalid" side by side; validated state is a compact green line with Undo and the original AI reasoning muted underneath. Wired into scorer (first/second), Combined Scores, and `AdminGrantReviewer`.
+- Score routes (first/second/combined) select `ai_validated_at`; CSV export adds "AI Validated At".
+
+### 3. Sorting
+First + Second Review default to **Score** (first-reviewer subtotal / combined score, highest first; unscored next by newest; pending-AI-flag + skipped at bottom) with a **Score / Newest** toggle next to the "Applications" heading. Combined Scores keeps rank order; validated apps no longer sink.
+
+### 4. Skip no longer changes member-visible status
+Skips used to set `status='not_approved'` immediately (visible on `/grants/my-applications`). Now skip only sets `ai_invalidated_at/by`; status stays `submitted`. All admin behavior (Not Approved filter, scoring lock, exclusion from Review 2/Combined) already keyed on `ai_invalidated_at`. **No email/push is sent on skip** — rejection status, email, and push happen only at Finalize Approvals (unchecked grants). Restore/validate reset a legacy `not_approved` status back to `submitted` only when the cycle has no `final_approved_at`. Migration 200 does a one-time reset of skipped grants in non-finalized cycles.
+
+Side effect: `/admin/grants` index counts skipped apps in open cycles as Submitted until finalize.
+
+### Deploy
+1. Run `supabase/migrations/200_grant_ai_validation.sql`.
+2. Deploy.
+3. Admins: Force Full Re-run on active cycles to clear doc-based flags.
+
+`tsc` 0, `next build` ✓, eslint clean on new/rewritten files.

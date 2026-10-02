@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import GrantScoringRubric from "@/components/admin/GrantScoringRubric";
 import GrantApplicationScorer, { ScoreData } from "@/components/admin/GrantApplicationScorer";
 import AiBadge from "@/components/admin/AiBadge";
+import { isAiFlagPending, sortsToBottom } from "@/lib/grant-ai-flags";
 
 interface Grant {
   id: string;
@@ -35,6 +36,7 @@ interface Grant {
   ai_relevance?: "relevant" | "irrelevant" | "uncertain" | "not_evaluated" | null;
   ai_reasoning?: string | null;
   ai_invalidated_at?: string | null;
+  ai_validated_at?: string | null;
 }
 
 export default function SecondReviewPage() {
@@ -54,6 +56,7 @@ export default function SecondReviewPage() {
   const [visibleNames, setVisibleNames] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "runner_up" | "not_approved" | "unscored">("all");
   const [multiAppFilter, setMultiAppFilter] = useState<"all" | "2plus" | "adminDocs">("all");
+  const [sortMode, setSortMode] = useState<"score" | "newest">("score");
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
 
@@ -248,21 +251,38 @@ export default function SecondReviewPage() {
   const completedCount = grants.filter((g) => g.grant_scores?.[0]?.is_complete).length;
   const totalCount = grants.length;
 
-  // Sort: non-flagged first, AI-flagged last
-  const isAiFlagged = (g: Grant) =>
-    g.ai_relevance === "irrelevant" || g.ai_relevance === "uncertain";
+  // Sort tiers:
+  //   1. Unresolved AI flags + skipped apps always go to the bottom.
+  //      Reviewer-validated apps sort with everyone else.
+  //   2. "score" mode: combined score (first + second) highest-first for
+  //      apps the second reviewer has completed, then unscored by newest.
+  //      "newest" mode: submission date, newest first.
   const sortedGrants = useMemo(() => {
+    const newestFirst = (a: Grant, b: Grant) =>
+      new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime();
+    const combinedScore = (g: Grant): number | null => {
+      const s = g.grant_scores?.[0];
+      if (!s || s.is_complete !== true) return null;
+      const secondSubtotal =
+        (s.urgency_score ?? 0) + (s.authenticity_score ?? 0) + (s.impact_score ?? 0);
+      return (g.first_score?.total_score || 0) + secondSubtotal;
+    };
     return [...grants].sort((a, b) => {
-      const aFlagged = isAiFlagged(a);
-      const bFlagged = isAiFlagged(b);
-      if (aFlagged === bFlagged) {
-        return new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime();
+      const aBottom = sortsToBottom(a);
+      const bBottom = sortsToBottom(b);
+      if (aBottom !== bBottom) return aBottom ? 1 : -1;
+      if (sortMode === "score") {
+        const aScore = combinedScore(a);
+        const bScore = combinedScore(b);
+        if (aScore !== null && bScore !== null && aScore !== bScore) return bScore - aScore;
+        if (aScore !== null && bScore === null) return -1;
+        if (aScore === null && bScore !== null) return 1;
       }
-      return aFlagged ? 1 : -1;
+      return newestFirst(a, b);
     });
-  }, [grants]);
+  }, [grants, sortMode]);
 
-  const aiFlaggedCount = grants.filter(isAiFlagged).length;
+  const aiFlaggedCount = grants.filter(isAiFlagPending).length;
 
   if (loading) {
     return (
@@ -414,9 +434,28 @@ export default function SecondReviewPage() {
 
           {/* Application List */}
           <div className="col-span-12 lg:col-span-4 flex flex-col">
-            <h2 className="text-sm font-bold text-nfw-blackberry/60 uppercase tracking-wider mb-3 sticky top-0 bg-nfw-dove z-10 pb-2">
-              Applications
-            </h2>
+            <div className="flex items-center justify-between mb-3 sticky top-0 bg-nfw-dove z-10 pb-2">
+              <h2 className="text-sm font-bold text-nfw-blackberry/60 uppercase tracking-wider">
+                Applications
+              </h2>
+              <div className="flex items-center gap-1 text-xs" role="group" aria-label="Sort applications">
+                <span className="text-nfw-blackberry/50 mr-1">Sort:</span>
+                {(["score", "newest"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setSortMode(mode)}
+                    aria-pressed={sortMode === mode}
+                    className={`px-2 py-1 font-semibold transition-colors ${
+                      sortMode === mode
+                        ? "bg-nfw-blackberry text-white"
+                        : "bg-nfw-stone/20 text-nfw-blackberry hover:bg-nfw-stone/30"
+                    }`}
+                  >
+                    {mode === "score" ? "Score" : "Newest"}
+                  </button>
+                ))}
+              </div>
+            </div>
             {/* Filter Buttons */}
             <div className="flex gap-2 flex-wrap mb-3 sticky top-10 bg-nfw-dove z-10 pb-2">
               {(["all", "approved", "runner_up", "not_approved", "unscored"] as const).map((f) => {
@@ -548,6 +587,7 @@ export default function SecondReviewPage() {
                               <AiBadge
                                 ai_relevance={grant.ai_relevance}
                                 ai_invalidated_at={grant.ai_invalidated_at}
+                                ai_validated_at={grant.ai_validated_at}
                                 compact
                               />
                             </div>

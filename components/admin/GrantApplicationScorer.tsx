@@ -224,9 +224,11 @@ export default function GrantApplicationScorer({
               ai_relevance: grant.ai_relevance,
               ai_reasoning: grant.ai_reasoning,
               ai_invalidated_at: grant.ai_invalidated_at,
+              ai_validated_at: grant.ai_validated_at,
             }}
             onSkipped={onAiChange}
             onRestored={onAiChange}
+            onValidated={onAiChange}
           />
         )}
         <div>

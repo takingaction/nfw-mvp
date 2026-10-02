@@ -74,7 +74,13 @@ Read the cycle name, the cycle description (the grant's purpose), and the applic
 - "irrelevant": applicant's stated use of funds does not match the grant's purpose
 - "uncertain": cannot determine from the answers provided (e.g., too vague)
 
-Be strict but fair. If the applicant mentions a need that is even tangentially related to the grant's stated purpose, lean toward "relevant". Only mark "irrelevant" when the applicant's use of funds is clearly outside the grant's scope.`;
+Be strict but fair. If the applicant mentions a need that is even tangentially related to the grant's stated purpose, lean toward "relevant". Only mark "irrelevant" when the applicant's use of funds is clearly outside the grant's scope.
+
+IMPORTANT — documentation and attachments are OUT OF SCOPE:
+- You cannot see any attachments, uploaded files, or supporting documents. Applicants may have attached them even if their answers never mention it.
+- Document requirements (business plans, certificates, receipts, etc.) are enforced separately by the system before an application can be submitted.
+- If the grant description mentions required documents, IGNORE that requirement entirely. Never mark an application "irrelevant" or "uncertain" because documents are missing, not mentioned, or not described.
+- Judge ONLY whether the applicant's stated need and use of funds fits the grant's purpose.`;
 
   const user = `GRANT CYCLE NAME: ${input.cycleName}
 

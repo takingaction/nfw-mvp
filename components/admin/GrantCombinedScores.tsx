@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Loader2, AlertTriangle, Check, MessageSquare, ChevronDown, Eye, EyeOff, DollarSign, Receipt, User } from "lucide-react";
 import AiBadge from "./AiBadge";
 import AiEvaluationCallout from "./AiEvaluationCallout";
+import { sortsToBottom } from "@/lib/grant-ai-flags";
 
 interface Grant {
   id: string;
@@ -47,6 +48,7 @@ interface Grant {
   ai_relevance?: "relevant" | "irrelevant" | "uncertain" | "not_evaluated" | null;
   ai_reasoning?: string | null;
   ai_invalidated_at?: string | null;
+  ai_validated_at?: string | null;
 }
 
 interface StripeCheckResult {
@@ -143,13 +145,12 @@ export default function GrantCombinedScores({
 
   const maxSelectable = cycle.grants_available;
 
-  // Sort: AI-flagged apps go to the bottom (preserving rank within each group)
-  const isAiFlagged = (g: Grant) =>
-    g.ai_relevance === "irrelevant" || g.ai_relevance === "uncertain";
+  // Sort: unresolved AI flags go to the bottom (preserving rank within each
+  // group). Reviewer-validated apps sort by combined score with everyone else.
   const sortedGrants = useMemo(() => {
     return [...grants].sort((a, b) => {
-      const aFlagged = isAiFlagged(a);
-      const bFlagged = isAiFlagged(b);
+      const aFlagged = sortsToBottom(a);
+      const bFlagged = sortsToBottom(b);
       if (aFlagged !== bFlagged) return aFlagged ? 1 : -1;
       return (a.rank ?? 0) - (b.rank ?? 0);
     });
@@ -621,6 +622,7 @@ export default function GrantCombinedScores({
                     <AiBadge
                       ai_relevance={grant.ai_relevance}
                       ai_invalidated_at={grant.ai_invalidated_at}
+                      ai_validated_at={grant.ai_validated_at}
                       compact
                     />
                   </div>
@@ -792,9 +794,11 @@ export default function GrantCombinedScores({
                           ai_relevance: grant.ai_relevance,
                           ai_reasoning: grant.ai_reasoning,
                           ai_invalidated_at: grant.ai_invalidated_at,
+                          ai_validated_at: grant.ai_validated_at,
                         }}
                         onSkipped={onAiChange}
                         onRestored={onAiChange}
+                        onValidated={onAiChange}
                         readOnly={alreadyFinalized}
                       />
                       <div>

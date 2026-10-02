@@ -336,6 +336,7 @@ export default function AdminGrantReviewer({
                     <AiBadge
                       ai_relevance={grant.ai_relevance}
                       ai_invalidated_at={grant.ai_invalidated_at}
+                      ai_validated_at={grant.ai_validated_at}
                       compact
                     />
                     {grant.is_nominating && (
@@ -474,7 +475,9 @@ export default function AdminGrantReviewer({
                       </p>
                     )}
                     <p className="text-xs text-nfw-blackberry/50 mt-2">
-                      Advisory only — use your own judgment.
+                      {selected.ai_validated_at && !selected.ai_invalidated_at
+                        ? "A reviewer marked this application valid."
+                        : "Advisory only — use your own judgment."}
                     </p>
                   </div>
                 )}
