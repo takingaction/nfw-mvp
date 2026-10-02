@@ -20349,3 +20349,41 @@ Hard deadline is enforced at submission, independent of the cron. No grace perio
 - The cron still re-opens any *closed* cycle whose window includes today (pre-existing behavior) — manually closing an in-window cycle is undone at the next midnight run.
 
 **Build:** `tsc` 0 errors, `next build` ✓.
+
+## Session 2026-10-01: Grant Upload Hardening — Retry, De-dupe, Duplicate Pre-check
+
+### Background
+
+Slack alerts on Oct 1 showed three error patterns. SQL verification confirmed all three self-recovered (no stranded grants, no data loss):
+
+| Pattern | Who | Outcome |
+|---|---|---|
+| `UPLOAD_TRANSFER_FAILED` ×5 in 3 min + ×1 later | katrinamtyler, kinslcut | Both eventually submitted successfully (15:10, 01:28). Transient network blips on the browser→Supabase Storage PUT. |
+| HTTP 409 "already applied" | sunshinescreations143 | Guard worked; member re-applied right after a successful submit (likely pre-redirect double-click or re-opened form). |
+
+### Fixes
+
+| # | Fix | Files |
+|---|-----|-------|
+| 1 | **Auto-retry the transfer step** — 3 attempts (1.5s then 3s backoff), re-preparing for a fresh signed token each attempt. Slack alert only on final failure. | `components/GrantApplicationForm.tsx` (prepare extracted into local `prepareUpload()` helper, transfer wrapped in retry loop) |
+| 2 | **File size in Slack alert** — client sends `fileSizeBytes` on prepare/transfer failures; Slack adds `• File size: X.X MB` line. | `components/GrantApplicationForm.tsx`, `app/api/log/client-error/route.ts`, `lib/slack-notifications.ts` (`notifyGrantApplicationError` gains `fileSizeBytes?`) |
+| 3 | **Alert de-dupe** — `RECENT_ALERTS` module-level Map in `/api/log/client-error`; same key within 15 min returns `{ success: true, suppressed: true }` without calling Slack. Key: `userId|cycleId|code` (grant shape) / `userId|context|message` (generic). **Best-effort per serverless instance** — warm-instance bursts are deduped; not a global guarantee (documented in comment). | `app/api/log/client-error/route.ts` |
+| 4 | **Duplicate pre-check + "View your application" link** — `GET /api/grants/applied-check?cycleId=X` (NEW, own-row read under RLS, view-as guarded, fails open) called at the top of `handleConfirmSubmit` BEFORE any upload. Create route's 409 now echoes `code: "ALREADY_APPLIED"` + `applicationId`. Error banner renders an aubergine "View your application" link (`/grants/view/[id]`, or `/grants/my-applications` fallback). | `app/api/grants/applied-check/route.ts` (NEW), `app/api/grants/create/route.ts`, `components/GrantApplicationForm.tsx` (`alreadyApplied`/`alreadyAppliedGrantId` states) |
+
+### Key design decisions
+
+- Retries re-run prepare instead of reusing the signed token — never depends on token reuse semantics.
+- Retry loop covers only the transfer stage; prepare failures (incl. `CYCLE_NOT_OPEN`) break immediately without retry.
+- Pre-check fails open on any error — `/api/grants/create`'s duplicate guard (23505 unique constraint + app check) remains the correctness layer.
+- No Slack alert for the pre-check rejection (benign duplicate, not an error).
+- `supabase.storage.uploadToSignedUrl` failure kept as a `{ message: string }` shape so StorageError types don't leak into the retry-loop variable.
+
+### Verification
+
+- `tsc --noEmit` 0 errors; `next build` ✓ (225 pages; `/api/grants/applied-check` registered; one transient Turbopack Google-font fetch error on first build, passed on retry — pre-existing env issue)
+- eslint clean on all changed files
+
+### Out of Scope
+
+- Mobile app's `DocumentPicker` upload path (separate code, no retry/dedupe there yet)
+- DB-backed alert log table for global de-dupe

@@ -11,6 +11,10 @@ interface GrantApplicationErrorParams {
   // distinguish "JSON parse failed on a 504 HTML body" (which is
   // what bit us on 2026-09-20) from a clean 4xx JSON body.
   httpStatus?: number;
+  // 2026-10-01: size of the file that failed to upload, so
+  // transfer-failure alerts can be correlated against the size
+  // limit / connection speed.
+  fileSizeBytes?: number;
   stack?: string;
 }
 
@@ -25,7 +29,12 @@ export async function notifyGrantApplicationError(
     return;
   }
 
-  const { userId, userEmail, cycleId, cycleName, errorMessage, errorCode, httpStatus, stack } = params;
+  const { userId, userEmail, cycleId, cycleName, errorMessage, errorCode, httpStatus, fileSizeBytes, stack } = params;
+
+  const fileSizeLine =
+    typeof fileSizeBytes === "number" && fileSizeBytes > 0
+      ? `\n• File size: ${(fileSizeBytes / (1024 * 1024)).toFixed(1)} MB`
+      : "";
 
   const blocks: {
     type: string;
@@ -35,7 +44,7 @@ export async function notifyGrantApplicationError(
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `🔴 *Grant Application Error*\n• User: ${userEmail} (${userId})\n• Cycle: ${cycleName} (${cycleId})\n• Error: ${errorMessage}${errorCode ? `\n• Code: ${errorCode}` : ""}${typeof httpStatus === "number" ? `\n• HTTP: ${httpStatus}` : ""}\n• Time: ${new Date().toISOString()}\n• Please investigate`,
+        text: `🔴 *Grant Application Error*\n• User: ${userEmail} (${userId})\n• Cycle: ${cycleName} (${cycleId})\n• Error: ${errorMessage}${fileSizeLine}${errorCode ? `\n• Code: ${errorCode}` : ""}${typeof httpStatus === "number" ? `\n• HTTP: ${httpStatus}` : ""}\n• Time: ${new Date().toISOString()}\n• Please investigate`,
       },
     },
   ];

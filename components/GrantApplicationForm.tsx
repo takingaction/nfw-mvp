@@ -99,6 +99,12 @@ export default function GrantApplicationForm({
   const [fileErrorMessage, setFileErrorMessage] = useState("");
   const [certificationChecked, setCertificationChecked] = useState(false);
   const [confirmError, setConfirmError] = useState("");
+  // Duplicate-application UX (2026-10-01): when true, the error banner
+  // renders a "View your application" link instead of leaving the member
+  // on a dead-end error. Set by the pre-submit duplicate check and by
+  // the create route's 409 duplicate guard.
+  const [alreadyApplied, setAlreadyApplied] = useState(false);
+  const [alreadyAppliedGrantId, setAlreadyAppliedGrantId] = useState<string | null>(null);;
 
   const [formData, setFormData] = useState({
     cycle_id: initialCycleId ?? (cycles.length === 1 ? cycles[0].id : ""),
@@ -168,7 +174,37 @@ export default function GrantApplicationForm({
     setLoading(true);
     setError("");
     setCycleClosed(false);
+    setAlreadyApplied(false);
     setConfirmError("");
+
+    // Duplicate-application pre-check (2026-10-01): catches the common
+    // "re-opened the form and applied again after a successful submit"
+    // loop BEFORE any upload happens (previously this surfaced as a
+    // confusing 409 only after the uploads had already been
+    // re-transferred). Fail open: /api/grants/create still enforces the
+    // duplicate guard as the correctness layer.
+    try {
+      const checkRes = await fetch(
+        `/api/grants/applied-check?cycleId=${encodeURIComponent(formData.cycle_id)}`,
+        { cache: "no-store" },
+      );
+      if (checkRes.ok) {
+        const checkData = (await checkRes.json()) as {
+          applied?: boolean;
+          grantId?: string | null;
+        };
+        if (checkData.applied) {
+          setAlreadyApplied(true);
+          setAlreadyAppliedGrantId(checkData.grantId ?? null);
+          setError("You've already submitted an application for this grant.");
+          setLoading(false);
+          setUploadingDocs(false);
+          return;
+        }
+      }
+    } catch {
+      // Fail open — see comment above.
+    }
 
     // Pre-submit live cycle check (Part C of the cycle-closed UX fix,
     // 2026-09-23). Catches cycles that closed between when the apply
@@ -226,8 +262,10 @@ export default function GrantApplicationForm({
       for (const file of documents) {
         // 1. Prepare (cycleId mode: files are uploaded before the grant
         // row is created; the path becomes `${cycleId}/pending/...`).
-        let prep: { path: string; token: string };
-        try {
+        const prepareUpload = async (): Promise<{
+          path: string;
+          token: string;
+        }> => {
           const prepRes = await fetch("/api/grants/upload-document/prepare", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -245,14 +283,18 @@ export default function GrantApplicationForm({
               // (the auto-close cron ran between when the page rendered
               // and when they hit Confirm). Set the dedicated flag so
               // the banner can render a "Back to all cycles" CTA, and
-              // throw so the surrounding loop's existing error path
-              // still triggers the Slack logger and the loading-state
-              // resets below.
+              // throw so the surrounding error path still triggers the
+              // Slack logger and the loading-state resets below.
               setCycleClosed(true);
             }
             throw new Error(errBody?.error || `HTTP ${prepRes.status}`);
           }
-          prep = (await prepRes.json()) as { path: string; token: string };
+          return (await prepRes.json()) as { path: string; token: string };
+        };
+
+        let prep: { path: string; token: string };
+        try {
+          prep = await prepareUpload();
         } catch (prepErr: any) {
           const errorCode = "UPLOAD_PREPARE_FAILED";
           const errMsg = prepErr?.message || "Unknown error";
@@ -270,19 +312,47 @@ export default function GrantApplicationForm({
               cycleName,
               errorMessage: `Upload prepare failed for ${file.name}: ${errMsg}`,
               errorCode,
+              fileSizeBytes: file.size,
               timestamp: new Date().toISOString(),
             }),
           }).catch(console.error);
           break;
         }
 
-        // 2. Transfer (signed URL upload directly to Supabase Storage)
-        const { error: uploadErr } = await supabase.storage
-          .from("grant-documents")
-          .uploadToSignedUrl(prep.path, prep.token, file, { contentType: file.type });
-        if (uploadErr) {
+        // 2. Transfer (signed URL upload directly to Supabase Storage),
+        //    with automatic retries. Transient "Failed to fetch"/"Load
+        //    failed" blips (connection interrupted mid-PUT) usually
+        //    succeed on attempt 2, so retry silently before surfacing
+        //    an error to the member. Each attempt re-prepares for a
+        //    fresh signed token rather than reusing the previous one.
+        const MAX_TRANSFER_ATTEMPTS = 3;
+        let transferErr: { message: string } | null = null;
+        for (let attempt = 1; attempt <= MAX_TRANSFER_ATTEMPTS; attempt++) {
+          if (attempt > 1) {
+            // Back off between attempts (1.5s, then 3s) and mint a
+            // fresh signed token. If re-prepare fails, give up on the
+            // retries and fall back to the final failure path with the
+            // last transfer error.
+            await new Promise((r) => setTimeout(r, attempt === 2 ? 1500 : 3000));
+            try {
+              prep = await prepareUpload();
+            } catch {
+              break;
+            }
+          }
+          const { error: uploadErr } = await supabase.storage
+            .from("grant-documents")
+            .uploadToSignedUrl(prep.path, prep.token, file, { contentType: file.type });
+          if (!uploadErr) {
+            transferErr = null;
+            break;
+          }
+          transferErr = uploadErr;
+        }
+
+        if (transferErr) {
           const errorCode = "UPLOAD_TRANSFER_FAILED";
-          const friendly = friendlyUploadError(uploadErr.message);
+          const friendly = friendlyUploadError(transferErr.message);
           setError(
             `We couldn't upload ${file.name} — ${friendly} Your application has not been submitted. Please try again.`,
           );
@@ -297,8 +367,9 @@ export default function GrantApplicationForm({
               userEmail,
               cycleId: formData.cycle_id,
               cycleName,
-              errorMessage: `Upload transfer failed for ${file.name}: ${uploadErr.message}`,
+              errorMessage: `Upload transfer failed for ${file.name}: ${transferErr.message}`,
               errorCode,
+              fileSizeBytes: file.size,
               timestamp: new Date().toISOString(),
             }),
           }).catch(console.error);
@@ -366,6 +437,9 @@ export default function GrantApplicationForm({
       error?: string;
       code?: string;
       grantId?: string;
+      // 2026-10-01: the 409 duplicate guard now echoes the existing
+      // application's id so the banner can link straight to it.
+      applicationId?: string;
     }
     let rawJson: unknown = null;
     try {
@@ -422,6 +496,14 @@ export default function GrantApplicationForm({
       // CTA instead of the generic red box.
       if (errCode === "CYCLE_NOT_OPEN") {
         setCycleClosed(true);
+      }
+
+      // 409 / ALREADY_APPLIED: the member already has an application in
+      // this cycle. Show a "View your application" link in the banner
+      // instead of a dead-end error message.
+      if (response.status === 409 || errCode === "ALREADY_APPLIED") {
+        setAlreadyApplied(true);
+        setAlreadyAppliedGrantId(data?.applicationId ?? null);
       }
 
       setError(errMsg);
@@ -732,6 +814,22 @@ export default function GrantApplicationForm({
               >
                 Back to all cycles
               </Link>
+            )}
+            {alreadyApplied && !cycleClosed && (
+              <div className="mt-3">
+                <Link
+                  href={
+                    alreadyAppliedGrantId
+                      ? `/grants/view/${alreadyAppliedGrantId}`
+                      : "/grants/my-applications"
+                  }
+                  className="inline-block bg-nfw-aubergine text-white px-4 py-2 font-ui text-sm font-semibold hover:bg-nfw-aubergine/90 transition-colors"
+                >
+                  {alreadyAppliedGrantId
+                    ? "View your application"
+                    : "View your applications"}
+                </Link>
+              </div>
             )}
           </div>
         )}

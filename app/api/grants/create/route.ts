@@ -242,7 +242,13 @@ export async function POST(request: Request) {
 
     if (existing) {
       return NextResponse.json(
-        { error: "You have already applied for this grant cycle." },
+        {
+          error: "You have already applied for this grant cycle.",
+          code: "ALREADY_APPLIED",
+          // Echo the existing application's id so the form's error
+          // banner can link straight to /grants/view/[id] (2026-10-01).
+          applicationId: existing.id,
+        },
         { status: 409 },
       );
     }
