@@ -29,17 +29,45 @@ export default async function AdminGrantCyclePage({
   if (!cycle)
     return <div className="p-8 text-red-600">Grant cycle not found.</div>;
 
-  const { data: grants, error: grantsError } = await supabaseAdmin
-    .from("grants")
-    .select(
-      `
-      *,
-      profiles:user_id (full_name, city, state, date_of_birth, household_income, email),
-      grant_scores (reviewer_name, total_score, needs_discussion)
-    `,
-    )
-    .eq("cycle_id", id)
-    .order("submitted_at", { ascending: false });
+  // Paginated fetch of all grants for this cycle (Supabase default cap is 1000 rows)
+  const PAGE_SIZE = 1000;
+  const allGrants: any[] = [];
+  let grantsPage = 0;
+  let grantsHasMore = true;
+  let grantsError: any = null;
+
+  while (grantsHasMore) {
+    const from = grantsPage * PAGE_SIZE;
+    const { data: pageData, error: pageError } = await supabaseAdmin
+      .from("grants")
+      .select(
+        `
+        *,
+        profiles:user_id (full_name, city, state, date_of_birth, household_income, email),
+        grant_scores (reviewer_name, total_score, needs_discussion),
+        grant_documents (id, file_name, file_size, uploaded_at, uploaded_by, document_url)
+      `,
+      )
+      .eq("cycle_id", id)
+      .order("submitted_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (pageError) {
+      console.error("Error fetching grants:", pageError);
+      grantsError = pageError;
+      break;
+    }
+
+    if (pageData && pageData.length > 0) {
+      allGrants.push(...pageData);
+      grantsPage++;
+      grantsHasMore = pageData.length === PAGE_SIZE;
+    } else {
+      grantsHasMore = false;
+    }
+  }
+
+  const grants = grantsError ? null : allGrants;
 
   if (grantsError) {
     console.error("Error fetching grants:", grantsError);
@@ -67,15 +95,12 @@ export default async function AdminGrantCyclePage({
     ? true
     : grantsInScope.every((g: any) => g.michelle_complete);
 
-  const { data: documents } = await supabaseAdmin
-    .from("grant_documents")
-    .select("*")
-    .in("grant_id", grants?.map((g) => g.id) || []);
-
+  // Documents come from the embedded join — no separate .in() query needed.
+  // (Avoids URL-length limits with 1000+ grant IDs and removes the .in(grant_id, ...) race.)
   const grantsWithDocs =
     grants?.map((g) => ({
       ...g,
-      documents: documents?.filter((d) => d.grant_id === g.id) || [],
+      documents: g.grant_documents || [],
     })) || [];
 
   const readyToPayCount = grants?.filter(

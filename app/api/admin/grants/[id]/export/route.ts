@@ -135,28 +135,47 @@ export async function GET(
       ? cycle.cycle_name.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()
       : "grant";
 
-    // Fetch all grants for this cycle with applicant profile data
-    const { data: grants, error: grantsError } = await supabaseAdmin
-      .from("grants")
-      .select(`
-        *,
-        profiles:user_id (
-          full_name,
-          email,
-          city,
-          state,
-          date_of_birth,
-          household_income,
-          stripe_onboarding_completed
-        )
-      `)
-      .eq("cycle_id", cycleId)
-      .order("submitted_at", { ascending: false });
+    // Fetch all grants for this cycle with applicant profile data (paginated past 1000-row cap)
+    const PAGE_SIZE = 1000;
+    const allGrants: any[] = [];
+    let exportPage = 0;
+    let exportHasMore = true;
 
-    if (grantsError) {
-      console.error("[grants/export] Error fetching grants:", grantsError);
-      return NextResponse.json({ error: "Failed to fetch grants" }, { status: 500 });
+    while (exportHasMore) {
+      const from = exportPage * PAGE_SIZE;
+      const { data: pageData, error: pageError } = await supabaseAdmin
+        .from("grants")
+        .select(`
+          *,
+          profiles:user_id (
+            full_name,
+            email,
+            city,
+            state,
+            date_of_birth,
+            household_income,
+            stripe_onboarding_completed
+          )
+        `)
+        .eq("cycle_id", cycleId)
+        .order("submitted_at", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (pageError) {
+        console.error("[grants/export] Error fetching grants:", pageError);
+        return NextResponse.json({ error: "Failed to fetch grants" }, { status: 500 });
+      }
+
+      if (pageData && pageData.length > 0) {
+        allGrants.push(...pageData);
+        exportPage++;
+        exportHasMore = pageData.length === PAGE_SIZE;
+      } else {
+        exportHasMore = false;
+      }
     }
+
+    const grants = allGrants;
 
     // Build CSV
     const headers = CSV_COLUMNS.map((col) => COLUMN_LABELS[col] || col);
