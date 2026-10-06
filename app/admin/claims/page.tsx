@@ -8,40 +8,56 @@ async function AdminClaimsContent() {
 
   const supabase = await createClient();
 
-  // Fetch all claims with item and member details
-  const { data: claims, error } = await supabase
-    .from("zero_dollar_claims")
-    .select(
-      `
-      *,
-      item:zero_dollar_items(
-        id,
-        name,
-        image_url,
-        category:zero_dollar_categories(name)
-      ),
-      member:profiles(
-        id,
-        full_name,
-        email:id
-      )
-    `,
-    )
-    .order("claimed_at", { ascending: false });
+  // Fetch all claims with item and member details (paginated past 1000-row cap).
+  // Member email comes from the profiles.email join (synced from auth.users via trigger).
+  // No separate supabase.auth.admin.listUsers() call — that has its own 1000-row cap
+  // and is the wrong tool for batch email lookups.
+  const PAGE_SIZE = 1000;
+  const allClaims: any[] = [];
+  let claimsPage = 0;
+  let claimsHasMore = true;
 
-  if (error) {
-    console.error("Error fetching claims:", error);
-    return <div className="text-red-600">Error loading claims</div>;
+  while (claimsHasMore) {
+    const from = claimsPage * PAGE_SIZE;
+    const { data: pageData, error: pageError } = await supabase
+      .from("zero_dollar_claims")
+      .select(
+        `
+        *,
+        item:zero_dollar_items(
+          id,
+          name,
+          image_url,
+          category:zero_dollar_categories(name)
+        ),
+        member:profiles(
+          id,
+          full_name,
+          email
+        )
+      `,
+      )
+      .order("claimed_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (pageError) {
+      console.error("Error fetching claims:", pageError);
+      return <div className="text-red-600">Error loading claims</div>;
+    }
+
+    if (pageData && pageData.length > 0) {
+      allClaims.push(...pageData);
+      claimsPage++;
+      claimsHasMore = pageData.length === PAGE_SIZE;
+    } else {
+      claimsHasMore = false;
+    }
   }
 
-  // Get member emails from auth.users
-  const { data: users } = await supabase.auth.admin.listUsers();
-
-  // Map user emails to claims
-  const claimsWithEmails = claims?.map((claim) => ({
+  // Email comes straight off the embedded member join.
+  const claimsWithEmails = allClaims.map((claim) => ({
     ...claim,
-    member_email:
-      users?.users.find((u) => u.id === claim.member_id)?.email || "N/A",
+    member_email: claim.member?.email ?? "N/A",
   }));
 
   return (

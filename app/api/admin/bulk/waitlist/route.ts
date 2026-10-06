@@ -88,25 +88,44 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = getAdminClient();
 
-    // Get all waitlist members who haven't received email
-    const { data: members, error } = await supabase
-      .from("profiles")
-      .select(`
-        id,
-        full_name,
-        email
-      `)
-      .eq("membership_level", "waitlist")
-      .is("waitlist_email_sent_at", null)
-      .order("waitlist_joined_at", { ascending: true });
+    // Get all waitlist members who haven't received email (paginated past 1000-row cap)
+    const PAGE_SIZE = 1000;
+    const allMembers: { id: string; full_name: string; email: string }[] = [];
+    let membersPage = 0;
+    let membersHasMore = true;
 
-    if (error) {
-      console.error("[admin/bulk/waitlist] Error fetching members:", error);
-      return NextResponse.json(
-        { error: "Failed to fetch waitlist members" },
-        { status: 500 }
-      );
+    while (membersHasMore) {
+      const from = membersPage * PAGE_SIZE;
+      const { data: pageData, error: pageError } = await supabase
+        .from("profiles")
+        .select(`
+          id,
+          full_name,
+          email
+        `)
+        .eq("membership_level", "waitlist")
+        .is("waitlist_email_sent_at", null)
+        .order("waitlist_joined_at", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (pageError) {
+        console.error("[admin/bulk/waitlist] Error fetching members:", pageError);
+        return NextResponse.json(
+          { error: "Failed to fetch waitlist members" },
+          { status: 500 }
+        );
+      }
+
+      if (pageData && pageData.length > 0) {
+        allMembers.push(...pageData);
+        membersPage++;
+        membersHasMore = pageData.length === PAGE_SIZE;
+      } else {
+        membersHasMore = false;
+      }
     }
+
+    const members = allMembers;
 
     if (!members || members.length === 0) {
       return NextResponse.json({
