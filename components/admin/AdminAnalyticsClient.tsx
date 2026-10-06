@@ -30,7 +30,7 @@ import {
   Check,
 } from "lucide-react";
 import { getCategory } from "@/lib/member-categories";
-import { parseESTDate, endOfESTDay, startOfCurrentPeriod, parseJoinedAt, formatJoinedAtFull } from "@/lib/dates";
+import { parseESTDate, endOfESTDay, startOfCurrentPeriod, parseJoinedAt, formatJoinedAtFull, estDateKey } from "@/lib/dates";
 
 type DateRangeOption = {
   label: string;
@@ -368,17 +368,27 @@ export default function AdminAnalyticsClient({
   );
 
   const membersByDay = useMemo(() => {
-    const map: Record<string, number> = {};
-    const mapDateFull: Record<string, string> = {};
+    // Group by New York calendar date "YYYY-MM-DD" so the sort is chronological
+    // and the same day in different years is not merged.
+    const counts: Record<string, number> = {};
+    const sampleTimestamp: Record<string, string> = {};
     filteredProfiles.forEach((p) => {
-      const d = parseJoinedAt(p.joined_at!);
-      const dFull = formatJoinedAtFull(p.joined_at!);
-      map[d] = (map[d] || 0) + 1;
-      mapDateFull[d] = dFull;
+      const key = estDateKey(p.joined_at!);
+      counts[key] = (counts[key] || 0) + 1;
+      if (!sampleTimestamp[key]) sampleTimestamp[key] = p.joined_at!;
     });
-    return Object.entries(map)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, count]) => ({ date, dateFull: mapDateFull[date], count }));
+    const keys = Object.keys(counts).sort();
+    const spansMultipleYears =
+      keys.length > 0 && keys[0].slice(0, 4) !== keys[keys.length - 1].slice(0, 4);
+    return keys.map((key) => {
+      const label = parseJoinedAt(sampleTimestamp[key]);
+      return {
+        key,
+        date: spansMultipleYears ? `${label} '${key.slice(2, 4)}` : label,
+        dateFull: formatJoinedAtFull(sampleTimestamp[key]),
+        count: counts[key],
+      };
+    });
   }, [filteredProfiles]);
 
   const membersByLevel = useMemo(() => {
@@ -1174,7 +1184,7 @@ export default function AdminAnalyticsClient({
       filename = "nfw-members-analytics.csv";
       rows = [
         ["Date", "New Members"],
-        ...membersByDay.map((r) => [r.date, String(r.count)]),
+        ...membersByDay.map((r) => [r.key, String(r.count)]),
         [],
         ["Status", "Count"],
         ...membersByLevel.map((r) => [r.name, String(r.value)]),

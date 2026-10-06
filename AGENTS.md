@@ -20416,3 +20416,19 @@ Side effect: `/admin/grants` index counts skipped apps in open cycles as Submitt
 3. Admins: Force Full Re-run on active cycles to clear doc-based flags.
 
 `tsc` 0, `next build` ✓, eslint clean on new/rewritten files.
+
+## Session 2026-10-02: New Members Over Time — Chronological Sort
+
+### Problem
+On `/admin/analytics`, the "New Members Over Time" chart was ordered alphabetically by month name (Apr, Aug, Dec, Feb…). `membersByDay` grouped and sorted on the `"Sep 07"` display label using `localeCompare`. The 2026-09-15 zero-pad fix only corrected the day order within a single month. Because the label has no year, the same day in different years was also added together into one point under "All Time".
+
+### Fix
+| File | Change |
+|---|---|
+| `lib/dates.ts` | New `estDateKey(joinedAt)` returns the New York calendar date as `YYYY-MM-DD` (Intl `en-CA`, DST-safe). |
+| `components/admin/AdminAnalyticsClient.tsx` | `membersByDay` groups and sorts by `estDateKey`, so the order is chronological and days are never merged across years. Data points are `{ key, date, dateFull, count }`. The x-axis label `date` is `"Sep 07"`, or `"Sep 07 '25"` when the data covers more than one calendar year. The tooltip (`dateFull`) and chart props are unchanged. |
+| Same file, Members CSV export | Date column now writes `r.key` (`2026-09-07`) instead of `"Sep 07"`. |
+
+**Rule:** never sort chart data by a formatted display label. Sort by an ISO `YYYY-MM-DD` key and format separately.
+
+`tsc` 0 errors, `next build` ✓.

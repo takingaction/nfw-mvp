@@ -154,6 +154,20 @@ export function parseJoinedAt(joinedAt: string): string {
 }
 
 /**
+ * Return the New York calendar date of a timestamp as "YYYY-MM-DD".
+ * Includes the year and sorts chronologically as a plain string —
+ * use this (not the "Sep 07" label) as the grouping/sort key for charts.
+ */
+export function estDateKey(joinedAt: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(joinedAt));
+}
+
+/**
  * Format joined_at timestamp as full EST date string with year (e.g., "Sep 07 2026")
  * Used for chart tooltips where year context is helpful
  */
