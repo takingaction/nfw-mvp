@@ -49,9 +49,36 @@ async function ArticlesContent({
     }
   }
 
-  const { data: articles, error } = await query.order("published_at", {
-    ascending: false,
-  });
+  // Paginated fetch — Supabase default cap is 1000 rows.
+  // TODO: Add client-side pagination to ArticlesClient when published articles > 1000.
+  const PAGE_SIZE = 1000;
+  const allArticles: any[] = [];
+  let articlesPage = 0;
+  let articlesHasMore = true;
+  let articlesError: any = null;
+
+  while (articlesHasMore) {
+    const from = articlesPage * PAGE_SIZE;
+    const { data: pageData, error: pageError } = await query
+      .order("published_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (pageError) {
+      articlesError = pageError;
+      break;
+    }
+
+    if (pageData && pageData.length > 0) {
+      allArticles.push(...pageData);
+      articlesPage++;
+      articlesHasMore = pageData.length === PAGE_SIZE;
+    } else {
+      articlesHasMore = false;
+    }
+  }
+
+  const articles = articlesError ? null : allArticles;
+  const error = articlesError;
 
   if (error) {
     return (
@@ -76,28 +103,18 @@ async function ArticlesContent({
     .select("*")
     .order("display_order", { ascending: true });
 
-  // Get article counts per category
-  const { data: articleCounts } = await supabase
-    .from("articles")
-    .select("category_id")
-    .eq("is_published", true);
-
-  // Calculate accurate counts
-  const categoryCountMap = new Map<string, number>();
-  (articleCounts || []).forEach((article) => {
-    if (article.category_id) {
-      categoryCountMap.set(
-        article.category_id,
-        (categoryCountMap.get(article.category_id) || 0) + 1,
-      );
-    }
-  });
-
-  // Enhance categories with accurate counts
-  const categoriesWithCounts = (categories || []).map((cat) => ({
-    ...cat,
-    article_count: categoryCountMap.get(cat.id) || 0,
-  }));
+  // Per-category counts via cheap { count: 'exact', head: true } queries.
+  // One count query per category — bounded by # of categories (~10), not # of articles.
+  const categoriesWithCounts = await Promise.all(
+    (categories || []).map(async (cat) => {
+      const { count } = await supabase
+        .from("articles")
+        .select("id", { count: "exact", head: true })
+        .eq("is_published", true)
+        .eq("category_id", cat.id);
+      return { ...cat, article_count: count || 0 };
+    }),
+  );
 
   // Get user's liked articles
   let likedArticleIds: string[] = [];
