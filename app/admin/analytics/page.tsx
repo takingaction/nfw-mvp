@@ -106,12 +106,15 @@ async function AdminAnalyticsContent() {
   const redemptions = await fetchAllWithPagination("offer_redemptions", redemptionsQuery);
 
   // ── NEWSLETTER SIGNUPS ─────────────────────────────────────────────────
-  console.log("[analytics] Starting coming_soon_emails fetch (no pagination needed)...");
-  const { data: newsletterEmails } = await supabaseAdmin
+  console.log("[analytics] Starting coming_soon_emails fetch...");
+  const newsletterEmailsQuery = supabaseAdmin
     .from("coming_soon_emails")
-    .select("id, created_at")
-    .order("created_at", { ascending: true });
-  console.log(`[analytics] coming_soon_emails: ${newsletterEmails?.length || 0} rows`);
+    .select("id, created_at");
+  const newsletterEmails = await fetchAllWithPagination(
+    "coming_soon_emails",
+    newsletterEmailsQuery,
+    "created_at",
+  );
 
   // ── ZERO DOLLAR STORE CLAIMS ─────────────────────────────────────────────
   console.log("[analytics] Starting zero_dollar_claims fetch...");

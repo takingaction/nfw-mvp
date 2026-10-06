@@ -33,18 +33,37 @@ export async function GET(request: Request) {
     const acceptHeader = request.headers.get("accept");
     const wantsCsv = acceptHeader?.includes("text/csv");
 
-    const { data: emails, error } = await supabaseAdmin
-      .from("coming_soon_emails")
-      .select("email, created_at")
-      .order("created_at", { ascending: false });
+    const PAGE_SIZE = 1000;
+    const allEmails: { email: string; created_at: string }[] = [];
+    let fetchPage = 0;
+    let fetchHasMore = true;
 
-    if (error) {
-      console.error("Error fetching emails:", error);
-      return NextResponse.json(
-        { error: "Failed to fetch emails" },
-        { status: 500 }
-      );
+    while (fetchHasMore) {
+      const from = fetchPage * PAGE_SIZE;
+      const { data: pageData, error: pageError } = await supabaseAdmin
+        .from("coming_soon_emails")
+        .select("email, created_at")
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (pageError) {
+        console.error("Error fetching emails:", pageError);
+        return NextResponse.json(
+          { error: "Failed to fetch emails" },
+          { status: 500 }
+        );
+      }
+
+      if (pageData && pageData.length > 0) {
+        allEmails.push(...pageData);
+        fetchPage++;
+        fetchHasMore = pageData.length === PAGE_SIZE;
+      } else {
+        fetchHasMore = false;
+      }
     }
+
+    const emails = allEmails;
 
     if (wantsCsv) {
       const csvHeader = "Email,Date Submitted\n";

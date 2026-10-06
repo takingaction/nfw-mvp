@@ -11,17 +11,34 @@ async function getEmails() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const { data: emails, error } = await supabaseAdmin
-    .from("coming_soon_emails")
-    .select("email, created_at")
-    .order("created_at", { ascending: false });
+  const PAGE_SIZE = 1000;
+  const allEmails: { email: string; created_at: string }[] = [];
+  let page = 0;
+  let hasMore = true;
 
-  if (error) {
-    console.error("Error fetching emails:", error);
-    return [];
+  while (hasMore) {
+    const from = page * PAGE_SIZE;
+    const { data, error } = await supabaseAdmin
+      .from("coming_soon_emails")
+      .select("email, created_at")
+      .order("created_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) {
+      console.error("Error fetching emails:", error);
+      return allEmails;
+    }
+
+    if (data && data.length > 0) {
+      allEmails.push(...data);
+      page++;
+      hasMore = data.length === PAGE_SIZE;
+    } else {
+      hasMore = false;
+    }
   }
 
-  return emails || [];
+  return allEmails;
 }
 
 export default async function AdminNewsletterSignupsPage() {
