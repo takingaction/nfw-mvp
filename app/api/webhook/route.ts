@@ -310,25 +310,51 @@ export async function POST(request: Request) {
             let profileName = "";
 
             if (profileCheckError || !existingProfile) {
-              console.error("[webhook] Profile not found by ID, trying email lookup via auth.users");
-              // Fallback: find user by email in auth.users, then update their profile
-              if (customerEmail) {
-                console.log("[webhook] Looking up auth user by email:", customerEmail);
-                // List users to find by email - need to use admin API
-                const { data: usersList } = await supabaseAdmin.auth.admin.listUsers();
-                const authUser = usersList?.users?.find(u => u.email === customerEmail);
+              console.error("[webhook] Profile not found by ID, trying stripe_customer_id + email fallback");
+              // Fallback chain:
+              //   1. profiles by stripe_customer_id (always populated for paying members after first checkout)
+              //   2. find_user_by_email RPC (rare — accounts that paid but profile lacks stripe_customer_id)
+              if (customerEmail || session.customer) {
+                let fallbackId: string | null = null;
+                let fallbackName = "";
 
-                if (authUser) {
-                  console.log("[webhook] Found auth user:", authUser.id);
-                  // Get profile by auth user id
-                  const { data: authProfile } = await supabaseAdmin
+                if (session.customer) {
+                  const { data: profileByCustomer } = await supabaseAdmin
                     .from("profiles")
-                    .select("full_name")
-                    .eq("id", authUser.id)
-                    .single();
+                    .select("id, full_name")
+                    .eq("stripe_customer_id", session.customer as string)
+                    .maybeSingle();
+                  if (profileByCustomer) {
+                    fallbackId = profileByCustomer.id;
+                    fallbackName = profileByCustomer.full_name || "";
+                    console.log("[webhook] Found profile by stripe_customer_id:", fallbackId);
+                  }
+                }
 
-                  profileName = authProfile?.full_name || "";
-                  profileId = authUser.id;
+                if (!fallbackId && customerEmail) {
+                  console.log("[webhook] Looking up auth user by email:", customerEmail);
+                  const { data: authUserRows } = await supabaseAdmin
+                    .rpc("find_user_by_email", { target_email: customerEmail });
+                  const authUser = authUserRows && authUserRows.length > 0 ? authUserRows[0] : null;
+
+                  if (authUser) {
+                    console.log("[webhook] Found auth user:", authUser.id);
+                    const { data: authProfile } = await supabaseAdmin
+                      .from("profiles")
+                      .select("full_name")
+                      .eq("id", authUser.id)
+                      .single();
+
+                    fallbackName = authProfile?.full_name || "";
+                    fallbackId = authUser.id;
+                  } else {
+                    console.error("[webhook] Auth user not found by email:", customerEmail);
+                  }
+                }
+
+                if (fallbackId) {
+                  profileName = fallbackName;
+                  profileId = fallbackId;
 
                   // Update profile using the auth user's ID
                   // Only update subscription if payment was actually successful
@@ -345,22 +371,20 @@ export async function POST(request: Request) {
                         first_paid_at: new Date().toISOString(),
                         first_paid_level: membershipLevel,
                       })
-                      .eq("id", authUser.id);
+                      .eq("id", fallbackId);
 
                     if (updateError) {
                       console.error("[webhook] Failed to update membership via email lookup:", updateError);
                     } else {
-                      console.log("[webhook] Profile updated successfully via email lookup to:", membershipLevel);
+                      console.log("[webhook] Profile updated successfully via fallback to:", membershipLevel);
                       profileUpdated = true;
                     }
                   } else {
                     console.log("[webhook] Payment not completed (payment_status:", session.payment_status, "), skipping profile update via email lookup");
                   }
-                } else {
-                  console.error("[webhook] Auth user not found by email:", customerEmail);
                 }
               } else {
-                console.error("[webhook] No email in session.customer_details to fallback to");
+                console.error("[webhook] No email or stripe_customer_id in session to fallback to");
               }
             } else {
               console.log("[webhook] Current membership_level:", existingProfile.membership_level);
@@ -528,21 +552,36 @@ export async function POST(request: Request) {
           break;
         }
 
-        // Look up user by email in auth.users
-        const { data: usersList } = await supabaseAdmin.auth.admin.listUsers();
-        const authUser = usersList?.users?.find(u => u.email === customer.email);
+        // Look up profile by stripe_customer_id (primary), fall back to email RPC.
+        // The previous listUsers() + .find() call was capped at 50 users per page and
+        // silently missed any user past the first page.
+        const { data: profileByCustomer } = await supabaseAdmin
+          .from("profiles")
+          .select("id, membership_level, first_paid_at, first_paid_level, lifetime_value")
+          .eq("stripe_customer_id", customerId)
+          .maybeSingle();
 
-        if (!authUser) {
-          console.error("[webhook] customer.subscription.updated: Auth user not found by email:", customer.email);
-          break;
+        let authUserId: string | null = profileByCustomer?.id ?? null;
+
+        if (!authUserId) {
+          const { data: authUserRows } = await supabaseAdmin
+            .rpc("find_user_by_email", { target_email: customer.email });
+          const authUser = authUserRows && authUserRows.length > 0 ? authUserRows[0] : null;
+          if (!authUser) {
+            console.error("[webhook] customer.subscription.updated: Auth user not found for customer:", customerId);
+            break;
+          }
+          authUserId = authUser.id;
         }
 
         // Fetch current profile to get existing membership_level
-        const { data: currentProfile } = await supabaseAdmin
-          .from("profiles")
-          .select("membership_level, first_paid_at, first_paid_level, lifetime_value")
-          .eq("id", authUser.id)
-          .single();
+        const currentProfile = profileByCustomer ?? (
+          await supabaseAdmin
+            .from("profiles")
+            .select("membership_level, first_paid_at, first_paid_level, lifetime_value")
+            .eq("id", authUserId)
+            .single()
+        ).data;
 
         if (subscription.cancel_at_period_end) {
           const endsAt = new Date((subscription as unknown as { current_period_end: number }).current_period_end * 1000);
@@ -554,7 +593,7 @@ export async function POST(request: Request) {
               subscription_ends_at: endsAt.toISOString(),
               updated_at: new Date().toISOString(),
             })
-            .eq("id", authUser.id);
+            .eq("id", authUserId);
         } else {
           const newMembershipLevel = PRICE_TO_MEMBERSHIP[priceId];
 
@@ -604,7 +643,7 @@ export async function POST(request: Request) {
               await supabaseAdmin
                 .from("membership_upgrades")
                 .insert({
-                  user_id: authUser.id,
+                  user_id: authUserId,
                   from_level: previousLevel || "free",
                   to_level: newMembershipLevel,
                   amount: actualAmount,
@@ -626,7 +665,7 @@ export async function POST(request: Request) {
                 first_paid_at: currentProfile.first_paid_at || new Date().toISOString(),
                 first_paid_level: currentProfile.first_paid_level || newMembershipLevel,
               })
-              .eq("id", authUser.id);
+              .eq("id", authUserId);
           }
         }
         console.log("[webhook] customer.subscription.updated completed for:", customer.email);
@@ -648,21 +687,36 @@ export async function POST(request: Request) {
           break;
         }
 
-        // Look up user by email in auth.users
-        const { data: usersList } = await supabaseAdmin.auth.admin.listUsers();
-        const authUser = usersList?.users?.find(u => u.email === customer.email);
+        // Look up profile by stripe_customer_id (primary), fall back to email RPC.
+        // The previous listUsers() + .find() call was capped at 50 users per page and
+        // silently missed any user past the first page.
+        const { data: profileByCustomer } = await supabaseAdmin
+          .from("profiles")
+          .select("id, membership_level, first_paid_at, first_paid_level, stripe_customer_id, signup_source")
+          .eq("stripe_customer_id", customerId)
+          .maybeSingle();
 
-        if (!authUser) {
-          console.error("[webhook] customer.subscription.created: Auth user not found by email:", customer.email);
-          break;
+        let authUserId: string | null = profileByCustomer?.id ?? null;
+
+        if (!authUserId) {
+          const { data: authUserRows } = await supabaseAdmin
+            .rpc("find_user_by_email", { target_email: customer.email });
+          const authUser = authUserRows && authUserRows.length > 0 ? authUserRows[0] : null;
+          if (!authUser) {
+            console.error("[webhook] customer.subscription.created: Auth user not found for customer:", customerId);
+            break;
+          }
+          authUserId = authUser.id;
         }
 
         // Fetch current profile to get existing values
-        const { data: currentProfile } = await supabaseAdmin
-          .from("profiles")
-          .select("membership_level, first_paid_at, first_paid_level, stripe_customer_id, signup_source")
-          .eq("id", authUser.id)
-          .single();
+        const currentProfile = profileByCustomer ?? (
+          await supabaseAdmin
+            .from("profiles")
+            .select("membership_level, first_paid_at, first_paid_level, stripe_customer_id, signup_source")
+            .eq("id", authUserId)
+            .single()
+        ).data;
 
         const newMembershipLevel = PRICE_TO_MEMBERSHIP[priceId];
 
@@ -695,7 +749,7 @@ export async function POST(request: Request) {
           await supabaseAdmin
             .from("profiles")
             .update(updates)
-            .eq("id", authUser.id);
+            .eq("id", authUserId);
 
           console.log("[webhook] customer.subscription.created: Profile updated to:", newMembershipLevel);
         }
@@ -717,24 +771,43 @@ export async function POST(request: Request) {
         if (customer.email) {
           console.log("[webhook] Subscription deleted for:", customer.email, "- downgrading to free");
 
-          // Look up user by email in auth.users, then update their profile
-          const { data: usersList } = await supabaseAdmin.auth.admin.listUsers();
-          const authUser = usersList?.users?.find(u => u.email === customer.email);
+          // Look up profile by stripe_customer_id (primary), fall back to email RPC.
+          // The previous listUsers() + .find() call was capped at 50 users per page and
+          // silently missed any user past the first page.
+          const { data: profileByCustomer } = await supabaseAdmin
+            .from("profiles")
+            .select("id")
+            .eq("stripe_customer_id", customerId)
+            .maybeSingle();
 
-          if (authUser) {
-            console.log("[webhook] Found auth user:", authUser.id, "- updating profile to free");
+          let authUserId: string | null = profileByCustomer?.id ?? null;
+
+          if (!authUserId) {
+            const { data: authUserRows } = await supabaseAdmin
+              .rpc("find_user_by_email", { target_email: customer.email });
+            const authUser = authUserRows && authUserRows.length > 0 ? authUserRows[0] : null;
+            if (authUser) {
+              authUserId = authUser.id;
+            } else {
+              console.error("[webhook] customer.subscription.deleted: Auth user not found for customer:", customerId);
+              break;
+            }
+          }
+
+          if (authUserId) {
+            console.log("[webhook] Found user:", authUserId, "- checking payment history before downgrade");
 
             // Guard: refuse to demote a paying member to free. Requires admin manual
             // review before any tier change. Slack alert via existing notifier.
             const { data: successfulPayment } = await supabaseAdmin
               .from("membership_payments")
               .select("id")
-              .eq("user_id", authUser.id)
+              .eq("user_id", authUserId)
               .eq("status", "succeeded")
               .limit(1);
             if (successfulPayment && successfulPayment.length > 0) {
               console.error(
-                `[webhook] customer.subscription.deleted blocked for ${authUser.id} (${customer.email}) — has successful payments. Manual review required.`,
+                `[webhook] customer.subscription.deleted blocked for ${authUserId} (${customer.email}) — has successful payments. Manual review required.`,
               );
               await notifyRefundNotMatched({
                 chargeId: customerId,
@@ -751,11 +824,9 @@ export async function POST(request: Request) {
                 subscription_ends_at: null,
                 updated_at: new Date().toISOString(),
               })
-              .eq("id", authUser.id);
+              .eq("id", authUserId);
 
             console.log("[webhook] Profile downgraded to free for:", customer.email);
-          } else {
-            console.error("[webhook] Auth user not found by email:", customer.email);
           }
         } else {
           console.error("[webhook] customer.subscription.deleted: No email found for customer", customerId);
