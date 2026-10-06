@@ -15,10 +15,30 @@ export default async function AdminContactPage() {
     .select("*")
     .single();
 
-  const { data: submissions } = await supabaseAdmin
-    .from("contact_submissions")
-    .select("*")
-    .order("created_at", { ascending: false });
+  // Paginated fetch — contact_submissions will exceed the 1000-row cap eventually.
+  const PAGE_SIZE = 1000;
+  const allSubmissions: any[] = [];
+  let contactPage = 0;
+  let contactHasMore = true;
+
+  while (contactHasMore) {
+    const from = contactPage * PAGE_SIZE;
+    const { data: pageData } = await supabaseAdmin
+      .from("contact_submissions")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (pageData && pageData.length > 0) {
+      allSubmissions.push(...pageData);
+      contactPage++;
+      contactHasMore = pageData.length === PAGE_SIZE;
+    } else {
+      contactHasMore = false;
+    }
+  }
+
+  const submissions = allSubmissions;
 
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">

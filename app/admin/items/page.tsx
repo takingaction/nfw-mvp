@@ -24,15 +24,40 @@ export default async function AdminItemsPage() {
     redirect("/");
   }
 
-  const { data: items, error: itemsError } = await supabase
-    .from("zero_dollar_items")
-    .select(
-      `
-      *,
-      category:zero_dollar_categories(name, slug)
-    `,
-    )
-    .order("created_at", { ascending: false });
+  // Paginated fetch — zero_dollar_items will exceed the 1000-row cap eventually.
+  const PAGE_SIZE = 1000;
+  const allItems: any[] = [];
+  let itemsPage = 0;
+  let itemsHasMore = true;
+  let itemsError: any = null;
+
+  while (itemsHasMore) {
+    const from = itemsPage * PAGE_SIZE;
+    const { data: pageData, error: pageError } = await supabase
+      .from("zero_dollar_items")
+      .select(
+        `
+        *,
+        category:zero_dollar_categories(name, slug)
+      `,
+      )
+      .order("created_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (pageError) {
+      itemsError = pageError;
+      break;
+    }
+    if (pageData && pageData.length > 0) {
+      allItems.push(...pageData);
+      itemsPage++;
+      itemsHasMore = pageData.length === PAGE_SIZE;
+    } else {
+      itemsHasMore = false;
+    }
+  }
+
+  const items = itemsError ? null : allItems;
 
   if (itemsError) {
     console.error("Error fetching items:", itemsError);

@@ -23,17 +23,36 @@ export default async function AdminArticlesPage() {
     redirect("/");
   }
 
-  // Fetch all articles (published and unpublished)
-  const { data: articles } = await supabase
-    .from("articles")
-    .select(
-      `
-      *,
-      author:profiles(full_name),
-      category:article_categories(name)
-    `,
-    )
-    .order("created_at", { ascending: false });
+  // Fetch all articles (published and unpublished) — paginated past 1000-row cap.
+  const PAGE_SIZE = 1000;
+  const allArticles: any[] = [];
+  let articlesPage = 0;
+  let articlesHasMore = true;
+
+  while (articlesHasMore) {
+    const from = articlesPage * PAGE_SIZE;
+    const { data: pageData } = await supabase
+      .from("articles")
+      .select(
+        `
+        *,
+        author:profiles(full_name),
+        category:article_categories(name)
+      `,
+      )
+      .order("created_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (pageData && pageData.length > 0) {
+      allArticles.push(...pageData);
+      articlesPage++;
+      articlesHasMore = pageData.length === PAGE_SIZE;
+    } else {
+      articlesHasMore = false;
+    }
+  }
+
+  const articles = allArticles;
 
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">
