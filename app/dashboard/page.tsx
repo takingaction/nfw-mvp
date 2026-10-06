@@ -14,6 +14,8 @@ import { ProfileBanner } from "@/components/profile/ProfileBanner";
 import { AbandonedCheckoutBanner } from "@/components/dashboard/AbandonedCheckoutBanner";
 import { PendingFreeMembershipBanner } from "@/components/dashboard/PendingFreeMembershipBanner";
 import { getImpersonationContext } from "@/lib/impersonation";
+import { compareCycleDisplayOrder } from "@/lib/grant-cycle-order";
+import { todayInNewYork } from "@/lib/dates";
 import ConnectBankButton from "@/components/grants/ConnectBankButton";
 
 export const metadata = {
@@ -170,12 +172,18 @@ export default async function DashboardPage({
       .in("status", ["completed", "fulfilled", "paid", "cancelled"])
       .order("claimed_at", { ascending: false })
       .limit(10),
+    // Fetch all open cycles with no limit — the admin-only testing-only
+    // filter and the end_date past-today filter happen in JS after the
+    // profile is known (both queries are in the same Promise.all above).
+    // Filtering first, then capping at 6, means non-admins don't lose
+    // slots to testing-only or stale cycles.
     supabaseAdmin
       .from("grant_cycles")
-      .select("id, cycle_name, amount_per_grant, end_date, featured_image, status, is_testing_only")
+      .select("id, cycle_name, amount_per_grant, end_date, featured_image, status, is_testing_only, display_order, created_at")
       .eq("status", "open")
-      .order("end_date", { ascending: true })
-      .limit(6),
+      .order("display_order", { ascending: true })
+      .order("created_at", { ascending: false }),
+    // .limit(6) intentionally removed — applied after filtering below
     supabaseAdmin
       .from("abandoned_checkouts")
       .select("id")
@@ -253,10 +261,14 @@ export default async function DashboardPage({
   // Get the most recently approved/paid grant ID for the Connect Bank Account button
   const latestGrantId = paidOrApprovedGrants[0]?.id || null;
 
-  // Filter out testing-only cycles for non-admins
-  const availableCycles = (cyclesResult?.data || []).filter(
-    (cycle: any) => profile?.is_admin || !cycle.is_testing_only
-  );
+  // Filter testing-only (non-admins), drop cycles past end_date (New York),
+  // sort to match /admin/grants, then cap at 6.
+  const todayStr = todayInNewYork();
+  const availableCycles = (cyclesResult?.data || [])
+    .filter((cycle: any) => profile?.is_admin || !cycle.is_testing_only)
+    .filter((cycle: any) => String(cycle.end_date).split("T")[0] >= todayStr)
+    .sort(compareCycleDisplayOrder)
+    .slice(0, 6);
 
   // Start with featured items from settings
   let featuredItems = (settings.featured_items || []).slice(0, 5);

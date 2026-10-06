@@ -12,7 +12,7 @@ import type { GrantCycle, GrantDetail, GrantDocument, GrantWithCycle } from "@/t
  * Open grant cycles — web: app/grants/apply/page.tsx (server) and the dashboard's
  * "Available Microgrants" strip.
  *   status = open, end_date >= today, is_testing_only = false unless admin,
- *   ordered by display_order then end_date.
+ *   ordered to match /admin/grants (display_order, then newest created_at).
  * `grant_cycles` SELECT policy is USING (true), so this works without the web API.
  */
 export function useOpenGrantCycles() {
@@ -24,11 +24,11 @@ export function useOpenGrantCycles() {
       let q = supabase
         .from("grant_cycles")
         .select(
-          "id, cycle_name, description, start_date, end_date, amount_per_grant, grants_available, status, is_testing_only, featured_image, display_order",
+          "id, cycle_name, description, start_date, end_date, amount_per_grant, grants_available, status, is_testing_only, featured_image, display_order, created_at",
         )
         .eq("status", "open")
         .order("display_order", { ascending: true, nullsFirst: false })
-        .order("end_date", { ascending: true });
+        .order("created_at", { ascending: false });
 
       if (!isAdmin) q = q.eq("is_testing_only", false);
 

@@ -2,6 +2,7 @@ import { blockIfViewingAs } from "@/lib/view-as";
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { listPassCyclesForUser } from "@/lib/grant-eligibility";
+import { compareCycleDisplayOrder } from "@/lib/grant-cycle-order";
 import { todayInNewYork } from "@/lib/dates";
 
 /**
@@ -24,6 +25,11 @@ import { todayInNewYork } from "@/lib/dates";
  * detect a cycle that closed between when the apply page rendered
  * and when the member clicked Confirm. The form shows the same
  * "Back to all cycles" CTA it would show on a real cycle-closed 400.
+ *
+ * Also used by the mobile Grants tab and apply screen
+ * (mobile/lib/queries/grants.ts:useApplicableGrantCycles) to build
+ * their cycle list. Ordered to match /admin/grants
+ * (lib/grant-cycle-order.ts).
  *
  * The check fails open: if this endpoint returns non-OK, the form
  * proceeds with the upload. The worst case is the existing UX (member
@@ -57,10 +63,10 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from("grant_cycles")
-    .select("id, cycle_name, description, start_date, end_date, amount_per_grant, grants_available, requires_documents, display_order, status, is_testing_only, featured_image")
+    .select("id, cycle_name, description, start_date, end_date, amount_per_grant, grants_available, requires_documents, display_order, status, is_testing_only, featured_image, created_at")
     .eq("status", "open")
     .order("display_order", { ascending: true })
-    .order("end_date", { ascending: true });
+    .order("created_at", { ascending: false });
 
   if (!isAdmin) {
     query = query.eq("is_testing_only", false);
@@ -100,9 +106,10 @@ export async function GET(request: Request) {
       status: c.status,
       is_testing_only: c.is_testing_only,
       featured_image: c.featured_image,
+      created_at: c.created_at,
       viaPass: true,
       passExpiresAt: c.passExpiresAt,
     }));
 
-  return NextResponse.json({ cycles: [...openCycles, ...extra] });
+  return NextResponse.json({ cycles: [...openCycles, ...extra].sort(compareCycleDisplayOrder) });
 }

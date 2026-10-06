@@ -3,6 +3,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import GrantApplicationForm from "@/components/GrantApplicationForm";
 import { listPassCyclesForUser } from "@/lib/grant-eligibility";
+import { compareCycleDisplayOrder } from "@/lib/grant-cycle-order";
 import { todayInNewYork } from "@/lib/dates";
 
 const supabaseAdmin = createClient(
@@ -46,13 +47,16 @@ export default async function ApplyForGrantPage({
     redirect(`/auth/sign-up?step=3&next=${encodeURIComponent(nextTarget)}`);
   }
 
-  // Build query - admins see all cycles, non-admins don't see testing-only cycles
+  // Build query - admins see all cycles, non-admins don't see testing-only cycles.
+  // Ordered by display_order (then created_at desc) to match /admin/grants
+  // (lib/grant-cycle-order.ts). Postgres handles the display_order nulls-last
+  // tiebreak; the created_at tiebreak is applied after the merged sort below.
   let cyclesQuery = supabaseAdmin
     .from("grant_cycles")
     .select("*")
     .eq("status", "open")
     .order("display_order", { ascending: true })
-    .order("end_date", { ascending: true });
+    .order("created_at", { ascending: false });
 
   // Non-admins should not see testing-only cycles
   if (!profile?.is_admin) {
@@ -71,10 +75,12 @@ export default async function ApplyForGrantPage({
   // still apply to. Invisible to everyone else.
   const passCycles = await listPassCyclesForUser(user!.id);
   const openIds = new Set(openCycles.map((c) => c.id));
+  // Sort merged list so late-pass cycles slot into their display_order
+  // position instead of sitting at the end.
   const validCycles = [
     ...openCycles,
     ...passCycles.filter((c) => !openIds.has(c.id)),
-  ];
+  ].sort(compareCycleDisplayOrder);
   const initialCycleId =
     params?.cycleId && validCycles.some((c) => c.id === params.cycleId)
       ? params.cycleId

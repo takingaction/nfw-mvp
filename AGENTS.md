@@ -20432,3 +20432,46 @@ On `/admin/analytics`, the "New Members Over Time" chart was ordered alphabetica
 **Rule:** never sort chart data by a formatted display label. Sort by an ISO `YYYY-MM-DD` key and format separately.
 
 `tsc` 0 errors, `next build` ✓.
+
+---
+
+## Session 2026-10-08: Grant Cycle Display Order — All Member Lists Match /admin/grants
+
+### Goal
+Make every member-facing grant cycle list follow the same order as `/admin/grants`.
+
+### Canonical rule
+`display_order` ascending (nulls last), then `created_at` descending (newest first) on ties. Empty `display_order` values sort last because Postgres defaults to `NULLS LAST` for ASC.
+
+**Rule:** Any list of grant cycles shown to members uses `compareCycleDisplayOrder` from `lib/grant-cycle-order.ts`. Do not introduce a custom order.
+
+### Files Changed
+
+| File | Change |
+|---|---|
+| `lib/grant-cycle-order.ts` | **New.** Plain TS helper usable on server and client. `compareCycleDisplayOrder(a, b)` returns `a.display_order - b.display_order` (or `MAX_SAFE_INTEGER` for nulls), then `b.created_at.localeCompare(a.created_at)`. ISO string comparison is safe. |
+| `app/grants/apply/page.tsx` | DB: `.order("end_date", { ascending: true })` → `.order("created_at", { ascending: false })`. Merged list `validCycles` sorted with the helper so late-pass cycles slot into their `display_order` position. |
+| `app/api/grants/cycles/open/route.ts` | Add `created_at` to select + extra map. DB: `.order("end_date", { ascending: true })` → `.order("created_at", { ascending: false })`. Final `[...openCycles, ...extra].sort(compareCycleDisplayOrder)`. Doc comment updated to note mobile consumption. |
+| `app/dashboard/page.tsx` | Query widened with `display_order, created_at`. Removed `.limit(6)` — applied after JS filtering/sorting. Post-query: filter testing-only for non-admins, drop cycles past end_date using `todayInNewYork()`, sort with helper, `.slice(0, 6)`. |
+| `mobile/types/grants.ts` | Added optional `created_at` field to `GrantCycle`. |
+| `mobile/lib/queries/grants.ts` `useOpenGrantCycles` | Added `created_at` to select; `.order("end_date", { ascending: true })` → `.order("created_at", { ascending: false })`. Doc comments updated. |
+
+### Consumers (no edit required)
+
+- `useApplicableGrantCycles` (mobile Grants tab + apply screen) — gets order from `/api/grants/cycles/open` and passes it through.
+- `GrantApplicationForm.tsx` — renders cycles in array order.
+- `YourMicrograntsSection.tsx` — receives sorted `availableCycles` from the dashboard query.
+
+### Side fixes bundled in (dashboard strip)
+
+1. **Testing-only no longer steals visible slots.** With the SQL `.limit(6)` removed and the admin-only filter moved into the test pass, non-admins see however many *real* cycles exist (capped at 6).
+2. **Cycles past `end_date` no longer appear before the auto-close cron runs.** Same `end_date >= todayInNewYork()` check the apply page uses; `todayInNewYork()` already imported and available in `lib/dates.ts`.
+
+### Decisions (not done here)
+
+- **New cycles start at `display_order = 0`.** Among ties, the newest is first (the `created_at` tiebreaker). If you want new cycles at the bottom, change `app/api/admin/grants/create/route.ts` to insert with `display_order: MAX_SAFE_INTEGER` instead — separate ticket.
+- **Mobile `todayIsoDate()` is still UTC** (`mobile/lib/format.ts:84`). Already noted 9/30; mobile between 8 PM and midnight ET can hide a cycle a few hours before it actually closes on `/grants/apply`. Needs an app release.
+
+### Build
+
+`tsc --noEmit` 0 errors, `next build` ✓. Mobile `tsc --noEmit` 0 errors, `npx expo lint` clean. No migration, no schema change, no env var change, no admin/grants edit.
