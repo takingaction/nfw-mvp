@@ -36,6 +36,7 @@ interface GrantCycle {
 interface YourMicrograntsSectionProps {
   grants: Grant[];
   availableCycles: GrantCycle[];
+  stripeOnboardingCompleted: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -55,6 +56,7 @@ const statusLabels: Record<string, string> = {
 export default function YourMicrograntsSection({
   grants,
   availableCycles,
+  stripeOnboardingCompleted,
 }: YourMicrograntsSectionProps) {
 
   return (
@@ -63,6 +65,14 @@ export default function YourMicrograntsSection({
         <h2 className="text-2xl font-bold text-white font-serif">
           Your Microgrants
         </h2>
+        {stripeOnboardingCompleted && (
+          <span
+            className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-800 text-xs font-ui font-bold uppercase tracking-wide"
+            aria-label="Bank account connected"
+          >
+            <span aria-hidden="true">✓</span> Bank Connected
+          </span>
+        )}
         <Link
           href="/grants/apply"
           className="px-4 py-2 bg-nfw-citrine text-nfw-blackberry font-ui text-sm font-medium hover:bg-nfw-citrine/90 transition-colors"

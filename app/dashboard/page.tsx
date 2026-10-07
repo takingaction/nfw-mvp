@@ -337,7 +337,9 @@ export default async function DashboardPage({
 
       <DashboardHero heroImage={settings.hero_image_url || "/images/landing.jpg"} />
 
-      {/* You're Approved Banner - Full Width Below Hero */}
+      {/* You're Approved Banner - Full Width Below Hero (not-connected CTA only;
+          the already-connected variant was removed in favor of a small
+          "Bank Connected" pill inside <YourMicrograntsSection> below). */}
       {hasPaidOrApprovedGrant && !profile?.stripe_onboarding_completed && latestGrantId && (
         <div className="bg-nfw-citrine py-6 px-8">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -353,25 +355,6 @@ export default async function DashboardPage({
               </p>
             </div>
             <ConnectBankButton grantId={latestGrantId} />
-          </div>
-        </div>
-      )}
-
-      {/* Already Connected Banner */}
-      {hasPaidOrApprovedGrant && profile?.stripe_onboarding_completed && latestGrantId && (
-        <div className="bg-nfw-citrine py-6 px-8">
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="w-full sm:w-1/2">
-              <h2 className="font-serif text-2xl text-nfw-blackberry mb-1">
-                YOU&apos;RE APPROVED!
-              </h2>
-              <p className="font-serif text-nfw-blackberry/70">
-                You&apos;re already connected and ready to receive payments!
-              </p>
-            </div>
-            <span className="text-nfw-blackberry font-ui font-bold">
-              Bank Connected ✓
-            </span>
           </div>
         </div>
       )}
@@ -404,6 +387,7 @@ export default async function DashboardPage({
       <YourMicrograntsSection
         grants={userGrants}
         availableCycles={availableCycles}
+        stripeOnboardingCompleted={profile?.stripe_onboarding_completed ?? false}
       />
 
       <DashboardPerksSection likedStores={likedStores} />
