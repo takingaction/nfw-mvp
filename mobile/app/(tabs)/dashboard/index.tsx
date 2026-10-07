@@ -86,7 +86,11 @@ export default function DashboardScreen() {
 
       <FeaturedItems items={settings.data?.featured_items ?? []} />
 
-      <GrantsSummary grants={grants.data ?? []} availableCycles={cycles.data ?? []} />
+      <GrantsSummary
+        grants={grants.data ?? []}
+        availableCycles={cycles.data ?? []}
+        stripeOnboardingCompleted={profile?.stripe_onboarding_completed ?? false}
+      />
 
       <PerksSummary savedBrands={perksCounts.data?.savedBrands ?? 0} redeemed={perksCounts.data?.redeemed ?? 0} />
 

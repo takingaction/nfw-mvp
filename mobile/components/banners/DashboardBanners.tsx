@@ -20,7 +20,10 @@ type Props = {
  *   2. components/dashboard/AbandonedCheckoutBanner   — OMITTED on mobile (Stripe purchase is web-only)
  *   3. components/dashboard/PendingFreeMembershipBanner — pending free / waitlist (dismissible per session)
  *   4. "YOU'RE APPROVED!" connect-bank card            — approved grant, Stripe not onboarded (native flow)
- *   5. "YOU'RE APPROVED!" already-connected banner     — approved grant, Stripe onboarded
+ *
+ * Note: The "already connected" variant was removed — its "Bank Connected" status
+ * is now surfaced as a chip inside the Microgrants section header
+ * (mobile/components/dashboard/GrantsSummary.tsx), mirroring the web refactor.
  */
 export function DashboardBanners({ profile, hasPaidOrApprovedGrant, latestGrantId }: Props) {
   const router = useRouter();
@@ -62,15 +65,6 @@ export function DashboardBanners({ profile, hasPaidOrApprovedGrant, latestGrantI
         <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
           <StripeConnectCard grantId={latestGrantId} compact />
         </View>
-      )}
-
-      {hasPaidOrApprovedGrant && latestGrantId && profile.stripe_onboarding_completed && (
-        <Banner
-          surface="citrine"
-          title="You're Approved!"
-          message="You're already connected and ready to receive payments!"
-          note="Bank Connected ✓"
-        />
       )}
     </>
   );

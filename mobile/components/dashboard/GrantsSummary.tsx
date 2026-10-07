@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, View } from "react-native";
 
@@ -6,19 +7,21 @@ import { GrantCycleCard } from "@/components/grants/GrantCycleCard";
 import { Button } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Heading, Subheading } from "@/components/ui/Typography";
+import { Heading, Label, Subheading } from "@/components/ui/Typography";
 import { HIDDEN_GRANT_STATUSES, type GrantCycle, type GrantWithCycle } from "@/types/grants";
 
 type Props = {
   grants: GrantWithCycle[];
   availableCycles: GrantCycle[];
+  /** True when the member has completed Stripe Connect onboarding (web: profiles.stripe_onboarding_completed). Renders a "Bank Connected" chip in the section header. */
+  stripeOnboardingCompleted: boolean;
 };
 
 /**
  * Web: components/dashboard/YourMicrograntsSection.tsx (wisteria band).
  * "Your Microgrants" + "New Application" · "Your Applications" · "Available Microgrants".
  */
-export function GrantsSummary({ grants, availableCycles }: Props) {
+export function GrantsSummary({ grants, availableCycles, stripeOnboardingCompleted }: Props) {
   const router = useRouter();
   const visible = grants.filter((g) => !HIDDEN_GRANT_STATUSES.includes(g.status));
 
@@ -26,6 +29,12 @@ export function GrantsSummary({ grants, availableCycles }: Props) {
     <Section surface="wisteria">
       <View style={styles.header}>
         <Heading tone="inverse">Your Microgrants</Heading>
+        {stripeOnboardingCompleted && (
+          <View style={styles.bankConnected}>
+            <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
+            <Label tone="inverse">Bank Connected</Label>
+          </View>
+        )}
         <Button label="New Application" variant="accent" size="sm" onPress={() => router.push("/(tabs)/grants/apply")} />
       </View>
 
@@ -73,6 +82,7 @@ export function GrantsSummary({ grants, availableCycles }: Props) {
 
 const styles = StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" },
+  bankConnected: { flexDirection: "row", alignItems: "center", gap: 6 },
   list: { gap: 10 },
   viewAll: { alignSelf: "flex-start", borderColor: "#FFFFFF" },
   secondHeading: { marginTop: 8 },
