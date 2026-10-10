@@ -1,8 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { getValidatedNextUrl } from "@/lib/redirect-utils";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,7 +28,6 @@ export function LoginForm({
   const [isResending, setIsResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [showResend, setShowResend] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
     if (resendCooldown > 0) {
@@ -56,10 +55,16 @@ export function LoginForm({
         throw signInError;
       }
 
-      // Success - redirect to next param if present, otherwise dashboard
+      // Success - validate next param against our domain (prevents open
+      // redirect), then full-page reload so the root layout re-renders with
+      // the logged-in nav (server-filtered links, view-as banner, etc.)
       const searchParams = new URLSearchParams(window.location.search);
-      const nextUrl = searchParams.get("next") || "/dashboard";
-      router.push(nextUrl);
+      const validatedNext = getValidatedNextUrl(
+        searchParams.get("next"),
+        null,
+        "/dashboard",
+      );
+      window.location.assign(validatedNext);
     } catch (err: any) {
       if (err.message?.includes("Email not confirmed")) {
         setShowResend(true);
@@ -79,14 +84,20 @@ export function LoginForm({
     setIsGoogleLoading(true);
     setError(null);
 
-    // Get next URL from query params to pass through OAuth flow
+    // Validate next param at the source (the auth callback also re-validates,
+    // but doing it here keeps the OAuth state clean and the redirect URL
+    // minimal). Same allowed-domain check as the password flow.
     const searchParams = new URLSearchParams(window.location.search);
-    const nextUrl = searchParams.get("next") || "/dashboard";
+    const validatedNext = getValidatedNextUrl(
+      searchParams.get("next"),
+      null,
+      "/dashboard",
+    );
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextUrl)}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(validatedNext)}`,
       },
     });
 
