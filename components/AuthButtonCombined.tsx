@@ -1,110 +1,83 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
+import { usePathname } from "next/navigation";
+import { useNavAuth } from "@/lib/nav-auth-store";
+import { getLoginRedirectUrl } from "@/lib/redirect-utils";
 import { LogoutButton } from "./logout-button";
-import type { User } from "@supabase/supabase-js";
 
-interface Profile {
-  full_name: string | null;
-  is_admin: boolean | null;
-  is_reviewer: boolean | null;
+const DEFAULT_CTA_LABEL = "Join Now";
+const DEFAULT_CTA_URL = "/auth/sign-up";
+
+const LINK_CLASS =
+  "inline-flex items-center justify-center px-4 h-10 border border-[#ac9bb6] text-[#ac9bb6] font-bold text-sm hover:bg-[#ac9bb6]/10 transition-all";
+
+const TEXT_LINK_CLASS =
+  "text-[#ac9bb6] font-semibold hover:text-white/80 transition-colors uppercase text-sm tracking-wider py-2";
+
+/**
+ * `next` is omitted on the homepage and on /auth/* so a successful login
+ * lands on /dashboard (the form's default) rather than bouncing back.
+ * Keeping this exclusion list in one place so the nav and login form
+ * stay aligned.
+ */
+function shouldIncludeNext(pathname: string): boolean {
+  return pathname !== "/" && !pathname.startsWith("/auth/");
 }
 
-const ADMIN_STATUS_EVENT = "nfw-admin-status-change";
-
-export function AuthButtonCombined() {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isReviewer, setIsReviewer] = useState(false);
+export function AuthButtonCombined({
+  ctaLabel,
+  ctaUrl,
+}: {
+  ctaLabel?: string | null;
+  ctaUrl?: string | null;
+}) {
+  const { status, user, fullName, isAdmin, isReviewer } = useNavAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  const updateAdminStatus = (adminStatus: boolean, reviewerStatus: boolean) => {
-    setIsAdmin(adminStatus);
-    setIsReviewer(reviewerStatus);
-    window.dispatchEvent(new CustomEvent(ADMIN_STATUS_EVENT, { detail: { isAdmin: adminStatus, isReviewer: reviewerStatus } }));
-  };
+  const label = ctaLabel || DEFAULT_CTA_LABEL;
+  const url = ctaUrl || DEFAULT_CTA_URL;
+  const pathname = usePathname();
 
-  useEffect(() => {
-    const fetchProfile = async (userId: string) => {
-      try {
-        const response = await fetch("/api/auth/profile");
-        if (response.ok) {
-          const data = await response.json();
-          setProfile(data);
-          const adminStatus = data.is_admin === true;
-          const reviewerStatus = data.is_reviewer === true;
-          setIsAdmin(adminStatus);
-          setIsReviewer(reviewerStatus);
-          updateAdminStatus(adminStatus, reviewerStatus);
-          localStorage.setItem("nfw_profile", JSON.stringify(data));
-        }
-      } catch (error) {
-        console.error("Failed to fetch profile:", error);
-      }
-    };
+  const loginHref = shouldIncludeNext(pathname)
+    ? getLoginRedirectUrl(pathname)
+    : "/auth/login";
 
-    const cachedProfile = localStorage.getItem("nfw_profile");
-    if (cachedProfile) {
-      const parsed = JSON.parse(cachedProfile) as Profile;
-      setProfile(parsed);
-      const adminStatus = parsed?.is_admin === true;
-      const reviewerStatus = parsed?.is_reviewer === true;
-      setIsAdmin(adminStatus);
-      setIsReviewer(reviewerStatus);
-      updateAdminStatus(adminStatus, reviewerStatus);
-    }
-
-    const supabase = createClient();
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (currentUser) {
-        await fetchProfile(currentUser.id);
-      }
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      setIsOpen(false);
-
-      if (event === "SIGNED_OUT") {
-        setProfile(null);
-        setIsAdmin(false);
-        setIsReviewer(false);
-        updateAdminStatus(false, false);
-        localStorage.removeItem("nfw_profile");
-        return;
-      }
-
-      if (currentUser && (event === "SIGNED_IN" || event === "USER_UPDATED")) {
-        await fetchProfile(currentUser.id);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (!user) {
+  // Still checking: render an invisible twin of the logged-out state so
+  // the layout width doesn't shift on first paint.
+  if (status === "loading") {
     return (
-      <Link
-        href="/auth/sign-up"
-        className="inline-flex items-center justify-center px-4 h-10 border border-[#ac9bb6] text-[#ac9bb6] font-bold text-sm hover:bg-[#ac9bb6]/10 transition-all"
+      <div
+        className="invisible flex items-center gap-3"
+        aria-hidden="true"
       >
-        Join Now
-      </Link>
+        <span className={TEXT_LINK_CLASS}>Log In</span>
+        <Link href={url} className={LINK_CLASS}>
+          {label}
+        </Link>
+      </div>
     );
   }
 
-  const firstLetter = profile?.full_name
-    ? profile.full_name.charAt(0).toUpperCase()
-    : user.email?.charAt(0).toUpperCase() || "U";
+  // Logged out: "Log In" text link + Join Now outline button.
+  if (status === "out") {
+    return (
+      <div className="flex items-center gap-3">
+        <Link href={loginHref} className={TEXT_LINK_CLASS}>
+          Log In
+        </Link>
+        <Link href={url} className={LINK_CLASS}>
+          {label}
+        </Link>
+      </div>
+    );
+  }
+
+  // Logged in: avatar menu only. No Log In, no Join Now.
+  const firstLetter = fullName
+    ? fullName.charAt(0).toUpperCase()
+    : user?.email?.charAt(0).toUpperCase() || "U";
 
   return (
     <div className="relative">
@@ -124,9 +97,11 @@ export function AuthButtonCombined() {
           <div className="absolute right-0 mt-2 w-56 bg-white shadow-xl border border-nfw-aubergine/10 py-2 z-20">
             <div className="px-4 py-2 border-b border-nfw-aubergine/10">
               <p className="text-sm font-semibold text-nfw-aubergine">
-                {profile?.full_name || "Member"}
+                {fullName || "Member"}
               </p>
-              <p className="text-xs text-nfw-aubergine/50">{user.email}</p>
+              <p className="text-xs text-nfw-aubergine/50">
+                {user?.email}
+              </p>
             </div>
             <Link
               href="/dashboard"

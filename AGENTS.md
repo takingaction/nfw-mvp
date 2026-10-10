@@ -20475,3 +20475,75 @@ Make every member-facing grant cycle list follow the same order as `/admin/grant
 ### Build
 
 `tsc --noEmit` 0 errors, `next build` ✓. Mobile `tsc --noEmit` 0 errors, `npx expo lint` clean. No migration, no schema change, no env var change, no admin/grants edit.
+
+## Session 2026-10-09: Nav Log In Button + Shared Auth State Store
+
+User report: people are confused because the only "Join Now" button in the nav looks like the only option. Need a "Log In" link next to it, and both need to disappear for logged-in users. Plan was discussed and revised (security fix first as its own commit, then nav refactor).
+
+### Commit 1 (security): `login-form` `next` validation
+
+**Problem:** `login-form.tsx:60-62` did `router.push(searchParams.get("next") || "/dashboard")` with no domain check. Any page that linked to `/auth/login?next=...` (perks, grants, several others) was exploitable today via a crafted URL like `/auth/login?next=https://evil.com` bouncing the user to the attacker's site right after a successful login.
+
+**Fix:** Run `next` through `getValidatedNextUrl` (lib/redirect-utils.ts) which enforces the `nationalfundforwomen.org` allowlist. Falls back to `/dashboard` on any invalid or absent value. Applied to both password and Google sign-in. Google path already had defense in depth via `app/auth/callback/route.ts`.
+
+Also swapped `router.push` for `window.location.assign` on password success so the root layout re-renders with logged-in state (needed for the upcoming nav refactor; harmless today).
+
+**Lesson learned:** Open-redirect fixes must live at the redirect (the sink), not at the link generator. Validating where the nav builds links only protects links WE create — which were never the risk. The crafted URL hits the form directly.
+
+### Commit 2 (nav refactor): shared auth state store
+
+**Architecture:** `lib/nav-auth-store.ts` is a module-level singleton with `useSyncExternalStore` hook. One Supabase auth subscription, one profile fetch — read by `AuthButtonCombined`, `MobileMenu`, and `FloatingAdminButton` via `useNavAuth()`. Replaces three independent copies of the same logic that each component carried, plus the `nfw-admin-status-change` CustomEvent that `FloatingAdminButton` used to listen for.
+
+**Server-side seed:** `Navigation.tsx` is a server component that reads cookies via `await cookies()`. Checks for any cookie matching `/-auth-token(\.\d+)?$/` (the Supabase auth cookie pattern) and passes `initialSignedIn` to `NavAuthInit`, a client component that calls `initNavAuth(initialSignedIn)` on mount. The store is seeded synchronously so the first client paint matches the server.
+
+**Server-side link filter:** `Navigation.tsx` filters `navLinks` before passing to consumers: drops `/auth/sign-up` and `/auth/login` for logged-in users, drops `/dashboard` for logged-out users. If a parent's children all get filtered out, `MobileMenu` renders the parent as a plain link instead of an empty dropdown. `NavigationClient` already had this logic (its `dropdownItems.length > 0` check).
+
+**Desktop (`AuthButtonCombined`):** 
+- Logged out → `Log In` text link (`text-[#ac9bb6]`, same style as nav items) + Join Now outline button (admin-configurable label/url)
+- Logged in → Avatar menu only
+- Still checking → invisible twin of the logged-out state (prevents layout shift)
+
+**Mobile (`MobileMenu`):** 
+- Logged out → `Log In` link next to the hamburger button, visible without opening the menu
+- Bottom buttons renamed from `Sign in / Sign up` to `Log In / Join Now` (the latter uses `ctaLabel`/`ctaUrl`)
+- Logged in → avatar dropdown in the footer; the `Log In` link next to the hamburger is hidden
+- Server-filtered nav links; empty-children case renders as plain link
+
+**Browser-computed `next`:** `next` is computed in the browser via `usePathname()`. Excluded for `/` (logged-in dashboard flow) and `/auth/*` (login form is already there). Uses the existing `getLoginRedirectUrl` helper for consistency.
+
+**Full reload after login:** `login-form` already uses `window.location.assign(validatedNext)` so the root layout re-renders with the logged-in nav. Without it, the server-filtered links would lie until the next full reload (the layout doesn't re-render on in-app navigation).
+
+**Accepted gap:** If a session expires while the user is idle on a page, the server-filtered links stay as they are until the next full page load. The auth button itself still corrects via the shared store. Harmless — once they navigate, everything is right.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `components/login-form.tsx` | Validate `next` for both password + Google, switch to `window.location.assign` |
+| `lib/nav-auth-store.ts` | **New** — module-level singleton + `useNavAuth` + `initNavAuth` |
+| `components/NavAuthInit.tsx` | **New** — no-op client component that boots the store with the server's `initialSignedIn` |
+| `components/Navigation.tsx` | Server-side cookie check, filter nav links, pass `initialSignedIn`/`ctaLabel`/`ctaUrl` to children, render `<NavAuthInit>` |
+| `components/AuthButtonCombined.tsx` | Use `useNavAuth`, accept `ctaLabel`/`ctaUrl` props, add Log In text link, browser-computed `next`, invisible-twin loading state |
+| `components/MobileMenu.tsx` | Use `useNavAuth`, accept `ctaLabel`/`ctaUrl` props, header-bar Log In link, renamed bottom buttons, handle empty-children case |
+| `components/admin/FloatingAdminButton.tsx` | Read from `useNavAuth`, drop its own subscription, drop the `nfw-admin-status-change` CustomEvent |
+| `components/auth-button.tsx` | **Deleted** — unused, fourth copy of the same logic |
+
+### Verification
+
+- `tsc --noEmit` 0 errors
+- `next build` ✓ (build passes; the only eslint error is `(l as any).highlight` in `Navigation.tsx` line 106 — pre-existing legacy `highlight` field, not from this change)
+- New file `lib/nav-auth-store.ts` is lint-clean; the other changed files have only pre-existing lint issues
+- Manual matrix to verify post-deploy:
+  - Logged out on `/` → desktop: `Log In | Join Now`; mobile header: `Log In` + hamburger
+  - Logged out on `/perks/info` → click `Log In` → login → land back on `/perks/info`
+  - Logged out on `/auth/login` → no `next` query
+  - Logged in on any page → no Join Now flash after hard refresh, avatar only
+  - Logged in then visit `/pricing` → no "Become a Member" or "Member Portal" — wait, the Membership dropdown has "Member Portal" but that's a child, not the parent. Membership parent goes to /pricing. Children after filter: [Membership (/pricing), Member Portal (/dashboard)] for logged-in, [Membership (/pricing), Become a Member (/auth/sign-up)] for logged-out. Dropdown still has items in both cases. No "empty dropdown becomes plain link" trigger fires with default nav.
+  - Logout from avatar menu → hard reload → see Log In + Join Now again
+  - Change `/admin/header` CTA to "Become a Member" → both desktop and mobile pick it up
+
+### Out of Scope (Flagged)
+
+- The `ctaLabel` and `ctaUrl` only flow to `Join Now` / `Log In`-bottom-button. The desktop `Log In` text link is hardcoded "Log In". If we want admins to relabel that, it needs another field.
+- The Donate button is intentionally always visible regardless of login state (donations are independent of membership). The plan didn't address it; kept as-is.
+- `getLoginRedirectUrl` is now called from both the nav (link generator) and the login form (post-login validation). The nav call still validates via `isValidRedirect` for consistency; this is defense in depth, not the security boundary.

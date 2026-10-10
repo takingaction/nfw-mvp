@@ -1,8 +1,10 @@
+import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import NavigationClient from "./NavigationClient";
 import MobileMenu from "./MobileMenu";
 import { AuthButtonCombined } from "./AuthButtonCombined";
 import NavigationContent from "./NavigationContent";
+import NavAuthInit from "./NavAuthInit";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,7 +27,46 @@ interface HeaderData {
   donate_url: string | null;
 }
 
+const SUPABASE_AUTH_COOKIE_PATTERN = /-auth-token(\.\d+)?$/;
+
+/**
+ * Cookie-only auth check (no Supabase network call per page).
+ *
+ * The proxy already validates the session for protected routes, and the
+ * shared client store (`useNavAuth`) corrects a stale cookie within one
+ * client render. The point of this check is just to keep the server HTML
+ * consistent with the client on first paint — no "Join Now flash for a
+ * logged-in user" and no "Log In flash for a logged-out user".
+ */
+function isLikelySignedIn(cookieStore: Awaited<ReturnType<typeof cookies>>): boolean {
+  return cookieStore
+    .getAll()
+    .some((c: { name: string }) => SUPABASE_AUTH_COOKIE_PATTERN.test(c.name));
+}
+
+function isAuthLink(url: string): boolean {
+  return url === "/auth/sign-up" || url === "/auth/login";
+}
+
+function isDashboardLink(url: string): boolean {
+  return url === "/dashboard";
+}
+
+function filterNavLinks(
+  links: NavLink[],
+  isSignedIn: boolean,
+): NavLink[] {
+  return links.filter((link) => {
+    if (isSignedIn && isAuthLink(link.url)) return false;
+    if (!isSignedIn && isDashboardLink(link.url)) return false;
+    return true;
+  });
+}
+
 export default async function Navigation() {
+  const cookieStore = await cookies();
+  const initialSignedIn = isLikelySignedIn(cookieStore);
+
   const { data: header } = await supabaseAdmin
     .from("site_header")
     .select("*")
@@ -58,14 +99,22 @@ export default async function Navigation() {
   const headerData: HeaderData = header || defaultHeader;
 
   // Convert highlight to indent for backwards compatibility with old data format
-  const navLinks = (headerData.nav_links || defaultHeader.nav_links).map((l) => ({
-    label: l.label,
-    url: l.url,
-    indent: l.indent ?? (l as any).highlight ? 1 : 0,
-  }));
+  const rawNavLinks = (headerData.nav_links || defaultHeader.nav_links).map(
+    (l) => ({
+      label: l.label,
+      url: l.url,
+      indent: l.indent ?? (l as any).highlight ? 1 : 0,
+    }),
+  );
+
+  // Hide /auth/* when logged in and /dashboard when logged out. If a parent
+  // ends up with no children, the consumer renders it as a plain link.
+  const navLinks = filterNavLinks(rawNavLinks, initialSignedIn);
 
   return (
     <NavigationContent>
+      {/* Boots the shared nav auth store with the server's cookie check. */}
+      <NavAuthInit initialSignedIn={initialSignedIn} />
       <nav className="w-full bg-nfw-aubergine sticky top-0 z-50 shadow-md">
         <div className="max-w-[1400px] mx-auto px-4">
           <div className="flex items-center justify-between h-[90px] py-2">
@@ -77,7 +126,11 @@ export default async function Navigation() {
                 navLinks={navLinks}
               />
               <div className="ml-auto">
-                <MobileMenu navLinks={navLinks} />
+                <MobileMenu
+                  navLinks={navLinks}
+                  ctaLabel={headerData.cta_label}
+                  ctaUrl={headerData.cta_url}
+                />
               </div>
             </div>
 
@@ -107,7 +160,10 @@ export default async function Navigation() {
                     {headerData.donate_label}
                   </a>
                 )}
-                <AuthButtonCombined />
+                <AuthButtonCombined
+                  ctaLabel={headerData.cta_label}
+                  ctaUrl={headerData.cta_url}
+                />
               </div>
             </div>
           </div>
