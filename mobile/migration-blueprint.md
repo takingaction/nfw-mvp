@@ -58,8 +58,8 @@
 | `app/(tabs)/perks/history.tsx` | **Done** | redemptions + nfw redemptions + fresh-url | "Open" re-mints expiring coupon URLs; expired → alert |
 | `lib/html.ts` | **Done** | — | RN replacement for DOM decoding: entities (named/dec/hex), tag stripping with paragraph breaks, link extraction, phone extraction, `simplifyRedemptionMessage`. Unit-checked (12 cases). |
 | **Slice C — Grants completion** | | | |
-| `lib/api/grants.ts` | **Done** | Vercel API | createGrant, uploadGrantDocument (multipart `file` + `grantId`; MIME resolved from extension when the picker reports octet-stream), getDocumentUrl, createStripeConnectLink, getStripeConnectStatus, logGrantError |
-| `components/grants/DocumentPicker.tsx` | **Done** | — | Choose File / Take Photo / Library; same 6 MIME types + 10 MB; web's exact "File Not Attached" strings |
+| `lib/api/grants.ts` | **Done** | Vercel API | createGrant, prepareGrantDocumentUpload + transferDocumentToSignedUrl + finalizeGrantDocumentUpload (3-phase signed-URL flow, 10 MB end-to-end; bytes go direct to Supabase Storage to bypass Vercel's 4.5 MB body limit), checkAlreadyApplied (pre-submit duplicate detection, fails open), getDocumentUrl, createStripeConnectLink, getStripeConnectStatus, logGrantError. 409 ALREADY_APPLIED on createGrant is caught in apply/index.tsx and routes to /grants/view/[applicationId] (web parity, f19e3c9). |
+| `components/grants/DocumentPicker.tsx` | **Done** | — | Choose File / Take Photo / Library; same 6 MIME types + 10 MB; web's exact "File Not Attached" strings. Optional `required` prop flips the label "(Optional)" → "(Required)" and updates the helper text to match the web conditional copy. |
 | `components/grants/ConsentModal.tsx` | **Done** | — | "Ready to Submit": certification + consent checkboxes, collapsible full text — verbatim |
 | `components/grants/StripeConnectCard.tsx` | **Done** | `/api/stripe/connect` + `/status` | Merges web ConnectBankButton + StripeAccountStatus. Opens onboarding in the in-app browser; Stripe returns to the **web** return page (which sets `stripe_onboarding_completed`); card re-polls `/status` and refreshes the profile when the app foregrounds. Used on grant detail and the dashboard banner. |
 | `app/(tabs)/grants/application-success.tsx` | **Done** | — | Verbatim copy, "What happens next" 01/02/03 |
@@ -72,7 +72,7 @@
 | `app/store/[productId].tsx` | **Done** | products | Paged image carousel with dots, status badge, HTML description → text + tappable links, "Available Options" chips, Product ID, Claim button |
 | `app/store/claim/[productId].tsx` | **Done** | `/api/shopify/checkout` | Option pickers (out-of-stock values disabled), web's validation strings, "Confirm Your Claim" modal, Shopify hosted checkout in the in-app browser, 503 → unavailable modal. **Improvement over web:** `claimedThisMonth` is set optimistically after a successful checkout so buttons grey out without a reload. |
 | `app/store/my-claims.tsx` | **Done** | `my-claims-simple` | Status badges incl. `completed`/`paid` (unmapped on web → showed raw status), tracking link/number, order #. Limited to the latest 5 claims by the existing API. "View on Shopify" hidden, matching the web TODO. |
-| `components/dashboard/StoreSummary.tsx` | **Done** | claims + products | "Your Order History" (completed/fulfilled/paid/delivered/cancelled) + "Latest Offerings" (8, DRAFT dimmed) |
+| `components/dashboard/StoreSummary.tsx` | **Done** | claims + products | "Your Order History" (completed/fulfilled/paid/delivered/cancelled) + "Latest Offerings" (8). DRAFT items render in full color — only the "Dropping Soon" badge marks them (web parity, post-42fd1e9). Out-of-stock items dim with 0.6 opacity. |
 | Savings ZDS bucket | **Done** | `/api/dashboard/savings` | `useSavings` now calls the API (Bearer) so the Zero Dollar Store figure is real; Perks = Access + NFW combined as on web |
 | **Slice E — Auth + Profile completion** | | | |
 | `constants/signup.ts` | **Done** | — | `US_STATES`, `INCOME_RANGES`, `IDENTITY_OPTIONS`, `PASSWORD_REQUIREMENTS`, `PLANS`, waitlist modal copy — verbatim from `SignUpFlow.tsx` |
@@ -112,9 +112,9 @@
 **Removed:** the `__DEV__` preview bypass (login button, settings button, `devPreview` store flag, `AuthGate` exemption).
 
 ### Deferred from Slice C (agreed 2026-09-11)
-- **Required documents per grant cycle.** No `requires_documents` concept exists in the schema, admin UI or web form — requirements live in cycle description text only. Proposed design: migration adding `grant_cycles.requires_documents BOOLEAN` + `document_instructions TEXT`; admin checkbox/textarea on cycle new/edit; enforce ≥1 attached document on web + mobile; "Documents required" badge on cycle cards. Server-side enforcement at `grants/create` isn't possible because uploads happen after the row exists; the backstop is a "zero documents" state visible on the detail screen and to reviewers.
+- ~~**Required documents per grant cycle.**~~ **Done 2026-10-11.** `grant_cycles.requires_documents` is in place (web migration 166); server-enforced at `/api/grants/create` (ad664b7). Mobile mirrors: cycle card shows a wisteria "Documents Required" badge, `DocumentPicker` switches to "(Required)" copy + helper text, `validate()` blocks the consent modal when the cycle requires docs but none are attached.
 - **Post-submission document backstop.** If uploads fail after create, mobile offers Retry / Continue-without. Allowing uploads later from the application detail (only while zero docs + status `submitted`) was discussed and deferred.
-- **Web bugs observed (not fixed):** `StripeAccountStatus.tsx` "Retry" only resets state — the fetch effect never re-runs; `grants/create` does not validate `certification_consent === true` server-side.
+- **Web bugs observed (not fixed):** `StripeAccountStatus.tsx` "Retry" only resets state — the fetch effect never re-runs; `grants/create` historically did not validate `certification_consent === true` server-side (may have been hotfixed in the landing-page changes of late September — unverified).
 
 ### Deferred from Slice D
 - **My Claims pagination.** `/api/store/claims/my-claims-simple` returns the latest 5 claims; the web page lists all via the service role. A paginated member API (or reading `zero_dollar_claims` directly once its RLS is confirmed) is a follow-up.
