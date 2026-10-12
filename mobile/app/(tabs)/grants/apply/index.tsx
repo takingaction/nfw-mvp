@@ -14,7 +14,15 @@ import { Body, Caption, Heading, Label } from "@/components/ui/Typography";
 import { colors, theme } from "@/constants/colors";
 import { fonts } from "@/constants/fonts";
 import { ApiError } from "@/lib/api";
-import { logGrantError, uploadGrantDocument, type PendingDocument } from "@/lib/api/grants";
+import {
+  finalizeGrantDocumentUpload,
+  GrantCycleClosedError,
+  GRANT_DOCS_BUCKET,
+  logGrantError,
+  prepareGrantDocumentUpload,
+  transferDocumentToSignedUrl,
+  type PendingDocument,
+} from "@/lib/api/grants";
 import { env } from "@/lib/env";
 import { decodeHtml, formatCurrency, formatDateLong } from "@/lib/format";
 import { useCreateGrant, useApplicableGrantCycles } from "@/lib/queries/grants";
@@ -34,15 +42,33 @@ const REMINDERS = [
 type UploadState = { doc: PendingDocument; status: "pending" | "uploading" | "done" | "failed"; error?: string };
 
 /**
+ * Map a raw Supabase Storage / fetch error to a member-friendly string.
+ * The native fetch adapter turns `Failed to fetch` into `Load failed` on
+ * iOS, so we treat both as a transient connection blip and tell the member
+ * to retry — never expose the raw SDK message.
+ */
+function friendlyTransferError(raw: string): string {
+  if (/load failed/i.test(raw) || /failed to fetch/i.test(raw)) {
+    return "your connection was interrupted or the page was refreshed. Please try uploading again.";
+  }
+  return raw;
+}
+
+/**
  * Web equivalent:
  *   - app/grants/apply/page.tsx
  *   - components/GrantApplicationForm.tsx
- *   - POST /api/grants/create, POST /api/grants/upload-document
+ *   - POST /api/grants/create
+ *   - POST /api/grants/upload-document/{prepare,finalize} (3-phase signed-URL)
  * Build phase: 3
  *
  * Same field labels/helpers/placeholders/limits, validation order and error strings as web.
  * Upload happens AFTER create (the API requires a grantId). Failed uploads can be retried
  * or skipped; the application itself is already submitted at that point.
+ *
+ * The 3-phase upload (prepare → transfer → finalize) replaces the legacy multipart
+ * route so 10 MB files succeed end-to-end (Vercel's 4.5 MB request body limit no
+ * longer applies because the actual bytes go straight to Supabase Storage).
  */
 export default function GrantApplyScreen() {
   const router = useRouter();
@@ -62,6 +88,14 @@ export default function GrantApplyScreen() {
   const [uploads, setUploads] = useState<UploadState[] | null>(null);
   const [grantId, setGrantId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  /**
+   * Set when prepareGrantDocumentUpload surfaces a CYCLE_NOT_OPEN error.
+   * The apply form turns this into a "Back to all cycles" CTA so members
+   * who had the form open when the auto-close cron fired don't get stuck
+   * on a cryptic 400. Mirrors web's components/GrantApplicationForm.tsx
+   * cycleClosed state.
+   */
+  const [cycleClosed, setCycleClosed] = useState(false);
 
   // Pre-select when only one cycle is open (web parity) — derived, not synced.
   const effectiveCycleId = selectedCycleId || (cycles.data?.length === 1 ? cycles.data[0].id : "");
@@ -89,6 +123,7 @@ export default function GrantApplyScreen() {
   // ----- submit → create → uploads → success -------------------------------
   async function handleConfirmSubmit() {
     setError(null);
+    setCycleClosed(false);
     try {
       const { grantId: id } = await createGrant.mutateAsync({
         cycle_id: effectiveCycleId,
@@ -125,6 +160,63 @@ export default function GrantApplyScreen() {
     }
   }
 
+  /**
+   * Upload a single document with the 3-phase signed-URL flow.
+   * Re-prepares on each retry so a transient signed-token error never blocks
+   * the next attempt. Mirrors the web form's MAX_TRANSFER_ATTEMPTS=3 loop
+   * with 1.5s/3s backoff (components/GrantApplicationForm.tsx:328-351).
+   * Returns true on success, false on any failure (with the per-step error
+   * already in the upload state).
+   */
+  async function uploadOneWithRetry(id: string, doc: PendingDocument): Promise<{ ok: true; path: string } | { ok: false; error: string; cycleClosed: boolean }> {
+    const MAX_ATTEMPTS = 3;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      if (attempt > 1) {
+        await new Promise((r) => setTimeout(r, attempt === 2 ? 1500 : 3000));
+      }
+      try {
+        // Step 1: prepare
+        const { path, token } = await prepareGrantDocumentUpload(id, doc);
+        // Step 2: transfer
+        try {
+          await transferDocumentToSignedUrl(GRANT_DOCS_BUCKET, path, token, doc);
+        } catch (transferErr) {
+          // Re-prepare next attempt will mint a fresh token; fall through.
+          if (attempt === MAX_ATTEMPTS) {
+            return {
+              ok: false,
+              error: friendlyTransferError(transferErr instanceof Error ? transferErr.message : String(transferErr)),
+              cycleClosed: false,
+            };
+          }
+          continue;
+        }
+        // Step 3: finalize
+        await finalizeGrantDocumentUpload(id, doc, path);
+        return { ok: true, path };
+      } catch (err) {
+        if (err instanceof GrantCycleClosedError) {
+          setCycleClosed(true);
+          return { ok: false, error: err.message, cycleClosed: true };
+        }
+        if (err instanceof ApiError) {
+          // 4xx that's not CYCLE_NOT_OPEN: don't retry.
+          if (err.status >= 400 && err.status < 500) {
+            return { ok: false, error: err.message, cycleClosed: false };
+          }
+        }
+        if (attempt === MAX_ATTEMPTS) {
+          return {
+            ok: false,
+            error: err instanceof Error ? err.message : "Upload failed",
+            cycleClosed: false,
+          };
+        }
+      }
+    }
+    return { ok: false, error: "Upload failed after retries", cycleClosed: false };
+  }
+
   async function runUploads(id: string, states: UploadState[]) {
     setUploading(true);
     const next = [...states];
@@ -132,14 +224,19 @@ export default function GrantApplyScreen() {
       if (next[i].status === "done") continue;
       next[i] = { ...next[i], status: "uploading", error: undefined };
       setUploads([...next]);
-      try {
-        await uploadGrantDocument(id, next[i].doc);
+      const result = await uploadOneWithRetry(id, next[i].doc);
+      if (result.ok) {
         next[i] = { ...next[i], status: "done" };
-      } catch (err) {
-        const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Upload failed";
-        next[i] = { ...next[i], status: "failed", error: msg };
+        setUploads([...next]);
+        continue;
       }
+      next[i] = { ...next[i], status: "failed", error: result.error };
       setUploads([...next]);
+      // If a cycle-closed error fired, abort the rest of the batch.
+      if (result.cycleClosed) {
+        setUploading(false);
+        return;
+      }
     }
     setUploading(false);
     if (next.every((u) => u.status === "done")) {
@@ -234,7 +331,20 @@ export default function GrantApplyScreen() {
               <DocumentPicker documents={documents} onChange={setDocuments} disabled={!!uploads} />
             </View>
 
-            {error && (
+            {cycleClosed && (
+              <Card style={[styles.section, styles.cycleClosedCard]}>
+                <Body style={{ color: "#7C2D12" }}>{error ?? "This grant cycle is no longer accepting applications."}</Body>
+                <Button
+                  label="Back to all cycles"
+                  variant="primary"
+                  onPress={() => router.replace("/(tabs)/grants/apply")}
+                  fullWidth
+                  style={{ marginTop: 10 }}
+                />
+              </Card>
+            )}
+
+            {error && !cycleClosed && (
               <Card style={[styles.section, styles.errorCard]}>
                 <Body style={{ color: "#991B1B" }}>{error}</Body>
               </Card>
@@ -362,6 +472,7 @@ const styles = StyleSheet.create({
   textarea: { fontFamily: fonts.serif, fontSize: 15, lineHeight: 22, color: theme.text, backgroundColor: colors.white, borderWidth: 1, borderColor: theme.border, padding: 12 },
   counter: { fontFamily: fonts.ui, fontSize: 11, color: theme.textMuted, textAlign: "right", marginTop: 4 },
   errorCard: { borderColor: "#FCA5A5", backgroundColor: "#FEF2F2" },
+  cycleClosedCard: { borderColor: "#FED7AA", backgroundColor: "#FFFBEB" },
   footnote: { textAlign: "center", marginTop: 12 },
   uploadRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6 },
   uploadName: { fontFamily: fonts.ui, fontSize: 14, color: theme.text },
