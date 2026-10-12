@@ -24,7 +24,7 @@ export function useOpenGrantCycles() {
       let q = supabase
         .from("grant_cycles")
         .select(
-          "id, cycle_name, description, start_date, end_date, amount_per_grant, grants_available, status, is_testing_only, featured_image, display_order, created_at",
+          "id, cycle_name, description, start_date, end_date, amount_per_grant, grants_available, status, is_testing_only, featured_image, display_order, created_at, requires_documents",
         )
         .eq("status", "open")
         .order("display_order", { ascending: true, nullsFirst: false })

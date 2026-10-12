@@ -2,6 +2,7 @@ import { Image } from "expo-image";
 import { StyleSheet, Text, View } from "react-native";
 
 import { PressableCard } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 import { Caption, Subheading } from "@/components/ui/Typography";
 import { colors, theme } from "@/constants/colors";
 import { fonts } from "@/constants/fonts";
@@ -10,7 +11,7 @@ import type { GrantCycle } from "@/types/grants";
 import { LatePassNote } from "@/components/grants/LatePassNote";
 
 type Props = {
-  cycle: Pick<GrantCycle, "id" | "cycle_name" | "amount_per_grant" | "end_date" | "featured_image"> & {
+  cycle: Pick<GrantCycle, "id" | "cycle_name" | "amount_per_grant" | "end_date" | "featured_image" | "requires_documents"> & {
     description?: string | null;
     viaPass?: boolean;
     passExpiresAt?: string;
@@ -39,7 +40,10 @@ export function GrantCycleCard({ cycle, onPress, compact }: Props) {
           </Caption>
         ) : null}
         <View style={styles.meta}>
-          <Text style={styles.amount}>{formatCurrency(cycle.amount_per_grant)}</Text>
+          <View style={styles.amountRow}>
+            <Text style={styles.amount}>{formatCurrency(cycle.amount_per_grant)}</Text>
+            {cycle.requires_documents ? <Badge label="Documents Required" tone="wisteria" /> : null}
+          </View>
           <Caption>Deadline: {formatDateLong(cycle.end_date)}</Caption>
         </View>
         {cycle.viaPass && cycle.passExpiresAt ? <LatePassNote expiresAt={cycle.passExpiresAt} /> : null}
@@ -58,5 +62,6 @@ const styles = StyleSheet.create({
   titleCompact: { fontSize: 16, lineHeight: 21 },
   description: { color: theme.textMuted },
   meta: { gap: 2, marginTop: 4 },
+  amountRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
   amount: { fontFamily: fonts.uiBlack, fontSize: 16, color: colors.aubergine },
 });

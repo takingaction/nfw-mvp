@@ -120,6 +120,9 @@ export default function GrantApplyScreen() {
     if (whoAreYou.trim().length < 10) return "Please provide a description of at least 10 characters";
     if (challenge.trim().length < 10) return "Please describe your challenge in at least 10 characters";
     if (fundUsage.trim().length < 10) return "Please describe fund usage in at least 10 characters";
+    if (selectedCycle?.requires_documents && documents.length === 0) {
+      return "This grant requires at least one supporting document";
+    }
     return null;
   }
 
@@ -380,7 +383,12 @@ export default function GrantApplyScreen() {
             />
 
             <View style={styles.section}>
-              <DocumentPicker documents={documents} onChange={setDocuments} disabled={!!uploads} />
+              <DocumentPicker
+                documents={documents}
+                onChange={setDocuments}
+                disabled={!!uploads}
+                required={!!selectedCycle?.requires_documents}
+              />
             </View>
 
             {cycleClosed && (

@@ -15,6 +15,13 @@ export interface GrantCycle {
   /** Late Submission Pass (web migration 196) — closed cycle this member may still apply to. */
   viaPass?: boolean;
   passExpiresAt?: string;
+  /**
+   * Server-side enforced on /api/grants/create (migration 166): at least one
+   * supporting document is required to apply. Mobile's apply screen blocks
+   * submit at this state instead of surfacing a 400 with the cryptic
+   * "This grant cycle requires at least one supporting document" message.
+   */
+  requires_documents?: boolean;
 }
 
 /**

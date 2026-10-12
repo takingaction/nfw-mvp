@@ -15,6 +15,12 @@ type Props = {
   documents: PendingDocument[];
   onChange: (docs: PendingDocument[]) => void;
   disabled?: boolean;
+  /**
+   * When true, the label shows "Required" instead of "(Optional)" and the helper
+   * text changes to "You must upload at least one supporting document." — same
+   * copy as web's components/GrantApplicationForm.tsx conditional helper text.
+   */
+  required?: boolean;
 };
 
 /**
@@ -22,7 +28,7 @@ type Props = {
  * Mobile adds Take Photo / Choose from Library (receipts are usually photos on a phone).
  * Validation and the "File Not Attached" modal strings match the web exactly.
  */
-export function DocumentPicker({ documents, onChange, disabled }: Props) {
+export function DocumentPicker({ documents, onChange, disabled, required = false }: Props) {
   const [fileError, setFileError] = useState<string | null>(null);
 
   function addFiles(candidates: { uri: string; name: string; size: number | null | undefined; mimeType: string | null | undefined }[]) {
@@ -79,9 +85,13 @@ export function DocumentPicker({ documents, onChange, disabled }: Props) {
   return (
     <View style={styles.wrap}>
       <Label>
-        Supporting Documents <Text style={styles.optional}>(Optional)</Text>
+        Supporting Documents <Text style={styles.optional}>{required ? "(Required)" : "(Optional)"}</Text>
       </Label>
-      <Caption>Upload receipts, quotes, or other supporting documents. PDF, JPG, PNG, DOC accepted.</Caption>
+      <Caption>
+        {required
+          ? "You must upload at least one supporting document."
+          : "Upload receipts, quotes, or other supporting documents. PDF, JPG, PNG, DOC accepted."}
+      </Caption>
 
       <View style={styles.actions}>
         <SourceButton icon="document-attach-outline" label="Choose File" onPress={pickFile} disabled={disabled} />
