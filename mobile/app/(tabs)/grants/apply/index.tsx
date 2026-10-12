@@ -15,6 +15,7 @@ import { colors, theme } from "@/constants/colors";
 import { fonts } from "@/constants/fonts";
 import { ApiError } from "@/lib/api";
 import {
+  checkAlreadyApplied,
   finalizeGrantDocumentUpload,
   GrantCycleClosedError,
   GRANT_DOCS_BUCKET,
@@ -89,6 +90,14 @@ export default function GrantApplyScreen() {
   const [grantId, setGrantId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   /**
+   * True while the pre-submit duplicate check is in flight. Disables the
+   * Continue button so the user can't double-tap into a race with the
+   * already-applied redirect. The check itself fails open on network error
+   * — /api/grants/create's own 409 with code: ALREADY_APPLIED remains the
+   * correctness layer.
+   */
+  const [checking, setChecking] = useState(false);
+  /**
    * Set when prepareGrantDocumentUpload surfaces a CYCLE_NOT_OPEN error.
    * The apply form turns this into a "Back to all cycles" CTA so members
    * who had the form open when the auto-close cron fired don't get stuck
@@ -117,7 +126,38 @@ export default function GrantApplyScreen() {
   function handleContinue() {
     const v = validate();
     setError(v);
-    if (!v) setShowConsent(true);
+    if (v) return;
+
+    // Pre-submit duplicate check (fails open on any error — /api/grants/create's
+    // own 409 is the correctness layer). Web: components/GrantApplicationForm.tsx
+    // handleOpenConfirm. Lands on the existing application view when present so
+    // the user doesn't waste time re-entering text they've already submitted.
+    void runAlreadyAppliedCheck();
+  }
+
+  async function runAlreadyAppliedCheck() {
+    if (!effectiveCycleId) return;
+    setChecking(true);
+    try {
+      const res = await checkAlreadyApplied(effectiveCycleId);
+      if (res.applied && res.grantId) {
+        router.replace({ pathname: "/(tabs)/grants/[id]", params: { id: res.grantId } });
+        return;
+      }
+      if (res.applied) {
+        // Older /api/grants/applied-check responses (no grantId) fall back to
+        // the list view so the user can find their application.
+        router.replace("/(tabs)/grants/my-applications");
+        return;
+      }
+      setShowConsent(true);
+    } catch {
+      // Fail open — let the user reach the consent modal. The 409 path
+      // below catches the rare concurrent-submit race.
+      setShowConsent(true);
+    } finally {
+      setChecking(false);
+    }
   }
 
   // ----- submit → create → uploads → success -------------------------------
@@ -143,6 +183,18 @@ export default function GrantApplyScreen() {
       setUploads(initial);
       await runUploads(id, initial);
     } catch (err) {
+      // 409 ALREADY_APPLIED — the user beat the pre-check with a concurrent
+      // submit (or returned to the screen after the check passed). Surface
+      // the link to the existing application instead of a 400 message.
+      if (err instanceof ApiError) {
+        const body = (err.body ?? {}) as { code?: string; applicationId?: string };
+        if (err.status === 409 && body.code === "ALREADY_APPLIED" && body.applicationId) {
+          setShowConsent(false);
+          setError(null);
+          router.replace({ pathname: "/(tabs)/grants/[id]", params: { id: body.applicationId } });
+          return;
+        }
+      }
       const message = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed to submit application";
       setShowConsent(false);
       setError(message);
@@ -353,10 +405,10 @@ export default function GrantApplyScreen() {
             {!uploads && (
               <View style={styles.section}>
                 <Button
-                  label={createGrant.isPending ? "Submitting..." : "Continue →"}
+                  label={checking ? "Checking…" : createGrant.isPending ? "Submitting..." : "Continue →"}
                   variant="accent"
-                  disabled={!eligible || !effectiveCycleId || createGrant.isPending}
-                  loading={createGrant.isPending}
+                  disabled={!eligible || !effectiveCycleId || createGrant.isPending || checking}
+                  loading={checking || createGrant.isPending}
                   onPress={handleContinue}
                   fullWidth
                 />

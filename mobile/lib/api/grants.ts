@@ -35,6 +35,25 @@ export function createGrant(body: CreateGrantBody) {
   });
 }
 
+export interface AppliedCheckResponse {
+  applied: boolean;
+  grantId: string | null;
+}
+
+/**
+ * Has the member already applied to this cycle? Returns the existing grant's
+ * id when applied=true. The apply form calls this before showing the consent
+ * modal so the duplicate guard surfaces a friendly "view your application"
+ * path instead of a 409 after uploads have already started. Fails open on
+ * any error (the create route's own 409 with ALREADY_APPLIED remains the
+ * correctness layer).
+ *
+ * Web: components/GrantApplicationForm.tsx → fetch("/api/grants/applied-check").
+ */
+export function checkAlreadyApplied(cycleId: string) {
+  return apiGet<AppliedCheckResponse>("/api/grants/applied-check", { query: { cycleId } });
+}
+
 /** Local file selected on device, before upload. */
 export interface PendingDocument {
   /** Stable id for list keys / retry tracking */
@@ -80,6 +99,7 @@ export function resolveDocumentMime(reportedMime: string | null | undefined, fil
  * a "Back to all cycles" CTA instead of the generic 400 message.
  */
 export const ERR_CYCLE_NOT_OPEN = "CYCLE_NOT_OPEN" as const;
+export const ERR_ALREADY_APPLIED = "ALREADY_APPLIED" as const;
 
 /** Bucket name for member supporting documents (private). Must match lib/admin-documents.ts. */
 export const GRANT_DOCS_BUCKET = "grant-documents";
