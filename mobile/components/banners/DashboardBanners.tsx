@@ -52,7 +52,12 @@ export function DashboardBanners({ profile, hasPaidOrApprovedGrant, latestGrantI
           surface="wisteria"
           message={
             isWaitlist
-              ? "You're on the free membership waitlist. We'll email you when a spot opens up. You can also upgrade at any time."
+              // 2026-09-18 web change: admin hand-approves waitlist members by
+              // sending them a one-time acceptance link. There is no queue
+              // position to wait for; members hear back when an admin takes
+              // action. Web flow: /admin/waitlist Approve → email with link →
+              // /auth/accept-waitlist.
+              ? "You're on the free membership waitlist. When you're approved, you'll receive an email with a link to activate your free membership. You can also upgrade at any time."
               : "Your free membership request is pending review. You'll receive an email once our team approves your application."
           }
           actionLabel={isWaitlist ? "Upgrade" : undefined}

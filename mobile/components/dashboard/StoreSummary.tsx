@@ -71,7 +71,17 @@ export function StoreSummary() {
               style={({ pressed }) => [styles.offer, pressed && styles.pressed]}
             >
               {p.imageUrl ? (
-                <Image source={{ uri: p.imageUrl }} style={[styles.offerImage, p.status === "DRAFT" && styles.dimmed]} contentFit="cover" />
+                // DRAFT items render in full color — only the "Dropping Soon"
+                // badge marks them (web parity, components/StoreClient.tsx:280-285).
+                // Out-of-stock items stay dimmed.
+                <Image
+                  source={{ uri: p.imageUrl }}
+                  style={[
+                    styles.offerImage,
+                    !p.availableForSale && p.status !== "DRAFT" ? styles.dimmed : undefined,
+                  ]}
+                  contentFit="cover"
+                />
               ) : (
                 <View style={[styles.offerImage, { backgroundColor: colors.dove }]} />
               )}

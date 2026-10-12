@@ -24,7 +24,10 @@ type Props = {
  * uppercase title, "Value: $X.XX", cardDescription, Claim Item + More Info.
  */
 export function ProductCard({ product, eligibility, onClaim, onMoreInfo }: Props) {
-  const dimmed = !product.availableForSale || product.status === "DRAFT";
+  // DRAFT items render in full color — only the "Dropping Soon" badge marks
+  // them (web parity, components/StoreClient.tsx:280-285). Out-of-stock items
+  // stay dimmed. Matches the post-42fd1e9 final state.
+  const dimmed = !product.availableForSale && product.status !== "DRAFT";
   const variantPill = product.variants.length > 0 && product.variants[0].title !== "Default" ? product.variants.map((v) => v.title).join(", ") : null;
 
   return (
