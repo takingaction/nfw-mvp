@@ -85,6 +85,27 @@ export function todayIsoDate(): string {
   return new Date().toISOString().split("T")[0];
 }
 
+/**
+ * Today's calendar date in America/New_York as "YYYY-MM-DD" (DST-safe via
+ * Intl). Use this (not `todayIsoDate`) when comparing against date-only DB
+ * columns like `grant_cycles.end_date`: the web's contract is "hard deadline
+ * is midnight ET on end_date", but UTC helpers can hide a cycle from a US
+ * Eastern member anywhere from 4 to 8 hours before that midnight (e.g. on
+ * the last evening of a grant, an ET member at 8 PM sees the cycle vanish
+ * from the dashboard if the dashboard filter uses the UTC date).
+ *
+ * Mirrors lib/dates.ts todayInNewYork on the web.
+ */
+export function todayInNewYork(now: Date = new Date()): string {
+  // en-CA formats as YYYY-MM-DD
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
 /** Decode the handful of HTML entities that show up in CMS-authored strings. */
 export function decodeHtml(input: string | null | undefined): string {
   if (!input) return "";
