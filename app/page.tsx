@@ -18,6 +18,9 @@ export async function generateMetadata() {
       absolute: page?.meta_title || "National Fund for Women | Nonprofit for Women",
     },
     description: page?.meta_description || "Uplifting American women through microgrants, perks, discounts, and more. Join today!",
+    verification: {
+      google: "tFw3oh5vEDuNnwAGv9nVh6Ym7BjtVAAh6Ax6gHarQPs",
+    },
     openGraph: {
       siteName: "National Fund for Women",
       title: "National Fund for Women",
