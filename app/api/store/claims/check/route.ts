@@ -1,27 +1,31 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-export async function GET(request: NextRequest) {
+/**
+ * Has the logged-in member completed a Zero Dollar Store claim this month?
+ * Identity comes from the session (cookie or Bearer). A `?userId=` query
+ * param is still accepted from older clients but ignored.
+ */
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json({ error: "Missing userId" }, { status: 400 });
-    }
-
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ claimedThisMonth: false, claimCount: 0 });
+    }
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
+    // Exclusive upper bound so claims made late on the last day still count.
+    const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
 
     const { data: claims } = await supabase
       .from("zero_dollar_claims")
       .select("id")
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .gte("claimed_at", startOfMonth)
-      .lte("claimed_at", endOfMonth)
+      .lt("claimed_at", startOfNextMonth)
       .in("status", ["completed", "fulfilled", "paid"]);
 
     return NextResponse.json({
