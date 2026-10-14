@@ -47,6 +47,7 @@ import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import * as fs from "fs";
 import * as path from "path";
+import { getInvoicePaymentIds, mapBillingReasonToPaymentType } from "../lib/stripe-payments";
 
 // Load .env.local so STRIPE_SECRET_KEY, SUPABASE_URL, etc. are available when
 // invoked via `npx tsx` (which doesn't auto-load Next.js env files).
@@ -264,14 +265,10 @@ async function processInvoice(invoice: Stripe.Invoice): Promise<void> {
     return;
   }
 
-  // Determine payment_type: "signup" if user has no other successful payments, else "renewal"
-  const { count: priorSuccessful } = await supabaseAdmin
-    .from("membership_payments")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", authUserId)
-    .eq("status", "succeeded");
-
-  const paymentType = (priorSuccessful && priorSuccessful > 0) ? "renewal" : "signup";
+  // payment_type comes from Stripe's billing_reason, same as every other ingest
+  // path. (Previously this counted prior DB rows, which labeled first payments
+  // as "renewal" whenever the member had any other row.)
+  const paymentType = mapBillingReasonToPaymentType(invoice.billing_reason);
 
   // Insert (or preview)
   if (DRY_RUN) {
@@ -287,8 +284,12 @@ async function processInvoice(invoice: Stripe.Invoice): Promise<void> {
         amount: amountCents / 100,
         payment_type: paymentType,
         stripe_invoice_id: invoice.id,
-        stripe_payment_id: null,
+        stripe_payment_id: getInvoicePaymentIds(invoice).chargeId,
+        stripe_payment_intent_id: getInvoicePaymentIds(invoice).paymentIntentId,
         status: "succeeded",
+        // Use the invoice date, not the insert time (rows from the Oct 6–7 runs
+        // were all dated the night the script ran).
+        created_at: new Date(invoice.created * 1000).toISOString(),
       });
 
     if (insertError) {
@@ -327,6 +328,8 @@ async function main(): Promise<void> {
       created: { gte: cutoffTs },
       status: "paid",
       limit: 100,
+      // Invoice.charge/payment_intent were removed in API 2025-03-31.basil.
+      expand: ["data.payments"],
     };
     if (cursor) params.starting_after = cursor;
 
