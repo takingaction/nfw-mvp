@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/adminCheck";
+import { csvCell } from "@/lib/gift-codes";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,6 +33,15 @@ export async function GET(request: Request) {
       created_at,
       redeemed_at,
       redeemed_by_email,
+      voided_at,
+      voided_reason,
+      batch_id,
+      batch: gift_code_batches (
+        id,
+        name,
+        tier,
+        expires_at
+      ),
       purchase: gift_membership_purchases (
         id,
         buyer_name,
@@ -42,10 +52,20 @@ export async function GET(request: Request) {
       )
     `, { count: "exact" });
 
+  const batch = searchParams.get("batch") || "all";
+
   if (status === "redeemed") {
     query = query.not("redeemed_at", "is", null);
   } else if (status === "unredeemed") {
-    query = query.is("redeemed_at", null);
+    query = query.is("redeemed_at", null).is("voided_at", null);
+  } else if (status === "voided") {
+    query = query.not("voided_at", "is", null);
+  }
+
+  if (batch === "purchases") {
+    query = query.not("purchase_id", "is", null);
+  } else if (batch !== "all") {
+    query = query.eq("batch_id", batch);
   }
 
   if (search) {
@@ -89,6 +109,11 @@ async function getStats() {
     .select("*", { count: "exact", head: true })
     .not("redeemed_at", "is", null);
 
+  const { count: voidedCodes } = await supabaseAdmin
+    .from("gift_membership_codes")
+    .select("*", { count: "exact", head: true })
+    .not("voided_at", "is", null);
+
   const { count: purchases } = await supabaseAdmin
     .from("gift_membership_purchases")
     .select("*", { count: "exact", head: true });
@@ -102,7 +127,8 @@ async function getStats() {
   return {
     totalCodes: totalCodes || 0,
     redeemedCodes: redeemedCodes || 0,
-    unredeemedCodes: (totalCodes || 0) - (redeemedCodes || 0),
+    voidedCodes: voidedCodes || 0,
+    unredeemedCodes: (totalCodes || 0) - (redeemedCodes || 0) - (voidedCodes || 0),
     totalPurchases: purchases || 0,
     totalRevenue: revenue,
   };
@@ -121,28 +147,44 @@ export async function POST(request: Request) {
   const { searchParams } = new URL(request.url);
   const format = searchParams.get("format") || "json";
 
-  const { data: codes } = await supabaseAdmin
-    .from("gift_membership_codes")
-    .select(`
-      id,
-      code,
-      created_at,
-      redeemed_at,
-      redeemed_by_email,
-      purchase: gift_membership_purchases (
-        buyer_name,
-        buyer_email,
-        quantity,
-        total_amount,
-        created_at
-      )
-    `)
-    .order("created_at", { ascending: false });
+  // PostgREST caps each response (1000 rows by default), so page through.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- embedded relations are untyped
+  const codes: any[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabaseAdmin
+      .from("gift_membership_codes")
+      .select(`
+        id,
+        code,
+        created_at,
+        redeemed_at,
+        redeemed_by_email,
+        voided_at,
+        batch: gift_code_batches ( name ),
+        purchase: gift_membership_purchases (
+          buyer_name,
+          buyer_email,
+          quantity,
+          total_amount,
+          created_at
+        )
+      `)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, from + 999);
+    if (error) {
+      console.error("Error exporting gift codes:", error);
+      return NextResponse.json({ error: "Failed to export codes" }, { status: 500 });
+    }
+    codes.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
 
   if (format === "csv") {
-    const headers = ["Code", "Buyer Name", "Buyer Email", "Quantity", "Total Amount", "Created At", "Redeemed At", "Redeemed By Email", "Status"];
+    const headers = ["Code", "Source", "Buyer Name", "Buyer Email", "Quantity", "Total Amount", "Created At", "Redeemed At", "Redeemed By Email", "Status"];
     const rows = codes?.map((c: any) => [
       c.code,
+      c.batch?.name ? `Batch: ${c.batch.name}` : "Purchase",
       c.purchase?.buyer_name || "",
       c.purchase?.buyer_email || "",
       c.purchase?.quantity || "",
@@ -150,10 +192,10 @@ export async function POST(request: Request) {
       c.created_at ? new Date(c.created_at).toISOString() : "",
       c.redeemed_at ? new Date(c.redeemed_at).toISOString() : "",
       c.redeemed_by_email || "",
-      c.redeemed_at ? "Redeemed" : "Unredeemed",
+      c.voided_at ? "Voided" : c.redeemed_at ? "Redeemed" : "Unredeemed",
     ]);
 
-    const csv = [headers.join(","), ...(rows || []).map((r: string[]) => r.map((v) => `"${v}"`).join(","))].join("\n");
+    const csv = [headers.join(","), ...(rows || []).map((r: string[]) => r.map(csvCell).join(","))].join("\n");
 
     return new NextResponse(csv, {
       headers: {

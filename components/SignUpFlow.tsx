@@ -156,6 +156,48 @@ interface GiftCodeState {
   validating: boolean;
   error: string | null;
   success: boolean;
+  message?: string;
+}
+
+// A gift code from a printed card (/redeem?code=…) is carried through sign-up via
+// ?gift=, the OAuth `next` param, and localStorage (survives the email-confirm hop
+// when the link opens in the same browser).
+const PENDING_GIFT_KEY = "nfw_pending_gift_code";
+
+function readGiftFromParams(params: URLSearchParams): string | null {
+  const direct = params.get("gift");
+  if (direct) return direct;
+  const next = params.get("next");
+  if (next?.startsWith("/redeem")) {
+    try {
+      return new URL(next, "https://x.invalid").searchParams.get("code");
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function cleanGift(code: string | null): string | null {
+  const clean = code?.replace(/[^A-Za-z0-9]/g, "").toUpperCase() ?? "";
+  return clean.length >= 6 && clean.length <= 20 ? clean : null;
+}
+
+function getStoredGift(): string | null {
+  try {
+    return cleanGift(window.localStorage.getItem(PENDING_GIFT_KEY));
+  } catch {
+    return null;
+  }
+}
+
+function setStoredGift(code: string | null) {
+  try {
+    if (code) window.localStorage.setItem(PENDING_GIFT_KEY, code);
+    else window.localStorage.removeItem(PENDING_GIFT_KEY);
+  } catch {
+    /* storage unavailable */
+  }
 }
 
 const STEPS = ["Account", "Personal Info", "Identity", "Membership"];
@@ -218,6 +260,18 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
     success: false,
   });
   const [showGiftCodeInput, setShowGiftCodeInput] = useState(false);
+  const [pendingGift, setPendingGift] = useState<string | null>(null);
+
+  // Pick up a gift code from the URL (or one stored earlier) and pre-fill step 3.
+  useEffect(() => {
+    const fromUrl = cleanGift(readGiftFromParams(new URLSearchParams(searchParams.toString())));
+    if (fromUrl) setStoredGift(fromUrl);
+    const code = fromUrl ?? getStoredGift();
+    if (!code) return;
+    setPendingGift(code);
+    setGiftCode((prev) => (prev.applied || prev.code ? prev : { ...prev, code }));
+    setShowGiftCodeInput(true);
+  }, [searchParams]);
   const [showFreeModal, setShowFreeModal] = useState(false);
   const [showProfileIncompleteModal, setShowProfileIncompleteModal] = useState(false);
 
@@ -323,7 +377,7 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/sign-up?step=1`,
+          emailRedirectTo: `${window.location.origin}/auth/sign-up?step=1${pendingGift ? `&gift=${pendingGift}` : ""}`,
         },
       });
       if (error) throw error;
@@ -344,7 +398,11 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        // With a pending gift, existing accounts land on /redeem; new accounts are
+        // sent through sign-up by the callback, which keeps `next` (read above).
+        redirectTo: pendingGift
+          ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(`/redeem?code=${pendingGift}`)}`
+          : `${window.location.origin}/auth/callback`,
       },
     });
 
@@ -522,6 +580,8 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
       const data = await res.json();
 
       if (data.error) {
+        // Bad/used/expired codes shouldn't follow the user around.
+        if (data.errorCode && data.errorCode !== "already_member") setStoredGift(null);
         setGiftCode((prev) => ({
           ...prev,
           validating: false,
@@ -530,20 +590,17 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
         return;
       }
 
+      setStoredGift(null);
       setGiftCode((prev) => ({
         ...prev,
         validating: false,
         success: true,
         applied: true,
+        message: data.message,
       }));
 
-      // Save profile as completed with contributing membership
-      await saveProfile({
-        profile_completed: true,
-        membership_level: "contributing",
-        subscription_status: "active",
-        subscription_ends_at: data.subscriptionEndsAt,
-      });
+      // The server already set the tier and term; just finish the profile.
+      await saveProfile({ profile_completed: true });
 
       window.location.href = "/auth/welcome";
     } catch (err: any) {
@@ -1123,7 +1180,8 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
                         Gift code applied!
                       </p>
                       <p className="text-nfw-blackberry/60 text-xs">
-                        You now have 1 year of Contributing membership.
+                        {giftCode.message?.replace(/^Gift code redeemed! /, "") ||
+                          "Your gift membership is active."}
                       </p>
                     </div>
                   </div>
