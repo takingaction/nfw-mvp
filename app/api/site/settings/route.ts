@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { requireAdmin } from "@/lib/adminCheck";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,6 +33,13 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  // Admin only. gtm_id loads a tag container on every page, so an
+  // unauthenticated write here would be site-wide script injection.
+  const admin = await requireAdmin();
+  if (!admin.authorized) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
   try {
     const body = await request.json();
     const { robots_txt, show_nfw_exclusive_button, gtm_id } = body;
