@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import {
+  getInvoicePaymentIds,
   mapBillingReasonToPaymentType,
   shouldRecordPayment,
 } from "@/lib/stripe-payments";
@@ -27,6 +28,7 @@ interface PaymentRecord {
   billing_reason: string | null;
   stripe_invoice_id: string;
   stripe_payment_id: string | null;
+  stripe_payment_intent_id: string | null;
   payment_type: string;
 }
 
@@ -67,9 +69,11 @@ export async function POST(request: Request) {
     let startingAfter: string | undefined;
 
     while (hasMore) {
-      const params: { customer: string; limit: number; starting_after?: string } = {
+      const params: Stripe.InvoiceListParams = {
         customer: stripe_customer_id,
         limit: 100,
+        // Invoice.charge was removed in API 2025-03-31.basil; read IDs from payments.
+        expand: ["data.payments"],
       };
       if (startingAfter) {
         params.starting_after = startingAfter;
@@ -104,8 +108,7 @@ export async function POST(request: Request) {
         errorMessage = "Payment attempt failed, retry scheduled";
       }
 
-      const chargeId = (invoice as any).charge;
-      const stripePaymentId = typeof chargeId === 'string' ? chargeId : null;
+      const { chargeId: stripePaymentId, paymentIntentId } = getInvoicePaymentIds(invoice);
 
       const paymentType = mapBillingReasonToPaymentType(invoice.billing_reason);
 
@@ -118,6 +121,7 @@ export async function POST(request: Request) {
         billing_reason: invoice.billing_reason,
         stripe_invoice_id: invoice.id,
         stripe_payment_id: stripePaymentId,
+        stripe_payment_intent_id: paymentIntentId,
         payment_type: paymentType,
       });
     }
@@ -153,6 +157,7 @@ export async function POST(request: Request) {
           amount: payment.amount,
           payment_type: payment.payment_type,
           stripe_payment_id: payment.stripe_payment_id,
+          stripe_payment_intent_id: payment.stripe_payment_intent_id,
           stripe_invoice_id: payment.stripe_invoice_id,
           created_at: payment.date,
         });

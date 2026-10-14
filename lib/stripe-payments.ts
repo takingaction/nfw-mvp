@@ -42,3 +42,88 @@ export function mapBillingReasonToPaymentType(
 export function shouldRecordPayment(invoice: Pick<Stripe.Invoice, "amount_paid" | "status">): boolean {
   return invoice.status === "paid" && (invoice.amount_paid ?? 0) >= 1;
 }
+
+// ---------------------------------------------------------------------------
+// Invoice → PaymentIntent / Charge resolution
+// ---------------------------------------------------------------------------
+//
+// Since Stripe API 2025-03-31.basil, `Invoice.charge` and
+// `Invoice.payment_intent` no longer exist. The payment lives under
+// `Invoice.payments` (an InvoicePayment list), which is NOT included by
+// default — list/retrieve calls must pass `expand: ["payments"]` (or
+// `["data.payments"]` for list calls), otherwise fall back to
+// `stripe.invoicePayments.list({ invoice })`.
+//
+// Refund/dispute matching in the webhook keys off `stripe_payment_intent_id`
+// (every Charge carries `payment_intent`), so the PaymentIntent ID is the
+// one that matters. The charge ID is a nice-to-have for `stripe_payment_id`.
+
+export interface InvoicePaymentIds {
+  paymentIntentId: string | null;
+  chargeId: string | null;
+}
+
+const EMPTY_IDS: InvoicePaymentIds = { paymentIntentId: null, chargeId: null };
+
+function idOf(value: string | { id: string } | null | undefined): string | null {
+  if (!value) return null;
+  return typeof value === "string" ? value : value.id;
+}
+
+function idsFromInvoicePayments(payments: Stripe.InvoicePayment[]): InvoicePaymentIds {
+  const paid = payments.find((p) => p.status === "paid") ?? payments[0];
+  if (!paid?.payment) return EMPTY_IDS;
+  const pi = paid.payment.payment_intent;
+  let chargeId = idOf(paid.payment.charge);
+  // If the PaymentIntent was expanded we can read the charge for free.
+  if (!chargeId && pi && typeof pi !== "string") {
+    chargeId = idOf(pi.latest_charge);
+  }
+  return { paymentIntentId: idOf(pi), chargeId };
+}
+
+/**
+ * Synchronous read from an invoice whose `payments` field was expanded.
+ * Returns nulls when `payments` wasn't expanded — use
+ * `resolveInvoicePaymentIds` when you can't guarantee the expansion.
+ */
+export function getInvoicePaymentIds(invoice: Stripe.Invoice): InvoicePaymentIds {
+  const payments = invoice.payments?.data;
+  if (!payments || payments.length === 0) return EMPTY_IDS;
+  return idsFromInvoicePayments(payments);
+}
+
+/**
+ * Full resolution: reads expanded `payments` if present, otherwise lists the
+ * invoice's payments; then (optionally) retrieves the PaymentIntent to fill
+ * in the charge ID. Never throws — returns whatever it could resolve.
+ */
+export async function resolveInvoicePaymentIds(
+  stripe: Stripe,
+  invoice: Pick<Stripe.Invoice, "id" | "payments">,
+  options: { includeCharge?: boolean } = {},
+): Promise<InvoicePaymentIds> {
+  const includeCharge = options.includeCharge ?? true;
+  let ids: InvoicePaymentIds = EMPTY_IDS;
+
+  try {
+    if (invoice.payments?.data?.length) {
+      ids = idsFromInvoicePayments(invoice.payments.data);
+    } else if (invoice.id) {
+      const list = await stripe.invoicePayments.list({ invoice: invoice.id, limit: 10 });
+      ids = idsFromInvoicePayments(list.data);
+    }
+
+    if (includeCharge && !ids.chargeId && ids.paymentIntentId) {
+      const pi = await stripe.paymentIntents.retrieve(ids.paymentIntentId);
+      ids = { ...ids, chargeId: idOf(pi.latest_charge) };
+    }
+  } catch (err) {
+    console.error(
+      `[stripe-payments] Failed to resolve payment IDs for invoice ${invoice.id}:`,
+      err instanceof Error ? err.message : err,
+    );
+  }
+
+  return ids;
+}

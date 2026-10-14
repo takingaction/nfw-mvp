@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import {
+  getInvoicePaymentIds,
   mapBillingReasonToPaymentType,
   shouldRecordPayment,
 } from "@/lib/stripe-payments";
@@ -96,6 +97,8 @@ export async function POST(request: Request) {
         const invoices = await stripe.invoices.list({
           customer: stripeCustomerId,
           limit: 10,
+          // Invoice.charge was removed in API 2025-03-31.basil; read IDs from payments.
+          expand: ["data.payments"],
         });
 
         // Find the first paid invoice with amount_paid > 0. The same
@@ -117,10 +120,7 @@ export async function POST(request: Request) {
         // Determine amount from invoice amount_paid (in cents)
         const amount = paidInvoice.amount_paid / 100;
 
-        // Use charge ID if available, otherwise set to null
-        // For automatic payments, charge may be null - set stripe_payment_id to null in that case
-        const chargeId = (paidInvoice as any).charge;
-        const stripePaymentId = typeof chargeId === 'string' ? chargeId : null;
+        const { chargeId: stripePaymentId, paymentIntentId } = getInvoicePaymentIds(paidInvoice);
 
         // Check if payment already exists by stripe_invoice_id
         const { data: existingPayment } = await supabaseAdmin
@@ -142,6 +142,7 @@ export async function POST(request: Request) {
             amount: amount,
             payment_type: paymentType,
             stripe_payment_id: stripePaymentId,
+            stripe_payment_intent_id: paymentIntentId,
             stripe_invoice_id: paidInvoice.id,
             created_at: new Date(paidInvoice.created * 1000).toISOString(),
           });

@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import {
+  getInvoicePaymentIds,
   mapBillingReasonToPaymentType,
   shouldRecordPayment,
 } from "@/lib/stripe-payments";
@@ -27,6 +28,7 @@ interface PaymentRecord {
   billing_reason: string | null;
   stripe_invoice_id: string;
   stripe_payment_id: string | null; // actual charge ID (from invoice.charge)
+  stripe_payment_intent_id: string | null;
   payment_type: string;
 }
 
@@ -55,9 +57,11 @@ async function syncPaymentsForCustomer(
     let startingAfter: string | undefined;
 
     while (hasMore) {
-      const params: { customer: string; limit: number; starting_after?: string } = {
+      const params: Stripe.InvoiceListParams = {
         customer: stripeCustomerId,
         limit: 100,
+        // Invoice.charge was removed in API 2025-03-31.basil; read IDs from payments.
+        expand: ["data.payments"],
       };
       if (startingAfter) {
         params.starting_after = startingAfter;
@@ -114,8 +118,7 @@ async function syncPaymentsForCustomer(
 
       // Access charge ID - Stripe Invoice has charge as string | Charge | null
       // For automatic payments, charge may be null - set stripe_payment_id to null in that case
-      const chargeId = (invoice as any).charge;
-      const stripePaymentId = typeof chargeId === 'string' ? chargeId : null;
+      const { chargeId: stripePaymentId, paymentIntentId } = getInvoicePaymentIds(invoice);
 
       allPayments.push({
         id: invoice.id,
@@ -126,6 +129,7 @@ async function syncPaymentsForCustomer(
         billing_reason: invoice.billing_reason,
         stripe_invoice_id: invoice.id,
         stripe_payment_id: stripePaymentId,
+        stripe_payment_intent_id: paymentIntentId,
         payment_type: paymentType,
       });
     }
@@ -202,6 +206,7 @@ async function insertMembershipPaymentsIfNeeded(
         amount: payment.amount,
         payment_type: paymentType,
         stripe_payment_id: payment.stripe_payment_id,
+        stripe_payment_intent_id: payment.stripe_payment_intent_id,
         stripe_invoice_id: invoiceId,
         created_at: payment.date,
       });

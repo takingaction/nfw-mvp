@@ -3,7 +3,8 @@ import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { sendGiftCodesEmail, sendWelcomeEmail } from "@/lib/email";
 import { generateGiftCode } from "@/lib/gift-codes";
-import { recordPaymentReversal, findPaymentByStripeId, notifyRefundProcessed, notifyRefundNotMatched } from "@/lib/membership-tier";
+import { resolveInvoicePaymentIds } from "@/lib/stripe-payments";
+import { recordPaymentReversal, findPaymentByStripeId, getReversedTotal, notifyRefundProcessed, notifyRefundNotMatched } from "@/lib/membership-tier";
 
 export const dynamic = "force-dynamic";
 
@@ -635,13 +636,15 @@ export async function POST(request: Request) {
                 });
                 if (invoices.data.length > 0) {
                   const invoice = invoices.data[0];
-                  if (typeof invoice === 'object' && 'payment_intent' in invoice) {
-                    stripePaymentId = (invoice as any).payment_intent as string || null;
-                    stripeInvoiceId = invoice.id;
-                    // Use actual invoice amount if available
-                    if (invoice.amount_paid > 0) {
-                      actualAmount = invoice.amount_paid / 100;
-                    }
+                  // Invoice.payment_intent was removed in API 2025-03-31.basil, so the
+                  // old `'payment_intent' in invoice` guard never passed. Resolve the
+                  // charge via the invoice's payments instead.
+                  const ids = await resolveInvoicePaymentIds(stripe, invoice);
+                  stripePaymentId = ids.chargeId ?? ids.paymentIntentId;
+                  stripeInvoiceId = invoice.id;
+                  // Use actual invoice amount if available
+                  if (invoice.amount_paid > 0) {
+                    actualAmount = invoice.amount_paid / 100;
                   }
                 }
               } catch (err) {
@@ -945,17 +948,9 @@ export async function POST(request: Request) {
         const amountPaid = invoice.amount_paid / 100;
         console.log("[webhook] invoice.payment_succeeded: Amount paid:", amountPaid);
 
-        // Get charge ID from PaymentIntent for refund tracking
-        let chargeId = null;
-        let paymentIntentId = (invoice as any).payment_intent as string || null;
-        if (paymentIntentId) {
-          try {
-            const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-            chargeId = paymentIntent.latest_charge as string || null;
-          } catch (err) {
-            console.error("[webhook] invoice.payment_succeeded: Failed to get PaymentIntent:", err);
-          }
-        }
+        // Get PaymentIntent + charge IDs for refund tracking. Invoice.payment_intent
+        // no longer exists on this API version — resolve via invoice payments.
+        const { paymentIntentId, chargeId } = await resolveInvoicePaymentIds(stripe, invoice);
 
         // Insert into membership_upgrades table
         await supabaseAdmin
@@ -1035,6 +1030,9 @@ export async function POST(request: Request) {
         console.log("[webhook] Processing charge.refunded event");
         const charge = event.data.object as Stripe.Charge;
         const chargeId = charge.id;
+        const paymentIntentId =
+          typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id ?? null;
+        // amount_refunded is CUMULATIVE across all refunds on this charge.
         const refundAmountDollars = charge.amount_refunded ? charge.amount_refunded / 100 : 0;
         const originalAmountDollars = charge.amount / 100;
         const isPartialRefund = refundAmountDollars < originalAmountDollars;
@@ -1043,17 +1041,38 @@ export async function POST(request: Request) {
           `[webhook] charge.refunded: Processing charge ${chargeId}, refund: $${refundAmountDollars} of $${originalAmountDollars} (${isPartialRefund ? "partial" : "full"})`,
         );
 
-        // Find the original payment by stripe_payment_id (which is the charge ID)
-        const payment = await findPaymentByStripeId(chargeId);
+        // Match the original payment by charge ID, falling back to PaymentIntent
+        // (subscription rows ingested from invoices usually only have the PI).
+        const payment = await findPaymentByStripeId({ chargeId, paymentIntentId });
 
         if (!payment) {
-          console.log(`[webhook] charge.refunded: No matching payment found for charge ${chargeId}`);
+          console.log(`[webhook] charge.refunded: No matching payment found for charge ${chargeId} / PI ${paymentIntentId}`);
           // Send Slack alert for unmatched refund
           await notifyRefundNotMatched({
             chargeId,
             amount: refundAmountDollars,
-            error: "No matching payment found for this charge ID",
+            error: `No matching payment found for charge ${chargeId} / PaymentIntent ${paymentIntentId ?? "none"}`,
           });
+          break;
+        }
+
+        // Backfill the charge ID onto rows that were matched via PaymentIntent.
+        if (!payment.stripe_payment_id) {
+          await supabaseAdmin
+            .from("membership_payments")
+            .update({ stripe_payment_id: chargeId })
+            .eq("id", payment.id)
+            .is("stripe_payment_id", null);
+        }
+
+        // Idempotency: Stripe retries events and amount_refunded is cumulative,
+        // so only record what hasn't already been reversed as a refund.
+        const alreadyRefunded = await getReversedTotal(payment.id, "refunded");
+        const newRefundDollars = Math.round((refundAmountDollars - alreadyRefunded) * 100) / 100;
+        if (newRefundDollars <= 0) {
+          console.log(
+            `[webhook] charge.refunded: Already recorded $${alreadyRefunded} of $${refundAmountDollars} for payment ${payment.id}, skipping`,
+          );
           break;
         }
 
@@ -1069,7 +1088,7 @@ export async function POST(request: Request) {
           "refunded",
           reversalReason,
           {
-            actualRefundAmount: refundAmountDollars,
+            actualRefundAmount: newRefundDollars,
             // Only recalculate tier on full refund — partials leave tier untouched
             recalculateTier: !isPartialRefund,
           },
@@ -1109,17 +1128,24 @@ export async function POST(request: Request) {
         if (dispute.status === "lost") {
           console.log(`[webhook] charge.dispute.closed: Dispute lost, recording reversal for charge ${chargeId}`);
 
-          // Find the original payment by stripe_payment_id (which is the charge ID)
-          const payment = await findPaymentByStripeId(chargeId);
+          const disputePaymentIntentId =
+            typeof dispute.payment_intent === "string" ? dispute.payment_intent : dispute.payment_intent?.id ?? null;
+          const payment = await findPaymentByStripeId({ chargeId, paymentIntentId: disputePaymentIntentId });
 
           if (!payment) {
-            console.log(`[webhook] charge.dispute.closed: No matching payment found for charge ${chargeId}`);
+            console.log(`[webhook] charge.dispute.closed: No matching payment found for charge ${chargeId} / PI ${disputePaymentIntentId}`);
             // Send Slack alert for unmatched dispute
             await notifyRefundNotMatched({
               chargeId,
               amount: dispute.amount ? dispute.amount / 100 : undefined,
               error: `Dispute lost: ${dispute.reason || "customer dispute"}`,
             });
+            break;
+          }
+
+          // Idempotency: a retried dispute.closed event must not reverse twice.
+          if ((await getReversedTotal(payment.id, "disputed")) > 0) {
+            console.log(`[webhook] charge.dispute.closed: Dispute already recorded for payment ${payment.id}, skipping`);
             break;
           }
 

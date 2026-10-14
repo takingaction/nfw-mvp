@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { getInvoicePaymentIds, mapBillingReasonToPaymentType } from "@/lib/stripe-payments";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
@@ -13,19 +14,7 @@ const supabaseAdmin = createAdminClient(
 );
 
 export const dynamic = "force-dynamic";
-
-function mapBillingReasonToPaymentType(billingReason: string | null): string {
-  switch (billingReason) {
-    case "subscription_create":
-      return "signup";
-    case "subscription_cycle":
-      return "renewal";
-    case "subscription_update":
-      return "upgrade";
-    default:
-      return "renewal";
-  }
-}
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   void request;
@@ -115,6 +104,8 @@ export async function POST(request: Request) {
       const params: Stripe.InvoiceListParams = {
         limit: 100,
         created: { gte: startDate },
+        // Invoice.charge was removed in API 2025-03-31.basil; read IDs from payments.
+        expand: ["data.payments"],
       };
       if (cursor) params.starting_after = cursor;
 
@@ -141,6 +132,7 @@ export async function POST(request: Request) {
       amount: number;
       payment_type: string;
       stripe_payment_id: string | null;
+      stripe_payment_intent_id: string | null;
       stripe_invoice_id: string;
       created_at: string;
     }[] = [];
@@ -165,13 +157,7 @@ export async function POST(request: Request) {
       // Map billing_reason to payment_type (same logic as payment-sync cron)
       const paymentType = mapBillingReasonToPaymentType(invoice.billing_reason);
 
-      // Get charge ID if available
-      // invoice.charge is expandable - access via bracket notation to avoid TS issues
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const invoiceAny = invoice as any;
-      const chargeId = typeof invoiceAny.charge === "string"
-        ? invoiceAny.charge
-        : invoiceAny.charge?.id || null;
+      const { chargeId, paymentIntentId } = getInvoicePaymentIds(invoice);
 
       // Skip if already recorded by charge ID
       if (chargeId && knownPaymentIds.has(chargeId)) {
@@ -184,6 +170,7 @@ export async function POST(request: Request) {
         amount: (invoice.amount_paid || 0) / 100,
         payment_type: paymentType,
         stripe_payment_id: chargeId,
+        stripe_payment_intent_id: paymentIntentId,
         stripe_invoice_id: invoice.id,
         created_at: new Date((invoice.created || 0) * 1000).toISOString(),
       });
@@ -205,26 +192,45 @@ export async function POST(request: Request) {
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
 
-    // Insert all missing payments
-    const { data: inserted, error: insertError } = await supabaseAdmin
-      .from("membership_payments")
-      .insert(toInsert)
-      .select("id");
+    // Insert row-by-row so one invoice the webhook/cron already recorded
+    // (unique violation on stripe_invoice_id) doesn't abort the whole batch.
+    let insertedCount = 0;
+    let alreadyPresent = 0;
+    let totalAmount = 0;
+    const failures: string[] = [];
 
-    if (insertError) {
-      console.error("[insert-missing] Insert error:", insertError);
+    for (const row of toInsert) {
+      const { error: insertError } = await supabaseAdmin
+        .from("membership_payments")
+        .insert(row);
+
+      if (!insertError) {
+        insertedCount++;
+        totalAmount += row.amount;
+      } else if (insertError.code === "23505") {
+        alreadyPresent++;
+      } else {
+        console.error(`[insert-missing] Insert error for ${row.stripe_invoice_id}:`, insertError.message);
+        failures.push(`${row.stripe_invoice_id}: ${insertError.message}`);
+      }
+    }
+
+    if (insertedCount === 0 && failures.length > 0) {
       return NextResponse.json(
-        { error: insertError.message || "Failed to insert payments" },
+        { error: `Failed to insert payments: ${failures.slice(0, 3).join("; ")}` },
         { status: 500 }
       );
     }
 
-    const totalAmount = toInsert.reduce((s, p) => s + p.amount, 0);
-
     return NextResponse.json({
       success: true,
-      message: `Inserted ${inserted?.length || 0} missing payments`,
-      inserted: inserted?.length || 0,
+      message:
+        `Inserted ${insertedCount} missing payments` +
+        (alreadyPresent ? ` (${alreadyPresent} already recorded)` : "") +
+        (failures.length ? ` — ${failures.length} failed, see logs` : ""),
+      inserted: insertedCount,
+      already_present: alreadyPresent,
+      failed: failures.length,
       total_amount: totalAmount,
     });
 

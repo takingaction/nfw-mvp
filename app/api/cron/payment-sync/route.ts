@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import {
+  getInvoicePaymentIds,
   mapBillingReasonToPaymentType,
   shouldRecordPayment,
 } from "@/lib/stripe-payments";
@@ -16,6 +17,7 @@ const supabaseAdmin = createAdminClient(
 );
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const BATCH_SIZE = 25;
 const BATCH_DELAY_MS = 1000;
@@ -29,6 +31,7 @@ interface PaymentRecord {
   billing_reason: string | null;
   stripe_invoice_id: string;
   stripe_payment_id: string | null;
+  stripe_payment_intent_id: string | null;
   payment_type: string;
 }
 
@@ -56,9 +59,12 @@ async function syncPaymentsForCustomer(
     let startingAfter: string | undefined;
 
     while (hasMore) {
-      const params: { customer: string; limit: number; starting_after?: string } = {
+      const params: Stripe.InvoiceListParams = {
         customer: stripeCustomerId,
         limit: 100,
+        // Invoice.charge / Invoice.payment_intent were removed in API
+        // 2025-03-31.basil; the payment now lives under `payments`.
+        expand: ["data.payments"],
       };
       if (startingAfter) {
         params.starting_after = startingAfter;
@@ -107,8 +113,7 @@ async function syncPaymentsForCustomer(
         }
       }
 
-      const chargeId = (invoice as any).charge;
-      const stripePaymentId = typeof chargeId === 'string' ? chargeId : null;
+      const { chargeId: stripePaymentId, paymentIntentId } = getInvoicePaymentIds(invoice);
 
       allPayments.push({
         id: invoice.id,
@@ -119,6 +124,7 @@ async function syncPaymentsForCustomer(
         billing_reason: invoice.billing_reason,
         stripe_invoice_id: invoice.id,
         stripe_payment_id: stripePaymentId,
+        stripe_payment_intent_id: paymentIntentId,
         payment_type: paymentType,
       });
     }
@@ -172,11 +178,31 @@ async function insertMembershipPaymentsIfNeeded(
 
     const { data: existing } = await supabaseAdmin
       .from("membership_payments")
-      .select("id")
+      .select("id, stripe_payment_id, stripe_payment_intent_id")
       .eq("stripe_invoice_id", invoiceId)
+      .is("original_payment_id", null)
       .limit(1);
 
     if (existing && existing.length > 0) {
+      // Self-heal rows ingested before the basil fix: fill in the Stripe IDs
+      // refund/dispute matching needs. Only fills nulls, never overwrites.
+      const row = existing[0];
+      const patch: { stripe_payment_id?: string; stripe_payment_intent_id?: string } = {};
+      if (!row.stripe_payment_intent_id && payment.stripe_payment_intent_id) {
+        patch.stripe_payment_intent_id = payment.stripe_payment_intent_id;
+      }
+      if (!row.stripe_payment_id && payment.stripe_payment_id) {
+        patch.stripe_payment_id = payment.stripe_payment_id;
+      }
+      if (Object.keys(patch).length > 0) {
+        const { error: patchError } = await supabaseAdmin
+          .from("membership_payments")
+          .update(patch)
+          .eq("id", row.id);
+        if (patchError) {
+          console.error(`[payment-sync] Failed to backfill IDs on ${row.id}:`, patchError.message);
+        }
+      }
       skipped++;
       continue;
     }
@@ -190,6 +216,7 @@ async function insertMembershipPaymentsIfNeeded(
         amount: payment.amount,
         payment_type: paymentType,
         stripe_payment_id: payment.stripe_payment_id,
+        stripe_payment_intent_id: payment.stripe_payment_intent_id,
         stripe_invoice_id: invoiceId,
         created_at: payment.date,
       });

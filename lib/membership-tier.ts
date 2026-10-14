@@ -56,17 +56,33 @@ export async function recalculateMembershipTier(
   }
 
   // Get all successful payments, ordered by created_at DESC
-  const { data: payments, error } = await supabaseAdmin
+  const { data: allPaymentRows, error } = await supabaseAdmin
     .from("membership_payments")
     .select("*")
     .eq("user_id", userId)
-    .eq("status", "succeeded")
     .order("created_at", { ascending: false });
+  const succeededRows = (allPaymentRows ?? []).filter((p) => p.status === "succeeded");
 
   if (error) {
     console.error("[recalculateMembershipTier] Error fetching payments:", error);
     throw error;
   }
+
+  // Reversal rows are inserted alongside the original (which keeps
+  // status="succeeded"), so drop originals that have been fully reversed —
+  // otherwise a refunded $100 payment would keep a member at founding.
+  const reversedByOriginal = new Map<string, number>();
+  for (const p of allPaymentRows ?? []) {
+    if (p.original_payment_id) {
+      reversedByOriginal.set(
+        p.original_payment_id,
+        (reversedByOriginal.get(p.original_payment_id) ?? 0) + Math.abs(Number(p.amount) || 0),
+      );
+    }
+  }
+  const payments = (succeededRows ?? []).filter(
+    (p) => !p.original_payment_id && (reversedByOriginal.get(p.id) ?? 0) < Number(p.amount),
+  );
 
   // Determine membership level based on most recent successful payment
   let membership_level: MembershipLevel = "free";
@@ -211,48 +227,75 @@ export async function recalculateAndUpdateMemberTier(
 }
 
 /**
- * Finds a payment by stripe_payment_id, stripe_invoice_id, or stripe_payment_intent_id.
+ * Finds the ORIGINAL (non-reversal) membership payment for a Stripe charge.
+ *
+ * Match order:
+ *   1. stripe_payment_id        = chargeId
+ *   2. stripe_payment_intent_id = paymentIntentId
+ *
+ * Subscription payments ingested from invoices often have no charge ID
+ * (Invoice.charge was removed in Stripe API 2025-03-31.basil), so the
+ * PaymentIntent match is what catches renewals and signups. Every Charge,
+ * refund and dispute carries `payment_intent`, so callers should always
+ * pass it.
+ *
+ * Reversal rows copy the original's Stripe IDs, so they are excluded here —
+ * otherwise a second refund event could match a previous reversal row.
  */
-export async function findPaymentByStripeId(
-  stripeId: string
-): Promise<{ id: string; user_id: string; amount: number; stripe_payment_id: string | null } | null> {
-  // First try stripe_payment_id (charge ID)
-  const { data: byPaymentId, error: byPaymentIdError } = await supabaseAdmin
-    .from("membership_payments")
-    .select("id, user_id, amount, stripe_payment_id")
-    .eq("stripe_payment_id", stripeId)
-    .limit(1)
-    .single();
+export async function findPaymentByStripeId(ids: {
+  chargeId?: string | null;
+  paymentIntentId?: string | null;
+}): Promise<{ id: string; user_id: string; amount: number; stripe_payment_id: string | null } | null> {
+  const lookups: Array<["stripe_payment_id" | "stripe_payment_intent_id", string | null | undefined]> = [
+    ["stripe_payment_id", ids.chargeId],
+    ["stripe_payment_intent_id", ids.paymentIntentId],
+  ];
 
-  if (byPaymentId && !byPaymentIdError) {
-    return byPaymentId;
-  }
+  for (const [column, value] of lookups) {
+    if (!value) continue;
+    const { data, error } = await supabaseAdmin
+      .from("membership_payments")
+      .select("id, user_id, amount, stripe_payment_id")
+      .eq(column, value)
+      .is("original_payment_id", null)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
 
-  // Then try stripe_invoice_id
-  const { data: byInvoiceId, error: byInvoiceIdError } = await supabaseAdmin
-    .from("membership_payments")
-    .select("id, user_id, amount, stripe_payment_id")
-    .eq("stripe_invoice_id", stripeId)
-    .limit(1)
-    .single();
-
-  if (byInvoiceId && !byInvoiceIdError) {
-    return byInvoiceId;
-  }
-
-  // Finally try stripe_payment_intent_id (for refund events that come with charge ID)
-  const { data: byIntentId, error: byIntentIdError } = await supabaseAdmin
-    .from("membership_payments")
-    .select("id, user_id, amount, stripe_payment_id")
-    .eq("stripe_payment_intent_id", stripeId)
-    .limit(1)
-    .single();
-
-  if (byIntentId && !byIntentIdError) {
-    return byIntentId;
+    if (error) {
+      console.error(`[findPaymentByStripeId] Lookup by ${column} failed:`, error.message);
+      continue;
+    }
+    if (data) return data;
   }
 
   return null;
+}
+
+/**
+ * Total already reversed (positive dollars) against an original payment,
+ * optionally filtered to one reversal type. Used by the webhook to make
+ * refund/dispute handling idempotent: Stripe retries events, and
+ * `charge.amount_refunded` is cumulative across partial refunds, so the
+ * reversal to record is (cumulative - already reversed).
+ */
+export async function getReversedTotal(
+  originalPaymentId: string,
+  reversalType?: "refunded" | "disputed",
+): Promise<number> {
+  let query = supabaseAdmin
+    .from("membership_payments")
+    .select("amount")
+    .eq("original_payment_id", originalPaymentId);
+  if (reversalType) query = query.eq("status", reversalType);
+
+  const { data, error } = await query;
+  if (error) {
+    // Fail loud rather than risk a double reversal.
+    throw new Error(`[getReversedTotal] ${error.message}`);
+  }
+  const total = (data ?? []).reduce((sum, r) => sum + Math.abs(Number(r.amount) || 0), 0);
+  return Math.round(total * 100) / 100;
 }
 
 /**
