@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { Search, Download, Gift, Check, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Download, Gift, Check, Ban, ChevronLeft, ChevronRight } from "lucide-react";
+import GiftCodeBatches, { type GiftCodeBatch } from "./GiftCodeBatches";
 
 interface GiftCode {
   id: string;
@@ -10,6 +10,10 @@ interface GiftCode {
   created_at: string;
   redeemed_at: string | null;
   redeemed_by_email: string | null;
+  voided_at: string | null;
+  voided_reason: string | null;
+  batch_id: string | null;
+  batch: { id: string; name: string; tier: string; expires_at: string | null } | null;
   purchase: {
     id: string;
     buyer_name: string;
@@ -17,13 +21,14 @@ interface GiftCode {
     quantity: number;
     total_amount: number;
     created_at: string;
-  };
+  } | null;
 }
 
 interface Stats {
   totalCodes: number;
   redeemedCodes: number;
   unredeemedCodes: number;
+  voidedCodes: number;
   totalPurchases: number;
   totalRevenue: number;
 }
@@ -33,7 +38,10 @@ export default function AdminGiftCodes() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<"all" | "redeemed" | "unredeemed">("all");
+  const [status, setStatus] = useState<"all" | "redeemed" | "unredeemed" | "voided">("all");
+  const [batchFilter, setBatchFilter] = useState<string>("all");
+  const [batches, setBatches] = useState<GiftCodeBatch[]>([]);
+  const [batchesVersion, setBatchesVersion] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -42,6 +50,7 @@ export default function AdminGiftCodes() {
     try {
       const params = new URLSearchParams();
       params.set("status", status);
+      params.set("batch", batchFilter);
       if (search) params.set("search", search);
       params.set("page", page.toString());
 
@@ -56,14 +65,38 @@ export default function AdminGiftCodes() {
     } finally {
       setLoading(false);
     }
-  }, [status, search, page]);
+  }, [status, search, page, batchFilter]);
 
   useEffect(() => {
     fetchCodes();
   }, [fetchCodes]);
 
+  const selectBatch = useCallback((id: string) => {
+    setBatchFilter(id);
+    setStatus("all");
+    setPage(1);
+    document.getElementById("gift-code-list")?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  const handleVoidCode = async (code: GiftCode) => {
+    const reason = window.prompt(`Void code ${code.code}? It will stop working immediately.\n\nReason (optional):`, "");
+    if (reason === null) return;
+    const res = await fetch("/api/admin/gift-codes/void", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ codeId: code.id, reason }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.voided === 0) {
+      window.alert(data.error || "Code was not voided (it may have just been redeemed).");
+    }
+    fetchCodes();
+    setBatchesVersion((v) => v + 1);
+  };
+
   const handleExport = async () => {
-    const res = await fetch(`/api/admin/gift-codes?format=csv`);
+    // Export lives on POST (GET returns paginated JSON).
+    const res = await fetch(`/api/admin/gift-codes?format=csv`, { method: "POST" });
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -95,6 +128,13 @@ export default function AdminGiftCodes() {
             Export CSV
           </button>
         </div>
+
+        <GiftCodeBatches
+          key={batchesVersion}
+          onChanged={fetchCodes}
+          onSelectBatch={selectBatch}
+          onBatchesLoaded={setBatches}
+        />
 
         {stats && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -148,8 +188,8 @@ export default function AdminGiftCodes() {
           </div>
         )}
 
-        <div className="bg-white border border-nfw-blackberry/10 rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-nfw-blackberry/10 flex flex-col sm:flex-row gap-4">
+        <div id="gift-code-list" className="bg-white border border-nfw-blackberry/10 rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-nfw-blackberry/10 flex flex-col lg:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-nfw-blackberry/40" />
               <input
@@ -194,7 +234,29 @@ export default function AdminGiftCodes() {
               >
                 Unredeemed
               </button>
+              <button
+                onClick={() => { setStatus("voided"); setPage(1); }}
+                className={`px-4 py-2 text-sm font-medium transition-colors rounded-lg ${
+                  status === "voided"
+                    ? "bg-nfw-aubergine text-white"
+                    : "bg-nfw-blackberry/5 text-nfw-blackberry hover:bg-nfw-blackberry/10"
+                }`}
+              >
+                Voided
+              </button>
             </div>
+            <select
+              value={batchFilter}
+              onChange={(e) => { setBatchFilter(e.target.value); setPage(1); }}
+              aria-label="Filter by source"
+              className="px-3 py-2 border border-nfw-blackberry/10 text-sm text-nfw-blackberry rounded-lg bg-white"
+            >
+              <option value="all">All sources</option>
+              <option value="purchases">Stripe purchases</option>
+              {batches.map((b) => (
+                <option key={b.id} value={b.id}>Batch: {b.name}</option>
+              ))}
+            </select>
           </div>
 
           <div className="overflow-x-auto">
@@ -205,7 +267,7 @@ export default function AdminGiftCodes() {
                     Code
                   </th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-nfw-blackberry/60 uppercase tracking-wider">
-                    Buyer
+                    Source
                   </th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-nfw-blackberry/60 uppercase tracking-wider">
                     Quantity
@@ -222,18 +284,19 @@ export default function AdminGiftCodes() {
                   <th className="text-left px-6 py-3 text-xs font-semibold text-nfw-blackberry/60 uppercase tracking-wider">
                     Date
                   </th>
+                  <th className="px-6 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-nfw-blackberry/10">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-nfw-blackberry/50">
+                    <td colSpan={8} className="px-6 py-12 text-center text-nfw-blackberry/50">
                       Loading...
                     </td>
                   </tr>
                 ) : codes.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-nfw-blackberry/50">
+                    <td colSpan={8} className="px-6 py-12 text-center text-nfw-blackberry/50">
                       No gift codes found
                     </td>
                   </tr>
@@ -246,14 +309,21 @@ export default function AdminGiftCodes() {
                         </code>
                       </td>
                       <td className="px-6 py-4">
-                        <div>
-                          <p className="text-sm font-medium text-nfw-blackberry">
-                            {code.purchase?.buyer_name || "—"}
-                          </p>
-                          <p className="text-xs text-nfw-blackberry/50">
-                            {code.purchase?.buyer_email || "—"}
-                          </p>
-                        </div>
+                        {code.batch ? (
+                          <div>
+                            <p className="text-sm font-medium text-nfw-blackberry">{code.batch.name}</p>
+                            <p className="text-xs text-nfw-blackberry/50">Print batch · {code.batch.tier}</p>
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="text-sm font-medium text-nfw-blackberry">
+                              {code.purchase?.buyer_name || "—"}
+                            </p>
+                            <p className="text-xs text-nfw-blackberry/50">
+                              {code.purchase?.buyer_email || "—"}
+                            </p>
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-nfw-blackberry">
                         {code.purchase?.quantity || "—"}
@@ -264,7 +334,19 @@ export default function AdminGiftCodes() {
                           : "—"}
                       </td>
                       <td className="px-6 py-4">
-                        {code.redeemed_at ? (
+                        {code.voided_at ? (
+                          <span
+                            title={code.voided_reason || undefined}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-700 text-xs font-semibold rounded-full"
+                          >
+                            <Ban className="w-3 h-3" />
+                            Voided
+                          </span>
+                        ) : code.batch?.expires_at && !code.redeemed_at && new Date(code.batch.expires_at) <= new Date() ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-nfw-blackberry/10 text-nfw-blackberry/70 text-xs font-semibold rounded-full">
+                            Expired
+                          </span>
+                        ) : code.redeemed_at ? (
                           <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#d4f1ad]/20 text-nfw-blackberry text-xs font-semibold rounded-full">
                             <Check className="w-3 h-3" />
                             Redeemed
@@ -285,6 +367,16 @@ export default function AdminGiftCodes() {
                           day: "numeric",
                           year: "numeric",
                         })}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {!code.redeemed_at && !code.voided_at && (
+                          <button
+                            onClick={() => handleVoidCode(code)}
+                            className="text-xs font-semibold text-red-700 hover:underline"
+                          >
+                            Void
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))

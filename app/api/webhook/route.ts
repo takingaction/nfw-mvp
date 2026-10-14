@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { sendGiftCodesEmail, sendWelcomeEmail } from "@/lib/email";
+import { generateGiftCode } from "@/lib/gift-codes";
 import { recordPaymentReversal, findPaymentByStripeId, notifyRefundProcessed, notifyRefundNotMatched } from "@/lib/membership-tier";
 
 export const dynamic = "force-dynamic";
@@ -112,16 +113,24 @@ export async function POST(request: Request) {
               break;
             }
 
-            // Generate codes
+            // Generate codes (CSPRNG, print-safe alphabet). Retry on the rare
+            // unique-constraint collision so every emailed code exists in the DB.
             const codes: string[] = [];
             for (let i = 0; i < quantity; i++) {
-              const code = Math.random().toString(36).substring(2, 10).toUpperCase();
-              codes.push(code);
-
-              await supabaseAdmin.from("gift_membership_codes").insert({
-                purchase_id: purchase.id,
-                code,
-              });
+              for (let attempt = 0; attempt < 5; attempt++) {
+                const code = generateGiftCode();
+                const { error: codeError } = await supabaseAdmin
+                  .from("gift_membership_codes")
+                  .insert({ purchase_id: purchase.id, code });
+                if (!codeError) {
+                  codes.push(code);
+                  break;
+                }
+                if (codeError.code !== "23505") {
+                  console.error("Failed to insert gift code:", codeError);
+                  break;
+                }
+              }
             }
 
             // Send email with codes

@@ -1,25 +1,45 @@
 import { blockIfViewingAs } from "@/lib/view-as";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import {
+  GIFT_CODE_ERROR_MESSAGES,
+  describeGift,
+  hashClientIp,
+  type GiftTier,
+} from "@/lib/gift-codes";
+import {
+  getGiftCodeStatus,
+  isGiftLookupRateLimited,
+  recordGiftLookupFailure,
+  redeemGiftCode,
+  runPostRedeemSideEffects,
+} from "@/lib/gift-code-service";
 
+function rateLimited() {
+  return NextResponse.json(
+    { valid: false, error: "Too many attempts. Please wait a few minutes and try again." },
+    { status: 429 },
+  );
+}
+
+/**
+ * Redeem a gift code for the logged-in user.
+ * Response contract is unchanged for web + mobile callers:
+ *   200 { success, message, subscriptionEndsAt, membershipLevel }
+ *   4xx { error, errorCode }
+ */
 export async function POST(request: Request) {
   const viewAsBlocked = blockIfViewingAs(request);
   if (viewAsBlocked) return viewAsBlocked;
 
   try {
     const { code } = await request.json();
-
-    if (!code) {
-      return NextResponse.json(
-        { error: "Gift code is required" },
-        { status: 400 },
-      );
+    if (!code || typeof code !== "string") {
+      return NextResponse.json({ error: "Gift code is required" }, { status: 400 });
     }
 
     const supabase = await createClient();
-
     const { data: { user } } = await supabase.auth.getUser();
-
     if (!user) {
       return NextResponse.json(
         { error: "You must be logged in to redeem a gift code" },
@@ -27,161 +47,74 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabaseAdmin = (await import("@supabase/supabase-js")).createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
+    const ipHash = hashClientIp(request.headers);
+    if (await isGiftLookupRateLimited(ipHash)) return rateLimited();
 
-    // Find the gift code
-    const { data: giftCode, error: codeError } = await supabaseAdmin
-      .from("gift_membership_codes")
-      .select("*")
-      .eq("code", code.toUpperCase())
-      .single();
+    const result = await redeemGiftCode(code, user.id, user.email ?? null);
 
-    if (codeError || !giftCode) {
+    if (!result.ok) {
+      if (result.error === "invalid") await recordGiftLookupFailure(ipHash);
       return NextResponse.json(
-        { error: "Invalid gift code" },
-        { status: 400 },
+        { error: GIFT_CODE_ERROR_MESSAGES[result.error], errorCode: result.error },
+        { status: result.error === "already_member" ? 409 : 400 },
       );
     }
 
-    // Check if already redeemed
-    if (giftCode.redeemed_at) {
-      return NextResponse.json(
-        { error: "This gift code has already been used" },
-        { status: 400 },
-      );
-    }
-
-    // Redeem the code: update user profile to contributing
-    const oneYearFromNow = new Date();
-    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-
-    // Get user's current profile for name and membership level
-    const { data: profile } = await supabaseAdmin
-      .from("profiles")
-      .select("full_name, membership_level, first_paid_at, first_paid_level")
-      .eq("id", user.id)
-      .single();
-
-    // Update the user's profile
-    const { error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .update({
-        membership_level: "contributing",
-        previous_membership_level: profile?.membership_level || 'free',
-        subscription_status: "active",
-        subscription_ends_at: oneYearFromNow.toISOString(),
-        updated_at: new Date().toISOString(),
-        // Track first paid upgrade (only if not already set)
-        first_paid_at: profile?.first_paid_at || new Date().toISOString(),
-        first_paid_level: profile?.first_paid_level || "contributing",
-        // Mark as gift card redemption
-        gift_code_redeemed: true,
-        signup_source: "gift",
-      })
-      .eq("id", user.id);
-
-    if (profileError) {
-      console.error("Failed to update profile:", profileError);
-      return NextResponse.json(
-        { error: "Failed to apply gift code" },
-        { status: 500 },
-      );
-    }
-
-    // Send welcome email
-    const { sendWelcomeEmail } = await import("@/lib/email");
-    await sendWelcomeEmail({
-      to: user.email!,
-      name: profile?.full_name || "there",
-      membershipType: "contributing",
-      memberId: user.id,
-      renewalDate: oneYearFromNow.toISOString(),
-    }).catch((err) => {
-      console.error("Failed to send welcome email:", err);
-    });
-
-    // Sync to Access Perks (idempotent - only syncs if access_perks_member_id is null)
-    try {
-      const { checkAndSyncAccessMember } = await import("@/lib/access-perks/member-sync");
-      await checkAndSyncAccessMember(supabaseAdmin, user.id, user.email!);
-    } catch (err) {
-      console.error("Failed to sync to Access Perks:", err);
-    }
-
-    // Mark the code as redeemed
-    const { error: redeemError } = await supabaseAdmin
-      .from("gift_membership_codes")
-      .update({
-        redeemed_at: new Date().toISOString(),
-        redeemed_by_user_id: user.id,
-        redeemed_by_email: user.email,
-      })
-      .eq("id", giftCode.id);
-
-    if (redeemError) {
-      console.error("Failed to mark code as redeemed:", redeemError);
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Gift code redeemed! You now have 1 year of Contributing membership.",
-      subscriptionEndsAt: oneYearFromNow.toISOString(),
-    });
-  } catch (error) {
-    console.error("Gift code redemption error:", error);
-    return NextResponse.json(
-      { error: "Failed to redeem gift code" },
-      { status: 500 },
-    );
-  }
-}
-
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const code = searchParams.get("code");
-
-    if (!code) {
-      return NextResponse.json(
-        { error: "Gift code is required" },
-        { status: 400 },
-      );
-    }
-
-    const supabaseAdmin = (await import("@supabase/supabase-js")).createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
-
-    // Find the gift code
-    const { data: giftCode, error: codeError } = await supabaseAdmin
-      .from("gift_membership_codes")
-      .select("*")
-      .eq("code", code.toUpperCase())
-      .single();
-
-    if (codeError || !giftCode) {
-      return NextResponse.json(
-        { valid: false, error: "Invalid gift code" },
-        { status: 200 },
-      );
-    }
-
-    // Check if already redeemed
-    if (giftCode.redeemed_at) {
-      return NextResponse.json({
-        valid: false,
-        error: "This gift code has already been used",
-        redeemed: true,
+    if (user.email) {
+      await runPostRedeemSideEffects({
+        userId: user.id,
+        email: user.email,
+        name: result.full_name,
+        tier: result.membership_level,
+        endsAt: result.subscription_ends_at,
       });
     }
 
     return NextResponse.json({
+      success: true,
+      message: `Gift code redeemed! You now have ${describeGift(result.membership_level, result.membership_months)}.`,
+      subscriptionEndsAt: result.subscription_ends_at,
+      membershipLevel: result.membership_level,
+    });
+  } catch (error) {
+    console.error("Gift code redemption error:", error);
+    return NextResponse.json({ error: "Failed to redeem gift code" }, { status: 500 });
+  }
+}
+
+/** Check a code without redeeming it. Rate-limited per IP on invalid lookups. */
+export async function GET(request: Request) {
+  try {
+    const code = new URL(request.url).searchParams.get("code");
+    if (!code) {
+      return NextResponse.json({ error: "Gift code is required" }, { status: 400 });
+    }
+
+    const ipHash = hashClientIp(request.headers);
+    if (await isGiftLookupRateLimited(ipHash)) return rateLimited();
+
+    const status = await getGiftCodeStatus(code);
+
+    if (status.status === "invalid") {
+      await recordGiftLookupFailure(ipHash);
+      return NextResponse.json({ valid: false, error: GIFT_CODE_ERROR_MESSAGES.invalid });
+    }
+    if (status.status !== "valid") {
+      return NextResponse.json({
+        valid: false,
+        error: GIFT_CODE_ERROR_MESSAGES[status.status],
+        redeemed: status.status === "redeemed",
+        errorCode: status.status,
+      });
+    }
+
+    const tier = (status.tier ?? "contributing") as GiftTier;
+    return NextResponse.json({
       valid: true,
       message: "This gift code is valid!",
+      tier,
+      description: describeGift(tier, status.membership_months ?? 12),
+      expiresAt: status.expires_at ?? null,
     });
   } catch (error) {
     console.error("Gift code validation error:", error);

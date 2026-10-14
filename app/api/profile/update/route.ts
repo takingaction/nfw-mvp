@@ -72,6 +72,11 @@ export async function POST(request: NextRequest) {
         updates[key] = Array.isArray(value) ? value : [];
       } else if (ALLOWED_OBJECTS.includes(key)) {
         updates[key] = typeof value === 'object' ? value : {};
+      } else if (key === "membership_level") {
+        // Clients may only choose the free tier. Paid tiers are set server-side
+        // (Stripe webhook, gift redemption). Older clients that echo the paid
+        // tier after redeeming a gift are ignored rather than rejected.
+        if (value === "free") updates[key] = "free";
       } else if (ALLOWED_FIELDS.includes(key as AllowedField)) {
         updates[key] = String(value);
       }
