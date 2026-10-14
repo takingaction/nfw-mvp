@@ -47,8 +47,8 @@ export default function SignUpMembershipScreen() {
     setGiftError(null);
     try {
       const res = await redeemGiftCode(giftCode);
-      // Web mirrors the server's profile changes client-side too.
-      await updateProfile({ profile_completed: true, membership_level: "contributing" });
+      // The server already set the tier (it may be Founding); only finish the profile here.
+      await updateProfile({ profile_completed: true });
       await refreshProfile();
       router.replace({ pathname: "/auth/welcome", params: { ends: res.subscriptionEndsAt } });
     } catch (err) {
