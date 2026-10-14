@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchAllProducts, getShopifyAccessToken } from "@/lib/shopify";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
+import { requireAdmin } from "@/lib/adminCheck";
 import { MOCK_PRODUCTS, transformShopifyProduct, MockProduct } from "@/lib/mock-shopify";
 
 const supabaseAdmin = createClient(
@@ -15,6 +16,14 @@ export async function GET(request: NextRequest) {
     const featured = searchParams.get("featured") === "true";
     const adminView = searchParams.get("admin_view") === "true";
     const checkConnection = searchParams.get("check_connection") === "true";
+
+    // admin_view returns hidden/unpublished products; admins only.
+    if (adminView) {
+      const admin = await requireAdmin();
+      if (!admin.authorized) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      }
+    }
 
     if (checkConnection) {
       const token = await getShopifyAccessToken();
