@@ -251,13 +251,13 @@ export default function FilterSidebar({
         >
           <Plane className="w-5 h-5" />
           <div className="text-left">
-            <div className="font-ui font-medium text-sm">Travel Benefits</div>
+            <div className="font-ui font-medium text-sm">Travel & Entertainment</div>
             <div
               className={`text-xs ${
                 pathname === "/travel" ? "text-nfw-lilac" : "text-nfw-blackberry/50"
               }`}
             >
-              Hotels, Cars, Flights & More
+              Hotels, flights, concerts & more
             </div>
           </div>
         </Link>

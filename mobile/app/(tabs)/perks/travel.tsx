@@ -109,7 +109,7 @@ export default function TravelScreen() {
     <>
       <Stack.Screen
         options={{
-          title: "Travel Benefits",
+          title: "Travel & Entertainment Benefits",
           headerRight: () => (
             <Pressable accessibilityRole="button" accessibilityLabel="Back to Travel Home" hitSlop={8} onPress={() => mintAndLoad()} style={styles.headerButton}>
               <Ionicons name="home-outline" size={20} color={colors.white} />

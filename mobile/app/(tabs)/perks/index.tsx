@@ -132,7 +132,7 @@ export default function PerksScreen() {
             onPress={() => c.slug && router.push({ pathname: "/(tabs)/perks/collections/[slug]", params: { slug: c.slug } })}
           />
         ))}
-        <QuickChip icon="airplane-outline" label="Travel Benefits" sub="Hotels, Cars, Flights & More" onPress={() => router.push("/(tabs)/perks/travel")} />
+        <QuickChip icon="airplane-outline" label="Travel & Entertainment" sub="Hotels, flights, concerts & more" onPress={() => router.push("/(tabs)/perks/travel")} />
       </ScrollView>
 
       {!f.nfwOnly && (

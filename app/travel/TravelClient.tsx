@@ -105,10 +105,10 @@ export default function TravelClient({
                 Back to Perks
               </Link>
               <h1 className="font-serif text-4xl lg:text-6xl leading-[1.1] text-nfw-aubergine mb-2">
-                Travel Benefits
+                Travel & Entertainment Benefits
               </h1>
               <p className="font-serif text-nfw-blackberry/60">
-                Book hotels, cars, flights, parks, and activities
+                Find discounted rates on hotels, cars, flights, concerts, sporting events, parks, and more
               </p>
             </div>
             <button
@@ -130,10 +130,10 @@ export default function TravelClient({
               Back to Perks
             </Link>
             <h1 className="font-serif text-3xl text-nfw-aubergine mb-1">
-              Travel Benefits
+              Travel & Entertainment Benefits
             </h1>
             <p className="font-serif text-nfw-blackberry/60 text-sm">
-              Book hotels, cars, flights, parks, and activities
+              Find discounted rates on hotels, cars, flights, concerts, sporting events, parks, and more
             </p>
             <button
               onClick={handleBackToTravelHome}
