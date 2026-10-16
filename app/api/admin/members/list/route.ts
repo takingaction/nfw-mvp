@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 1000;
 
 const SELECT_COLUMNS =
-  "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, is_reviewer, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted, previous_membership_level";
+  "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, is_reviewer, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted, previous_membership_level, access_paused_at, access_paused_reason, access_paused_dispute_id";
 
 /**
  * GET /api/admin/members/list

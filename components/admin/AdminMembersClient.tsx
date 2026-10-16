@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { AccessPauseSection } from "@/components/admin/AccessPauseSection";
 import {
   Search,
   Shield,
@@ -44,6 +45,9 @@ type Member = {
   is_approved_free_member: boolean | null;
   free_membership_contact_submitted: boolean | null;
   previous_membership_level: string | null;
+  access_paused_at?: string | null;
+  access_paused_reason?: string | null;
+  access_paused_dispute_id?: string | null;
 };
 
 export default function AdminMembersClient({
@@ -71,7 +75,7 @@ export default function AdminMembersClient({
       setSearch(stored);
     }
   }, []);
-  const [filter, setFilter] = useState<"all" | "paid" | "free_approved" | "waitlist" | "admin" | "incomplete">(
+  const [filter, setFilter] = useState<"all" | "paid" | "free_approved" | "waitlist" | "admin" | "incomplete" | "paused">(
     "all",
   );
   const [selected, setSelected] = useState<Member | null>(null);
@@ -227,6 +231,7 @@ export default function AdminMembersClient({
       (filter === "waitlist" &&
         m.membership_level === "waitlist") ||
       (filter === "admin" && m.is_admin === true) ||
+      (filter === "paused" && !!m.access_paused_at) ||
       (filter === "incomplete" && (
         m.profile_completed !== true ||
         (m.membership_level === "free" &&
@@ -590,7 +595,7 @@ export default function AdminMembersClient({
             )}
           </div>
           <div className="flex gap-2 flex-wrap">
-            {(["all", "paid", "free_approved", "waitlist", "admin", "incomplete"] as const).map((f) => {
+            {(["all", "paid", "free_approved", "waitlist", "admin", "incomplete", "paused"] as const).map((f) => {
               const labelMap: Record<string, string> = {
                 all: "All",
                 paid: "Paid",
@@ -598,6 +603,7 @@ export default function AdminMembersClient({
                 waitlist: "Waitlist",
                 admin: "Admins",
                 incomplete: "Incomplete",
+                paused: "Paused",
               };
                 return (
                 <button
@@ -756,7 +762,17 @@ export default function AdminMembersClient({
                       {statusBadge(member.subscription_status, member.membership_level, member.is_approved_free_member, member.profile_completed)}
                     </td>
                     <td className="px-4 py-3">
-                      {membershipBadge(member)}
+                      <div className="flex flex-wrap items-center gap-1">
+                        {membershipBadge(member)}
+                        {member.access_paused_at && (
+                          <span
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-red-100 text-red-700"
+                            title={member.access_paused_reason || "Access paused"}
+                          >
+                            Paused
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-nfw-blackberry/60 text-xs">
                       {member.household_income || "—"}
@@ -1178,6 +1194,24 @@ export default function AdminMembersClient({
                   )}
                 </div>
               )}
+
+              {/* Access pause - applies immediately, independent of Save Changes */}
+              <AccessPauseSection
+                key={selected.id}
+                memberId={selected.id}
+                isSelf={selected.id === currentUserId}
+                fields={{
+                  access_paused_at: selected.access_paused_at ?? null,
+                  access_paused_reason: selected.access_paused_reason ?? null,
+                  access_paused_dispute_id: selected.access_paused_dispute_id ?? null,
+                }}
+                onChanged={(fields) => {
+                  setSelected((prev) => (prev ? { ...prev, ...fields } : prev));
+                  setAllMembers((prev) =>
+                    prev.map((m) => (m.id === selected.id ? { ...m, ...fields } : m)),
+                  );
+                }}
+              />
 
               {saveError && (
                 <div className="bg-red-50 border border-red-200 p-3">

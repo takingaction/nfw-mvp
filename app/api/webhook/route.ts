@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { handleDisputeClosedForPause } from "@/lib/access-pause";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { sendGiftCodesEmail, sendWelcomeEmail } from "@/lib/email";
@@ -1123,6 +1124,10 @@ export async function POST(request: Request) {
         }
 
         console.log(`[webhook] charge.dispute.closed: Processing dispute for charge ${chargeId}, status: ${dispute.status}`);
+
+        // Access pause linked to this dispute (migration 205): won → auto-unpause,
+        // lost → stays paused + Slack alert. Never throws.
+        await handleDisputeClosedForPause({ id: dispute.id, status: dispute.status });
 
         // Only process if the dispute was lost (customer won)
         if (dispute.status === "lost") {

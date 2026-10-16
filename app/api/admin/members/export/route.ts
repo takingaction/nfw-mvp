@@ -40,6 +40,9 @@ const DB_COLUMNS = [
   "joined_at",
   "updated_at",
   "gift_code_redeemed",
+  "access_paused_at",
+  "access_paused_reason",
+  "access_paused_dispute_id",
 ];
 
 const CSV_COLUMNS = [
@@ -73,9 +76,15 @@ const CSV_COLUMNS = [
   "waitlist_email_sent_at",
   "joined_at",
   "updated_at",
+  "access_paused_at",
+  "access_paused_reason",
+  "access_paused_dispute_id",
 ];
 
 const COLUMN_LABELS: Record<string, string> = {
+  access_paused_at: "Access Paused At",
+  access_paused_reason: "Access Paused Reason",
+  access_paused_dispute_id: "Access Paused Dispute ID",
   id: "ID",
   email: "Email",
   full_name: "Full Name",
@@ -173,6 +182,7 @@ function formatCell(col: string, value: unknown): string {
     case "access_perks_synced_at":
     case "waitlist_joined_at":
     case "waitlist_email_sent_at":
+    case "access_paused_at":
     case "joined_at":
     case "updated_at":
       return formatDateTime(value as string | null);
