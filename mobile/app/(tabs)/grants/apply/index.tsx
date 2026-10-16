@@ -1,4 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
+import { AccessPausedNotice } from "@/components/banners/AccessPausedNotice";
+import { isAccessPaused } from "@/types/profile";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
@@ -310,7 +312,9 @@ export default function GrantApplyScreen() {
           NFW microgrants help with real-life needs like childcare, medical costs, car repairs, and more.
         </Body>
 
-        {!eligible && (
+        {!eligible && isAccessPaused(profile) && <AccessPausedNotice style={styles.notice} />}
+
+        {!eligible && !isAccessPaused(profile) && (
           <Card surface="citrine" bordered={false} style={styles.notice}>
             <Label>Membership required</Label>
             <Caption tone="default">

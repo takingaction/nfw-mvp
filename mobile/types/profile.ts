@@ -40,6 +40,17 @@ export interface Profile {
   stripe_onboarding_completed: boolean;
   access_perks_member_id: string | null;
   joined_at: string | null;
+  /** Set when an admin paused this member's access (web migration 205). */
+  access_paused_at: string | null;
+}
+
+/** Mirrors ACCESS_PAUSED_* in the web repo's lib/member-access.ts. */
+export const ACCESS_PAUSED_EMAIL = "hello@nationalfundforwomen.org";
+export const ACCESS_PAUSED_MESSAGE =
+  `Your NFW membership access has been temporarily limited as we investigate an issue with your account. If you have any questions, please contact ${ACCESS_PAUSED_EMAIL}.`;
+
+export function isAccessPaused(profile: Pick<Profile, "access_paused_at"> | null | undefined): boolean {
+  return !!profile?.access_paused_at;
 }
 
 /** Placeholder DOB written by the signup flow before the user enters a real date. */
@@ -50,11 +61,13 @@ export function needsDateOfBirth(profile: Pick<Profile, "date_of_birth"> | null)
 }
 
 /**
- * Mirrors the access matrix in AGENTS.md ("Free Membership Admin Approval System").
- * Paid tiers always have access; free members need admin approval; waitlist never.
+ * Mirrors hasMemberAccess() in the web repo's lib/member-access.ts.
+ * Paused members never; paid tiers always; free members need admin approval;
+ * waitlist never.
  */
 export function canAccessMemberBenefits(profile: Profile | null): boolean {
   if (!profile) return false;
+  if (isAccessPaused(profile)) return false;
   if (profile.membership_level === "contributing" || profile.membership_level === "founding") return true;
   if (profile.membership_level === "free") return profile.is_approved_free_member === true;
   return false;

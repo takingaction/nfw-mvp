@@ -1,4 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { AccessPausedNotice } from "@/components/banners/AccessPausedNotice";
+import { isAccessPaused } from "@/types/profile";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
@@ -63,7 +65,9 @@ export default function GrantsScreen() {
         </View>
       </Card>
 
-      {!eligible && (
+      {!eligible && isAccessPaused(profile) && <AccessPausedNotice style={styles.notice} />}
+
+      {!eligible && !isAccessPaused(profile) && (
         <Card surface="citrine" bordered={false} style={styles.notice}>
           <Label>Membership required</Label>
           <Caption tone="default">

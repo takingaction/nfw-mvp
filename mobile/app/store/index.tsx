@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { isAccessPaused } from "@/types/profile";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { AppState, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
@@ -73,7 +74,7 @@ export default function StoreScreen() {
         renderItem={({ item }) => (
           <ProductCard
             product={item}
-            eligibility={canClaimProduct(item, { userTier, isApprovedFreeMember, monthlyClaimed })}
+            eligibility={canClaimProduct(item, { userTier, isApprovedFreeMember, monthlyClaimed, isPaused: isAccessPaused(profile) })}
             onClaim={() => handleClaim(item)}
             onMoreInfo={() => router.push({ pathname: "/store/[productId]", params: { productId: encodeURIComponent(item.shopifyProductId) } })}
           />

@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { isAccessPaused } from "@/types/profile";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useRef, useState } from "react";
@@ -45,6 +46,7 @@ export default function ProductDetailScreen() {
     userTier: profile?.membership_level ?? "free",
     isApprovedFreeMember: profile?.is_approved_free_member ?? null,
     monthlyClaimed: claimsCheck.data?.claimedThisMonth ?? false,
+    isPaused: isAccessPaused(profile),
   });
   const optionGroups = groupVariantOptions(product);
   const descriptionHtml = decodeEntities(product.description);

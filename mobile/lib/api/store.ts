@@ -67,9 +67,10 @@ export interface ClaimEligibility {
  */
 export function canClaimProduct(
   product: StoreProduct,
-  ctx: { userTier: string | null; isApprovedFreeMember: boolean | null; monthlyClaimed: boolean },
+  ctx: { userTier: string | null; isApprovedFreeMember: boolean | null; monthlyClaimed: boolean; isPaused?: boolean },
 ): ClaimEligibility {
   if (product.status === "DRAFT") return { eligible: false, reason: "Dropping Soon" };
+  if (ctx.isPaused) return { eligible: false, reason: "Access Paused" };
   if ((ctx.userTier === "free" && !ctx.isApprovedFreeMember) || ctx.userTier === "waitlist") {
     return { eligible: false, reason: "Approval Required" };
   }

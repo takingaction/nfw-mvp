@@ -1,4 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
+import { AccessPausedNotice } from "@/components/banners/AccessPausedNotice";
+import { isAccessPaused } from "@/types/profile";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef } from "react";
@@ -94,7 +96,9 @@ export default function PerksScreen() {
         </View>
       )}
 
-      {!eligible && (
+      {!eligible && isAccessPaused(profile) && <AccessPausedNotice style={styles.notice} />}
+
+      {!eligible && !isAccessPaused(profile) && (
         <Card surface="citrine" bordered={false} style={styles.notice}>
           <Label>Membership required</Label>
           <Caption tone="default">

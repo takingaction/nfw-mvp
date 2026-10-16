@@ -5,7 +5,13 @@ import { Linking, View } from "react-native";
 import { StripeConnectCard } from "@/components/grants/StripeConnectCard";
 import { Banner } from "@/components/ui/Banner";
 import { env } from "@/lib/env";
-import { needsDateOfBirth, type Profile } from "@/types/profile";
+import {
+  ACCESS_PAUSED_EMAIL,
+  ACCESS_PAUSED_MESSAGE,
+  isAccessPaused,
+  needsDateOfBirth,
+  type Profile,
+} from "@/types/profile";
 
 type Props = {
   profile: Profile;
@@ -30,7 +36,9 @@ export function DashboardBanners({ profile, hasPaidOrApprovedGrant, latestGrantI
   const [pendingDismissed, setPendingDismissed] = useState(false);
 
   const level = profile.membership_level;
+  const accessPaused = isAccessPaused(profile);
   const isPendingFreeMember =
+    !accessPaused &&
     (level === "free" || level === "waitlist") &&
     profile.is_approved_free_member !== true &&
     profile.free_membership_contact_submitted === true;
@@ -44,6 +52,15 @@ export function DashboardBanners({ profile, hasPaidOrApprovedGrant, latestGrantI
           message="Please add your date of birth to complete your profile. This is required for grant applications."
           actionLabel="Add Date of Birth"
           onAction={() => router.push("/(tabs)/settings/profile/edit")}
+        />
+      )}
+
+      {accessPaused && (
+        <Banner
+          surface="aubergine"
+          message={ACCESS_PAUSED_MESSAGE}
+          actionLabel="Email us"
+          onAction={() => Linking.openURL(`mailto:${ACCESS_PAUSED_EMAIL}`)}
         />
       )}
 
