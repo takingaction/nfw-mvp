@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import getAdminClient from "@/lib/supabase/admin";
-import { requireAdmin } from "@/lib/adminCheck";
+import { requireAdminOrScope } from "@/lib/adminCheck";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 1000;
 
 const SELECT_COLUMNS =
-  "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, is_reviewer, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted, previous_membership_level, access_paused_at, access_paused_reason, access_paused_dispute_id";
+  "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, is_reviewer, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted, previous_membership_level, access_paused_at, access_paused_reason, access_paused_dispute_id, admin_scopes";
 
 /**
  * GET /api/admin/members/list
@@ -18,7 +18,7 @@ const SELECT_COLUMNS =
  * only since migration 159).
  */
 export async function GET() {
-  const adminCheck = await requireAdmin();
+  const adminCheck = await requireAdminOrScope("members");
   if (!adminCheck.authorized) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { isAdminScope, normalizeAdminScopes } from "@/lib/admin-scopes";
 import { rateLimit } from "@/lib/rate-limit";
 
 const supabaseAdmin = createClient(
@@ -46,6 +47,18 @@ export async function POST(request: NextRequest) {
         { error: "Missing memberId or updates" },
         { status: 400 },
       );
+    }
+
+    // Scoped admin access (migration 207): only known scope keys.
+    if ("admin_scopes" in updates) {
+      const raw = updates.admin_scopes;
+      if (!Array.isArray(raw) || !raw.every(isAdminScope)) {
+        return NextResponse.json(
+          { error: "Invalid admin_scopes" },
+          { status: 400 },
+        );
+      }
+      updates.admin_scopes = normalizeAdminScopes(raw);
     }
 
     const { error } = await supabaseAdmin

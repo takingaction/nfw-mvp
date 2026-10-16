@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { normalizeAdminScopes, scopedPathAllowed } from "@/lib/admin-scopes";
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -51,13 +52,29 @@ export async function proxy(request: NextRequest) {
   if (isProtectedRoute && !authError && user) {
     // Check if user is admin or reviewer (reviewers need the grant-scoring APIs;
     // admin-only routes enforce is_admin themselves via requireAdmin()).
-    const { data: profile } = await supabase
+    // Scoped users (profiles.admin_scopes, migration 207) only get the paths
+    // their scopes list in lib/admin-scopes.ts, plus the /admin hub.
+    const profileResult = await supabase
       .from("profiles")
-      .select("is_admin, is_reviewer")
+      .select("is_admin, is_reviewer, admin_scopes")
       .eq("id", user.id)
-      .single();
+      .single<{ is_admin: boolean | null; is_reviewer: boolean | null; admin_scopes?: unknown }>();
+    let profile = profileResult.data;
+    if (profileResult.error) {
+      // admin_scopes not migrated yet: don't lock out admins/reviewers.
+      ({ data: profile } = await supabase
+        .from("profiles")
+        .select("is_admin, is_reviewer")
+        .eq("id", user.id)
+        .single<{ is_admin: boolean | null; is_reviewer: boolean | null; admin_scopes?: unknown }>());
+    }
 
-    if (!profile?.is_admin && !profile?.is_reviewer) {
+    const scopedAllowed = scopedPathAllowed(
+      normalizeAdminScopes(profile?.admin_scopes),
+      pathname,
+    );
+
+    if (!profile?.is_admin && !profile?.is_reviewer && !scopedAllowed) {
       if (isAdminApi) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }

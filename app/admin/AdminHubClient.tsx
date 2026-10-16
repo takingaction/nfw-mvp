@@ -110,7 +110,47 @@ const analyticsSection = {
   href: "/admin/analytics",
 };
 
-export default function AdminHubClient() {
+export default function AdminHubClient({
+  allowedHrefs,
+}: {
+  /** Set for scoped (non-admin) users: only these pages are listed. */
+  allowedHrefs?: string[];
+} = {}) {
+  if (allowedHrefs) {
+    const links = adminSections
+      .flatMap((section) => section.links)
+      .filter((link) => allowedHrefs.includes(link.href));
+    return (
+      <div className="min-h-screen bg-nfw-dove py-8 px-4">
+        <div className="max-w-3xl mx-auto">
+          <h1 className="font-serif text-3xl font-bold text-nfw-blackberry mb-2">
+            Admin Dashboard
+          </h1>
+          <p className="font-sans text-nfw-blackberry/60 mb-6">
+            You have access to the following admin pages.
+          </p>
+          <div className="bg-white rounded-lg border border-nfw-blackberry/10 p-4">
+            {links.length === 0 ? (
+              <p className="text-sm text-nfw-blackberry/60">No admin pages are assigned to your account.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {links.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="bg-nfw-aubergine/10 text-nfw-aubergine hover:bg-nfw-aubergine hover:text-white px-3 py-2 rounded font-sans font-medium text-sm text-center transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const getGridCols = (linkCount: number) => {
     if (linkCount <= 2) return "grid-cols-2";
     if (linkCount <= 4) return "grid-cols-2";

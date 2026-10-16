@@ -20,6 +20,7 @@ import { FreeMembershipApprovalModal } from "@/components/admin/FreeMembershipAp
 import { DeleteMemberModal } from "@/components/admin/DeleteMemberModal";
 import { getCategory } from "@/lib/member-categories";
 import { formatESTDisplay } from "@/lib/dates";
+import { ADMIN_SCOPES, ADMIN_SCOPE_KEYS, normalizeAdminScopes } from "@/lib/admin-scopes";
 
 const ALLOWED_DELETE_EMAILS = [
   "ron@myherodesign.com",
@@ -48,6 +49,7 @@ type Member = {
   access_paused_at?: string | null;
   access_paused_reason?: string | null;
   access_paused_dispute_id?: string | null;
+  admin_scopes?: string[] | null;
 };
 
 export default function AdminMembersClient({
@@ -57,10 +59,13 @@ export default function AdminMembersClient({
   totalCount = 0,
   currentPage = 1,
   pageSize = 100,
+  canManage = false,
 }: {
   members: Member[];
   currentUserId: string;
   currentUserEmail: string;
+  /** Full admin. False for scoped users (admin_scopes "members"): view-only. */
+  canManage?: boolean;
   totalCount?: number;
   currentPage?: number;
   pageSize?: number;
@@ -373,6 +378,8 @@ export default function AdminMembersClient({
       updates.is_admin = pendingChanges.is_admin;
     if ("is_reviewer" in pendingChanges)
       updates.is_reviewer = pendingChanges.is_reviewer;
+    if ("admin_scopes" in pendingChanges)
+      updates.admin_scopes = normalizeAdminScopes(pendingChanges.admin_scopes);
     if ("subscription_status" in pendingChanges)
       updates.subscription_status = pendingChanges.subscription_status;
     // Use pendingApprovalValue if set (from approval confirmation modal), otherwise use pendingChanges
@@ -550,6 +557,17 @@ export default function AdminMembersClient({
 
   const currentIsReviewer =
     "is_reviewer" in pendingChanges ? pendingChanges.is_reviewer : selected?.is_reviewer;
+
+  const currentAdminScopes = normalizeAdminScopes(
+    "admin_scopes" in pendingChanges ? pendingChanges.admin_scopes : selected?.admin_scopes,
+  );
+
+  const toggleAdminScope = (scope: string, enabled: boolean) => {
+    const next = enabled
+      ? [...currentAdminScopes, scope]
+      : currentAdminScopes.filter((s) => s !== scope);
+    handleChange("admin_scopes", normalizeAdminScopes(next));
+  };
 
   const currentIsApprovedFreeMember =
     "is_approved_free_member" in pendingChanges
@@ -789,11 +807,21 @@ export default function AdminMembersClient({
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-wisteria text-white">
                           <Shield className="w-3 h-3" /> Reviewer
                         </span>
+                      ) : normalizeAdminScopes(member.admin_scopes).length > 0 ? (
+                        <span
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-lilac text-nfw-aubergine"
+                          title={normalizeAdminScopes(member.admin_scopes)
+                            .map((s) => ADMIN_SCOPES[s].label)
+                            .join(", ")}
+                        >
+                          <Shield className="w-3 h-3" /> Staff
+                        </span>
                       ) : (
                         <span className="text-xs text-nfw-blackberry/40">Member</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
+                      {canManage ? (
                       <div className="flex items-center gap-2 h-8">
                         <button
                           onClick={() => openViewAs(member)}
@@ -827,6 +855,9 @@ export default function AdminMembersClient({
                           Edit
                         </button>
                       </div>
+                      ) : (
+                        <span className="text-xs text-nfw-blackberry/30">—</span>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -1119,6 +1150,48 @@ export default function AdminMembersClient({
                         </div>
                       </label>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Admin Area Access (admin_scopes, migration 207) - only if not admin */}
+              {selected?.is_admin !== true && (
+                <div className="p-6 border-b border-nfw-blackberry/5">
+                  <label className="block text-sm font-black text-nfw-blackberry mb-1">
+                    Admin Area Access
+                  </label>
+                  <p className="text-xs text-nfw-blackberry/50 mb-3">
+                    For contractors/staff who need specific admin pages without full admin.
+                  </p>
+                  <div className="space-y-2">
+                    {ADMIN_SCOPE_KEYS.map((scope) => {
+                      const checked = currentAdminScopes.includes(scope);
+                      return (
+                        <label
+                          key={scope}
+                          className={`flex items-start gap-3 p-3 border-2 cursor-pointer transition-all ${
+                            checked
+                              ? "border-nfw-aubergine bg-nfw-aubergine/5"
+                              : "border-nfw-blackberry/5 hover:border-nfw-blackberry/10"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => toggleAdminScope(scope, e.target.checked)}
+                            className="mt-0.5 accent-nfw-aubergine"
+                          />
+                          <div>
+                            <span className="text-sm font-semibold text-nfw-blackberry">
+                              {ADMIN_SCOPES[scope].label}
+                            </span>
+                            <p className="text-xs text-nfw-blackberry/40 mt-0.5">
+                              {ADMIN_SCOPES[scope].description}
+                            </p>
+                          </div>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
               )}

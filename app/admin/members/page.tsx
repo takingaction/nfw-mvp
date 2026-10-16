@@ -1,17 +1,18 @@
-import { createClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/middleware/adminCheck";
+import getAdminClient from "@/lib/supabase/admin";
+import { requireAdminOrScope } from "@/lib/adminCheck";
 import { Suspense } from "react";
 import AdminMembersClient from "@/components/admin/AdminMembersClient";
 // BackfillButton removed - no longer needed
 
 async function AdminMembersContent({ page }: { page: number }) {
-  await requireAdmin({ redirectOnFailure: true });
+  // Full admins, or users with the "members" scope (view + CSV only).
+  const access = await requireAdminOrScope("members", { redirectOnFailure: true });
+  const user = access.user;
+  const canManage = access.isAdmin;
 
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Service role: profiles RLS is admin/own-row only, and scoped users aren't
+  // admins. Access was checked above.
+  const supabase = getAdminClient();
 
   // Query for exact total count (bypasses 1000 row limit)
   const { count: total, error: countError } = await supabase
@@ -91,7 +92,7 @@ async function AdminMembersContent({ page }: { page: number }) {
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select(
-      "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, is_reviewer, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted, previous_membership_level, access_paused_at, access_paused_reason, access_paused_dispute_id",
+      "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, is_reviewer, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted, previous_membership_level, access_paused_at, access_paused_reason, access_paused_dispute_id, admin_scopes",
     )
     .order("joined_at", { ascending: false })
     .range(offset, offset + pageSize - 1);
@@ -211,6 +212,7 @@ async function AdminMembersContent({ page }: { page: number }) {
           members={profiles || []}
           currentUserId={user?.id || ""}
           currentUserEmail={user?.email || ""}
+          canManage={canManage}
           totalCount={total || 0}
           currentPage={page}
           pageSize={pageSize}

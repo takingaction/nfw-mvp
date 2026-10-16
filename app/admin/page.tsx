@@ -1,4 +1,5 @@
-import { requireGrantsAccess } from "@/lib/adminCheck";
+import { getAdminAccess } from "@/lib/adminCheck";
+import { scopedPages } from "@/lib/admin-scopes";
 import { redirect } from "next/navigation";
 import AdminHubClient from "./AdminHubClient";
 
@@ -8,12 +9,18 @@ export const metadata = {
 };
 
 export default async function AdminPage() {
-  const { isAdmin, isReviewer } = await requireGrantsAccess();
+  const access = await getAdminAccess();
+  if (!access) redirect("/auth/login");
+
+  if (access.isAdmin) return <AdminHubClient />;
 
   // Reviewers should be redirected to /admin/grants
-  if (!isAdmin && isReviewer) {
-    redirect("/admin/grants");
+  if (access.isReviewer) redirect("/admin/grants");
+
+  // Scoped users (profiles.admin_scopes) see only their pages.
+  if (access.scopes.length > 0) {
+    return <AdminHubClient allowedHrefs={scopedPages(access.scopes)} />;
   }
 
-  return <AdminHubClient />;
+  redirect("/");
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { requireAdmin } from "@/lib/adminCheck";
+import { requireAdminOrScope } from "@/lib/adminCheck";
 import { getCategory } from "@/lib/member-categories";
 import { parseESTDate, endOfESTDay } from "@/lib/dates";
 
@@ -206,7 +206,7 @@ function parseCustomDate(dateStr: string, isStart: boolean): string {
 
 export async function GET(request: NextRequest) {
   try {
-    const adminCheck = await requireAdmin();
+    const adminCheck = await requireAdminOrScope("members");
     if (!adminCheck.authorized) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
