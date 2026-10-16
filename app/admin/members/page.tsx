@@ -14,27 +14,33 @@ async function AdminMembersContent({ page }: { page: number }) {
   // admins. Access was checked above.
   const supabase = getAdminClient();
 
+  // Every count below skips anonymized "Deleted User" rows (deleted_at set):
+  // they keep their membership_level, so they would otherwise inflate the tiles.
   // Query for exact total count (bypasses 1000 row limit)
   const { count: total, error: countError } = await supabase
     .from("profiles")
-    .select("*", { count: "exact", head: true });
+    .select("*", { count: "exact", head: true })
+    .is("deleted_at", null);
 
   // Query for breakdown counts (each query is lightweight with head: true)
   const { count: paid } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
+    .is("deleted_at", null)
     .eq("is_admin", false)
     .in("membership_level", ["contributing", "founding"]);
 
   const { count: admins } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
+    .is("deleted_at", null)
     .eq("is_admin", true);
 
   // Free members (approved, non-admin, completed profiles only)
   const { count: freeApproved } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
+    .is("deleted_at", null)
     .eq("is_admin", false)
     .eq("membership_level", "free")
     .eq("is_approved_free_member", true)
@@ -44,12 +50,14 @@ async function AdminMembersContent({ page }: { page: number }) {
   const { count: waitlist } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
+    .is("deleted_at", null)
     .eq("membership_level", "waitlist");
 
   // Abandoned = free member who completed profile but abandoned at step 3
   const { count: abandoned } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
+    .is("deleted_at", null)
     .eq("membership_level", "free")
     .eq("profile_completed", true)
     .eq("is_approved_free_member", false)
@@ -59,6 +67,7 @@ async function AdminMembersContent({ page }: { page: number }) {
   const { count: profileIncomplete } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
+    .is("deleted_at", null)
     .neq("profile_completed", true);
 
   // Active Profiles = Free (approved) + Contributing + Founding (excludes admins, waitlist, incomplete)
@@ -66,6 +75,7 @@ async function AdminMembersContent({ page }: { page: number }) {
   const { count: activeFree } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
+    .is("deleted_at", null)
     .eq("is_admin", false)
     .eq("membership_level", "free")
     .eq("is_approved_free_member", true)
@@ -74,12 +84,14 @@ async function AdminMembersContent({ page }: { page: number }) {
   const { count: activeContributing } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
+    .is("deleted_at", null)
     .eq("is_admin", false)
     .eq("membership_level", "contributing");
 
   const { count: activeFounding } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
+    .is("deleted_at", null)
     .eq("is_admin", false)
     .eq("membership_level", "founding");
 
@@ -94,7 +106,7 @@ async function AdminMembersContent({ page }: { page: number }) {
     .select(
       "id, full_name, email, membership_level, subscription_status, date_of_birth, state, city, household_income, subscription_ends_at, joined_at, is_admin, is_reviewer, access_perks_synced_at, profile_completed, is_approved_free_member, free_membership_contact_submitted, previous_membership_level, access_paused_at, access_paused_reason, access_paused_dispute_id, admin_scopes",
     )
-    .order("joined_at", { ascending: false })
+    .order("joined_at", { ascending: false, nullsFirst: false })
     .range(offset, offset + pageSize - 1);
 
   if (error || countError) {

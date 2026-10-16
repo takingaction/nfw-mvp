@@ -33,7 +33,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from("profiles")
       .select(SELECT_COLUMNS)
-      .order("joined_at", { ascending: false })
+      .order("joined_at", { ascending: false, nullsFirst: false })
       .range(from, from + PAGE_SIZE - 1);
 
     if (error) {

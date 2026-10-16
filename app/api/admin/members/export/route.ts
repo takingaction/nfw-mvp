@@ -241,7 +241,7 @@ export async function GET(request: NextRequest) {
     let query = supabaseAdmin
       .from("profiles")
       .select(selectColumns)
-      .order("joined_at", { ascending: false })
+      .order("joined_at", { ascending: false, nullsFirst: false })
       .range(from, from + pageSize - 1);
 
     // Apply date filtering if provided
