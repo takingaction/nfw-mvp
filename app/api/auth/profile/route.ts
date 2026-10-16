@@ -42,7 +42,7 @@ export async function GET() {
 
     const { data: profile, error } = await supabase
       .from("profiles")
-      .select("id, full_name, is_admin, is_reviewer, membership_level, profile_completed, is_approved_free_member, free_membership_contact_submitted")
+      .select("id, full_name, is_admin, is_reviewer, membership_level, profile_completed, is_approved_free_member, free_membership_contact_submitted, access_paused_at")
       .eq("id", user.id)
       .single();
 
@@ -70,7 +70,7 @@ export async function GET() {
             // Profile was just created by another request (race condition) - fetch and return it
             const { data: existingProfile, error: fetchError } = await supabaseAdmin
               .from("profiles")
-              .select("id, full_name, is_admin, is_reviewer, membership_level, profile_completed, is_approved_free_member, free_membership_contact_submitted")
+              .select("id, full_name, is_admin, is_reviewer, membership_level, profile_completed, is_approved_free_member, free_membership_contact_submitted, access_paused_at")
               .eq("id", user.id)
               .single();
 
@@ -90,7 +90,7 @@ export async function GET() {
         // Fetch the newly created profile
         const { data: newProfile, error: fetchError } = await supabase
           .from("profiles")
-          .select("id, full_name, is_admin, is_reviewer, membership_level, profile_completed, is_approved_free_member, free_membership_contact_submitted")
+          .select("id, full_name, is_admin, is_reviewer, membership_level, profile_completed, is_approved_free_member, free_membership_contact_submitted, access_paused_at")
           .eq("id", user.id)
           .single();
 

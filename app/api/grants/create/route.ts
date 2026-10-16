@@ -1,4 +1,5 @@
 import { blockIfViewingAs } from "@/lib/view-as";
+import { requireMemberAccess } from "@/lib/member-access-server";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
@@ -75,6 +76,9 @@ export async function POST(request: Request) {
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const accessDenied = await requireMemberAccess(user.id);
+    if (accessDenied) return accessDenied;
 
     // Hardened: a malformed JSON body used to fall through to the outer
     // catch which returned a generic 500 (HTML body). Form submitted that

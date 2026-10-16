@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireMemberAccess } from "@/lib/member-access-server";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -42,6 +43,9 @@ export async function GET(request: Request, { params }: RouteParams) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const accessDenied = await requireMemberAccess(user.id);
+    if (accessDenied) return accessDenied;
 
     const { data: redemption, error: redemptionError } = await supabase
       .from("offer_redemptions")

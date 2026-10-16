@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireMemberAccess } from "@/lib/member-access-server";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -14,6 +15,9 @@ export async function POST(request: Request) {
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const accessDenied = await requireMemberAccess(user.id);
+    if (accessDenied) return accessDenied;
 
     // Get optional user data from request body
     const body = await request.json().catch(() => ({}));

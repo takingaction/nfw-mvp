@@ -1,4 +1,6 @@
 import { blockIfViewingAs } from "@/lib/view-as";
+import { memberAccessDeniedResponse } from "@/lib/member-access-server";
+import { MEMBER_ACCESS_COLUMNS } from "@/lib/member-access";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import getAdminClient from "@/lib/supabase/admin";
@@ -102,7 +104,7 @@ export async function POST(request: NextRequest) {
   // cycleId flow: validate membership via profile; verify cycle exists & is open.
   const { data: profile, error: profileError } = await admin
     .from("profiles")
-    .select("is_admin, membership_level, is_approved_free_member, profile_completed")
+    .select(`is_admin, profile_completed, ${MEMBER_ACCESS_COLUMNS}`)
     .eq("id", user.id)
     .maybeSingle();
   if (profileError) {
@@ -112,6 +114,8 @@ export async function POST(request: NextRequest) {
   if (!profile?.profile_completed) {
     return NextResponse.json({ error: "Profile incomplete" }, { status: 403 });
   }
+  const accessDenied = memberAccessDeniedResponse(profile);
+  if (accessDenied) return accessDenied;
 
   const { data: cycle, error: cycleError } = await admin
     .from("grant_cycles")

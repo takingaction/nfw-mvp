@@ -1,4 +1,5 @@
 import { blockIfViewingAs } from "@/lib/view-as";
+import { requireMemberAccess } from "@/lib/member-access-server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
@@ -35,6 +36,9 @@ export async function POST(request: Request, { params }: RouteParams) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const accessDenied = await requireMemberAccess(user.id);
+    if (accessDenied) return accessDenied;
 
     // Check account age (minimum 48 hours before redeeming) - disabled via ACCOUNT_AGE_CHECK_ENABLED env var
     const isAccountAgeCheckEnabled = process.env.ACCOUNT_AGE_CHECK_ENABLED !== "false";

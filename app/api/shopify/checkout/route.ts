@@ -1,4 +1,6 @@
 import { blockIfViewingAs } from "@/lib/view-as";
+import { memberAccessDeniedResponse } from "@/lib/member-access-server";
+import { MEMBER_ACCESS_COLUMNS } from "@/lib/member-access";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
@@ -116,7 +118,7 @@ export async function POST(request: NextRequest) {
     // Fetch profile for all checks
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("joined_at, profile_completed")
+      .select(`joined_at, profile_completed, is_admin, ${MEMBER_ACCESS_COLUMNS}`)
       .eq("id", userId)
       .single();
 
@@ -127,6 +129,10 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
+
+    // Tier + access pause (lib/member-access.ts)
+    const accessDenied = memberAccessDeniedResponse(profile);
+    if (accessDenied) return accessDenied;
 
     // Check account age (minimum 48 hours before claiming) - disabled via ACCOUNT_AGE_CHECK_ENABLED env var
     const isAccountAgeCheckEnabled = process.env.ACCOUNT_AGE_CHECK_ENABLED !== "false";

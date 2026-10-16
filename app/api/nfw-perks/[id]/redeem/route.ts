@@ -1,4 +1,5 @@
 import { blockIfViewingAs } from "@/lib/view-as";
+import { requireMemberAccess } from "@/lib/member-access-server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import getAdminClient from "@/lib/supabase/admin";
@@ -22,6 +23,9 @@ export async function POST(
     }
 
     const userId = user.user.id;
+
+    const accessDenied = await requireMemberAccess(userId);
+    if (accessDenied) return accessDenied;
 
     const { data: perk, error: perkError } = await supabase
       .from("nfw_perks")
