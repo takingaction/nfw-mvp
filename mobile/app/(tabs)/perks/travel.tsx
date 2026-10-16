@@ -163,7 +163,7 @@ export default function TravelScreen() {
           </>
         )}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Hotels, Cars, Flights & More · powered by Access Development</Text>
+          <Text style={styles.footerText}>Hotels, flights, concerts & more · powered by Access Development</Text>
         </View>
       </View>
     </>

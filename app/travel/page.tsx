@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 import TravelClient from "./TravelClient";
 
 export const metadata = {
-  title: "Travel Benefits",
-  description: "Book hotels, cars, flights, and more with your NFW membership.",
+  title: "Travel & Entertainment Benefits",
+  description: "Find discounted rates on hotels, cars, flights, concerts, sporting events, parks, and more with your NFW membership.",
 };
 
 async function getUser() {
