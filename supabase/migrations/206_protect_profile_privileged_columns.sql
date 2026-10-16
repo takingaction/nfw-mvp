@@ -1,0 +1,97 @@
+-- Migration 206: Stop members from editing privileged columns on their own profile
+--
+-- Problem: the RLS policy "Users can update own profile" (001) is
+--   FOR UPDATE USING (auth.uid() = id) with no column restriction. With the
+--   public (publishable) key — which ships in the web bundle and the mobile
+--   app — any logged-in member could PATCH their own row and set is_admin,
+--   membership_level, is_approved_free_member, or clear an access pause (205).
+--
+-- Fix: a BEFORE UPDATE trigger that rejects changes to privileged columns
+--   when the request comes from a member session (role authenticated/anon)
+--   and that member is not an admin.
+--
+-- Not affected:
+--   * Server code using the service role key (role service_role) — webhooks,
+--     crons, /api/profile/update, admin routes, etc.
+--   * The SQL editor / migrations (role postgres).
+--   * Admins using their own session (e.g. set-reviewer), via public.is_admin().
+--   * The fields members edit directly today: full_name, phone,
+--     shipping_address (components/ProfileClient.tsx), access_perks_member_id /
+--     access_perks_synced_at (access-perks sync). `email` is already forced from
+--     auth.users by trg_sync_profile_email, so it is not listed here.
+--
+-- Columns are compared via to_jsonb(), so a listed column that doesn't exist
+-- in this database is simply ignored rather than raising an error.
+
+CREATE OR REPLACE FUNCTION public.protect_profile_privileged_columns()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  protected_cols text[] := ARRAY[
+    'is_admin', 'is_reviewer',
+    'membership_level', 'previous_membership_level',
+    'subscription_status', 'subscription_ends_at',
+    'stripe_customer_id', 'stripe_subscription_id',
+    'stripe_connect_account_id', 'stripe_onboarding_completed',
+    'is_approved_free_member', 'free_membership_contact_submitted',
+    'profile_completed', 'joined_at',
+    'first_paid_at', 'first_paid_level', 'lifetime_value',
+    'gift_code_redeemed',
+    'waitlist_joined_at', 'waitlist_position',
+    'waitlist_email_sent_at', 'waitlist_acceptance_sent_at',
+    'incomplete_email_sent_at',
+    'access_paused_at', 'access_paused_reason',
+    'access_paused_by', 'access_paused_dispute_id'
+  ];
+  old_row jsonb;
+  new_row jsonb;
+  col text;
+BEGIN
+  -- Only member sessions are restricted. service_role / postgres pass through.
+  IF current_user NOT IN ('authenticated', 'anon') THEN
+    RETURN NEW;
+  END IF;
+
+  IF public.is_admin(auth.uid()) THEN
+    RETURN NEW;
+  END IF;
+
+  old_row := to_jsonb(OLD);
+  new_row := to_jsonb(NEW);
+
+  FOREACH col IN ARRAY protected_cols LOOP
+    IF new_row ? col AND (new_row -> col) IS DISTINCT FROM (old_row -> col) THEN
+      RAISE EXCEPTION 'Not allowed to change profiles.%', col
+        USING ERRCODE = '42501';
+    END IF;
+  END LOOP;
+
+  RETURN NEW;
+END;
+$$;
+
+COMMENT ON FUNCTION public.protect_profile_privileged_columns() IS
+  'Blocks members (non-admin authenticated/anon sessions) from changing privileged profile columns. See migration 206.';
+
+-- "zz_" prefix: Postgres fires BEFORE triggers alphabetically, so this runs
+-- after the email/google sync triggers have set their values.
+DROP TRIGGER IF EXISTS zz_protect_profile_privileged_columns ON public.profiles;
+CREATE TRIGGER zz_protect_profile_privileged_columns
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.protect_profile_privileged_columns();
+
+-- ---------------------------------------------------------------------------
+-- Verify after running (optional):
+--
+-- 1) Members must not be able to INSERT profiles directly. Expect no row with
+--    cmd = 'INSERT' (or 'ALL') for the authenticated/public role:
+--      SELECT policyname, cmd, roles, qual, with_check
+--      FROM pg_policies WHERE tablename = 'profiles';
+--
+-- 2) Trigger is installed:
+--      SELECT tgname FROM pg_trigger
+--      WHERE tgrelid = 'public.profiles'::regclass AND NOT tgisinternal;
+-- ---------------------------------------------------------------------------
