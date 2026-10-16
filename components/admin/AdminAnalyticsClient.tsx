@@ -368,16 +368,31 @@ export default function AdminAnalyticsClient({
   );
 
   const membersByDay = useMemo(() => {
-    // Group by New York calendar date "YYYY-MM-DD" so the sort is chronological
-    // and the same day in different years is not merged.
-    const counts: Record<string, number> = {};
+    // Two series on one date axis (New York calendar day, "YYYY-MM-DD"):
+    //  - started: every profile created that day (joined_at), all tiers incl. admins/test accounts
+    //  - paid:    non-admin profiles whose FIRST payment landed that day (first_paid_at).
+    //             Uses first_paid_at so free→paid upgraders count on the day they converted,
+    //             and members who later lapsed still count in history.
+    const started: Record<string, number> = {};
+    const paid: Record<string, number> = {};
     const sampleTimestamp: Record<string, string> = {};
+
     filteredProfiles.forEach((p) => {
       const key = estDateKey(p.joined_at!);
-      counts[key] = (counts[key] || 0) + 1;
+      started[key] = (started[key] || 0) + 1;
       if (!sampleTimestamp[key]) sampleTimestamp[key] = p.joined_at!;
     });
-    const keys = Object.keys(counts).sort();
+
+    profiles.forEach((p) => {
+      if (p.is_admin || !p.first_paid_at || !isInRange(p.first_paid_at)) return;
+      const key = estDateKey(p.first_paid_at);
+      paid[key] = (paid[key] || 0) + 1;
+      if (!sampleTimestamp[key]) sampleTimestamp[key] = p.first_paid_at;
+    });
+
+    const keys = Array.from(
+      new Set([...Object.keys(started), ...Object.keys(paid)]),
+    ).sort();
     const spansMultipleYears =
       keys.length > 0 && keys[0].slice(0, 4) !== keys[keys.length - 1].slice(0, 4);
     return keys.map((key) => {
@@ -386,10 +401,11 @@ export default function AdminAnalyticsClient({
         key,
         date: spansMultipleYears ? `${label} '${key.slice(2, 4)}` : label,
         dateFull: formatJoinedAtFull(sampleTimestamp[key]),
-        count: counts[key],
+        started: started[key] || 0,
+        paid: paid[key] || 0,
       };
     });
-  }, [filteredProfiles]);
+  }, [filteredProfiles, profiles, isInRange]);
 
   const membersByLevel = useMemo(() => {
     const map: Record<string, number> = {};
@@ -1183,8 +1199,8 @@ export default function AdminAnalyticsClient({
     if (tab === "members") {
       filename = "nfw-members-analytics.csv";
       rows = [
-        ["Date", "New Members"],
-        ...membersByDay.map((r) => [r.key, String(r.count)]),
+        ["Date", "Profiles Started", "New Paid Members"],
+        ...membersByDay.map((r) => [r.key, String(r.started), String(r.paid)]),
         [],
         ["Status", "Count"],
         ...membersByLevel.map((r) => [r.name, String(r.value)]),
@@ -1672,7 +1688,7 @@ export default function AdminAnalyticsClient({
           <div className="space-y-6">
             <div className="bg-white border border-nfw-blackberry/10 p-6">
               <h3 className="font-black text-nfw-blackberry mb-4 font-ui">
-                New Members Over Time
+                Profiles Started vs. New Paid Members
               </h3>
               {membersByDay.length === 0 ? (
                 <p className="text-nfw-blackberry/40 text-sm text-center py-8">
@@ -1683,15 +1699,24 @@ export default function AdminAnalyticsClient({
                   <LineChart data={membersByDay}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                     <Tooltip labelFormatter={(label, payload) => payload?.[0]?.payload?.dateFull || label} />
+                    <Legend verticalAlign="bottom" height={36} />
                     <Line
                       type="monotone"
-                      dataKey="count"
+                      dataKey="started"
                       stroke="#3E145F"
                       strokeWidth={2}
                       dot={false}
-                      name="New Members"
+                      name="Profiles Started"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="paid"
+                      stroke="#7786BE"
+                      strokeWidth={2}
+                      dot={false}
+                      name="New Paid Members"
                     />
                   </LineChart>
                 </ResponsiveContainer>

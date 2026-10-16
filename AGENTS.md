@@ -20547,3 +20547,18 @@ Also swapped `router.push` for `window.location.assign` on password success so t
 - The `ctaLabel` and `ctaUrl` only flow to `Join Now` / `Log In`-bottom-button. The desktop `Log In` text link is hardcoded "Log In". If we want admins to relabel that, it needs another field.
 - The Donate button is intentionally always visible regardless of login state (donations are independent of membership). The plan didn't address it; kept as-is.
 - `getLoginRedirectUrl` is now called from both the nav (link generator) and the login form (post-login validation). The nav call still validates via `isValidRedirect` for consistency; this is defense in depth, not the security boundary.
+
+---
+
+## Session 2026-10-16: New Members Over Time — Started vs. Paid Lines
+
+### Change
+On `/admin/analytics` (Members tab) the "New Members Over Time" chart now plots two lines on one date axis, renamed **"Profiles Started vs. New Paid Members"**.
+
+| File | Change |
+|---|---|
+| `components/admin/AdminAnalyticsClient.tsx` | `membersByDay` points are now `{ key, date, dateFull, started, paid }`. **started** = every profile whose `joined_at` is in range (all tiers, admins and test accounts included — unchanged from before). **paid** = non-admin profiles whose `first_paid_at` is in range, bucketed by the `first_paid_at` New York date. Keys from both series are merged and sorted by `YYYY-MM-DD`. |
+| Same file, chart | Second `<Line dataKey="paid">` in wisteria (`#7786BE`), `<Legend>` added, `allowDecimals={false}` on the y-axis. |
+| Same file, Members CSV export | Columns are now `Date, Profiles Started, New Paid Members`. |
+
+**Rule:** the paid line uses `first_paid_at`, not current `membership_level`, so free→paid upgraders count on the day they converted and lapsed members stay in history. The paid line is computed from `profiles`, not `filteredProfiles`, because `filteredProfiles` is filtered on `joined_at`.
