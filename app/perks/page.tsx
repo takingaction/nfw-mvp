@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { hasMemberAccess, lockedRedirectPath } from "@/lib/member-access";
 import { createClient } from "@/lib/supabase/client";
 import { getLoginRedirectUrl } from "@/lib/redirect-utils";
 import { AlertTriangle, SlidersHorizontal, X } from "lucide-react";
@@ -150,10 +151,10 @@ export default function PerksPage() {
             window.location.href = `/auth/sign-up?step=1&next=${encodeURIComponent(window.location.href)}`;
             return;
           }
-          // Free members need is_approved_free_member = true to access perks
-          // Waitlist members also cannot access perks
-          if ((profileData?.membership_level === "free" && profileData?.is_approved_free_member !== true) || profileData?.membership_level === "waitlist") {
-            window.location.href = `/auth/sign-up?step=3&next=${encodeURIComponent(window.location.href)}`;
+          // Paid tiers, approved free members only; never waitlist or paused
+          // (lib/member-access.ts). Paused members go to the dashboard banner.
+          if (!hasMemberAccess(profileData)) {
+            window.location.href = lockedRedirectPath(profileData, window.location.href);
             return;
           }
           // Only redirect if membership_level is explicitly set to a non-perk plan

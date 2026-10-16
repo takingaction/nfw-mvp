@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { AccessPausedBanner } from "@/components/AccessPausedBanner";
+import { isAccessPaused } from "@/lib/member-access";
 import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import DashboardHero from "@/components/dashboard/DashboardHero";
@@ -240,8 +242,12 @@ export default async function DashboardPage({
   const hasAbandonedCheckout =
     !isPaidMember && (abandonedCheckoutResult?.data?.length ?? 0) > 0;
 
+  // Admin-paused members see only the paused banner (lib/member-access.ts)
+  const accessPaused = isAccessPaused(profile);
+
   // Show pending/waitlist banner if free or waitlist member has submitted contact but not yet approved
   const isPendingFreeMember =
+    !accessPaused &&
     (profile?.membership_level === "free" || profile?.membership_level === "waitlist") &&
     profile?.is_approved_free_member !== true &&
     profile?.free_membership_contact_submitted === true;
@@ -327,12 +333,15 @@ export default async function DashboardPage({
     <main className="min-h-screen">
       <AccessPerksSync userId={effectiveUserId} />
       <ProfileBanner profile={profile} />
-      <AbandonedCheckoutBanner
-        showRequestFreeMembershipLink={
-          profile?.membership_level === "free" &&
-          profile?.free_membership_contact_submitted === false
-        }
-      />
+      {accessPaused && <AccessPausedBanner />}
+      {!accessPaused && (
+        <AbandonedCheckoutBanner
+          showRequestFreeMembershipLink={
+            profile?.membership_level === "free" &&
+            profile?.free_membership_contact_submitted === false
+          }
+        />
+      )}
       {isPendingFreeMember && <PendingFreeMembershipBanner membershipLevel={profile?.membership_level} />}
 
       <DashboardHero heroImage={settings.hero_image_url || "/images/landing.jpg"} />

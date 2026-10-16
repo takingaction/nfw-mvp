@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { MEMBER_ACCESS_COLUMNS, hasMemberAccess, lockedRedirectPath } from "@/lib/member-access";
 import { redirect } from "next/navigation";
 import TravelClient from "./TravelClient";
 
@@ -31,9 +32,13 @@ export default async function TravelPage({
   const supabase = await createClient();
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name")
+    .select(`full_name, ${MEMBER_ACCESS_COLUMNS}`)
     .eq("id", user.id)
     .single();
+
+  if (!hasMemberAccess(profile)) {
+    redirect(lockedRedirectPath(profile, "/travel"));
+  }
 
   const firstName = profile?.full_name?.split(" ")[0] || undefined;
   const lastName = profile?.full_name?.split(" ").slice(1).join(" ") || undefined;

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { MEMBER_ACCESS_COLUMNS, hasMemberAccess, lockedRedirectPath } from "@/lib/member-access";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import GrantApplicationForm from "@/components/GrantApplicationForm";
@@ -35,14 +36,14 @@ export default async function ApplyForGrantPage({
   // Check profile completion and membership level
   const { data: profile } = await supabase
     .from("profiles")
-    .select("profile_completed, membership_level, is_approved_free_member, is_admin")
+    .select(`profile_completed, is_admin, ${MEMBER_ACCESS_COLUMNS}`)
     .eq("id", user.id)
     .single();
 
   if (!profile?.profile_completed) {
     redirect(`/auth/sign-up?step=1&next=${encodeURIComponent(nextTarget)}`);
-  } else if ((profile?.membership_level === "free" && profile?.is_approved_free_member !== true) || profile?.membership_level === "waitlist") {
-    redirect(`/auth/sign-up?step=3&next=${encodeURIComponent(nextTarget)}`);
+  } else if (!hasMemberAccess(profile)) {
+    redirect(lockedRedirectPath(profile, nextTarget));
   } else if (profile?.membership_level && !["free", "contributing", "founding", "waitlist"].includes(profile.membership_level)) {
     redirect(`/auth/sign-up?step=3&next=${encodeURIComponent(nextTarget)}`);
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { hasMemberAccess, lockedRedirectPath } from "@/lib/member-access";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -74,8 +75,8 @@ export default function NfwPerkDetailPage() {
         }
 
         // Free member needs approval, waitlist cannot access
-        if ((profileData?.membership_level === "free" && profileData?.is_approved_free_member !== true) || profileData?.membership_level === "waitlist") {
-          window.location.href = `/auth/sign-up?step=3&next=${encodeURIComponent(window.location.href)}`;
+        if (!hasMemberAccess(profileData)) {
+          window.location.href = lockedRedirectPath(profileData, window.location.href);
           return;
         }
       } catch (err) {

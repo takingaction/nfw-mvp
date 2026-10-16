@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { AccessPausedBanner } from "@/components/AccessPausedBanner";
 import { useRouter } from "next/navigation";
 import ClaimItemModal from "./ClaimItemModal";
 import ProductDetailPanel from "./ProductDetailPanel";
@@ -33,10 +34,12 @@ export default function StoreClient({
   userId,
   userTier,
   isApprovedFreeMember,
+  isPaused = false,
 }: {
   userId?: string;
   userTier?: string;
   isApprovedFreeMember?: boolean | null;
+  isPaused?: boolean;
 }) {
   const router = useRouter();
   const [products, setProducts] = useState<StoreProduct[]>([]);
@@ -189,6 +192,10 @@ export default function StoreClient({
     if (product.status === "DRAFT") {
       return { eligible: false, reason: "Dropping Soon" };
     }
+    // Admin-paused members cannot claim (lib/member-access.ts)
+    if (isPaused) {
+      return { eligible: false, reason: "Access Paused" };
+    }
     // Free members need to be approved to claim, waitlist members cannot claim
     if ((userTier === "free" && !isApprovedFreeMember) || userTier === "waitlist") {
       return { eligible: false, reason: "Approval Required" };
@@ -227,6 +234,7 @@ export default function StoreClient({
 
   return (
     <main className="min-h-screen bg-nfw-dove">
+      {isPaused && <AccessPausedBanner />}
       {heroSettings?.hero_image_url && (
         <div
           className="relative h-[212px] md:h-[425px] bg-cover bg-center bg-no-repeat flex items-center justify-center"

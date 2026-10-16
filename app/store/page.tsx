@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isAccessPaused } from "@/lib/member-access";
 import { redirect } from "next/navigation";
 import StoreClient from "@/components/StoreClient";
 
@@ -22,16 +23,18 @@ export default async function StorePage() {
 
   let userTier = "free";
   let isApprovedFreeMember = null;
+  let isPaused = false;
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("membership_level, is_approved_free_member")
+      .select("membership_level, is_approved_free_member, access_paused_at")
       .eq("id", user.id)
       .single();
 
     userTier = profile?.membership_level || "free";
     isApprovedFreeMember = profile?.is_approved_free_member;
+    isPaused = isAccessPaused(profile);
   }
 
-  return <StoreClient userId={user?.id} userTier={userTier} isApprovedFreeMember={isApprovedFreeMember} />;
+  return <StoreClient userId={user?.id} userTier={userTier} isApprovedFreeMember={isApprovedFreeMember} isPaused={isPaused} />;
 }

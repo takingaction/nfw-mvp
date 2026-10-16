@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { hasMemberAccess, lockedRedirectPath } from "@/lib/member-access";
 import {
   ArrowLeft,
   MapPin,
@@ -80,8 +81,8 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
         }
 
         // Free member needs approval, waitlist cannot access
-        if ((profileData?.membership_level === "free" && profileData?.is_approved_free_member !== true) || profileData?.membership_level === "waitlist") {
-          window.location.href = `/auth/sign-up?step=3&next=${encodeURIComponent(window.location.href)}`;
+        if (!hasMemberAccess(profileData)) {
+          window.location.href = lockedRedirectPath(profileData, window.location.href);
           return;
         }
       } catch (err) {
