@@ -64,33 +64,91 @@ interface SendEmailBySlugOptions {
   variables: Record<string, string>;
   errorContext?: string;
   skipActiveCheck?: boolean; // When true, skips is_active check (for test/manual sends)
+  userId?: string; // Recipient's profile id, recorded on the email_sends row
 }
 
-type EmailSendResult = { success: true; resendId?: string } | { success: false; error: string };
+type EmailSendResult =
+  | { success: true; resendId?: string; emailSendId?: string }
+  | { success: false; error: string; emailSendId?: string };
+
+/**
+ * Record a send attempt in email_sends (migration 208) so delivery status can
+ * be tracked via /api/webhooks/resend. Best-effort: logging must never block
+ * or fail the send itself, so errors are swallowed and undefined is returned.
+ */
+async function logEmailSend(row: {
+  resendEmailId?: string;
+  userId?: string;
+  slug: string;
+  recipient: string;
+  status: "sent" | "failed";
+  errorMessage?: string;
+}): Promise<string | undefined> {
+  try {
+    const { data, error } = await getAdminClient()
+      .from("email_sends")
+      .insert({
+        resend_email_id: row.resendEmailId ?? null,
+        user_id: row.userId ?? null,
+        template_slug: row.slug,
+        recipient: row.recipient,
+        status: row.status,
+        error_message: row.errorMessage ?? null,
+      })
+      .select("id")
+      .single();
+    if (error) {
+      console.error("[email_sends] Failed to log send:", error.message);
+      return undefined;
+    }
+    return data.id as string;
+  } catch (err) {
+    console.error("[email_sends] Failed to log send:", err);
+    return undefined;
+  }
+}
 
 export async function sendEmailBySlug(
   slug: string,
   options: SendEmailBySlugOptions
 ): Promise<EmailSendResult> {
-  const { to, name, variables, errorContext, skipActiveCheck } = options;
+  const { to, name, variables, errorContext, skipActiveCheck, userId } = options;
   const context = errorContext || slug;
+  // Pre-send skips (template missing/inactive/unpublished) are often
+  // deliberate, so they're only logged when the caller opted in by passing
+  // userId. Resend API failures are always logged.
+  const logFailure = async (
+    error: string,
+    detail?: string,
+    { always = false }: { always?: boolean } = {},
+  ): Promise<EmailSendResult> => ({
+    success: false,
+    error,
+    emailSendId: !always && !userId ? undefined : await logEmailSend({
+      userId,
+      slug,
+      recipient: to,
+      status: "failed",
+      errorMessage: detail ? `${error}: ${detail}` : error,
+    }),
+  });
 
   // Step 1: Check if template exists and is active (unless skipActiveCheck is true)
   const templateCheck = await fetchTemplateWithActiveCheck(slug);
   if (!templateCheck.template) {
     console.log(`[${context}] Template "${slug}" not found, skipping email to ${to}`);
-    return { success: false, error: "TEMPLATE_NOT_FOUND" };
+    return logFailure("TEMPLATE_NOT_FOUND");
   }
   if (!skipActiveCheck && !templateCheck.isActive) {
     console.log(`[${context}] Template "${slug}" is inactive, skipping email to ${to}`);
-    return { success: false, error: "TEMPLATE_INACTIVE" };
+    return logFailure("TEMPLATE_INACTIVE");
   }
 
   // Step 2: Get published content (checks status=published AND is_active !== false, unless skipActiveCheck)
   const preRenderedResult = await getPreRenderedHtmlAdmin(slug, variables, { skipActiveCheck });
   if (!preRenderedResult) {
     console.log(`[${context}] No published content for "${slug}", skipping email to ${to}`);
-    return { success: false, error: "NO_PUBLISHED_CONTENT" };
+    return logFailure("NO_PUBLISHED_CONTENT");
   }
 
   // Step 3: Send the email
@@ -104,10 +162,22 @@ export async function sendEmailBySlug(
 
   if (!result.success) {
     console.error(`[${context}] Failed to send email to ${to}:`, result.error);
-    return { success: false, error: "EMAIL_SEND_FAILED" };
+    const detail =
+      typeof result.error === "string"
+        ? result.error
+        : result.error?.message || "unknown error";
+    return logFailure("EMAIL_SEND_FAILED", detail, { always: true });
   }
 
-  return { success: true, resendId: result.resendId };
+  const emailSendId = await logEmailSend({
+    resendEmailId: result.resendId,
+    userId,
+    slug,
+    recipient: to,
+    status: "sent",
+  });
+
+  return { success: true, resendId: result.resendId, emailSendId };
 }
 
 function replaceTemplateVariables(html: string, variables: Record<string, string>): string {
@@ -1353,11 +1423,13 @@ export async function sendWaitlistApprovalEmail({
   to,
   name,
   acceptUrl,
+  userId,
 }: {
   to: string;
   name: string;
   acceptUrl: string;
-}): Promise<{ success: boolean; error?: string }> {
+  userId?: string;
+}): Promise<EmailSendResult> {
   const slug = "welcome-free";
   const siteUrl = "https://nationalfundforwomen.org";
 
@@ -1383,6 +1455,7 @@ export async function sendWaitlistApprovalEmail({
     name: variables.name,
     variables,
     errorContext: "sendWaitlistApprovalEmail",
+    userId,
   });
 }
 

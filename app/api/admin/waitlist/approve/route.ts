@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import getAdminClient from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import { sendWaitlistApprovalEmail } from "@/lib/email";
-
-const TOKEN_TTL_DAYS = 30;
-const SITE_URL = "https://www.nationalfundforwomen.org";
+import { sendApprovalEmailForToken, waitlistTokenExpiry } from "@/lib/waitlist-approval";
 
 /**
  * POST /api/admin/waitlist/approve
@@ -101,9 +98,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Compute token expiry (30 days from now)
-    const expiresAt = new Date(
-      Date.now() + TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
-    ).toISOString();
+    const expiresAt = waitlistTokenExpiry();
 
     // Create the acceptance token. The partial unique index
     // (used_at IS NULL AND expired_processed_at IS NULL) prevents
@@ -149,24 +144,23 @@ export async function POST(request: NextRequest) {
       // cron expiry handler will reset it on day 30 anyway.
     }
 
-    // Send the approval email with the acceptance link
-    const acceptUrl = `${SITE_URL}/auth/accept-waitlist?token=${tokenRow.id}`;
-
-    try {
-      await sendWaitlistApprovalEmail({
-        to: userEmail,
-        name: member.full_name || "Member",
-        acceptUrl,
-      });
-    } catch (emailErr) {
-      console.error("[admin/waitlist/approve] Error sending approval email:", emailErr);
-      // Don't fail the approval if email fails — token is created, admin
-      // can re-trigger from /admin/waitlist if needed in future.
-    }
+    // Send the approval email with the acceptance link. A send failure
+    // doesn't undo the approval — the token stands and the admin can use
+    // Resend on /admin/waitlist — but it's reported back instead of hidden.
+    const emailResult = await sendApprovalEmailForToken(supabase, {
+      tokenId: tokenRow.id,
+      userId: memberId,
+      email: userEmail,
+      name: member.full_name,
+    });
 
     return NextResponse.json({
       success: true,
-      message: `Approval email sent to ${userEmail}. Member has 30 days to accept.`,
+      emailSent: emailResult.success,
+      emailError: emailResult.error,
+      message: emailResult.success
+        ? `Approval email sent to ${userEmail}. Member has 30 days to accept.`
+        : `Member approved, but the email to ${userEmail} failed to send (${emailResult.error}). Use Resend to try again.`,
       tokenId: tokenRow.id,
       expiresAt,
     });

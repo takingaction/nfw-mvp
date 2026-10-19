@@ -57,7 +57,39 @@ export async function GET() {
       }
     }
 
-    const members = allMembers;
+    // Attach delivery status of the current approval email (migration 208).
+    // Non-fatal: if this lookup fails (e.g. migration not applied yet) the
+    // page still loads, just without delivery badges.
+    const deliveryByUser = new Map<string, unknown>();
+    let tokenPage = 0;
+    let tokensHasMore = true;
+    while (tokensHasMore) {
+      const from = tokenPage * PAGE_SIZE;
+      const { data: tokens, error: tokenError } = await supabase
+        .from("waitlist_acceptance_tokens")
+        .select(
+          "user_id, email_sends:email_send_id ( status, bounce_type, bounce_subtype, error_message, updated_at )",
+        )
+        .is("used_at", null)
+        .is("expired_processed_at", null)
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (tokenError) {
+        console.error("[admin/bulk/waitlist] Error fetching approval delivery status:", tokenError);
+        break;
+      }
+      for (const t of tokens || []) {
+        const send = Array.isArray(t.email_sends) ? t.email_sends[0] : t.email_sends;
+        if (send) deliveryByUser.set(t.user_id, send);
+      }
+      tokensHasMore = (tokens?.length || 0) === PAGE_SIZE;
+      tokenPage++;
+    }
+
+    const members = allMembers.map((m) => ({
+      ...m,
+      approval_email: deliveryByUser.get(m.id) ?? null,
+    }));
 
     const stats = {
       total: members?.length || 0,
