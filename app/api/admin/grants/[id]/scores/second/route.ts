@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { fetchDocumentsByGrant } from "@/lib/grant-documents";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -111,19 +112,7 @@ export async function GET(
 
     // Fetch documents manually for these grants
     const grantIds = grants?.map((g) => g.id) || [];
-    let documentsByGrant: Record<string, any[]> = {};
-    if (grantIds.length > 0) {
-      const { data: allDocs } = await supabaseAdmin
-        .from("grant_documents")
-        .select("id, file_name, file_size, uploaded_at, document_url, grant_id, uploaded_by")
-        .in("grant_id", grantIds);
-      
-      documentsByGrant = (allDocs || []).reduce((acc: Record<string, any[]>, doc: any) => {
-        if (!acc[doc.grant_id]) acc[doc.grant_id] = [];
-        acc[doc.grant_id].push(doc);
-        return acc;
-      }, {});
-    }
+    const documentsByGrant = await fetchDocumentsByGrant(supabaseAdmin, grantIds);
 
     // Separate first and second reviewer scores, then filter
     const grantsWithSeparatedScores = grants?.map((g) => {
