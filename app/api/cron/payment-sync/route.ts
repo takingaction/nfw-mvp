@@ -20,7 +20,15 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const BATCH_SIZE = 25;
-const BATCH_DELAY_MS = 1000;
+const BATCH_DELAY_MS = 250;
+// Re-check each matched customer at least this often. With ~3k members and
+// ~2.5s per batch of 25, an hourly run clears well over the ~500 rows/hour
+// this window needs.
+const SYNC_WINDOW_HOURS = 6;
+// Stop starting new batches after this, leaving headroom under maxDuration.
+// Progress is persisted per row via payment_sync_at, so the next run resumes.
+const TIME_BUDGET_MS = 250_000;
+const PAGE_SIZE = 1000;
 
 interface PaymentRecord {
   id: string;
@@ -233,6 +241,9 @@ async function insertMembershipPaymentsIfNeeded(
 }
 
 export async function GET(request: Request): Promise<NextResponse> {
+  // Budget is measured from the start of the request so Step 1 (not_found
+  // repair) counts against it too.
+  const startedAt = Date.now();
   try {
     const authHeader = request.headers.get("Authorization");
     const cronSecret = process.env.CRON_SECRET;
@@ -288,56 +299,89 @@ export async function GET(request: Request): Promise<NextResponse> {
       console.log(`[payment-sync] Fixed ${fixedCount} not_found records`);
     }
 
-    // Step 2: Get all matched rows with stripe_customer_id that need syncing
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    // Step 2: Get matched rows that are due for a sync, stalest first.
+    // Filtered in SQL and PAGINATED: PostgREST caps a single response at 1000
+    // rows, and the previous unpaginated query silently only ever saw the
+    // first 1000 of ~3k matched members, so the rest were never synced.
+    const staleBefore = new Date(Date.now() - SYNC_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+    const rowsToSync: Array<{
+      id: string;
+      stripe_customer_id: string | null;
+      profile_id: string | null;
+      email: string | null;
+      payment_sync_at: string | null;
+    }> = [];
 
-    const { data: rows, error: rowsError } = await supabaseAdmin
-      .from("stripe_backfill_status")
-      .select("id, stripe_customer_id, profile_id, email, payment_sync_at")
-      .eq("status", "matched")
-      .not("stripe_customer_id", "is", null);
+    for (let page = 0; ; page++) {
+      const { data: pageRows, error: rowsError } = await supabaseAdmin
+        .from("stripe_backfill_status")
+        .select("id, stripe_customer_id, profile_id, email, payment_sync_at")
+        .eq("status", "matched")
+        .not("stripe_customer_id", "is", null)
+        .or(`payment_sync_at.is.null,payment_sync_at.lt.${staleBefore}`)
+        .order("payment_sync_at", { ascending: true, nullsFirst: true })
+        .order("id", { ascending: true })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
-    if (rowsError) {
-      console.error("[payment-sync] Error fetching rows:", rowsError);
-      return NextResponse.json({ error: rowsError.message }, { status: 500 });
+      if (rowsError) {
+        console.error("[payment-sync] Error fetching rows:", rowsError);
+        return NextResponse.json({ error: rowsError.message }, { status: 500 });
+      }
+      if (!pageRows || pageRows.length === 0) break;
+      rowsToSync.push(...pageRows);
+      if (pageRows.length < PAGE_SIZE) break;
     }
 
-    if (!rows || rows.length === 0) {
+    if (rowsToSync.length === 0) {
       return NextResponse.json({
         success: true,
         synced: 0,
         failed: 0,
-        message: "No matched rows with stripe_customer_id found",
+        message: "All matched customers synced within the window",
       });
     }
 
-    const rowsToSync = rows.filter(r =>
-      !r.payment_sync_at || new Date(r.payment_sync_at) < new Date(twentyFourHoursAgo)
-    );
-
-    console.log(`[payment-sync] ${rowsToSync.length} rows need syncing (of ${rows.length} total)`);
+    console.log(`[payment-sync] ${rowsToSync.length} rows due for sync (window ${SYNC_WINDOW_HOURS}h)`);
+    let budgetReached = false;
 
     let synced = 0;
     let failed = 0;
     const errors: string[] = [];
 
+    // Rows that are skipped or fail still get payment_sync_at stamped, so a
+    // permanently failing customer rotates to the back of the queue instead of
+    // being retried first on every run and starving everyone else.
+    const markAttempted = (id: string) =>
+      supabaseAdmin
+        .from("stripe_backfill_status")
+        .update({ payment_sync_at: new Date().toISOString() })
+        .eq("id", id);
+
     for (let i = 0; i < rowsToSync.length; i += BATCH_SIZE) {
+      if (Date.now() - startedAt > TIME_BUDGET_MS) {
+        budgetReached = true;
+        console.log(`[payment-sync] Time budget reached at ${i}/${rowsToSync.length}; resuming next run`);
+        break;
+      }
       const batch = rowsToSync.slice(i, i + BATCH_SIZE);
 
       const batchResults = await Promise.all(
         batch.map(async (row) => {
           if (!row.stripe_customer_id) {
+            await markAttempted(row.id);
             return { id: row.id, success: false, error: "No stripe_customer_id" };
           }
 
           if (row.stripe_customer_id.startsWith('acct_')) {
             console.log(`[payment-sync] Skipping Connect account for ${row.email}: ${row.stripe_customer_id}`);
+            await markAttempted(row.id);
             return { id: row.id, success: true, skipped: true, message: "Connect account - skipped" };
           }
 
           const paymentData = await syncPaymentsForCustomer(row.stripe_customer_id);
 
           if (!paymentData) {
+            await markAttempted(row.id);
             return { id: row.id, success: false, error: "Stripe API error" };
           }
 
@@ -394,13 +438,18 @@ export async function GET(request: Request): Promise<NextResponse> {
       }
     }
 
-    console.log(`[payment-sync] Complete: ${synced} synced, ${failed} failed`);
+    console.log(
+      `[payment-sync] Complete: ${synced} synced, ${failed} failed, ${rowsToSync.length - synced - failed} deferred`,
+    );
 
     return NextResponse.json({
       success: true,
       synced,
       failed,
-      total: rowsToSync.length,
+      due: rowsToSync.length,
+      deferred: rowsToSync.length - synced - failed,
+      budgetReached,
+      elapsedMs: Date.now() - startedAt,
       errors: errors.slice(0, 10),
     });
 
