@@ -608,11 +608,12 @@ export default function AdminWaitlistClient() {
                           return (
                             <div className="flex flex-col items-start gap-1">
                               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-ui bg-nfw-citrine/30 text-nfw-blackberry">
+                                {`Sent ${formatDateTime(member.waitlist_acceptance_sent_at)} · `}
                                 {expired
-                                  ? `Sent · expired ${Math.abs(daysLeft)}d ago`
+                                  ? `expired ${Math.abs(daysLeft)}d ago`
                                   : daysLeft === 1
-                                  ? `Sent · 1 day left`
-                                  : `Sent · ${daysLeft} days left`}
+                                  ? `1 day left`
+                                  : `${daysLeft} days left`}
                               </span>
                               <DeliveryBadge email={member.approval_email} />
                             </div>

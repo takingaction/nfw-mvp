@@ -157,6 +157,12 @@ type MembershipUpgrade = {
   created_at: string | null;
 };
 
+type WaitlistAcceptance = {
+  id: string;
+  user_id: string | null;
+  used_at: string | null;
+};
+
 type GrantCycle = {
   id: string;
   start_date: string | null;
@@ -210,6 +216,7 @@ export default function AdminAnalyticsClient({
   nfwPerkRedemptions,
   membershipPayments,
   membershipUpgrades,
+  waitlistAcceptances,
 }: {
   profiles: Profile[];
   grants: Grant[];
@@ -221,6 +228,7 @@ export default function AdminAnalyticsClient({
   nfwPerkRedemptions: NfwPerkRedemption[];
   membershipPayments: MembershipPayment[];
   membershipUpgrades: MembershipUpgrade[];
+  waitlistAcceptances: WaitlistAcceptance[];
 }) {
   const [tab, setTab] = useState<"members" | "grants" | "perks" | "zds" | "engagement" | "cohorts" | "support">("members");
   const [dateRange, setDateRange] = useState<number | "custom">(9999);
@@ -483,6 +491,17 @@ export default function AdminAnalyticsClient({
       }
     }
 
+    // waitlist → free upgrade dates come from waitlist_acceptance_tokens.used_at
+    // (when the member clicked the approval link). Latest acceptance wins.
+    const waitlistAcceptedByUser = new Map<string, string>();
+    for (const t of waitlistAcceptances || []) {
+      if (!t.user_id || !t.used_at) continue;
+      const existing = waitlistAcceptedByUser.get(t.user_id);
+      if (!existing || new Date(t.used_at) > new Date(existing)) {
+        waitlistAcceptedByUser.set(t.user_id, t.used_at);
+      }
+    }
+
     const build = (
       key: UpgradeGroupKey,
       label: string,
@@ -538,8 +557,9 @@ export default function AdminAnalyticsClient({
         "waitlist_to_free",
         "waitlist → free",
         (p) => p.previous_membership_level === "waitlist" && p.membership_level === "free",
-        // No approval timestamp exists in the schema; fall back to join date
-        (p) => p.joined_at
+        // Accepted-link date; falls back to join date for members approved
+        // before acceptance tokens existed (old immediate-approval flow).
+        (p) => waitlistAcceptedByUser.get(p.id) ?? p.joined_at
       ),
       build(
         "contributing_to_founding",
@@ -548,7 +568,7 @@ export default function AdminAnalyticsClient({
         (p) => upgradeDateByUser.get(p.id) ?? null
       ),
     ];
-  }, [filteredProfiles, membershipUpgrades]);
+  }, [filteredProfiles, membershipUpgrades, waitlistAcceptances]);
 
   const expandedUpgradeGroup = useMemo(
     () => upgradeGroups.find((g) => g.key === expandedUpgrade) ?? null,
@@ -1883,7 +1903,7 @@ export default function AdminAnalyticsClient({
                   </div>
                   {expandedUpgradeGroup.key === "waitlist_to_free" && (
                     <p className="px-4 py-2 text-[11px] text-nfw-blackberry/50 border-t border-nfw-wisteria/20 font-ui">
-                      No approval timestamp is stored for waitlist approvals, so &ldquo;Upgraded&rdquo; shows the join date.
+                      &ldquo;Upgraded&rdquo; is when the member clicked their approval link. Members approved before the link flow existed show their join date.
                     </p>
                   )}
                 </div>
