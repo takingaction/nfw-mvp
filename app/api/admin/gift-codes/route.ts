@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/adminCheck";
 import { csvCell } from "@/lib/gift-codes";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -118,9 +119,13 @@ async function getStats() {
     .from("gift_membership_purchases")
     .select("*", { count: "exact", head: true });
 
-  const { data: totalRevenue } = await supabaseAdmin
-    .from("gift_membership_purchases")
-    .select("total_amount");
+  const { data: totalRevenue } = await fetchAllPages((from, to) =>
+    supabaseAdmin
+      .from("gift_membership_purchases")
+      .select("total_amount")
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
 
   const revenue = totalRevenue?.reduce((sum, p) => sum + (p.total_amount || 0), 0) || 0;
 

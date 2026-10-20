@@ -33,8 +33,11 @@ async function fetchAllWithPagination(
 
   while (hasMore) {
     const from = page * PAGE_SIZE;
+    // Tiebreak on id: orderColumn (e.g. created_at) isn't unique, and ties
+    // straddling a page boundary can repeat or drop rows.
     const { data, error } = await queryBuilder
       .order(orderColumn, { ascending: true })
+      .order("id", { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
 
     if (error) {
@@ -82,6 +85,16 @@ async function AdminAnalyticsContent() {
     .from("membership_upgrades")
     .select("id, user_id, from_level, to_level, amount, created_at");
   const membershipUpgrades = await fetchAllWithPagination("membership_upgrades", membershipUpgradesQuery);
+
+  // ── WAITLIST ACCEPTANCES ─────────────────────────────────────────────────
+  // used_at = when the member clicked the approval link (waitlist → free).
+  // Display-only: shown as the "Upgraded" date in the waitlist → free list.
+  console.log("[analytics] Starting waitlist_acceptance_tokens fetch...");
+  const waitlistAcceptancesQuery = supabaseAdmin
+    .from("waitlist_acceptance_tokens")
+    .select("id, user_id, used_at, created_at")
+    .not("used_at", "is", null);
+  const waitlistAcceptances = await fetchAllWithPagination("waitlist_acceptance_tokens", waitlistAcceptancesQuery);
 
   // ── GRANTS ───────────────────────────────────────────────────────────────
   console.log("[analytics] Starting grants fetch...");
@@ -172,6 +185,7 @@ async function AdminAnalyticsContent() {
           nfwPerkRedemptions={nfwPerkRedemptions || []}
           membershipPayments={membershipPayments || []}
           membershipUpgrades={membershipUpgrades || []}
+          waitlistAcceptances={waitlistAcceptances || []}
         />
       </div>
     </main>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 export async function GET() {
   const supabase = await createClient();
@@ -19,10 +20,14 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { data: links, error } = await supabase
-    .from("utm_links")
-    .select("campaign_title, utm_campaign, destination_url, utm_source, utm_medium, utm_content, utm_term, created_by_email, created_at")
-    .order("created_at", { ascending: false });
+  const { data: links, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("utm_links")
+      .select("campaign_title, utm_campaign, destination_url, utm_source, utm_medium, utm_content, utm_term, created_by_email, created_at")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

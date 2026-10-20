@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,9 +35,13 @@ export async function GET() {
     if (error) throw error;
 
     // Get accurate article counts
-    const { data: articles } = await supabaseAdmin
-      .from("articles")
-      .select("category_id");
+    const { data: articles } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("articles")
+        .select("category_id")
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     const countMap = new Map<string, number>();
     (articles || []).forEach((article) => {
