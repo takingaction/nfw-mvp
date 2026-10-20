@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -62,13 +63,17 @@ export async function GET(request: Request) {
     }
 
     // Get Our DB emails (unique users with this tier's payment amount)
-    const { data: payments } = await supabase
-      .from("membership_payments")
-      .select(`
-        user_id,
-        profiles!inner(email)
-      `)
-      .eq("amount", amount);
+    const { data: payments } = await fetchAllPages((from, to) =>
+      supabase
+        .from("membership_payments")
+        .select(`
+          user_id,
+          profiles!inner(email)
+        `)
+        .eq("amount", amount)
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     const dbEmails = new Set<string>();
     for (const p of payments || []) {

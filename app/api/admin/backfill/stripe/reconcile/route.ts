@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { refreshStripeLiveCache } from "@/lib/stripe-reconciliation";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
@@ -348,10 +349,14 @@ async function handleCsvFormat(supabase: any) {
     }
 
     // Step 2: Fetch DB profiles for contributing/founding members
-    const { data: dbProfiles } = await supabase
-      .from("profiles")
-      .select("email, membership_level")
-      .in("membership_level", ["contributing", "founding"]);
+    const { data: dbProfiles } = await fetchAllPages((from, to) =>
+      supabase
+        .from("profiles")
+        .select("email, membership_level")
+        .in("membership_level", ["contributing", "founding"])
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     const dbEmailMap = new Map<string, { tier: string; amount: number }>();
     for (const profile of dbProfiles || []) {

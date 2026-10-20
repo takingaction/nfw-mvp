@@ -6,6 +6,7 @@ import {
   mapBillingReasonToPaymentType,
   shouldRecordPayment,
 } from "@/lib/stripe-payments";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
@@ -283,11 +284,15 @@ async function processJobChunk(jobId: string): Promise<{ done: boolean; phase: s
     console.log("[process-sync-all] PHASE 2: Loading backfill status...");
 
     // Load all matched rows that need syncing
-    const { data: rows, error: rowsError } = await supabaseAdmin
-      .from("stripe_backfill_status")
-      .select("id, stripe_customer_id, profile_id, email")
-      .eq("status", "matched")
-      .not("stripe_customer_id", "is", null);
+    const { data: rows, error: rowsError } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("stripe_backfill_status")
+        .select("id, stripe_customer_id, profile_id, email")
+        .eq("status", "matched")
+        .not("stripe_customer_id", "is", null)
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     if (rowsError) {
       throw new Error(`Error fetching rows: ${rowsError.message}`);
@@ -458,9 +463,13 @@ async function processJobChunk(jobId: string): Promise<{ done: boolean; phase: s
     console.log("[process-sync-all] PHASE 4: Computing results...");
 
     // Get final counts from database
-    const { data: stats } = await supabaseAdmin
-      .from("stripe_backfill_status")
-      .select("status, payment_count, total_amount");
+    const { data: stats } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("stripe_backfill_status")
+        .select("status, payment_count, total_amount")
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     const matched = stats?.filter(s => s.status === "matched") || [];
     const totalSynced = matched.reduce((sum, s) => sum + (s.payment_count || 0), 0);

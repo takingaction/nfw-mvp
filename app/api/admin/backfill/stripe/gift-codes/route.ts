@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { fetchAllPages, fetchAllPagesIn } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,11 +30,15 @@ export async function GET() {
     }
 
     // Get profiles where gift_code_redeemed = true using admin client
-    const { data: profiles, error } = await supabaseAdmin
-      .from("profiles")
-      .select("id, email, membership_level, gift_code_redeemed, stripe_customer_id")
-      .eq("gift_code_redeemed", true)
-      .order("joined_at", { ascending: false });
+    const { data: profiles, error } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("profiles")
+        .select("id, email, membership_level, gift_code_redeemed, stripe_customer_id")
+        .eq("gift_code_redeemed", true)
+        .order("joined_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     if (error) {
       console.error("[gift-codes] Error:", error);
@@ -44,10 +49,14 @@ export async function GET() {
     const profileIds = (profiles || []).map((p: any) => p.id);
     let giftCodes: any[] = [];
     if (profileIds.length > 0) {
-      const { data: codes } = await supabaseAdmin
-        .from("gift_membership_codes")
-        .select("code, redeemed_by_user_id")
-        .in("redeemed_by_user_id", profileIds);
+      const { data: codes } = await fetchAllPagesIn(profileIds, (chunk, from, to) =>
+        supabaseAdmin
+          .from("gift_membership_codes")
+          .select("code, redeemed_by_user_id")
+          .in("redeemed_by_user_id", chunk)
+          .order("id", { ascending: true })
+          .range(from, to),
+      );
       giftCodes = codes || [];
     }
 

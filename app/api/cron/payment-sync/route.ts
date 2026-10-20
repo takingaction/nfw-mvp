@@ -6,6 +6,7 @@ import {
   mapBillingReasonToPaymentType,
   shouldRecordPayment,
 } from "@/lib/stripe-payments";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
@@ -257,11 +258,15 @@ export async function GET(request: Request): Promise<NextResponse> {
     // Step 1: Fix not_found records that have stripe_customer_id on the profile
     console.log("[payment-sync] Step 1: Fixing not_found records with stripe_customer_id on profile...");
 
-    const { data: notFoundRows, error: notFoundError } = await supabaseAdmin
-      .from("stripe_backfill_status")
-      .select("id, profile_id, email")
-      .eq("status", "not_found")
-      .is("stripe_customer_id", null);
+    const { data: notFoundRows, error: notFoundError } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("stripe_backfill_status")
+        .select("id, profile_id, email")
+        .eq("status", "not_found")
+        .is("stripe_customer_id", null)
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     if (notFoundError) {
       console.error("[payment-sync] Error fetching not_found rows:", notFoundError);

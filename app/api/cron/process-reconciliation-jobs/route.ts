@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
@@ -244,10 +245,14 @@ async function processPaymentVerifyJob(jobId: string): Promise<void> {
       .eq("id", jobId);
 
     // Get all membership payments from our DB
-    const { data: payments, error: paymentsError } = await supabaseAdmin
-      .from("membership_payments")
-      .select("id, amount, stripe_payment_id, stripe_invoice_id, user_id, payment_type, created_at")
-      .in("amount", [15, 100]);
+    const { data: payments, error: paymentsError } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("membership_payments")
+        .select("id, amount, stripe_payment_id, stripe_invoice_id, user_id, payment_type, created_at")
+        .in("amount", [15, 100])
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     if (paymentsError) {
       throw new Error(`Failed to fetch payments: ${paymentsError.message}`);

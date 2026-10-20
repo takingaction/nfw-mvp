@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,10 +31,14 @@ export async function POST(request: Request) {
     }
 
     // Find all payments where amount is NOT $15 or $100
-    const { data: invalidPayments, error: selectError } = await supabaseAdmin
-      .from("membership_payments")
-      .select("id, amount, stripe_payment_id, created_at")
-      .not("amount", "in", "(15, 100)");
+    const { data: invalidPayments, error: selectError } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("membership_payments")
+        .select("id, amount, stripe_payment_id, created_at")
+        .not("amount", "in", "(15, 100)")
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     if (selectError) {
       console.error("[delete-invalid] Select error:", selectError);

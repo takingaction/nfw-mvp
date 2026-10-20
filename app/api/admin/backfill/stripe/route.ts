@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
@@ -77,12 +78,16 @@ export async function POST(request: Request) {
     await supabaseAdmin.from("stripe_backfill_status").delete().neq("id", "00000000-0000-0000-0000-000000000000");
 
     // Get profiles that need stripe_customer_id
-    const { data: profiles } = await supabaseAdmin
-      .from("profiles")
-      .select("id, email")
-      .eq("signup_source", "stripe")
-      .is("stripe_customer_id", null)
-      .in("membership_level", ["contributing", "founding"]);
+    const { data: profiles } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("profiles")
+        .select("id, email")
+        .eq("signup_source", "stripe")
+        .is("stripe_customer_id", null)
+        .in("membership_level", ["contributing", "founding"])
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     console.log(`[backfill] Found ${profiles?.length || 0} profiles to backfill`);
 
