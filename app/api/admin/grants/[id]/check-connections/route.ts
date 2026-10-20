@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/adminCheck";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -35,17 +36,21 @@ export async function POST(
     }
 
     // Get all approved grants for this cycle
-    const { data: grants, error: grantsError } = await supabaseAdmin
-      .from("grants")
-      .select(`
-        id,
-        user_id,
-        status,
-        stripe_connect_account_id,
-        profiles:user_id (id, stripe_onboarding_completed, stripe_connect_account_id)
-      `)
-      .eq("cycle_id", cycleId)
-      .eq("status", "approved");
+    const { data: grants, error: grantsError } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("grants")
+        .select(`
+          id,
+          user_id,
+          status,
+          stripe_connect_account_id,
+          profiles:user_id (id, stripe_onboarding_completed, stripe_connect_account_id)
+        `)
+        .eq("cycle_id", cycleId)
+        .eq("status", "approved")
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     if (grantsError) {
       console.error("[check-connections] Error fetching grants:", grantsError);

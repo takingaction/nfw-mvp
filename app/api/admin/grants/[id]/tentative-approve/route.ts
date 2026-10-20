@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -56,13 +57,17 @@ export async function POST(
     }
 
     // Get all grants with their combined scores for this cycle
-    const { data: grants } = await supabaseAdmin
-      .from("grants")
-      .select(`
-        id,
-        grant_scores (reviewer_name, total_score)
-      `)
-      .eq("cycle_id", cycleId);
+    const { data: grants } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("grants")
+        .select(`
+          id,
+          grant_scores (reviewer_name, total_score)
+        `)
+        .eq("cycle_id", cycleId)
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     // Calculate combined scores
     const grantScores = new Map();

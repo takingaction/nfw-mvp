@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { fetchDocumentsByGrant } from "@/lib/grant-documents";
+import { fetchAllPages, fetchAllPagesIn } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -76,10 +77,14 @@ export async function GET(
 
       if (cycleIds.length > 0) {
         // Count applications per user for those cycles
-        const { data: allGrantsInMonth } = await supabaseAdmin
-          .from("grants")
-          .select("user_id")
-          .in("cycle_id", cycleIds);
+        const { data: allGrantsInMonth } = await fetchAllPagesIn(cycleIds, (chunk, from, to) =>
+          supabaseAdmin
+            .from("grants")
+            .select("user_id")
+            .in("cycle_id", chunk)
+            .order("id", { ascending: true })
+            .range(from, to),
+        );
 
         applicationsThisMonth = (allGrantsInMonth || []).reduce((acc: Record<string, number>, g: any) => {
           if (g.user_id) {
@@ -91,32 +96,36 @@ export async function GET(
     }
 
     // Get all grants with first reviewer scores (no FK join for documents)
-    const { data: grants, error: grantsError } = await supabaseAdmin
-      .from("grants")
-      .select(`
-        id,
-        user_id,
-        who_are_you,
-        biggest_challenge,
-        fund_usage,
-        is_nominating,
-        nominee_name,
-        nominee_email,
-        status,
-        submitted_at,
-        rachel_complete,
-        ai_relevance,
-        ai_reasoning,
-        ai_evaluated_at,
-        ai_model_version,
-        ai_invalidated_at,
-        ai_validated_at,
-        ai_invalidated_by,
-        profiles:user_id (full_name, email, city, state),
-        grant_scores!left (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, is_complete, total_score)
-      `)
-      .eq("cycle_id", cycleId)
-      .order("submitted_at", { ascending: false });
+    const { data: grants, error: grantsError } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("grants")
+        .select(`
+          id,
+          user_id,
+          who_are_you,
+          biggest_challenge,
+          fund_usage,
+          is_nominating,
+          nominee_name,
+          nominee_email,
+          status,
+          submitted_at,
+          rachel_complete,
+          ai_relevance,
+          ai_reasoning,
+          ai_evaluated_at,
+          ai_model_version,
+          ai_invalidated_at,
+          ai_validated_at,
+          ai_invalidated_by,
+          profiles:user_id (full_name, email, city, state),
+          grant_scores!left (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, is_complete, total_score)
+        `)
+        .eq("cycle_id", cycleId)
+        .order("submitted_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     console.log("[scores/first GET] grantsError:", grantsError);
     console.log("[scores/first GET] grants count:", grants?.length);

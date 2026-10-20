@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/adminCheck";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -76,11 +77,15 @@ export async function POST(
     const totalFunds = (grant.grant_cycles as any)?.total_funds;
     if (totalFunds) {
       // Calculate total already paid for this cycle
-      const { data: paidGrants } = await supabaseAdmin
-        .from("grants")
-        .select("amount_approved")
-        .eq("cycle_id", grant.cycle_id)
-        .not("funded_at", "is", null);
+      const { data: paidGrants } = await fetchAllPages((from, to) =>
+        supabaseAdmin
+          .from("grants")
+          .select("amount_approved")
+          .eq("cycle_id", grant.cycle_id)
+          .not("funded_at", "is", null)
+          .order("id", { ascending: true })
+          .range(from, to),
+      );
 
       const totalPaid = (paidGrants || []).reduce(
         (sum: number, g: any) => sum + Number(g.amount_approved || 0),

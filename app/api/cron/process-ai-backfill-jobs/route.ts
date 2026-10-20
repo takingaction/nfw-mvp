@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -97,12 +98,16 @@ async function processJobChunk(
       `[process-ai-backfill] PHASE 1: Enrolling unevaluated grants for cycle ${cycleId}`,
     );
 
-    const { data: grants, error } = await supabaseAdmin
-      .from("grants")
-      .select("id")
-      .eq("cycle_id", cycleId)
-      .eq("status", "submitted")
-      .or("ai_relevance.is.null,ai_relevance.eq.not_evaluated");
+    const { data: grants, error } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("grants")
+        .select("id")
+        .eq("cycle_id", cycleId)
+        .eq("status", "submitted")
+        .or("ai_relevance.is.null,ai_relevance.eq.not_evaluated")
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     if (error) {
       console.error("[process-ai-backfill] Enroll query failed:", error);

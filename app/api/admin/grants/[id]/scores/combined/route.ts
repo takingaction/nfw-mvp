@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import Stripe from "stripe";
 import { fetchDocumentsByGrant } from "@/lib/grant-documents";
+import { fetchAllPages, fetchAllPagesIn } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -52,10 +53,14 @@ export async function GET(
     }
 
     // Get all grants to check completion status
-    const { data: grantsCheck } = await supabaseAdmin
-      .from("grants")
-      .select("id, rachel_complete, michelle_complete, grant_scores (reviewer_name, total_score, needs_discussion)")
-      .eq("cycle_id", cycleId);
+    const { data: grantsCheck } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("grants")
+        .select("id, rachel_complete, michelle_complete, grant_scores (reviewer_name, total_score, needs_discussion)")
+        .eq("cycle_id", cycleId)
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     if (!grantsCheck || grantsCheck.length === 0) {
       return NextResponse.json({ error: "No grants found" }, { status: 404 });
@@ -92,35 +97,39 @@ export async function GET(
     }
 
     // Get all grants with all scores (no FK join for documents)
-    const { data: grants } = await supabaseAdmin
-      .from("grants")
-      .select(`
-        id,
-        user_id,
-        who_are_you,
-        biggest_challenge,
-        fund_usage,
-        is_nominating,
-        nominee_name,
-        nominee_email,
-        status,
-        submitted_at,
-        stripe_connect_account_id,
-        funded_at,
-        transfer_id,
-        ai_relevance,
-        ai_reasoning,
-        ai_evaluated_at,
-        ai_model_version,
-        ai_invalidated_at,
-        ai_validated_at,
-        ai_invalidated_by,
-        profiles:user_id (full_name, email, city, state, stripe_onboarding_completed, stripe_connect_account_id),
-        grant_scores (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, total_score),
-        amount_approved
-      `)
-      .eq("cycle_id", cycleId)
-      .order("submitted_at", { ascending: false });
+    const { data: grants } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("grants")
+        .select(`
+          id,
+          user_id,
+          who_are_you,
+          biggest_challenge,
+          fund_usage,
+          is_nominating,
+          nominee_name,
+          nominee_email,
+          status,
+          submitted_at,
+          stripe_connect_account_id,
+          funded_at,
+          transfer_id,
+          ai_relevance,
+          ai_reasoning,
+          ai_evaluated_at,
+          ai_model_version,
+          ai_invalidated_at,
+          ai_validated_at,
+          ai_invalidated_by,
+          profiles:user_id (full_name, email, city, state, stripe_onboarding_completed, stripe_connect_account_id),
+          grant_scores (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, total_score),
+          amount_approved
+        `)
+        .eq("cycle_id", cycleId)
+        .order("submitted_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     // Fetch documents manually for these grants
     const grantIds = grants?.map((g) => g.id) || [];
@@ -148,10 +157,14 @@ export async function GET(
 
       if (cycleIds.length > 0) {
         // Count applications per user for those cycles
-        const { data: allGrantsInMonth } = await supabaseAdmin
-          .from("grants")
-          .select("user_id")
-          .in("cycle_id", cycleIds);
+        const { data: allGrantsInMonth } = await fetchAllPagesIn(cycleIds, (chunk, from, to) =>
+          supabaseAdmin
+            .from("grants")
+            .select("user_id")
+            .in("cycle_id", chunk)
+            .order("id", { ascending: true })
+            .range(from, to),
+        );
 
         applicationsThisMonth = (allGrantsInMonth || []).reduce((acc: Record<string, number>, g: any) => {
           if (g.user_id) {
@@ -266,12 +279,16 @@ export async function GET(
     let previousGrantsByUser: Record<string, boolean> = {};
 
     if (userIds.length > 0) {
-      const { data: previousGrants } = await supabaseAdmin
-        .from("grants")
-        .select("user_id")
-        .in("user_id", userIds)
-        .eq("status", "payment_sent")
-        .neq("cycle_id", cycleId); // Exclude current cycle
+      const { data: previousGrants } = await fetchAllPagesIn(userIds, (chunk, from, to) =>
+        supabaseAdmin
+          .from("grants")
+          .select("user_id")
+          .in("user_id", chunk)
+          .eq("status", "payment_sent")
+          .neq("cycle_id", cycleId) // Exclude current cycle
+          .order("id", { ascending: true })
+          .range(from, to),
+      );
 
       previousGrantsByUser = (previousGrants || []).reduce((acc: Record<string, boolean>, g: any) => {
         acc[g.user_id] = true;

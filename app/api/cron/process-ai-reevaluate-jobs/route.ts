@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -83,7 +84,9 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
       query = query.or("ai_relevance.is.null,ai_relevance.neq.relevant");
     }
 
-    const { data: grants, error } = await query;
+    // Paged: PostgREST silently caps a single response at 1000 rows.
+    const orderedQuery = query.order("id", { ascending: true });
+    const { data: grants, error } = await fetchAllPages((from, to) => orderedQuery.range(from, to));
     if (error) {
       console.error("[process-ai-reevaluate] Enroll query failed:", error);
       throw error;

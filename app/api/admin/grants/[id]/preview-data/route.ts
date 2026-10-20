@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { getPreRenderedHtmlAdmin } from "@/lib/email-blocks/publish";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,11 +38,15 @@ export async function GET(
     // cycle's actual rejection_message values; the chosen applicant's
     // status is irrelevant (we only borrow their name for {{name}}).
     // `profiles` is FK on grants.user_id → profiles.id.
-    const { data: applicants, error: applicantsError } = await supabaseAdmin
-      .from("grants")
-      .select("id, status, profiles:user_id(full_name, email)")
-      .eq("cycle_id", cycleId)
-      .order("created_at", { ascending: true });
+    const { data: applicants, error: applicantsError } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("grants")
+        .select("id, status, profiles:user_id(full_name, email)")
+        .eq("cycle_id", cycleId)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     if (applicantsError) {
       console.error(

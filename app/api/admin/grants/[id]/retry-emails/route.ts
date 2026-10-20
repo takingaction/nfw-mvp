@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { sendGrantApprovedEmail } from "@/lib/email";
 import { sendBatchEmails } from "@/lib/email-batch";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -49,16 +50,20 @@ export async function POST(
     }
 
     // Find grants for these emails in this cycle
-    const { data: grants } = await supabaseAdmin
-      .from("grants")
-      .select(`
-        id,
-        user_id,
-        status,
-        profiles:user_id (full_name, email)
-      `)
-      .eq("cycle_id", cycleId)
-      .in("status", emailType === "approved" ? ["approved"] : ["not_approved"]);
+    const { data: grants } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("grants")
+        .select(`
+          id,
+          user_id,
+          status,
+          profiles:user_id (full_name, email)
+        `)
+        .eq("cycle_id", cycleId)
+        .in("status", emailType === "approved" ? ["approved"] : ["not_approved"])
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     // Filter to only grants matching the pasted emails
     const matchedGrants = grants?.filter((g) => {

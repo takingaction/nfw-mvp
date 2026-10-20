@@ -3,6 +3,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendGrantApprovedEmail } from "@/lib/email";
 import { sendBatchEmails } from "@/lib/email-batch";
+import { fetchAllPagesIn } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -79,10 +80,14 @@ export async function POST(request: Request) {
 
     // Fetch grant IDs to get user profiles for actual names
     const grantIds = pendingLogs.map((e: any) => e.grant_id);
-    const { data: grantsData } = await supabaseAdmin
-      .from("grants")
-      .select("id, user_id")
-      .in("id", grantIds);
+    const { data: grantsData } = await fetchAllPagesIn(grantIds, (chunk, from, to) =>
+      supabaseAdmin
+        .from("grants")
+        .select("id, user_id")
+        .in("id", chunk)
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     // Build user_id -> grant_id map
     const grantToUser: Record<string, string> = {};
@@ -92,10 +97,14 @@ export async function POST(request: Request) {
 
     // Fetch profiles to get full_name
     const userIds = [...new Set(Object.values(grantToUser))];
-    const { data: profilesData } = await supabaseAdmin
-      .from("profiles")
-      .select("id, full_name")
-      .in("id", userIds);
+    const { data: profilesData } = await fetchAllPagesIn(userIds, (chunk, from, to) =>
+      supabaseAdmin
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", chunk)
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     // Build user_id -> full_name map
     const userToName: Record<string, string> = {};

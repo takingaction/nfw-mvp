@@ -4,6 +4,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { sendGrantApprovedEmail } from "@/lib/email";
 import { sendBatchEmails } from "@/lib/email-batch";
 import { renderRejectionBody } from "@/lib/grant-rejection-body";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -84,15 +85,19 @@ export async function POST(
     }
 
     // Get all grants with profiles
-    const { data: allGrants } = await supabaseAdmin
-      .from("grants")
-      .select(`
-        id,
-        user_id,
-        cycle_id,
-        profiles:user_id (full_name, email)
-      `)
-      .eq("cycle_id", cycleId);
+    const { data: allGrants } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("grants")
+        .select(`
+          id,
+          user_id,
+          cycle_id,
+          profiles:user_id (full_name, email)
+        `)
+        .eq("cycle_id", cycleId)
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     // Separate into approved and not approved
     const approvedGrantIds = new Set(

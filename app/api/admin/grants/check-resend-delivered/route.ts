@@ -3,6 +3,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "fs";
 import { resolve } from "path";
+import { fetchAllPages, fetchAllPagesIn } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -123,16 +124,20 @@ export async function POST(request: Request) {
     }
 
     // Step 1: Get all applicants (approved + rejected) for this specific cycle
-    const { data: grants, error: grantsError } = await supabaseAdmin
-      .from("grants")
-      .select(`
-        id,
-        user_id,
-        cycle_id,
-        status
-      `)
-      .eq("cycle_id", cycleId)
-      .in("status", ["approved", "payment_sent", "not_approved"]);
+    const { data: grants, error: grantsError } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("grants")
+        .select(`
+          id,
+          user_id,
+          cycle_id,
+          status
+        `)
+        .eq("cycle_id", cycleId)
+        .in("status", ["approved", "payment_sent", "not_approved"])
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     if (grantsError) {
       console.error("[check-resend-delivered] Error fetching grants:", grantsError);
@@ -152,10 +157,14 @@ export async function POST(request: Request) {
 
     // Fetch profiles separately for all user_ids
     const userIds = grants.map((g: any) => g.user_id).filter(Boolean);
-    const { data: profilesData } = await supabaseAdmin
-      .from("profiles")
-      .select("id, email, full_name")
-      .in("id", userIds);
+    const { data: profilesData } = await fetchAllPagesIn(userIds, (chunk, from, to) =>
+      supabaseAdmin
+        .from("profiles")
+        .select("id, email, full_name")
+        .in("id", chunk)
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     // Build a map of user_id -> profile
     const profileMap = new Map<string, GrantProfile>();

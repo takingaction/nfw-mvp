@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,24 +25,28 @@ export async function GET(
     const { id: cycleId } = await params;
 
     // Get all grants for this cycle with their scores
-    const { data: grants } = await supabaseAdmin
-      .from("grants")
-      .select(`
-        id,
-        user_id,
-        who_are_you,
-        biggest_challenge,
-        fund_usage,
-        is_nominating,
-        nominee_name,
-        nominee_email,
-        status,
-        submitted_at,
-        profiles:user_id (full_name, email, city, state),
-        grant_scores (*)
-      `)
-      .eq("cycle_id", cycleId)
-      .order("submitted_at", { ascending: false });
+    const { data: grants } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("grants")
+        .select(`
+          id,
+          user_id,
+          who_are_you,
+          biggest_challenge,
+          fund_usage,
+          is_nominating,
+          nominee_name,
+          nominee_email,
+          status,
+          submitted_at,
+          profiles:user_id (full_name, email, city, state),
+          grant_scores (*)
+        `)
+        .eq("cycle_id", cycleId)
+        .order("submitted_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     return NextResponse.json({ grants: grants || [] });
   } catch (err: any) {

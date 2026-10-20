@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
+import { fetchAllPages, fetchAllPagesIn } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,7 +56,9 @@ export async function GET(request: Request) {
       query = query.in("cycle_id", cycleIds);
     }
 
-    const { data: failedLogs, error: logsError } = await query;
+    // Paged: PostgREST silently caps a single response at 1000 rows.
+    const orderedQuery = query.order("id", { ascending: true });
+    const { data: failedLogs, error: logsError } = await fetchAllPages((from, to) => orderedQuery.range(from, to));
 
     if (logsError) {
       console.error("[failed-emails] Error fetching failed logs:", logsError);
@@ -67,11 +70,15 @@ export async function GET(request: Request) {
     
     let alreadySentCounts: Record<string, number> = {};
     if (cycleIdsFromLogs.length > 0) {
-      const { data: alreadySentData } = await supabaseAdmin
-        .from("grant_email_log")
-        .select("cycle_id")
-        .eq("status", "already_sent")
-        .in("cycle_id", cycleIdsFromLogs);
+      const { data: alreadySentData } = await fetchAllPagesIn(cycleIdsFromLogs, (chunk, from, to) =>
+        supabaseAdmin
+          .from("grant_email_log")
+          .select("cycle_id")
+          .eq("status", "already_sent")
+          .in("cycle_id", chunk)
+          .order("id", { ascending: true })
+          .range(from, to),
+      );
       
       alreadySentData?.forEach((log) => {
         alreadySentCounts[log.cycle_id] = (alreadySentCounts[log.cycle_id] || 0) + 1;
