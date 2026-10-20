@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { getShopifyOrder } from "@/lib/shopify";
+import { fetchAllPages } from "@/lib/supabase-paginate";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,18 +41,22 @@ interface PreviewResult {
 }
 
 async function getAllClaimsWithUrls() {
-  const { data, error } = await supabaseAdmin
-    .from("zero_dollar_claims")
-    .select(`
-      id,
-      user_id,
-      order_status_url,
-      shopify_order_id,
-      status,
-      profiles:user_id (id, full_name, email)
-    `)
-    .not("order_status_url", "is", null)
-    .in("status", ["completed", "fulfilled", "paid", "delivered"]);
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabaseAdmin
+      .from("zero_dollar_claims")
+      .select(`
+          id,
+          user_id,
+          order_status_url,
+          shopify_order_id,
+          status,
+          profiles:user_id (id, full_name, email)
+        `)
+      .not("order_status_url", "is", null)
+      .in("status", ["completed", "fulfilled", "paid", "delivered"])
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
 
   if (error) throw error;
   return data as unknown as ClaimWithProfile[] | null;
