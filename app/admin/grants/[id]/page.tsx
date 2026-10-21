@@ -5,6 +5,7 @@ import { ArrowLeft, Lock } from "lucide-react";
 import AdminGrantReviewer from "@/components/admin/AdminGrantReviewer";
 import AiEvaluationPanel from "@/components/admin/AiEvaluationPanel";
 import LateSubmissionPassesCard from "@/components/admin/LateSubmissionPassesCard";
+import ResetReviewButton from "@/components/admin/ResetReviewButton";
 import { formatDateOnly } from "@/lib/dates";
 
 const supabaseAdmin = createClient(
@@ -120,8 +121,16 @@ export default async function AdminGrantCyclePage({
   const totalCount = grants?.length || 0;
 
   // Scoring workflow step states
+  // Random-draw cycles: step 2 verifies winners and finalizes on the Second
+  // Review page, so step 3 points there instead of Combined Scores.
+  const isRandom = cycle.selection_method === "random";
   const secondUnlocked = allFirstComplete;
-  const combinedUnlocked = finalApproved || allSecondComplete;
+  const combinedUnlocked = isRandom
+    ? finalApproved || secondUnlocked
+    : finalApproved || allSecondComplete;
+  const combinedHref = isRandom
+    ? `/admin/grants/${id}/scoring/second`
+    : `/admin/grants/${id}/scoring/combined`;
 
   const stepBase =
     "w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 font-ui text-sm font-medium transition-colors";
@@ -194,7 +203,7 @@ export default async function AdminGrantCyclePage({
                   className={`${stepBase} bg-nfw-aubergine text-white hover:bg-nfw-aubergine/90`}
                 >
                   <span className={`${stepBadge} bg-white/20`}>1</span>
-                  First Review
+                  {isRandom ? "Screen & Draw" : "First Review"}
                 </Link>
 
                 {/* 2 — Second Review: locked until all first reviews complete */}
@@ -212,12 +221,12 @@ export default async function AdminGrantCyclePage({
                   <span className={`${stepBadge} ${secondUnlocked ? "bg-white/20" : "bg-gray-200"}`}>
                     {secondUnlocked ? "2" : <Lock className="w-3 h-3" />}
                   </span>
-                  Second Review
+                  {isRandom ? "Verify Winners" : "Second Review"}
                 </Link>
 
                 {/* 3 — Combined Scores: locked until all second reviews complete */}
                 <Link
-                  href={combinedUnlocked ? `/admin/grants/${id}/scoring/combined` : "#"}
+                  href={combinedUnlocked ? combinedHref : "#"}
                   aria-disabled={!combinedUnlocked}
                   tabIndex={combinedUnlocked ? undefined : -1}
                   title={combinedUnlocked ? undefined : "Unlocks when the second review is complete"}
@@ -240,11 +249,12 @@ export default async function AdminGrantCyclePage({
                   >
                     {combinedUnlocked ? "3" : <Lock className="w-3 h-3" />}
                   </span>
-                  {finalApproved ? "View Finalized" : "Combined Scores"}
+                  {finalApproved ? "View Finalized" : isRandom ? "Finalize Winners" : "Combined Scores"}
                 </Link>
               </div>
             </div>
 
+            {isAdmin && !finalApproved && <ResetReviewButton cycleId={id} />}
             {isAdmin && (
               <a
                 href={`/api/admin/grants/${id}/export`}
