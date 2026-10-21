@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { sendGrantApprovedEmail } from "@/lib/email";
 import { sendBatchEmails } from "@/lib/email-batch";
+import { loadDrawContext, syncTentativeApprovalsFromDraws } from "@/lib/grant-draw";
+import { finalizeBlocker } from "@/lib/grant-draw-rules";
 import { renderRejectionBody } from "@/lib/grant-rejection-body";
 import { fetchAllPages } from "@/lib/supabase-paginate";
 
@@ -78,6 +80,41 @@ export async function POST(
 
     if (!cycle) {
       return NextResponse.json({ error: "Cycle not found" }, { status: 404 });
+    }
+
+    // Random-draw cycles: the confirmed winners ARE the approvals. Refuse to
+    // finalize while any winner is unconfirmed or a replacement is owed, then
+    // rewrite grant_tentative_approvals from the confirmed draws so the logic
+    // below approves exactly those members and rejects everyone else.
+    if (cycle.selection_method === "random") {
+      if (cycle.final_approved_at) {
+        return NextResponse.json({ error: "This cycle has already been finalized." }, { status: 400 });
+      }
+      const { ctx, error: ctxError } = await loadDrawContext(supabaseAdmin, cycleId);
+      if (!ctx) {
+        return NextResponse.json({ error: ctxError }, { status: 500 });
+      }
+      const blocker = finalizeBlocker(ctx.summary);
+      if (blocker) {
+        return NextResponse.json({ error: blocker }, { status: 400 });
+      }
+      const confirmedIds = ctx.draws
+        .filter((d) => d.status === "confirmed")
+        .map((d) => d.grant_id);
+      const syncError = await syncTentativeApprovalsFromDraws(
+        supabaseAdmin,
+        cycleId,
+        confirmedIds,
+        user.id,
+      );
+      if (syncError) {
+        return NextResponse.json({ error: syncError }, { status: 500 });
+      }
+      cycle.grant_tentative_approvals = confirmedIds.map((grantId) => ({
+        grant_id: grantId,
+        is_approved: true,
+        combined_score: null,
+      }));
     }
 
     if (!cycle.grant_tentative_approvals || cycle.grant_tentative_approvals.length === 0) {

@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import GrantScoringRubric from "@/components/admin/GrantScoringRubric";
 import GrantApplicationScorer, { ScoreData } from "@/components/admin/GrantApplicationScorer";
 import AiBadge from "@/components/admin/AiBadge";
+import RandomDrawReview from "@/components/admin/RandomDrawReview";
 import { isAiFlagPending, sortsToBottom } from "@/lib/grant-ai-flags";
 
 interface Grant {
@@ -59,6 +60,7 @@ export default function SecondReviewPage() {
   const [sortMode, setSortMode] = useState<"score" | "newest">("score");
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [selectionMethod, setSelectionMethod] = useState<"scored" | "random">("scored");
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -137,6 +139,7 @@ export default function SecondReviewPage() {
         return;
       }
 
+      setSelectionMethod(data.selection_method === "random" ? "random" : "scored");
       setGrants(data.grants || []);
       if (data.grants?.length > 0 && !selectedGrant) {
         setSelectedGrant(data.grants[0].id);
@@ -337,6 +340,11 @@ export default function SecondReviewPage() {
         </div>
       </div>
     );
+  }
+
+  // Random-draw cycles: verify drawn winners, draw replacements, finalize.
+  if (selectionMethod === "random") {
+    return <RandomDrawReview cycleId={cycleId} phase="second" />;
   }
 
   if (completeSuccess) {

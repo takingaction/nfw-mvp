@@ -34,6 +34,7 @@ export default function EditGrantCyclePage() {
     featured_image: string;
     is_testing_only: boolean;
     requires_documents: boolean;
+    selection_method: "scored" | "random";
     rejection_body: RejectionBodyBlock[];
   }>({
     cycle_name: "",
@@ -46,6 +47,7 @@ export default function EditGrantCyclePage() {
     featured_image: "",
     is_testing_only: false,
     requires_documents: false,
+    selection_method: "scored",
     rejection_body: [],
   });
 
@@ -70,6 +72,7 @@ export default function EditGrantCyclePage() {
           featured_image: data.featured_image || "",
           is_testing_only: data.is_testing_only || false,
           requires_documents: data.requires_documents || false,
+          selection_method: data.selection_method === "random" ? "random" : "scored",
           rejection_body: Array.isArray(data.rejection_body) ? data.rejection_body : [],
         });
       } catch (err: any) {
@@ -342,6 +345,27 @@ export default function EditGrantCyclePage() {
                 </span>
                 <p className="text-xs text-nfw-blackberry/50 mt-0.5">
                   When enabled, applicants must upload at least one supporting document.
+                </p>
+              </div>
+            </label>
+          </div>
+
+          <div className="border-t border-nfw-blackberry/10 pt-4 mt-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.selection_method === "random"}
+                onChange={(e) =>
+                  setFormData({ ...formData, selection_method: e.target.checked ? "random" : "scored" })
+                }
+                className="mt-0.5 w-4 h-4 accent-nfw-wisteria"
+              />
+              <div>
+                <span className="text-sm font-semibold text-nfw-blackberry">
+                  Random Draw Selection
+                </span>
+                <p className="text-xs text-nfw-blackberry/50 mt-0.5">
+                  No scoring. Reviewer 1 screens applications against the eligibility criteria, then draws winners at random from the eligible applications (one per grant available). Reviewer 2 verifies each winner and draws replacements for any found ineligible.
                 </p>
               </div>
             </label>

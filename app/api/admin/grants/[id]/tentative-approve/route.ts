@@ -45,9 +45,18 @@ export async function POST(
     // Get cycle info
     const { data: cycle } = await supabaseAdmin
       .from("grant_cycles")
-      .select("grants_available")
+      .select("grants_available, selection_method")
       .eq("id", cycleId)
       .single();
+
+    // Random-draw cycles pick winners through /draw; approvals are written
+    // from confirmed draws at finalize.
+    if (cycle?.selection_method === "random") {
+      return NextResponse.json(
+        { error: "This cycle uses random selection. Manage winners on the review pages." },
+        { status: 400 },
+      );
+    }
 
     // Check if selection exceeds available grants
     if (grantIds.length > (cycle?.grants_available || 0)) {

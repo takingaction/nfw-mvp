@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
       requires_documents,
       rejection_body,
       featured_image,
+      selection_method,
     } = await request.json();
 
     const total_funds =
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
         status: "open",
         is_testing_only: is_testing_only || false,
         requires_documents: requires_documents || false,
+        selection_method: selection_method === "random" ? "random" : "scored",
         rejection_body: Array.isArray(rejection_body) ? rejection_body : [],
         featured_image: featured_image || null,
       })

@@ -14,6 +14,10 @@ interface GrantApplicationScorerProps {
   saving?: boolean;
   hidePersonalInfo?: boolean;
   documents?: any[];
+  /** Random-draw cycles: show the application without score inputs. */
+  hideScoring?: boolean;
+  /** Show per-criterion results inside the AI callout (default true). */
+  showAiCriteria?: boolean;
 }
 
 export interface ScoreData {
@@ -42,6 +46,8 @@ export default function GrantApplicationScorer({
   saving = false,
   hidePersonalInfo = false,
   documents,
+  hideScoring = false,
+  showAiCriteria = true,
 }: GrantApplicationScorerProps) {
   const existingScore = grant.grant_scores?.[0];
   const isSkipped = !!grant.ai_invalidated_at;
@@ -88,7 +94,7 @@ export default function GrantApplicationScorer({
 
   // Auto-save when values change (skipped grants cannot be saved)
   useEffect(() => {
-    if (isSkipped) return;
+    if (isSkipped || hideScoring) return;
     const timer = setTimeout(() => {
       const totalScore =
         (urgency_score ?? 0) +
@@ -124,7 +130,7 @@ export default function GrantApplicationScorer({
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, isSkipped]);
+  }, [urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, isSkipped, hideScoring]);
 
   const handleSave = async (data: ScoreData) => {
     console.log("[GrantApplicationScorer] handleSave called for grant", grant.id, data);
@@ -225,6 +231,8 @@ export default function GrantApplicationScorer({
               ai_reasoning: grant.ai_reasoning,
               ai_invalidated_at: grant.ai_invalidated_at,
               ai_validated_at: grant.ai_validated_at,
+              ai_criteria: showAiCriteria ? grant.ai_criteria : undefined,
+              eligibility_checks: showAiCriteria ? grant.eligibility_checks : undefined,
             }}
             onSkipped={onAiChange}
             onRestored={onAiChange}
@@ -296,6 +304,7 @@ export default function GrantApplicationScorer({
       )}
 
       {/* Scoring */}
+      {!hideScoring && (
       <div className="space-y-4 pt-2">
         {isSkipped && (
           <div className="bg-red-50 border border-red-200 p-3 flex items-start gap-2">
@@ -432,6 +441,7 @@ export default function GrantApplicationScorer({
           Reset Scoring
         </button>
       </div>
+      )}
     </div>
   );
 }

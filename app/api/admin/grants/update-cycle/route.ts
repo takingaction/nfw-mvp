@@ -39,10 +39,28 @@ export async function POST(request: NextRequest) {
       is_testing_only,
       requires_documents,
       rejection_body,
+      selection_method,
     } = await request.json();
 
     if (!cycleId)
       return NextResponse.json({ error: "Missing cycleId" }, { status: 400 });
+
+    if (selection_method !== undefined) {
+      if (selection_method !== "scored" && selection_method !== "random") {
+        return NextResponse.json({ error: "Invalid selection method" }, { status: 400 });
+      }
+      const { data: current } = await supabaseAdmin
+        .from("grant_cycles")
+        .select("selection_method, final_approved_at")
+        .eq("id", cycleId)
+        .single();
+      if (current && current.selection_method !== selection_method && current.final_approved_at) {
+        return NextResponse.json(
+          { error: "Selection method can't be changed after the cycle is finalized." },
+          { status: 400 },
+        );
+      }
+    }
 
     const total_funds =
       parseFloat(amount_per_grant) * parseInt(grants_available);
@@ -61,6 +79,7 @@ export async function POST(request: NextRequest) {
         featured_image,
         is_testing_only,
         requires_documents,
+        selection_method,
         rejection_body: Array.isArray(rejection_body) ? rejection_body : [],
         updated_at: new Date().toISOString(),
       })

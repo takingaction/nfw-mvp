@@ -2,6 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { sendSecondReviewerNotification } from "@/lib/email";
+import { loadDrawContext } from "@/lib/grant-draw";
+import { handoffBlocker } from "@/lib/grant-draw-rules";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -70,22 +72,41 @@ export async function POST(
       return NextResponse.json({ error: "No grants found" }, { status: 404 });
     }
 
-    // An application is done if the first reviewer's score is complete, or it
-    // was skipped ("Skip & Mark Invalid") — skipped grants have locked score
-    // inputs and are auto-rejected at finalization.
-    const isDone = (g: (typeof grants)[number]) =>
-      !!g.ai_invalidated_at ||
-      (g.grant_scores ?? []).some(
-        (s) => s.reviewer_name === "first" && s.is_complete === true,
-      );
+    const { data: methodRow } = await supabaseAdmin
+      .from("grant_cycles")
+      .select("selection_method")
+      .eq("id", cycleId)
+      .single();
 
-    const incompleteCount = grants.filter((g) => !isDone(g)).length;
+    if (methodRow?.selection_method === "random") {
+      // Random-draw cycles: Review 1 hands off once every flag is resolved and
+      // the winners are drawn (lib/grant-draw-rules.ts handoffBlocker).
+      const { ctx, error: ctxError } = await loadDrawContext(supabaseAdmin, cycleId);
+      if (!ctx) {
+        return NextResponse.json({ error: ctxError }, { status: 500 });
+      }
+      const blocker = handoffBlocker(ctx.summary);
+      if (blocker) {
+        return NextResponse.json({ error: blocker }, { status: 400 });
+      }
+    } else {
+      // An application is done if the first reviewer's score is complete, or it
+      // was skipped ("Skip & Mark Invalid") — skipped grants have locked score
+      // inputs and are auto-rejected at finalization.
+      const isDone = (g: (typeof grants)[number]) =>
+        !!g.ai_invalidated_at ||
+        (g.grant_scores ?? []).some(
+          (s) => s.reviewer_name === "first" && s.is_complete === true,
+        );
 
-    if (incompleteCount > 0) {
-      return NextResponse.json({
-        error: `${incompleteCount} application(s) have not been scored yet`,
-        incomplete_count: incompleteCount,
-      }, { status: 400 });
+      const incompleteCount = grants.filter((g) => !isDone(g)).length;
+
+      if (incompleteCount > 0) {
+        return NextResponse.json({
+          error: `${incompleteCount} application(s) have not been scored yet`,
+          incomplete_count: incompleteCount,
+        }, { status: 400 });
+      }
     }
 
     // Set rachel_complete = true on ALL grants in this cycle

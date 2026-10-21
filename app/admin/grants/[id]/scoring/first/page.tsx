@@ -8,6 +8,8 @@ import { createClient } from "@/lib/supabase/client";
 import GrantScoringRubric from "@/components/admin/GrantScoringRubric";
 import GrantApplicationScorer, { ScoreData } from "@/components/admin/GrantApplicationScorer";
 import AiBadge from "@/components/admin/AiBadge";
+import BulkSkipIrrelevantButton from "@/components/admin/BulkSkipIrrelevantButton";
+import RandomDrawReview from "@/components/admin/RandomDrawReview";
 import { isAiFlagPending, sortsToBottom } from "@/lib/grant-ai-flags";
 
 interface Grant {
@@ -54,6 +56,7 @@ export default function FirstReviewPage() {
   const [sortMode, setSortMode] = useState<"score" | "newest">("score");
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [selectionMethod, setSelectionMethod] = useState<"scored" | "random">("scored");
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -128,6 +131,7 @@ export default function FirstReviewPage() {
         throw new Error(data.error || "Failed to fetch grants");
       }
 
+      setSelectionMethod(data.selection_method === "random" ? "random" : "scored");
       setGrants(data.grants || []);
       if (data.grants?.length > 0 && !selectedGrant) {
         setSelectedGrant(data.grants[0].id);
@@ -348,6 +352,11 @@ export default function FirstReviewPage() {
     );
   }
 
+  // Random-draw cycles have their own screening + draw workflow (no scoring).
+  if (selectionMethod === "random") {
+    return <RandomDrawReview cycleId={cycleId} phase="first" />;
+  }
+
   if (completeSuccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-nfw-dove">
@@ -385,6 +394,11 @@ export default function FirstReviewPage() {
               </h1>
             </div>
             <div className="flex items-center gap-4">
+              <BulkSkipIrrelevantButton
+                cycleId={cycleId}
+                refreshKey={grants}
+                onDone={() => fetchGrants()}
+              />
               <button
                 onClick={() => setShowCompleteModal(true)}
                 disabled={completedCount < totalCount || isFirstComplete}

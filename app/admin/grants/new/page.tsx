@@ -23,6 +23,7 @@ export default function NewGrantCyclePage() {
     grants_available: string;
     is_testing_only: boolean;
     requires_documents: boolean;
+    selection_method: "scored" | "random";
     rejection_body: RejectionBodyBlock[];
     featured_image: string;
   }>({
@@ -34,6 +35,7 @@ export default function NewGrantCyclePage() {
     grants_available: "",
     is_testing_only: false,
     requires_documents: false,
+    selection_method: "scored",
     rejection_body: [],
     featured_image: "",
   });
@@ -252,6 +254,27 @@ export default function NewGrantCyclePage() {
                 </span>
                 <p className="text-xs text-nfw-blackberry/50 mt-0.5">
                   When enabled, applicants must upload at least one supporting document to submit their application.
+                </p>
+              </div>
+            </label>
+          </div>
+
+          <div className="border-t border-nfw-blackberry/10 pt-4 mt-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.selection_method === "random"}
+                onChange={(e) =>
+                  setFormData({ ...formData, selection_method: e.target.checked ? "random" : "scored" })
+                }
+                className="mt-0.5 w-4 h-4 accent-nfw-wisteria"
+              />
+              <div>
+                <span className="text-sm font-semibold text-nfw-blackberry">
+                  Random Draw Selection
+                </span>
+                <p className="text-xs text-nfw-blackberry/50 mt-0.5">
+                  No scoring. Reviewer 1 screens applications against the eligibility criteria, then draws winners at random from the eligible applications (one per grant available). Reviewer 2 verifies each winner and draws replacements for any found ineligible.
                 </p>
               </div>
             </label>
