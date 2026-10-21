@@ -58,8 +58,8 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
   }
 
   // Lazy import so missing SDK doesn't break the rest of the route
-  const { evaluateGrantApplication, AI_MODEL_VERSION } = await import(
-    "@/lib/anthropic"
+  const { evaluateGrantFull, eligibilityForGrants } = await import(
+    "@/lib/grant-evaluation"
   );
 
   // ========== PHASE 1: Enroll grants ==========
@@ -165,12 +165,16 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
     // the duration of this tick to avoid repeat reads within a single batch).
     const { data: cycle } = await supabaseAdmin
       .from("grant_cycles")
-      .select("cycle_name, description")
+      .select("id, cycle_name, description, end_date")
       .eq("id", cycleId)
       .single();
 
-    const cycleName = cycle?.cycle_name || "";
-    const cycleDescription = cycle?.description || "";
+    const evalCycle = {
+      id: cycleId,
+      cycle_name: cycle?.cycle_name || "",
+      description: cycle?.description || "",
+      end_date: cycle?.end_date ?? null,
+    };
 
     // Fetch the slice of grants we need (with original ai_relevance so we can
     // preserve the "if reviewer already marked invalid, don't auto-restore"
@@ -178,13 +182,16 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
     const grantIds = allIds.slice(startIndex, endIndex);
     const { data: grants, error: fetchError } = await supabaseAdmin
       .from("grants")
-      .select("id, who_are_you, biggest_challenge, fund_usage, ai_relevance, ai_invalidated_at")
+      .select("id, user_id, who_are_you, biggest_challenge, fund_usage, ai_relevance, ai_invalidated_at")
       .in("id", grantIds);
 
     if (fetchError) {
       console.error("[process-ai-reevaluate] Grant fetch failed:", fetchError);
       throw fetchError;
     }
+
+    // Membership + consecutive-award checks for this slice in a few queries.
+    const checksByUser = await eligibilityForGrants(supabaseAdmin, evalCycle, grants || []);
 
     const startTime = Date.now();
     let newSucceeded = job.succeeded_count;
@@ -216,13 +223,12 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
           continue;
         }
 
-        const result = await evaluateGrantApplication({
-          cycleName,
-          cycleDescription,
-          whoAreYou: g.who_are_you || "",
-          biggestChallenge: g.biggest_challenge || "",
-          fundUsage: g.fund_usage || "",
-        });
+        const { payload } = await evaluateGrantFull(
+          supabaseAdmin,
+          g,
+          evalCycle,
+          checksByUser.get(g.user_id),
+        );
 
         // Mirror the original route's auto-restore rule:
         //   - If previously 'irrelevant' (auto-flagged), don't restore the
@@ -232,12 +238,7 @@ async function processJobChunk(job: Job): Promise<{ done: boolean; phase: string
         const wasPreviouslyIrrelevant = g.ai_relevance === "irrelevant";
         const reviewerAlreadyInvalidated = !!g.ai_invalidated_at;
 
-        const updatePayload: Record<string, any> = {
-          ai_relevance: result.relevance,
-          ai_reasoning: result.reasoning,
-          ai_evaluated_at: new Date().toISOString(),
-          ai_model_version: result.model || AI_MODEL_VERSION,
-        };
+        const updatePayload: Record<string, unknown> = { ...payload };
 
         if (wasPreviouslyIrrelevant && !reviewerAlreadyInvalidated) {
           // Was auto-flagged irrelevant; new eval says it's relevant — restore.

@@ -16,14 +16,14 @@ function sleep(ms: number) {
 
 async function runAiEvaluationForUnevaluatedGrants(cycleId: string) {
   // Lazy import so a missing key / SDK doesn't break the rest of the route
-  const { evaluateGrantApplication, AI_MODEL_VERSION } = await import(
-    "@/lib/anthropic"
+  const { evaluateGrantFull, eligibilityForGrants } = await import(
+    "@/lib/grant-evaluation"
   );
 
   // Fetch cycle description for context
   const { data: cycle } = await supabaseAdmin
     .from("grant_cycles")
-    .select("cycle_name, description")
+    .select("id, cycle_name, description, end_date")
     .eq("id", cycleId)
     .single();
   if (!cycle) return { total: 0, evaluated: 0, failed: 0 };
@@ -34,7 +34,7 @@ async function runAiEvaluationForUnevaluatedGrants(cycleId: string) {
   const { data: unevaluated } = await fetchAllPages((from, to) =>
     supabaseAdmin
       .from("grants")
-      .select("id, who_are_you, biggest_challenge, fund_usage")
+      .select("id, user_id, who_are_you, biggest_challenge, fund_usage")
       .eq("cycle_id", cycleId)
       .eq("status", "submitted")
       .or("ai_relevance.is.null,ai_relevance.eq.not_evaluated")
@@ -48,24 +48,19 @@ async function runAiEvaluationForUnevaluatedGrants(cycleId: string) {
 
   let evaluated = 0;
   let failed = 0;
+  const checksByUser = await eligibilityForGrants(supabaseAdmin, cycle, unevaluated);
 
   for (const g of unevaluated) {
     try {
-      const result = await evaluateGrantApplication({
-        cycleName: cycle.cycle_name || "",
-        cycleDescription: cycle.description || "",
-        whoAreYou: g.who_are_you || "",
-        biggestChallenge: g.biggest_challenge || "",
-        fundUsage: g.fund_usage || "",
-      });
+      const { payload } = await evaluateGrantFull(
+        supabaseAdmin,
+        g,
+        cycle,
+        checksByUser.get(g.user_id),
+      );
       await supabaseAdmin
         .from("grants")
-        .update({
-          ai_relevance: result.relevance,
-          ai_reasoning: result.reasoning,
-          ai_evaluated_at: new Date().toISOString(),
-          ai_model_version: result.model || AI_MODEL_VERSION,
-        })
+        .update(payload)
         .eq("id", g.id);
       evaluated++;
     } catch (err) {

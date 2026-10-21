@@ -44,7 +44,7 @@ export async function GET(
     // Get cycle to check scoring_started_at and get end_date for "current month" calculation
     const { data: cycle } = await supabaseAdmin
       .from("grant_cycles")
-      .select("scoring_started_at, scoring_completed_at, end_date")
+      .select("scoring_started_at, scoring_completed_at, end_date, selection_method")
       .eq("id", cycleId)
       .single();
 
@@ -113,6 +113,8 @@ export async function GET(
           rachel_complete,
           ai_relevance,
           ai_reasoning,
+          ai_criteria,
+          eligibility_checks,
           ai_evaluated_at,
           ai_model_version,
           ai_invalidated_at,
@@ -146,6 +148,7 @@ export async function GET(
     console.log("[scores/first GET] filtered grantsWithFirstScores sample:", grantsWithFirstScores?.[0]?.grant_scores);
 
     return NextResponse.json({
+      selection_method: cycle.selection_method ?? "scored",
       grants: grantsWithFirstScores || [],
       scoring_started_at: cycle.scoring_started_at,
       scoring_completed_at: cycle.scoring_completed_at,

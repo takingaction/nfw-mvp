@@ -88,8 +88,8 @@ async function processJobChunk(
     return { done: true, phase: "failed" };
   }
 
-  const { evaluateGrantApplication, AI_MODEL_VERSION } = await import(
-    "@/lib/anthropic"
+  const { evaluateGrantFull, eligibilityForGrants } = await import(
+    "@/lib/grant-evaluation"
   );
 
   // ========== PHASE 1: Enroll grants ==========
@@ -184,23 +184,30 @@ async function processJobChunk(
 
     const { data: cycle } = await supabaseAdmin
       .from("grant_cycles")
-      .select("cycle_name, description")
+      .select("id, cycle_name, description, end_date")
       .eq("id", cycleId)
       .single();
 
-    const cycleName = cycle?.cycle_name || "";
-    const cycleDescription = cycle?.description || "";
+    const evalCycle = {
+      id: cycleId,
+      cycle_name: cycle?.cycle_name || "",
+      description: cycle?.description || "",
+      end_date: cycle?.end_date ?? null,
+    };
 
     const grantIds = allIds.slice(startIndex, endIndex);
     const { data: grants, error: fetchError } = await supabaseAdmin
       .from("grants")
-      .select("id, who_are_you, biggest_challenge, fund_usage, ai_relevance")
+      .select("id, user_id, who_are_you, biggest_challenge, fund_usage, ai_relevance")
       .in("id", grantIds);
 
     if (fetchError) {
       console.error("[process-ai-backfill] Grant fetch failed:", fetchError);
       throw fetchError;
     }
+
+    // Membership + consecutive-award checks for this slice in a few queries.
+    const checksByUser = await eligibilityForGrants(supabaseAdmin, evalCycle, grants || []);
 
     const startTime = Date.now();
     let newSucceeded = job.succeeded_count;
@@ -233,21 +240,15 @@ async function processJobChunk(
           continue;
         }
 
-        const result = await evaluateGrantApplication({
-          cycleName,
-          cycleDescription,
-          whoAreYou: g.who_are_you || "",
-          biggestChallenge: g.biggest_challenge || "",
-          fundUsage: g.fund_usage || "",
-        });
+        const { payload } = await evaluateGrantFull(
+          supabaseAdmin,
+          g,
+          evalCycle,
+          checksByUser.get(g.user_id),
+        );
         await supabaseAdmin
           .from("grants")
-          .update({
-            ai_relevance: result.relevance,
-            ai_reasoning: result.reasoning,
-            ai_evaluated_at: new Date().toISOString(),
-            ai_model_version: result.model || AI_MODEL_VERSION,
-          })
+          .update(payload)
           .eq("id", g.id);
         newSucceeded++;
       } catch (err: any) {

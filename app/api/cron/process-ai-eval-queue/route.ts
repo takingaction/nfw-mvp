@@ -77,13 +77,13 @@ async function claimOne(): Promise<
 
 async function processJob(
   job: { id: string; grant_id: string; cycle_id: string; attempts: number },
-  evaluateGrantApplication: any,
-  AI_MODEL_VERSION: string,
+  evaluateGrantFull: typeof import("@/lib/grant-evaluation").evaluateGrantFull,
+  cols: { grant: string; cycle: string },
 ): Promise<"completed" | "failed"> {
   // Look up the grant for evaluation input
   const { data: grant, error: grantErr } = await supabaseAdmin
     .from("grants")
-    .select("id, who_are_you, biggest_challenge, fund_usage")
+    .select(cols.grant)
     .eq("id", job.grant_id)
     .single();
 
@@ -93,7 +93,7 @@ async function processJob(
 
   const { data: cycle, error: cycleErr } = await supabaseAdmin
     .from("grant_cycles")
-    .select("cycle_name, description")
+    .select(cols.cycle)
     .eq("id", job.cycle_id)
     .single();
 
@@ -111,24 +111,17 @@ async function processJob(
     return "completed";
   }
 
-  // Evaluate
-  const result = await evaluateGrantApplication({
-    cycleName: cycle.cycle_name || "",
-    cycleDescription: cycle.description || "",
-    whoAreYou: grant.who_are_you || "",
-    biggestChallenge: grant.biggest_challenge || "",
-    fundUsage: grant.fund_usage || "",
-  });
+  // Evaluate: code eligibility checks + AI criteria (lib/grant-evaluation.ts)
+  const { payload } = await evaluateGrantFull(
+    supabaseAdmin,
+    grant as unknown as import("@/lib/grant-evaluation").EvalGrant,
+    cycle as unknown as import("@/lib/grant-evaluation").EvalCycle,
+  );
 
   // Persist to grants
   const { error: persistErr } = await supabaseAdmin
     .from("grants")
-    .update({
-      ai_relevance: result.relevance,
-      ai_reasoning: result.reasoning,
-      ai_evaluated_at: new Date().toISOString(),
-      ai_model_version: result.model || AI_MODEL_VERSION,
-    })
+    .update(payload)
     .eq("id", job.grant_id);
 
   if (persistErr) {
@@ -162,8 +155,8 @@ export async function GET(request: NextRequest) {
 
   // Lazy import — same pattern as lib/anthropic.ts so a missing SDK
   // doesn't break the route itself.
-  const { evaluateGrantApplication, AI_MODEL_VERSION } = await import(
-    "@/lib/anthropic"
+  const { evaluateGrantFull, GRANT_EVAL_COLUMNS, CYCLE_EVAL_COLUMNS } = await import(
+    "@/lib/grant-evaluation"
   );
 
   const startTime = Date.now();
@@ -186,7 +179,10 @@ export async function GET(request: NextRequest) {
     if (!job) break;
 
     try {
-      const outcome = await processJob(job, evaluateGrantApplication, AI_MODEL_VERSION);
+      const outcome = await processJob(job, evaluateGrantFull, {
+        grant: GRANT_EVAL_COLUMNS,
+        cycle: CYCLE_EVAL_COLUMNS,
+      });
       if (outcome === "completed") succeeded++;
     } catch (err: any) {
       console.error(

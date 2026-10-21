@@ -39,7 +39,7 @@ export async function GET(
     // Get cycle to check if first reviewer is complete
     const { data: cycle } = await supabaseAdmin
       .from("grant_cycles")
-      .select("scoring_started_at, scoring_completed_at, end_date")
+      .select("scoring_started_at, scoring_completed_at, end_date, selection_method")
       .eq("id", cycleId)
       .single();
 
@@ -105,6 +105,8 @@ export async function GET(
           michelle_complete,
           ai_relevance,
           ai_reasoning,
+          ai_criteria,
+          eligibility_checks,
           ai_evaluated_at,
           ai_model_version,
           ai_invalidated_at,
@@ -149,6 +151,7 @@ export async function GET(
     });
 
     return NextResponse.json({
+      selection_method: cycle.selection_method ?? "scored",
       grants: filteredGrants || [],
       scoring_completed_at: cycle.scoring_completed_at,
       totalInCycle: grants?.length || 0,

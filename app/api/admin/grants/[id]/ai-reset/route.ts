@@ -42,6 +42,8 @@ export async function POST(
         ai_reasoning: null,
         ai_evaluated_at: null,
         ai_model_version: null,
+        ai_criteria: null,
+        eligibility_checks: null,
       })
       .eq("cycle_id", cycleId)
       .select("id");

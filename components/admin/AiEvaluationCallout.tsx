@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { Sparkles, XCircle, AlertTriangle, CheckCircle2 } from "lucide-react";
+import AiCriteriaList from "./AiCriteriaList";
 
 export interface AiEvaluation {
   ai_relevance?: "relevant" | "irrelevant" | "uncertain" | "not_evaluated" | null;
   ai_reasoning?: string | null;
   ai_invalidated_at?: string | null;
   ai_validated_at?: string | null;
+  ai_criteria?: unknown;
+  eligibility_checks?: unknown;
 }
 
 type Action = "skip" | "restore" | "validate" | "unvalidate";
@@ -126,6 +129,12 @@ export default function AiEvaluationCallout({
           {ai_reasoning}
         </p>
       )}
+      <div className="mb-2">
+        <AiCriteriaList
+          ai_criteria={evaluation.ai_criteria}
+          eligibility_checks={evaluation.eligibility_checks}
+        />
+      </div>
       {!isInvalidated && (
         <p className="text-xs font-ui text-nfw-blackberry/50 mb-3">
           AI suggestions are advisory. You decide.

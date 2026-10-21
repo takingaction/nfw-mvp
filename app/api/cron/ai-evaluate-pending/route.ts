@@ -40,9 +40,7 @@ export async function GET(request: Request) {
   }
 
   // Lazy import so a missing SDK doesn't break the route
-  const { evaluateGrantApplication, AI_MODEL_VERSION } = await import(
-    "@/lib/anthropic"
-  );
+  const { evaluateGrantFull } = await import("@/lib/grant-evaluation");
 
   const startTime = Date.now();
 
@@ -51,6 +49,7 @@ export async function GET(request: Request) {
   // cycle's name + description — fetch in bulk after gathering grant IDs.
   const allGrants: Array<{
     id: string;
+    user_id: string;
     cycle_id: string;
     who_are_you: string | null;
     biggest_challenge: string | null;
@@ -64,7 +63,7 @@ export async function GET(request: Request) {
     const to = from + PAGE_SIZE - 1;
     const { data, error } = await supabaseAdmin
       .from("grants")
-      .select("id, cycle_id, who_are_you, biggest_challenge, fund_usage")
+      .select("id, user_id, cycle_id, who_are_you, biggest_challenge, fund_usage")
       .eq("status", "submitted")
       .or("ai_relevance.is.null,ai_relevance.eq.not_evaluated")
       .order("created_at", { ascending: true })
@@ -102,11 +101,14 @@ export async function GET(request: Request) {
     new Set(allGrants.map((g) => g.cycle_id).filter(Boolean)),
   ) as string[];
 
-  const cycleMap = new Map<string, { cycle_name: string; description: string }>();
+  const cycleMap = new Map<
+    string,
+    { id: string; cycle_name: string; description: string; end_date: string | null }
+  >();
   if (uniqueCycleIds.length > 0) {
     const { data: cycles, error: cyclesError } = await supabaseAdmin
       .from("grant_cycles")
-      .select("id, cycle_name, description")
+      .select("id, cycle_name, description, end_date")
       .in("id", uniqueCycleIds);
 
     if (cyclesError) {
@@ -122,8 +124,10 @@ export async function GET(request: Request) {
 
     for (const c of cycles ?? []) {
       cycleMap.set(c.id, {
+        id: c.id,
         cycle_name: c.cycle_name || "",
         description: c.description || "",
+        end_date: c.end_date ?? null,
       });
     }
   }
@@ -144,21 +148,10 @@ export async function GET(request: Request) {
     }
 
     try {
-      const result = await evaluateGrantApplication({
-        cycleName: cycle.cycle_name,
-        cycleDescription: cycle.description,
-        whoAreYou: grant.who_are_you || "",
-        biggestChallenge: grant.biggest_challenge || "",
-        fundUsage: grant.fund_usage || "",
-      });
+      const { payload } = await evaluateGrantFull(supabaseAdmin, grant, cycle);
       await supabaseAdmin
         .from("grants")
-        .update({
-          ai_relevance: result.relevance,
-          ai_reasoning: result.reasoning,
-          ai_evaluated_at: new Date().toISOString(),
-          ai_model_version: result.model || AI_MODEL_VERSION,
-        })
+        .update(payload)
         .eq("id", grant.id);
       evaluated++;
     } catch (err) {
