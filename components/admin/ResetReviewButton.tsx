@@ -81,7 +81,7 @@ export default function ResetReviewButton({ cycleId }: { cycleId: string }) {
     <>
       <button
         onClick={openModal}
-        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-red-300 text-red-700 font-ui text-sm font-medium hover:bg-red-50 transition-colors flex-shrink-0"
+        className="w-full sm:w-auto lg:self-end inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-red-300 text-red-700 font-ui text-sm font-medium hover:bg-red-50 transition-colors flex-shrink-0"
       >
         <RotateCcw className="w-4 h-4" />
         Reset review
