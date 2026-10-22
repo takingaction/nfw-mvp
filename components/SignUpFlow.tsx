@@ -362,7 +362,8 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
     const formData = new FormData(e.target as HTMLFormElement);
     if (formData.get("website")) {
       // Bot detected - silently redirect to success page
-      window.location.href = "/auth/sign-up-success?email=" + encodeURIComponent(email);
+      try { sessionStorage.setItem("nfw_signup_email", email); } catch {}
+      window.location.href = "/auth/sign-up-success";
       return;
     }
 
@@ -387,7 +388,8 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
       });
       if (error) throw error;
       // Redirect to success page to check email
-      window.location.href = "/auth/sign-up-success?email=" + encodeURIComponent(email);
+      try { sessionStorage.setItem("nfw_signup_email", email); } catch {}
+      window.location.href = "/auth/sign-up-success";
     } catch (err: any) {
       setError(err.message || "Failed to create account");
     } finally {

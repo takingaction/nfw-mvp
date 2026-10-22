@@ -7,7 +7,23 @@ import { Loader2 } from "lucide-react";
 
 function SignUpSuccessContent() {
   const searchParams = useSearchParams();
-  const email = searchParams.get("email") || "";
+  // The email is passed via sessionStorage, not the URL, so it never appears in
+  // page URLs, referrers, or third-party analytics. Older links that still carry
+  // ?email= are read once and then stripped from the address bar.
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    const fromUrl = searchParams.get("email");
+    let stored = "";
+    try {
+      stored = sessionStorage.getItem("nfw_signup_email") || "";
+      if (fromUrl) sessionStorage.setItem("nfw_signup_email", fromUrl);
+    } catch {}
+    setEmail(fromUrl || stored);
+    if (fromUrl) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [searchParams]);
   const [resending, setResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
