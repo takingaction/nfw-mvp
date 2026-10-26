@@ -91,7 +91,8 @@ export default function RedeemClient({ view }: { view: RedeemView }) {
         {view.code && <CodeChip code={view.code} />}
         <p className="text-nfw-blackberry/70 text-sm">{view.message}</p>
         <div className="space-y-2">
-          <Link href="/redeem" className={primaryBtn}>Try another code</Link>
+          {/* Empty code= tells the proxy to drop the code held from this visit. */}
+          <Link href="/redeem?code=" prefetch={false} className={primaryBtn}>Try another code</Link>
           <Link href="/contact" className="block text-sm text-nfw-blackberry/60 underline">Need help? Contact us</Link>
         </div>
       </Shell>

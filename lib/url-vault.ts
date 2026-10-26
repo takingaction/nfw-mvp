@@ -51,23 +51,31 @@ export function isVaultEligiblePath(pathname: string): boolean {
   return !EXCLUDED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p));
 }
 
-/** Split a URL into the values to hold back and the clean URL, or null if nothing to hold. */
-export function splitSensitive(url: URL): { held: Held; cleanUrl: URL } | null {
+/**
+ * Split a URL into the values to hold back and the clean URL, or null if there
+ * is nothing to do. A held param given with an empty value (e.g. /redeem?code=)
+ * means "clear it": it is removed from the vault and from the address, so
+ * "start over" links can drop a value held from an earlier visit.
+ */
+export function splitSensitive(url: URL): { held: Held; cleared: string[]; cleanUrl: URL } | null {
   const names = new Set(RULES[url.pathname] ?? []);
   const next = url.searchParams.get("next");
   if (next && SENSITIVE_IN_NEXT.test(next)) names.add("next");
 
   const held: Held = {};
+  const cleared: string[] = [];
   for (const name of names) {
     const value = url.searchParams.get(name);
-    if (value !== null && value !== "") held[name] = value;
+    if (value === null) continue;
+    if (value === "") cleared.push(name);
+    else held[name] = value;
   }
-  if (Object.keys(held).length === 0) return null;
+  if (Object.keys(held).length === 0 && cleared.length === 0) return null;
 
   const cleanUrl = new URL(url.toString());
-  for (const name of Object.keys(held)) cleanUrl.searchParams.delete(name);
+  for (const name of [...Object.keys(held), ...cleared]) cleanUrl.searchParams.delete(name);
   cleanUrl.searchParams.delete("_rsc");
-  return { held, cleanUrl };
+  return { held, cleared, cleanUrl };
 }
 
 export function readVault(raw: string | undefined, now = Date.now()): Vault {
@@ -86,8 +94,24 @@ export function readVault(raw: string | undefined, now = Date.now()): Vault {
   }
 }
 
-export function writeVault(vault: Vault, path: string, held: Held, now = Date.now()): string {
-  const next: Vault = { ...vault, [path]: { p: held, t: now } };
+export function writeVault(
+  vault: Vault,
+  path: string,
+  held: Held,
+  cleared: string[] = [],
+  now = Date.now(),
+): string {
+  // New values replace the path's entry; cleared names are dropped from it.
+  const kept: Held = {};
+  if (Object.keys(held).length === 0) {
+    for (const [name, value] of Object.entries(vault[path]?.p ?? {})) {
+      if (!cleared.includes(name)) kept[name] = value;
+    }
+  }
+  const entry = Object.keys(held).length ? held : kept;
+  const next: Vault = { ...vault };
+  if (Object.keys(entry).length) next[path] = { p: entry, t: Object.keys(held).length ? now : vault[path].t };
+  else delete next[path];
   const newestFirst = Object.entries(next).sort((a, b) => b[1].t - a[1].t).slice(0, MAX_ENTRIES);
   return JSON.stringify(Object.fromEntries(newestFirst));
 }

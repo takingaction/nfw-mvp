@@ -26,7 +26,11 @@ export async function proxy(request: NextRequest) {
     if (split) {
       const vault = readVault(request.cookies.get(VAULT_COOKIE)?.value);
       const res = NextResponse.redirect(split.cleanUrl, 303);
-      res.cookies.set(VAULT_COOKIE, writeVault(vault, pathname, split.held), vaultCookieOptions);
+      res.cookies.set(
+        VAULT_COOKIE,
+        writeVault(vault, pathname, split.held, split.cleared),
+        vaultCookieOptions,
+      );
       res.headers.set("Cache-Control", "private, no-store");
       res.headers.set("Referrer-Policy", "no-referrer");
       return res;

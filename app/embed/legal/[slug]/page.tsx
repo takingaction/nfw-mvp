@@ -1,6 +1,6 @@
-import Script from "next/script";
 import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+import TermlyPolicyEmbed from "@/components/TermlyPolicyEmbed";
 
 /**
  * Legal pages for the mobile app's in-app web view.
@@ -41,16 +41,17 @@ export default async function EmbeddedLegalPage({
     .single();
 
   const embedCode = data?.termly_embed_code ?? "";
-  // Termly "embed" policies render through Termly's policy viewer script
-  // (not the consent banner); the static HTML policies need nothing extra.
-  const needsPolicyViewer = embedCode.includes('name="termly-embed"');
+  // Termly "embed" policies (Terms, Accessibility) are drawn by Termly's policy
+  // viewer, loaded after hydration; static HTML policies (Privacy) render as is.
+  const policyId = embedCode.match(/name="termly-embed"\s+data-id="([0-9a-f-]+)"/i)?.[1] ?? null;
 
   return (
     <main className="min-h-screen bg-white px-4 py-6">
       <h1 className="text-2xl font-bold text-nfw-blackberry mb-4 font-serif">{title}</h1>
-      <div dangerouslySetInnerHTML={{ __html: embedCode }} />
-      {needsPolicyViewer && (
-        <Script id="termly-jssdk" src="https://app.termly.io/embed-policy.min.js" strategy="afterInteractive" />
+      {policyId ? (
+        <TermlyPolicyEmbed policyId={policyId} />
+      ) : (
+        <div dangerouslySetInnerHTML={{ __html: embedCode }} />
       )}
     </main>
   );
