@@ -16,8 +16,9 @@ import { LEGAL_PAGES, type LegalSlug } from "@/types/content";
  * Build phase: 6
  *
  * The legal copy is a Termly *script* embed (legal_pages.termly_embed_code), which can't be
- * rendered natively, so we load the public web page in a WebView and hide the site chrome
- * (nav, footer, back-to-top, cookie banner) with injected CSS. Pages are public — no auth.
+ * rendered natively, so we load it in a WebView from /embed/legal/<slug>: a version of the
+ * page without site chrome, cookie banner or tag manager (no tracking runs in the app).
+ * The injected CSS below is kept as a fallback. Pages are public — no auth.
  */
 
 const HIDE_CHROME_CSS = `
@@ -42,7 +43,11 @@ export default function LegalScreen() {
 
   const known = (slug ?? "") in LEGAL_PAGES;
   const title = known ? LEGAL_PAGES[slug as LegalSlug] : "Legal";
-  const uri = `${env.siteUrl}/${slug}`;
+  // The /embed/ version leaves out site chrome, the cookie banner and Google Tag
+  // Manager, so no analytics or ad tags run inside the app. "Open on website"
+  // still goes to the normal public page.
+  const uri = `${env.siteUrl}/embed/legal/${slug}`;
+  const websiteUri = `${env.siteUrl}/${slug}`;
 
   function onShouldStartLoad(req: WebViewNavigation): boolean {
     if (req.url === uri || req.url.startsWith(`${uri}?`) || req.url.startsWith(`${uri}#`)) return true;
@@ -74,7 +79,7 @@ export default function LegalScreen() {
                     setReloadKey((k) => k + 1);
                   }}
                 />
-                <Button label="Open on website" variant="ghost" size="sm" onPress={() => WebBrowser.openBrowserAsync(uri)} />
+                <Button label="Open on website" variant="ghost" size="sm" onPress={() => WebBrowser.openBrowserAsync(websiteUri)} />
               </View>
             )}
           </View>

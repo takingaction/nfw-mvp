@@ -67,9 +67,25 @@ export default async function RootLayout({
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") || "/";
   const isPublicRoute = false; // /coming-soon is no longer a gate - homepage serves to all
+  // /embed/* pages are shown inside the mobile app: no site chrome, no consent
+  // banner and no tag manager, since app users have no way to answer the banner.
+  const isEmbed = pathname.startsWith("/embed/");
 
   // Cached (lib/cms-cache.ts); a lookup failure just skips GTM, as before.
-  const gtmId = await getCachedGtmId().catch(() => null);
+  const gtmId = isEmbed ? null : await getCachedGtmId().catch(() => null);
+
+  if (isEmbed) {
+    return (
+      <html lang="en" suppressHydrationWarning>
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} ${playfairDisplay.variable} ${dmSans.variable} antialiased`}
+          suppressHydrationWarning
+        >
+          {children}
+        </body>
+      </html>
+    );
+  }
 
   return (
     <html lang="en" suppressHydrationWarning>
