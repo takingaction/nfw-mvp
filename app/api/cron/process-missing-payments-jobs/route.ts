@@ -324,6 +324,9 @@ async function processJob(jobId: string, startedAt: number): Promise<void> {
   }
 }
 
+// Minimum time between cron auto-created jobs (see the !job branch below).
+const AUTO_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
+
 export async function GET(request: Request): Promise<NextResponse> {
   try {
     const authHeader = request.headers.get("Authorization");
@@ -359,6 +362,23 @@ export async function GET(request: Request): Promise<NextResponse> {
       .maybeSingle();
 
     if (!job) {
+      // Auto-refresh at most once an hour. This cron still ticks often so an
+      // in-progress or admin-triggered job is picked up quickly, but each new
+      // job re-reads every profile (and re-queries Stripe), and auto-creating
+      // one on every idle tick was ~18 full profiles scans an hour between
+      // the two reconciliation crons. Change AUTO_REFRESH_INTERVAL_MS to
+      // tune freshness (e.g. 24 * 60 * 60 * 1000 for daily).
+      const { data: latest } = await supabaseAdmin
+        .from("missing_payments_jobs")
+        .select("created_at")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const lastCreatedMs = latest?.created_at ? new Date(latest.created_at).getTime() : 0;
+      if (Date.now() - lastCreatedMs < AUTO_REFRESH_INTERVAL_MS) {
+        return NextResponse.json({ success: true, processed: "no_job", reason: "last job is less than an hour old" });
+      }
+
       const { data: created } = await supabaseAdmin
         .from("missing_payments_jobs")
         .insert({ status: "pending", triggered_by: "cron" })
