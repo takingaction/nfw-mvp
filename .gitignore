@@ -51,3 +51,6 @@ REPORTS-IGNORE/
 
 # SQL files
 /*.sql
+
+# Local backups from scripts/compress-page-builder-images.mjs
+/.image-compression/

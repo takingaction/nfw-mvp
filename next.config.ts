@@ -9,6 +9,12 @@ import type { NextConfig } from "next";
 // commit once the cache has been refreshed at least once.
 const nextConfig: NextConfig = {
   trailingSlash: false,
+  // There is no favicon.ico in /public, so browsers' automatic /favicon.ico
+  // requests fell through to app/[slug] and rendered a page (~22k/day).
+  // Redirects are handled by Vercel's router without invoking a function.
+  async redirects() {
+    return [{ source: "/favicon.ico", destination: "/icon.png", permanent: true }];
+  },
   images: {
     remotePatterns: [
       {

@@ -1,8 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
 import SectionRenderer from "@/components/sections/SectionRenderer";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getCachedLiveSections, getCachedPageBySlug } from "@/lib/cms-cache";
 import { Metadata } from "next";
 import Script from "next/script";
+
+function isFileLikeSlug(slug: string): boolean {
+  return slug.includes(".");
+}
 
 export async function generateMetadata({
   params,
@@ -10,13 +14,9 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const supabase = await createClient();
+  if (isFileLikeSlug(slug)) return { title: "National Fund for Women" };
 
-  const { data: page } = await supabase
-    .from("pages")
-    .select("meta_title, meta_description, title")
-    .eq("slug", slug)
-    .single();
+  const page = await getCachedPageBySlug(slug);
 
   if (!page) {
     return { title: "National Fund for Women" };
@@ -34,13 +34,12 @@ export default async function DynamicPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const supabase = await createClient();
+  // /favicon.ico, /meta.json etc. used to fall through to this route, cost two
+  // Supabase lookups each, then redirect to "/" and render the homepage
+  // (~45k wasted lookups/day). CMS slugs never contain a dot.
+  if (isFileLikeSlug(slug)) notFound();
 
-  const { data: page } = await supabase
-    .from("pages")
-    .select("id, status, slug, title, meta_title, meta_description, meta_schema")
-    .eq("slug", slug)
-    .single();
+  const page = await getCachedPageBySlug(slug);
 
   if (!page) {
     redirect("/");
@@ -54,13 +53,7 @@ export default async function DynamicPage({
     redirect("/");
   }
 
-  const { data: sections } = await supabase
-    .from("page_sections")
-    .select("*")
-    .eq("page_id", page.id)
-    .eq("version", "live")
-    .eq("visible", true)
-    .order("order_index");
+  const sections = await getCachedLiveSections(page.id);
 
   return (
     <>
@@ -71,7 +64,7 @@ export default async function DynamicPage({
           dangerouslySetInnerHTML={{ __html: page.meta_schema }}
         />
       )}
-      <SectionRenderer sections={sections ?? []} />
+      <SectionRenderer sections={sections} />
     </>
   );
 }

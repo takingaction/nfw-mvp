@@ -1,6 +1,7 @@
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { isOptimizableImage, optimizeImageUpload } from "@/lib/image-optimize";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,7 +19,9 @@ const ALLOWED_TYPES = [
   "video/ogg",
 ];
 
-const IMAGE_MAX_SIZE = 3 * 1024 * 1024;  // 3MB for images
+// Raster images are downscaled in the browser (lib/upload.ts) before they get
+// here, so this mostly bounds GIFs/SVGs and Vercel's 4.5 MB body limit.
+const IMAGE_MAX_SIZE = 4 * 1024 * 1024;  // 4MB for images
 const VIDEO_MAX_SIZE = 50 * 1024 * 1024; // 50MB for videos
 
 export async function POST(request: NextRequest) {
@@ -60,8 +63,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const ext = file.name.split(".").pop() || "bin";
-    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    // Raster images are re-encoded to WebP, so the stored name gets a .webp extension.
+    const optimize = !isVideo && isOptimizableImage(file.type);
+    const ext = optimize ? "webp" : file.name.split(".").pop() || "bin";
+    const baseName = optimize ? file.name.replace(/\.[^.]+$/, "") : file.name;
+    const sanitizedName = baseName.replace(/[^a-zA-Z0-9.-]/g, "_");
     const fileName = `${folder}/${Date.now()}-${Math.random()
       .toString(36)
       .slice(2)}.${sanitizedName.endsWith(`.${ext}`) ? sanitizedName : `${sanitizedName}.${ext}`}`;
@@ -91,13 +97,30 @@ export async function POST(request: NextRequest) {
 
     // For smaller files (images), upload directly through API
     const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    let buffer: Buffer = Buffer.from(bytes);
+    let contentType = file.type;
 
+    if (optimize) {
+      try {
+        const optimized = await optimizeImageUpload(buffer);
+        buffer = optimized.buffer;
+        contentType = optimized.contentType;
+      } catch (err) {
+        console.error("Image optimization failed:", err);
+        return NextResponse.json(
+          { error: "Could not process this image. Try saving it as a JPEG or PNG and uploading again." },
+          { status: 400 },
+        );
+      }
+    }
+
+    // Object names are unique per upload and never overwritten (upsert: false),
+    // so browsers and the CDN can keep them for a year.
     const { error } = await supabaseAdmin.storage
       .from("page-builder")
       .upload(fileName, buffer, {
-        contentType: file.type,
-        cacheControl: "3600",
+        contentType,
+        cacheControl: "31536000",
         upsert: false,
       });
 

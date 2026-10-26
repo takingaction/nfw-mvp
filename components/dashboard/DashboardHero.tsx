@@ -1,5 +1,6 @@
 "use client";
 
+import CmsImage from "@/components/CmsImage";
 import Link from "next/link";
 
 type DashboardHeroProps = {
@@ -10,9 +11,10 @@ export default function DashboardHero({ heroImage }: DashboardHeroProps) {
   return (
     <div className="relative w-full h-[550px] overflow-hidden">
       {heroImage && (
-        <img
+        <CmsImage
           src={heroImage}
           alt="Dashboard hero"
+          priority
           className="w-full h-full object-cover"
         />
       )}

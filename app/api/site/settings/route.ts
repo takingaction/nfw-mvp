@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/adminCheck";
+import { CMS_TAGS, invalidateCms } from "@/lib/cms-cache";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -77,6 +78,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    invalidateCms(CMS_TAGS.settings);
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("Error updating site settings:", err);

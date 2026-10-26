@@ -1,28 +1,19 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getCachedActivePopups } from "@/lib/cms-cache";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const currentPath = searchParams.get("path") || "/";
 
-    const supabase = await createClient();
+    // Active popups are cached (lib/cms-cache.ts); the date window is applied
+    // here per request so scheduled popups still start/stop on time.
+    const now = Date.now();
+    const popups = await getCachedActivePopups();
 
-    const now = new Date().toISOString();
-
-    const { data: popups, error } = await supabase
-      .from("promotional_popups")
-      .select("*")
-      .eq("is_active", true)
-      .or(`start_date.is.null,start_date.lte.${now}`)
-      .or(`end_date.is.null,end_date.gte.${now}`)
-      .order("created_at", { ascending: true });
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    const activePopups = (popups || []).filter((popup) => {
+    const activePopups = popups.filter((popup) => {
+      if (popup.start_date && new Date(popup.start_date).getTime() > now) return false;
+      if (popup.end_date && new Date(popup.end_date).getTime() < now) return false;
       const targets = popup.target_pages || [];
       return targets.includes("*") || targets.includes(currentPath);
     });

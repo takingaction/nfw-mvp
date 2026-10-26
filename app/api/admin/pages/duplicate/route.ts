@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { CMS_TAGS, invalidateCms } from "@/lib/cms-cache";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -106,6 +107,7 @@ export async function POST(request: Request) {
     if (sectionsError) {
       console.error("Error fetching sections:", sectionsError);
       // Still return success since page was created
+      invalidateCms(CMS_TAGS.pages);
       return NextResponse.json({ id: newPage.id, slug: newPage.slug });
     }
 
@@ -130,6 +132,7 @@ export async function POST(request: Request) {
       }
     }
 
+    invalidateCms(CMS_TAGS.pages);
     return NextResponse.json({ id: newPage.id, slug: newPage.slug });
   } catch (error) {
     console.error("Duplicate page error:", error);

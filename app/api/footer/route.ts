@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { CMS_TAGS, getCachedSiteFooter, invalidateCms } from "@/lib/cms-cache";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseAdmin = createClient(
@@ -87,6 +88,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
 
+      invalidateCms(CMS_TAGS.footer);
       return NextResponse.json({ success: true, id });
     } else {
       const { data, error } = await supabaseAdmin
@@ -100,6 +102,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
 
+      invalidateCms(CMS_TAGS.footer);
       return NextResponse.json({ success: true, id: data.id });
     }
   } catch (err) {
@@ -112,16 +115,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("site_footer")
-      .select("*")
-      .limit(1)
-      .single();
-
-    if (error && error.code !== "PGRST116") {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
+    const data = await getCachedSiteFooter();
     return NextResponse.json(data || null);
   } catch (err) {
     return NextResponse.json(

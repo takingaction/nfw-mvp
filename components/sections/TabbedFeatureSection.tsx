@@ -1,5 +1,6 @@
 "use client";
 
+import CmsImage from "@/components/CmsImage";
 import { useState } from "react";
 import Link from "next/link";
 import { TabbedFeatureContent } from "@/lib/sections/types";
@@ -56,9 +57,10 @@ export default function TabbedFeatureSection({ content }: Props) {
             <div className="relative">
               {activeItem.image_url ? (
                 <div className="w-full aspect-[3/2] rounded-lg overflow-hidden">
-                  <img
+                  <CmsImage
                     src={activeItem.image_url}
                     alt=""
+                    sizes="(min-width: 1280px) 600px, (min-width: 1024px) 50vw, 100vw"
                     className="w-full h-full object-cover"
                   />
                 </div>

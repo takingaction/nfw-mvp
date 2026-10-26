@@ -1,5 +1,6 @@
 "use client";
 
+import CmsImage from "@/components/CmsImage";
 import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
@@ -265,9 +266,10 @@ return (
                 <div className="w-full md:w-1/2 flex-shrink-0 relative">
                   <div className="absolute inset-0 overflow-hidden rounded-t-lg md:rounded-l-lg md:rounded-r-none">
                     {currentPopup.image_url ? (
-                      <img
+                      <CmsImage
                         src={currentPopup.image_url}
                         alt=""
+                        sizes="(min-width: 768px) 400px, 100vw"
                         className="w-full h-full object-cover"
                       />
                     ) : (

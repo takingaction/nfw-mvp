@@ -1,3 +1,4 @@
+import CmsImage from "@/components/CmsImage";
 import Link from "next/link";
 import { SplitEverydayContent } from "@/lib/sections/types";
 import { getBackgroundClass, getTextColorForBackground, getEyebrowColorForBackground } from "@/lib/colors";
@@ -23,9 +24,10 @@ export default function SplitEverydaySection({ content }: Props) {
           {/* Image */}
           <div className="overflow-hidden">
             {c.image_url && c.image_url.length > 0 ? (
-              <img
+              <CmsImage
                 src={c.image_url}
                 alt=""
+                sizes="(min-width: 1024px) 50vw, 100vw"
                 className="w-full h-full object-contain"
               />
             ) : (

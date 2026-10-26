@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { CMS_TAGS, invalidateCms } from "@/lib/cms-cache";
 
 export async function GET() {
   try {
@@ -101,6 +102,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    invalidateCms(CMS_TAGS.popups);
     return NextResponse.json({ popup });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

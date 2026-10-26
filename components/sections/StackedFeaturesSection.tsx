@@ -1,5 +1,6 @@
 "use client";
 
+import CmsImage from "@/components/CmsImage";
 import Link from "next/link";
 import { StackedFeaturesContent, CardSwatchColor } from "@/lib/sections/types";
 import { getCardSwatchColor } from "@/lib/colors";
@@ -44,9 +45,10 @@ export default function StackedFeaturesSection({ content }: Props) {
               >
                 {col.image_url ? (
                   <>
-                    <img
+                    <CmsImage
                       src={col.image_url}
                       alt=""
+                      sizes="(min-width: 768px) 34vw, 100vw"
                       className="absolute inset-0 w-full h-full object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";

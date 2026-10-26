@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { CMS_TAGS, invalidateCms } from "@/lib/cms-cache";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
       );
     }
 
+    invalidateCms(CMS_TAGS.pages);
     return NextResponse.json({ id: page.id, slug: page.slug });
   } catch (error) {
     console.error("Create page error:", error);

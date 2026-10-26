@@ -1,15 +1,10 @@
 import { cookies } from "next/headers";
-import { createClient } from "@supabase/supabase-js";
+import { getCachedSiteHeader } from "@/lib/cms-cache";
 import NavigationClient from "./NavigationClient";
 import MobileMenu from "./MobileMenu";
 import { AuthButtonCombined } from "./AuthButtonCombined";
 import NavigationContent from "./NavigationContent";
 import NavAuthInit from "./NavAuthInit";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
 
 interface NavLink {
   label: string;
@@ -67,11 +62,8 @@ export default async function Navigation() {
   const cookieStore = await cookies();
   const initialSignedIn = isLikelySignedIn(cookieStore);
 
-  const { data: header } = await supabaseAdmin
-    .from("site_header")
-    .select("*")
-    .limit(1)
-    .single();
+  // Cached (lib/cms-cache.ts); on failure fall back to the default header, as before.
+  const header = (await getCachedSiteHeader().catch(() => null)) as HeaderData | null;
 
   const defaultHeader: HeaderData = {
     id: "",

@@ -26,11 +26,15 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  // Refresh session
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  // Refresh the session cookie and read the signed-in user.
+  // getClaims() verifies the access-token JWT locally against the project's
+  // cached JWKS when the project uses asymmetric signing keys, instead of a
+  // round trip to /auth/v1/user on every request (getUser() here was most of
+  // the ~100k-150k /auth/v1/user calls a day). With legacy HS256 keys it falls
+  // back to the same network call getUser() made, so it is never worse.
+  // Route handlers and admin pages still authorize with getUser()/requireAdmin().
+  const { data: claimsData, error: authError } = await supabase.auth.getClaims();
+  const userId: string | null = claimsData?.claims?.sub ?? null;
 
   // Handle orphaned session (user deleted from auth.users but still has cookies)
   // Only redirect for protected routes, not general pages (they handle their own redirects)
@@ -42,14 +46,14 @@ export async function proxy(request: NextRequest) {
   const isAdminApi = pathname.startsWith("/api/admin");
   const isProtectedRoute = isAdminPage || isAdminApi;
 
-  if (isProtectedRoute && !user) {
+  if (isProtectedRoute && !userId) {
     if (isAdminApi) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
-  if (isProtectedRoute && !authError && user) {
+  if (isProtectedRoute && !authError && userId) {
     // Check if user is admin or reviewer (reviewers need the grant-scoring APIs;
     // admin-only routes enforce is_admin themselves via requireAdmin()).
     // Scoped users (profiles.admin_scopes, migration 207) only get the paths
@@ -57,7 +61,7 @@ export async function proxy(request: NextRequest) {
     const profileResult = await supabase
       .from("profiles")
       .select("is_admin, is_reviewer, admin_scopes")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single<{ is_admin: boolean | null; is_reviewer: boolean | null; admin_scopes?: unknown }>();
     let profile = profileResult.data;
     if (profileResult.error) {
@@ -65,7 +69,7 @@ export async function proxy(request: NextRequest) {
       ({ data: profile } = await supabase
         .from("profiles")
         .select("is_admin, is_reviewer")
-        .eq("id", user.id)
+        .eq("id", userId)
         .single<{ is_admin: boolean | null; is_reviewer: boolean | null; admin_scopes?: unknown }>());
     }
 
@@ -84,7 +88,7 @@ export async function proxy(request: NextRequest) {
 
   // Handle orphaned session for protected routes only
   // Only log auth errors for /admin/* routes - not for public pages
-  if (isProtectedRoute && !user && authError) {
+  if (isProtectedRoute && !userId && authError) {
     console.error("[Proxy] Auth error:", authError.message);
     // Clear auth cookies and let the page handle its own redirect logic
     const response = NextResponse.next({ request });
@@ -115,6 +119,9 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // Skip static assets, and server-to-server endpoints that never carry a
+    // user session (Vercel cron, Stripe/Shopify/Resend webhooks), so they don't
+    // pay for a session check.
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|api/cron/|api/webhook|api/shopify/webhook|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|avif|mp4|webm|woff2?|ttf|css|js|map|txt|xml)$).*)",
   ],
 };

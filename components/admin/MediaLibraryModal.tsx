@@ -117,8 +117,12 @@ export default function MediaLibraryModal({
       return;
     }
 
-    if (file.size > 3 * 1024 * 1024) {
-      alert("File size must be less than 3MB");
+    // JPEG/PNG/WebP are resized in the browser before upload (lib/upload.ts),
+    // so large photos are fine. Other image types still go up as-is.
+    const resizable = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
+    const limitMb = resizable ? 25 : 3;
+    if (file.size > limitMb * 1024 * 1024) {
+      alert(`File size must be less than ${limitMb}MB`);
       return;
     }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import CmsImage from "@/components/CmsImage";
 import Link from "next/link";
 import { MemberCelebrationGridContent, BackgroundColor } from "@/lib/sections/types";
 import {
@@ -69,9 +70,10 @@ export default function MemberCelebrationGridSection({ content }: Props) {
               <div className="relative">
                 <div className={`aspect-square ${images[0].fallback}`}>
                   {images[0].url && (
-                    <img
+                    <CmsImage
                       src={images[0].url}
                       alt="NFW Member"
+                      sizes="(min-width: 1024px) 25vw, 50vw"
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
@@ -83,9 +85,10 @@ export default function MemberCelebrationGridSection({ content }: Props) {
               <div className="relative mt-8">
                 <div className={`aspect-square ${images[1].fallback}`}>
                   {images[1].url && (
-                    <img
+                    <CmsImage
                       src={images[1].url}
                       alt="NFW Member"
+                      sizes="(min-width: 1024px) 25vw, 50vw"
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
@@ -97,9 +100,10 @@ export default function MemberCelebrationGridSection({ content }: Props) {
               <div className="relative -mt-4">
                 <div className={`aspect-square ${images[2].fallback}`}>
                   {images[2].url && (
-                    <img
+                    <CmsImage
                       src={images[2].url}
                       alt="NFW Member"
+                      sizes="(min-width: 1024px) 25vw, 50vw"
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
@@ -111,9 +115,10 @@ export default function MemberCelebrationGridSection({ content }: Props) {
               <div className="relative">
                 <div className={`aspect-square ${images[3].fallback}`}>
                   {images[3].url && (
-                    <img
+                    <CmsImage
                       src={images[3].url}
                       alt="NFW Member"
+                      sizes="(min-width: 1024px) 25vw, 50vw"
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";

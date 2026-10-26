@@ -2,6 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
+import { CMS_TAGS, invalidateCms } from "@/lib/cms-cache";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,6 +56,7 @@ export async function publishPage(pageId: string, slug: string) {
     p_page_id: pageId,
   });
   if (error) throw new Error(error.message);
+  invalidateCms(CMS_TAGS.pages);
   revalidatePath(`/${slug}`);
   revalidatePath(`/admin/pages`);
   revalidatePath(`/admin/pages/${pageId}`);
@@ -65,6 +67,7 @@ export async function revertPage(pageId: string) {
     p_page_id: pageId,
   });
   if (error) throw new Error(error.message);
+  invalidateCms(CMS_TAGS.pages);
 }
 
 export async function unpublishPage(pageId: string, slug: string) {
@@ -72,6 +75,7 @@ export async function unpublishPage(pageId: string, slug: string) {
     p_page_id: pageId,
   });
   if (error) throw new Error(error.message);
+  invalidateCms(CMS_TAGS.pages);
   revalidatePath(`/${slug}`);
   revalidatePath(`/admin/pages`);
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Playfair_Display, DM_Sans } from "next/font/google";
 import { headers } from "next/headers";
 import Script from "next/script";
-import { createClient } from "@supabase/supabase-js";
+import { getCachedGtmId } from "@/lib/cms-cache";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/landing/Footer";
@@ -42,10 +42,7 @@ export const metadata: Metadata = {
   description:
     "Empowering women through financial support, resources, and community",
   icons: {
-    icon: [
-      { url: "/icon.png?v=2", type: "image/png" },
-      { url: "/favicon.ico?v=2", type: "image/x-icon" },
-    ],
+    icon: [{ url: "/icon.png?v=2", type: "image/png" }],
   },
   openGraph: {
     title: "National Fund for Women",
@@ -70,16 +67,8 @@ export default async function RootLayout({
   const pathname = headersList.get("x-pathname") || "/";
   const isPublicRoute = false; // /coming-soon is no longer a gate - homepage serves to all
 
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-  const { data: siteSettings } = await supabaseAdmin
-    .from("site_settings")
-    .select("gtm_id")
-    .eq("id", "00000000-0000-0000-0000-000000000001")
-    .maybeSingle();
-  const gtmId = siteSettings?.gtm_id?.trim() || null;
+  // Cached (lib/cms-cache.ts); a lookup failure just skips GTM, as before.
+  const gtmId = await getCachedGtmId().catch(() => null);
 
   return (
     <html lang="en" suppressHydrationWarning>

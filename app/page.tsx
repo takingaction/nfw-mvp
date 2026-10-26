@@ -1,17 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
+import { getCachedLiveSections, getCachedPageBySlug } from "@/lib/cms-cache";
 import SectionRenderer from "@/components/sections/SectionRenderer";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
-  const supabase = await createClient();
-
-  const { data: page } = await supabase
-    .from("pages")
-    .select("meta_title, meta_description")
-    .eq("slug", "home")
-    .single();
+  const page = await getCachedPageBySlug("home");
 
   return {
     title: {
@@ -32,30 +26,12 @@ export async function generateMetadata() {
 }
 
 export default async function Home() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // Removed: redirect non-authenticated users to /coming-soon
-  // Homepage now serves to all visitors
-
-  const { data: page } = await supabase
-    .from("pages")
-    .select("id, status")
-    .eq("slug", "home")
-    .single();
-
+  // Homepage serves to all visitors. Page + sections come from the CMS cache
+  // (lib/cms-cache.ts), invalidated when an admin publishes.
+  const page = await getCachedPageBySlug("home");
   if (!page) notFound();
 
-  const { data: sections } = await supabase
-    .from("page_sections")
-    .select("*")
-    .eq("page_id", page.id)
-    .eq("version", "live")
-    .eq("visible", true)
-    .order("order_index");
+  const sections = await getCachedLiveSections(page.id);
 
-  return <SectionRenderer sections={sections ?? []} />;
+  return <SectionRenderer sections={sections} />;
 }
