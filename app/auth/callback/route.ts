@@ -58,7 +58,9 @@ export async function GET(request: NextRequest) {
 
         const nextUrl = getValidatedNextUrl(nextParam, stateParam);
 
-        if (profile?.profile_completed) {
+        // A password reset goes straight to the new-password form, even for a
+        // member whose profile is unfinished.
+        if (profile?.profile_completed || nextUrl.startsWith("/auth/update-password")) {
           redirect(nextUrl);
         } else {
           // Pass next URL through to signup flow so user redirects there after completion

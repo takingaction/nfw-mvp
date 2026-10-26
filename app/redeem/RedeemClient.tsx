@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Gift, Loader2, Check, AlertCircle } from "lucide-react";
 
@@ -47,7 +46,6 @@ const secondaryBtn =
   "w-full inline-flex items-center justify-center px-5 py-3 border-2 border-nfw-blackberry text-nfw-blackberry font-semibold text-sm hover:bg-nfw-blackberry/5 transition-colors";
 
 export default function RedeemClient({ view }: { view: RedeemView }) {
-  const router = useRouter();
   const [entered, setEntered] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +60,8 @@ export default function RedeemClient({ view }: { view: RedeemView }) {
           onSubmit={(e) => {
             e.preventDefault();
             const clean = entered.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
-            if (clean) router.push(`/redeem?code=${clean}`);
+            // Full navigation, so the proxy moves the code out of the address before the page loads.
+            if (clean) window.location.assign(`/redeem?code=${clean}`);
           }}
         >
           <input

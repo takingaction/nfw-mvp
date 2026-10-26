@@ -218,6 +218,8 @@ export interface SignupData {
 
 interface SignUpFlowProps {
   signupData?: SignupData | null;
+  /** Gift code handed over by the page (it may have been held out of the address by the proxy's URL vault). */
+  initialGift?: string | null;
 }
 
 const defaultSignupData: SignupData = {
@@ -236,7 +238,7 @@ const defaultSignupData: SignupData = {
   testimonial_author: "Tiana, 29 — Retail Manager",
 };
 
-export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
+export default function SignUpFlow({ signupData, initialGift = null }: SignUpFlowProps = {}) {
   const data = signupData ? { ...defaultSignupData, ...signupData } : defaultSignupData;
   const searchParams = useSearchParams();
   const initialStep = parseInt(searchParams.get("step") || "0");
@@ -269,14 +271,15 @@ export default function SignUpFlow({ signupData }: SignUpFlowProps = {}) {
 
   // Pick up a gift code from the URL (or one stored earlier) and pre-fill step 3.
   useEffect(() => {
-    const fromUrl = cleanGift(readGiftFromParams(new URLSearchParams(searchParams.toString())));
+    const fromUrl =
+      cleanGift(initialGift) ?? cleanGift(readGiftFromParams(new URLSearchParams(searchParams.toString())));
     if (fromUrl) setStoredGift(fromUrl);
     const code = fromUrl ?? getStoredGift();
     if (!code) return;
     setPendingGift(code);
     setGiftCode((prev) => (prev.applied || prev.code ? prev : { ...prev, code }));
     setShowGiftCodeInput(true);
-  }, [searchParams]);
+  }, [searchParams, initialGift]);
   const [showFreeModal, setShowFreeModal] = useState(false);
   const [showProfileIncompleteModal, setShowProfileIncompleteModal] = useState(false);
 

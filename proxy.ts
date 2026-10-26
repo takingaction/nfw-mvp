@@ -1,9 +1,48 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { normalizeAdminScopes, scopedPathAllowed } from "@/lib/admin-scopes";
+import {
+  VAULT_COOKIE,
+  heldFor,
+  isVaultEligiblePath,
+  readVault,
+  splitSensitive,
+  vaultCookieOptions,
+  withParams,
+  writeVault,
+} from "@/lib/url-vault";
 
 export async function proxy(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  const pathname = request.nextUrl.pathname;
+  const isPageRequest =
+    (request.method === "GET" || request.method === "HEAD") && isVaultEligiblePath(pathname);
+
+  // Keep sensitive values (waitlist tokens, gift codes, IDs) out of page
+  // addresses, where analytics and ad tags would record them. Done before any
+  // session work, so no refreshed auth cookies are dropped by this redirect.
+  // See lib/url-vault.ts.
+  if (isPageRequest) {
+    const split = splitSensitive(request.nextUrl);
+    if (split) {
+      const vault = readVault(request.cookies.get(VAULT_COOKIE)?.value);
+      const res = NextResponse.redirect(split.cleanUrl, 303);
+      res.cookies.set(VAULT_COOKIE, writeVault(vault, pathname, split.held), vaultCookieOptions);
+      res.headers.set("Cache-Control", "private, no-store");
+      res.headers.set("Referrer-Policy", "no-referrer");
+      return res;
+    }
+  }
+
+  // Forward the pathname to server components as a request header (the root
+  // layout reads it). Rebuilt after any cookie refresh so refreshed auth
+  // cookies are forwarded too.
+  const forwardedHeaders = () => {
+    const h = new Headers(request.headers);
+    h.set("x-pathname", pathname);
+    return h;
+  };
+
+  let supabaseResponse = NextResponse.next({ request: { headers: forwardedHeaders() } });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,7 +56,7 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
-          supabaseResponse = NextResponse.next({ request });
+          supabaseResponse = NextResponse.next({ request: { headers: forwardedHeaders() } });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options),
           );
@@ -38,7 +77,6 @@ export async function proxy(request: NextRequest) {
 
   // Handle orphaned session (user deleted from auth.users but still has cookies)
   // Only redirect for protected routes, not general pages (they handle their own redirects)
-  const pathname = request.nextUrl.pathname;
   const isAdminPage = pathname.startsWith("/admin");
   // Edge guard for admin API routes. Individual routes also enforce requireAdmin(),
   // but this ensures no /api/admin/* handler is reachable without an admin/reviewer
@@ -100,6 +138,21 @@ export async function proxy(request: NextRequest) {
 
   // Set pathname header
   supabaseResponse.headers.set("x-pathname", request.nextUrl.pathname);
+
+  // Values held back from this page's address: hand them to the page
+  // server-side, keeping the browser address clean.
+  if (isPageRequest) {
+    const held = heldFor(readVault(request.cookies.get(VAULT_COOKIE)?.value), request.nextUrl);
+    if (held) {
+      const rewritten = NextResponse.rewrite(withParams(request.nextUrl, held), {
+        request: { headers: forwardedHeaders() },
+      });
+      supabaseResponse.cookies.getAll().forEach((cookie) => rewritten.cookies.set(cookie));
+      rewritten.headers.set("x-pathname", pathname);
+      rewritten.headers.set("Cache-Control", "private, no-store");
+      return rewritten;
+    }
+  }
 
   // View-as cache control (defense in depth).
   // We use cookie-based view-as now (?view_as= is gone from the URL), so this

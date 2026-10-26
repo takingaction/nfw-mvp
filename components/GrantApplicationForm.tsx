@@ -534,7 +534,7 @@ export default function GrantApplicationForm({
       return;
     }
 
-    router.push(`/grants/application-success?id=${grantId}`);
+    router.push(`/grants/application-success`);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

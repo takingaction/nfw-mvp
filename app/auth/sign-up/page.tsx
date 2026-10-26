@@ -32,12 +32,32 @@ async function getSignupData(): Promise<SignupData | null> {
   };
 }
 
-export default async function SignUpPage() {
-  const signupData = await getSignupData();
+// A gift code arrives as ?gift=, or inside next=/redeem?code=. Either may have been
+// held out of the visible address by the proxy's URL vault, so read it here on the
+// server and hand it to the client flow.
+function giftFromParams(gift?: string, next?: string): string | null {
+  if (gift) return gift;
+  if (next?.startsWith("/redeem")) {
+    try {
+      return new URL(next, "https://x.invalid").searchParams.get("code");
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ gift?: string; next?: string }>;
+}) {
+  const [signupData, params] = await Promise.all([getSignupData(), searchParams]);
+  const initialGift = giftFromParams(params.gift, params.next);
 
   return (
     <Suspense fallback={<div className="min-h-screen bg-white" />}>
-      <SignUpFlow signupData={signupData} />
+      <SignUpFlow signupData={signupData} initialGift={initialGift} />
     </Suspense>
   );
 }

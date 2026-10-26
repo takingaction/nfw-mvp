@@ -65,7 +65,8 @@ export default async function RedeemPage({
 
   let view: RedeemView;
   if (!user) {
-    const next = `/redeem?code=${code}`;
+    // Code stays in the URL vault for /redeem, so the return address is clean.
+    const next = `/redeem`;
     view = {
       kind: "logged_out",
       code: display,

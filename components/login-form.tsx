@@ -18,8 +18,9 @@ import { Loader2 } from "lucide-react";
 
 export function LoginForm({
   className,
+  next: nextProp = null,
   ...props
-}: React.ComponentPropsWithoutRef<"div">) {
+}: React.ComponentPropsWithoutRef<"div"> & { next?: string | null }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -58,9 +59,11 @@ export function LoginForm({
       // Success - validate next param against our domain (prevents open
       // redirect), then full-page reload so the root layout re-renders with
       // the logged-in nav (server-filtered links, view-as banner, etc.)
+      // `next` comes from the page (it may have been held out of the address
+      // by the proxy's URL vault), falling back to the visible address.
       const searchParams = new URLSearchParams(window.location.search);
       const validatedNext = getValidatedNextUrl(
-        searchParams.get("next"),
+        nextProp ?? searchParams.get("next"),
         null,
         "/dashboard",
       );
@@ -89,7 +92,7 @@ export function LoginForm({
     // minimal). Same allowed-domain check as the password flow.
     const searchParams = new URLSearchParams(window.location.search);
     const validatedNext = getValidatedNextUrl(
-      searchParams.get("next"),
+      nextProp ?? searchParams.get("next"),
       null,
       "/dashboard",
     );

@@ -42,10 +42,10 @@ export default async function AcceptWaitlistPage({ searchParams }: PageProps) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    // Send the user through login and return them to this page (with
-    // token preserved in the next URL). After login, the callback
-    // redirects here and processing continues.
-    const nextUrl = `/auth/accept-waitlist?token=${encodeURIComponent(token)}`;
+    // Send the user through login and return them to this page. The token
+    // is not put in the next URL (it would show in the login page's address);
+    // the proxy's URL vault holds it for this path and hands it back on return.
+    const nextUrl = `/auth/accept-waitlist`;
     redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
   }
 

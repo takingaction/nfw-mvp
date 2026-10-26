@@ -6,11 +6,17 @@ export const metadata = {
     "Access your member login to explore support tools, community benefits, exclusive resources, and everything included with your membership.",
 };
 
-export default function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  // `next` may arrive via the proxy's URL vault rather than the visible address.
+  const { next } = await searchParams;
   return (
     <div className="flex min-h-[calc(100svh-4rem)] w-full items-center justify-center p-6 md:p-8 bg-nfw-dove">
       <div className="w-full max-w-sm">
-        <LoginForm />
+        <LoginForm next={next ?? null} />
       </div>
     </div>
   );
