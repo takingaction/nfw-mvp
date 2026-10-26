@@ -263,8 +263,9 @@ async function processJobChunk(jobId: string): Promise<{ done: boolean; phase: s
 
     console.log(`[process-sync-all] Loaded ${allProfiles.length} profiles, ${profileEmails.size} emails`);
 
-    // Move to phase 2
-    await supabaseAdmin
+    // Move to phase 2. Check the result: when this write failed silently the
+    // job stayed in phase 1 and re-read every profile on every tick for weeks.
+    const { error: phase1Err } = await supabaseAdmin
       .from("sync_all_jobs")
       .update({
         current_phase: "load_backfill",
@@ -275,6 +276,9 @@ async function processJobChunk(jobId: string): Promise<{ done: boolean; phase: s
         progress: "Loading backfill status...",
       })
       .eq("id", jobId);
+    if (phase1Err) {
+      throw new Error(`Phase 1 -> 2 write failed: ${phase1Err.message}`);
+    }
 
     return { done: false, phase: "load_backfill" };
   }
@@ -522,7 +526,7 @@ export async function GET(request: Request): Promise<NextResponse> {
           .from("sync_all_jobs")
           .update({
             status: "failed",
-            error: "Job timed out",
+            error_message: "Job timed out", // column is error_message; `error` made this update fail
             completed_at: new Date().toISOString(),
           })
           .eq("id", stale.id);
