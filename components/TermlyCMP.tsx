@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 
 declare global {
@@ -11,38 +11,13 @@ declare global {
   }
 }
 
-const SCRIPT_SRC_BASE = 'https://app.termly.io'
-const WEBSITE_UUID = '182a3bc4-4347-44b6-b918-ef8406dd41e1'
-
-export default function TermlyCMP({ autoBlock, masterConsentsOrigin }: { autoBlock?: boolean; masterConsentsOrigin?: string }) {
-  const scriptSrc = useMemo(() => {
-    const src = new URL(SCRIPT_SRC_BASE)
-    src.pathname = `/resource-blocker/${WEBSITE_UUID}`
-    if (autoBlock) {
-      src.searchParams.set('autoBlock', 'on')
-    }
-    if (masterConsentsOrigin) {
-      src.searchParams.set('masterConsentsOrigin', masterConsentsOrigin)
-    }
-    return src.toString()
-  }, [autoBlock, masterConsentsOrigin])
-
-  const isScriptAdded = useRef(false)
-
-  useEffect(() => {
-    if (isScriptAdded.current) return
-    // Additional DOM check to prevent duplicate loading in Strict Mode or concurrent mounts
-    const existingScript = document.querySelector(`script[src^="${SCRIPT_SRC_BASE}"]`)
-    if (existingScript) {
-      isScriptAdded.current = true
-      return
-    }
-    const script = document.createElement('script')
-    script.src = scriptSrc
-    document.head.appendChild(script)
-    isScriptAdded.current = true
-  }, [scriptSrc])
-
+/**
+ * Termly's script itself is loaded first in <head> by the root layout
+ * (lib/termly.ts), so Auto Blocker can hold back other scripts until consent.
+ * This component only re-initialises Termly after client-side navigation, as
+ * Termly's single-page-app guidance requires.
+ */
+export default function TermlyCMP() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 

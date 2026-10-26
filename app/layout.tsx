@@ -8,6 +8,7 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/landing/Footer";
 import BackToTop from "@/components/BackToTop";
 import TermlyCMP from "@/components/TermlyCMP";
+import { TERMLY_SCRIPT_SRC } from "@/lib/termly";
 import PromotionalPopupWrapper from "@/components/popup/PromotionalPopupWrapper";
 import FloatingAdminButton from "@/components/admin/FloatingAdminButton";
 import ViewingAsMemberBanner from "@/components/admin/ViewingAsMemberBanner";
@@ -76,16 +77,11 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${playfairDisplay.variable} ${dmSans.variable} antialiased`}
         suppressHydrationWarning
       >
-        {gtmId && (
-          <noscript>
-            <iframe
-              src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
-              height="0"
-              width="0"
-              style={{ display: "none", visibility: "hidden" }}
-            />
-          </noscript>
-        )}
+        {/* Termly first, with Auto Blocker on, so it can hold back other
+            scripts until the visitor consents. Next places beforeInteractive
+            scripts in <head> ahead of its own code. GTM's <noscript> iframe is
+            deliberately not used: with scripts off, Termly could not block it. */}
+        <Script id="termly-resource-blocker" src={TERMLY_SCRIPT_SRC} strategy="beforeInteractive" />
         {!isPublicRoute && <Navigation />}
         {!isPublicRoute && <ViewingAsMemberBanner initialPage={pathname} />}
         <FloatingAdminButton />
