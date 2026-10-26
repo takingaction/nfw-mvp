@@ -91,8 +91,10 @@ export default function RedeemClient({ view }: { view: RedeemView }) {
         {view.code && <CodeChip code={view.code} />}
         <p className="text-nfw-blackberry/70 text-sm">{view.message}</p>
         <div className="space-y-2">
-          {/* Empty code= tells the proxy to drop the code held from this visit. */}
-          <Link href="/redeem?code=" prefetch={false} className={primaryBtn}>Try another code</Link>
+          {/* Empty code= tells the proxy to drop the code held from this visit. A plain
+              <a> (full page load) so the router can't reuse its cached /redeem. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- full load needed, see above */}
+          <a href="/redeem?code=" className={primaryBtn}>Try another code</a>
           <Link href="/contact" className="block text-sm text-nfw-blackberry/60 underline">Need help? Contact us</Link>
         </div>
       </Shell>
