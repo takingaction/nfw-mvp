@@ -9,6 +9,8 @@ const CLIENT_RESIZE_TYPES = ["image/jpeg", "image/png", "image/webp"];
  * Shrink large photos in the browser before upload so camera/Unsplash originals
  * (often 5-10 MB) fit under Vercel's 4.5 MB request limit. The server
  * re-encodes the result anyway, so a high quality setting is used here.
+ * Keeps the original format (JPEG stays JPEG, etc.): these images are also
+ * used in emails, and Outlook for Windows can't show WebP.
  * Falls back to the original file if anything goes wrong.
  */
 async function downscaleForUpload(file: File): Promise<File> {
@@ -31,11 +33,10 @@ async function downscaleForUpload(file: File): Promise<File> {
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close();
     const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/webp", 0.92),
+      canvas.toBlob(resolve, file.type, 0.92),
     );
-    if (!blob || blob.type !== "image/webp" || blob.size >= file.size) return file;
-    const name = file.name.replace(/\.[^.]+$/, "") + ".webp";
-    return new File([blob], name, { type: "image/webp" });
+    if (!blob || blob.type !== file.type || blob.size >= file.size) return file;
+    return new File([blob], file.name, { type: file.type });
   } catch {
     return file;
   }

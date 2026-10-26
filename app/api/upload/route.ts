@@ -63,11 +63,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Raster images are re-encoded to WebP, so the stored name gets a .webp extension.
+    // Raster images are resized/recompressed below, keeping their format.
     const optimize = !isVideo && isOptimizableImage(file.type);
-    const ext = optimize ? "webp" : file.name.split(".").pop() || "bin";
-    const baseName = optimize ? file.name.replace(/\.[^.]+$/, "") : file.name;
-    const sanitizedName = baseName.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const ext = file.name.split(".").pop() || "bin";
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
     const fileName = `${folder}/${Date.now()}-${Math.random()
       .toString(36)
       .slice(2)}.${sanitizedName.endsWith(`.${ext}`) ? sanitizedName : `${sanitizedName}.${ext}`}`;
@@ -98,13 +97,13 @@ export async function POST(request: NextRequest) {
     // For smaller files (images), upload directly through API
     const bytes = await file.arrayBuffer();
     let buffer: Buffer = Buffer.from(bytes);
-    let contentType = file.type;
+    const contentType = file.type;
 
     if (optimize) {
       try {
-        const optimized = await optimizeImageUpload(buffer);
-        buffer = optimized.buffer;
-        contentType = optimized.contentType;
+        const optimized = await optimizeImageUpload(buffer, file.type);
+        // Keep the original if re-encoding didn't help (already-optimized files).
+        if (optimized.length < buffer.length) buffer = optimized;
       } catch (err) {
         console.error("Image optimization failed:", err);
         return NextResponse.json(
