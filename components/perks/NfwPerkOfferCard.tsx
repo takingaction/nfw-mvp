@@ -2,6 +2,7 @@
 
 import { Clock } from "lucide-react";
 
+import { SITE_TZ, siteDaysUntil } from "@/lib/dates";
 interface NfwPerkOfferCardProps {
   perk: {
     id: string;
@@ -23,17 +24,14 @@ interface NfwPerkOfferCardProps {
 
 function formatExpiry(date: string | null): string | null {
   if (!date) return null;
-  const expiryDate = new Date(date);
-  const now = new Date();
-  const daysUntilExpiry = Math.ceil(
-    (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  );
+  // Expires at 11:59:59 PM PT on its date; count Pacific calendar days.
+  if (new Date(date) < new Date()) return "Expired";
+  const daysUntilExpiry = siteDaysUntil(date);
 
-  if (daysUntilExpiry < 0) return "Expired";
   if (daysUntilExpiry === 0) return "Today";
   if (daysUntilExpiry === 1) return "Tomorrow";
   if (daysUntilExpiry <= 7) return `${daysUntilExpiry} days`;
-  return expiryDate.toLocaleDateString("en-US", { timeZone: "UTC",
+  return new Date(date).toLocaleDateString("en-US", { timeZone: SITE_TZ,
     month: "short",
     day: "numeric",
   });

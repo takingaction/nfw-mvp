@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, X, Check } from "lucide-react";
 import MediaLibraryModal from "@/components/admin/MediaLibraryModal";
 
+import { siteDateKey, siteEndOfDay } from "@/lib/dates";
 type NfwPerk = {
   id: string;
   title: string;
@@ -121,7 +122,7 @@ export default function AdminNfwPerks() {
       estimated_value: perk.estimated_value || "",
       terms_and_conditions: perk.terms_and_conditions || "",
       max_redemptions_total: perk.max_redemptions_total,
-      expires_at: perk.expires_at ? perk.expires_at.split("T")[0] : "",
+      expires_at: perk.expires_at ? siteDateKey(perk.expires_at) : "", // PT date
       is_active: perk.is_active,
       categories: perk.categories || [],
       coupon_code: perk.coupon_code || "",
@@ -174,7 +175,8 @@ export default function AdminNfwPerks() {
       estimated_value: formData.estimated_value ? Number(formData.estimated_value) : null,
       terms_and_conditions: formData.terms_and_conditions || null,
       max_redemptions_total: formData.max_redemptions_total,
-      expires_at: formData.expires_at ? new Date(formData.expires_at).toISOString() : null,
+      // Perk is redeemable through 11:59:59 PM PT on the chosen date
+      expires_at: formData.expires_at ? siteEndOfDay(formData.expires_at).toISOString() : null,
       is_active: formData.is_active,
       categories: formData.categories,
       coupon_code: formData.coupon_code || null,
@@ -619,6 +621,7 @@ export default function AdminNfwPerks() {
                   <label className="block text-sm font-medium text-nfw-blackberry mb-1 font-ui">
                     Expires At
                   </label>
+                  <p className="text-xs text-nfw-blackberry/50 mb-1 font-ui">Redeemable through 11:59 PM PT on this date.</p>
                   <input
                     type="date"
                     value={formData.expires_at}

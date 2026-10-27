@@ -18,6 +18,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { getLoginRedirectUrl } from "@/lib/redirect-utils";
 
+import { SITE_TZ, siteDaysUntil } from "@/lib/dates";
 type NfwPerk = {
   id: string;
   title: string;
@@ -202,17 +203,14 @@ export default function NfwPerkDetailPage() {
 
   const formatExpiry = (date: string | null) => {
     if (!date) return null;
-    const expiryDate = new Date(date);
-    const now = new Date();
-    const daysUntilExpiry = Math.ceil(
-      (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    // Expires at 11:59:59 PM PT on its date; count Pacific calendar days.
+    if (new Date(date) < new Date()) return "Expired";
+    const daysUntilExpiry = siteDaysUntil(date);
 
-    if (daysUntilExpiry < 0) return "Expired";
     if (daysUntilExpiry === 0) return "Expires today";
     if (daysUntilExpiry === 1) return "Expires tomorrow";
     if (daysUntilExpiry <= 7) return `Expires in ${daysUntilExpiry} days`;
-    return `Expires ${expiryDate.toLocaleDateString("en-US", { timeZone: "UTC",
+    return `Expires ${new Date(date).toLocaleDateString("en-US", { timeZone: SITE_TZ,
       month: "short",
       day: "numeric",
     })}`;

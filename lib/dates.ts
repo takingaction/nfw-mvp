@@ -53,6 +53,16 @@ export function siteToday(now: Date = new Date()): string {
   }).format(now);
 }
 
+/**
+ * Whole Pacific-time calendar days from today until the PT date of
+ * `timestamp` (0 = today, 1 = tomorrow, negative = a past day).
+ */
+export function siteDaysUntil(timestamp: string | Date, now: Date = new Date()): number {
+  const [y1, m1, d1] = splitYmd(siteToday(now));
+  const [y2, m2, d2] = splitYmd(siteToday(new Date(timestamp)));
+  return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86_400_000);
+}
+
 /** First day of the current site-time month as "YYYY-MM-01" (claim_month key). */
 export function siteMonthKey(now: Date = new Date()): string {
   return `${siteToday(now).slice(0, 7)}-01`;
