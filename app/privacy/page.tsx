@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import LegalPolicyContent from "@/components/LegalPolicyContent";
 
 export const metadata = {
   title: "Privacy Policy | National Fund for Women",
@@ -23,10 +24,9 @@ export default async function PrivacyPage() {
         <h1 className="text-4xl font-bold text-nfw-blackberry mb-8 font-serif">
           Privacy Policy
         </h1>
-        <div
-          className="bg-white rounded-xl p-8 shadow-sm"
-          dangerouslySetInnerHTML={{ __html: data?.termly_embed_code ?? "" }}
-        />
+        <div className="bg-white rounded-xl p-8 shadow-sm">
+          <LegalPolicyContent embedCode={data?.termly_embed_code ?? ""} />
+        </div>
       </div>
     </main>
   );

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
-import TermlyPolicyEmbed from "@/components/TermlyPolicyEmbed";
+import LegalPolicyContent from "@/components/LegalPolicyContent";
 
 /**
  * Legal pages for the mobile app's in-app web view.
@@ -40,19 +40,10 @@ export default async function EmbeddedLegalPage({
     .eq("slug", slug)
     .single();
 
-  const embedCode = data?.termly_embed_code ?? "";
-  // Termly "embed" policies (Terms, Accessibility) are drawn by Termly's policy
-  // viewer, loaded after hydration; static HTML policies (Privacy) render as is.
-  const policyId = embedCode.match(/name="termly-embed"\s+data-id="([0-9a-f-]+)"/i)?.[1] ?? null;
-
   return (
     <main className="min-h-screen bg-white px-4 py-6">
       <h1 className="text-2xl font-bold text-nfw-blackberry mb-4 font-serif">{title}</h1>
-      {policyId ? (
-        <TermlyPolicyEmbed policyId={policyId} />
-      ) : (
-        <div dangerouslySetInnerHTML={{ __html: embedCode }} />
-      )}
+      <LegalPolicyContent embedCode={data?.termly_embed_code ?? ""} />
     </main>
   );
 }

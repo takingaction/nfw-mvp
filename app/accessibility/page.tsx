@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import LegalPolicyContent from "@/components/LegalPolicyContent";
 
 export const metadata = {
   title: "Accessibility | National Fund for Women",
@@ -23,10 +24,9 @@ export default async function AccessibilityPage() {
         <h1 className="text-4xl font-bold text-nfw-blackberry mb-8 font-serif">
           Accessibility
         </h1>
-        <div
-          className="bg-white rounded-xl p-8 shadow-sm"
-          dangerouslySetInnerHTML={{ __html: data?.termly_embed_code ?? "" }}
-        />
+        <div className="bg-white rounded-xl p-8 shadow-sm">
+          <LegalPolicyContent embedCode={data?.termly_embed_code ?? ""} />
+        </div>
       </div>
     </main>
   );
