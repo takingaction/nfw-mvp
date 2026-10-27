@@ -1,5 +1,6 @@
 "use client";
 
+import CmsImage from "@/components/CmsImage";
 import Link from "next/link";
 import Marquee from "react-fast-marquee";
 import { PerksFeatureContent } from "@/lib/sections/types";
@@ -81,9 +82,12 @@ export default function PerksFeatureSection({ content }: Props) {
                     key={`${logo.name}-${i}`}
                     className="flex-shrink-0 h-8 flex items-center"
                   >
-                    <img
+                    {/* Served via our own domain (CmsImage) so Termly's
+                        auto-blocker doesn't hide these until cookie consent. */}
+                    <CmsImage
                       src={logoSrc}
                       alt={logo.name}
+                      sizes="200px"
                       className="h-full w-auto object-contain"
                       style={shouldWhiteLogos ? { filter: 'brightness(0) invert(1)' } : undefined}
                     />
