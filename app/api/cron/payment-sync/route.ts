@@ -276,12 +276,31 @@ export async function GET(request: Request): Promise<NextResponse> {
     if (notFoundRows && notFoundRows.length > 0) {
       console.log(`[payment-sync] Found ${notFoundRows.length} not_found records to fix`);
 
-      for (const row of notFoundRows) {
-        const { data: profile } = await supabaseAdmin
+      // Look up profiles in batches, and only the ones that actually have a
+      // stripe_customer_id. This used to be one request per not_found row
+      // (~16k rows, almost none fixable) on every hourly run: ~180k profiles
+      // requests a day, and it ate into the run's time budget for Step 2.
+      const customerIdByProfile = new Map<string, string>();
+      const profileIds = [...new Set(notFoundRows.map((r) => r.profile_id).filter(Boolean))] as string[];
+      const LOOKUP_BATCH = 150; // keeps the id=in.(...) URL well under limits
+      for (let i = 0; i < profileIds.length; i += LOOKUP_BATCH) {
+        const { data: profiles, error: lookupError } = await supabaseAdmin
           .from("profiles")
-          .select("stripe_customer_id")
-          .eq("id", row.profile_id)
-          .single();
+          .select("id, stripe_customer_id")
+          .in("id", profileIds.slice(i, i + LOOKUP_BATCH))
+          .not("stripe_customer_id", "is", null);
+        if (lookupError) {
+          console.error("[payment-sync] Error looking up profiles for not_found rows:", lookupError.message);
+          continue;
+        }
+        for (const p of profiles ?? []) {
+          if (p.stripe_customer_id) customerIdByProfile.set(p.id, p.stripe_customer_id);
+        }
+      }
+
+      for (const row of notFoundRows) {
+        const stripeCustomerId = row.profile_id ? customerIdByProfile.get(row.profile_id) : undefined;
+        const profile = stripeCustomerId ? { stripe_customer_id: stripeCustomerId } : null;
 
         if (profile?.stripe_customer_id) {
           const { error: updateError } = await supabaseAdmin
