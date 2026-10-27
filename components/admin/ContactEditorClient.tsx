@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus, Trash2, Save, Mail, Clock, Heart, ChevronDown, ChevronUp, Download } from "lucide-react";
 
+import { SITE_TZ } from "@/lib/dates";
 const MAX_TITLE = 60;
 const MAX_DESCRIPTION = 160;
 
@@ -180,7 +181,7 @@ export default function ContactEditorClient({
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString("en-US", { timeZone: SITE_TZ,
       year: "numeric",
       month: "short",
       day: "numeric",

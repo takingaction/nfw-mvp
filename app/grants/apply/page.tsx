@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import GrantApplicationForm from "@/components/GrantApplicationForm";
 import { listPassCyclesForUser } from "@/lib/grant-eligibility";
 import { compareCycleDisplayOrder } from "@/lib/grant-cycle-order";
-import { todayInNewYork } from "@/lib/dates";
+import { siteToday } from "@/lib/dates";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -67,8 +67,8 @@ export default async function ApplyForGrantPage({
   const { data: cycles } = await cyclesQuery;
 
   // Server-side filter: exclude grants whose end_date is before today in
-  // New York time (cycles accept applications through 11:59 PM ET on end_date).
-  const todayStr = todayInNewYork();
+  // Pacific time (cycles accept applications through 11:59 PM PT on end_date).
+  const todayStr = siteToday();
   const openCycles =
     cycles?.filter((c) => String(c.end_date).split("T")[0] >= todayStr) || [];
 

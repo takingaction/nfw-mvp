@@ -5,6 +5,7 @@ import {
   sendWaitlistReminderEmail,
 } from "@/lib/email";
 
+import { SITE_TZ } from "@/lib/dates";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
@@ -148,7 +149,7 @@ export async function GET(request: Request) {
     // Format expiry as "September 25, 2026"
     const expiresAtFormatted = new Date(token.expires_at).toLocaleDateString(
       "en-US",
-      { year: "numeric", month: "long", day: "numeric" },
+      { timeZone: SITE_TZ, year: "numeric", month: "long", day: "numeric" },
     );
 
     try {

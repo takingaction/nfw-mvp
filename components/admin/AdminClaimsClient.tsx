@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
+import { SITE_TZ } from "@/lib/dates";
 type ClaimWithDetails = {
   id: string;
   item_id: string;
@@ -170,7 +171,7 @@ export default function AdminClaimsClient({
     ];
     const rows = filteredClaims.map((claim) => [
       claim.id,
-      new Date(claim.claimed_at).toLocaleDateString(),
+      new Date(claim.claimed_at).toLocaleDateString(undefined, { timeZone: SITE_TZ }),
       claim.member.full_name,
       claim.member_email,
       claim.item.name,
@@ -308,7 +309,7 @@ export default function AdminClaimsClient({
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-nfw-blackberry/50">
-                        {new Date(claim.claimed_at).toLocaleDateString()}
+                        {new Date(claim.claimed_at).toLocaleDateString(undefined, { timeZone: SITE_TZ })}
                       </td>
                       <td className="px-6 py-4">
                         <span

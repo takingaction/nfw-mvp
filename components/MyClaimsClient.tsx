@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ExternalLink, Package, ArrowRight } from "lucide-react";
 
+import { SITE_TZ } from "@/lib/dates";
 type Claim = {
   id: string;
   shopify_product_id: string;
@@ -268,7 +269,7 @@ export default function MyClaimsClient({
 
                     <div className="flex items-center justify-between">
                       <span className="font-sans text-xs text-nfw-blackberry/50">
-                        Claimed {new Date(claim.claimed_at).toLocaleDateString()}
+                        Claimed {new Date(claim.claimed_at).toLocaleDateString(undefined, { timeZone: SITE_TZ })}
                       </span>
                         <div className="flex items-center gap-3">
                           {/* TODO: SECURITY - Temporarily hidden until ZDS order matching is fixed

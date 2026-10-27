@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 
+import { SITE_TZ } from "@/lib/dates";
 interface IncompleteMember {
   id: string;
   full_name: string | null;
@@ -109,7 +110,7 @@ export default function AdminIncompleteMembersClient() {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "—";
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString("en-US", { timeZone: SITE_TZ,
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -118,7 +119,7 @@ export default function AdminIncompleteMembersClient() {
 
   const formatDateTime = (dateString: string | null) => {
     if (!dateString) return "—";
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString("en-US", { timeZone: SITE_TZ,
       year: "numeric",
       month: "2-digit",
       day: "2-digit",

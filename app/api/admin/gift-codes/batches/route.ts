@@ -3,12 +3,13 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/adminCheck";
 import getAdminClient from "@/lib/supabase/admin";
 
+import { siteEndOfDay } from "@/lib/dates";
 const CreateBatchSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
   quantity: z.coerce.number().int().min(1).max(20000),
   tier: z.enum(["contributing", "founding"]).default("contributing"),
   membershipMonths: z.coerce.number().int().min(1).max(60).default(12),
-  // YYYY-MM-DD; codes stop working at the end of that day (Eastern).
+  // YYYY-MM-DD; codes stop working at the end of that day (Pacific).
   expiresOn: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -53,19 +54,8 @@ export async function POST(request: Request) {
   }
   const { name, quantity, tier, membershipMonths, expiresOn, notes } = parsed.data;
 
-  // End of the chosen day in New York time (handles EST/EDT).
-  let expiresAt: string | null = null;
-  if (expiresOn) {
-    const probe = new Date(`${expiresOn}T12:00:00Z`);
-    const offset = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/New_York",
-      timeZoneName: "longOffset",
-    })
-      .formatToParts(probe)
-      .find((p) => p.type === "timeZoneName")
-      ?.value.replace("GMT", "") || "-05:00";
-    expiresAt = new Date(`${expiresOn}T23:59:59${offset}`).toISOString();
-  }
+  // End of the chosen day in Pacific time (handles PST/PDT).
+  const expiresAt: string | null = expiresOn ? siteEndOfDay(expiresOn).toISOString() : null;
 
   const supabase = getAdminClient();
   const { data: batchId, error } = await supabase.rpc("create_gift_code_batch", {

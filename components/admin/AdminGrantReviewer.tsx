@@ -15,7 +15,7 @@ import {
 import AiBadge from "./AiBadge";
 import ConfirmModal from "./ConfirmModal";
 import { uploadWithSignedUrl } from "@/lib/admin-upload";
-import { formatESTDisplay } from "@/lib/dates";
+import { formatSiteDisplay } from "@/lib/dates";
 
 // Must match GRANT_DOCS_ALLOWED_TYPES in lib/admin-documents.ts
 const GRANT_DOC_ACCEPT = ".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx";
@@ -346,7 +346,7 @@ export default function AdminGrantReviewer({
                     )}
                     <p className="text-xs text-nfw-blackberry/40">
                       {grant.submitted_at
-                        ? formatESTDisplay(new Date(grant.submitted_at))
+                        ? formatSiteDisplay(new Date(grant.submitted_at))
                         : "No date"}
                     </p>
                   </div>
@@ -430,7 +430,7 @@ export default function AdminGrantReviewer({
                     <div className="bg-white p-2 border border-nfw-blackberry/5">
                       <p className="text-nfw-blackberry/40">Date of Birth</p>
                       <p className="font-semibold text-nfw-blackberry">
-                        {new Date(selected.profiles.date_of_birth).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
+                        {new Date(selected.profiles.date_of_birth).toLocaleDateString('en-US', { timeZone: "UTC", month: '2-digit', day: '2-digit', year: 'numeric' })}
                       </p>
                     </div>
                   )}

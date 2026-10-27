@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { requireAdminOrScope } from "@/lib/adminCheck";
 import { getCategory } from "@/lib/member-categories";
-import { parseESTDate, endOfESTDay } from "@/lib/dates";
+import { parseSiteDate, siteEndOfDay, siteToday, SITE_TZ } from "@/lib/dates";
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -129,10 +129,9 @@ function escapeCsvField(value: unknown): string {
 function formatDate(value: string | null): string {
   if (!value) return "";
   try {
-    const date = new Date(value);
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const year = date.getFullYear();
+    // Date-only column (e.g. date_of_birth): print exactly as stored.
+    const [year, month, day] = value.split("T")[0].split("-");
+    if (!year || !month || !day) return "";
     return `${month}/${day}/${year}`;
   } catch {
     return "";
@@ -142,8 +141,8 @@ function formatDate(value: string | null): string {
 function formatDateTime(value: string | null): string {
   if (!value) return "";
   try {
-    const date = new Date(value);
-    return date.toISOString().replace("T", " ").substring(0, 19);
+    // Pacific time, "YYYY-MM-DD HH:MM:SS" (sv-SE gives ISO-like ordering)
+    return new Date(value).toLocaleString("sv-SE", { timeZone: SITE_TZ, hour12: false });
   } catch {
     return "";
   }
@@ -195,12 +194,12 @@ function formatCell(col: string, value: unknown): string {
   }
 }
 
-// Parse YYYY-MM-DD date string to UTC timestamp for EST dates
+// Parse YYYY-MM-DD date string (Pacific time) to a UTC timestamp
 function parseCustomDate(dateStr: string, isStart: boolean): string {
   if (isStart) {
-    return parseESTDate(dateStr).toISOString();
+    return parseSiteDate(dateStr).toISOString();
   } else {
-    return endOfESTDay(parseESTDate(dateStr)).toISOString();
+    return siteEndOfDay(dateStr).toISOString();
   }
 }
 
@@ -291,7 +290,7 @@ export async function GET(request: NextRequest) {
   if (startDateParam && endDateParam) {
     filename = `nfw-members-${startDateParam}-to-${endDateParam}.csv`;
   } else {
-    const today = new Date().toISOString().split("T")[0];
+    const today = siteToday();
     filename = `nfw-members-${today}.csv`;
   }
 

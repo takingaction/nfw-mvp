@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Search, Download, Gift, Check, Ban, ChevronLeft, ChevronRight } from "lucide-react";
 import GiftCodeBatches, { type GiftCodeBatch } from "./GiftCodeBatches";
 
+import { SITE_TZ } from "@/lib/dates";
 interface GiftCode {
   id: string;
   code: string;
@@ -362,7 +363,7 @@ export default function AdminGiftCodes() {
                         {code.redeemed_by_email || "—"}
                       </td>
                       <td className="px-6 py-4 text-sm text-nfw-blackberry/50">
-                        {new Date(code.created_at).toLocaleDateString("en-US", {
+                        {new Date(code.created_at).toLocaleDateString("en-US", { timeZone: SITE_TZ,
                           month: "short",
                           day: "numeric",
                           year: "numeric",

@@ -14,6 +14,7 @@ import {
 import Link from "next/link";
 import ExpiredLinkModal from "@/components/ui/ExpiredLinkModal";
 
+import { SITE_TZ, siteToday } from "@/lib/dates";
 interface Redemption {
   id: string;
   offer_key: string;
@@ -91,29 +92,17 @@ export default function RecentRedemptions() {
   const formatExpiryDate = (expiresAt: string | null): string => {
     if (!expiresAt) return "";
     const date = new Date(expiresAt);
-    return date.toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" });
+    return date.toLocaleDateString("en-US", { timeZone: SITE_TZ, month: "short", day: "numeric" });
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
 
-    const toLocalDate = (d: Date) => {
-      return new Date(d.toLocaleString("en-US", { timeZone: "America/New_York" }));
-    };
+    // Compare Pacific-time calendar days
+    const isSameDay = (d1: Date, d2: Date) => siteToday(d1) === siteToday(d2);
 
-    const isSameDay = (d1: Date, d2: Date) => {
-      const ld1 = toLocalDate(d1);
-      const ld2 = toLocalDate(d2);
-      return (
-        ld1.getFullYear() === ld2.getFullYear() &&
-        ld1.getMonth() === ld2.getMonth() &&
-        ld1.getDate() === ld2.getDate()
-      );
-    };
-
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
     if (isSameDay(date, now)) return "Today";
     if (isSameDay(date, yesterday)) return "Yesterday";
@@ -124,7 +113,7 @@ export default function RecentRedemptions() {
 
     if (diffDays < 7) return `${diffDays} days ago`;
     if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    return date.toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" });
+    return date.toLocaleDateString("en-US", { timeZone: SITE_TZ, month: "short", day: "numeric" });
   };
 
   const getRedemptionTypeLabel = (type: string) => {

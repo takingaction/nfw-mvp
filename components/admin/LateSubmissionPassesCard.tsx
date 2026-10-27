@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Check, ChevronDown, Copy, KeyRound, Lock } from "lucide-react";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 
+import { SITE_TZ } from "@/lib/dates";
 /**
  * Late Submission Passes (migration 196).
  * Lets an admin allow one member to apply to this cycle for 12 hours after
@@ -35,12 +36,12 @@ const SITE_URL = "https://www.nationalfundforwomen.org";
 function formatET(iso: string): string {
   return (
     new Date(iso).toLocaleString("en-US", {
-      timeZone: "America/New_York",
+      timeZone: SITE_TZ,
       month: "short",
       day: "numeric",
       hour: "numeric",
       minute: "2-digit",
-    }) + " ET"
+    }) + " PT"
   );
 }
 

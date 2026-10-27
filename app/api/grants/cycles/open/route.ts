@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { listPassCyclesForUser } from "@/lib/grant-eligibility";
 import { compareCycleDisplayOrder } from "@/lib/grant-cycle-order";
-import { todayInNewYork } from "@/lib/dates";
+import { siteToday } from "@/lib/dates";
 
 /**
  * GET /api/grants/cycles/open
@@ -16,7 +16,7 @@ import { todayInNewYork } from "@/lib/dates";
  *
  * Cycle inclusion rules:
  *   - status = 'open'
- *   - end_date >= today in America/New_York (open through 11:59 PM ET)
+ *   - end_date >= today in America/Los_Angeles (open through 11:59 PM PT)
  *   - is_testing_only only included for admins
  *   - PLUS closed cycles the member holds a live Late Submission Pass for
  *     (migration 196), tagged { viaPass: true, passExpiresAt }
@@ -83,7 +83,7 @@ export async function GET(request: Request) {
 
   // Filter out past-dated cycles in JS (the apply page does this too
   // because Supabase date filters can be unreliable on ISO strings).
-  const todayStr = todayInNewYork();
+  const todayStr = siteToday();
   const openCycles = (cycles ?? []).filter(
     (c: { end_date: string }) => String(c.end_date).split("T")[0] >= todayStr,
   );

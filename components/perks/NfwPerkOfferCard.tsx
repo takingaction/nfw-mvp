@@ -33,7 +33,7 @@ function formatExpiry(date: string | null): string | null {
   if (daysUntilExpiry === 0) return "Today";
   if (daysUntilExpiry === 1) return "Tomorrow";
   if (daysUntilExpiry <= 7) return `${daysUntilExpiry} days`;
-  return expiryDate.toLocaleDateString("en-US", {
+  return expiryDate.toLocaleDateString("en-US", { timeZone: "UTC",
     month: "short",
     day: "numeric",
   });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+import { siteMonthRange } from "@/lib/dates";
 /**
  * Has the logged-in member completed a Zero Dollar Store claim this month?
  * Identity comes from the session (cookie or Bearer). A `?userId=` query
@@ -15,10 +16,11 @@ export async function GET() {
       return NextResponse.json({ claimedThisMonth: false, claimCount: 0 });
     }
 
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    // Exclusive upper bound so claims made late on the last day still count.
-    const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+    // Current Pacific-time month as UTC instants. Exclusive upper bound so
+    // claims made late on the last day still count.
+    const { start, end } = siteMonthRange();
+    const startOfMonth = start.toISOString();
+    const startOfNextMonth = end.toISOString();
 
     const { data: claims } = await supabase
       .from("zero_dollar_claims")

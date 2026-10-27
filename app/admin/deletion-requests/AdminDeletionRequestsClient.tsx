@@ -3,18 +3,20 @@
 import { useState, useEffect } from 'react';
 import ConfirmModal from "@/components/admin/ConfirmModal";
 
+import { SITE_TZ } from "@/lib/dates";
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  const months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-  const month = months[d.getMonth()];
-  const day = String(d.getDate()).padStart(2, '0');
-  const year = d.getFullYear();
-  let hours = d.getHours();
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12;
-  return `${month}/${day}/${year} ${hours}:${minutes} ${ampm}`;
+  // MM/DD/YYYY h:mm AM/PM in Pacific time
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: SITE_TZ,
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).formatToParts(new Date(dateStr));
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("month")}/${get("day")}/${get("year")} ${get("hour")}:${get("minute")} ${get("dayPeriod")} PT`;
 }
 
 interface DeletionRequest {

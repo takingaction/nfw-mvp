@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Search, Download, RefreshCw, Eye, Trash2 } from "lucide-react";
 
+import { SITE_TZ } from "@/lib/dates";
 interface StorySubmission {
   id: string;
   name: string;
@@ -106,7 +107,7 @@ export default function AdminStorySubmissions() {
   const exportCSV = () => {
     const headers = ["Date", "Name", "Email", "Age", "Location", "Status", "Permission", "Anonymous", "Video"];
     const rows = submissions.map((s) => [
-      new Date(s.created_at).toLocaleDateString(),
+      new Date(s.created_at).toLocaleDateString(undefined, { timeZone: SITE_TZ }),
       s.name,
       s.email,
       s.age,
@@ -317,7 +318,7 @@ export default function AdminStorySubmissions() {
                   submissions.map((sub) => (
                     <tr key={sub.id} className="hover:bg-nfw-dove/30 transition-colors">
                       <td className="px-4 py-3 font-sans text-sm text-nfw-blackberry">
-                        {new Date(sub.created_at).toLocaleDateString("en-US", {
+                        {new Date(sub.created_at).toLocaleDateString("en-US", { timeZone: SITE_TZ,
                           month: "short",
                           day: "numeric",
                           year: "numeric",

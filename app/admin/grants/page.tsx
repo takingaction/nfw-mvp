@@ -3,6 +3,7 @@ import { requireGrantsAccess } from "@/middleware/adminCheck";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import SortableCycleList from "@/components/admin/SortableCycleList";
+import { siteToday } from "@/lib/dates";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,20 +28,14 @@ export default async function AdminGrantsPage() {
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: false });
 
-  // Mark cycles as closed if end_date has passed (belt-and-suspenders fix)
-  // Use date-only comparison in EST timezone to avoid UTC midnight issues
-  const now = new Date();
-  const isDateBefore = (dateStr: string, compareDate: Date) => {
-    if (!dateStr) return false;
-    // Parse as EST by appending a time known to be in EST range
-    const [year, month, day] = dateStr.split('-').map(Number);
-    // Create date at 11:59:59 PM EST to ensure we're comparing the end of day
-    const dateEndOfDay = new Date(year, month - 1, day, 23, 59, 59);
-    return dateEndOfDay < compareDate;
-  };
+  // Mark cycles as closed if end_date has passed (belt-and-suspenders fix).
+  // Cycles run through 11:59 PM Pacific on end_date; compare PT calendar dates.
+  const todayStr = siteToday();
+  const isDateBefore = (dateStr: string) =>
+    !!dateStr && String(dateStr).split("T")[0] < todayStr;
   const cyclesWithClosedStatus = cycles?.map((c: any) => ({
     ...c,
-    status: isDateBefore(c.end_date, now) && c.status === 'open' ? 'closed' : c.status,
+    status: isDateBefore(c.end_date) && c.status === 'open' ? 'closed' : c.status,
   }));
 
   // Get per-cycle grant stats via RPC - bypasses 1000 row limit

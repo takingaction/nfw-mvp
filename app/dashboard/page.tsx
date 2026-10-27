@@ -17,7 +17,7 @@ import { AbandonedCheckoutBanner } from "@/components/dashboard/AbandonedCheckou
 import { PendingFreeMembershipBanner } from "@/components/dashboard/PendingFreeMembershipBanner";
 import { getImpersonationContext } from "@/lib/impersonation";
 import { compareCycleDisplayOrder } from "@/lib/grant-cycle-order";
-import { todayInNewYork } from "@/lib/dates";
+import { siteToday } from "@/lib/dates";
 import ConnectBankButton from "@/components/grants/ConnectBankButton";
 
 export const metadata = {
@@ -267,9 +267,9 @@ export default async function DashboardPage({
   // Get the most recently approved/paid grant ID for the Connect Bank Account button
   const latestGrantId = paidOrApprovedGrants[0]?.id || null;
 
-  // Filter testing-only (non-admins), drop cycles past end_date (New York),
+  // Filter testing-only (non-admins), drop cycles past end_date (Pacific),
   // sort to match /admin/grants, then cap at 6.
-  const todayStr = todayInNewYork();
+  const todayStr = siteToday();
   const availableCycles = (cyclesResult?.data || [])
     .filter((cycle: any) => profile?.is_admin || !cycle.is_testing_only)
     .filter((cycle: any) => String(cycle.end_date).split("T")[0] >= todayStr)

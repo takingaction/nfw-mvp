@@ -2,16 +2,17 @@ import { StyleSheet, Text } from "react-native";
 
 import { colors } from "@/constants/colors";
 import { fonts } from "@/constants/fonts";
+import { SITE_TZ } from "@/lib/format";
 
 function formatPassExpiry(iso: string): string {
   return (
     new Date(iso).toLocaleString("en-US", {
-      timeZone: "America/New_York",
+      timeZone: SITE_TZ,
       month: "short",
       day: "numeric",
       hour: "numeric",
       minute: "2-digit",
-    }) + " ET"
+    }) + " PT"
   );
 }
 

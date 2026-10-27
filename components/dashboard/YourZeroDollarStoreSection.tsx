@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Gift, Clock, ArrowRight } from "lucide-react";
 
+import { SITE_TZ } from "@/lib/dates";
 const SHOPIFY_STORE_DOMAIN = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN || "nationalfundforwomen.myshopify.com";
 
 interface Claim {
@@ -72,7 +73,7 @@ function OnlineHistoryItem({ claim }: { claim: Claim }) {
       if (isNaN(d.getTime())) {
         return "Unknown date";
       }
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return d.toLocaleDateString('en-US', { timeZone: SITE_TZ, month: 'short', day: 'numeric', year: 'numeric' });
     } catch {
       return "Unknown date";
     }

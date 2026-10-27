@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { getCategory } from "@/lib/member-categories";
 
+import { SITE_TZ } from "@/lib/dates";
 interface PaymentRecord {
   id: string;
   amount: number;
@@ -1136,7 +1137,7 @@ export default function BackfillClient() {
         row.profiles?.membership_level || "",
         row.status || "",
         row.payment_count != null ? row.payment_count.toString() : "",
-        row.latest_payment_date ? new Date(row.latest_payment_date).toLocaleDateString() : "",
+        row.latest_payment_date ? new Date(row.latest_payment_date).toLocaleDateString(undefined, { timeZone: SITE_TZ }) : "",
         row.lifetime_value != null ? row.lifetime_value.toFixed(2) : ""
       ];
       const escaped = values.map(v => {
@@ -1902,13 +1903,13 @@ export default function BackfillClient() {
               >
                 Last refreshed:{" "}
                 {new Date(reconciliation.summary.stripe_live.fetchedAt).toLocaleString("en-US", {
-                  timeZone: "America/New_York",
+                  timeZone: SITE_TZ,
                   month: "short",
                   day: "2-digit",
                   hour: "numeric",
                   minute: "2-digit",
                 })}{" "}
-                ET
+                PT
               </span>
             )}
             <button
@@ -2118,7 +2119,7 @@ export default function BackfillClient() {
                       {payment.stripe_payment_id || "—"}
                     </td>
                     <td className="px-4 py-3 font-ui text-sm">
-                      {new Date(payment.created_at).toLocaleDateString("en-US", {
+                      {new Date(payment.created_at).toLocaleDateString("en-US", { timeZone: SITE_TZ,
                         month: "short",
                         day: "numeric",
                         year: "numeric",
@@ -2195,7 +2196,7 @@ export default function BackfillClient() {
         </div>
         {stripeOnlyGeneratedAt && (
           <div className="px-4 py-2 bg-green-50 border-b border-green-200 text-xs text-green-700">
-            CSV generated at {new Date(stripeOnlyGeneratedAt).toLocaleTimeString()}. Download link is valid until you generate a new CSV.
+            CSV generated at {new Date(stripeOnlyGeneratedAt).toLocaleTimeString(undefined, { timeZone: SITE_TZ })}. Download link is valid until you generate a new CSV.
           </div>
         )}
         {stripeOnly.length > 0 ? (
@@ -2229,7 +2230,7 @@ export default function BackfillClient() {
                     </td>
                     <td className="px-4 py-3 font-ui text-sm font-mono text-xs">{charge.customer_id?.slice(0, 20)}...</td>
                     <td className="px-4 py-3 font-ui text-sm">
-                      {new Date(charge.created).toLocaleDateString("en-US", {
+                      {new Date(charge.created).toLocaleDateString("en-US", { timeZone: SITE_TZ,
                         month: "short",
                         day: "numeric",
                         year: "numeric",
@@ -2760,7 +2761,7 @@ export default function BackfillClient() {
                               <td className="p-2">
                                 <StatusBadge status={row.status} />
                               </td>
-                              <td className="p-2">{row.processed_at ? new Date(row.processed_at).toLocaleDateString() : "—"}</td>
+                              <td className="p-2">{row.processed_at ? new Date(row.processed_at).toLocaleDateString(undefined, { timeZone: SITE_TZ }) : "—"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -2823,8 +2824,8 @@ export default function BackfillClient() {
                               <td className="p-2">{sub.tier}</td>
                               <td className="p-2">${sub.amount.toFixed(2)}</td>
                               <td className="p-2">{sub.status}</td>
-                              <td className="p-2">{sub.current_period_start ? new Date(sub.current_period_start * 1000).toLocaleDateString() : "—"}</td>
-                              <td className="p-2">{sub.current_period_end ? new Date(sub.current_period_end * 1000).toLocaleDateString() : "—"}</td>
+                              <td className="p-2">{sub.current_period_start ? new Date(sub.current_period_start * 1000).toLocaleDateString(undefined, { timeZone: SITE_TZ }) : "—"}</td>
+                              <td className="p-2">{sub.current_period_end ? new Date(sub.current_period_end * 1000).toLocaleDateString(undefined, { timeZone: SITE_TZ }) : "—"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -3030,7 +3031,7 @@ export default function BackfillClient() {
                             )}
                             {row.latest_payment_date && (
                               <span className="text-xs text-nfw-blackberry/40">
-                                {new Date(row.latest_payment_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                {new Date(row.latest_payment_date).toLocaleDateString("en-US", { timeZone: SITE_TZ, month: "short", day: "numeric", year: "numeric" })}
                               </span>
                             )}
                           </div>
@@ -3086,7 +3087,7 @@ export default function BackfillClient() {
                                     </span>
                                     <span className="font-ui text-sm font-bold">${payment.amount.toFixed(2)}</span>
                                     <span className="font-ui text-xs text-nfw-blackberry/60">
-                                      {new Date(payment.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                      {new Date(payment.date).toLocaleDateString("en-US", { timeZone: SITE_TZ, month: "short", day: "numeric", year: "numeric" })}
                                     </span>
                                     {payment.status && payment.status !== "paid" && (
                                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${

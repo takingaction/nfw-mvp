@@ -7,6 +7,7 @@ import ProfileCompletionForm from "@/components/ProfileCompletionForm";
 import { ProfileBanner } from "@/components/profile/ProfileBanner";
 import DeleteAccountModal from "@/components/profile/DeleteAccountModal";
 
+import { SITE_TZ } from "@/lib/dates";
 interface ProfileClientProps {
   profile: any;
   user: any;
@@ -72,7 +73,7 @@ export default function ProfileClient({
                 {subscriptionStatus === "canceling" && subscriptionEndsAt && (
                   <p className="text-sm text-nfw-citrine mt-2 flex items-center gap-1">
                     Your membership will end on{" "}
-                    {subscriptionEndsAt.toLocaleDateString()}
+                    {subscriptionEndsAt.toLocaleDateString(undefined, { timeZone: SITE_TZ })}
                   </p>
                 )}
               </div>
@@ -116,8 +117,8 @@ export default function ProfileClient({
                   <span className="text-sm text-nfw-blackberry/50">Member Since</span>
                   <p className="font-medium text-nfw-blackberry">
                     {profile.joined_at
-                      ? new Date(profile.joined_at).toLocaleDateString()
-                      : new Date().toLocaleDateString()}
+                      ? new Date(profile.joined_at).toLocaleDateString(undefined, { timeZone: SITE_TZ })
+                      : new Date().toLocaleDateString(undefined, { timeZone: SITE_TZ })}
                   </p>
                 </div>
                 {profile.household_income && (

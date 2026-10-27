@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 
+import { SITE_TZ } from "@/lib/dates";
 export async function GET(request: Request) {
   try {
     const supabase = await createServerClient();
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
       const csvRows = emails
         .map(
           (row) =>
-            `${row.email},${new Date(row.created_at).toLocaleDateString("en-US", {
+            `${row.email},${new Date(row.created_at).toLocaleDateString("en-US", { timeZone: SITE_TZ,
               year: "numeric",
               month: "2-digit",
               day: "2-digit",

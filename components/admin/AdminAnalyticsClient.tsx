@@ -30,7 +30,7 @@ import {
   Check,
 } from "lucide-react";
 import { getCategory } from "@/lib/member-categories";
-import { parseESTDate, endOfESTDay, startOfCurrentPeriod, parseJoinedAt, formatJoinedAtFull, estDateKey } from "@/lib/dates";
+import { parseSiteDate, siteEndOfDay, startOfCurrentPeriod, parseJoinedAt, formatJoinedAtFull, siteDateKey, SITE_TZ } from "@/lib/dates";
 
 type DateRangeOption = {
   label: string;
@@ -284,29 +284,32 @@ export default function AdminAnalyticsClient({
     const params = new URLSearchParams();
     const now = new Date();
 
+    // Freshdesk accepts full ISO timestamps; send exact Pacific-time
+    // boundaries as UTC instants (seconds precision).
+    const toFreshdesk = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, "Z");
+
     if (dateRange === "custom") {
-      // Custom range uses explicit dates
-      if (customStartDate) params.set("start_date", customStartDate);
-      if (customEndDate) params.set("end_date", customEndDate);
+      // Custom range: 12:00 AM PT on start date through 11:59:59 PM PT on end date
+      if (customStartDate) params.set("start_date", toFreshdesk(parseSiteDate(customStartDate)));
+      if (customEndDate) params.set("end_date", toFreshdesk(siteEndOfDay(customEndDate)));
     } else if (dateRange !== 9999) {
       let startDate: Date;
 
       if (dateRange === -1) {
-        // Month to date - start of current month
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        // Month to date - start of current month (PT)
+        startDate = startOfCurrentPeriod("month");
       } else if (dateRange === -2) {
-        // Quarter to date - start of current quarter
-        const quarterMonth = Math.floor(now.getMonth() / 3) * 3;
-        startDate = new Date(now.getFullYear(), quarterMonth, 1);
+        // Quarter to date - start of current quarter (PT)
+        startDate = startOfCurrentPeriod("quarter");
       } else if (dateRange === -3) {
-        // Year to date - start of current year
-        startDate = new Date(now.getFullYear(), 0, 1);
+        // Year to date - start of current year (PT)
+        startDate = startOfCurrentPeriod("year");
       } else {
         // Regular day offset (7, 30, 90, 180, 365)
         startDate = new Date(now.getTime() - dateRange * 24 * 60 * 60 * 1000);
       }
 
-      params.set("start_date", startDate.toISOString().split("T")[0]);
+      params.set("start_date", toFreshdesk(startDate));
     }
     // For 9999 (All Time), don't send any date params
 
@@ -338,7 +341,7 @@ export default function AdminAnalyticsClient({
 
     if (dateRange === "custom") {
       if (!customStartDate) return new Date(0);
-      return parseESTDate(customStartDate);
+      return parseSiteDate(customStartDate);
     }
 
     if (dateRange === -1 || dateRange === -2 || dateRange === -3) {
@@ -350,10 +353,10 @@ export default function AdminAnalyticsClient({
     return new Date(now.getTime() - dateRange * 24 * 60 * 60 * 1000);
   }, [dateRange, customStartDate]);
 
-  // Get end date for custom range (end of end date day in EST)
+  // Get end date for custom range (end of end date day, Pacific time)
   const endDate = useMemo(() => {
     if (dateRange !== "custom" || !customEndDate) return new Date();
-    return endOfESTDay(parseESTDate(customEndDate));
+    return siteEndOfDay(customEndDate);
   }, [dateRange, customEndDate]);
 
   // Helper to check if a date is within range
@@ -376,7 +379,7 @@ export default function AdminAnalyticsClient({
   );
 
   const membersByDay = useMemo(() => {
-    // Two series on one date axis (New York calendar day, "YYYY-MM-DD"):
+    // Two series on one date axis (Pacific calendar day, "YYYY-MM-DD"):
     //  - started: every profile created that day (joined_at), all tiers incl. admins/test accounts
     //  - paid:    non-admin profiles whose FIRST payment landed that day (first_paid_at).
     //             Uses first_paid_at so free→paid upgraders count on the day they converted,
@@ -386,14 +389,14 @@ export default function AdminAnalyticsClient({
     const sampleTimestamp: Record<string, string> = {};
 
     filteredProfiles.forEach((p) => {
-      const key = estDateKey(p.joined_at!);
+      const key = siteDateKey(p.joined_at!);
       started[key] = (started[key] || 0) + 1;
       if (!sampleTimestamp[key]) sampleTimestamp[key] = p.joined_at!;
     });
 
     profiles.forEach((p) => {
       if (p.is_admin || !p.first_paid_at || !isInRange(p.first_paid_at)) return;
-      const key = estDateKey(p.first_paid_at);
+      const key = siteDateKey(p.first_paid_at);
       paid[key] = (paid[key] || 0) + 1;
       if (!sampleTimestamp[key]) sampleTimestamp[key] = p.first_paid_at;
     });
@@ -1163,8 +1166,8 @@ export default function AdminAnalyticsClient({
     profiles.forEach((p) => {
       if (!p.joined_at) return;
       const date = new Date(p.joined_at);
-      const key = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
-      const label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      const key = siteDateKey(p.joined_at).slice(0, 7); // YYYY-MM in PT
+      const label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: SITE_TZ });
 
       if (!cohorts.has(key)) {
         cohorts.set(key, { total: 0, active: 0 });
@@ -1186,9 +1189,10 @@ export default function AdminAnalyticsClient({
     const displayCohorts = sortedCohorts.slice(-12);
 
     displayCohorts.forEach(([key, data]) => {
-      const date = new Date(key + '-01');
-      const label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-      const shortLabel = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      // key is a PT calendar month; render it as written (UTC avoids a month shift)
+      const date = new Date(key + '-01T00:00:00Z');
+      const label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+      const shortLabel = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' });
       rows.push({
         cohort: label,
         cohortShort: shortLabel,
@@ -2428,7 +2432,7 @@ export default function AdminAnalyticsClient({
                   </div>
                   <p className="text-xs text-nfw-blackberry/50 text-center">
                     Data from Freshdesk. Cached for 5 minutes. Last updated:{" "}
-                    {new Date().toLocaleTimeString()}
+                    {new Date().toLocaleTimeString(undefined, { timeZone: SITE_TZ })}
                   </p>
                 </div>
               ) : (

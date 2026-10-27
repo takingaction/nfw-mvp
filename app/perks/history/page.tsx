@@ -20,6 +20,7 @@ import {
 import Link from "next/link";
 import ExpiredLinkModal from "@/components/ui/ExpiredLinkModal";
 
+import { SITE_TZ } from "@/lib/dates";
 interface Redemption {
   id: string;
   offer_key: string;
@@ -165,13 +166,13 @@ export default function RedemptionHistoryPage() {
   const formatExpiryDate = (expiresAt: string | null) => {
     if (!expiresAt) return null;
     const date = new Date(expiresAt);
-    return date.toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" });
+    return date.toLocaleDateString("en-US", { timeZone: SITE_TZ, month: "short", day: "numeric" });
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
-      timeZone: "America/New_York",
+      timeZone: SITE_TZ,
       month: "short",
       day: "numeric",
       year: "numeric",

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Search, Download, RefreshCw, Eye, Check, X } from "lucide-react";
 import { FreeMembershipApprovalModal } from "@/components/admin/FreeMembershipApprovalModal";
 
+import { SITE_TZ } from "@/lib/dates";
 interface Submission {
   id: string;
   name: string;
@@ -169,7 +170,7 @@ export default function AdminContactSubmissions() {
   const exportCSV = () => {
     const headers = ["Date", "Name", "Email", "Subject", "Status", "Ticket ID", "Message"];
     const rows = submissions.map((s) => [
-      new Date(s.created_at).toLocaleDateString(),
+      new Date(s.created_at).toLocaleDateString(undefined, { timeZone: SITE_TZ }),
       s.name,
       s.email,
       s.subject_label,
@@ -357,7 +358,7 @@ export default function AdminContactSubmissions() {
                       className="hover:bg-nfw-dove/30 transition-colors"
                     >
                       <td className="px-4 py-3 font-sans text-sm text-nfw-blackberry">
-                        {new Date(sub.created_at).toLocaleDateString("en-US", {
+                        {new Date(sub.created_at).toLocaleDateString("en-US", { timeZone: SITE_TZ,
                           month: "short",
                           day: "numeric",
                           year: "numeric",

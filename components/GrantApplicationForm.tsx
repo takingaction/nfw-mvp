@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
+import { SITE_TZ } from "@/lib/dates";
 const decodeHtml = (html: string): string => {
   if (typeof document === "undefined") return html || "";
   const div = document.createElement("div");
@@ -58,12 +59,12 @@ interface GrantCycle {
 
 function formatPassExpiry(iso: string): string {
   return new Date(iso).toLocaleString("en-US", {
-    timeZone: "America/New_York",
+    timeZone: SITE_TZ,
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-  }) + " ET";
+  }) + " PT";
 }
 
 function LatePassNote({ expiresAt }: { expiresAt?: string }) {

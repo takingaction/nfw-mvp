@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, Download, Loader2 } from "lucide-react";
 
+import { SITE_TZ } from "@/lib/dates";
 interface ViewAsRow {
   id: string;
   admin_user_id: string;
@@ -35,17 +36,17 @@ const formatTs = (iso: string | null | undefined): string => {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
     const parts = d.toLocaleDateString("en-US", {
-      timeZone: "America/New_York",
+      timeZone: SITE_TZ,
       month: "short",
       day: "numeric",
       year: "numeric",
     }).split(" ");
     const time = d.toLocaleTimeString("en-US", {
-      timeZone: "America/New_York",
+      timeZone: SITE_TZ,
       hour: "numeric",
       minute: "2-digit",
     });
-    return `${parts[0]} ${parts[1].replace(",", "")}, ${parts[2]} ${time} ET`;
+    return `${parts[0]} ${parts[1].replace(",", "")}, ${parts[2]} ${time} PT`;
   } catch {
     return iso;
   }

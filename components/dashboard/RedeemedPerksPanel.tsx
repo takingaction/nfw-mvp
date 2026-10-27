@@ -13,6 +13,7 @@ import {
 import Link from "next/link";
 import ExpiredLinkModal from "@/components/ui/ExpiredLinkModal";
 
+import { SITE_TZ } from "@/lib/dates";
 interface Redemption {
   id: string;
   offer_key: string;
@@ -147,7 +148,7 @@ export default function RedeemedPerksPanel({
   const formatExpiryDate = (expiresAt: string | null): string => {
     if (!expiresAt) return "";
     const date = new Date(expiresAt);
-    return date.toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" });
+    return date.toLocaleDateString("en-US", { timeZone: SITE_TZ, month: "short", day: "numeric" });
   };
 
   const formatDate = (dateString: string) => {
@@ -159,7 +160,7 @@ export default function RedeemedPerksPanel({
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Yesterday";
     if (diffDays < 7) return `${diffDays} days ago`;
-    return date.toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" });
+    return date.toLocaleDateString("en-US", { timeZone: SITE_TZ, month: "short", day: "numeric" });
   };
 
   const getRedemptionTypeLabel = (type: string) => {

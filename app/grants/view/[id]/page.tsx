@@ -6,7 +6,7 @@ import GrantDocuments from "@/components/grants/GrantDocuments";
 import ConnectBankButton from "@/components/grants/ConnectBankButton";
 import StripeAccountStatus from "@/components/grants/StripeAccountStatus";
 import { getImpersonationContext } from "@/lib/impersonation";
-import { formatDateOnly } from "@/lib/dates";
+import { formatDateOnly, SITE_TZ } from "@/lib/dates";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -127,7 +127,7 @@ export default async function GrantDetailPage({
                 Submitted 
                 {grant.submitted_at
                   ? new Date(grant.submitted_at).toLocaleDateString("en-US", {
-                      timeZone: "America/New_York",
+                      timeZone: SITE_TZ,
                       month: "long",
                       day: "numeric",
                       year: "numeric",
@@ -223,7 +223,7 @@ export default async function GrantDetailPage({
                       Submitted for Review
                     </p>
                     <p className="font-serif text-xs text-nfw-blackberry/50">
-                      {new Date(grant.submitted_at).toLocaleString("en-US", { timeZone: "America/New_York" })}
+                      {new Date(grant.submitted_at).toLocaleString("en-US", { timeZone: SITE_TZ })}
                     </p>
                   </div>
                 </div>
@@ -237,7 +237,7 @@ export default async function GrantDetailPage({
                       Payment Sent
                     </p>
                     <p className="font-serif text-xs text-nfw-blackberry/50">
-                      {new Date(grant.funded_at).toLocaleString("en-US", { timeZone: "America/New_York" })}
+                      {new Date(grant.funded_at).toLocaleString("en-US", { timeZone: SITE_TZ })}
                     </p>
                   </div>
                 </div>

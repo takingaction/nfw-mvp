@@ -483,7 +483,7 @@ export default function OfferDetailPage({ params }: OfferDetailPageProps) {
     if (daysUntilExpiry === 0) return "Expires today";
     if (daysUntilExpiry === 1) return "Expires tomorrow";
     if (daysUntilExpiry <= 7) return `Expires in ${daysUntilExpiry} days`;
-    return `Expires ${expiryDate.toLocaleDateString()}`;
+    return `Expires ${expiryDate.toLocaleDateString(undefined, { timeZone: "UTC" })}`;
   };
 
   const decodeHtml = (html: string) => {

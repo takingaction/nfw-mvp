@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { SITE_TZ } from "@/lib/dates";
 interface EmailRecord {
   email: string;
   created_at: string;
@@ -48,7 +49,7 @@ export default function AdminNewsletterSignups({
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString("en-US", { timeZone: SITE_TZ,
       year: "numeric",
       month: "2-digit",
       day: "2-digit",

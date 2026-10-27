@@ -7,6 +7,7 @@ import { EmailSectionList } from "./EmailSectionList";
 import MediaLibraryModal from "../MediaLibraryModal";
 import { NotificationModal } from "@/components/admin/NotificationModal";
 
+import { SITE_TZ } from "@/lib/dates";
 interface Props {
   template: EmailTemplateExtended;
   initialSections: EmailSection[];
@@ -141,7 +142,7 @@ export function EmailBuilder({
                 <h2 className="text-lg font-serif text-nfw-blackberry">{template.name}</h2>
                 <p className="text-sm text-nfw-blackberry/50">
                   {template.status === "published" ? "Published" : "Draft"}
-                  {lastSaved && ` - Last saved ${lastSaved.toLocaleTimeString()}`}
+                  {lastSaved && ` - Last saved ${lastSaved.toLocaleTimeString(undefined, { timeZone: SITE_TZ })}`}
                 </p>
               </div>
               <div className="flex gap-3">

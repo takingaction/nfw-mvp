@@ -15,6 +15,7 @@ import {
   XCircle,
 } from "lucide-react";
 
+import { SITE_TZ } from "@/lib/dates";
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -127,7 +128,7 @@ function formatDateTime(iso: string | null): string {
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
-    timeZone: "America/New_York",
+    timeZone: SITE_TZ,
   });
 }
 

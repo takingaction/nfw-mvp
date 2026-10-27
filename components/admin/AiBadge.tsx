@@ -1,7 +1,7 @@
 "use client";
 
 import { Sparkles, CheckCircle2 } from "lucide-react";
-import { formatESTDisplay } from "@/lib/dates";
+import { formatSiteDisplay } from "@/lib/dates";
 
 export interface AiBadgeProps {
   ai_relevance?: "relevant" | "irrelevant" | "uncertain" | "not_evaluated" | null;
@@ -56,7 +56,7 @@ export default function AiBadge({
     return (
       <span
         className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded bg-green-100 text-green-700 border border-green-200 ${sizeClass}`}
-        title={`AI flagged this as ${verdict}. A reviewer marked it valid on ${formatESTDisplay(new Date(ai_validated_at))}.`}
+        title={`AI flagged this as ${verdict}. A reviewer marked it valid on ${formatSiteDisplay(new Date(ai_validated_at))}.`}
       >
         <CheckCircle2 className="w-3 h-3" />
         Valid

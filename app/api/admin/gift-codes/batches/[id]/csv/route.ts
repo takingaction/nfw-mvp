@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/adminCheck";
 import getAdminClient from "@/lib/supabase/admin";
 import { buildRedeemUrl, csvCell, formatGiftCodeForPrint, getSiteUrl } from "@/lib/gift-codes";
 
+import { SITE_TZ } from "@/lib/dates";
 const PAGE = 1000;
 
 /**
@@ -58,7 +59,7 @@ export async function GET(
 
   const siteUrl = getSiteUrl();
   const expiresOn = batch.expires_at
-    ? new Date(batch.expires_at).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "long", day: "numeric", year: "numeric" })
+    ? new Date(batch.expires_at).toLocaleDateString("en-US", { timeZone: SITE_TZ, month: "long", day: "numeric", year: "numeric" })
     : "";
 
   const header = ["seq", "code", "redeem_url", "batch", "tier", "expires_on"];

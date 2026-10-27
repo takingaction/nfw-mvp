@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/adminCheck";
 
+import { SITE_TZ } from "@/lib/dates";
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -19,15 +20,15 @@ function escapeCsvField(value: unknown): string {
 function formatDate(value: string | null): string {
   if (!value) return "";
   const date = new Date(value);
-  return date.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+  return date.toLocaleDateString("en-US", { timeZone: SITE_TZ, month: "2-digit", day: "2-digit", year: "numeric" });
 }
 
 function formatDateTime(value: string | null): string {
   if (!value) return "";
   const date = new Date(value);
-  return date.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) +
+  return date.toLocaleDateString("en-US", { timeZone: SITE_TZ, month: "2-digit", day: "2-digit", year: "numeric" }) +
     " " +
-    date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+    date.toLocaleTimeString("en-US", { timeZone: SITE_TZ, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 }
 
 function formatBoolean(value: boolean | null): string {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { SITE_TZ } from "@/lib/dates";
 interface Document {
   id: string;
   file_name: string;
@@ -52,7 +53,7 @@ export default function GrantDocuments({
             <div>
               <div className="font-ui">{doc.file_name}</div>
               <div className="text-sm font-ui text-gray-500">
-                Uploaded {new Date(doc.uploaded_at).toLocaleDateString()} •{" "}
+                Uploaded {new Date(doc.uploaded_at).toLocaleDateString(undefined, { timeZone: SITE_TZ })} •{" "}
                 {(doc.file_size / 1024).toFixed(1)} KB
               </div>
             </div>

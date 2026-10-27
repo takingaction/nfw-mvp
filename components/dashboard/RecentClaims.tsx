@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Package, ExternalLink } from "lucide-react";
 
+import { SITE_TZ } from "@/lib/dates";
 type Claim = {
   id: string;
   shopify_product_id: string;
@@ -115,7 +116,7 @@ export default function RecentClaims() {
                     {claim.product?.title || "Unknown Item"}
                   </p>
                   <p className="text-sm text-nfw-blackberry/50">
-                    Claimed {new Date(claim.claimed_at).toLocaleDateString()}
+                    Claimed {new Date(claim.claimed_at).toLocaleDateString(undefined, { timeZone: SITE_TZ })}
                   </p>
                 </div>
                 <span

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 
+import { SITE_TZ } from "@/lib/dates";
 interface Channel {
   id: string;
   name: string;
@@ -373,7 +374,7 @@ export default function AdminUtmBuilder({ userEmail }: AdminUtmBuilderProps) {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("en-US", {
+    return new Date(dateStr).toLocaleDateString("en-US", { timeZone: SITE_TZ,
       month: "short",
       day: "numeric",
       year: "numeric",

@@ -141,8 +141,10 @@ export async function GET(
 
     if (cycle?.end_date) {
       const endDate = new Date(cycle.end_date);
-      const monthStart = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
-      const monthEnd = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0);
+      // end_date is a date-only marker (UTC midnight); use UTC parts so the
+      // calendar month is the one written, regardless of server time zone.
+      const monthStart = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), 1));
+      const monthEnd = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() + 1, 0));
 
       // Find all non-testing cycles ending in the same month
       const { data: cyclesInMonth } = await supabaseAdmin

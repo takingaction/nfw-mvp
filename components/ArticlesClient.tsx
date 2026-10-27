@@ -8,6 +8,7 @@ import { Search, X, Heart } from "lucide-react";
 import { ArticleWithDetails, ArticleCategory } from "@/types/articles";
 import { createClient } from "@/lib/supabase/client";
 
+import { SITE_TZ } from "@/lib/dates";
 export default function ArticlesClient({
   articles,
   categories,
@@ -218,7 +219,7 @@ export default function ArticlesClient({
                       <span>
                         {new Date(
                           article.published_at || article.created_at,
-                        ).toLocaleDateString("en-US", {
+                        ).toLocaleDateString("en-US", { timeZone: SITE_TZ,
                           month: "short",
                           day: "numeric",
                         })}

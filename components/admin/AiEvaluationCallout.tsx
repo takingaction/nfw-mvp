@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Sparkles, XCircle, AlertTriangle, CheckCircle2 } from "lucide-react";
 import AiCriteriaList from "./AiCriteriaList";
 
+import { SITE_TZ } from "@/lib/dates";
 export interface AiEvaluation {
   ai_relevance?: "relevant" | "irrelevant" | "uncertain" | "not_evaluated" | null;
   ai_reasoning?: string | null;
@@ -32,7 +33,7 @@ function formatDate(value: string | null | undefined): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString("en-US", {
-    timeZone: "America/New_York",
+    timeZone: SITE_TZ,
     month: "short",
     day: "numeric",
     year: "numeric",

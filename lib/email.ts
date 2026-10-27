@@ -28,6 +28,7 @@ async function fetchEmailTemplate(slug: string): Promise<{ subject: string; html
 
 import getAdminClient from "@/lib/supabase/admin";
 
+import { SITE_TZ } from "@/lib/dates";
 async function fetchEmailTemplateAdmin(slug: string): Promise<{ subject: string; html: string; hero_image_url?: string; is_active?: boolean } | null> {
   const supabase = getAdminClient();
   const { data, error } = await supabase
@@ -584,7 +585,7 @@ export async function sendWelcomeEmail({
 
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    return date.toLocaleDateString('en-US', { timeZone: SITE_TZ, year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   const tierLabel = membershipType.charAt(0).toUpperCase() + membershipType.slice(1);
@@ -943,7 +944,7 @@ export async function sendFreshdeskTicketRejectionEmail({
 }): Promise<{ success: boolean; error?: any }> {
   const siteUrl = "https://nationalfundforwomen.org";
   const slug = "freshdesk-rejection";
-  const timestamp = new Date().toLocaleString("en-US", {
+  const timestamp = new Date().toLocaleString("en-US", { timeZone: SITE_TZ,
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -1157,7 +1158,7 @@ export async function sendContactFormEmail({
   message: string;
 }): Promise<{ success: boolean; error?: string }> {
   const slug = "contact-form";
-  const timestamp = new Date().toLocaleString("en-US", {
+  const timestamp = new Date().toLocaleString("en-US", { timeZone: SITE_TZ,
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -1202,6 +1203,7 @@ export async function sendStoryNotificationEmail(data: StoryFormData) {
   const toEmail = "hello@nationalfundforwomen.org";
 
   const submittedAt = new Date().toLocaleString("en-US", {
+    timeZone: SITE_TZ,
     year: "numeric",
     month: "long",
     day: "numeric",

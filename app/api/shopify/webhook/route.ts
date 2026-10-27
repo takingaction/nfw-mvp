@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
+import { siteMonthKey } from "@/lib/dates";
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -109,7 +110,7 @@ export async function POST(request: Request) {
       const trackingNumber = fulfillment?.tracking_number || null;
       const trackingUrl = fulfillment?.tracking_url || null;
       const orderCreatedAt = order.created_at ? new Date(order.created_at) : new Date();
-      const claimMonth = `${orderCreatedAt.getFullYear()}-${String(orderCreatedAt.getMonth() + 1).padStart(2, "0")}-01`;
+      const claimMonth = siteMonthKey(orderCreatedAt); // PT calendar month
 
       // =====================================================================
       // PRIMARY MATCH: claim_id from note (most reliable)
@@ -351,7 +352,7 @@ export async function POST(request: Request) {
       // Compute claimMonth from order date as fallback
       if (!claimMonth) {
         const orderCreatedAt = order.created_at ? new Date(order.created_at) : new Date();
-        claimMonth = `${orderCreatedAt.getFullYear()}-${String(orderCreatedAt.getMonth() + 1).padStart(2, "0")}-01`;
+        claimMonth = siteMonthKey(orderCreatedAt); // PT calendar month
       }
 
       if (nfwUserId) {

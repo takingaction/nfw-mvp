@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { RefreshCw, CheckCircle, XCircle, AlertTriangle, Settings } from "lucide-react";
 
+import { SITE_TZ } from "@/lib/dates";
 interface SystemSettings {
   shopify_checkout_enabled: boolean;
   shopify_last_health_check: string | null;
@@ -48,7 +49,7 @@ function formatTimeAgo(dateStr: string | null): string {
   if (diffHours === 1) return "1 hour ago";
   if (diffHours < 24) return `${diffHours} hours ago`;
   
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleDateString("en-US", { timeZone: SITE_TZ,
     month: "short",
     day: "numeric",
     hour: "numeric",

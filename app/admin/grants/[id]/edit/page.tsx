@@ -8,7 +8,7 @@ import MediaLibraryModal from "@/components/admin/MediaLibraryModal";
 import SendRejectionPreviewButton from "@/components/admin/SendRejectionPreviewButton";
 import { RejectionBodyEditor } from "@/components/admin/grant/RejectionBodyEditor";
 import type { RejectionBodyBlock } from "@/lib/grant-rejection-body";
-import { todayInNewYork } from "@/lib/dates";
+import { siteToday } from "@/lib/dates";
 
 export default function EditGrantCyclePage() {
   const router = useRouter();
@@ -96,19 +96,19 @@ export default function EditGrantCyclePage() {
 
     // Validate date conflicts when opening a cycle
     if (formData.status === "open" && pendingStatus !== "open") {
-      const todayStr = todayInNewYork();
+      const todayStr = siteToday();
 
-      // Check if end_date has passed (New York time)
+      // Check if end_date has passed (Pacific time)
       if (formData.end_date < todayStr) {
         setConfirmMessage(
-          "This grant's end date has already passed. Members will still not be able to submit, because submissions are blocked after 11:59 PM New York time on the end date. To accept more applications, extend the end date, or issue Late Submission Passes to specific members. Open it anyway?"
+          "This grant's end date has already passed. Members will still not be able to submit, because submissions are blocked after 11:59 PM Pacific time on the end date. To accept more applications, extend the end date, or issue Late Submission Passes to specific members. Open it anyway?"
         );
         setPendingStatus("open");
         setShowConfirmModal(true);
         return;
       }
 
-      // Check if start_date hasn't arrived yet (New York time)
+      // Check if start_date hasn't arrived yet (Pacific time)
       if (formData.start_date > todayStr) {
         setConfirmMessage(
           "This grant's start date hasn't arrived yet. Opening it early will allow applications before the intended start date. Are you sure you want to open it early?"

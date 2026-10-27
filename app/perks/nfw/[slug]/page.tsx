@@ -212,7 +212,7 @@ export default function NfwPerkDetailPage() {
     if (daysUntilExpiry === 0) return "Expires today";
     if (daysUntilExpiry === 1) return "Expires tomorrow";
     if (daysUntilExpiry <= 7) return `Expires in ${daysUntilExpiry} days`;
-    return `Expires ${expiryDate.toLocaleDateString("en-US", {
+    return `Expires ${expiryDate.toLocaleDateString("en-US", { timeZone: "UTC",
       month: "short",
       day: "numeric",
     })}`;

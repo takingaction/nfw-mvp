@@ -19,7 +19,7 @@ import {
 import { FreeMembershipApprovalModal } from "@/components/admin/FreeMembershipApprovalModal";
 import { DeleteMemberModal } from "@/components/admin/DeleteMemberModal";
 import { getCategory } from "@/lib/member-categories";
-import { formatESTDisplay } from "@/lib/dates";
+import { formatSiteDisplay } from "@/lib/dates";
 import { ADMIN_SCOPES, ADMIN_SCOPE_KEYS, normalizeAdminScopes } from "@/lib/admin-scopes";
 
 const ALLOWED_DELETE_EMAILS = [
@@ -544,7 +544,7 @@ export default function AdminMembersClient({
 
   const formatDate = (date: string | null) => {
     if (!date) return "—";
-    return formatESTDisplay(new Date(date));
+    return formatSiteDisplay(new Date(date));
   };
 
   const currentStatus =
@@ -949,7 +949,7 @@ export default function AdminMembersClient({
                   <p className="font-semibold text-nfw-blackberry">
                     {selected.date_of_birth ? (() => {
                       const [y, m, d] = selected.date_of_birth!.split('-').map(Number);
-                      return new Date(y, m - 1, d).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "2-digit", day: "2-digit", year: "numeric" });
+                      return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { timeZone: "UTC", month: "2-digit", day: "2-digit", year: "numeric" });
                     })() : "—"}
                   </p>
                 </div>

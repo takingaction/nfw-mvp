@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Gift, Loader2, Check, AlertCircle } from "lucide-react";
 
+import { SITE_TZ } from "@/lib/dates";
 export type RedeemView =
   | { kind: "enter" }
   | { kind: "error"; code: string; message: string }
@@ -12,7 +13,7 @@ export type RedeemView =
   | { kind: "ready"; code: string; displayCode: string; gift: string; expiresAt: string | null; email: string };
 
 const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/New_York" });
+  new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: SITE_TZ });
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (

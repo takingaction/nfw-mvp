@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllPages } from "@/lib/supabase-paginate";
 
+import { SITE_TZ } from "@/lib/dates";
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -44,7 +45,7 @@ export async function GET() {
 
   const formatDate = (dateStr: string): string => {
     const date = new Date(dateStr);
-    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+    return date.toLocaleDateString("en-US", { timeZone: SITE_TZ }); // M/D/YYYY, Pacific
   };
 
   const buildUtmUrl = (link: typeof links[0]): string => {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import DeleteArticleButton from "@/components/DeleteArticleButton";
 import ArticleCategoryManager from "./ArticleCategoryManager";
 
+import { SITE_TZ } from "@/lib/dates";
 type Article = {
   id: string;
   title: string;
@@ -121,7 +122,7 @@ export default function AdminArticlesClient({
                   {article.like_count}
                 </td>
                 <td className="px-6 py-4 text-sm text-nfw-blackberry/50">
-                  {new Date(article.created_at).toLocaleDateString()}
+                  {new Date(article.created_at).toLocaleDateString(undefined, { timeZone: SITE_TZ })}
                 </td>
                 <td className="px-6 py-4 text-sm">
                   <div className="flex items-center gap-3">

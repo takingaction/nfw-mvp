@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Download, Plus, Printer, X, Loader2, Ban, Filter } from "lucide-react";
 
+import { SITE_TZ, siteToday } from "@/lib/dates";
 export interface GiftCodeBatch {
   id: string;
   name: string;
@@ -31,7 +32,7 @@ interface Props {
 
 const fmtDate = (iso: string | null) =>
   iso
-    ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/New_York" })
+    ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: SITE_TZ })
     : "—";
 
 async function downloadCsv(url: string, fallbackName: string) {
@@ -274,7 +275,7 @@ function CreateBatchModal({
   const [error, setError] = useState<string | null>(null);
 
   const qty = parseInt(quantity, 10) || 0;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = siteToday();
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

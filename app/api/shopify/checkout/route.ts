@@ -7,6 +7,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { getShopifyAccessToken } from "@/lib/shopify";
 
+import { siteMonthKey } from "@/lib/dates";
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -164,8 +165,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Monthly limit checks (1 per month, any product)
+    // Claim months are Pacific-time calendar months (reset 12:00 AM PT on the 1st).
     const now = new Date();
-    const claimMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    const claimMonth = siteMonthKey(now);
     
     // Step 0: Check for existing in-progress checkout (before ANY inserts)
     const { data: existingPending } = await supabaseAdmin

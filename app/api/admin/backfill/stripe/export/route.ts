@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
+import { SITE_TZ } from "@/lib/dates";
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -91,7 +92,7 @@ export async function GET(request: Request) {
         row.status || "",
         row.lifetime_value != null ? row.lifetime_value.toFixed(2) : "",
         row.stripe_customer_id || "",
-        row.processed_at ? new Date(row.processed_at).toLocaleDateString() : "",
+        row.processed_at ? new Date(row.processed_at).toLocaleDateString(undefined, { timeZone: SITE_TZ }) : "",
         row.error_message || ""
       ];
       // Escape values with commas or quotes

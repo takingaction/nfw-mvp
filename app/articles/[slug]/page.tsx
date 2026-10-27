@@ -6,6 +6,7 @@ import Link from "next/link";
 import ArticleActions from "@/components/ArticleActions";
 import type { Metadata } from "next";
 
+import { SITE_TZ } from "@/lib/dates";
 export async function generateMetadata({
   params,
 }: {
@@ -156,7 +157,7 @@ export default async function ArticlePage({
               <span>
                 {new Date(
                   article.published_at || article.created_at,
-                ).toLocaleDateString()}
+                ).toLocaleDateString(undefined, { timeZone: SITE_TZ })}
               </span>
               <span>•</span>
               <span>{article.view_count} views</span>
@@ -249,7 +250,7 @@ export default async function ArticlePage({
                       </p>
                     )}
                     <p className="text-xs text-nfw-blackberry/40 mt-2">
-                      {new Date(related.published_at).toLocaleDateString()}
+                      {new Date(related.published_at).toLocaleDateString(undefined, { timeZone: SITE_TZ })}
                     </p>
                   </div>
                 </a>

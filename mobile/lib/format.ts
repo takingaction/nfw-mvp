@@ -1,7 +1,13 @@
 /**
- * Formatting helpers. Dates are parsed as UTC calendar dates to avoid the
- * off-by-one-day bug the web app hit with `new Date("YYYY-MM-DD")`.
+ * Formatting helpers. The whole platform runs on Pacific Time (mirrors
+ * SITE_TZ in the web app's lib/dates.ts).
+ *
+ * Date-only values ("YYYY-MM-DD", or date markers stored as midnight UTC
+ * such as grant_cycles.end_date) render exactly as written. Real timestamps
+ * render as their Pacific-time calendar date.
  */
+
+export const SITE_TZ = "America/Los_Angeles";
 
 const usd0 = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -22,16 +28,30 @@ export function formatCurrency(value: number | string | null | undefined, cents 
   return (cents ? usd2 : usd0).format(n);
 }
 
-/** Parse "YYYY-MM-DD" or an ISO timestamp into a Date at UTC midnight of that calendar day. */
+/** Midnight-UTC timestamps are date-only markers (e.g. grant_cycles.end_date). */
+const DATE_MARKER = /T00:00:00(\.0+)?(Z|[+-]00(:?00)?)$/;
+
+/**
+ * Parse a date-ish value into a Date at UTC midnight of the calendar day to
+ * display (then formatted with timeZone "UTC"):
+ *   - "YYYY-MM-DD" or a midnight-UTC marker → that date as written
+ *   - any other timestamp / Date → its Pacific-time calendar date
+ */
 function toUtcDate(input: string | Date | null | undefined): Date | null {
   if (!input) return null;
-  if (input instanceof Date) return input;
-  const datePart = input.split("T")[0];
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart);
-  if (!m) {
+  let datePart: string;
+  if (input instanceof Date) {
+    if (Number.isNaN(input.getTime())) return null;
+    datePart = siteToday(input);
+  } else if (!input.includes("T") || DATE_MARKER.test(input)) {
+    datePart = input.split("T")[0];
+  } else {
     const d = new Date(input);
-    return Number.isNaN(d.getTime()) ? null : d;
+    if (Number.isNaN(d.getTime())) return null;
+    datePart = siteToday(d);
   }
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart);
+  if (!m) return null;
   return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
 }
 
@@ -66,12 +86,13 @@ export function formatMonthYear(input: string | Date | null | undefined): string
   return d.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
 }
 
-/** "Sep 11, 2026, 3:42 PM" — for timestamps (local time). */
+/** "Sep 11, 2026, 3:42 PM" — for timestamps (Pacific time). */
 export function formatDateTime(input: string | Date | null | undefined): string {
   if (!input) return "—";
   const d = input instanceof Date ? input : new Date(input);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("en-US", {
+    timeZone: SITE_TZ,
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -86,20 +107,17 @@ export function todayIsoDate(): string {
 }
 
 /**
- * Today's calendar date in America/New_York as "YYYY-MM-DD" (DST-safe via
- * Intl). Use this (not `todayIsoDate`) when comparing against date-only DB
- * columns like `grant_cycles.end_date`: the web's contract is "hard deadline
- * is midnight ET on end_date", but UTC helpers can hide a cycle from a US
- * Eastern member anywhere from 4 to 8 hours before that midnight (e.g. on
- * the last evening of a grant, an ET member at 8 PM sees the cycle vanish
- * from the dashboard if the dashboard filter uses the UTC date).
+ * Today's calendar date in Pacific time as "YYYY-MM-DD" (DST-safe via Intl).
+ * Use this (not `todayIsoDate`, which is UTC) when comparing against
+ * date-only DB columns like `grant_cycles.end_date`: cycles accept
+ * applications through 11:59 PM PT on end_date.
  *
- * Mirrors lib/dates.ts todayInNewYork on the web.
+ * Mirrors siteToday in the web app's lib/dates.ts.
  */
-export function todayInNewYork(now: Date = new Date()): string {
+export function siteToday(now: Date = new Date()): string {
   // en-CA formats as YYYY-MM-DD
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
+    timeZone: SITE_TZ,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

@@ -1,74 +1,134 @@
 /**
- * EST (America/New_York) timezone utilities
- * All dates stored in DB are UTC (TIMESTAMPTZ)
- * These helpers ensure consistent EST display and filtering
+ * Site time zone utilities.
+ *
+ * The whole site runs on Pacific Time (America/Los_Angeles). All timestamps
+ * in the DB are UTC (TIMESTAMPTZ); these helpers convert to and from PT
+ * calendar days/months for display, filtering, grant deadlines and
+ * monthly claims. Never rely on the server's or browser's local time zone
+ * (Vercel functions run in UTC) — always go through these helpers.
+ *
+ * The DB mirrors this with public.site_tz() (migration 212).
  */
 
-// EST offset is UTC-5 (or UTC-4 during DST, but we use EST year-round for simplicity)
-// EST = UTC-5 hours
-const EST_OFFSET_HOURS = 5;
+export const SITE_TZ = "America/Los_Angeles";
+/** Short label shown next to times, e.g. "11:59 PM PT". */
+export const SITE_TZ_LABEL = "PT";
 
-/**
- * Parse YYYY-MM-DD date string as EST midnight
- * Input: "2026-09-15" → Output: Date where UTC midnight = 00:00 EST
- * Since EST = UTC-5, to get 00:00 EST we need UTC 05:00
- */
-export function parseESTDate(dateStr: string): Date {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  // Create EST midnight: UTC = EST + 5 hours
-  // So 00:00 EST = 05:00 UTC
-  return new Date(Date.UTC(y, m - 1, d, EST_OFFSET_HOURS, 0, 0, 0));
+/** UTC offset of SITE_TZ at a given instant, in minutes (e.g. -420 for PDT). */
+function siteOffsetMinutes(at: Date): number {
+  const name =
+    new Intl.DateTimeFormat("en-US", { timeZone: SITE_TZ, timeZoneName: "longOffset" })
+      .formatToParts(at)
+      .find((p) => p.type === "timeZoneName")?.value ?? "GMT";
+  const m = name.match(/GMT([+-])(\d{2}):?(\d{2})?/);
+  if (!m) return 0;
+  const sign = m[1] === "-" ? -1 : 1;
+  return sign * (Number(m[2]) * 60 + Number(m[3] ?? 0));
 }
 
-/**
- * Format Date as EST YYYY-MM-DD string for chart labels
- */
-export function formatESTDateKey(date: Date): string {
-  return date.toLocaleDateString("en-US", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).replace(/\//g, '-');
+/** UTC instant of 00:00 site time on the given calendar date (DST-safe). */
+function siteMidnight(y: number, m: number, d: number): Date {
+  const wallAsUtc = Date.UTC(y, m - 1, d);
+  let t = wallAsUtc - siteOffsetMinutes(new Date(wallAsUtc + 12 * 3600_000)) * 60_000;
+  // Midnight falls before the 2 AM DST switch, so re-check the offset at
+  // the candidate instant itself.
+  const off = siteOffsetMinutes(new Date(t));
+  t = wallAsUtc - off * 60_000;
+  return new Date(t);
 }
 
-/**
- * Format Date as EST display string (e.g., "Sep 15, 2026")
- */
-export function formatESTDisplay(date: Date): string {
-  return date.toLocaleDateString("en-US", {
-    timeZone: "America/New_York",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function splitYmd(dateStr: string): [number, number, number] {
+  const [y, m, d] = dateStr.split("T")[0].split("-").map(Number);
+  return [y, m, d];
 }
 
-/**
- * Today's calendar date in America/New_York as "YYYY-MM-DD".
- * Use this (not `new Date().toISOString()`, which is UTC) whenever comparing
- * against date-only columns like grant_cycles.start_date / end_date.
- * Handles DST correctly via Intl.
- */
-export function todayInNewYork(now: Date = new Date()): string {
+/** Today's calendar date in site time as "YYYY-MM-DD". */
+export function siteToday(now: Date = new Date()): string {
   // en-CA formats as YYYY-MM-DD
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
+    timeZone: SITE_TZ,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(now);
 }
 
+/** First day of the current site-time month as "YYYY-MM-01" (claim_month key). */
+export function siteMonthKey(now: Date = new Date()): string {
+  return `${siteToday(now).slice(0, 7)}-01`;
+}
+
+/** UTC instants bounding the site-time month containing `now`: [start, end). */
+export function siteMonthRange(now: Date = new Date()): { start: Date; end: Date } {
+  const [y, m] = splitYmd(siteToday(now));
+  return {
+    start: siteMidnight(y, m, 1),
+    end: m === 12 ? siteMidnight(y + 1, 1, 1) : siteMidnight(y, m + 1, 1),
+  };
+}
+
+/** Parse "YYYY-MM-DD" as 00:00 site time on that date. */
+export function parseSiteDate(dateStr: string): Date {
+  const [y, m, d] = splitYmd(dateStr);
+  return siteMidnight(y, m, d);
+}
+
+/** Last millisecond (23:59:59.999 site time) of "YYYY-MM-DD". */
+export function siteEndOfDay(dateStr: string): Date {
+  const [y, m, d] = splitYmd(dateStr);
+  const next = new Date(Date.UTC(y, m - 1, d + 1));
+  return new Date(
+    siteMidnight(next.getUTCFullYear(), next.getUTCMonth() + 1, next.getUTCDate()).getTime() - 1,
+  );
+}
+
+/**
+ * Start of the current month / quarter / year in site time.
+ * Used for relative date ranges (month-to-date, quarter-to-date, year-to-date).
+ */
+export function startOfCurrentPeriod(period: "month" | "quarter" | "year", now: Date = new Date()): Date {
+  const [y, m] = splitYmd(siteToday(now));
+  if (period === "month") return siteMidnight(y, m, 1);
+  if (period === "quarter") return siteMidnight(y, Math.floor((m - 1) / 3) * 3 + 1, 1);
+  return siteMidnight(y, 1, 1);
+}
+
+/** Format Date as site-time "MM-DD-YYYY" key. */
+export function formatSiteDateKey(date: Date): string {
+  return date
+    .toLocaleDateString("en-US", { timeZone: SITE_TZ, year: "numeric", month: "2-digit", day: "2-digit" })
+    .replace(/\//g, "-");
+}
+
+/** Format Date as site-time display string (e.g., "Sep 15, 2026"). */
+export function formatSiteDisplay(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    timeZone: SITE_TZ,
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/** Format Date as site time for input fields (e.g., "09/15/2026"). */
+export function formatSiteInput(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    timeZone: SITE_TZ,
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+  });
+}
+
 /**
  * Format a date-only value ("2026-10-22" or "2026-10-22T00:00:00+00") as
  * "Oct 22, 2026" exactly as written — no timezone shift.
- * `new Date("2026-10-22")` is UTC midnight, which renders as Oct 21 in New York;
- * never use it for date-only columns.
+ * `new Date("2026-10-22")` is UTC midnight, which renders as Oct 21 in
+ * Pacific time; never use it for date-only columns.
  */
 export function formatDateOnly(value: string | null | undefined): string {
   if (!value) return "";
-  const [y, m, d] = value.split("T")[0].split("-").map(Number);
+  const [y, m, d] = splitYmd(value);
   if (!y || !m || !d) return "";
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
     timeZone: "UTC",
@@ -79,108 +139,33 @@ export function formatDateOnly(value: string | null | undefined): string {
 }
 
 /**
- * Format Date as EST for input fields (e.g., "09/15/2026")
+ * Format Date as site-time "MMM DD" chart label (e.g., "Sep 07").
+ * Zero-pads day for correct alphabetical sort (07 < 10).
  */
-export function formatESTInput(date: Date): string {
-  return date.toLocaleDateString("en-US", {
-    timeZone: "America/New_York",
-    month: "2-digit",
-    day: "2-digit",
-    year: "numeric",
-  });
+export function formatSiteChartLabel(date: Date): string {
+  const parts = date
+    .toLocaleDateString("en-US", { timeZone: SITE_TZ, month: "short", day: "2-digit", year: "numeric" })
+    .split(" ");
+  return `${parts[0]} ${parts[1].replace(",", "")}`;
 }
 
-/**
- * Get end of EST day as UTC Date
- * End of Sept 15 EST = start of Sept 16 EST = 05:00 UTC on Sept 16
- */
-export function endOfESTDay(startOfDay: Date): Date {
-  return new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);
-}
-
-/**
- * Create a Date for start of current period in EST
- * Used for relative date ranges (month-to-date, quarter-to-date, year-to-date)
- */
-export function startOfCurrentPeriod(period: 'month' | 'quarter' | 'year'): Date {
-  const now = new Date();
-  let year = now.getFullYear();
-  let month = now.getMonth(); // 0-indexed
-
-  let day = 1;
-
-  if (period === 'month') {
-    // Month to date: start of current month
-    // EST midnight = UTC 05:00
-    return new Date(Date.UTC(year, month, day, EST_OFFSET_HOURS, 0, 0, 0));
-  }
-
-  if (period === 'quarter') {
-    // Quarter to date: start of current quarter
-    month = Math.floor(month / 3) * 3;
-    return new Date(Date.UTC(year, month, day, EST_OFFSET_HOURS, 0, 0, 0));
-  }
-
-  // Year to date: start of current year
-  month = 0;
-  day = 1;
-  return new Date(Date.UTC(year, month, day, EST_OFFSET_HOURS, 0, 0, 0));
-}
-
-/**
- * Format Date as EST "MMM DD" string for chart labels (e.g., "Sep 07")
- * Uses manual formatting to ensure consistent output regardless of locale
- * Zero-pads day for correct alphabetical sort (07 < 10)
- */
-export function formatESTChartLabel(date: Date): string {
-  const parts = date.toLocaleDateString("en-US", {
-    timeZone: "America/New_York",
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  }).split(' ');
-  // parts = ["Sep", "07,", "2025"] - split by space
-  // We want "Sep 07" - month is parts[0], day removes comma from parts[1]
-  const month = parts[0];
-  const day = parts[1].replace(',', '');
-  return `${month} ${day}`;
-}
-
-/**
- * Parse joined_at timestamp and return EST date key for grouping
- */
+/** Chart label for a joined_at timestamp. */
 export function parseJoinedAt(joinedAt: string): string {
-  return formatESTChartLabel(new Date(joinedAt));
+  return formatSiteChartLabel(new Date(joinedAt));
 }
 
 /**
- * Return the New York calendar date of a timestamp as "YYYY-MM-DD".
- * Includes the year and sorts chronologically as a plain string —
- * use this (not the "Sep 07" label) as the grouping/sort key for charts.
+ * Site-time calendar date of a timestamp as "YYYY-MM-DD".
+ * Sorts chronologically as a plain string — use as the grouping key for charts.
  */
-export function estDateKey(joinedAt: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(joinedAt));
+export function siteDateKey(timestamp: string): string {
+  return siteToday(new Date(timestamp));
 }
 
-/**
- * Format joined_at timestamp as full EST date string with year (e.g., "Sep 07 2026")
- * Used for chart tooltips where year context is helpful
- */
+/** Full site-time date with year (e.g., "Sep 07 2026") for chart tooltips. */
 export function formatJoinedAtFull(joinedAt: string): string {
-  const date = new Date(joinedAt);
-  const parts = date.toLocaleDateString("en-US", {
-    timeZone: "America/New_York",
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  }).split(' ');
-  const month = parts[0];
-  const day = parts[1].replace(',', '');
-  const year = parts[2];
-  return `${month} ${day} ${year}`;
+  const parts = new Date(joinedAt)
+    .toLocaleDateString("en-US", { timeZone: SITE_TZ, month: "short", day: "2-digit", year: "numeric" })
+    .split(" ");
+  return `${parts[0]} ${parts[1].replace(",", "")} ${parts[2]}`;
 }

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getImpersonationContext } from "@/lib/impersonation";
 
+import { SITE_TZ } from "@/lib/dates";
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -177,7 +178,7 @@ export default async function MyApplicationsPage({
                       {grant.grant_cycles?.end_date
                         ? new Date(
                             grant.grant_cycles.end_date,
-                          ).toLocaleDateString("en-US", {
+                          ).toLocaleDateString("en-US", { timeZone: "UTC",
                             month: "long",
                             day: "numeric",
                             year: "numeric",
@@ -208,8 +209,8 @@ export default async function MyApplicationsPage({
                     ) : null}
                     <p className="font-serif text-xs text-nfw-blackberry/40 mt-1">
                       {grant.submitted_at
-                        ? `Submitted ${new Date(grant.submitted_at).toLocaleDateString()}`
-                        : `Created ${new Date(grant.created_at).toLocaleDateString()}`}
+                        ? `Submitted ${new Date(grant.submitted_at).toLocaleDateString(undefined, { timeZone: SITE_TZ })}`
+                        : `Created ${new Date(grant.created_at).toLocaleDateString(undefined, { timeZone: SITE_TZ })}`}
                     </p>
                   </div>
                 </div>

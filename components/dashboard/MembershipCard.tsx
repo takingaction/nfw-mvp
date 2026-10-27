@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { NotificationModal } from "@/components/admin/NotificationModal";
 
+import { SITE_TZ } from "@/lib/dates";
 type MembershipCardProps = {
   memberName: string;
   membershipLevel: string;
@@ -31,8 +32,8 @@ export default function MembershipCard({
   } | null>(null);
 
   const joinedDate = joinedAt ? new Date(joinedAt) : null;
-  const joinedMonth = joinedDate ? joinedDate.toLocaleDateString("en-US", { month: "short" }) : "";
-  const joinedYear = joinedDate ? joinedDate.getFullYear() : "";
+  const joinedMonth = joinedDate ? joinedDate.toLocaleDateString("en-US", { timeZone: SITE_TZ, month: "short" }) : "";
+  const joinedYear = joinedDate ? joinedDate.toLocaleDateString("en-US", { timeZone: SITE_TZ, year: "numeric" }) : "";
 
   const getBadgeUrl = () => {
     switch (membershipLevel) {

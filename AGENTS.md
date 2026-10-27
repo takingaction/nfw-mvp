@@ -4623,6 +4623,8 @@ WHERE slug = 'supabase-reset-password';
 
 ### Session 2026-06-16: Grant Cycle Auto-Open/Close
 
+> **Superseded 2026-10-27:** the site now runs on Pacific Time. See "Site Time Zone (Pacific)" below and migration 212.
+
 #### Database Migration
 
 **File:** `supabase/migrations/086_auto_open_close_grant_cycles.sql`
@@ -20562,3 +20564,15 @@ On `/admin/analytics` (Members tab) the "New Members Over Time" chart now plots 
 | Same file, Members CSV export | Columns are now `Date, Profiles Started, New Paid Members`. |
 
 **Rule:** the paid line uses `first_paid_at`, not current `membership_level`, so free→paid upgraders count on the day they converted and lapsed members stay in history. The paid line is computed from `profiles`, not `filteredProfiles`, because `filteredProfiles` is filtered on `joined_at`.
+
+### Site Time Zone (Pacific) — 2026-10-27
+
+The whole site runs on **Pacific Time (America/Los_Angeles)**. The DB stays on UTC; only conversions to calendar days/months use PT.
+
+- **Web:** `lib/dates.ts` is the single source — `SITE_TZ`, `siteToday()`, `siteMonthKey()`, `siteMonthRange()`, `parseSiteDate()`, `siteEndOfDay()`, `startOfCurrentPeriod()`, `formatSite*()`. Never use the server/browser local zone (Vercel runs in UTC) or hard-code an offset.
+- **Mobile:** `mobile/lib/format.ts` mirrors it (`SITE_TZ`, `siteToday()`); date helpers render midnight-UTC markers as written and real timestamps as their PT date.
+- **DB:** `public.site_tz()` returns `'America/Los_Angeles'`; `sync_grant_cycle_statuses()` uses it. Cron `sync-grant-cycle-statuses` runs `0 7,8 * * *` (midnight PDT / PST; the other run is a no-op).
+- **Grant cycles:** open 12:00 AM PT on `start_date` through 11:59:59 PM PT on `end_date`. `start_date`/`end_date` are date-only markers stored as midnight UTC — compare their `YYYY-MM-DD` part against `siteToday()`; display them with `formatDateOnly()` / `timeZone: "UTC"`.
+- **Monthly claims:** `claim_month` = `siteMonthKey()`; resets 12:00 AM PT on the 1st. Months before Nov 2026 were bucketed by UTC month and were not backfilled.
+- **Display:** timestamps use `timeZone: SITE_TZ` and a "PT" label. Date-only values (date of birth, `end_date`, perk expiry markers) use `timeZone: "UTC"` so they render as written.
+

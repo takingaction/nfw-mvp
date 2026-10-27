@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { PauseCircle, PlayCircle } from "lucide-react";
-import { formatESTDisplay } from "@/lib/dates";
+import { formatSiteDisplay } from "@/lib/dates";
 
 export type AccessPauseFields = {
   access_paused_at: string | null;
@@ -75,7 +75,7 @@ export function AccessPauseSection({
       {paused ? (
         <div className="border-2 border-nfw-aubergine bg-nfw-aubergine/5 p-3 space-y-2">
           <p className="text-sm font-semibold text-nfw-aubergine flex items-center gap-2">
-            <PauseCircle className="w-4 h-4" /> Paused since {formatESTDisplay(new Date(fields.access_paused_at!))}
+            <PauseCircle className="w-4 h-4" /> Paused since {formatSiteDisplay(new Date(fields.access_paused_at!))}
           </p>
           {fields.access_paused_reason && (
             <p className="text-xs text-nfw-blackberry/70">Reason: {fields.access_paused_reason}</p>

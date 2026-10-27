@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { createGrant, getApplicableGrantCycles, getStripeConnectStatus, type CreateGrantBody } from "@/lib/api/grants";
 
-import { todayInNewYork } from "@/lib/format";
+import { siteToday } from "@/lib/format";
 import { queryKeys } from "@/lib/queries/keys";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/auth";
@@ -36,10 +36,10 @@ export function useOpenGrantCycles() {
       if (error) throw error;
 
       // Defense in depth — the pg_cron auto-close job has failed before (AGENTS.md 2026-07-23).
-      // We compare against todayInNewYork (not todayIsoDate) so the cycle
-      // doesn't disappear from an ET member's dashboard at 8 PM on the eve
-      // of the deadline. The web uses the same helper in lib/dates.ts.
-      const today = todayInNewYork();
+      // Compare against the Pacific-time date (not todayIsoDate, which is
+      // UTC) so the cycle stays visible through 11:59 PM PT on end_date.
+      // The web uses the same helper (siteToday) in lib/dates.ts.
+      const today = siteToday();
       return (data ?? []).filter((c) => c.end_date >= today) as GrantCycle[];
     },
   });
