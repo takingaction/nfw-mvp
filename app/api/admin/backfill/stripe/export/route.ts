@@ -46,7 +46,7 @@ export async function GET(request: Request) {
           email,
           status,
           stripe_customer_id,
-          lifetime_value,
+          profile_id,
           error_message,
           processed_at,
           profiles!inner(
@@ -67,6 +67,30 @@ export async function GET(request: Request) {
         pageStart += pageSize;
       }
       hasMore = rowsPage && rowsPage.length === pageSize;
+    }
+
+    // Lifetime value is computed from membership_payments (the single source
+    // of truth since Aug 2026); stripe_backfill_status.lifetime_value is no
+    // longer written. Net value: refunds are negative 'refunded' rows.
+    const lifetimeByUser = new Map<string, number>();
+    let payStart = 0;
+    for (;;) {
+      const { data: payPage, error: payError } = await supabaseAdmin
+        .from("membership_payments")
+        .select("user_id, amount")
+        .in("status", ["succeeded", "refunded"])
+        .order("id", { ascending: true })
+        .range(payStart, payStart + pageSize - 1);
+      if (payError) {
+        console.error("[backfill/export] payments error:", payError);
+        return NextResponse.json({ error: payError.message }, { status: 500 });
+      }
+      if (!payPage || payPage.length === 0) break;
+      for (const p of payPage as { user_id: string; amount: number | string }[]) {
+        lifetimeByUser.set(p.user_id, (lifetimeByUser.get(p.user_id) || 0) + Number(p.amount || 0));
+      }
+      if (payPage.length < pageSize) break;
+      payStart += pageSize;
     }
 
     // Build CSV
@@ -90,7 +114,7 @@ export async function GET(request: Request) {
         profiles?.full_name || "",
         profiles?.membership_level || "",
         row.status || "",
-        row.lifetime_value != null ? row.lifetime_value.toFixed(2) : "",
+        row.profile_id ? (lifetimeByUser.get(row.profile_id) || 0).toFixed(2) : "",
         row.stripe_customer_id || "",
         row.processed_at ? new Date(row.processed_at).toLocaleDateString(undefined, { timeZone: SITE_TZ }) : "",
         row.error_message || ""

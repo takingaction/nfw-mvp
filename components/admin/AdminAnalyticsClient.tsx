@@ -72,7 +72,6 @@ type Profile = {
   is_admin: boolean | null;
   profile_completed: boolean | null;
   stripe_customer_id: string | null;
-  lifetime_value: number | null;
   signup_source: string | null;
 };
 

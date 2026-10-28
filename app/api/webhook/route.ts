@@ -568,7 +568,7 @@ export async function POST(request: Request) {
         // silently missed any user past the first page.
         const { data: profileByCustomer } = await supabaseAdmin
           .from("profiles")
-          .select("id, membership_level, first_paid_at, first_paid_level, lifetime_value")
+          .select("id, membership_level, first_paid_at, first_paid_level")
           .eq("stripe_customer_id", customerId)
           .maybeSingle();
 
@@ -589,7 +589,7 @@ export async function POST(request: Request) {
         const currentProfile = profileByCustomer ?? (
           await supabaseAdmin
             .from("profiles")
-            .select("membership_level, first_paid_at, first_paid_level, lifetime_value")
+            .select("membership_level, first_paid_at, first_paid_level")
             .eq("id", authUserId)
             .single()
         ).data;

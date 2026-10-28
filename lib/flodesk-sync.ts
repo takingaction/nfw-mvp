@@ -99,6 +99,8 @@ const BATCH_DELAY_MS = 3_200;
 const REMOVE_DELAY_MS = 650;
 const DEFAULT_BUDGET_MS = 250_000;
 const PAGE_SIZE = 1000;
+// Max emails per profiles .in() lookup — keeps the GET URL well under gateway limits.
+const PROFILE_LOOKUP_CHUNK = 100;
 const SAMPLE_SIZE = 10;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -208,8 +210,9 @@ export async function fetchNewsletterEligibleSet(
     const from = page * PAGE;
     const { data: rows, error } = await q.order("created_at", { ascending: true }).range(from, from + PAGE - 1);
     if (error) {
-      console.error("[flodesk-sync] fetchNewsletterEligibleSet error:", error);
-      break;
+      // Fail closed: a partial eligible set would make the exit pass remove
+      // real leads. Throwing aborts the newsletter step for this run.
+      throw new Error(`fetchNewsletterEligibleSet: coming_soon_emails page ${page} failed: ${error.message}`);
     }
     if (!rows || rows.length === 0) break;
 
@@ -217,15 +220,24 @@ export async function fetchNewsletterEligibleSet(
       .map((r) => (r.email || "").trim().toLowerCase())
       .filter(Boolean);
 
-    // Subtract profiles.email via NOT IN. Profiles.email is also lowercase
+    // Subtract profiles.email. Profiles.email is also lowercase
     // (auth.users.email is normalized and the profiles trigger copies it).
+    //
+    // .in() is sent as a GET query string, so the slice must stay small: a
+    // 1000-email slice (~22KB URL) failed at the gateway, the error was
+    // ignored, and every account holder in that page was treated as a lead
+    // (Oct 2026: 709 members, 233 of them paid, put in the warm-leads segment).
+    // Any lookup error now throws so nobody is added on an incomplete check.
     const profileEmails = new Set<string>();
-    for (let i = 0; i < emails.length; i += PAGE) {
-      const slice = emails.slice(i, i + PAGE);
-      const { data: profRows } = await admin
+    for (let i = 0; i < emails.length; i += PROFILE_LOOKUP_CHUNK) {
+      const slice = emails.slice(i, i + PROFILE_LOOKUP_CHUNK);
+      const { data: profRows, error: profError } = await admin
         .from("profiles")
         .select("email")
         .in("email", slice);
+      if (profError) {
+        throw new Error(`fetchNewsletterEligibleSet: profile lookup failed: ${profError.message}`);
+      }
       for (const p of (profRows || []) as { email: string | null }[]) {
         if (p.email) profileEmails.add(p.email.toLowerCase());
       }
@@ -910,8 +922,14 @@ export async function clearRule(
     const rows = (await fetchMemberRows(admin, [rule.id])).filter((r) => r.status === "added");
     const ids = rows.map((r) => r.profile_id);
     const emailById = new Map<string, string | null>();
-    for (let i = 0; i < ids.length; i += PAGE_SIZE) {
-      const { data } = await admin.from("profiles").select("id, email").in("id", ids.slice(i, i + PAGE_SIZE));
+    // Small chunks: .in() goes in the GET URL. A failed lookup would leave
+    // rows without a subscriber id "removed" locally but still in Flodesk.
+    for (let i = 0; i < ids.length; i += PROFILE_LOOKUP_CHUNK) {
+      const { data, error } = await admin
+        .from("profiles")
+        .select("id, email")
+        .in("id", ids.slice(i, i + PROFILE_LOOKUP_CHUNK));
+      if (error) throw new Error(`clearRule: profile lookup failed: ${error.message}`);
       for (const p of (data || []) as { id: string; email: string | null }[]) emailById.set(p.id, p.email);
     }
 
