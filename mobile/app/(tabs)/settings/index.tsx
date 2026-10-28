@@ -66,6 +66,7 @@ export default function SettingsScreen() {
 
       <Group title="Legal">
         <Row icon="document-text-outline" label="Privacy Policy" onPress={() => router.push("/legal/privacy" as Href)} />
+        <Row icon="document-text-outline" label="Cookie Policy" onPress={() => router.push("/legal/cookie-policy" as Href)} />
         <Row icon="document-text-outline" label="Terms of Service" onPress={() => router.push("/legal/terms-of-service" as Href)} />
         <Row icon="accessibility-outline" label="Accessibility" onPress={() => router.push("/legal/accessibility" as Href)} />
         <Row icon="open-outline" label="nationalfundforwomen.org" onPress={() => Linking.openURL(env.siteUrl)} external />

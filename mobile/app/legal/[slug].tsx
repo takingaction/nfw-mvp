@@ -12,7 +12,7 @@ import { env } from "@/lib/env";
 import { LEGAL_PAGES, type LegalSlug } from "@/types/content";
 
 /**
- * Web equivalent: app/privacy, app/terms-of-service, app/accessibility (+ GET /api/legal/[slug])
+ * Web equivalent: app/privacy, app/cookie-policy, app/terms-of-service, app/accessibility (+ GET /api/legal/[slug])
  * Build phase: 6
  *
  * The legal copy is a Termly *script* embed (legal_pages.termly_embed_code), which can't be

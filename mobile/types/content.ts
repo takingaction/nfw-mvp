@@ -128,6 +128,7 @@ export const LEGAL_PAGES = {
   privacy: "Privacy Policy",
   "terms-of-service": "Terms of Service",
   accessibility: "Accessibility",
+  "cookie-policy": "Cookie Policy",
 } as const;
 
 export type LegalSlug = keyof typeof LEGAL_PAGES;

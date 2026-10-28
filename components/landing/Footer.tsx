@@ -273,7 +273,7 @@ export default function Footer() {
             {data.copyright_text}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-center md:justify-end order-1 md:order-2">
+          <div className="flex flex-col xl:flex-row gap-3 xl:gap-6 items-center md:items-end xl:items-center md:justify-end order-1 md:order-2">
             {/* Social icons - centered on mobile */}
             <div className="flex items-center justify-center gap-3">
               <a href={data.social_instagram} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ color: "#B693C0" }}>
@@ -293,8 +293,8 @@ export default function Footer() {
               </a>
             </div>
 
-            {/* Legal links - stacked on mobile */}
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-center">
+            {/* Legal links - wrap onto a second line on small screens */}
+            <nav aria-label="Legal" className="flex flex-wrap justify-center md:justify-end gap-x-4 gap-y-2 max-w-sm sm:max-w-none">
               <Link
                 prefetch={false}
                 href={data.footer_link1_url}
@@ -304,6 +304,16 @@ export default function Footer() {
                 rel="noopener noreferrer"
               >
                 {data.footer_link1_text}
+              </Link>
+              <Link
+                prefetch={false}
+                href="/cookie-policy"
+                className="hover:opacity-80 transition-colors text-sm"
+                style={{ color: "#B7B6B9" }}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Cookie Policy
               </Link>
               <Link
                 prefetch={false}
@@ -332,7 +342,7 @@ export default function Footer() {
               >
                 Consent Preferences
               </a>
-            </div>
+            </nav>
           </div>
         </div>
       </div>

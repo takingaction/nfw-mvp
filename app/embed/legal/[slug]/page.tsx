@@ -8,13 +8,14 @@ import LegalPolicyContent from "@/components/LegalPolicyContent";
  * Served under /embed/, where the root layout leaves out site navigation, the
  * cookie banner and Google Tag Manager: app users cannot answer the banner, so
  * no analytics or ad tags run here. Same content as /privacy,
- * /terms-of-service and /accessibility.
+ * /terms-of-service, /accessibility and /cookie-policy.
  */
 
 const TITLES: Record<string, string> = {
   privacy: "Privacy Policy",
   "terms-of-service": "Terms of Service",
   accessibility: "Accessibility",
+  "cookie-policy": "Cookie Policy",
 };
 
 export const metadata = {

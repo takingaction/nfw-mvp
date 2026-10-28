@@ -11,6 +11,9 @@ import { termlyPolicyId } from "@/lib/termly";
  * A static HTML copy of a policy is shown as is.
  */
 export default function LegalPolicyContent({ embedCode }: { embedCode: string }) {
+  if (!embedCode.trim()) {
+    return <p className="text-nfw-blackberry/70">This policy is being updated. Please check back shortly.</p>;
+  }
   const policyId = termlyPolicyId(embedCode);
   return policyId ? (
     <TermlyPolicyEmbed policyId={policyId} />

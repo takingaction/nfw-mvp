@@ -11,6 +11,7 @@ const LEGAL_PAGES = [
   { slug: "privacy", title: "Privacy Policy" },
   { slug: "terms-of-service", title: "Terms of Service" },
   { slug: "accessibility", title: "Accessibility" },
+  { slug: "cookie-policy", title: "Cookie Policy" },
 ];
 
 export default async function AdminLegalPage() {
@@ -33,7 +34,7 @@ export default async function AdminLegalPage() {
             Legal Pages
           </h1>
           <p className="text-nfw-blackberry/60">
-            Manage Termly embed codes for Privacy Policy, Terms of Service, and Accessibility pages
+            Manage Termly embed codes for Privacy Policy, Cookie Policy, Terms of Service, and Accessibility pages
           </p>
         </div>
         <LegalAdminClient
