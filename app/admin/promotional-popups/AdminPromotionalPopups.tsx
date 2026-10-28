@@ -27,6 +27,7 @@ const AVAILABLE_PAGES = [
   { value: "/", label: "Homepage" },
   { value: "/perks", label: "/perks" },
   { value: "/grants", label: "/grants" },
+  { value: "/grants/apply", label: "/grants/apply" },
   { value: "/dashboard", label: "/dashboard" },
   { value: "/store", label: "/store" },
   { value: "/profile", label: "/profile" },
