@@ -258,6 +258,34 @@ export async function removeFromSegments(
   );
 }
 
+export interface FlodeskWorkflow {
+  id: string;
+  name: string;
+  status?: string;
+}
+
+/** List workflows. Accepts either a bare array or a { data: [...] } envelope. */
+export async function listWorkflows(): Promise<FlodeskResult<FlodeskWorkflow[]>> {
+  const res = await request<FlodeskWorkflow[] | { data: FlodeskWorkflow[] }>("GET", "/workflows?per_page=100");
+  if (!res.ok) return res;
+  const list = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+  return { ok: true, data: list, rateLimitRemaining: res.rateLimitRemaining };
+}
+
+/**
+ * Remove a subscriber from a workflow so no further steps are sent.
+ * 204 = removed; 404 = subscriber not in that workflow (or not found).
+ */
+export async function removeFromWorkflow(
+  workflowId: string,
+  idOrEmail: string,
+): Promise<FlodeskResult<void>> {
+  return request<void>(
+    "DELETE",
+    `/workflows/${encodeURIComponent(workflowId)}/subscribers/${encodeURIComponent(idOrEmail)}`,
+  );
+}
+
 /** Unsubscribe from all lists (used on account anonymization — Flodesk has no delete). */
 export async function unsubscribeSubscriber(idOrEmail: string): Promise<FlodeskResult<FlodeskSubscriber>> {
   return request<FlodeskSubscriber>("POST", `/subscribers/${encodeURIComponent(idOrEmail)}/unsubscribe`);
