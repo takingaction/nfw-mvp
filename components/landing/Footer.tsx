@@ -273,7 +273,7 @@ export default function Footer() {
             {data.copyright_text}
           </p>
 
-          <div className="flex flex-col xl:flex-row gap-3 xl:gap-6 items-center md:items-end xl:items-center md:justify-end order-1 md:order-2">
+          <div className="flex flex-col gap-3 items-center md:items-end md:justify-end order-1 md:order-2">
             {/* Social icons - centered on mobile */}
             <div className="flex items-center justify-center gap-3">
               <a href={data.social_instagram} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" style={{ color: "#B693C0" }}>
@@ -293,12 +293,12 @@ export default function Footer() {
               </a>
             </div>
 
-            {/* Legal links - wrap onto a second line on small screens */}
+            {/* Legal links, under the social icons; wrap onto a second line on narrow screens */}
             <nav aria-label="Legal" className="flex flex-wrap justify-center md:justify-end gap-x-4 gap-y-2 max-w-sm sm:max-w-none">
               <Link
                 prefetch={false}
                 href={data.footer_link1_url}
-                className="hover:opacity-80 transition-colors text-sm"
+                className="hover:opacity-80 transition-colors text-sm whitespace-nowrap"
                 style={{ color: "#B7B6B9" }}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -308,7 +308,7 @@ export default function Footer() {
               <Link
                 prefetch={false}
                 href="/cookie-policy"
-                className="hover:opacity-80 transition-colors text-sm"
+                className="hover:opacity-80 transition-colors text-sm whitespace-nowrap"
                 style={{ color: "#B7B6B9" }}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -318,7 +318,7 @@ export default function Footer() {
               <Link
                 prefetch={false}
                 href={data.footer_link2_url}
-                className="hover:opacity-80 transition-colors text-sm"
+                className="hover:opacity-80 transition-colors text-sm whitespace-nowrap"
                 style={{ color: "#B7B6B9" }}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -328,7 +328,7 @@ export default function Footer() {
               <Link
                 prefetch={false}
                 href={data.footer_link3_url}
-                className="hover:opacity-80 transition-colors text-sm"
+                className="hover:opacity-80 transition-colors text-sm whitespace-nowrap"
                 style={{ color: "#B7B6B9" }}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -337,7 +337,7 @@ export default function Footer() {
               </Link>
               <a
                 href="#"
-                className="termly-display-preferences hover:opacity-80 transition-colors text-sm"
+                className="termly-display-preferences hover:opacity-80 transition-colors text-sm whitespace-nowrap"
                 style={{ color: "#B7B6B9" }}
               >
                 Consent Preferences
