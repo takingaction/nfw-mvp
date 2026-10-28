@@ -4,6 +4,13 @@ import { useState, useEffect } from "react";
 import { Search, Download, RefreshCw, Eye, Trash2 } from "lucide-react";
 
 import { SITE_TZ } from "@/lib/dates";
+import {
+  LEGACY_STORY_PROMPTS,
+  STORY_PROGRAMS_PROMPT,
+  STORY_TEXT_PROMPTS,
+  storyProgramLabel,
+} from "@/lib/storyForm";
+
 interface StorySubmission {
   id: string;
   name: string;
@@ -15,6 +22,10 @@ interface StorySubmission {
   programs_engaged: string | null;
   favorite_part: string | null;
   how_nfw_helped: string | null;
+  surprised_by: string | null;
+  programs_used: string[] | null;
+  improvement_ideas: string | null;
+  feedback: string | null;
   why_join: string | null;
   permission_granted: boolean;
   prefer_anonymous: boolean;
@@ -105,20 +116,35 @@ export default function AdminStorySubmissions() {
   };
 
   const exportCSV = () => {
-    const headers = ["Date", "Name", "Email", "Age", "Location", "Status", "Permission", "Anonymous", "Video"];
+    const headers = [
+      "Date", "Name", "Email", "Age", "City", "State", "Status", "Permission", "Anonymous", "Video",
+      "Made a difference", "Surprised by", "Programs used", "Improvement ideas", "Feedback", "Why join",
+      "Legacy: Drawn to membership", "Legacy: Programs engaged", "Legacy: Favorite part",
+    ];
     const rows = submissions.map((s) => [
       new Date(s.created_at).toLocaleDateString(undefined, { timeZone: SITE_TZ }),
       s.name,
       s.email,
       s.age,
-      `${s.city || ""}${s.city && s.state ? ", " : ""}${s.state || ""}`,
+      s.city || "",
+      s.state || "",
       s.status,
       s.permission_granted ? "Yes" : "No",
       s.prefer_anonymous ? "Yes" : "No",
       s.interested_video ? "Yes" : "No",
+      s.how_nfw_helped || "",
+      s.surprised_by || "",
+      (s.programs_used || []).map(storyProgramLabel).join("; "),
+      s.improvement_ideas || "",
+      s.feedback || "",
+      s.why_join || "",
+      s.drawn_to_membership || "",
+      s.programs_engaged || "",
+      s.favorite_part || "",
     ]);
 
-    const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n");
+    const cell = (c: string) => `"${String(c ?? "").replace(/"/g, '""')}"`;
+    const csv = [headers.map(cell).join(","), ...rows.map((r) => r.map(cell).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -465,11 +491,22 @@ export default function AdminStorySubmissions() {
                   Story Responses
                 </p>
                 {[
-                  { label: "What drew you to becoming a National Fund for Women member?", value: selectedSubmission.drawn_to_membership },
-                  { label: "Which NFW program(s) have you engaged with?", value: selectedSubmission.programs_engaged },
-                  { label: "What is your favorite part about being an NFW member?", value: selectedSubmission.favorite_part },
-                  { label: "How has NFW helped you?", value: selectedSubmission.how_nfw_helped },
-                  { label: "Why should others join NFW?", value: selectedSubmission.why_join },
+                  { label: STORY_TEXT_PROMPTS.howNfwHelped, value: selectedSubmission.how_nfw_helped },
+                  { label: STORY_TEXT_PROMPTS.surprisedBy, value: selectedSubmission.surprised_by },
+                  {
+                    label: STORY_PROGRAMS_PROMPT,
+                    value: (selectedSubmission.programs_used || []).map(storyProgramLabel).join(", "),
+                  },
+                  { label: STORY_TEXT_PROMPTS.improvementIdeas, value: selectedSubmission.improvement_ideas },
+                  { label: STORY_TEXT_PROMPTS.feedback, value: selectedSubmission.feedback },
+                  { label: STORY_TEXT_PROMPTS.whyJoin, value: selectedSubmission.why_join },
+                  // Pre–Oct 2026 prompts: only shown when an older submission answered them.
+                  ...(Object.keys(LEGACY_STORY_PROMPTS) as (keyof typeof LEGACY_STORY_PROMPTS)[])
+                    .filter((k) => selectedSubmission[k]?.trim())
+                    .map((k) => ({
+                      label: `${LEGACY_STORY_PROMPTS[k]} (previous form)`,
+                      value: selectedSubmission[k],
+                    })),
                 ].map((field, i) => (
                   <div key={i} className="mb-3">
                     <p className="font-sans text-xs font-semibold text-nfw-blackberry/70 mb-1">{field.label}</p>

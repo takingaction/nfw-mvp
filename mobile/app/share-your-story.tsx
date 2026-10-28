@@ -1,19 +1,31 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { CheckboxRow } from "@/components/ui/CheckboxRow";
 import { Input } from "@/components/ui/Input";
 import { Screen } from "@/components/ui/Screen";
+import { Select } from "@/components/ui/Select";
 import { Body, Caption, Eyebrow, Heading, Subheading } from "@/components/ui/Typography";
-import { colors } from "@/constants/colors";
+import { colors, theme } from "@/constants/colors";
+import { fonts } from "@/constants/fonts";
+import { US_STATES } from "@/constants/signup";
 import { ApiError } from "@/lib/api";
 import { useSubmitStory } from "@/lib/api/content";
 import { useAuthStore } from "@/stores/auth";
-import { STORY_PERMISSIONS, STORY_PROMPTS, type TestimonialBody } from "@/types/content";
+import {
+  STORY_INTRO,
+  STORY_PERMISSIONS,
+  STORY_PROGRAMS,
+  STORY_PROGRAMS_PROMPT,
+  STORY_TEXT_PROMPTS,
+  type StoryProgram,
+  type StoryTextKey,
+  type TestimonialBody,
+} from "@/types/content";
 
 /**
  * Web equivalent: app/share-your-story/page.tsx + components/dashboard/ShareStoryClient.tsx
@@ -21,7 +33,8 @@ import { STORY_PERMISSIONS, STORY_PROMPTS, type TestimonialBody } from "@/types/
  * Build phase: 6
  *
  * Parity: same sections, prompts, permission copy, prefill (name/email/age-from-DOB unless the
- * 1900-01-01 placeholder, "City, State" from profile) and validation ("Age is required").
+ * 1900-01-01 placeholder, city/state from profile) and validation (all member info required,
+ * at least one story answer; anonymity only selectable with permission).
  * Web requires a session but no membership/profile gate — same here (AuthGate handles login).
  */
 
@@ -36,7 +49,7 @@ function ageFromDob(dob: string | null | undefined): string {
   return age > 0 ? String(age) : "";
 }
 
-type PromptKey = (typeof STORY_PROMPTS)[number]["key"];
+const TEXT_KEYS = Object.keys(STORY_TEXT_PROMPTS) as StoryTextKey[];
 
 export default function ShareYourStoryScreen() {
   const router = useRouter();
@@ -47,38 +60,72 @@ export default function ShareYourStoryScreen() {
   const [name, setName] = useState(profile?.full_name ?? "");
   const [email, setEmail] = useState(user?.email ?? profile?.email ?? "");
   const [age, setAge] = useState(ageFromDob(profile?.date_of_birth));
-  const [location, setLocation] = useState([profile?.city, profile?.state].filter(Boolean).join(", "));
-  const [answers, setAnswers] = useState<Record<PromptKey, string>>({
-    drawnToMembership: "",
-    programsEngaged: "",
-    favoritePart: "",
+  const [city, setCity] = useState(profile?.city ?? "");
+  const [state, setState] = useState(
+    profile?.state && (US_STATES as readonly string[]).includes(profile.state) ? profile.state : ""
+  );
+  const [answers, setAnswers] = useState<Record<StoryTextKey, string>>({
     howNfwHelped: "",
+    surprisedBy: "",
+    improvementIdeas: "",
+    feedback: "",
     whyJoin: "",
   });
+  const [programsUsed, setProgramsUsed] = useState<StoryProgram[]>([]);
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [preferAnonymous, setPreferAnonymous] = useState(false);
   const [interestedVideo, setInterestedVideo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  const canSubmit = !!age.trim() && !submit.isPending;
+  const memberInfoComplete = !!(name.trim() && email.trim() && age.trim() && city.trim() && state);
+  const hasStoryAnswer = TEXT_KEYS.some((k) => answers[k].trim()) || programsUsed.length > 0;
+  const canSubmit = memberInfoComplete && hasStoryAnswer && !submit.isPending;
+
+  const toggleProgram = (p: StoryProgram) =>
+    setProgramsUsed((cur) => (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]));
+
+  const togglePermission = () => {
+    const next = !permissionGranted;
+    setPermissionGranted(next);
+    if (!next) setPreferAnonymous(false);
+  };
+
+  const renderPrompt = (key: StoryTextKey) => (
+    <Input
+      key={key}
+      label={STORY_TEXT_PROMPTS[key]}
+      value={answers[key]}
+      onChangeText={(v) => setAnswers((a) => ({ ...a, [key]: v }))}
+      placeholder="Share your thoughts..."
+      multiline
+      numberOfLines={4}
+      textAlignVertical="top"
+      style={styles.textarea}
+    />
+  );
 
   async function onSubmit() {
     setError(null);
-    if (!age.trim()) {
-      setError("Age is required");
+    if (!memberInfoComplete) {
+      setError("Please complete all Member Information fields.");
       return;
     }
-    const [city, ...rest] = location.split(",").map((s) => s.trim());
+    if (!hasStoryAnswer) {
+      setError("Please answer at least one of the story prompts.");
+      return;
+    }
+    const trimmed = Object.fromEntries(TEXT_KEYS.map((k) => [k, answers[k].trim() || undefined]));
     const body: TestimonialBody = {
       name: name.trim(),
       email: email.trim(),
       age: age.trim(),
-      city: city || undefined,
-      state: rest.join(", ") || undefined,
-      ...answers,
+      city: city.trim(),
+      state,
+      ...trimmed,
+      programsUsed,
       permissionGranted,
-      preferAnonymous,
+      preferAnonymous: permissionGranted && preferAnonymous,
       interestedVideo,
     };
     try {
@@ -111,8 +158,7 @@ export default function ShareYourStoryScreen() {
       <Screen>
         <Heading>Share Your Story</Heading>
         <Body tone="muted" style={{ marginTop: 8 }}>
-          Thank you for being a National Fund for Women member and choosing to share your story with us! Your experience helps us shape our
-          programs, lift up our community, and spread the word so we can reach and support even more women across the country.
+          {STORY_INTRO}
         </Body>
 
         <Card style={styles.card}>
@@ -120,31 +166,36 @@ export default function ShareYourStoryScreen() {
           <Input label="Name *" value={name} onChangeText={setName} autoCapitalize="words" textContentType="name" />
           <Input label="Email *" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} textContentType="emailAddress" />
           <Input label="Age *" value={age} onChangeText={(v) => setAge(v.replace(/[^0-9]/g, "").slice(0, 3))} keyboardType="number-pad" maxLength={3} />
-          <Input label="Location (City, State) *" value={location} onChangeText={setLocation} placeholder="City, State" autoCapitalize="words" />
+          <View style={styles.twoCol}>
+            <View style={{ flex: 1 }}>
+              <Input label="City *" value={city} onChangeText={setCity} autoCapitalize="words" textContentType="addressCity" />
+            </View>
+            <View style={{ width: 120 }}>
+              <Select label="State *" value={state} options={US_STATES} onChange={setState} placeholder="Select" />
+            </View>
+          </View>
         </Card>
 
         <Card style={styles.card}>
           <Eyebrow>Your Story</Eyebrow>
-          <Caption>Optional: Answer any of the following prompts to share your experience.</Caption>
-          {STORY_PROMPTS.map((p) => (
-            <Input
-              key={p.key}
-              label={p.label}
-              value={answers[p.key]}
-              onChangeText={(v) => setAnswers((a) => ({ ...a, [p.key]: v }))}
-              placeholder="Share your thoughts..."
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              style={styles.textarea}
-            />
-          ))}
+          <Caption>Answer any of the following prompts to share your experience. At least one answer is required.</Caption>
+          {renderPrompt("howNfwHelped")}
+          {renderPrompt("surprisedBy")}
+          <View style={{ gap: 8 }}>
+            <Text style={styles.groupLabel}>{STORY_PROGRAMS_PROMPT}</Text>
+            {STORY_PROGRAMS.map((p) => (
+              <CheckboxRow key={p.value} label={p.label} checked={programsUsed.includes(p.value)} onPress={() => toggleProgram(p.value)} />
+            ))}
+          </View>
+          {renderPrompt("improvementIdeas")}
+          {renderPrompt("feedback")}
+          {renderPrompt("whyJoin")}
         </Card>
 
         <Card style={styles.card}>
           <Eyebrow>Permissions</Eyebrow>
-          <CheckboxRow label={STORY_PERMISSIONS.permissionGranted} checked={permissionGranted} onPress={() => setPermissionGranted((v) => !v)} />
-          <CheckboxRow label={STORY_PERMISSIONS.preferAnonymous} checked={preferAnonymous} onPress={() => setPreferAnonymous((v) => !v)} />
+          <CheckboxRow label={STORY_PERMISSIONS.permissionGranted} checked={permissionGranted} onPress={togglePermission} />
+          <CheckboxRow label={STORY_PERMISSIONS.preferAnonymous} checked={preferAnonymous} onPress={() => setPreferAnonymous((v) => !v)} disabled={!permissionGranted} />
           <CheckboxRow label={STORY_PERMISSIONS.interestedVideo} checked={interestedVideo} onPress={() => setInterestedVideo((v) => !v)} />
         </Card>
 
@@ -158,6 +209,9 @@ export default function ShareYourStoryScreen() {
 const styles = StyleSheet.create({
   card: { gap: 14, marginTop: 20 },
   textarea: { minHeight: 100, paddingTop: 12 },
+  twoCol: { flexDirection: "row", gap: 12 },
+  // Matches components/ui/Input label style.
+  groupLabel: { fontFamily: fonts.uiBold, fontSize: 12, letterSpacing: 0.4, color: theme.text, textTransform: "uppercase" },
   error: { color: colors.statusRed, fontSize: 14, marginTop: 16 },
   center: { textAlign: "center" },
   success: { alignItems: "center", gap: 12, paddingTop: 40 },

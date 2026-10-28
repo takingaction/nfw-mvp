@@ -91,26 +91,42 @@ export interface TestimonialBody {
   name: string;
   email: string;
   age: string;
-  city?: string;
-  state?: string;
-  drawnToMembership?: string;
-  programsEngaged?: string;
-  favoritePart?: string;
+  city: string;
+  state: string;
   howNfwHelped?: string;
+  surprisedBy?: string;
+  programsUsed: StoryProgram[];
+  improvementIdeas?: string;
+  feedback?: string;
   whyJoin?: string;
   permissionGranted: boolean;
   preferAnonymous?: boolean;
   interestedVideo?: boolean;
 }
 
-/** Prompts from components/dashboard/ShareStoryClient.tsx, verbatim and in order. */
-export const STORY_PROMPTS: { key: keyof Pick<TestimonialBody, "drawnToMembership" | "programsEngaged" | "favoritePart" | "howNfwHelped" | "whyJoin">; label: string }[] = [
-  { key: "drawnToMembership", label: "What drew you to becoming a National Fund for Women member?" },
-  { key: "programsEngaged", label: "Which NFW program(s) have you engaged with? What was your experience?" },
-  { key: "favoritePart", label: "What is your favorite part about being an NFW member?" },
-  { key: "howNfwHelped", label: "How has NFW helped you?" },
-  { key: "whyJoin", label: "Why should others join NFW?" },
-];
+/** Mirrors lib/storyForm.ts on web — keep in sync. */
+export const STORY_INTRO =
+  "Thank you for being a member of the National Fund for Women! Hearing from you helps us make membership as impactful as possible while growing our community to reach women all across the country.";
+
+export const STORY_PROGRAMS = [
+  { value: "microgrants", label: "Microgrants" },
+  { value: "perks", label: "Perks & Discounts" },
+  { value: "zero_dollar_store", label: "Zero Dollar Store" },
+] as const;
+
+export type StoryProgram = (typeof STORY_PROGRAMS)[number]["value"];
+
+export const STORY_PROGRAMS_PROMPT = "Which programs have you utilized? (check all that apply)";
+
+export type StoryTextKey = "howNfwHelped" | "surprisedBy" | "improvementIdeas" | "feedback" | "whyJoin";
+
+export const STORY_TEXT_PROMPTS: Record<StoryTextKey, string> = {
+  howNfwHelped: "How has NFW membership made a difference for you?",
+  surprisedBy: "How has NFW membership surprised you?",
+  improvementIdeas: "If you had a magic wand, how would you improve the NFW membership experience?",
+  feedback: "Do you have specific feedback or ideas? We\u2019d love to hear them.",
+  whyJoin: "What would you tell someone considering joining NFW? Why should others join this community?",
+};
 
 export const STORY_PERMISSIONS = {
   permissionGranted:

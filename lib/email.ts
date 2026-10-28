@@ -29,6 +29,7 @@ async function fetchEmailTemplate(slug: string): Promise<{ subject: string; html
 import getAdminClient from "@/lib/supabase/admin";
 
 import { SITE_TZ } from "@/lib/dates";
+import { STORY_PROGRAMS_PROMPT, STORY_TEXT_PROMPTS, storyProgramLabel } from "@/lib/storyForm";
 async function fetchEmailTemplateAdmin(slug: string): Promise<{ subject: string; html: string; hero_image_url?: string; is_active?: boolean } | null> {
   const supabase = getAdminClient();
   const { data, error } = await supabase
@@ -1188,11 +1189,12 @@ interface StoryFormData {
   age: string;
   city: string;
   state: string;
-  drawnToMembership?: string;
-  programsEngaged?: string;
-  favoritePart?: string;
-  howNfwHelped?: string;
-  whyJoin?: string;
+  howNfwHelped: string | null;
+  surprisedBy: string | null;
+  programsUsed: string[];
+  improvementIdeas: string | null;
+  feedback: string | null;
+  whyJoin: string | null;
   permissionGranted: boolean;
   preferAnonymous: boolean;
   interestedVideo: boolean;
@@ -1212,7 +1214,24 @@ export async function sendStoryNotificationEmail(data: StoryFormData) {
     timeZoneName: "short",
   });
 
-  const formatOptional = (val?: string) => val?.trim() || "<em>No response</em>";
+  const esc = (val: string) =>
+    val
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  const formatOptional = (val?: string | null) =>
+    val?.trim() ? esc(val.trim()).replace(/\n/g, "<br>") : "<em>No response</em>";
+  const responseBlock = (label: string, value: string) => `
+        <div style="margin-bottom: 20px;">
+          <div style="font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">${esc(label)}</div>
+          <div style="color: #FFFFFF; line-height: 1.6;">${value}</div>
+        </div>`;
+  const programsHtml = data.programsUsed.length
+    ? data.programsUsed.map((p) => esc(storyProgramLabel(p))).join(", ")
+    : "<em>None selected</em>";
+  const location = `${data.city || ""}${data.city && data.state ? ", " : ""}${data.state || ""}`;
 
   const html = `
 <!DOCTYPE html>
@@ -1234,49 +1253,30 @@ export async function sendStoryNotificationEmail(data: StoryFormData) {
         </tr>
         <tr>
           <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2); font-weight: bold;">Name</td>
-          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2);">${data.name}</td>
+          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2);">${esc(data.name)}</td>
         </tr>
         <tr>
           <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2); font-weight: bold;">Email</td>
-          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2);"><a href="mailto:${data.email}" style="color: #F8F19A;">${data.email}</a></td>
+          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2);"><a href="mailto:${esc(data.email)}" style="color: #F8F19A;">${esc(data.email)}</a></td>
         </tr>
         <tr>
           <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2); font-weight: bold;">Age</td>
-          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2);">${data.age}</td>
+          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2);">${esc(data.age)}</td>
         </tr>
         <tr>
           <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2); font-weight: bold;">Location</td>
-          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2);">${data.city || ""}${data.city && data.state ? ", " : ""}${data.state || ""}</td>
+          <td style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2);">${esc(location)}</td>
         </tr>
       </table>
 
       <div style="margin-top: 30px;">
         <h3 style="color: #F8F19A; margin: 0 0 15px 0; font-size: 16px; font-weight: bold;">Story Responses</h3>
-
-        <div style="margin-bottom: 20px;">
-          <div style="font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">What drew you to becoming a National Fund for Women member?</div>
-          <div style="color: #FFFFFF; line-height: 1.6;">${formatOptional(data.drawnToMembership)}</div>
-        </div>
-
-        <div style="margin-bottom: 20px;">
-          <div style="font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">Which NFW program(s) have you engaged with? What was your experience?</div>
-          <div style="color: #FFFFFF; line-height: 1.6;">${formatOptional(data.programsEngaged)}</div>
-        </div>
-
-        <div style="margin-bottom: 20px;">
-          <div style="font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">What is your favorite part about being an NFW member?</div>
-          <div style="color: #FFFFFF; line-height: 1.6;">${formatOptional(data.favoritePart)}</div>
-        </div>
-
-        <div style="margin-bottom: 20px;">
-          <div style="font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">How has NFW helped you?</div>
-          <div style="color: #FFFFFF; line-height: 1.6;">${formatOptional(data.howNfwHelped)}</div>
-        </div>
-
-        <div style="margin-bottom: 20px;">
-          <div style="font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">Why should others join NFW?</div>
-          <div style="color: #FFFFFF; line-height: 1.6;">${formatOptional(data.whyJoin)}</div>
-        </div>
+${responseBlock(STORY_TEXT_PROMPTS.howNfwHelped, formatOptional(data.howNfwHelped))}
+${responseBlock(STORY_TEXT_PROMPTS.surprisedBy, formatOptional(data.surprisedBy))}
+${responseBlock(STORY_PROGRAMS_PROMPT, programsHtml)}
+${responseBlock(STORY_TEXT_PROMPTS.improvementIdeas, formatOptional(data.improvementIdeas))}
+${responseBlock(STORY_TEXT_PROMPTS.feedback, formatOptional(data.feedback))}
+${responseBlock(STORY_TEXT_PROMPTS.whyJoin, formatOptional(data.whyJoin))}
       </div>
 
       <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
@@ -1308,7 +1308,7 @@ export async function sendStoryNotificationEmail(data: StoryFormData) {
   await resend.emails.send({
     from: FROM,
     to: toEmail,
-    subject: `New Story Submission from ${data.name}`,
+    subject: `New Story Submission from ${data.name.replace(/[\r\n]+/g, " ")}`,
     html,
   });
 }

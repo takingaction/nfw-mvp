@@ -2,6 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import {
+  STORY_INTRO,
+  STORY_PERMISSIONS,
+  STORY_PROGRAMS,
+  STORY_PROGRAMS_PROMPT,
+  STORY_TEXT_PROMPTS,
+  US_STATES,
+  type StoryProgram,
+  type StoryTextKey,
+} from "@/lib/storyForm";
 
 type Profile = {
   id: string;
@@ -12,21 +22,38 @@ type Profile = {
   state: string | null;
 };
 
+type FormState = {
+  name: string;
+  email: string;
+  age: string;
+  city: string;
+  state: string;
+  programsUsed: StoryProgram[];
+  permissionGranted: boolean;
+  preferAnonymous: boolean;
+  interestedVideo: boolean;
+} & Record<StoryTextKey, string>;
+
+const inputClass =
+  "w-full px-3 py-2 border border-nfw-blackberry/20 font-sans text-sm focus:outline-none focus:border-nfw-aubergine";
+const labelClass = "block text-sm font-semibold text-nfw-blackberry font-ui mb-1";
+
 export default function ShareStoryClient({ profile }: { profile: Profile | null }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormState>({
     name: profile?.full_name || "",
     email: profile?.email || "",
     age: "",
     city: profile?.city || "",
-    state: profile?.state || "",
-    drawnToMembership: "",
-    programsEngaged: "",
-    favoritePart: "",
+    state: profile?.state && (US_STATES as readonly string[]).includes(profile.state) ? profile.state : "",
     howNfwHelped: "",
+    surprisedBy: "",
+    programsUsed: [],
+    improvementIdeas: "",
+    feedback: "",
     whyJoin: "",
     permissionGranted: false,
     preferAnonymous: false,
@@ -47,23 +74,53 @@ export default function ShareStoryClient({ profile }: { profile: Profile | null 
   }, [profile]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: checked }));
+  const toggleProgram = (program: StoryProgram) => {
+    setFormData((prev) => ({
+      ...prev,
+      programsUsed: prev.programsUsed.includes(program)
+        ? prev.programsUsed.filter((p) => p !== program)
+        : [...prev.programsUsed, program],
+    }));
   };
+
+  const setPermission = (checked: boolean) => {
+    // Anonymity only applies to quotes NFW has permission to use.
+    setFormData((prev) => ({
+      ...prev,
+      permissionGranted: checked,
+      preferAnonymous: checked ? prev.preferAnonymous : false,
+    }));
+  };
+
+  const hasStoryAnswer =
+    (Object.keys(STORY_TEXT_PROMPTS) as StoryTextKey[]).some((k) => formData[k].trim()) ||
+    formData.programsUsed.length > 0;
+
+  const memberInfoComplete =
+    formData.name.trim() &&
+    formData.email.trim() &&
+    formData.age.trim() &&
+    formData.city.trim() &&
+    formData.state;
+
+  const canSubmit = Boolean(memberInfoComplete && hasStoryAnswer);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!formData.age) {
-      setError("Age is required");
+    if (!memberInfoComplete) {
+      setError("Please complete all Member Information fields.");
+      return;
+    }
+    if (!hasStoryAnswer) {
+      setError("Please answer at least one of the story prompts.");
       return;
     }
 
@@ -89,7 +146,22 @@ export default function ShareStoryClient({ profile }: { profile: Profile | null 
     }
   };
 
-  const canSubmit = formData.age;
+  const renderTextPrompt = (key: StoryTextKey, rows = 4) => (
+    <div key={key} className="mb-4">
+      <label htmlFor={key} className={labelClass}>
+        {STORY_TEXT_PROMPTS[key]}
+      </label>
+      <textarea
+        id={key}
+        name={key}
+        value={formData[key]}
+        onChange={handleChange}
+        rows={rows}
+        className={`${inputClass} resize-none`}
+        placeholder="Share your thoughts..."
+      />
+    </div>
+  );
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -98,9 +170,7 @@ export default function ShareStoryClient({ profile }: { profile: Profile | null 
           <h2 className="text-2xl font-bold text-nfw-blackberry font-serif mb-4">
             Share Your Story
           </h2>
-          <p className="text-nfw-blackberry/70 font-sans">
-            Thank you for being a National Fund for Women member and choosing to share your story with us! Your experience helps us shape our programs, lift up our community, and spread the word so we can reach and support even more women across the country.
-          </p>
+          <p className="text-nfw-blackberry/70 font-sans">{STORY_INTRO}</p>
         </div>
 
         {error && (
@@ -114,36 +184,24 @@ export default function ShareStoryClient({ profile }: { profile: Profile | null 
             <h3 className="text-lg font-bold text-nfw-aubergine font-ui mb-4">Member Information</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-nfw-blackberry font-ui mb-1">
+                <label htmlFor="name" className={labelClass}>
                   Name <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-nfw-blackberry/20 font-sans text-sm focus:outline-none focus:border-nfw-aubergine"
-                />
+                <input id="name" type="text" name="name" value={formData.name} onChange={handleChange} required className={inputClass} />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-nfw-blackberry font-ui mb-1">
+                <label htmlFor="email" className={labelClass}>
                   Email <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-nfw-blackberry/20 font-sans text-sm focus:outline-none focus:border-nfw-aubergine"
-                />
+                <input id="email" type="email" name="email" value={formData.email} onChange={handleChange} required className={inputClass} />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-nfw-blackberry font-ui mb-1">
+              <div className="sm:col-span-2">
+                <div className="sm:w-1/2 sm:pr-2">
+                <label htmlFor="age" className={labelClass}>
                   Age <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="age"
                   type="number"
                   name="age"
                   value={formData.age}
@@ -151,121 +209,109 @@ export default function ShareStoryClient({ profile }: { profile: Profile | null 
                   required
                   min="13"
                   max="120"
-                  className="w-full px-3 py-2 border border-nfw-blackberry/20 font-sans text-sm focus:outline-none focus:border-nfw-aubergine"
+                  className={inputClass}
                 />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-nfw-blackberry font-ui mb-1">
-                  Location (City, State) <span className="text-red-500">*</span>
+                <label htmlFor="city" className={labelClass}>
+                  City <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  name="city"
-                  value={`${formData.city || ""}${formData.city && formData.state ? ", " : ""}${formData.state || ""}`}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const parts = val.split(",").map((p) => p.trim());
-                    setFormData((prev) => ({
-                      ...prev,
-                      city: parts[0] || "",
-                      state: parts[1] || "",
-                    }));
-                  }}
-                  placeholder="City, State"
-                  className="w-full px-3 py-2 border border-nfw-blackberry/20 font-sans text-sm focus:outline-none focus:border-nfw-aubergine"
-                />
+                <input id="city" type="text" name="city" value={formData.city} onChange={handleChange} required className={inputClass} />
+              </div>
+              <div>
+                <label htmlFor="state" className={labelClass}>
+                  State <span className="text-red-500">*</span>
+                </label>
+                <select id="state" name="state" value={formData.state} onChange={handleChange} required className={`${inputClass} bg-white`}>
+                  <option value="">Select state</option>
+                  {US_STATES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
 
           <div className="border-b border-nfw-blackberry/10 pb-6">
-            <h3 className="text-lg font-bold text-nfw-aubergine font-ui mb-4">
-              Your Story
-            </h3>
+            <h3 className="text-lg font-bold text-nfw-aubergine font-ui mb-4">Your Story</h3>
             <p className="text-sm text-nfw-blackberry/60 font-sans mb-4">
-              Optional: Answer any of the following prompts to share your experience.
+              Answer any of the following prompts to share your experience. At least one answer is required.
             </p>
 
-            {[
-              {
-                name: "drawnToMembership",
-                label: "What drew you to becoming a National Fund for Women member?",
-              },
-              {
-                name: "programsEngaged",
-                label: "Which NFW program(s) have you engaged with? What was your experience?",
-              },
-              {
-                name: "favoritePart",
-                label: "What is your favorite part about being an NFW member?",
-              },
-              {
-                name: "howNfwHelped",
-                label: "How has NFW helped you?",
-              },
-              {
-                name: "whyJoin",
-                label: "Why should others join NFW?",
-              },
-            ].map((field) => (
-              <div key={field.name} className="mb-4">
-                <label className="block text-sm font-semibold text-nfw-blackberry font-ui mb-1">
-                  {field.label}
-                </label>
-                <textarea
-                  name={field.name}
-                  value={formData[field.name as keyof typeof formData] as string}
-                  onChange={handleChange}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-nfw-blackberry/20 font-sans text-sm focus:outline-none focus:border-nfw-aubergine resize-none"
-                  placeholder="Share your thoughts..."
-                />
+            {renderTextPrompt("howNfwHelped")}
+            {renderTextPrompt("surprisedBy")}
+
+            <fieldset className="mb-4">
+              <legend className={labelClass}>{STORY_PROGRAMS_PROMPT}</legend>
+              <div className="space-y-2 mt-2">
+                {STORY_PROGRAMS.map((p) => (
+                  <label key={p.value} className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.programsUsed.includes(p.value)}
+                      onChange={() => toggleProgram(p.value)}
+                      className="w-4 h-4 accent-nfw-aubergine flex-shrink-0"
+                    />
+                    <span className="text-sm font-sans text-nfw-blackberry/80">{p.label}</span>
+                  </label>
+                ))}
               </div>
-            ))}
+            </fieldset>
+
+            {renderTextPrompt("improvementIdeas")}
+            {renderTextPrompt("feedback", 3)}
+            {renderTextPrompt("whyJoin")}
           </div>
 
           <div>
-            <h3 className="text-lg font-bold text-nfw-aubergine font-ui mb-4">
-              Permissions
-            </h3>
+            <h3 className="text-lg font-bold text-nfw-aubergine font-ui mb-4">Permissions</h3>
 
             <div className="space-y-3">
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  name="permissionGranted"
                   checked={formData.permissionGranted}
-                  onChange={handleCheckboxChange}
+                  onChange={(e) => setPermission(e.target.checked)}
                   className="mt-0.5 w-4 h-4 accent-nfw-aubergine flex-shrink-0"
                 />
                 <span className="text-sm font-sans text-nfw-blackberry/80">
-                  I grant NFW permission to utilize excerpts from this submission for its website, email newsletters, social media platforms, and various other external outreach. When using quotes, we will only attribute them by your first name, age, and state of residence.
+                  {STORY_PERMISSIONS.permissionGranted}
                 </span>
               </label>
 
-              <label className="flex items-start gap-3 cursor-pointer">
+              <label
+                className={`flex items-start gap-3 ${
+                  formData.permissionGranted ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+                }`}
+              >
                 <input
                   type="checkbox"
-                  name="preferAnonymous"
                   checked={formData.preferAnonymous}
-                  onChange={handleCheckboxChange}
+                  disabled={!formData.permissionGranted}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, preferAnonymous: e.target.checked }))
+                  }
                   className="mt-0.5 w-4 h-4 accent-nfw-aubergine flex-shrink-0"
                 />
                 <span className="text-sm font-sans text-nfw-blackberry/80">
-                  I prefer that any of my quoted statements remain anonymous.
+                  {STORY_PERMISSIONS.preferAnonymous}
                 </span>
               </label>
 
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  name="interestedVideo"
                   checked={formData.interestedVideo}
-                  onChange={handleCheckboxChange}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, interestedVideo: e.target.checked }))
+                  }
                   className="mt-0.5 w-4 h-4 accent-nfw-aubergine flex-shrink-0"
                 />
                 <span className="text-sm font-sans text-nfw-blackberry/80">
-                  Are you interested in recording a brief video for NFW&apos;s social media platforms? A modest honorarium may be available for participants.
+                  {STORY_PERMISSIONS.interestedVideo}
                 </span>
               </label>
             </div>
