@@ -68,6 +68,7 @@ interface GrantCombinedScoresProps {
     amount_per_grant: number;
     grants_available: number;
     total_funds: number;
+    selection_method?: string | null;
   };
   totalPaid?: number;
   onTentativeApprove: (grantIds: string[]) => Promise<void>;
@@ -627,10 +628,16 @@ export default function GrantCombinedScores({
                     />
                   </div>
                   <div className="flex items-center justify-center">
-                    <span className="text-xl font-black text-nfw-blackberry">
-                      {grant.combined_score}
-                      <span className="text-sm text-nfw-blackberry/50">/18</span>
-                    </span>
+                    {cycle.selection_method === "random" ? (
+                      <span className="text-xs font-bold text-nfw-blackberry/50" title="Random-draw cycle: winners were drawn, not scored">
+                        Drawn
+                      </span>
+                    ) : (
+                      <span className="text-xl font-black text-nfw-blackberry">
+                        {grant.combined_score}
+                        <span className="text-sm text-nfw-blackberry/50">/18</span>
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center justify-center">
                     <span

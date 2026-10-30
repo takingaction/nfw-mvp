@@ -128,7 +128,9 @@ export default async function AdminGrantCyclePage({
   const combinedUnlocked = isRandom
     ? finalApproved || secondUnlocked
     : finalApproved || allSecondComplete;
-  const combinedHref = isRandom
+  // Once finalized, both methods go to Combined Scores: that page hosts
+  // payments, email retries and "Mark Complete" for every cycle.
+  const combinedHref = isRandom && !finalApproved
     ? `/admin/grants/${id}/scoring/second`
     : `/admin/grants/${id}/scoring/combined`;
 

@@ -349,6 +349,14 @@ export default function RandomDrawReview({ cycleId, phase }: { cycleId: string; 
                   {handedOff ? "Handed off to Reviewer 2" : "Hand off to Reviewer 2"}
                 </button>
               )}
+              {finalized && (
+                <Link
+                  href={`/admin/grants/${cycleId}/scoring/combined`}
+                  className="px-4 py-2 bg-nfw-citrine text-nfw-blackberry font-bold text-sm hover:bg-nfw-citrine/80 flex items-center gap-2"
+                >
+                  Payments &amp; emails →
+                </Link>
+              )}
               {phase === "second" && (
                 <button
                   onClick={() => setModal("finalize")}

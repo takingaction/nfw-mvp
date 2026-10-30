@@ -4,6 +4,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import Stripe from "stripe";
 import { fetchDocumentsByGrant } from "@/lib/grant-documents";
 import { fetchAllPages, fetchAllPagesIn } from "@/lib/supabase-paginate";
+import { AWARDED_STATUSES } from "@/lib/grant-eligibility-checks";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -52,48 +53,58 @@ export async function GET(
       return NextResponse.json({ error: "Cycle not found" }, { status: 404 });
     }
 
-    // Get all grants to check completion status
-    const { data: grantsCheck } = await fetchAllPages((from, to) =>
-      supabaseAdmin
-        .from("grants")
-        .select("id, rachel_complete, michelle_complete, grant_scores (reviewer_name, total_score, needs_discussion)")
-        .eq("cycle_id", cycleId)
-        .order("id", { ascending: true })
-        .range(from, to),
-    );
+    // Random-draw cycles have no review scores: winners come from confirmed
+    // draws (synced to grant_tentative_approvals at finalize), so the score
+    // completeness checks below don't apply. This page is where finalized
+    // cycles are paid, emails retried and the cycle marked complete, so it
+    // must work for both selection methods.
+    const isRandom = cycle?.selection_method === "random";
 
-    if (!grantsCheck || grantsCheck.length === 0) {
-      return NextResponse.json({ error: "No grants found" }, { status: 404 });
-    }
+    if (!isRandom) {
+      // Get all grants to check completion status
+      const { data: grantsCheck } = await fetchAllPages((from, to) =>
+        supabaseAdmin
+          .from("grants")
+          .select("id, rachel_complete, michelle_complete, grant_scores (reviewer_name, total_score, needs_discussion)")
+          .eq("cycle_id", cycleId)
+          .order("id", { ascending: true })
+          .range(from, to),
+      );
 
-    // Check if first review is complete
-    const allFirstComplete = grantsCheck.every((g) => g.rachel_complete === true);
+      if (!grantsCheck || grantsCheck.length === 0) {
+        return NextResponse.json({ error: "No grants found" }, { status: 404 });
+      }
 
-    if (!allFirstComplete) {
-      return NextResponse.json({
-        error: "First review is not complete. Please complete all first reviews first."
-      }, { status: 400 });
-    }
+      // Check if first review is complete
+      const allFirstComplete = grantsCheck.every((g) => g.rachel_complete === true);
 
-    // Get grants in scope for second review (first score >= 7 OR first flagged)
-    const grantsInScope = grantsCheck.filter((g: any) => {
-      if (!g.rachel_complete) return false;
-      const firstScore = g.grant_scores?.find((s: any) => s.reviewer_name === "first");
-      if (!firstScore) return false;
-      const totalScore = firstScore.total_score || 0;
-      const wasFlagged = firstScore.needs_discussion === true;
-      return totalScore >= 7 || wasFlagged;
-    });
+      if (!allFirstComplete) {
+        return NextResponse.json({
+          error: "First review is not complete. Please complete all first reviews first."
+        }, { status: 400 });
+      }
 
-    // Second review is complete if all grants in scope have michelle_complete = true
-    const allSecondComplete = grantsInScope.length === 0
-      ? true
-      : grantsInScope.every((g: any) => g.michelle_complete === true);
+      // Get grants in scope for second review (first score >= 7 OR first flagged)
+      const grantsInScope = grantsCheck.filter((g: any) => {
+        if (!g.rachel_complete) return false;
+        const firstScore = g.grant_scores?.find((s: any) => s.reviewer_name === "first");
+        if (!firstScore) return false;
+        const totalScore = firstScore.total_score || 0;
+        const wasFlagged = firstScore.needs_discussion === true;
+        return totalScore >= 7 || wasFlagged;
+      });
 
-    if (!allSecondComplete) {
-      return NextResponse.json({
-        error: "Second review is not complete. Please complete all second reviews first."
-      }, { status: 400 });
+      // Second review is complete if all grants in scope have michelle_complete = true
+      const allSecondComplete = grantsInScope.length === 0
+        ? true
+        : grantsInScope.every((g: any) => g.michelle_complete === true);
+
+      if (!allSecondComplete) {
+        return NextResponse.json({
+          error: "Second review is not complete. Please complete all second reviews first."
+        }, { status: 400 });
+      }
+
     }
 
     // Get all grants with all scores (no FK join for documents)
@@ -179,7 +190,16 @@ export async function GET(
 
     // Filter to only grants in scope for second review (first score >= 7 OR first flagged)
     // Skipped grants (ai_invalidated_at set) are excluded — they must be restored on First Review first.
+    const awarded = new Set<string>(AWARDED_STATUSES);
+    const tentativeWinners = new Set<string>(
+      ((cycle.grant_tentative_approvals ?? []) as { grant_id: string; is_approved: boolean }[])
+        .filter((t) => t.is_approved)
+        .map((t) => t.grant_id),
+    );
+    const isWinner = (g: { id: string; status: string }) =>
+      awarded.has(g.status) || tentativeWinners.has(g.id);
     const grantsForDisplay = grants?.filter((g: any) => {
+      if (isRandom) return isWinner(g);
       if (g.ai_invalidated_at) return false;
       const firstScore = g.grant_scores?.find((s: any) => s.reviewer_name === "first");
       if (!firstScore) return false;
@@ -199,7 +219,10 @@ export async function GET(
 
       // Determine decision band
       let decision = "Not Approved";
-      if (combinedScore >= 14) {
+      if (isRandom) {
+        // Only winners are listed for random-draw cycles.
+        decision = "Approved";
+      } else if (combinedScore >= 14) {
         decision = "Approved";
       } else if (combinedScore >= 8) {
         decision = "Runner Up";
@@ -322,6 +345,7 @@ export async function GET(
         scoring_completed_at: cycle.scoring_completed_at,
         final_approved_at: cycle.final_approved_at,
         is_finalized: cycle.is_finalized,
+        selection_method: cycle.selection_method,
       },
       totalPaid,
     });

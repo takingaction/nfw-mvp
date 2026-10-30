@@ -59,6 +59,7 @@ interface Cycle {
   scoring_completed_at: string;
   final_approved_at: string;
   is_finalized: boolean;
+  selection_method?: string | null;
 }
 
 export default function CombinedScoresPage() {
