@@ -81,8 +81,21 @@ export default function RandomDrawReview({ cycleId, phase }: { cycleId: string; 
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>(phase === "second" ? "winners" : "all");
   const [visibleNames, setVisibleNames] = useState<Set<string>>(new Set());
-  const [modal, setModal] = useState<null | "redraw" | "handoff" | "finalize">(null);
+  const [modal, setModal] = useState<null | "redraw" | "handoff" | "finalize" | "resume">(null);
   const [finalizeResult, setFinalizeResult] = useState<FinalizeResult | null>(null);
+  const [emailStatus, setEmailStatus] = useState<{ approved: number; rejected: number } | null>(null);
+
+  // How many applicants have no email record yet (only meaningful once finalized).
+  const loadEmailStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/grants/${cycleId}/final-approve`);
+      const body = await res.json().catch(() => ({}));
+      if (res.ok && body.finalized) setEmailStatus(body.pending);
+      else setEmailStatus(null);
+    } catch {
+      setEmailStatus(null);
+    }
+  }, [cycleId]);
 
   const load = useCallback(async () => {
     try {
@@ -110,6 +123,11 @@ export default function RandomDrawReview({ cycleId, phase }: { cycleId: string; 
   useEffect(() => {
     load();
   }, [load]);
+
+  const finalizedAt = data?.cycle.final_approved_at ?? null;
+  useEffect(() => {
+    if (finalizedAt) loadEmailStatus();
+  }, [finalizedAt, loadEmailStatus]);
 
   const drawByGrant = useMemo(() => {
     const m = new Map<string, DrawRow>();
@@ -192,11 +210,15 @@ export default function RandomDrawReview({ cycleId, phase }: { cycleId: string; 
     }
   };
 
-  const finalize = async () => {
+  const finalize = async (resume = false) => {
     setBusy("finalize");
     setActionError("");
     try {
-      const res = await fetch(`/api/admin/grants/${cycleId}/final-approve`, { method: "POST" });
+      const res = await fetch(`/api/admin/grants/${cycleId}/final-approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resume }),
+      });
       const out = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(out.error || "Failed to finalize approvals");
       setModal(null);
@@ -213,9 +235,23 @@ export default function RandomDrawReview({ cycleId, phase }: { cycleId: string; 
         },
       });
       await load();
+      await loadEmailStatus();
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err.message : "Failed to finalize approvals");
+      // A network-level failure ("Failed to fetch") means the browser lost the
+      // response, not that the server did nothing — the cycle may well be
+      // finalized with emails sent. Refresh and say so instead of inviting a
+      // blind retry.
+      const networkFailure = err instanceof TypeError;
+      setActionError(
+        networkFailure
+          ? "The server didn't respond before the connection closed. The cycle may still have been finalized and emails sent — this page has been refreshed to show the current state. Check the email status below before trying again."
+          : err instanceof Error
+            ? err.message
+            : "Failed to finalize approvals",
+      );
       setModal(null);
+      await load();
+      await loadEmailStatus();
     } finally {
       setBusy(null);
     }
@@ -342,6 +378,23 @@ export default function RandomDrawReview({ cycleId, phase }: { cycleId: string; 
               <Stat n={summary.notEvaluated} label="Awaiting AI review" cls="bg-yellow-100 text-yellow-800" />
             )}
           </div>
+          {finalized && viewer.isAdmin && emailStatus && emailStatus.approved + emailStatus.rejected > 0 && (
+            <div className="mt-3 bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900 flex flex-wrap items-center justify-between gap-3">
+              <p>
+                <strong>{emailStatus.approved + emailStatus.rejected}</strong> applicant
+                {emailStatus.approved + emailStatus.rejected === 1 ? " has" : "s have"} no email record
+                ({emailStatus.approved} approved, {emailStatus.rejected} not approved). If emails may have gone
+                out without being recorded, confirm in Resend before sending.
+              </p>
+              <button
+                onClick={() => setModal("resume")}
+                disabled={busy === "finalize"}
+                className="px-3 py-1.5 bg-nfw-aubergine text-white font-bold text-xs hover:bg-nfw-aubergine/90 disabled:opacity-50"
+              >
+                Send remaining emails
+              </button>
+            </div>
+          )}
           {(actionError || (phase === "first" && handedOff && !finalized)) && (
             <div className="mt-3 space-y-1">
               {actionError && <p className="text-sm text-red-700">{actionError}</p>}
@@ -642,7 +695,17 @@ export default function RandomDrawReview({ cycleId, phase }: { cycleId: string; 
           confirmLabel="Finalize"
           busy={busy === "finalize"}
           onCancel={() => setModal(null)}
-          onConfirm={finalize}
+          onConfirm={() => finalize(false)}
+        />
+      )}
+      {modal === "resume" && emailStatus && (
+        <ConfirmModal
+          title="Send remaining emails?"
+          body={`This emails only the ${emailStatus.approved + emailStatus.rejected} applicant${emailStatus.approved + emailStatus.rejected === 1 ? "" : "s"} with no email record. Anyone already recorded as emailed is skipped. Only continue if you've confirmed in Resend that these people were not already emailed.`}
+          confirmLabel="Send"
+          busy={busy === "finalize"}
+          onCancel={() => setModal(null)}
+          onConfirm={() => finalize(true)}
         />
       )}
       {finalizeResult && (

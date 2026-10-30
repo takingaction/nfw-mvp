@@ -186,7 +186,7 @@ export default function CombinedScoresPage() {
         method: "POST",
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         throw new Error(data.error || "Failed to finalize approvals");
@@ -208,7 +208,15 @@ export default function CombinedScoresPage() {
       setShowResultModal(true);
       fetchData();
     } catch (err: any) {
-      alert(err.message);
+      // A network-level failure ("Failed to fetch") means the browser lost the
+      // response, not that nothing happened server-side. Refresh and say so
+      // rather than inviting a blind retry that could double-email people.
+      alert(
+        err instanceof TypeError
+          ? "The server didn't respond before the connection closed. The cycle may still have been finalized and emails sent. The page will refresh to show the current state — please check before trying again."
+          : err.message,
+      );
+      fetchData();
     } finally {
       setFinalizing(false);
     }
