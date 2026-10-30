@@ -226,13 +226,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         }
       }
 
-      const { error: stampError } = await supabaseAdmin
+      // Conditional stamp = the lock. If two finalize requests overlap (a
+      // double click, a retry after "Failed to fetch"), both may write the
+      // same statuses above (harmless), but only the one that flips
+      // final_approved_at from null goes on to send email.
+      const { data: stamped, error: stampError } = await supabaseAdmin
         .from("grant_cycles")
         .update({ final_approved_at: new Date().toISOString() })
-        .eq("id", cycleId);
+        .eq("id", cycleId)
+        .is("final_approved_at", null)
+        .select("id");
       if (stampError) {
         console.error("[final-approve] final_approved_at stamp failed:", stampError);
         return NextResponse.json({ error: "Could not mark the cycle finalized. Nothing was emailed; please try again." }, { status: 500 });
+      }
+      if (!stamped || stamped.length === 0) {
+        return NextResponse.json(
+          { error: "This cycle was just finalized by another request. Refresh to see the result.", finalized: true },
+          { status: 409 },
+        );
       }
 
       // Mobile push notifications (fire-and-forget; emails remain the primary channel)
