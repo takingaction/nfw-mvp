@@ -143,18 +143,25 @@ async function main() {
   const sentTo = new Map<string, { id: string; last_event: string; count: number }>();
   let after: string | undefined;
   let scanned = 0;
+  let rateLimitRetries = 0;
+  console.log("Scanning Resend (newest first, 100 per page)...");
   for (let page = 0; page < 500; page++) {
     const res = await resend.emails.list(after ? { limit: 100, after } : { limit: 100 });
     if (res.error) {
-      if (res.error.name === "rate_limit_exceeded") {
-        await sleep(1500);
+      if (res.error.name === "rate_limit_exceeded" && rateLimitRetries < 10) {
+        rateLimitRetries++;
+        console.log(`  rate limited, waiting (retry ${rateLimitRetries}/10)`);
+        await sleep(2000 * rateLimitRetries);
         page--;
         continue;
       }
-      throw new Error(`Resend list failed: ${res.error.message}`);
+      throw new Error(`Resend list failed (${res.error.name}): ${res.error.message}`);
     }
+    rateLimitRetries = 0;
     const items = res.data?.data ?? [];
     scanned += items.length;
+    const oldest = items[items.length - 1]?.created_at;
+    console.log(`  page ${page + 1}: ${items.length} emails, back to ${oldest ?? "-"} (matched so far: ${sentTo.size})`);
     let pastWindow = false;
     for (const e of items) {
       const t = new Date(e.created_at);
