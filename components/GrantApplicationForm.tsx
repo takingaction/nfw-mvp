@@ -794,7 +794,7 @@ export default function GrantApplicationForm({
                 accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                 onChange={handleFileChange}
                 disabled={documents.length >= GRANT_DOCS_MAX_COUNT}
-                className="w-full text-sm text-nfw-blackberry/60 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-ui file:bg-nfw-blackberry file:text-white hover:file:bg-nfw-blackberry/90 file:cursor-pointer cursor-pointer border border-nfw-blackberry/20 p-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:file:cursor-not-allowed"
+                className="w-full text-sm text-nfw-blackberry/60 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-ui file:bg-nfw-blackberry file:text-white hover:file:bg-nfw-blackberry/90 file:cursor-pointer cursor-pointer border border-nfw-blackberry/20 p-2 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               {documents.length > 0 && (
                 <p className="mt-2 text-sm font-ui text-nfw-blackberry/60" aria-live="polite">
