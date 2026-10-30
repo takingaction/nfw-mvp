@@ -59,7 +59,10 @@ function parseCSVLine(line: string): string[] {
 }
 
 // Build a lookup map from check-this.csv: email -> true if delivered for this grant
-function buildDeliveredLookup(grantNameKey: string): Map<string, boolean> {
+// Returns null when the CSV can't be read. Callers must stop: with no CSV,
+// nobody looks delivered and every unlogged applicant would be inserted as
+// "failed" — and then re-emailed by Retry Failed Emails.
+function buildDeliveredLookup(grantNameKey: string): Map<string, boolean> | null {
   const delivered = new Map<string, boolean>();
 
   try {
@@ -93,6 +96,7 @@ function buildDeliveredLookup(grantNameKey: string): Map<string, boolean> {
     console.log(`[check-resend-delivered] Found ${delivered.size} unique delivered emails for "${grantNameKey}"`);
   } catch (err) {
     console.error('[check-resend-delivered] Error reading CSV:', err);
+    return null;
   }
 
   return delivered;
@@ -107,6 +111,16 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // This route writes email-log rows that drive bulk re-sends: admins only.
+    const { data: adminProfile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single();
+    if (!adminProfile?.is_admin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Parse request body
@@ -195,6 +209,15 @@ export async function POST(request: Request) {
 
     // Step 2: Build lookup from CSV
     const deliveredLookup = buildDeliveredLookup(grantNameKey);
+    if (!deliveredLookup) {
+      return NextResponse.json(
+        {
+          error:
+            "No Resend export (check-this.csv) is available on this server, so delivery can't be checked. Nothing was changed.",
+        },
+        { status: 400 },
+      );
+    }
 
     const needsRetry: {
       grant_id: string;
