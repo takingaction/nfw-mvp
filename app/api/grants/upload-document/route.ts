@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
+import { GRANT_DOCS_MAX_COUNT } from "@/lib/admin-documents";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -65,6 +66,18 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Grant not found or access denied" },
         { status: 403 },
+      );
+    }
+
+    const { count: existingCount } = await supabaseAdmin
+      .from("grant_documents")
+      .select("id", { count: "exact", head: true })
+      .eq("grant_id", grantId)
+      .is("uploaded_by", null);
+    if ((existingCount ?? 0) >= GRANT_DOCS_MAX_COUNT) {
+      return NextResponse.json(
+        { error: `You can upload up to ${GRANT_DOCS_MAX_COUNT} documents per application.` },
+        { status: 400 },
       );
     }
 

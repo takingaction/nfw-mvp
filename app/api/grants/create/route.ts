@@ -7,6 +7,7 @@ import {
   GRANT_DOCS_BUCKET,
   GRANT_DOCS_ALLOWED_TYPES,
   GRANT_DOCS_MAX_BYTES,
+  GRANT_DOCS_MAX_COUNT,
   storageObjectExists,
 } from "@/lib/admin-documents";
 import {
@@ -157,6 +158,12 @@ export async function POST(request: Request) {
             typeof u.fileSize === "number",
         )
       : [];
+    if (documentUploads.length > GRANT_DOCS_MAX_COUNT) {
+      return NextResponse.json(
+        { error: `You can upload up to ${GRANT_DOCS_MAX_COUNT} documents per application.` },
+        { status: 400 },
+      );
+    }
     const allowedPrefix = `${cycle_id}/pending/${user.id}/`;
     for (const up of documentUploads) {
       if (!up.path.startsWith(allowedPrefix)) {

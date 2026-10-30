@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 import { SITE_TZ } from "@/lib/dates";
+import { GRANT_DOCS_MAX_COUNT } from "@/lib/admin-documents";
 const decodeHtml = (html: string): string => {
   if (typeof document === "undefined") return html || "";
   const div = document.createElement("div");
@@ -570,7 +571,18 @@ export default function GrantApplicationForm({
         }
       }
 
-      setDocuments((prev) => [...prev, ...newFiles]);
+      // Cap at GRANT_DOCS_MAX_COUNT: keep as many as fit, flag the rest.
+      const remaining = Math.max(0, GRANT_DOCS_MAX_COUNT - documents.length);
+      if (newFiles.length > remaining) {
+        setFileErrorMessage(
+          `You've reached the ${GRANT_DOCS_MAX_COUNT}-document limit. Remove a file to add another. If you have more materials, please combine them into a single PDF.`,
+        );
+        setShowFileError(true);
+      }
+      const accepted = newFiles.slice(0, remaining);
+      if (accepted.length > 0) {
+        setDocuments((prev) => [...prev, ...accepted].slice(0, GRANT_DOCS_MAX_COUNT));
+      }
       setFileInputKey((prev) => prev + 1);
     }
   };
@@ -773,6 +785,7 @@ export default function GrantApplicationForm({
             {cycles.find(c => c.id === formData.cycle_id)?.requires_documents
               ? "You must upload at least one supporting document."
               : "Upload receipts, quotes, or other supporting documents. PDF, JPG, PNG, DOC accepted."}
+            {" "}You can upload up to {GRANT_DOCS_MAX_COUNT} documents. If you have more materials, please combine them into a single PDF before uploading.
           </p>
               <input
                 key={fileInputKey}
@@ -780,8 +793,15 @@ export default function GrantApplicationForm({
                 multiple
                 accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                 onChange={handleFileChange}
-                className="w-full text-sm text-nfw-blackberry/60 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-ui file:bg-nfw-blackberry file:text-white hover:file:bg-nfw-blackberry/90 file:cursor-pointer cursor-pointer border border-nfw-blackberry/20 p-2"
+                disabled={documents.length >= GRANT_DOCS_MAX_COUNT}
+                className="w-full text-sm text-nfw-blackberry/60 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-ui file:bg-nfw-blackberry file:text-white hover:file:bg-nfw-blackberry/90 file:cursor-pointer cursor-pointer border border-nfw-blackberry/20 p-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:file:cursor-not-allowed"
               />
+              {documents.length > 0 && (
+                <p className="mt-2 text-sm font-ui text-nfw-blackberry/60" aria-live="polite">
+                  {documents.length} of {GRANT_DOCS_MAX_COUNT} documents uploaded
+                  {documents.length >= GRANT_DOCS_MAX_COUNT && ". Remove a file to upload a different one."}
+                </p>
+              )}
               {documents.length > 0 && (
                 <div className="mt-3 space-y-2">
                   {documents.map((file, index) => (

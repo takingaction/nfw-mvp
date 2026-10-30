@@ -6,6 +6,7 @@ import {
   GRANT_DOCS_ALLOWED_TYPES,
   GRANT_DOCS_BUCKET,
   GRANT_DOCS_MAX_BYTES,
+  GRANT_DOCS_MAX_COUNT,
   storageObjectExists,
   validateUploadMeta,
 } from "@/lib/admin-documents";
@@ -72,6 +73,23 @@ export async function POST(request: NextRequest) {
   }
   if (grant.user_id !== user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { count: existingCount, error: countError } = await admin
+    .from("grant_documents")
+    .select("id", { count: "exact", head: true })
+    .eq("grant_id", grantId)
+    .is("uploaded_by", null);
+  if (countError) {
+    console.error("[grants/upload-document/finalize] count error:", countError);
+    return NextResponse.json({ error: countError.message }, { status: 500 });
+  }
+  if ((existingCount ?? 0) >= GRANT_DOCS_MAX_COUNT) {
+    await admin.storage.from(GRANT_DOCS_BUCKET).remove([path]);
+    return NextResponse.json(
+      { error: `You can upload up to ${GRANT_DOCS_MAX_COUNT} documents per application.` },
+      { status: 400 },
+    );
   }
 
   const exists = await storageObjectExists(admin, GRANT_DOCS_BUCKET, path);

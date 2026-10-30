@@ -25,6 +25,10 @@ export const ADMIN_DOCS_ALLOWED_TYPES = [
 // Mirrors app/api/grants/upload-document/route.ts (member upload)
 export const GRANT_DOCS_BUCKET = "grant-documents";
 export const GRANT_DOCS_MAX_BYTES = 10 * 1024 * 1024;
+// Max member-uploaded supporting documents per microgrant application
+// (2026-10-29). Enforced in GrantApplicationForm, /api/grants/create and the
+// legacy grantId upload routes. Admin-attached docs (uploaded_by set) don't count.
+export const GRANT_DOCS_MAX_COUNT = 2;
 export const GRANT_DOCS_ALLOWED_TYPES = [
   "application/pdf",
   "image/jpeg",
