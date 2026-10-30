@@ -119,10 +119,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 /**
  * POST — finalize a cycle, then email applicants.
  *
- * Body `{ resume: true }` (only valid once the cycle is finalized) skips the
- * decision phase and emails only applicants with no email record. It is an
- * explicit, confirmed admin action: if records are missing because logging was
- * cut off (rather than sends), confirm in Resend and backfill first.
+ * Body `{ resume: "approved" | "rejected" }` (only valid once the cycle is
+ * finalized) skips the decision phase and emails only applicants of that one
+ * type with no email record. One type per call, so fixing a winner's email
+ * can never re-send rejections too. It is an explicit, confirmed admin action:
+ * if records are missing because logging was cut off (rather than sends),
+ * confirm in Resend and backfill first.
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -131,7 +133,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const { id: cycleId } = await params;
     const body = await request.json().catch(() => ({}));
-    const resume = body?.resume === true;
+    if (body?.resume !== undefined && body.resume !== "approved" && body.resume !== "rejected") {
+      return NextResponse.json({ error: 'resume must be "approved" or "rejected"' }, { status: 400 });
+    }
+    const resumeType: "approved" | "rejected" | null = body?.resume ?? null;
+    const resume = resumeType !== null;
 
     const { data: cycle } = await supabaseAdmin
       .from("grant_cycles")
@@ -258,10 +264,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       );
     }
     const emailed = emailedSet(logsRes.data);
-    const approvedPending = pendingFor(approvedGrants, "approved", emailed);
-    const rejectedPending = pendingFor(rejectedGrants, "rejected", emailed);
+    // On resume, only the requested type is sent.
+    const approvedPending = resumeType === "rejected" ? [] : pendingFor(approvedGrants, "approved", emailed);
+    const rejectedPending = resumeType === "approved" ? [] : pendingFor(rejectedGrants, "rejected", emailed);
     const skippedAlreadyEmailed =
-      approvedGrants.length - approvedPending.length + (rejectedGrants.length - rejectedPending.length);
+      (resumeType === "rejected" ? 0 : approvedGrants.length - approvedPending.length) +
+      (resumeType === "approved" ? 0 : rejectedGrants.length - rejectedPending.length);
 
     // Winners: individual sends, each logged immediately.
     let approvedSent = 0;
@@ -341,7 +349,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     return NextResponse.json({
       success: true,
-      resumed: resume,
+      resumed: resumeType,
       skipped_already_emailed: skippedAlreadyEmailed,
       approved: {
         sent: approvedSent,

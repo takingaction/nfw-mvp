@@ -81,7 +81,7 @@ export default function RandomDrawReview({ cycleId, phase }: { cycleId: string; 
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>(phase === "second" ? "winners" : "all");
   const [visibleNames, setVisibleNames] = useState<Set<string>>(new Set());
-  const [modal, setModal] = useState<null | "redraw" | "handoff" | "finalize" | "resume">(null);
+  const [modal, setModal] = useState<null | "redraw" | "handoff" | "finalize" | "resume-approved" | "resume-rejected">(null);
   const [finalizeResult, setFinalizeResult] = useState<FinalizeResult | null>(null);
   const [emailStatus, setEmailStatus] = useState<{ approved: number; rejected: number } | null>(null);
 
@@ -210,14 +210,14 @@ export default function RandomDrawReview({ cycleId, phase }: { cycleId: string; 
     }
   };
 
-  const finalize = async (resume = false) => {
+  const finalize = async (resume: "approved" | "rejected" | null = null) => {
     setBusy("finalize");
     setActionError("");
     try {
       const res = await fetch(`/api/admin/grants/${cycleId}/final-approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resume }),
+        body: JSON.stringify(resume ? { resume } : {}),
       });
       const out = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(out.error || "Failed to finalize approvals");
@@ -387,20 +387,31 @@ export default function RandomDrawReview({ cycleId, phase }: { cycleId: string; 
             )}
           </div>
           {finalized && viewer.isAdmin && emailStatus && emailStatus.approved + emailStatus.rejected > 0 && (
-            <div className="mt-3 bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900 flex flex-wrap items-center justify-between gap-3">
+            <div className="mt-3 bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900 space-y-2">
               <p>
-                <strong>{emailStatus.approved + emailStatus.rejected}</strong> applicant
-                {emailStatus.approved + emailStatus.rejected === 1 ? " has" : "s have"} no email record
-                ({emailStatus.approved} approved, {emailStatus.rejected} not approved). If emails may have gone
-                out without being recorded, confirm in Resend before sending.
+                Some applicants have no email record. If emails may have gone out without being
+                recorded, confirm in Resend before sending. Each type is sent separately.
               </p>
-              <button
-                onClick={() => setModal("resume")}
-                disabled={busy === "finalize"}
-                className="px-3 py-1.5 bg-nfw-aubergine text-white font-bold text-xs hover:bg-nfw-aubergine/90 disabled:opacity-50"
-              >
-                Send remaining emails
-              </button>
+              <div className="flex flex-wrap gap-2">
+                {emailStatus.approved > 0 && (
+                  <button
+                    onClick={() => setModal("resume-approved")}
+                    disabled={busy === "finalize"}
+                    className="px-3 py-1.5 bg-nfw-aubergine text-white font-bold text-xs hover:bg-nfw-aubergine/90 disabled:opacity-50"
+                  >
+                    Send {emailStatus.approved} approval email{emailStatus.approved === 1 ? "" : "s"}
+                  </button>
+                )}
+                {emailStatus.rejected > 0 && (
+                  <button
+                    onClick={() => setModal("resume-rejected")}
+                    disabled={busy === "finalize"}
+                    className="px-3 py-1.5 bg-white border border-nfw-aubergine text-nfw-aubergine font-bold text-xs hover:bg-nfw-aubergine/5 disabled:opacity-50"
+                  >
+                    Send {emailStatus.rejected} not-approved email{emailStatus.rejected === 1 ? "" : "s"}
+                  </button>
+                )}
+              </div>
             </div>
           )}
           {(actionError || (phase === "first" && handedOff && !finalized)) && (
@@ -703,19 +714,24 @@ export default function RandomDrawReview({ cycleId, phase }: { cycleId: string; 
           confirmLabel="Finalize"
           busy={busy === "finalize"}
           onCancel={() => setModal(null)}
-          onConfirm={() => finalize(false)}
+          onConfirm={() => finalize(null)}
         />
       )}
-      {modal === "resume" && emailStatus && (
-        <ConfirmModal
-          title="Send remaining emails?"
-          body={`This emails only the ${emailStatus.approved + emailStatus.rejected} applicant${emailStatus.approved + emailStatus.rejected === 1 ? "" : "s"} with no email record. Anyone already recorded as emailed is skipped. Only continue if you've confirmed in Resend that these people were not already emailed.`}
-          confirmLabel="Send"
-          busy={busy === "finalize"}
-          onCancel={() => setModal(null)}
-          onConfirm={() => finalize(true)}
-        />
-      )}
+      {(modal === "resume-approved" || modal === "resume-rejected") && emailStatus && (() => {
+        const type = modal === "resume-approved" ? "approved" : "rejected";
+        const n = type === "approved" ? emailStatus.approved : emailStatus.rejected;
+        const label = type === "approved" ? "Grant: Approved" : "Grant: Not Approved";
+        return (
+          <ConfirmModal
+            title={`Send ${n} "${label}" email${n === 1 ? "" : "s"}?`}
+            body={`This emails only the ${n} ${type === "approved" ? "winner" : "applicant"}${n === 1 ? "" : "s"} with no "${label}" email record. Anyone already recorded as emailed is skipped, and no other email type is sent. Only continue if you've confirmed in Resend that these people were not already emailed.`}
+            confirmLabel="Send"
+            busy={busy === "finalize"}
+            onCancel={() => setModal(null)}
+            onConfirm={() => finalize(type)}
+          />
+        );
+      })()}
       {finalizeResult && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl">
