@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { fetchAllPages, fetchAllPagesIn } from "@/lib/supabase-paginate";
+import { loadEmailedKeys } from "@/lib/grant-email-log";
+import { outstandingFailures } from "@/lib/grant-finalize";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -58,12 +60,22 @@ export async function GET(request: Request) {
 
     // Paged: PostgREST silently caps a single response at 1000 rows.
     const orderedQuery = query.order("id", { ascending: true });
-    const { data: failedLogs, error: logsError } = await fetchAllPages((from, to) => orderedQuery.range(from, to));
+    const { data: allFailedLogs, error: logsError } = await fetchAllPages((from, to) => orderedQuery.range(from, to));
 
     if (logsError) {
       console.error("[failed-emails] Error fetching failed logs:", logsError);
       return NextResponse.json({ error: logsError.message }, { status: 500 });
     }
+
+    // Count only failures that still need a send (same rule as retry-failed).
+    const { emailed, error: emailedError } = await loadEmailedKeys(
+      supabaseAdmin,
+      [...new Set(allFailedLogs.map((l: { cycle_id: string }) => l.cycle_id))],
+    );
+    if (emailedError) {
+      return NextResponse.json({ error: `Could not check existing sends: ${emailedError}` }, { status: 500 });
+    }
+    const failedLogs = outstandingFailures(allFailedLogs, emailed);
 
     // Also get already_sent counts per cycle for context
     const cycleIdsFromLogs = [...new Set(failedLogs?.map((l) => l.cycle_id) || [])];

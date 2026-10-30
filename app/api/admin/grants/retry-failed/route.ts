@@ -5,6 +5,9 @@ import { Resend } from "resend";
 import { sendGrantApprovedEmail } from "@/lib/email";
 import { sendBatchEmails } from "@/lib/email-batch";
 import { fetchAllPages, fetchAllPagesIn } from "@/lib/supabase-paginate";
+import { loadEmailedKeys } from "@/lib/grant-email-log";
+import { outstandingFailures } from "@/lib/grant-finalize";
+import { renderRejectionBody, type RejectionBodyBlock } from "@/lib/grant-rejection-body";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -67,6 +70,7 @@ interface RetryEmail {
 interface CycleInfo {
   cycle_name: string;
   amount_per_grant: number;
+  rejection_body: RejectionBodyBlock[] | null;
 }
 
 export async function POST(request: Request) {
@@ -109,12 +113,24 @@ export async function POST(request: Request) {
 
     // Paged: PostgREST silently caps a single response at 1000 rows.
     const orderedQuery = query.order("id", { ascending: true });
-    const { data: failedLogs, error: logsError } = await fetchAllPages((from, to) => orderedQuery.range(from, to));
+    const { data: allFailedLogs, error: logsError } = await fetchAllPages((from, to) => orderedQuery.range(from, to));
 
     if (logsError) {
       console.error("[retry-failed] Error fetching failed logs:", logsError);
       return NextResponse.json({ error: logsError.message }, { status: 500 });
     }
+
+    // Skip failures already fixed by a later send (or CSV backfill), and send
+    // each grant + type at most once. Retries insert a new row rather than
+    // updating the failed one, so without this every run re-sent to them.
+    const { emailed, error: emailedError } = await loadEmailedKeys(
+      supabaseAdmin,
+      [...new Set(allFailedLogs.map((l: { cycle_id: string }) => l.cycle_id))],
+    );
+    if (emailedError) {
+      return NextResponse.json({ error: `Could not check existing sends: ${emailedError}` }, { status: 500 });
+    }
+    const failedLogs = outstandingFailures(allFailedLogs, emailed);
 
     if (!failedLogs || failedLogs.length === 0) {
       return NextResponse.json({
@@ -132,12 +148,16 @@ export async function POST(request: Request) {
     const uniqueCycleIds = [...new Set(failedLogs.map((l: any) => l.cycle_id))];
     const { data: cyclesData } = await supabaseAdmin
       .from("grant_cycles")
-      .select("id, cycle_name, amount_per_grant")
+      .select("id, cycle_name, amount_per_grant, rejection_body")
       .in("id", uniqueCycleIds);
 
     const cycleInfo: Record<string, CycleInfo> = {};
     cyclesData?.forEach((c: any) => {
-      cycleInfo[c.id] = { cycle_name: c.cycle_name, amount_per_grant: c.amount_per_grant };
+      cycleInfo[c.id] = {
+        cycle_name: c.cycle_name,
+        amount_per_grant: c.amount_per_grant,
+        rejection_body: c.rejection_body ?? null,
+      };
     });
 
     // Fetch grant IDs to get user profiles for actual names
@@ -283,13 +303,19 @@ export async function POST(request: Request) {
         const cycle = cycleInfo[e.cycle_id];
         const userId = grantToUser[e.grant_id];
         const memberName = userToName[userId] || "there";
+        const baseVariables = {
+          grantCycleName: cycle?.cycle_name || "the grant cycle",
+          ctaUrl: "https://nationalfundforwomen.org/grants/my-applications",
+        };
         return {
           email: e.recipient_email,
           name: memberName,
           grantId: e.grant_id,
           variables: {
-            grantCycleName: cycle?.cycle_name || "the grant cycle",
-            ctaUrl: "https://nationalfundforwomen.org/grants/my-applications",
+            ...baseVariables,
+            // Same rendered body final-approve sends, so a retried rejection matches
+            // what everyone else in the cycle received.
+            body: renderRejectionBody(cycle?.rejection_body, baseVariables),
           },
         };
       });

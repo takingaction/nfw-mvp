@@ -3,7 +3,10 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendGrantApprovedEmail } from "@/lib/email";
 import { sendBatchEmails } from "@/lib/email-batch";
-import { fetchAllPagesIn } from "@/lib/supabase-paginate";
+import { fetchAllPages, fetchAllPagesIn } from "@/lib/supabase-paginate";
+import { loadEmailedKeys } from "@/lib/grant-email-log";
+import { outstandingFailures } from "@/lib/grant-finalize";
+import { renderRejectionBody, type RejectionBodyBlock } from "@/lib/grant-rejection-body";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,6 +16,7 @@ const supabaseAdmin = createClient(
 interface CycleInfo {
   cycle_name: string;
   amount_per_grant: number;
+  rejection_body: RejectionBodyBlock[] | null;
 }
 
 export async function POST(request: Request) {
@@ -34,27 +38,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "cycle_id is required" }, { status: 400 });
     }
 
-    // Get failed emails (status='failed') for this cycle, limited
-    const { data: pendingLogs, error: logsError } = await supabaseAdmin
-      .from("grant_email_log")
-      .select(`
-        id,
-        grant_id,
-        cycle_id,
-        email_type,
-        recipient_email,
-        resend_email_id,
-        retry_count
-      `)
-      .eq("cycle_id", cycleId)
-      .eq("status", "failed")
-      .order("sent_at", { ascending: true })
-      .limit(limit);
+    // Failed emails for this cycle that still need a send (already-fixed
+    // failures skipped, one per grant + type), then take the sample.
+    const { data: failedRows, error: logsError } = await fetchAllPages((from, to) =>
+      supabaseAdmin
+        .from("grant_email_log")
+        .select(`
+          id,
+          grant_id,
+          cycle_id,
+          email_type,
+          recipient_email,
+          resend_email_id,
+          retry_count
+        `)
+        .eq("cycle_id", cycleId)
+        .eq("status", "failed")
+        .order("sent_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
 
     if (logsError) {
       console.error("[sample-retry] Error fetching pending logs:", logsError);
       return NextResponse.json({ error: logsError.message }, { status: 500 });
     }
+
+    const { emailed, error: emailedError } = await loadEmailedKeys(supabaseAdmin, [cycleId]);
+    if (emailedError) {
+      return NextResponse.json({ error: `Could not check existing sends: ${emailedError}` }, { status: 500 });
+    }
+    const pendingLogs = outstandingFailures(failedRows, emailed).slice(0, limit);
 
     if (!pendingLogs || pendingLogs.length === 0) {
       return NextResponse.json({
@@ -69,13 +83,14 @@ export async function POST(request: Request) {
     // Get cycle info
     const { data: cycleData } = await supabaseAdmin
       .from("grant_cycles")
-      .select("id, cycle_name, amount_per_grant")
+      .select("id, cycle_name, amount_per_grant, rejection_body")
       .eq("id", cycleId)
       .single();
 
     const cycleInfo: CycleInfo = {
       cycle_name: cycleData?.cycle_name || "the grant cycle",
       amount_per_grant: cycleData?.amount_per_grant || 0,
+      rejection_body: cycleData?.rejection_body ?? null,
     };
 
     // Fetch grant IDs to get user profiles for actual names
@@ -179,6 +194,12 @@ export async function POST(request: Request) {
           variables: {
             grantCycleName: cycleInfo.cycle_name,
             ctaUrl: "https://nationalfundforwomen.org/grants/my-applications",
+            // Same rendered body final-approve sends, so a retried rejection matches
+            // what everyone else in the cycle received.
+            body: renderRejectionBody(cycleInfo.rejection_body, {
+              grantCycleName: cycleInfo.cycle_name,
+              ctaUrl: "https://nationalfundforwomen.org/grants/my-applications",
+            }),
           },
         };
       });

@@ -59,3 +59,27 @@ export function idChunks(ids: string[], size = 150): string[][] {
   for (let i = 0; i < ids.length; i += size) out.push(ids.slice(i, i + size));
   return out;
 }
+
+/**
+ * Failed log rows that still need a send. A grant can collect several rows
+ * per email type (the original failure, then retries, then a CSV backfill);
+ * a failure only counts while no `sent` / `already_sent` row exists for that
+ * grant + type, and each grant + type is returned at most once (first row
+ * wins). Without this, "Retry Failed Emails" re-sent to people whose earlier
+ * failure had already been fixed — 338 such rows existed in Oct 2026.
+ */
+export function outstandingFailures<T extends { grant_id: string; email_type: string }>(
+  failedRows: T[],
+  emailed: Set<string>,
+): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const row of failedRows) {
+    if (row.email_type !== "approved" && row.email_type !== "rejected") continue;
+    const key = emailedKey(row.email_type, row.grant_id);
+    if (emailed.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    out.push(row);
+  }
+  return out;
+}
