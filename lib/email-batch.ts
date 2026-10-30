@@ -1,6 +1,14 @@
 import { Resend } from "resend";
 import { getPreRenderedHtmlAdmin, substituteAndTranslate } from "./email-blocks/publish";
 import getAdminClient from "@/lib/supabase/admin";
+import {
+  RESEND_BATCH_MAX,
+  chunk,
+  chunkIdempotencyKey,
+  failChunk,
+  mapBatchResponse,
+  type ChunkResult,
+} from "./email-batch-chunks";
 
 const FROM = "National Fund for Women <hello@nationalfundforwomen.org>";
 const RESEND_BATCH_SIZE = 50; // Resend limit for batch sends
@@ -62,11 +70,18 @@ async function fetchTemplate(slug: string): Promise<{
   hero_image_url?: string;
 } | null> {
   const supabase = getAdminClient();
-  const { data, error } = await supabase
-    .from("email_templates")
-    .select("subject, html_content, full_email_html, status, hero_image_url, is_active")
-    .eq("slug", slug)
-    .single();
+  const query = () =>
+    supabase
+      .from("email_templates")
+      .select("subject, html_content, full_email_html, status, hero_image_url, is_active")
+      .eq("slug", slug)
+      .single();
+  let { data, error } = await query();
+  // PGRST116 = no row (genuinely missing). Retry anything else once.
+  if (error && error.code !== "PGRST116") {
+    await sleep(300);
+    ({ data, error } = await query());
+  }
 
   if (error || !data) {
     console.error(`[email-batch] Failed to fetch template "${slug}":`, error);
@@ -216,6 +231,130 @@ export async function sendBatchEmails(
     `[email-batch] Complete: ${result.sent}/${result.total} sent, ${result.failed} failed`
   );
 
+  return result;
+}
+
+export interface ChunkedBatchOptions {
+  recipients: BatchRecipient[];
+  templateSlug: string;
+  /**
+   * Prefix for Resend idempotency keys, e.g. `final-approve:<cycleId>:rejected`.
+   * Combined with a hash of each chunk's recipients so an identical chunk
+   * re-sent within 24h is deduplicated by Resend.
+   */
+  idempotencyPrefix: string;
+  fromName?: string;
+  /** Pause between batch calls. Resend's default limit is a few requests/sec. */
+  delayMs?: number;
+  /**
+   * Called after each chunk with that chunk's per-recipient results. Awaited,
+   * so callers can persist logs before the next chunk goes out — if the
+   * function is killed mid-run, everything already sent is already recorded.
+   */
+  onChunk?: (results: (ChunkResult & { recipient: BatchRecipient })[]) => Promise<void>;
+}
+
+/**
+ * Send templated emails through Resend's batch endpoint, up to 100 per call.
+ *
+ * Replaces the one-request-per-recipient loop in sendBatchEmails for large
+ * sends: ~1,200 recipients take ~13 calls (seconds) instead of ~4 minutes,
+ * which is what pushed final-approve past the function time limit on the
+ * Oct 2026 Self Care cycle.
+ */
+export async function sendChunkedBatchEmails(
+  options: ChunkedBatchOptions,
+): Promise<BatchEmailResult> {
+  const { recipients, templateSlug, idempotencyPrefix, fromName, delayMs = 600, onChunk } = options;
+
+  const result: BatchEmailResult = { sent: 0, failed: 0, total: recipients.length, results: [] };
+  if (recipients.length === 0) return result;
+
+  const record = async (chunkRecipients: BatchRecipient[], chunkResults: ChunkResult[]) => {
+    for (const r of chunkResults) {
+      if (r.success) result.sent++;
+      else result.failed++;
+      result.results.push(r);
+    }
+    if (onChunk) {
+      await onChunk(chunkResults.map((r, i) => ({ ...r, recipient: chunkRecipients[i] })));
+    }
+  };
+
+  const template = await fetchTemplate(templateSlug);
+  if (!template) {
+    // Nothing was sent; report every recipient as failed so they are logged
+    // and can be retried once the template is fixed.
+    for (const c of chunk(recipients, RESEND_BATCH_MAX)) {
+      await record(c, failChunk(c.map((r) => r.email), `Template "${templateSlug}" not found`));
+    }
+    return result;
+  }
+
+  const resend = getResend();
+  const fromAddress = fromName ? `${fromName} <hello@nationalfundforwomen.org>` : FROM;
+  const chunks = chunk(recipients, RESEND_BATCH_MAX);
+
+  console.log(
+    `[email-batch] Chunked send: ${recipients.length} emails in ${chunks.length} batch call(s)`,
+  );
+
+  for (let c = 0; c < chunks.length; c++) {
+    const chunkRecipients = chunks[c];
+    const emails = chunkRecipients.map((r) => r.email);
+    const payload = chunkRecipients.map((r) => {
+      const { html, subject } = substituteAndTranslate(template.html, template.subject, {
+        name: r.name || "there",
+        ...r.variables,
+      });
+      return { from: fromAddress, to: r.email, subject, html };
+    });
+    const idempotencyKey = chunkIdempotencyKey(
+      idempotencyPrefix,
+      chunkRecipients.map((r) => r.grantId ?? r.email),
+    );
+
+    let chunkResults: ChunkResult[] | null = null;
+    // Retrying with the same idempotency key is safe: Resend replays the
+    // original response instead of sending again.
+    for (let attempt = 1; attempt <= 3 && !chunkResults; attempt++) {
+      try {
+        const res = await resend.batch.send(payload, {
+          batchValidation: "permissive",
+          idempotencyKey,
+        });
+        if (res.error) {
+          const retryable = [
+            "rate_limit_exceeded",
+            "concurrent_idempotent_requests",
+            "application_error",
+            "internal_server_error",
+          ].includes(res.error.name);
+          if (retryable && attempt < 3) {
+            await sleep(1000 * attempt);
+            continue;
+          }
+          chunkResults = failChunk(emails, res.error.message);
+        } else {
+          chunkResults = mapBatchResponse(emails, res.data?.data, res.data?.errors);
+        }
+      } catch (err: unknown) {
+        if (attempt < 3) {
+          await sleep(1000 * attempt);
+          continue;
+        }
+        chunkResults = failChunk(emails, err instanceof Error ? err.message : "Unknown error");
+      }
+    }
+
+    await record(chunkRecipients, chunkResults!);
+
+    if (c < chunks.length - 1) await sleep(delayMs);
+  }
+
+  console.log(
+    `[email-batch] Chunked send complete: ${result.sent}/${result.total} sent, ${result.failed} failed`,
+  );
   return result;
 }
 

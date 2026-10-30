@@ -32,11 +32,20 @@ import { SITE_TZ } from "@/lib/dates";
 import { STORY_PROGRAMS_PROMPT, STORY_TEXT_PROMPTS, storyProgramLabel } from "@/lib/storyForm";
 async function fetchEmailTemplateAdmin(slug: string): Promise<{ subject: string; html: string; hero_image_url?: string; is_active?: boolean } | null> {
   const supabase = getAdminClient();
-  const { data, error } = await supabase
-    .from("email_templates")
-    .select("subject, html_content, hero_image_url, is_active")
-    .eq("slug", slug)
-    .single();
+  const query = () =>
+    supabase
+      .from("email_templates")
+      .select("subject, html_content, hero_image_url, is_active")
+      .eq("slug", slug)
+      .single();
+  let { data, error } = await query();
+  // PGRST116 = no row: the template really is missing. Anything else (network
+  // blip, pool timeout) is retried once — a transient failure here caused a
+  // false TEMPLATE_NOT_FOUND for one winner on the Oct 2026 Self Care cycle.
+  if (error && error.code !== "PGRST116") {
+    await new Promise((r) => setTimeout(r, 300));
+    ({ data, error } = await query());
+  }
   if (error || !data) {
     console.error(`[email] Failed to fetch template "${slug}" (admin):`, error);
     return null;
