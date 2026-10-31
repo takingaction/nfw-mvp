@@ -367,7 +367,7 @@ export default function GrantApplyScreen() {
             />
             <TextField
               label="What's the biggest challenge you're facing right now?"
-              helper="Be specific. The more we understand the situation, the better we can help."
+              helper="Be specific. Let us know what you are currently navigating and how these funds will support you."
               placeholder="My car broke down last month and I can't get to work without it..."
               value={challenge}
               onChangeText={setChallenge}
@@ -377,7 +377,7 @@ export default function GrantApplyScreen() {
             />
             <TextField
               label="What would you do with the microgrant funds?"
-              helper="Tell us exactly how you'd use the money and what difference it would make."
+              helper="Tell us exactly how you'd use the money and how it will improve your current situation."
               placeholder="I would use the funds to repair my car so I can get back to work..."
               value={fundUsage}
               onChangeText={setFundUsage}

@@ -728,8 +728,8 @@ export default function GrantApplicationForm({
             What's the biggest challenge you're facing right now? <span className="text-nfw-lilac">*</span>
           </label>
           <p className="text-sm font-serif text-nfw-blackberry/50 mb-2">
-            Be specific. The more we understand the situation, the better we
-            can help.
+            Be specific. Let us know what you are currently navigating and how
+            these funds will support you.
           </p>
           <textarea
             value={formData.biggest_challenge}
@@ -755,7 +755,7 @@ export default function GrantApplicationForm({
             What would you do with the microgrant funds? <span className="text-nfw-lilac">*</span>
           </label>
           <p className="text-sm font-serif text-nfw-blackberry/50 mb-2">
-            Tell us exactly how you'd use the money and what difference it would make.
+            Tell us exactly how you'd use the money and how it will improve your current situation.
           </p>
           <textarea
             value={formData.fund_usage}
