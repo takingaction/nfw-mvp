@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { GrantDescription } from "@/components/grants/GrantDescription";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -657,9 +658,10 @@ export default function GrantApplicationForm({
                         })() : 'TBD'}
                       </p>
                       {cycle.description && (
-                        <p className="text-sm font-serif text-nfw-blackberry/60 mt-1">
-                          {decodeHtml(cycle.description)}
-                        </p>
+                        <GrantDescription
+                          text={decodeHtml(cycle.description)}
+                          className="text-sm font-serif text-nfw-blackberry/60 mt-1"
+                        />
                       )}
                       {cycle.viaPass && <LatePassNote expiresAt={cycle.passExpiresAt} />}
                     </div>

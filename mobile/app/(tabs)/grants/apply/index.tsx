@@ -7,6 +7,7 @@ import { KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, T
 
 import { ConsentModal } from "@/components/grants/ConsentModal";
 import { DocumentPicker } from "@/components/grants/DocumentPicker";
+import { GrantDescription } from "@/components/grants/GrantDescription";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -485,7 +486,7 @@ function CycleCard({ cycle, selected, onPress, disabled }: { cycle: GrantCycle; 
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={styles.cycleName}>{decodeHtml(cycle.cycle_name)}</Text>
         <Caption>Deadline: {cycle.end_date ? formatDateLong(cycle.end_date) : "TBD"}</Caption>
-        {cycle.description ? <Caption style={{ marginTop: 4 }}>{decodeHtml(cycle.description)}</Caption> : null}
+        {cycle.description ? <GrantDescription text={cycle.description} style={{ marginTop: 4 }} /> : null}
         {cycle.viaPass && cycle.passExpiresAt ? <LatePassNote expiresAt={cycle.passExpiresAt} /> : null}
       </View>
       <Text style={styles.cycleAmount}>{formatCurrency(cycle.amount_per_grant)}</Text>

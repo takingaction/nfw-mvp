@@ -7,6 +7,7 @@ import { Caption, Subheading } from "@/components/ui/Typography";
 import { colors, theme } from "@/constants/colors";
 import { fonts } from "@/constants/fonts";
 import { decodeHtml, formatCurrency, formatDateLong } from "@/lib/format";
+import { grantDescriptionPreview } from "@/lib/grant-description";
 import type { GrantCycle } from "@/types/grants";
 import { LatePassNote } from "@/components/grants/LatePassNote";
 
@@ -36,7 +37,7 @@ export function GrantCycleCard({ cycle, onPress, compact }: Props) {
         </Subheading>
         {!compact && cycle.description ? (
           <Caption numberOfLines={3} style={styles.description}>
-            {decodeHtml(cycle.description)}
+            {grantDescriptionPreview(decodeHtml(cycle.description))}
           </Caption>
         ) : null}
         <View style={styles.meta}>

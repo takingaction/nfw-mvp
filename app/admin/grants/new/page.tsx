@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { GrantDescriptionField } from "@/components/admin/GrantDescriptionField";
 import MediaLibraryModal from "@/components/admin/MediaLibraryModal";
 import { RejectionBodyEditor } from "@/components/admin/grant/RejectionBodyEditor";
 import type { RejectionBodyBlock } from "@/lib/grant-rejection-body";
@@ -110,21 +111,12 @@ export default function NewGrantCyclePage() {
             />
           </div>
 
-          <div>
-            <label className={labelClass}>
-              Description{" "}
-              <span className="text-nfw-blackberry/40 font-normal">(Optional)</span>
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              placeholder="Describe this grant cycle..."
-              rows={3}
-              className={inputClass + " resize-none"}
-            />
-          </div>
+          <GrantDescriptionField
+            value={formData.description}
+            onChange={(description) => setFormData({ ...formData, description })}
+            labelClass={labelClass}
+            inputClass={inputClass}
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
