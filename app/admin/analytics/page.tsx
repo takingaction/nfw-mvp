@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/middleware/adminCheck";
 import { Suspense } from "react";
@@ -22,20 +21,24 @@ const AdminAnalyticsClient = dynamic(
 
 const PAGE_SIZE = 1000;
 
+/**
+ * Fetch every row of a table, 1000 rows per request (PostgREST's max).
+ * `buildQuery` must return a fresh query builder each call: supabase-js
+ * builders are mutable, so reusing one would stack .order() params per page.
+ */
 async function fetchAllWithPagination(
   tableName: string,
-  queryBuilder: any,
+  buildQuery: () => any,
   orderColumn: string = "created_at"
 ): Promise<any[]> {
   const allData: any[] = [];
   let page = 0;
-  let hasMore = true;
 
-  while (hasMore) {
+  while (true) {
     const from = page * PAGE_SIZE;
     // Tiebreak on id: orderColumn (e.g. created_at) isn't unique, and ties
     // straddling a page boundary can repeat or drop rows.
-    const { data, error } = await queryBuilder
+    const { data, error } = await buildQuery()
       .order(orderColumn, { ascending: true })
       .order("id", { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
@@ -44,114 +47,105 @@ async function fetchAllWithPagination(
       console.error(`[analytics] Error fetching ${tableName}:`, error);
       break;
     }
+    if (!data || data.length === 0) break;
 
-    if (data && data.length > 0) {
-      allData.push(...data);
-      page++;
-      hasMore = data.length === PAGE_SIZE;
-      console.log(`[analytics] ${tableName}: fetched page ${page} (${data.length} rows), total so far: ${allData.length}`);
-    } else {
-      hasMore = false;
-    }
+    allData.push(...data);
+    page++;
+    if (data.length < PAGE_SIZE) break;
   }
 
-  console.log(`[analytics] ${tableName}: complete. Total rows: ${allData.length}`);
   return allData;
 }
 
 async function AdminAnalyticsContent() {
   await requireAdmin({ redirectOnFailure: true });
-  const supabase = await createClient();
+  const startedAt = Date.now();
 
-  // ── PROFILES ────────────────────────────────────────────────────────────────
-  console.log("[analytics] Starting profile fetch with pagination...");
-  const profilesQuery = supabase
-    .from("profiles")
-    .select(
-      "id, full_name, email, joined_at, subscription_status, membership_level, subscription_ends_at, first_paid_at, first_paid_level, is_approved_free_member, free_membership_contact_submitted, state, city, household_income, date_of_birth, is_admin, profile_completed, previous_membership_level, stripe_customer_id, signup_source"
-    );
-  const profiles = await fetchAllWithPagination("profiles", profilesQuery, "joined_at");
+  // All reads use the service-role client. requireAdmin() above is the access
+  // check; reading profiles through the member session made RLS run
+  // is_admin() on every row, which cost ~0.7-1s per 1000-row page (~25 pages).
+  // Tables are fetched in parallel rather than one after another.
+  const [
+    profiles,
+    membershipPayments,
+    membershipUpgrades,
+    waitlistAcceptances,
+    grants,
+    grantCyclesResult,
+    redemptions,
+    newsletterEmails,
+    zdsClaims,
+    nfwPerkRedemptions,
+    shopifyProductsResult,
+  ] = await Promise.all([
+    fetchAllWithPagination(
+      "profiles",
+      () =>
+        supabaseAdmin
+          .from("profiles")
+          .select(
+            "id, full_name, email, joined_at, subscription_status, membership_level, subscription_ends_at, first_paid_at, first_paid_level, is_approved_free_member, free_membership_contact_submitted, state, city, household_income, date_of_birth, is_admin, profile_completed, previous_membership_level, stripe_customer_id, signup_source"
+          ),
+      "joined_at",
+    ),
+    fetchAllWithPagination("membership_payments", () =>
+      supabaseAdmin.from("membership_payments").select("id, user_id, amount, payment_type, created_at"),
+    ),
+    fetchAllWithPagination("membership_upgrades", () =>
+      supabaseAdmin.from("membership_upgrades").select("id, user_id, from_level, to_level, amount, created_at"),
+    ),
+    // used_at = when the member clicked the approval link (waitlist → free).
+    // Display-only: shown as the "Upgraded" date in the waitlist → free list.
+    fetchAllWithPagination("waitlist_acceptance_tokens", () =>
+      supabaseAdmin
+        .from("waitlist_acceptance_tokens")
+        .select("id, user_id, used_at, created_at")
+        .not("used_at", "is", null),
+    ),
+    fetchAllWithPagination(
+      "grants",
+      () =>
+        supabaseAdmin
+          .from("grants")
+          .select("id, user_id, cycle_id, status, amount_approved, submitted_at, funded_at"),
+      "submitted_at",
+    ),
+    supabaseAdmin
+      .from("grant_cycles")
+      .select("id, start_date, end_date, is_testing_only")
+      .order("start_date", { ascending: true }),
+    fetchAllWithPagination("offer_redemptions", () =>
+      supabaseAdmin
+        .from("offer_redemptions")
+        .select("id, user_id, offer_key, offer_title, store_name, redeem_type, created_at"),
+    ),
+    fetchAllWithPagination("coming_soon_emails", () =>
+      supabaseAdmin.from("coming_soon_emails").select("id, created_at"),
+    ),
+    fetchAllWithPagination(
+      "zero_dollar_claims",
+      () => supabaseAdmin.from("zero_dollar_claims").select("id, user_id, shopify_product_id, status, claimed_at"),
+      "claimed_at",
+    ),
+    fetchAllWithPagination(
+      "nfw_perk_redemptions",
+      () => supabaseAdmin.from("nfw_perk_redemptions").select("id, user_id, perk_id, redeemed_at"),
+      "redeemed_at",
+    ),
+    supabaseAdmin
+      .from("shopify_product_mappings")
+      .select("shopify_product_id, title")
+      .not("title", "is", null),
+  ]);
 
-  // ── MEMBERSHIP PAYMENTS ────────────────────────────────────────────────────
-  console.log("[analytics] Starting membership_payments fetch...");
-  const membershipPaymentsQuery = supabaseAdmin
-    .from("membership_payments")
-    .select("id, user_id, amount, payment_type, created_at");
-  const membershipPayments = await fetchAllWithPagination("membership_payments", membershipPaymentsQuery);
+  const grantCycles = grantCyclesResult.data;
+  const shopifyProducts = shopifyProductsResult.data;
 
-  // ── MEMBERSHIP UPGRADES ──────────────────────────────────────────────────
-  console.log("[analytics] Starting membership_upgrades fetch...");
-  const membershipUpgradesQuery = supabaseAdmin
-    .from("membership_upgrades")
-    .select("id, user_id, from_level, to_level, amount, created_at");
-  const membershipUpgrades = await fetchAllWithPagination("membership_upgrades", membershipUpgradesQuery);
-
-  // ── WAITLIST ACCEPTANCES ─────────────────────────────────────────────────
-  // used_at = when the member clicked the approval link (waitlist → free).
-  // Display-only: shown as the "Upgraded" date in the waitlist → free list.
-  console.log("[analytics] Starting waitlist_acceptance_tokens fetch...");
-  const waitlistAcceptancesQuery = supabaseAdmin
-    .from("waitlist_acceptance_tokens")
-    .select("id, user_id, used_at, created_at")
-    .not("used_at", "is", null);
-  const waitlistAcceptances = await fetchAllWithPagination("waitlist_acceptance_tokens", waitlistAcceptancesQuery);
-
-  // ── GRANTS ───────────────────────────────────────────────────────────────
-  console.log("[analytics] Starting grants fetch...");
-  const grantsQuery = supabaseAdmin
-    .from("grants")
-    .select("id, user_id, cycle_id, status, amount_approved, submitted_at, funded_at");
-  const grants = await fetchAllWithPagination("grants", grantsQuery, "submitted_at");
-
-  // ── GRANT CYCLES ────────────────────────────────────────────────────────
-  console.log("[analytics] Starting grant_cycles fetch (no pagination needed)...");
-  const { data: grantCycles } = await supabaseAdmin
-    .from("grant_cycles")
-    .select("id, start_date, end_date, is_testing_only")
-    .order("start_date", { ascending: true });
-  console.log(`[analytics] grant_cycles: ${grantCycles?.length || 0} rows`);
-
-  // ── OFFER REDEMPTIONS ───────────────────────────────────────────────────
-  console.log("[analytics] Starting offer_redemptions fetch...");
-  const redemptionsQuery = supabaseAdmin
-    .from("offer_redemptions")
-    .select("id, user_id, offer_key, offer_title, store_name, redeem_type, created_at");
-  const redemptions = await fetchAllWithPagination("offer_redemptions", redemptionsQuery);
-
-  // ── NEWSLETTER SIGNUPS ─────────────────────────────────────────────────
-  console.log("[analytics] Starting coming_soon_emails fetch...");
-  const newsletterEmailsQuery = supabaseAdmin
-    .from("coming_soon_emails")
-    .select("id, created_at");
-  const newsletterEmails = await fetchAllWithPagination(
-    "coming_soon_emails",
-    newsletterEmailsQuery,
-    "created_at",
+  console.log(
+    `[analytics] Loaded ${profiles.length} profiles, ${grants.length} grants, ${redemptions.length} redemptions, ` +
+      `${membershipPayments.length} payments in ${Date.now() - startedAt}ms`,
   );
 
-  // ── ZERO DOLLAR STORE CLAIMS ─────────────────────────────────────────────
-  console.log("[analytics] Starting zero_dollar_claims fetch...");
-  const zdsClaimsQuery = supabaseAdmin
-    .from("zero_dollar_claims")
-    .select("id, user_id, shopify_product_id, status, claimed_at");
-  const zdsClaims = await fetchAllWithPagination("zero_dollar_claims", zdsClaimsQuery, "claimed_at");
-
-  // ── NFW PERK REDEMPTIONS ───────────────────────────────────────────────
-  console.log("[analytics] Starting nfw_perk_redemptions fetch...");
-  const nfwPerkRedemptionsQuery = supabaseAdmin
-    .from("nfw_perk_redemptions")
-    .select("id, user_id, perk_id, redeemed_at");
-  const nfwPerkRedemptions = await fetchAllWithPagination("nfw_perk_redemptions", nfwPerkRedemptionsQuery, "redeemed_at");
-
-  // ── SHOPIFY PRODUCTS ────────────────────────────────────────────────────
-  console.log("[analytics] Starting shopify_product_mappings fetch (no pagination needed)...");
-  const { data: shopifyProducts } = await supabaseAdmin
-    .from("shopify_product_mappings")
-    .select("shopify_product_id, title")
-    .not("title", "is", null);
-  console.log(`[analytics] shopify_product_mappings: ${shopifyProducts?.length || 0} rows`);
-
-  console.log("[analytics] All data fetching complete.");
 
   return (
     <main className="min-h-screen p-8 bg-nfw-dove">
