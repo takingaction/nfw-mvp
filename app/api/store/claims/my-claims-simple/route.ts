@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { VISIBLE_CLAIM_STATUSES } from "@/lib/store/claim-statuses";
 
 export async function GET() {
   try {
@@ -17,6 +18,8 @@ export async function GET() {
       .from("zero_dollar_claims")
       .select("*")
       .eq("user_id", user.id)
+      // Hide abandoned checkouts ("created") and webhook rejections; see /store/my-claims.
+      .in("status", VISIBLE_CLAIM_STATUSES)
       .order("claimed_at", { ascending: false })
       .limit(5);
 

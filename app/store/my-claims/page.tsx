@@ -4,6 +4,7 @@ import MyClaimsClient from "@/components/MyClaimsClient";
 import { Suspense } from "react";
 import Link from "next/link";
 import { getImpersonationContext } from "@/lib/impersonation";
+import { VISIBLE_CLAIM_STATUSES } from "@/lib/store/claim-statuses";
 
 export const metadata = {
   title: "My Claims | Zero Dollar Store",
@@ -50,6 +51,10 @@ async function MyClaimsContent({
     .from("zero_dollar_claims")
     .select("*")
     .eq("user_id", effectiveUserId)
+    // Only real orders. "created" rows are checkouts the member started but never
+    // finished (kept for manual cleanup), and rejected_* rows are webhook
+    // rejections; neither should appear to the member as an order.
+    .in("status", VISIBLE_CLAIM_STATUSES)
     .order("claimed_at", { ascending: false });
 
   if (error) {
