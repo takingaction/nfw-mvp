@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { GrantDescriptionField } from "@/components/admin/GrantDescriptionField";
+import ReviewerGuidanceField from "@/components/admin/ReviewerGuidanceField";
 import MediaLibraryModal from "@/components/admin/MediaLibraryModal";
 import { RejectionBodyEditor } from "@/components/admin/grant/RejectionBodyEditor";
 import type { RejectionBodyBlock } from "@/lib/grant-rejection-body";
@@ -26,6 +27,7 @@ export default function NewGrantCyclePage() {
     requires_documents: boolean;
     selection_method: "scored" | "random";
     rejection_body: RejectionBodyBlock[];
+    reviewer_guidance: string;
     featured_image: string;
   }>({
     cycle_name: "",
@@ -38,6 +40,7 @@ export default function NewGrantCyclePage() {
     requires_documents: false,
     selection_method: "scored",
     rejection_body: [],
+    reviewer_guidance: "",
     featured_image: "",
   });
 
@@ -114,6 +117,13 @@ export default function NewGrantCyclePage() {
           <GrantDescriptionField
             value={formData.description}
             onChange={(description) => setFormData({ ...formData, description })}
+            labelClass={labelClass}
+            inputClass={inputClass}
+          />
+
+          <ReviewerGuidanceField
+            value={formData.reviewer_guidance}
+            onChange={(reviewer_guidance) => setFormData({ ...formData, reviewer_guidance })}
             labelClass={labelClass}
             inputClass={inputClass}
           />

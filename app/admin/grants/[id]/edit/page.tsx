@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { GrantDescriptionField } from "@/components/admin/GrantDescriptionField";
+import ReviewerGuidanceField from "@/components/admin/ReviewerGuidanceField";
 import MediaLibraryModal from "@/components/admin/MediaLibraryModal";
 import SendRejectionPreviewButton from "@/components/admin/SendRejectionPreviewButton";
 import { RejectionBodyEditor } from "@/components/admin/grant/RejectionBodyEditor";
@@ -37,6 +38,7 @@ export default function EditGrantCyclePage() {
     requires_documents: boolean;
     selection_method: "scored" | "random";
     rejection_body: RejectionBodyBlock[];
+    reviewer_guidance: string;
   }>({
     cycle_name: "",
     description: "",
@@ -50,6 +52,7 @@ export default function EditGrantCyclePage() {
     requires_documents: false,
     selection_method: "scored",
     rejection_body: [],
+    reviewer_guidance: "",
   });
 
   const inputClass =
@@ -75,6 +78,7 @@ export default function EditGrantCyclePage() {
           requires_documents: data.requires_documents || false,
           selection_method: data.selection_method === "random" ? "random" : "scored",
           rejection_body: Array.isArray(data.rejection_body) ? data.rejection_body : [],
+          reviewer_guidance: data.reviewer_guidance || "",
         });
       } catch (err: any) {
         setError(err.message);
@@ -205,6 +209,13 @@ export default function EditGrantCyclePage() {
           <GrantDescriptionField
             value={formData.description}
             onChange={(description) => setFormData({ ...formData, description })}
+            labelClass={labelClass}
+            inputClass={inputClass}
+          />
+
+          <ReviewerGuidanceField
+            value={formData.reviewer_guidance}
+            onChange={(reviewer_guidance) => setFormData({ ...formData, reviewer_guidance })}
             labelClass={labelClass}
             inputClass={inputClass}
           />

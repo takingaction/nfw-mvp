@@ -365,6 +365,25 @@ function report() {
     );
   }
 
+  // 1b. Reviewer 1 scores are bimodal: a 0 is almost always a disqualification
+  // (missing cost estimate / attachment, off-theme), not a weak application.
+  // Rank agreement that matters for routing is among apps R1 actually scored.
+  console.log("\nAGREEMENT AMONG APPS REVIEWER 1 SCORED ABOVE 0 (quality ranking)");
+  console.log("cycle".padEnd(42) + "n".padStart(6) + "  rho   meanAI  meanR1   R1 zeros  meanAI on zeros");
+  for (const cid of [...cycles, "ALL"]) {
+    const all = cid === "ALL" ? rows : rows.filter((r) => r.cycle_id === cid);
+    const sub = all.filter((r) => r.r1_total > 0);
+    const zeros = all.filter((r) => r.r1_total === 0);
+    const name = cid === "ALL" ? "ALL" : all[0].cycle_name;
+    const mean = (xs: number[]) => (xs.length ? xs.reduce((s, v) => s + v, 0) / xs.length : NaN);
+    console.log(
+      name.slice(0, 41).padEnd(42) + String(sub.length).padStart(6) +
+      `  ${f2(spearman(sub.map((r) => r.ai), sub.map((r) => r.r1_total)))}` +
+      `  ${f2(mean(sub.map((r) => r.ai))).padStart(6)}  ${f2(mean(sub.map((r) => r.r1_total))).padStart(6)}` +
+      `   ${`${zeros.length} ${pct(zeros.length, all.length)}`.padStart(8)}  ${f2(mean(zeros.map((r) => r.ai))).padStart(15)}`,
+    );
+  }
+
   // 2. Top-100 overlap per month (the Oct 15 question)
   console.log("\nTOP 100 OVERLAP (AI top 100 vs Reviewer 1 top 100, per month)");
   const months = [...new Set(rows.map((r) => r.month))].sort();
@@ -381,7 +400,7 @@ function report() {
 
   // 3. Cutoff table
   console.log(`\nCUTOFF TABLE (target Reviewer 1 volume ${min}–${max}/month)`);
-  console.log("cutoff  " + months.map((m) => m.padStart(9)).join("") + "   awardees kept   R2-advanced kept   R1 top-25% kept");
+  console.log("cutoff  " + months.map((m) => m.padStart(9)).join("") + "   awardees kept   R2-advanced kept   R1 top-25% kept   routed that R1 zeroed");
   const awardees = rows.filter((r) => r.awarded);
   const advanced = rows.filter((r) => r.r2_total !== null);
   const q75 = [...rows].sort((a, b) => a.r1_total - b.r1_total)[Math.floor(rows.length * 0.75)]?.r1_total ?? 0;
@@ -396,7 +415,8 @@ function report() {
       c.toFixed(1).padStart(6) + "  " + perMonth.map((n) => String(n).padStart(9)).join("") +
       `   ${`${awKept}/${awardees.length} ${pct(awKept, awardees.length)}`.padStart(13)}` +
       `   ${`${advKept}/${advanced.length} ${pct(advKept, advanced.length)}`.padStart(16)}` +
-      `   ${`${tqKept}/${topQ.length} ${pct(tqKept, topQ.length)}`.padStart(15)}`,
+      `   ${`${tqKept}/${topQ.length} ${pct(tqKept, topQ.length)}`.padStart(15)}` +
+      `   ${pct(rows.filter((r) => r.ai >= c && r.r1_total === 0).length, rows.filter((r) => r.ai >= c).length).padStart(21)}`,
     );
     table.push([c, ...perMonth, awKept, awardees.length, advKept, advanced.length, tqKept, topQ.length]);
     if (suggestion === null && perMonth.every((n) => n <= max)) suggestion = c;

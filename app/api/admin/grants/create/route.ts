@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       rejection_body,
       featured_image,
       selection_method,
+      reviewer_guidance,
     } = await request.json();
 
     const total_funds =
@@ -62,6 +63,7 @@ export async function POST(request: NextRequest) {
         selection_method: selection_method === "random" ? "random" : "scored",
         rejection_body: Array.isArray(rejection_body) ? rejection_body : [],
         featured_image: featured_image || null,
+        reviewer_guidance: typeof reviewer_guidance === "string" ? reviewer_guidance.trim().slice(0, 4000) || null : null,
       })
       .select()
       .single();

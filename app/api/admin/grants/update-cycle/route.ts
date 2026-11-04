@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       requires_documents,
       rejection_body,
       selection_method,
+      reviewer_guidance,
     } = await request.json();
 
     if (!cycleId)
@@ -81,6 +82,8 @@ export async function POST(request: NextRequest) {
         requires_documents,
         selection_method,
         rejection_body: Array.isArray(rejection_body) ? rejection_body : [],
+        // Omitted from the body (undefined) → column left unchanged.
+        reviewer_guidance: typeof reviewer_guidance === "string" ? reviewer_guidance.trim().slice(0, 4000) || null : undefined,
         updated_at: new Date().toISOString(),
       })
       .eq("id", cycleId);
