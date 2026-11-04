@@ -6,6 +6,7 @@ import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { GrantDescriptionField } from "@/components/admin/GrantDescriptionField";
 import ReviewerGuidanceField from "@/components/admin/ReviewerGuidanceField";
+import AiReviewSettings, { aiReviewValuesFrom, type AiReviewValues } from "@/components/admin/AiReviewSettings";
 import MediaLibraryModal from "@/components/admin/MediaLibraryModal";
 import SendRejectionPreviewButton from "@/components/admin/SendRejectionPreviewButton";
 import { RejectionBodyEditor } from "@/components/admin/grant/RejectionBodyEditor";
@@ -39,7 +40,7 @@ export default function EditGrantCyclePage() {
     selection_method: "scored" | "random";
     rejection_body: RejectionBodyBlock[];
     reviewer_guidance: string;
-  }>({
+  } & AiReviewValues>({
     cycle_name: "",
     description: "",
     start_date: "",
@@ -53,6 +54,7 @@ export default function EditGrantCyclePage() {
     selection_method: "scored",
     rejection_body: [],
     reviewer_guidance: "",
+    ...aiReviewValuesFrom({}),
   });
 
   const inputClass =
@@ -79,6 +81,7 @@ export default function EditGrantCyclePage() {
           selection_method: data.selection_method === "random" ? "random" : "scored",
           rejection_body: Array.isArray(data.rejection_body) ? data.rejection_body : [],
           reviewer_guidance: data.reviewer_guidance || "",
+          ...aiReviewValuesFrom(data),
         });
       } catch (err: any) {
         setError(err.message);
@@ -373,6 +376,16 @@ export default function EditGrantCyclePage() {
               </div>
             </label>
           </div>
+
+          {formData.selection_method === "scored" && (
+            <AiReviewSettings
+              cycleId={cycleId}
+              values={formData}
+              onChange={(v) => setFormData({ ...formData, ...v })}
+              labelClass={labelClass}
+              inputClass={inputClass}
+            />
+          )}
 
           <div className="border-t border-nfw-blackberry/10 pt-4 mt-4">
             <label className={labelClass}>

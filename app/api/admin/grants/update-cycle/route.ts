@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { parseAiSettings } from "@/lib/grant-ai-settings";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,6 +27,7 @@ export async function POST(request: NextRequest) {
     if (!profile?.is_admin)
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+    const body = await request.json();
     const {
       cycleId,
       cycle_name,
@@ -41,7 +43,10 @@ export async function POST(request: NextRequest) {
       rejection_body,
       selection_method,
       reviewer_guidance,
-    } = await request.json();
+    } = body;
+
+    const ai = parseAiSettings(body);
+    if (ai.error) return NextResponse.json({ error: ai.error }, { status: 400 });
 
     if (!cycleId)
       return NextResponse.json({ error: "Missing cycleId" }, { status: 400 });
@@ -83,6 +88,7 @@ export async function POST(request: NextRequest) {
         selection_method,
         rejection_body: Array.isArray(rejection_body) ? rejection_body : [],
         // Omitted from the body (undefined) → column left unchanged.
+        ...ai.update,
         reviewer_guidance: typeof reviewer_guidance === "string" ? reviewer_guidance.trim().slice(0, 4000) || null : undefined,
         updated_at: new Date().toISOString(),
       })
