@@ -57,6 +57,10 @@
       "schedule": "*/2 * * * *"
     },
     {
+      "path": "/api/cron/ai-score-and-route",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/cleanup-orphaned-grants",
       "schedule": "0 4 * * *"
     },

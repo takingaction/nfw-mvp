@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { fetchDocumentsByGrant } from "@/lib/grant-documents";
 import { fetchAllPages, fetchAllPagesIn } from "@/lib/supabase-paginate";
+import { routingActive, visibleToReviewer1 } from "@/lib/grant-ai-routing";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -44,7 +45,7 @@ export async function GET(
     // Get cycle to check scoring_started_at and get end_date for "current month" calculation
     const { data: cycle } = await supabaseAdmin
       .from("grant_cycles")
-      .select("scoring_started_at, scoring_completed_at, end_date, selection_method")
+      .select("scoring_started_at, scoring_completed_at, end_date, selection_method, ai_scoring_enabled, ai_score_cutoff")
       .eq("id", cycleId)
       .single();
 
@@ -122,6 +123,7 @@ export async function GET(
           ai_invalidated_at,
           ai_validated_at,
           ai_invalidated_by,
+          review_queue,
           profiles:user_id (full_name, email, city, state),
           grant_scores!left (reviewer_name, urgency_score, authenticity_score, impact_score, barriers_yn, needs_discussion, discussion_notes, is_complete, total_score)
         `)
@@ -138,8 +140,24 @@ export async function GET(
     const grantIds = grants?.map((g) => g.id) || [];
     const documentsByGrant = await fetchDocumentsByGrant(supabaseAdmin, grantIds);
 
+    // AI routing (lib/grant-ai-routing.ts): when active, Reviewer 1 sees only
+    // applications routed or sampled to her, plus anything she already scored
+    // or skipped. review_queue is stripped from the response so a sampled
+    // application is indistinguishable from a routed one, and no AI score is
+    // ever sent here.
+    const routing = routingActive(cycle);
+    const visibleGrants = (grants || []).filter((g: any) =>
+      !routing ||
+      visibleToReviewer1({
+        review_queue: g.review_queue,
+        has_first_score: (g.grant_scores || []).some((s: any) => s.reviewer_name === "first" && s.is_complete),
+        ai_invalidated_at: g.ai_invalidated_at,
+      }),
+    );
+
     // Filter to only first reviewer scores and add applications_this_month and documents
-    const grantsWithFirstScores = grants?.map((g) => ({
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const grantsWithFirstScores = visibleGrants.map(({ review_queue: _rq, ...g }: any) => ({
       ...g,
       grant_scores: g.grant_scores?.filter((s: any) => s.reviewer_name === "first") || [],
       documents: documentsByGrant[g.id] || [],

@@ -19,7 +19,7 @@
  *        npx tsx scripts/ai-rubric-backtest.ts collect --run=<run-id>
  *        npx tsx scripts/ai-rubric-backtest.ts collect --run=<run-id> --apply   # also upsert grant_ai_scores (needs migration 218)
  *   3. report   compare to humans, print cutoff table, write CSVs
- *        npx tsx scripts/ai-rubric-backtest.ts report --run=<run-id> [--min=300 --max=500]
+ *        npx tsx scripts/ai-rubric-backtest.ts report --run=<run-id> [--min=300 --max=500 --target=400]
  *
  * Everything is written to REPORTS-IGNORE/ai-backtest/<run-id>/ (gitignored;
  * contains applicant text). Console output never includes applicant text.
@@ -428,6 +428,44 @@ function report() {
     ["cutoff", ...months.map((m) => `routed_${m}`), "awardees_kept", "awardees", "r2_advanced_kept", "r2_advanced", "r1_topq_kept", "r1_topq"], table);
   if (suggestion !== null && !manifest.args.sample) {
     console.log(`\nLowest cutoff keeping every month ≤ ${max}: ${suggestion.toFixed(1)}. Check the awardee column on that row before choosing.`);
+  }
+
+  // 3b. Per-grant cutoffs. One cutoff routes very different shares of each
+  // grant (Wellness scores high, College Fees low). For each month, give every
+  // grant the same routed share (target / month's eligible apps) and pick the
+  // per-grant cutoff closest to it. These go in grant_cycles.ai_score_cutoff.
+  const target = Number(arg("target") ?? Math.round((min + max) / 2));
+  console.log(`\nPER-GRANT CUTOFFS (target ${target}/month, same routed share for every grant in the month)`);
+  console.log("grant".padEnd(42) + "cutoff  routed      share   awardees kept   R2-advanced kept");
+  const perGrantKept = new Set<string>();
+  for (const m of months) {
+    const inMonth = rows.filter((r) => r.month === m);
+    const share = Math.min(1, target / inMonth.length);
+    console.log(`  ${m}: ${inMonth.length} eligible → target share ${(share * 100).toFixed(0)}%`);
+    for (const cid of [...new Set(inMonth.map((r) => r.cycle_id))]) {
+      const g = inMonth.filter((r) => r.cycle_id === cid);
+      let best = { c: 0, diff: Infinity, n: g.length };
+      for (let c = 0; c <= 9; c += 0.5) {
+        const n = g.filter((r) => r.ai >= c).length;
+        const diff = Math.abs(n / g.length - share);
+        if (diff < best.diff) best = { c, diff, n };
+      }
+      const kept = g.filter((r) => r.ai >= best.c);
+      kept.forEach((r) => perGrantKept.add(r.grant_id));
+      const aw = g.filter((r) => r.awarded), adv = g.filter((r) => r.r2_total !== null);
+      const awK = kept.filter((r) => r.awarded).length, advK = kept.filter((r) => r.r2_total !== null).length;
+      console.log(
+        `    ${g[0].cycle_name.slice(0, 38).padEnd(38)}  ${best.c.toFixed(1).padStart(4)}  ${`${best.n}/${g.length}`.padStart(9)}  ${pct(best.n, g.length).padStart(6)}` +
+        `   ${`${awK}/${aw.length}`.padStart(13)}   ${`${advK}/${adv.length}`.padStart(16)}`,
+      );
+    }
+  }
+  {
+    const k = rows.filter((r) => perGrantKept.has(r.grant_id));
+    const aw = awardees.filter((r) => perGrantKept.has(r.grant_id)).length;
+    const adv = advanced.filter((r) => perGrantKept.has(r.grant_id)).length;
+    const perMonth = months.map((m) => `${m}: ${k.filter((r) => r.month === m).length}`).join(" · ");
+    console.log(`  TOTAL  ${perMonth} · awardees ${aw}/${awardees.length} ${pct(aw, awardees.length)} · R2-advanced ${adv}/${advanced.length} ${pct(adv, advanced.length)} · routed R1-zeroed ${pct(k.filter((r) => r.r1_total === 0).length, k.length)}`);
   }
 
   // 4. Inspection files

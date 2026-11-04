@@ -4,6 +4,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { sendSecondReviewerNotification } from "@/lib/email";
 import { loadDrawContext } from "@/lib/grant-draw";
 import { handoffBlocker } from "@/lib/grant-draw-rules";
+import { routingActive } from "@/lib/grant-ai-routing";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -45,13 +46,14 @@ export async function POST(
     const grants: Array<{
       id: string;
       ai_invalidated_at: string | null;
+      review_queue: string | null;
       grant_scores: Array<{ reviewer_name: string; is_complete: boolean | null }> | null;
     }> = [];
     for (let page = 0; ; page++) {
       const from = page * PAGE_SIZE;
       const { data, error } = await supabaseAdmin
         .from("grants")
-        .select("id, ai_invalidated_at, grant_scores!left(reviewer_name, is_complete)")
+        .select("id, ai_invalidated_at, review_queue, grant_scores!left(reviewer_name, is_complete)")
         .eq("cycle_id", cycleId)
         .order("id", { ascending: true })
         .range(from, from + PAGE_SIZE - 1);
@@ -74,7 +76,7 @@ export async function POST(
 
     const { data: methodRow } = await supabaseAdmin
       .from("grant_cycles")
-      .select("selection_method")
+      .select("selection_method, ai_scoring_enabled, ai_score_cutoff")
       .eq("id", cycleId)
       .single();
 
@@ -99,7 +101,20 @@ export async function POST(
           (s) => s.reviewer_name === "first" && s.is_complete === true,
         );
 
-      const incompleteCount = grants.filter((g) => !isDone(g)).length;
+      // With AI routing on, held applications are never shown to Reviewer 1
+      // and are rejected at finalize, so they count as done. Applications
+      // the router hasn't placed yet (still being scored) block completion.
+      const routing = routingActive(methodRow);
+      if (routing) {
+        const unrouted = grants.filter((g) => !g.review_queue && !isDone(g)).length;
+        if (unrouted > 0) {
+          return NextResponse.json({
+            error: `${unrouted} application(s) are still being scored by the AI. Try again in a few minutes.`,
+            incomplete_count: unrouted,
+          }, { status: 400 });
+        }
+      }
+      const incompleteCount = grants.filter((g) => !isDone(g) && !(routing && g.review_queue === "held")).length;
 
       if (incompleteCount > 0) {
         return NextResponse.json({
