@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
+import MemberExperienceTab from "@/components/admin/MemberExperienceTab";
 import {
   LineChart,
   Line,
@@ -77,6 +78,7 @@ type Profile = {
 
 type Grant = {
   id: string;
+  user_id: string | null;
   cycle_id: string;
   status: string | null;
   amount_approved: number | null;
@@ -229,7 +231,7 @@ export default function AdminAnalyticsClient({
   membershipUpgrades: MembershipUpgrade[];
   waitlistAcceptances: WaitlistAcceptance[];
 }) {
-  const [tab, setTab] = useState<"members" | "grants" | "perks" | "zds" | "engagement" | "cohorts" | "support">("members");
+  const [tab, setTab] = useState<"members" | "grants" | "perks" | "zds" | "engagement" | "cohorts" | "experience" | "support">("members");
   const [dateRange, setDateRange] = useState<number | "custom">(9999);
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
@@ -1052,10 +1054,9 @@ export default function AdminAnalyticsClient({
   const activeMembers = useMemo(() => {
     const activeUserIds = new Set<string>();
 
-    // From grants
+    // From grants (submitted applications)
     filteredGrants.forEach((g) => {
-      // We don't have user_id in grants data directly, but we can infer from profiles
-      // Actually, grants have user_id but it's not selected - skip for now
+      if (g.user_id) activeUserIds.add(g.user_id);
     });
 
     // From redemptions
@@ -1084,6 +1085,12 @@ export default function AdminAnalyticsClient({
 
     const activeUserIds = new Set<string>();
 
+    filteredGrants.forEach((g) => {
+      if (g.submitted_at && g.submitted_at >= weekAgoStr && g.user_id) {
+        activeUserIds.add(g.user_id);
+      }
+    });
+
     filteredRedemptions.forEach((r) => {
       if (r.created_at && r.created_at >= weekAgoStr && r.user_id) {
         activeUserIds.add(r.user_id);
@@ -1103,7 +1110,7 @@ export default function AdminAnalyticsClient({
     });
 
     return activeUserIds.size;
-  }, [filteredRedemptions, filteredZdsClaims, filteredNfwPerkRedemptions]);
+  }, [filteredGrants, filteredRedemptions, filteredZdsClaims, filteredNfwPerkRedemptions]);
 
   // Monthly active members (last 30 days)
   const monthlyActive = useMemo(() => {
@@ -1112,6 +1119,12 @@ export default function AdminAnalyticsClient({
     const monthAgoStr = monthAgo.toISOString();
 
     const activeUserIds = new Set<string>();
+
+    filteredGrants.forEach((g) => {
+      if (g.submitted_at && g.submitted_at >= monthAgoStr && g.user_id) {
+        activeUserIds.add(g.user_id);
+      }
+    });
 
     filteredRedemptions.forEach((r) => {
       if (r.created_at && r.created_at >= monthAgoStr && r.user_id) {
@@ -1132,7 +1145,7 @@ export default function AdminAnalyticsClient({
     });
 
     return activeUserIds.size;
-  }, [filteredRedemptions, filteredZdsClaims, filteredNfwPerkRedemptions]);
+  }, [filteredGrants, filteredRedemptions, filteredZdsClaims, filteredNfwPerkRedemptions]);
 
   // Total activities in period
   const totalActivities = useMemo(() => {
@@ -1599,7 +1612,7 @@ export default function AdminAnalyticsClient({
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-6">
         {/* Tabs */}
         <div className="flex gap-2">
-          {(["members", "grants", "perks", "zds", "engagement", "cohorts", "support"] as const).map((t) => (
+          {(["members", "grants", "perks", "zds", "engagement", "cohorts", "experience", "support"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -1615,7 +1628,8 @@ export default function AdminAnalyticsClient({
         </div>
 
         <div className="flex gap-3 items-center flex-wrap">
-          {/* Date Range Dropdown */}
+          {/* Date Range Dropdown (the Experience tab is an all-time baseline) */}
+          {tab !== "experience" && (
           <div className="relative">
             <select
               value={dateRange === "custom" ? "custom" : dateRange}
@@ -1639,9 +1653,10 @@ export default function AdminAnalyticsClient({
             </select>
             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-nfw-blackberry/50 pointer-events-none" />
           </div>
+          )}
 
           {/* Custom Date Range Pickers */}
-          {dateRange === "custom" && (
+          {tab !== "experience" && dateRange === "custom" && (
             <div className="flex gap-2 items-center">
               <input
                 type="date"
@@ -1661,7 +1676,8 @@ export default function AdminAnalyticsClient({
             </div>
           )}
 
-          {/* Export CSV */}
+          {/* Export CSV (the Experience tab has its own CSV export) */}
+          {tab !== "experience" && (
           <button
             onClick={exportCSV}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-nfw-blackberry/10 text-sm font-semibold text-nfw-blackberry hover:bg-nfw-blackberry/5 transition-colors"
@@ -1669,6 +1685,7 @@ export default function AdminAnalyticsClient({
             <Download className="w-4 h-4" />
             CSV
           </button>
+          )}
 
           {/* Export Full CSV */}
           <button
@@ -2359,6 +2376,8 @@ export default function AdminAnalyticsClient({
         )}
 
         {/* SUPPORT TAB */}
+        {tab === "experience" && <MemberExperienceTab />}
+
         {tab === "support" && (
           <div className="space-y-6">
             <div className="bg-white border border-nfw-blackberry/10 p-6">

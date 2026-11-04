@@ -20576,3 +20576,25 @@ The whole site runs on **Pacific Time (America/Los_Angeles)**. The DB stays on U
 - **Monthly claims:** `claim_month` = `siteMonthKey()`; resets 12:00 AM PT on the 1st. Months before Nov 2026 were bucketed by UTC month and were not backfilled.
 - **Display:** timestamps use `timeZone: SITE_TZ` and a "PT" label. Date-only values (date of birth, `end_date`, perk expiry markers) use `timeZone: "UTC"` so they render as written.
 
+
+---
+
+## Session 2026-11-03: Member Experience Baseline Analytics (Phase 1)
+
+Plan, definitions and results are in `MEMBER_EXPERIENCE_ANALYTICS.md`.
+
+| File | Change |
+|---|---|
+| `supabase/migrations/216_free_approved_at.sql` | Adds `profiles.free_approved_at` and `free_approved_at_source`. The `trg_profiles_free_approved_at` trigger stamps the approval time whenever `is_approved_free_member` becomes TRUE, from any code path. Also backfills historical rows. |
+| `supabase/migrations/217_member_experience_analytics.sql` | Private `analytics` schema containing:<br>• views `eligible_members`, `engagement_events`, `contributions`, `grant_decisions`<br>• materialized view `member_baseline`<br>• RPCs `get_experience_baseline(date)` and `refresh_member_baseline()`, service_role only<br>• nightly cron job `refresh-member-baseline` |
+| `app/api/admin/analytics/experience/route.ts` | `GET` returns the metrics; `POST` refreshes, then returns them. Admin only. |
+| `components/admin/MemberExperienceTab.tsx` | New "Experience" tab on `/admin/analytics` |
+| `components/admin/AdminAnalyticsClient.tsx` | Wires in the Experience tab. Fixes the Engagement tab, which never counted microgrant applicants as active members (the `grants.user_id` field was already fetched but ignored). |
+
+**Rules:**
+- Eligible members are contributing, founding and approved free, excluding admins and the two test accounts.
+- Meaningful engagements are submitted microgrants, completed or fulfilled store claims, Access Perks redemptions (deduped per user, offer and PT day) and NFW Perks redemptions.
+- Testing-only grant cycles are excluded.
+- All month and day bucketing uses `public.site_tz()`.
+
+**Flagged, not changed:** `app/api/profile/update` accepts `is_approved_free_member` and `membership_level: "free"` from the client. A logged-in waitlist member could therefore approve themselves. No web or mobile client sends `is_approved_free_member`.
