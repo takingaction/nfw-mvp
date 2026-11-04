@@ -1609,9 +1609,9 @@ export default function AdminAnalyticsClient({
   return (
     <div>
       {/* Controls */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-6">
-        {/* Tabs */}
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-4 mb-6">
+        {/* Tabs (own row: 8 tabs + controls no longer fit on one line) */}
+        <div className="flex flex-wrap gap-2">
           {(["members", "grants", "perks", "zds", "engagement", "cohorts", "experience", "support"] as const).map((t) => (
             <button
               key={t}
@@ -1627,7 +1627,7 @@ export default function AdminAnalyticsClient({
           ))}
         </div>
 
-        <div className="flex gap-3 items-center flex-wrap">
+        <div className="flex gap-3 items-center flex-wrap sm:justify-end">
           {/* Date Range Dropdown (the Experience tab is an all-time baseline) */}
           {tab !== "experience" && (
           <div className="relative">
