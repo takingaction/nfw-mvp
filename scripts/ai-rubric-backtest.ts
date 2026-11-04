@@ -14,6 +14,7 @@
  *        npx tsx scripts/ai-rubric-backtest.ts submit --guidance=REPORTS-IGNORE/ai-backtest/guidance.json
  *          guidance.json = { "<cycle_id>": "reviewer guidance text", ... } — lets you
  *          test draft guidance without writing it to grant_cycles.
+ *        npx tsx scripts/ai-rubric-backtest.ts submit --label=guidance   # names the run folder
  *   2. collect  wait for the batch, save scores
  *        npx tsx scripts/ai-rubric-backtest.ts collect --run=<run-id>
  *        npx tsx scripts/ai-rubric-backtest.ts collect --run=<run-id> --apply   # also upsert grant_ai_scores (needs migration 218)
@@ -133,7 +134,7 @@ async function submit() {
 
   let cq = db
     .from("grant_cycles")
-    .select("id, cycle_name, description, end_date, start_date, status, selection_method, is_testing_only")
+    .select("id, cycle_name, description, amount_per_grant, end_date, start_date, status, selection_method, is_testing_only")
     .eq("status", "closed")
     .eq("selection_method", "scored")
     .gte("start_date", since);
@@ -202,6 +203,7 @@ async function submit() {
       params: buildRubricRequest({
         cycleName: c.cycle_name ?? "",
         cycleDescription: c.description ?? "",
+        amountPerGrant: c.amount_per_grant ? Number(c.amount_per_grant) : null,
         reviewerGuidance: guidanceOverride[a.cycle_id] ?? dbGuidance[a.cycle_id] ?? null,
         whoAreYou: a.who_are_you,
         biggestChallenge: a.biggest_challenge,
@@ -220,7 +222,8 @@ async function submit() {
   const client = await anthropic();
   const batch = await client.messages.batches.create({ requests: requests as any });
 
-  const runId = `${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "")}-${RUBRIC_PROMPT_VERSION}${sample ? `-s${sample}` : ""}`;
+  const label = arg("label")?.replace(/[^a-zA-Z0-9_-]/g, "");
+  const runId = `${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "")}-${RUBRIC_PROMPT_VERSION}${label ? `-${label}` : ""}${sample ? `-s${sample}` : ""}`;
   const dir = path.join(ROOT, runId);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "dataset.json"), JSON.stringify(chosen));
@@ -230,7 +233,7 @@ async function submit() {
     prompt_version: RUBRIC_PROMPT_VERSION,
     model: RUBRIC_MODEL,
     created_at: new Date().toISOString(),
-    args: { since, cycles: arg("cycles"), sample: arg("sample"), guidance: guidancePath },
+    args: { since, cycles: arg("cycles"), sample: arg("sample"), guidance: guidancePath, label: arg("label") },
     cycles: (realCycles as any[]).map((c) => ({
       id: c.id,
       cycle_name: c.cycle_name,
