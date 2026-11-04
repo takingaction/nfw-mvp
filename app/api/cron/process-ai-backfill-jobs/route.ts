@@ -184,7 +184,7 @@ async function processJobChunk(
 
     const { data: cycle } = await supabaseAdmin
       .from("grant_cycles")
-      .select("id, cycle_name, description, end_date")
+      .select("id, cycle_name, description, end_date, reviewer_guidance")
       .eq("id", cycleId)
       .single();
 
@@ -193,6 +193,7 @@ async function processJobChunk(
       cycle_name: cycle?.cycle_name || "",
       description: cycle?.description || "",
       end_date: cycle?.end_date ?? null,
+      reviewer_guidance: cycle?.reviewer_guidance ?? null,
     };
 
     const grantIds = allIds.slice(startIndex, endIndex);

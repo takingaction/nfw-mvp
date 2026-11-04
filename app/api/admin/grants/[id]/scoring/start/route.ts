@@ -23,7 +23,7 @@ async function runAiEvaluationForUnevaluatedGrants(cycleId: string) {
   // Fetch cycle description for context
   const { data: cycle } = await supabaseAdmin
     .from("grant_cycles")
-    .select("id, cycle_name, description, end_date")
+    .select("id, cycle_name, description, end_date, reviewer_guidance")
     .eq("id", cycleId)
     .single();
   if (!cycle) return { total: 0, evaluated: 0, failed: 0 };

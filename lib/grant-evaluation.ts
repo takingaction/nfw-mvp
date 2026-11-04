@@ -25,7 +25,7 @@ import {
 /** Columns evaluateGrantFull() needs from `grants`. */
 export const GRANT_EVAL_COLUMNS = "id, user_id, who_are_you, biggest_challenge, fund_usage";
 /** Columns evaluateGrantFull() needs from `grant_cycles`. */
-export const CYCLE_EVAL_COLUMNS = "id, cycle_name, description, end_date";
+export const CYCLE_EVAL_COLUMNS = "id, cycle_name, description, end_date, reviewer_guidance";
 
 export interface EvalGrant {
   id: string;
@@ -40,6 +40,8 @@ export interface EvalCycle {
   cycle_name: string | null;
   description: string | null;
   end_date: string | null;
+  /** Internal NFW clarifications for the AI (migration 218). */
+  reviewer_guidance?: string | null;
 }
 
 export interface GrantEvaluationPayload {
@@ -118,6 +120,7 @@ export async function evaluateGrantFull(
   const ai = await evaluateGrantApplication({
     cycleName: cycle.cycle_name || "",
     cycleDescription: cycle.description || "",
+    reviewerGuidance: cycle.reviewer_guidance ?? null,
     whoAreYou: grant.who_are_you || "",
     biggestChallenge: grant.biggest_challenge || "",
     fundUsage: grant.fund_usage || "",

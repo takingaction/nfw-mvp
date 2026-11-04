@@ -108,7 +108,7 @@ export async function GET(request: Request) {
   if (uniqueCycleIds.length > 0) {
     const { data: cycles, error: cyclesError } = await supabaseAdmin
       .from("grant_cycles")
-      .select("id, cycle_name, description, end_date")
+      .select("id, cycle_name, description, end_date, reviewer_guidance")
       .in("id", uniqueCycleIds);
 
     if (cyclesError) {
