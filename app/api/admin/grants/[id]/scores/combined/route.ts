@@ -5,6 +5,7 @@ import Stripe from "stripe";
 import { fetchDocumentsByGrant } from "@/lib/grant-documents";
 import { fetchAllPages, fetchAllPagesIn } from "@/lib/supabase-paginate";
 import { AWARDED_STATUSES } from "@/lib/grant-eligibility-checks";
+import { reviewer2Scope } from "@/lib/grant-reviewer2-scope";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -65,7 +66,7 @@ export async function GET(
       const { data: grantsCheck } = await fetchAllPages((from, to) =>
         supabaseAdmin
           .from("grants")
-          .select("id, rachel_complete, michelle_complete, grant_scores (reviewer_name, total_score, needs_discussion)")
+          .select("id, rachel_complete, michelle_complete, ai_invalidated_at, grant_scores (reviewer_name, total_score, needs_discussion)")
           .eq("cycle_id", cycleId)
           .order("id", { ascending: true })
           .range(from, to),
@@ -84,15 +85,9 @@ export async function GET(
         }, { status: 400 });
       }
 
-      // Get grants in scope for second review (first score >= 7 OR first flagged)
-      const grantsInScope = grantsCheck.filter((g: any) => {
-        if (!g.rachel_complete) return false;
-        const firstScore = g.grant_scores?.find((s: any) => s.reviewer_name === "first");
-        if (!firstScore) return false;
-        const totalScore = firstScore.total_score || 0;
-        const wasFlagged = firstScore.needs_discussion === true;
-        return totalScore >= 7 || wasFlagged;
-      });
+      // Grants in scope for second review (lib/grant-reviewer2-scope.ts)
+      const scopeIds = reviewer2Scope(grantsCheck.filter((g: any) => g.rachel_complete), cycle);
+      const grantsInScope = grantsCheck.filter((g: any) => scopeIds.has(g.id));
 
       // Second review is complete if all grants in scope have michelle_complete = true
       const allSecondComplete = grantsInScope.length === 0
@@ -198,14 +193,10 @@ export async function GET(
     );
     const isWinner = (g: { id: string; status: string }) =>
       awarded.has(g.status) || tentativeWinners.has(g.id);
+    const displayScope = isRandom ? null : reviewer2Scope(grants || [], cycle);
     const grantsForDisplay = grants?.filter((g: any) => {
       if (isRandom) return isWinner(g);
-      if (g.ai_invalidated_at) return false;
-      const firstScore = g.grant_scores?.find((s: any) => s.reviewer_name === "first");
-      if (!firstScore) return false;
-      const totalScore = firstScore.total_score || 0;
-      const wasFlagged = firstScore.needs_discussion === true;
-      return totalScore >= 7 || wasFlagged;
+      return displayScope!.has(g.id);
     }) || [];
 
     // Combine scores and calculate combined totals

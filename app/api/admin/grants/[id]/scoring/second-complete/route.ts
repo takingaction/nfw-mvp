@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { reviewer2Scope } from "@/lib/grant-reviewer2-scope";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -82,19 +83,15 @@ export async function POST(
       return NextResponse.json({ error: "No grants found" }, { status: 404 });
     }
 
-    // Grants in second-review scope (matches the Review 2 page):
-    // - First reviewer completed (rachel_complete = true), AND
-    // - Not skipped (ai_invalidated_at IS NULL), AND
-    // - First score >= 7 OR first reviewer flagged
-    const inScope = grantsWithScores.filter((g) => {
-      if (!g.rachel_complete) return false;
-      if (g.ai_invalidated_at) return false;
-      const firstScore = g.grant_scores?.find((s) => s.reviewer_name === "first");
-      if (!firstScore) return false;
-      const totalScore = firstScore.total_score || 0;
-      const wasFlagged = firstScore.needs_discussion === true;
-      return totalScore >= 7 || wasFlagged;
-    });
+    // Grants in second-review scope (matches the Review 2 page): first review
+    // completed, then lib/grant-reviewer2-scope.ts.
+    const { data: r2Settings } = await supabaseAdmin
+      .from("grant_cycles")
+      .select("reviewer2_cap, reviewer2_discussion_slots")
+      .eq("id", cycleId)
+      .single();
+    const scopeIds = reviewer2Scope(grantsWithScores.filter((g) => g.rachel_complete), r2Settings);
+    const inScope = grantsWithScores.filter((g) => scopeIds.has(g.id));
 
     if (inScope.length === 0) {
       return NextResponse.json({ error: "No grants in scope for second review" }, { status: 400 });

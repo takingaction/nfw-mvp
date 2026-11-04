@@ -7,6 +7,7 @@ import AiEvaluationPanel from "@/components/admin/AiEvaluationPanel";
 import LateSubmissionPassesCard from "@/components/admin/LateSubmissionPassesCard";
 import ResetReviewButton from "@/components/admin/ResetReviewButton";
 import { formatDateOnly } from "@/lib/dates";
+import { reviewer2Scope } from "@/lib/grant-reviewer2-scope";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -79,15 +80,9 @@ export default async function AdminGrantCyclePage({
     (g: any) => g.status === "submitted" && (g.ai_relevance === "not_evaluated" || !g.ai_relevance),
   ).length;
 
-  // Get grants in scope for second review (first score >= 7 OR first flagged)
-  const grantsInScope = grants?.filter((g: any) => {
-    if (!g.rachel_complete) return false;
-    const firstScore = g.grant_scores?.find((s: any) => s.reviewer_name === "first");
-    if (!firstScore) return false;
-    const totalScore = firstScore.total_score || 0;
-    const wasFlagged = firstScore.needs_discussion === true;
-    return totalScore >= 7 || wasFlagged;
-  }) || [];
+  // Grants in scope for second review (lib/grant-reviewer2-scope.ts)
+  const r2Scope = reviewer2Scope((grants || []).filter((g: any) => g.rachel_complete), cycle);
+  const grantsInScope = (grants || []).filter((g: any) => r2Scope.has(g.id));
 
   // Second review is complete if:
   // - No grants in scope (nothing to review), OR

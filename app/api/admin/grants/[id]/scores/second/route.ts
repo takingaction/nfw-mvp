@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { fetchDocumentsByGrant } from "@/lib/grant-documents";
 import { fetchAllPages, fetchAllPagesIn } from "@/lib/supabase-paginate";
+import { reviewer2Scope } from "@/lib/grant-reviewer2-scope";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -39,7 +40,7 @@ export async function GET(
     // Get cycle to check if first reviewer is complete
     const { data: cycle } = await supabaseAdmin
       .from("grant_cycles")
-      .select("scoring_started_at, scoring_completed_at, end_date, selection_method")
+      .select("scoring_started_at, scoring_completed_at, end_date, selection_method, reviewer2_cap, reviewer2_discussion_slots")
       .eq("id", cycleId)
       .single();
 
@@ -139,18 +140,14 @@ export async function GET(
       };
     });
 
-    // Filter: only show grants where first reviewer scored >= 7 (approved) OR first reviewer flagged them
-    // Skipped grants (ai_invalidated_at set) are excluded — they must be restored on First Review first.
+    // Scope: lib/grant-reviewer2-scope.ts (R1 >= 7 or flagged, not skipped,
+    // capped by grant_cycles.reviewer2_cap when set).
+    const inScope = reviewer2Scope(grants || [], cycle);
     const filteredGrants = grantsWithSeparatedScores?.map((g) => ({
       ...g,
       applications_this_month: applicationsThisMonth[g.user_id] || 1,
       total_available_grants: totalAvailableGrants,
-    })).filter((g) => {
-      if (g.ai_invalidated_at) return false;
-      const firstTotal = g.first_score?.total_score || 0;
-      const firstFlagged = g.first_score?.needs_discussion === true;
-      return firstTotal >= 7 || firstFlagged;
-    });
+    })).filter((g) => inScope.has(g.id));
 
     return NextResponse.json({
       selection_method: cycle.selection_method ?? "scored",
