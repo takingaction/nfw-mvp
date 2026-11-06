@@ -15,9 +15,11 @@ import {
   Trash2,
   Mail,
   UserSquare,
+  UserX,
 } from "lucide-react";
 import { FreeMembershipApprovalModal } from "@/components/admin/FreeMembershipApprovalModal";
 import { DeleteMemberModal } from "@/components/admin/DeleteMemberModal";
+import { StartDeletionRequestModal } from "@/components/admin/StartDeletionRequestModal";
 import { getCategory } from "@/lib/member-categories";
 import { formatSiteDisplay } from "@/lib/dates";
 import { ADMIN_SCOPES, ADMIN_SCOPE_KEYS, normalizeAdminScopes } from "@/lib/admin-scopes";
@@ -135,6 +137,9 @@ export default function AdminMembersClient({
   const [deletingMember, setDeletingMember] = useState<Member | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Start deletion request (on behalf of member) modal state
+  const [deletionRequestMember, setDeletionRequestMember] = useState<Member | null>(null);
 
   // Update email modal state
   const [showEmailUpdateModal, setShowEmailUpdateModal] = useState(false);
@@ -830,6 +835,15 @@ export default function AdminMembersClient({
                         >
                           <UserSquare className="w-4 h-4" />
                         </button>
+                        {!member.is_admin && (
+                          <button
+                            onClick={() => setDeletionRequestMember(member)}
+                            className="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-700 transition-colors"
+                            title="Start deletion request (member asked through support)"
+                          >
+                            <UserX className="w-4 h-4" />
+                          </button>
+                        )}
                         {ALLOWED_DELETE_EMAILS.includes(currentUserEmail?.toLowerCase() || "") && (
                           <>
                             <button
@@ -1336,6 +1350,14 @@ export default function AdminMembersClient({
         memberName={deletingMember?.full_name || undefined}
         memberEmail={deletingMember?.email || undefined}
         deleting={deleting}
+      />
+
+      <StartDeletionRequestModal
+        isOpen={!!deletionRequestMember}
+        onClose={() => setDeletionRequestMember(null)}
+        memberId={deletionRequestMember?.id}
+        memberName={deletionRequestMember?.full_name || undefined}
+        memberEmail={deletionRequestMember?.email || undefined}
       />
 
       {/* Update Email Modal */}

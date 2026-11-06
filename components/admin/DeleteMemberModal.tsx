@@ -66,6 +66,13 @@ export function DeleteMemberModal({
               Related records in profiles and other tables will be cascade deleted automatically.
             </p>
           </div>
+
+          <p className="text-xs text-nfw-blackberry/70 mt-3">
+            <strong>If the member asked to delete their account</strong>, close this and use{" "}
+            <em>Start deletion request</em> instead. This hard delete doesn&apos;t cancel their
+            Stripe subscription or unsubscribe them in Flodesk, and it erases any deletion
+            request and its audit log.
+          </p>
         </div>
 
         {/* Footer */}

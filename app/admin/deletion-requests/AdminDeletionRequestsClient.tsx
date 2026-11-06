@@ -25,6 +25,12 @@ interface DeletionRequest {
   email: string;
   status: "pending" | "verified" | "processed" | "cancelled";
   created_at: string;
+  requested_at?: string | null;
+  source?: "member" | "admin";
+  requested_via?: "self_serve" | "email" | "freshdesk" | "phone" | "other";
+  freshdesk_ticket_number?: string | null;
+  notes?: string | null;
+  created_by?: string | null;
   verified_at?: string;
   processed_at?: string;
   cancelled_at?: string;
@@ -43,7 +49,33 @@ interface LogEntry {
   table_name: string;
   details: any;
   performed_by: string;
-  created_at: string;
+  performed_at?: string;
+  created_at?: string;
+}
+
+const REQUESTED_VIA_LABEL: Record<string, string> = {
+  self_serve: "Self-serve",
+  email: "Email",
+  freshdesk: "Freshdesk",
+  phone: "Phone",
+  other: "Other",
+};
+
+function SourceBadge({ request }: { request: DeletionRequest }) {
+  if (request.source === "admin") {
+    const via = REQUESTED_VIA_LABEL[request.requested_via ?? "other"] ?? "Other";
+    const ticket = request.freshdesk_ticket_number ? ` #${request.freshdesk_ticket_number}` : "";
+    return (
+      <span className="inline-block px-2 py-0.5 text-[11px] font-semibold bg-purple-100 text-purple-800">
+        Admin on behalf · {via}{ticket}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-block px-2 py-0.5 text-[11px] font-semibold bg-gray-100 text-gray-700">
+      Member · Self-serve
+    </span>
+  );
 }
 
 export default function AdminDeletionRequestsClient() {
@@ -53,6 +85,7 @@ export default function AdminDeletionRequestsClient() {
   const [detailData, setDetailData] = useState<{
     logs: LogEntry[];
     financialHold: any;
+    billableSubscriptions?: { id: string; status: string; scheduledCancelAt: string | null }[];
     pendingGrants: any[];
   } | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "pending" | "verified" | "processed">("all");
@@ -62,6 +95,13 @@ export default function AdminDeletionRequestsClient() {
 
   useEffect(() => {
     fetchRequests();
+    // Deep link from /admin/members "Start deletion request": ?id=<request id>
+    try {
+      const id = new URLSearchParams(window.location.search).get("id");
+      if (id) fetchRequestDetails(id);
+    } catch {
+      // ignore
+    }
   }, []);
 
   const fetchRequests = async () => {
@@ -270,6 +310,9 @@ export default function AdminDeletionRequestsClient() {
                       <div className="text-xs text-gray-400 mt-1">
                         {formatDate(request.created_at)}
                       </div>
+                      <div className="mt-1">
+                        <SourceBadge request={request} />
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -317,11 +360,29 @@ export default function AdminDeletionRequestsClient() {
                       </p>
                     </div>
                     <div>
+                      <span className="text-gray-500">Source:</span>
+                      <p className="font-medium">
+                        <SourceBadge request={selectedRequest} />
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Member asked:</span>
+                      <p className="font-medium">
+                        {formatDate(selectedRequest.requested_at || selectedRequest.created_at)}
+                      </p>
+                    </div>
+                    <div>
                       <span className="text-gray-500">Created:</span>
                       <p className="font-medium">
                         {formatDate(selectedRequest.created_at)}
                       </p>
                     </div>
+                    {selectedRequest.notes && (
+                      <div className="col-span-2">
+                        <span className="text-gray-500">Notes:</span>
+                        <p className="font-medium whitespace-pre-wrap">{selectedRequest.notes}</p>
+                      </div>
+                    )}
                     {selectedRequest.verified_at && (
                       <div>
                         <span className="text-gray-500">Verified:</span>
@@ -351,6 +412,24 @@ export default function AdminDeletionRequestsClient() {
                       </div>
                       <p className="text-sm text-yellow-700 mt-1">
                         {detailData.financialHold.message}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Stripe subscriptions that processing will cancel */}
+                  {detailData?.billableSubscriptions && detailData.billableSubscriptions.length > 0 && !detailData.financialHold && (
+                    <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <span className="font-medium text-blue-900">Stripe subscription will be cancelled</span>
+                      <p className="text-sm text-blue-800 mt-1">
+                        Processing will cancel {detailData.billableSubscriptions.length === 1 ? "this member's subscription" : `${detailData.billableSubscriptions.length} subscriptions`} in Stripe immediately
+                        {detailData.billableSubscriptions.some((s) => s.scheduledCancelAt)
+                          ? " (it was already set to cancel"
+                          + (detailData.billableSubscriptions[0].scheduledCancelAt
+                              ? ` on ${formatDate(detailData.billableSubscriptions[0].scheduledCancelAt)}`
+                              : "")
+                          + ")"
+                          : ""}
+                        . No refund is issued automatically.
                       </p>
                     </div>
                   )}
@@ -421,7 +500,9 @@ export default function AdminDeletionRequestsClient() {
                           <span className="font-medium">{log.action}</span> on{" "}
                           {log.table_name}
                           <span className="text-gray-500 ml-2">
-                            {formatDate(log.created_at)}
+                            {log.performed_at || log.created_at
+                              ? formatDate((log.performed_at || log.created_at) as string)
+                              : ""}
                           </span>
                         </li>
                       ))}

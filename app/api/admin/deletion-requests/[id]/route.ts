@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/adminCheck";
+import { checkDeletionEligibility } from "@/lib/deletion-eligibility";
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -52,21 +53,19 @@ export async function GET(
       .eq("deletion_request_id", id)
       .order("performed_at", { ascending: true });
 
-    // Check for active subscription info
+    // Live eligibility (Stripe-backed) for open requests only.
     let financialHold = null;
-    if (deletionRequest.profile) {
-      const profile = deletionRequest.profile;
-      if (
-        profile.membership_level === "contributing" ||
-        profile.membership_level === "founding"
-      ) {
-        if (profile.subscription_status === "active") {
-          financialHold = {
-            type: "active_subscription",
-            message: `Active ${profile.membership_level} membership (${profile.subscription_status})`,
-            ends_at: profile.subscription_ends_at,
-          };
-        }
+    let billableSubscriptions: { id: string; status: string; scheduledCancelAt: string | null }[] = [];
+    if (["pending", "verified"].includes(deletionRequest.status)) {
+      const eligibility = await checkDeletionEligibility(deletionRequest.user_id);
+      billableSubscriptions = eligibility.billableSubscriptions;
+      const renewing = eligibility.blocks.find((b) => b.code === "renewing_subscription");
+      if (renewing) {
+        financialHold = {
+          type: "renewing_subscription",
+          message: renewing.adminMessage,
+          ends_at: deletionRequest.profile?.subscription_ends_at ?? null,
+        };
       }
     }
 
@@ -81,6 +80,7 @@ export async function GET(
       request: deletionRequest,
       logs: logs || [],
       financialHold,
+      billableSubscriptions,
       pendingGrants: pendingGrants || [],
     });
   } catch (error: any) {
