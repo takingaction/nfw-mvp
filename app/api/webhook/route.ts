@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendGiftCodesEmail, sendWelcomeEmail } from "@/lib/email";
 import { generateGiftCode } from "@/lib/gift-codes";
 import { resolveInvoicePaymentIds } from "@/lib/stripe-payments";
+import { getScheduledCancelDate } from "@/lib/stripe-subscription";
 import { recordPaymentReversal, findPaymentByStripeId, getReversedTotal, notifyRefundProcessed, notifyRefundNotMatched } from "@/lib/membership-tier";
 
 export const dynamic = "force-dynamic";
@@ -594,17 +595,28 @@ export async function POST(request: Request) {
             .single()
         ).data;
 
-        if (subscription.cancel_at_period_end) {
-          const endsAt = new Date((subscription as unknown as { current_period_end: number }).current_period_end * 1000);
+        const scheduledCancelAt = getScheduledCancelDate(subscription);
+        const isScheduledToCancel =
+          subscription.cancel_at_period_end || subscription.cancel_at != null;
 
-          await supabaseAdmin
+        if (isScheduledToCancel) {
+          // Period end lives on subscription items since API 2025-03-31.basil; the old
+          // top-level read was undefined and threw "Invalid time value", so no member
+          // was ever recorded as canceling.
+          const { error: cancelingError } = await supabaseAdmin
             .from("profiles")
             .update({
               subscription_status: "canceling",
-              subscription_ends_at: endsAt.toISOString(),
+              subscription_ends_at: scheduledCancelAt ? scheduledCancelAt.toISOString() : null,
               updated_at: new Date().toISOString(),
             })
             .eq("id", authUserId);
+
+          if (cancelingError) {
+            console.error("[webhook] customer.subscription.updated: Failed to mark canceling:", cancelingError);
+          } else {
+            console.log("[webhook] customer.subscription.updated: Marked canceling, ends at", scheduledCancelAt?.toISOString() ?? "unknown");
+          }
         } else {
           const newMembershipLevel = PRICE_TO_MEMBERSHIP[priceId];
 

@@ -1,6 +1,7 @@
 import { blockIfViewingAs } from "@/lib/view-as";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkDeletionEligibility } from "@/lib/deletion-eligibility";
 
 export async function POST(request: NextRequest) {
   const viewAsBlocked = blockIfViewingAs(request);
@@ -31,36 +32,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for active subscription (block deletion if active)
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("membership_level, subscription_status")
-      .eq("id", user.id)
-      .single();
-
-    if (
-      profile?.membership_level === "contributing" ||
-      profile?.membership_level === "founding"
-    ) {
-      if (profile?.subscription_status === "active") {
-        return NextResponse.json(
-          { error: "Cannot delete account with active subscription. Please cancel your subscription first." },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Check for pending grant applications
-    const { data: pendingGrants } = await supabase
-      .from("grants")
-      .select("id")
-      .eq("user_id", user.id)
-      .in("status", ["submitted", "in_review"])
-      .limit(1);
-
-    if (pendingGrants && pendingGrants.length > 0) {
+    const eligibility = await checkDeletionEligibility(user.id);
+    if (!eligibility.eligible) {
       return NextResponse.json(
-        { error: "Cannot delete account with pending grant applications. Please wait until they are processed." },
+        {
+          error: eligibility.blocks[0].memberMessage,
+          blocks: eligibility.blocks.map((b) => b.code),
+        },
         { status: 400 }
       );
     }

@@ -1,5 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import Stripe from "stripe";
+import { BILLABLE_SUBSCRIPTION_STATUSES } from "@/lib/stripe-subscription";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2026-01-28.clover",
+});
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -36,6 +42,7 @@ export interface AnonymizationResult {
     testimonialsDeleted?: number;
     giftCodesAnonymized?: number;
     giftPurchasesAnonymized?: number;
+    stripeSubscriptionsCanceled?: number;
   };
 }
 
@@ -49,10 +56,57 @@ export async function anonymizeUser(
   // Capture original email BEFORE any anonymization (needed in step 11)
   const { data: profileBeforeAnonymization } = await supabaseAdmin
     .from("profiles")
-    .select("email, full_name")
+    .select("email, full_name, stripe_customer_id")
     .eq("id", userId)
     .single();
   const originalEmail = profileBeforeAnonymization?.email;
+
+  // -1. Stripe: cancel anything that can still bill, effective immediately, BEFORE
+  //     stripe_customer_id is cleared below (after that we'd lose the link to the
+  //     customer and could keep charging a deleted member). If Stripe fails, stop
+  //     the whole deletion — never anonymize someone who is still being billed.
+  //     No proration/refund here; refunds are a manual decision in Stripe.
+  let stripeSubscriptionsCanceled = 0;
+  const stripeCustomerId = profileBeforeAnonymization?.stripe_customer_id;
+  if (stripeCustomerId) {
+    try {
+      const subs = await stripe.subscriptions.list({
+        customer: stripeCustomerId,
+        status: "all",
+        limit: 100,
+      });
+      for (const sub of subs.data) {
+        if (!BILLABLE_SUBSCRIPTION_STATUSES.includes(sub.status)) continue;
+        await stripe.subscriptions.cancel(sub.id, {
+          prorate: false,
+          invoice_now: false,
+          cancellation_details: { comment: `Account deletion request ${deletionRequestId}` },
+        });
+        stripeSubscriptionsCanceled++;
+        await supabaseAdmin.from("deletion_log").insert({
+          deletion_request_id: deletionRequestId,
+          user_id: userId,
+          action: "cancel_stripe_subscription",
+          table_name: "stripe.subscriptions",
+          record_identifier: sub.id,
+          details: {
+            previous_status: sub.status,
+            cancel_at_period_end: sub.cancel_at_period_end,
+            cancel_at: sub.cancel_at,
+            stripe_customer_id: stripeCustomerId,
+          },
+          performed_by: adminUserId,
+        });
+      }
+    } catch (err: unknown) {
+      console.error("[anonymize] Stripe subscription cancel failed:", err);
+      return {
+        success: false,
+        error: `Could not cancel the member's Stripe subscription, so nothing was deleted. ${err instanceof Error ? err.message : ""}`.trim(),
+        details: { stripeSubscriptionsCanceled },
+      };
+    }
+  }
 
   // 0. Flodesk: remove from every synced segment and unsubscribe. Must run BEFORE the
   //    email is overwritten so rows without a stored subscriber id can still be addressed.
@@ -427,6 +481,7 @@ export async function anonymizeUser(
         testimonialsDeleted: 1,
         giftCodesAnonymized: 1,
         giftPurchasesAnonymized: 1,
+        stripeSubscriptionsCanceled,
       },
     };
   } catch (error: any) {

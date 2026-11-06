@@ -133,7 +133,7 @@ export default function DeleteAccountScreen() {
       </Card>
 
       <Card surface="citrine" bordered={false} style={styles.card}>
-        <Caption tone="default">Note: If you have an active subscription, you must cancel it first before you can delete your account.</Caption>
+        <Caption tone="default">Note: If your membership renews automatically, cancel your subscription first. If you've already cancelled, you can delete your account now and any remaining time will end.</Caption>
         {activePaid ? <Button label="Manage Subscription" variant="primary" size="sm" onPress={() => router.push("/(tabs)/settings/membership")} style={{ alignSelf: "flex-start" }} /> : null}
       </Card>
 

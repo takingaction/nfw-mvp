@@ -151,9 +151,10 @@ export default function DeleteAccountModal({
 
                 <div className="bg-nfw-citrine/20 border border-nfw-citrine/40 rounded-lg p-4">
                   <p className="text-sm text-nfw-blackberry/80">
-                    <strong>Note:</strong> If you have an active subscription,
-                    you must cancel it first before you can delete your
-                    account.
+                    <strong>Note:</strong> If your membership renews
+                    automatically, cancel your subscription first. If
+                    you&apos;ve already cancelled, you can delete your account
+                    now and any remaining time will end.
                   </p>
                 </div>
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/adminCheck";
+import { checkDeletionEligibility } from "@/lib/deletion-eligibility";
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,50 +42,20 @@ export async function POST(
       );
     }
 
-    // Verify the user exists and has no active subscriptions
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select(
-        "membership_level, subscription_status, subscription_ends_at, is_admin"
-      )
+      .select("membership_level, subscription_status")
       .eq("id", deletionRequest.user_id)
-      .single();
+      .maybeSingle();
 
-    if (profileError) {
-      return NextResponse.json(
-        { error: "Failed to fetch user profile" },
-        { status: 500 }
-      );
-    }
-
-    // Check for active subscription
-    if (
-      (profile.membership_level === "contributing" ||
-        profile.membership_level === "founding") &&
-      profile.subscription_status === "active"
-    ) {
+    const eligibility = await checkDeletionEligibility(deletionRequest.user_id);
+    if (!eligibility.eligible) {
       return NextResponse.json(
         {
-          error: "User has an active subscription. Please ensure subscription is cancelled first.",
-          financialHold: true,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Check for pending grants
-    const { data: pendingGrants } = await supabaseAdmin
-      .from("grants")
-      .select("id")
-      .eq("user_id", deletionRequest.user_id)
-      .in("status", ["submitted", "in_review"])
-      .limit(1);
-
-    if (pendingGrants && pendingGrants.length > 0) {
-      return NextResponse.json(
-        {
-          error: "User has pending grant applications. Please wait until they are processed.",
-          pendingGrants: true,
+          error: eligibility.blocks.map((b) => b.adminMessage).join(" "),
+          blocks: eligibility.blocks.map((b) => b.code),
+          financialHold: eligibility.blocks.some((b) => b.code === "renewing_subscription"),
+          pendingGrants: eligibility.blocks.some((b) => b.code === "pending_grants"),
         },
         { status: 400 }
       );
@@ -117,8 +88,10 @@ export async function POST(
       record_identifier: id,
       details: {
         verified_by: adminUserId,
-        membership_level: profile.membership_level,
-        subscription_status: profile.subscription_status,
+        membership_level: profile?.membership_level ?? null,
+        subscription_status: profile?.subscription_status ?? null,
+        billable_subscriptions: eligibility.billableSubscriptions,
+        eligibility_used_db_fallback: eligibility.usedFallback,
       },
       performed_by: adminUserId,
     });
