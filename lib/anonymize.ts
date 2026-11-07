@@ -206,7 +206,7 @@ export async function anonymizeUser(
 
     // 2. Anonymize auth.users metadata
     try {
-      await supabaseAdmin.auth.admin.updateUserById(userId, {
+      const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
         email: `deleted_${anonId}@deleted.local`,
         phone: undefined,
         user_metadata: {
@@ -216,6 +216,25 @@ export async function anonymizeUser(
           iss: undefined, // Strip Google OAuth provider marker from user_metadata
         },
       });
+      if (authUpdateError) throw authUpdateError;
+
+      // trg_sync_profile_email copies auth.users.email into profiles.email on EVERY
+      // profiles update. Step 1 ran while auth still held the real address, so the
+      // trigger wrote it back. Touch the row now that auth is anonymized so the
+      // trigger re-syncs it, then confirm.
+      const anonEmail = `deleted_${anonId}@deleted.local`;
+      await supabaseAdmin
+        .from("profiles")
+        .update({ email: anonEmail })
+        .eq("id", userId);
+      const { data: emailCheck } = await supabaseAdmin
+        .from("profiles")
+        .select("email")
+        .eq("id", userId)
+        .single();
+      if (emailCheck?.email !== anonEmail) {
+        errors.push("Profile email was not anonymized (still differs from the anonymized auth email)");
+      }
 
       await supabaseAdmin.from("deletion_log").insert({
         deletion_request_id: deletionRequestId,
@@ -225,8 +244,8 @@ export async function anonymizeUser(
         record_identifier: userId,
         performed_by: adminUserId,
       });
-    } catch (authError: any) {
-      errors.push(`Auth user update failed: ${authError.message}`);
+    } catch (authError: unknown) {
+      errors.push(`Auth user update failed: ${authError instanceof Error ? authError.message : String(authError)}`);
     }
 
     // 3. Anonymize grants (clear essay fields, keep metadata)

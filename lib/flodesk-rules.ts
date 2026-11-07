@@ -58,10 +58,12 @@ export interface SyncProfile {
   is_admin: boolean | null;
   joined_at: string | null;
   waitlist_joined_at: string | null;
+  /** Set when the account was anonymized via a deletion request. */
+  deleted_at?: string | null;
 }
 
 export const SYNC_PROFILE_COLUMNS =
-  "id, email, full_name, membership_level, is_approved_free_member, profile_completed, free_membership_contact_submitted, is_admin, joined_at, waitlist_joined_at";
+  "id, email, full_name, membership_level, is_approved_free_member, profile_completed, free_membership_contact_submitted, is_admin, joined_at, waitlist_joined_at, deleted_at";
 
 // ---------------------------------------------------------------------------
 // Eligibility
@@ -79,6 +81,10 @@ export function categoryEnteredAt(profile: SyncProfile, category: RuleCategory):
 
 /** True when the profile is currently in the rule's category (ignores delay). */
 export function isInCategory(profile: SyncProfile, rule: Pick<FlodeskSyncRule, "category">): boolean {
+  // Anonymized profiles keep membership_level (the CHECK constraint has no
+  // 'deleted' value), so getCategory() would still say e.g. "Contributing".
+  // A deleted member is never in any category.
+  if (profile.deleted_at) return false;
   return getCategory(profile as unknown as Record<string, unknown>) === rule.category;
 }
 
@@ -103,7 +109,7 @@ export function isEligibleForAdd(
 
 /** True when a member already in the segment should stay there. */
 export function isStillEligible(profile: SyncProfile | null | undefined, rule: Pick<FlodeskSyncRule, "category">): boolean {
-  // Profile gone (hard delete) or anonymized (membership_level = 'deleted' → "Unknown") → exit.
+  // Profile gone (hard delete) or anonymized (deleted_at set) → exit.
   if (!profile) return false;
   return isInCategory(profile, rule);
 }
