@@ -245,6 +245,8 @@ export default function SignUpFlow({ signupData, initialGift = null }: SignUpFlo
   const [step, setStep] = useState(initialStep);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set when signUp hits an email that already has a confirmed account.
+  const [existingAccount, setExistingAccount] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
   // Fetch and store user ID when step >= 1 (after email confirmation)
@@ -332,8 +334,16 @@ export default function SignUpFlow({ signupData, initialGift = null }: SignUpFlo
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        // Not logged in - redirect to step 0 to show login/signup options
-        window.location.href = "/auth/sign-up?step=0";
+        // Not logged in. Anyone on steps 1-3 already has an account (a
+        // confirmation or reminder email link, a bookmark), so send them to log
+        // in rather than back to a blank signup form. After login /dashboard
+        // routes them to whichever step their profile still needs; a pending
+        // gift goes to /redeem, as with Google sign-up.
+        // (pendingGift state may not be set yet on first render, so read it here.)
+        const gift = cleanGift(initialGift) ?? getStoredGift();
+        window.location.href = gift
+          ? `/auth/login?next=${encodeURIComponent(`/redeem?code=${gift}`)}`
+          : "/auth/login";
       } else if (!user.email_confirmed_at) {
         // Logged in but email not confirmed
         window.location.href = "/auth/sign-up-success";
@@ -380,9 +390,10 @@ export default function SignUpFlow({ signupData, initialGift = null }: SignUpFlo
     }
     setLoading(true);
     setError(null);
+    setExistingAccount(false);
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -390,6 +401,14 @@ export default function SignUpFlow({ signupData, initialGift = null }: SignUpFlo
         },
       });
       if (error) throw error;
+      // An already-confirmed email (password or Google) gets a success response
+      // with no identities and no email sent. Say so instead of sending them to
+      // wait for an email that never comes. Unconfirmed accounts still get a
+      // fresh confirmation email and continue below.
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        setExistingAccount(true);
+        return;
+      }
       // Redirect to success page to check email
       try { sessionStorage.setItem("nfw_signup_email", email); } catch {}
       window.location.href = "/auth/sign-up-success";
@@ -699,6 +718,29 @@ export default function SignUpFlow({ signupData, initialGift = null }: SignUpFlo
           {error && (
             <div className="mb-4 p-3 bg-nfw-citrine/20 border border-nfw-blackberry/20">
               <p className="text-nfw-blackberry text-sm">{error}</p>
+            </div>
+          )}
+
+          {step === 0 && existingAccount && (
+            <div className="mb-4 p-4 bg-nfw-citrine/20 border border-nfw-blackberry/20">
+              <p className="text-nfw-blackberry text-sm font-semibold mb-1">
+                You already have an account with this email
+              </p>
+              <p className="text-nfw-blackberry/70 text-sm mb-3">
+                Log in with your password (or Google, if that&apos;s how you signed up). If you
+                hadn&apos;t finished signing up, you&apos;ll pick up where you left off.
+              </p>
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                <Link
+                  href={pendingGift ? `/auth/login?next=${encodeURIComponent(`/redeem?code=${pendingGift}`)}` : "/auth/login"}
+                  className="font-bold text-nfw-blackberry underline"
+                >
+                  Log in
+                </Link>
+                <Link href="/auth/forgot-password" className="text-nfw-aubergine underline">
+                  Forgot your password?
+                </Link>
+              </div>
             </div>
           )}
 

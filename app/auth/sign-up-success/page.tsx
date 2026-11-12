@@ -55,7 +55,12 @@ function SignUpSuccessContent() {
 
       if (error) throw error;
 
-      setMessage({ type: "success", text: "Confirmation email resent! Check your inbox." });
+      // Supabase reports success without sending anything when the address is
+      // already confirmed, so point those people to log in.
+      setMessage({
+        type: "success",
+        text: "If this email still needs confirming, a new link is on its way. Already confirmed? Log in at nationalfundforwomen.org/auth/login.",
+      });
       setResendCooldown(60);
     } catch (err: any) {
       setMessage({ type: "error", text: err.message || "Failed to resend email. Please try again." });
