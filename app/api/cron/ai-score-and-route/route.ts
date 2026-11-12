@@ -186,16 +186,47 @@ async function processCycle(cycle: CycleRow, deadline: number): Promise<CycleRes
     result.routed[decision.queue] = (result.routed[decision.queue] ?? 0) + 1;
   };
 
+  // Prompt caching only pays off when a later call in this run reads the
+  // prefix the first call wrote (the 5-minute TTL doesn't survive until the
+  // next cron run). So: cache only when 2+ applications will be scored, and
+  // let the first call finish before the rest start, so they read the cache
+  // instead of all writing it in parallel. Estimate mirrors the scoring
+  // conditions; an overestimate just costs one 1.25x cache write.
+  const toScore = grants.filter((g) => {
+    if (g.review_queue || aiTotal.has(g.id) || g.ai_score_attempts >= MAX_SCORE_ATTEMPTS) return false;
+    if (g.ai_invalidated_at || (g.grant_scores ?? []).some((s) => s.reviewer_name === "first" && s.is_complete === true)) return false;
+    const e = codeEligibility(g.eligibility_checks);
+    return e.evaluated && !e.ineligible;
+  }).length;
+  const useCache = toScore >= 2;
+  let primed: Promise<void> | null = null;
+
+  const callScorer = (g: GrantRow) =>
+    scoreGrantRubric(
+      {
+        cycleName: cycle.cycle_name ?? "",
+        cycleDescription: cycle.description ?? "",
+        amountPerGrant: cycle.amount_per_grant ? Number(cycle.amount_per_grant) : null,
+        reviewerGuidance: cycle.reviewer_guidance,
+        whoAreYou: g.who_are_you ?? "",
+        biggestChallenge: g.biggest_challenge ?? "",
+        fundUsage: g.fund_usage ?? "",
+      },
+      { cache: useCache },
+    );
+
   const scoreOne = async (g: GrantRow) => {
-    const res = await scoreGrantRubric({
-      cycleName: cycle.cycle_name ?? "",
-      cycleDescription: cycle.description ?? "",
-      amountPerGrant: cycle.amount_per_grant ? Number(cycle.amount_per_grant) : null,
-      reviewerGuidance: cycle.reviewer_guidance,
-      whoAreYou: g.who_are_you ?? "",
-      biggestChallenge: g.biggest_challenge ?? "",
-      fundUsage: g.fund_usage ?? "",
-    });
+    let res: Awaited<ReturnType<typeof callScorer>>;
+    if (!useCache) {
+      res = await callScorer(g);
+    } else if (!primed) {
+      const first = callScorer(g);
+      primed = first.then(() => undefined, () => undefined);
+      res = await first;
+    } else {
+      await primed;
+      res = await callScorer(g);
+    }
     if (!res) {
       g.ai_score_attempts += 1;
       result.scoreFailed++;

@@ -15,9 +15,14 @@
  * score: an application with no AI score is never routed or held on the
  * strength of a guess. Callers decide what to do (retry, or send to Reviewer 1).
  *
- * Cost: the rubric and the cycle block (description + reviewer_guidance) are
- * sent as cached system blocks, so across a cycle only the applicant's answers
- * are paid at the full input rate. buildRubricRequest() returns plain Messages
+ * Cost: the rubric and the cycle block (description + reviewer_guidance) can
+ * be sent as cached system blocks, so across a cycle only the applicant's
+ * answers are paid at the full input rate. Caching only pays when a second
+ * call reads the prefix within the 5-minute TTL: a write costs 1.25x input, a
+ * read 0.1x. Callers that score one application at a time (the 5-minute cron
+ * in trickle mode) pass { cache: false } so they don't pay the write premium
+ * on every call. 2026-11-12: added after ~67% of live calls since Nov 6 wrote
+ * the cache and never read it. buildRubricRequest() returns plain Messages
  * API params so the same request works with messages.create() (live) and
  * messages.batches.create() (nightly / backtest, half price).
  */
@@ -161,14 +166,16 @@ Respond ONLY with the JSON object.`;
  * Messages API params for one application. Usable as-is for
  * client.messages.create(params) or as `params` in a batch request.
  */
-export function buildRubricRequest(input: RubricInput) {
+export function buildRubricRequest(input: RubricInput, opts: { cache?: boolean } = {}) {
+  const cache = opts.cache ?? true;
+  const cc = cache ? { cache_control: { type: "ephemeral" as const } } : {};
   return {
     model: RUBRIC_MODEL,
     max_tokens: MAX_TOKENS,
     temperature: 0,
     system: [
-      { type: "text" as const, text: RUBRIC_SYSTEM, cache_control: { type: "ephemeral" as const } },
-      { type: "text" as const, text: cycleBlock(input), cache_control: { type: "ephemeral" as const } },
+      { type: "text" as const, text: RUBRIC_SYSTEM, ...cc },
+      { type: "text" as const, text: cycleBlock(input), ...cc },
     ],
     messages: [{ role: "user" as const, content: userMessage(input) }],
   };
@@ -297,13 +304,16 @@ async function getClient(): Promise<any | null> {
  * Score one application synchronously. Returns null on any failure
  * (no API key, timeout, rate limit, unparseable output) — never a guess.
  */
-export async function scoreGrantRubric(input: RubricInput): Promise<RubricResult | null> {
+export async function scoreGrantRubric(
+  input: RubricInput,
+  opts: { cache?: boolean } = {},
+): Promise<RubricResult | null> {
   const client = await getClient();
   if (!client) return null;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const response = await client.messages.create(buildRubricRequest(input), {
+    const response = await client.messages.create(buildRubricRequest(input, opts), {
       signal: controller.signal as any,
     });
     const result = resultFromResponse(response);
