@@ -10,7 +10,6 @@ export interface AiSettingsUpdate {
   ai_score_cutoff?: number | null;
   ai_sample_rate?: number;
   reviewer2_cap?: number | null;
-  reviewer2_discussion_slots?: number;
 }
 
 const blank = (v: unknown) => v === null || v === undefined || (typeof v === "string" && v.trim() === "");
@@ -43,11 +42,6 @@ export function parseAiSettings(body: Record<string, unknown>): { update: AiSett
       if (!Number.isInteger(n) || n <= 0) return { update: u, error: "Reviewer 2 cap must be a whole number above 0, or blank for no cap." };
       u.reviewer2_cap = n;
     }
-  }
-  if ("reviewer2_discussion_slots" in body && !blank(body.reviewer2_discussion_slots)) {
-    const n = Number(body.reviewer2_discussion_slots);
-    if (!Number.isInteger(n) || n < 0) return { update: u, error: "Needs Discussion slots must be a whole number, 0 or more." };
-    u.reviewer2_discussion_slots = n;
   }
   return { update: u };
 }

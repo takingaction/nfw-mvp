@@ -9,12 +9,12 @@
  * Cap (grant_cycles.reviewer2_cap, optional): with AI routing, Reviewer 1
  * mostly sees strong applications, so "everything >= 7" could exceed what
  * Reviewer 2 can read. With a cap, Reviewer 2 gets:
- *   1. up to reviewer2_discussion_slots "Needs Discussion" apps (highest
- *      Reviewer 1 score first), then
- *   2. the rest of the base set by Reviewer 1 score, up to the cap.
+ *   1. every "Needs Discussion" app, whatever its score. These do not count
+ *      toward the cap.
+ *   2. the unflagged apps scored 7+, by Reviewer 1 score, up to the cap.
  * Applications tied with the last one taken are all included, so two apps
- * Reviewer 1 scored the same are never split by an arbitrary order. The total
- * can therefore exceed the cap by the size of that tie.
+ * Reviewer 1 scored the same are never split by an arbitrary order. The
+ * score-based part can therefore exceed the cap by the size of that tie.
  */
 
 export const REVIEWER2_MIN_SCORE = 7;
@@ -33,7 +33,6 @@ export interface Reviewer2Candidate {
 
 export interface Reviewer2Settings {
   reviewer2_cap?: number | null;
-  reviewer2_discussion_slots?: number | null;
 }
 
 function firstScore(g: Reviewer2Candidate): Reviewer2Score | undefined {
@@ -54,19 +53,15 @@ export function meetsReviewer2Bar(g: Reviewer2Candidate): boolean {
 export function reviewer2Scope(grants: Reviewer2Candidate[], cycle: Reviewer2Settings | null | undefined): Set<string> {
   const base = grants.filter(meetsReviewer2Bar);
   const cap = cycle?.reviewer2_cap ?? null;
-  if (!cap || cap <= 0 || base.length <= cap) return new Set(base.map((g) => g.id));
+  if (!cap || cap <= 0) return new Set(base.map((g) => g.id));
 
+  // 1. Every "Needs Discussion" app, outside the cap.
+  const chosen = new Set(base.filter((g) => firstScore(g)?.needs_discussion === true).map((g) => g.id));
+
+  // 2. Unflagged apps by score, up to the cap.
   const byScore = (a: Reviewer2Candidate, b: Reviewer2Candidate) => total(b) - total(a);
-  const chosen = new Set<string>();
-
-  // 1. Reserved "Needs Discussion" slots.
-  const slots = Math.min(Math.max(cycle?.reviewer2_discussion_slots ?? 0, 0), cap);
-  const flagged = base.filter((g) => firstScore(g)?.needs_discussion === true).sort(byScore);
-  takeWithTies(flagged, slots, chosen);
-
-  // 2. Fill the rest by score.
   const rest = base.filter((g) => !chosen.has(g.id)).sort(byScore);
-  takeWithTies(rest, cap - chosen.size, chosen);
+  takeWithTies(rest, cap, chosen);
   return chosen;
 }
 

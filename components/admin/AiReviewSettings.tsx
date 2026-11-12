@@ -14,7 +14,6 @@ export interface AiReviewValues {
   ai_score_cutoff: string; // "" = shadow mode
   ai_sample_rate: string; // percent
   reviewer2_cap: string; // "" = no cap
-  reviewer2_discussion_slots: string;
 }
 
 export function aiReviewValuesFrom(data: Record<string, unknown>): AiReviewValues {
@@ -24,7 +23,6 @@ export function aiReviewValuesFrom(data: Record<string, unknown>): AiReviewValue
     ai_score_cutoff: num(data.ai_score_cutoff),
     ai_sample_rate: data.ai_sample_rate === null || data.ai_sample_rate === undefined ? "5" : String(Math.round(Number(data.ai_sample_rate) * 1000) / 10),
     reviewer2_cap: num(data.reviewer2_cap),
-    reviewer2_discussion_slots: num(data.reviewer2_discussion_slots ?? 10) || "10",
   };
 }
 
@@ -135,21 +133,8 @@ export default function AiReviewSettings({ cycleId, values, onChange, labelClass
                 className={inputClass}
               />
               <p className="text-xs text-nfw-blackberry/50 mt-1">
-                Top applications by Reviewer 1 score sent to Reviewer 2. Blank = everything scored 7+ or flagged.
-              </p>
-            </div>
-            <div>
-              <label className={labelClass}>…of which Needs Discussion</label>
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={values.reviewer2_discussion_slots}
-                onChange={(e) => set({ reviewer2_discussion_slots: e.target.value })}
-                className={inputClass}
-              />
-              <p className="text-xs text-nfw-blackberry/50 mt-1">
-                Slots within the cap reserved for applications Reviewer 1 flags.
+                Top applications scored 7+ by Reviewer 1 sent to Reviewer 2. Everything she flags &ldquo;Needs
+                Discussion&rdquo; also goes, on top of the cap. Blank = everything scored 7+ or flagged.
               </p>
             </div>
           </div>

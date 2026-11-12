@@ -40,7 +40,7 @@ export async function GET(
     // Get cycle to check if first reviewer is complete
     const { data: cycle } = await supabaseAdmin
       .from("grant_cycles")
-      .select("scoring_started_at, scoring_completed_at, end_date, selection_method, reviewer2_cap, reviewer2_discussion_slots")
+      .select("scoring_started_at, scoring_completed_at, end_date, selection_method, reviewer2_cap")
       .eq("id", cycleId)
       .single();
 

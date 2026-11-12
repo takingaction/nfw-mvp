@@ -87,7 +87,7 @@ export async function POST(
     // completed, then lib/grant-reviewer2-scope.ts.
     const { data: r2Settings } = await supabaseAdmin
       .from("grant_cycles")
-      .select("reviewer2_cap, reviewer2_discussion_slots")
+      .select("reviewer2_cap")
       .eq("id", cycleId)
       .single();
     const scopeIds = reviewer2Scope(grantsWithScores.filter((g) => g.rachel_complete), r2Settings);
