@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import getAdminClient from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/adminCheck";
 import { sendIncompleteMemberEmail, fetchTemplateWithActiveCheck } from "@/lib/email";
 import { getPreRenderedHtmlAdmin } from "@/lib/email-blocks/publish";
 
 const BATCH_DELAY_MS = 200;
+
+// The proxy lets admins, reviewers and scoped users into /api/admin/*. This
+// tool lists members' emails and sends email on NFW's behalf, so it is for
+// full admins only (the /admin/incomplete-members page already requires is_admin).
+async function forbiddenUnlessAdmin() {
+  const adminCheck = await requireAdmin();
+  return adminCheck.authorized ? null : NextResponse.json({ error: "Forbidden" }, { status: 403 });
+}
 
 /**
  * GET /api/admin/bulk/incomplete-members
@@ -12,6 +21,9 @@ const BATCH_DELAY_MS = 200;
  * Uses the same query logic as admin/members page.
  */
 export async function GET() {
+  const forbidden = await forbiddenUnlessAdmin();
+  if (forbidden) return forbidden;
+
   try {
     const supabase = getAdminClient();
 
@@ -92,6 +104,9 @@ export async function GET() {
  * Processes in batches with delays between sends.
  */
 export async function POST(request: NextRequest) {
+  const forbidden = await forbiddenUnlessAdmin();
+  if (forbidden) return forbidden;
+
   try {
     const supabase = getAdminClient();
 
@@ -190,10 +205,15 @@ export async function POST(request: NextRequest) {
       const member = members[i];
 
       try {
-        await sendIncompleteMemberEmail({
+        // sendIncompleteMemberEmail reports failure in its result rather than
+        // throwing, so check it before marking the member as emailed.
+        const sendResult = await sendIncompleteMemberEmail({
           to: member.email,
           name: member.full_name || "Member",
         });
+        if (!sendResult.success) {
+          throw new Error(sendResult.error || "Failed to send email");
+        }
 
         // Mark email as sent
         const { error: updateError } = await supabase
@@ -241,6 +261,9 @@ export async function POST(request: NextRequest) {
  * Sends reengagement email to a single incomplete member.
  */
 export async function PUT(request: NextRequest) {
+  const forbidden = await forbiddenUnlessAdmin();
+  if (forbidden) return forbidden;
+
   try {
     const { searchParams } = new URL(request.url);
     const memberId = searchParams.get("memberId");
@@ -294,17 +317,27 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Send email
-    await sendIncompleteMemberEmail({
+    // Send email (failure comes back in the result; it doesn't throw)
+    const sendResult = await sendIncompleteMemberEmail({
       to: member.email,
       name: member.full_name || "Member",
     });
+    if (!sendResult.success) {
+      console.error(`[admin/bulk/incomplete-members] Failed to send to ${member.email}:`, sendResult.error);
+      return NextResponse.json(
+        { error: `Email was not sent (${sendResult.error || "unknown error"}). The member was not marked as emailed.` },
+        { status: 502 }
+      );
+    }
 
     // Mark email as sent
-    await supabase
+    const { error: updateError } = await supabase
       .from("profiles")
       .update({ incomplete_email_sent_at: new Date().toISOString() })
       .eq("id", memberId);
+    if (updateError) {
+      console.error(`[admin/bulk/incomplete-members] Failed to update sent timestamp for ${member.email}:`, updateError);
+    }
 
     return NextResponse.json({
       success: true,
