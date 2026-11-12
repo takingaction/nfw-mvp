@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 
 import { SITE_TZ } from "@/lib/dates";
+import StuckSignupsPanel from "@/components/admin/StuckSignupsPanel";
 interface IncompleteMember {
   id: string;
   full_name: string | null;
@@ -156,6 +157,8 @@ export default function AdminIncompleteMembersClient() {
             Send reengagement emails to members who haven&apos;t completed their signup
           </p>
         </div>
+
+        <StuckSignupsPanel />
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">

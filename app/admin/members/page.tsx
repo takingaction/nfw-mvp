@@ -2,6 +2,7 @@ import getAdminClient from "@/lib/supabase/admin";
 import { requireAdminOrScope } from "@/lib/adminCheck";
 import { Suspense } from "react";
 import AdminMembersClient from "@/components/admin/AdminMembersClient";
+import AccountLookup from "@/components/admin/AccountLookup";
 // BackfillButton removed - no longer needed
 
 async function AdminMembersContent({ page }: { page: number }) {
@@ -139,6 +140,8 @@ async function AdminMembersContent({ page }: { page: number }) {
             Download CSV
           </a>
         </div>
+
+        <AccountLookup />
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
