@@ -213,7 +213,7 @@ function buildCsv(d: ExperienceBaseline): string {
   rows.push(["Meta", "Data refreshed", d.meta.refreshed_at ?? "", ""]);
   rows.push(["Activation", "Cohort (exact start, from)", a.cohort_size, a.cohort_from]);
   for (const w of a.windows ?? []) {
-    rows.push(["Activation", `Engaged within ${w.days === 0 ? "24 hours" : `${w.days} days`} (%)`, w.pct, `${w.activated} of ${w.eligible}`]);
+    rows.push(["Activation", `First engaged within ${w.days === 0 ? "24 hours" : `${w.days} days`} of joining (%)`, w.pct, `${w.activated} of ${w.eligible} members who joined at least that long ago`]);
   }
   rows.push(["Activation", "Median days to first engagement", a.median_days_to_first, ""]);
   rows.push(["Activation", "75th percentile days to first engagement", a.p75_days_to_first, ""]);
@@ -363,7 +363,7 @@ export default function MemberExperienceTab() {
       {/* Activation */}
       <Panel
         title="Activation"
-        note={`New members starting ${a.cohort_from} or later with an exact start date (${fmtNum(a.cohort_size)} members). Each window only counts members who have been members for that long.`}
+        note={`New members starting ${a.cohort_from} or later with an exact start date (${fmtNum(a.cohort_size)} members). Engaged = completed a microgrant application, Store claim or perk redemption.`}
       >
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Kpi label="Median time to first engagement" value={fmtDays(a.median_days_to_first)} sub={`75% within ${fmtDays(a.p75_days_to_first)}`} />
@@ -380,15 +380,21 @@ export default function MemberExperienceTab() {
           />
         </div>
         <div className="grid lg:grid-cols-2 gap-6">
-          <Table
-            head={["Window", "Members", "Engaged", "%"]}
-            rows={(a.windows ?? []).map((w) => [
-              w.days === 0 ? "Within 24 hours" : `Within ${w.days} days`,
-              fmtNum(w.eligible),
-              fmtNum(w.activated),
-              fmtPct(w.pct),
-            ])}
-          />
+          <div>
+            <Table
+              head={["Window", "Joined ≥ this long ago", "First engaged within window", "%"]}
+              rows={(a.windows ?? []).map((w) => [
+                w.days === 0 ? "24 hours" : `${w.days} days`,
+                fmtNum(w.eligible),
+                fmtNum(w.activated),
+                fmtPct(w.pct),
+              ])}
+            />
+            <p className="text-xs text-nfw-blackberry/60 mt-2">
+              Each row is a different group: only members whose full window has passed are counted, so newer
+              members drop out of the longer windows. Compare rows by %, not by count.
+            </p>
+          </div>
           <Table
             head={["First program", "Members", "%"]}
             rows={a.first_program.map((p) => [programLabel(p.program), fmtNum(p.members), fmtPct(p.pct)])}
