@@ -3,7 +3,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { refreshStripeLiveCache } from "@/lib/stripe-reconciliation";
 
 /**
- * Cron: refresh the Stripe Live reconciliation cache every 10 minutes.
+ * Cron: refresh the Stripe Live reconciliation cache and subscription snapshot hourly.
  *
  * Does exactly what the aubergine "Refresh" button on /admin/backfill/stripe does
  * (GET /api/admin/backfill/stripe/reconcile?fresh=true), minus the response
@@ -12,12 +12,14 @@ import { refreshStripeLiveCache } from "@/lib/stripe-reconciliation";
  * Skips if an admin-queued stripe_live background job is currently
  * pending/processing so the two don't race on the same cache row.
  *
- * Schedule: vercel.json → "*\/10 * * * *"
+ * Schedule: vercel.json → "7 * * * *" (hourly; the page's Refresh button
+ * fetches on demand).
  */
 
 export const dynamic = "force-dynamic";
-// ~2,700 active subs = 28 Stripe pages ≈ 40s as of 2026-09-19. Leave headroom for growth.
-export const maxDuration = 120;
+// One Stripe list call per 100 subscriptions (customers expanded inline):
+// ~80 calls at ~7,500 subscriptions. Headroom for growth.
+export const maxDuration = 300;
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 export default async function BackfillStripePage() {
   const supabase = await createClient();
@@ -25,17 +26,19 @@ export default async function BackfillStripePage() {
     <div className="min-h-screen bg-nfw-dove">
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <a href="/admin" className="text-nfw-aubergine hover:underline font-ui text-sm">
+          <Link href="/admin" className="text-nfw-aubergine hover:underline font-ui text-sm">
             ← Back to Admin
-          </a>
+          </Link>
         </div>
 
         <h1 className="font-serif text-3xl text-nfw-aubergine mb-2">
-          Stripe Revenue Backfill
+          Stripe Sync
         </h1>
         <p className="font-serif text-nfw-blackberry/70 mb-8">
-          Match Stripe customers to profiles and calculate lifetime value
+          Where our paid members and Stripe&apos;s subscriptions disagree, and why
         </p>
+
+        <StripeSyncReport />
 
         <BackfillClient />
       </div>
@@ -44,3 +47,4 @@ export default async function BackfillStripePage() {
 }
 
 import BackfillClient from "./BackfillClient";
+import StripeSyncReport from "./StripeSyncReport";

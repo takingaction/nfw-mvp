@@ -1,5 +1,9 @@
 import Stripe from "stripe";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import type { StripeSubRecord, StripeTier } from "@/lib/stripe-member-reconciliation";
+
+/** Row id of the per-subscription snapshot in stripe_subscriptions_cache. */
+export const SUBSCRIPTION_SNAPSHOT_ID = "latest";
 
 /**
  * Shared logic for refreshing the "Stripe Live" reconciliation cache.
@@ -8,10 +12,11 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
  *  - GET /api/admin/backfill/stripe/reconcile?fresh=true  (the aubergine "Refresh" button)
  *  - GET /api/cron/refresh-reconciliation                  (every 10 minutes)
  *
- * Pages through all active Stripe subscriptions, tallies contributing ($15) vs
- * founding ($100), and upserts the result into the latest completed
- * `reconciliation_jobs` row with job_type='stripe_live'. That row is the cache
- * that /admin/backfill/stripe and /admin/analytics read from.
+ * Pages through Stripe subscriptions (customers expanded in the same call),
+ * tallies active contributing ($15) vs founding ($100) into the latest
+ * completed `reconciliation_jobs` row with job_type='stripe_live' (read by
+ * /admin/backfill/stripe and /admin/analytics), and stores a per-subscription
+ * snapshot in stripe_subscriptions_cache for the member-by-member comparison.
  */
 
 export interface StripeLiveTier {
@@ -28,8 +33,6 @@ export interface StripeLiveData {
 }
 
 const STRIPE_PAGE_DELAY_MS = 50;
-const CUSTOMER_LOOKUP_DELAY_MS = 50;
-const CUSTOMER_LOOKUP_BATCH_SIZE = 25; // concurrency cap per batch; well under Stripe's 100 req/sec
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 let stripeClient: Stripe | null = null;
@@ -53,118 +56,99 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/** Tier from a subscription's first price. "other" = neither known price. */
+function subscriptionTier(sub: Stripe.Subscription): StripeTier {
+  const price = sub.items?.data?.[0]?.price;
+  const amount = price?.unit_amount ?? 0;
+  if (amount === 10000 || price?.id === process.env.STRIPE_PRICE_FOUNDING) return "founding";
+  if (amount === 1500 || price?.id === process.env.STRIPE_PRICE_CONTRIBUTING) return "contributing";
+  return "other";
+}
+
+// Statuses fetched for the member-by-member comparison. incomplete_expired
+// (abandoned checkouts) is left out: it never meant a membership.
+const SNAPSHOT_STATUSES: Stripe.SubscriptionListParams.Status[] = [
+  "active",
+  "trialing",
+  "past_due",
+  "unpaid",
+  "canceled",
+  "incomplete",
+  "paused",
+];
+
 /**
- * Fetch all active subscriptions from Stripe, compute tier totals, and write
- * them to the stripe_live cache row. Returns the computed data.
+ * Fetch subscriptions from Stripe, compute tier totals, and write them to the
+ * stripe_live cache row. Also writes a per-subscription snapshot to
+ * stripe_subscriptions_cache (id 'latest') for the member-by-member
+ * comparison on /admin/backfill/stripe. Returns the tier totals.
  */
 export async function refreshStripeLiveCache(): Promise<StripeLiveData> {
   const stripe = getStripe();
   const supabaseAdmin = getSupabaseAdmin();
 
-  // Fetch all active subscriptions directly from Stripe. While we iterate, also
-  // collect a per-email tier map so we can compute "In Stripe, No Profile" once
-  // the page-loop finishes.
-  //
-  // Email resolution: Stripe subscriptions don't carry email directly. When
-  // billing_details.email is missing we batch-look-up the customer
-  // asynchronously after pagination completes. Sequential lookups cost
-  // ~200s for ~1,890 calls (~70% of 2,700 active subs at 50ms each) which
-  // exceeds Vercel's 120s ceiling on refresh-reconciliation. Batching in
-  // chunks of 25 brings this to ~15s of Stripe API time while staying under
-  // the 100 req/sec rate limit.
-  const subscriptions: Stripe.Subscription[] = [];
+  // Customers are expanded in the list call: subscriptions don't carry an
+  // email, and the old approach (one customers.retrieve per subscription,
+  // ~7,000 calls) ran past the cron's time limit.
+  const snapshot: StripeSubRecord[] = [];
+  const activeSubs: Stripe.Subscription[] = [];
   const stripeEmailMap = new Map<string, "contributing" | "founding">(); // first occurrence wins
-  const subsNeedingEmailLookup: { customerId: string; tier: "contributing" | "founding" }[] = [];
+  let apiCalls = 0;
+  let deletedOrNoEmail = 0;
 
-  let hasMore = true;
-  let startingAfter: string | undefined;
+  for (const status of SNAPSHOT_STATUSES) {
+    let startingAfter: string | undefined;
+    for (;;) {
+      const params: Stripe.SubscriptionListParams = { limit: 100, status, expand: ["data.customer"] };
+      if (startingAfter) params.starting_after = startingAfter;
+      const response = await stripe.subscriptions.list(params);
+      apiCalls++;
 
-  while (hasMore) {
-    const params: Stripe.SubscriptionListParams = { limit: 100, status: "active" };
-    if (startingAfter) params.starting_after = startingAfter;
+      for (const sub of response.data) {
+        const customer = sub.customer;
+        const customerId = typeof customer === "string" ? customer : customer.id;
+        const email =
+          typeof customer !== "string" && !("deleted" in customer && customer.deleted) && customer.email
+            ? customer.email.toLowerCase()
+            : null;
+        if (!email) deletedOrNoEmail++;
+        const tier = subscriptionTier(sub);
 
-    const response = await stripe.subscriptions.list(params);
-    subscriptions.push(...response.data);
+        snapshot.push({
+          id: sub.id,
+          customer: customerId,
+          email,
+          status: sub.status,
+          tier,
+          amount: sub.items?.data?.[0]?.price?.unit_amount ?? null,
+          cancelScheduled: !!sub.cancel_at_period_end || sub.cancel_at != null,
+          created: sub.created,
+          endedAt: sub.ended_at ?? null,
+        });
 
-    for (const sub of response.data) {
-      const item = sub.items?.data?.[0];
-      const priceAmount = item?.price?.unit_amount || 0;
-      const isFounding =
-        priceAmount === 10000 ||
-        item?.price?.id === process.env.STRIPE_PRICE_FOUNDING ||
-        (priceAmount === 100 && item?.price?.recurring?.interval === "year");
-      const tier: "contributing" | "founding" = isFounding ? "founding" : "contributing";
-
-      const subAny = sub as any;
-      const billingEmail: string = subAny.billing_details?.email || "";
-      if (billingEmail) {
-        const lower = billingEmail.toLowerCase();
-        if (!stripeEmailMap.has(lower)) {
-          stripeEmailMap.set(lower, tier);
+        if (sub.status === "active") {
+          activeSubs.push(sub);
+          // Legacy tally: anything not founding counts as contributing.
+          if (email && !stripeEmailMap.has(email)) {
+            stripeEmailMap.set(email, tier === "founding" ? "founding" : "contributing");
+          }
         }
-        continue;
       }
 
-      // Email missing from subscription — schedule a customer lookup for the
-      // post-pagination batch loop.
-      const customerId = typeof sub.customer === "string" ? sub.customer : null;
-      if (customerId) {
-        subsNeedingEmailLookup.push({ customerId, tier });
-      }
-    }
-
-    hasMore = response.has_more;
-    if (hasMore && response.data.length > 0) {
+      if (!response.has_more || response.data.length === 0) break;
       startingAfter = response.data[response.data.length - 1].id;
-    }
-    await sleep(STRIPE_PAGE_DELAY_MS);
-  }
-
-  // Batched customer lookups. Promise.allSettled keeps every successful
-  // lookup even if individual calls fail (transient Stripe 5xx, rate
-  // limits, etc.) — matches the previous try/catch-and-continue semantics.
-  console.log(
-    `[refreshStripeLiveCache] Batched lookups for ${subsNeedingEmailLookup.length} customers in chunks of ${CUSTOMER_LOOKUP_BATCH_SIZE}`,
-  );
-  for (let i = 0; i < subsNeedingEmailLookup.length; i += CUSTOMER_LOOKUP_BATCH_SIZE) {
-    const batch = subsNeedingEmailLookup.slice(i, i + CUSTOMER_LOOKUP_BATCH_SIZE);
-    const results = await Promise.allSettled(
-      batch.map((entry) => stripe.customers.retrieve(entry.customerId)),
-    );
-    for (let j = 0; j < results.length; j++) {
-      const r = results[j];
-      if (r.status !== "fulfilled") continue;
-      const customer = r.value;
-      if (customer.deleted || !customer.email) continue;
-      const lower = customer.email.toLowerCase();
-      if (!stripeEmailMap.has(lower)) {
-        // First-occurrence tier wins; if a customer has multiple subs across
-        // tiers (rare), the first sub we encountered determines the tier.
-        stripeEmailMap.set(lower, batch[j].tier);
-      }
-    }
-    if (i + CUSTOMER_LOOKUP_BATCH_SIZE < subsNeedingEmailLookup.length) {
-      await sleep(CUSTOMER_LOOKUP_DELAY_MS);
+      await sleep(STRIPE_PAGE_DELAY_MS);
     }
   }
 
-  // Calculate totals
+  // Calculate totals (active subscriptions, as before)
   let contributingCount = 0;
   let contributingTotal = 0;
   let foundingCount = 0;
   let foundingTotal = 0;
 
-  for (const sub of subscriptions) {
-    const item = sub.items?.data?.[0];
-    const priceId = item?.price?.id;
-    const priceAmount = item?.price?.unit_amount || 0;
-
-    const isFounding =
-      priceAmount === 10000 ||
-      priceId === process.env.STRIPE_PRICE_FOUNDING ||
-      (priceAmount === 100 && item?.price?.recurring?.interval === "year");
-
-    if (isFounding) {
+  for (const sub of activeSubs) {
+    if (subscriptionTier(sub) === "founding") {
       foundingCount++;
       foundingTotal += 100;
     } else {
@@ -172,6 +156,18 @@ export async function refreshStripeLiveCache(): Promise<StripeLiveData> {
       contributingTotal += 15;
     }
   }
+
+  const fetchedAt = new Date().toISOString();
+  const { error: snapshotError } = await supabaseAdmin.from("stripe_subscriptions_cache").upsert({
+    id: SUBSCRIPTION_SNAPSHOT_ID,
+    subscriptions_json: snapshot,
+    fetched_at: fetchedAt,
+    subscription_count: snapshot.length,
+    api_calls: apiCalls,
+    incomplete: false,
+    warning: deletedOrNoEmail > 0 ? `${deletedOrNoEmail} subscriptions have a deleted customer or no email` : null,
+  });
+  if (snapshotError) throw new Error(`Failed to write subscription snapshot: ${snapshotError.message}`);
 
   // "In Stripe, No Profile" — fetch all contributing/founding profile emails
   // (paginated past 1000), then diff against the Stripe email set.
@@ -214,7 +210,7 @@ export async function refreshStripeLiveCache(): Promise<StripeLiveData> {
       true_total: contributingTotal + foundingTotal,
       total: contributingTotal + foundingTotal,
     },
-    fetchedAt: new Date().toISOString(),
+    fetchedAt,
   };
 
   // Update/create cache entry (latest completed stripe_live job row)

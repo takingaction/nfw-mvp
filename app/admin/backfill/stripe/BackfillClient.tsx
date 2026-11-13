@@ -850,7 +850,7 @@ export default function BackfillClient() {
   }, []);
 
   // Refresh Reconciliation - direct fetch from Stripe (~40s at ~2,700 active subs).
-  // The same work runs automatically every 10 min via /api/cron/refresh-reconciliation.
+  // The same work runs automatically every hour via /api/cron/refresh-reconciliation.
   const handleRefreshReconciliation = useCallback(async () => {
     setReconciliationLoading(true);
     setMessage("Fetching fresh data from Stripe...");
@@ -1899,7 +1899,7 @@ export default function BackfillClient() {
             {reconciliation?.summary?.stripe_live?.fetchedAt && (
               <span
                 className="text-xs text-nfw-blackberry/50 font-ui mr-1"
-                title="Auto-refreshes every 10 minutes via cron, or on demand with Refresh"
+                title="Auto-refreshes hourly via cron, or on demand with Refresh"
               >
                 Last refreshed:{" "}
                 {new Date(reconciliation.summary.stripe_live.fetchedAt).toLocaleString("en-US", {

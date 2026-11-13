@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/adminCheck";
+import getAdminClient from "@/lib/supabase/admin";
 
 export async function GET() {
-  const supabase = await createClient();
+  // The edge proxy also admits grant reviewers to /api/admin; this is admin-only.
+  const admin = await requireAdmin();
+  if (!admin.authorized) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+  const supabase = getAdminClient();
 
   // Get all successful membership payments with pagination
   const contributingUserIds = new Set<string>();
