@@ -96,6 +96,10 @@ type Redemption = {
   created_at: string | null;
 };
 
+// Same definitions as the Experience tab (migration 217).
+const APPROVED_GRANT_STATUSES = ["approved", "payment_pending", "payment_sent"];
+const SUCCESSFUL_ZDS_STATUSES = ["completed", "fulfilled"];
+
 const COLORS = [
   "#3E145F",
   "#7786BE",
@@ -243,9 +247,13 @@ export default function AdminAnalyticsClient({
     pending: number;
     resolved: number;
     closed: number;
+    truncated?: boolean;
+    fetchedAt?: string;
   } | null>(null);
   const [freshdeskLoading, setFreshdeskLoading] = useState(false);
   const [freshdeskError, setFreshdeskError] = useState<string | null>(null);
+  // Bumped by the Retry button to re-run the Freshdesk fetch.
+  const [freshdeskReload, setFreshdeskReload] = useState(0);
 
   // Stripe live stats
   const [stripeLiveStats, setStripeLiveStats] = useState<{
@@ -276,9 +284,12 @@ export default function AdminAnalyticsClient({
   // Fetch Freshdesk stats when support tab is active or date range changes
   useEffect(() => {
     if (tab !== "support") return;
-    if (freshdeskLoading) return; // Already loading, skip
 
+    // A newer range (or leaving the tab) supersedes this request; its result
+    // is ignored instead of overwriting newer data.
+    let cancelled = false;
     setFreshdeskLoading(true);
+    setFreshdeskError(null);
 
     // Calculate actual start date for Freshdesk API
     // Freshdesk uses updated_since for date filtering
@@ -317,19 +328,26 @@ export default function AdminAnalyticsClient({
     const queryString = params.toString();
 
     fetch(`/api/admin/analytics/freshdesk${queryString ? `?${queryString}` : ""}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch Freshdesk stats");
-        return res.json();
+      .then(async (res) => {
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(data?.error || "Failed to fetch Freshdesk stats");
+        return data;
       })
       .then((data) => {
+        if (cancelled) return;
         setFreshdeskStats(data);
         setFreshdeskLoading(false);
       })
       .catch((err) => {
+        if (cancelled) return;
         setFreshdeskError(err.message);
         setFreshdeskLoading(false);
       });
-  }, [tab, dateRange, customStartDate, customEndDate]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, dateRange, customStartDate, customEndDate, freshdeskReload]);
 
   // Calculate cutoff based on selected date range
   const cutoff = useMemo(() => {
@@ -451,29 +469,8 @@ export default function AdminAnalyticsClient({
     ).length;
   }, [filteredProfiles]);
 
-  // Paid members (non-admin only) - defined early for use in upgradedPercent
-  const paidCount = useMemo(() => {
-    return filteredProfiles.filter(
-      (p) =>
-        p.is_admin !== true &&
-        (p.membership_level === "contributing" || p.membership_level === "founding")
-    ).length;
-  }, [filteredProfiles]);
 
-  const upgradedCount = useMemo(() => {
-    return filteredProfiles.filter((p) => {
-      if (p.is_admin) return false;
-      if (!p.first_paid_at || !p.joined_at) return false;
-      const daysDiff =
-        (new Date(p.first_paid_at).getTime() - new Date(p.joined_at).getTime()) /
-        (1000 * 60 * 60 * 24);
-      return daysDiff >= 1;
-    }).length;
-  }, [filteredProfiles]);
 
-  const upgradedPercent = useMemo(() => {
-    return paidCount > 0 ? Math.round((upgradedCount / paidCount) * 100) : 0;
-  }, [paidCount, upgradedCount]);
 
   // Upgrade stats - members who upgraded from one tier to another.
   // Excludes admins, incomplete profiles, and (for free→paid) abandoned profiles.
@@ -609,9 +606,6 @@ export default function AdminAnalyticsClient({
     URL.revokeObjectURL(url);
   };
 
-  const estimatedMRR = useMemo(() => {
-    return Math.round((contributingCount * 15 + foundingCount * 100) / 12);
-  }, [contributingCount, foundingCount]);
 
   // Membership revenue (annual)
   const membershipRevenue = useMemo(() => {
@@ -643,15 +637,6 @@ export default function AdminAnalyticsClient({
       .reduce((sum, p) => sum + (p.amount || 0), 0);
   }, [membershipPayments]);
 
-  // Period upgrades count
-  const periodUpgradesCount = useMemo(() => {
-    if (!membershipUpgrades || membershipUpgrades.length === 0) return 0;
-    return membershipUpgrades.filter((u) => {
-      if (!u.created_at) return false;
-      const upgradeDate = new Date(u.created_at);
-      return upgradeDate >= cutoff && upgradeDate <= endDate;
-    }).length;
-  }, [membershipUpgrades, cutoff, endDate]);
 
   // Waterfall categories (mutually exclusive)
   // Admin count (separate, not in other categories)
@@ -708,16 +693,6 @@ export default function AdminAnalyticsClient({
     ).length;
   }, [filteredProfiles]);
 
-  // Incomplete = profile not complete OR (free but never submitted contact form for free membership)
-  const incompleteCount = useMemo(() => {
-    return filteredProfiles.filter(
-      (p) =>
-        p.profile_completed !== true ||
-        (p.membership_level === "free" &&
-         p.is_approved_free_member !== true &&
-         p.free_membership_contact_submitted === false)
-    ).length;
-  }, [filteredProfiles]);
 
   // Abandoned = free member who completed profile but abandoned at step 3
   const abandonedCount = useMemo(() => {
@@ -755,17 +730,19 @@ export default function AdminAnalyticsClient({
     return total > 0 ? Math.round((freeFiltered / total) * 100) : 0;
   }, [filteredProfiles]);
 
-  // Retention rate: members who joined 12+ months ago and still active
-  const retentionRate = useMemo(() => {
+  // Retention rate: members who joined 12+ months ago and are still active.
+  // null until anyone has been a member for 12 months (shown as "—", not 0%).
+  const retentionRate = useMemo<number | null>(() => {
     const twelveMonthsAgo = new Date();
     twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
 
     const oldMembers = profiles.filter((p) => {
-      if (!p.joined_at) return false;
+      if (p.is_admin || !p.joined_at) return false;
+      if (p.membership_level !== "free" && p.membership_level !== "contributing" && p.membership_level !== "founding") return false;
       return new Date(p.joined_at) <= twelveMonthsAgo;
     });
 
-    if (oldMembers.length === 0) return 0;
+    if (oldMembers.length === 0) return null;
 
     const retainedMembers = oldMembers.filter((p) => {
       // Still active if: paid with active status OR free with approved status
@@ -778,26 +755,38 @@ export default function AdminAnalyticsClient({
     return Math.round((retainedMembers.length / oldMembers.length) * 100);
   }, [profiles]);
 
-  // Churn: members who cancelled/expired in the period
+  // Churn: paid subscriptions that actually ended in the period.
+  // subscription_ends_at is also the current period end for active and
+  // canceling members, so only end dates already in the past count, and never
+  // for members whose subscription is still active.
   const churnCount = useMemo(() => {
+    const now = new Date();
     return profiles.filter((p) => {
-      if (!p.subscription_ends_at) return false;
-      // Churned if subscription ended in the period
-      return isInRange(p.subscription_ends_at);
+      if (p.is_admin || !p.subscription_ends_at) return false;
+      if (p.subscription_status === "active") return false;
+      const ended = new Date(p.subscription_ends_at);
+      return ended <= now && isInRange(p.subscription_ends_at);
     }).length;
   }, [profiles, isInRange]);
 
+  // Churn rate = churned / members who had paid by the end of the period.
   const churnRate = useMemo(() => {
-    // Calculate based on members at start of period (12 months ago or period start)
-    const periodStart = new Date();
-    periodStart.setFullYear(periodStart.getFullYear() - 1);
-    const membersAtStart = profiles.filter((p) => {
-      if (!p.joined_at) return false;
-      return new Date(p.joined_at) <= periodStart;
-    }).length;
+    const periodEnd = endDate;
+    const paidByEnd = profiles.filter(
+      (p) => !p.is_admin && p.first_paid_at && new Date(p.first_paid_at) <= periodEnd,
+    ).length;
+    return paidByEnd > 0 ? Math.round((churnCount / paidByEnd) * 1000) / 10 : 0;
+  }, [profiles, churnCount, endDate]);
 
-    return membersAtStart > 0 ? Math.round((churnCount / membersAtStart) * 100) : 0;
-  }, [profiles, churnCount]);
+  // All-time paid members (non-admin), for comparing against Stripe's live
+  // count. Stripe's count isn't date-filtered, so this one mustn't be either.
+  const paidMembersAllTime = useMemo(
+    () =>
+      profiles.filter(
+        (p) => !p.is_admin && (p.membership_level === "contributing" || p.membership_level === "founding"),
+      ).length,
+    [profiles],
+  );
 
   // Newsletter signups (filtered by period)
   const filteredNewsletterSignups = useMemo(() => {
@@ -857,27 +846,37 @@ export default function AdminAnalyticsClient({
       if (s === "approved") s = "Approved";
       else if (s === "not_approved") s = "Not Approved";
       else if (s === "payment_pending") s = "Payment Pending";
+      else if (s === "payment_sent") s = "Payment Sent";
       else if (s === "submitted") s = "Submitted";
       map[s] = (map[s] || 0) + 1;
     });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [filteredGrants]);
 
+  // Disbursed is dated by when the money went out (funded_at), not when the
+  // application was submitted.
   const totalFunded = useMemo(
     () =>
       grants
-        .filter((g) => g.status === "payment_sent" && isInRange(g.submitted_at) && !isGrantTestingOnly(g))
+        .filter((g) => g.status === "payment_sent" && isInRange(g.funded_at) && !isGrantTestingOnly(g))
         .reduce((sum, g) => sum + (g.amount_approved || 0), 0),
     [grants, isInRange, cycleTestingMap],
   );
 
-  const approvalRate = useMemo(() => {
-    const total = filteredGrants.length;
-    const approvals = filteredGrants.filter((g) =>
-      ["approved", "payment_sent"].includes(g.status || ""),
-    ).length;
-    return total > 0 ? Math.round((approvals / total) * 100) : 0;
-  }, [filteredGrants]);
+  // Approval rate counts decided applications only: applications still under
+  // review would otherwise drag it down. Same definition as the Experience tab.
+  const approvedGrantsCount = useMemo(
+    () => filteredGrants.filter((g) => APPROVED_GRANT_STATUSES.includes(g.status || "")).length,
+    [filteredGrants],
+  );
+  const decidedGrantsCount = useMemo(
+    () => approvedGrantsCount + filteredGrants.filter((g) => g.status === "not_approved").length,
+    [filteredGrants, approvedGrantsCount],
+  );
+  const approvalRate = useMemo(
+    () => (decidedGrantsCount > 0 ? Math.round((approvedGrantsCount / decidedGrantsCount) * 1000) / 10 : 0),
+    [approvedGrantsCount, decidedGrantsCount],
+  );
 
   // Number of grant cycles that were active during the selected date range (excluding testing-only)
   const isCycleTestingOnly = (c: GrantCycle) =>
@@ -917,18 +916,21 @@ export default function AdminAnalyticsClient({
       .map(([date, count]) => ({ date: date.slice(5), count }));
   }, [filteredRedemptions]);
 
+  // Store names come from the Access Perks feed and can contain HTML
+  // (e.g. "National<sup>®</sup>"). DOMParser builds an inert document: unlike
+  // innerHTML on a live-page element, no handler runs and no image loads.
   const stripHtml = (html: string): string => {
-    if (typeof window === "undefined") return html;
-    const div = document.createElement("div");
-    div.innerHTML = html;
-    return div.textContent || html;
+    if (typeof window === "undefined" || !html.includes("<")) return html;
+    const text = new DOMParser().parseFromString(html, "text/html").body.textContent;
+    return text || html;
   };
 
   const topOffers = useMemo(() => {
     const map: Record<string, { store: string; offer: string; count: number }> = {};
     filteredRedemptions.forEach((r) => {
       const store = stripHtml(r.store_name || "Unknown");
-      const offer = r.store_name ? `${r.store_name}: ${r.offer_title || r.offer_key}` : (r.offer_title || r.offer_key || "Unknown");
+      const title = stripHtml(r.offer_title || r.offer_key || "Unknown");
+      const offer = r.store_name ? `${store}: ${title}` : title;
       const key = offer;
       if (!map[key]) {
         map[key] = { store, offer, count: 0 };
@@ -938,7 +940,7 @@ export default function AdminAnalyticsClient({
     return Object.entries(map)
       .sort(([, a], [, b]) => b.count - a.count)
       .slice(0, 25)
-      .map(([key, { store, offer, count }]) => ({
+      .map(([, { store, offer, count }]) => ({
         store,
         offer,
         count,
@@ -973,7 +975,7 @@ export default function AdminAnalyticsClient({
     () =>
       filteredZdsClaims.filter(
         (c) =>
-          c.status === "fulfilled" || c.status === "delivered" || c.status === "completed",
+          SUCCESSFUL_ZDS_STATUSES.includes(c.status || ""),
       ),
     [filteredZdsClaims],
   );
@@ -983,7 +985,7 @@ export default function AdminAnalyticsClient({
     () =>
       zdsClaims.filter(
         (c) =>
-          c.status === "fulfilled" || c.status === "delivered" || c.status === "completed",
+          SUCCESSFUL_ZDS_STATUSES.includes(c.status || ""),
       ),
     [zdsClaims],
   );
@@ -1003,14 +1005,16 @@ export default function AdminAnalyticsClient({
     return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, count]) => ({ date: date.slice(5), count }));
-  }, [filteredZdsClaims]);
+  }, [successfulZdsClaims]);
 
   // Top ZDS products
   const topZdsProducts = useMemo(() => {
     const map: Record<string, number> = {};
     const productMap = new Map(shopifyProducts.map((p) => [p.shopify_product_id, p.title || "Unknown"]));
 
-    filteredZdsClaims.forEach((c) => {
+    // Successful claims only: rejected, cancelled and abandoned checkouts
+    // aren't products anyone received.
+    successfulZdsClaims.forEach((c) => {
       const title = productMap.get(c.shopify_product_id || "") || "Unknown Product";
       map[title] = (map[title] || 0) + 1;
     });
@@ -1021,7 +1025,7 @@ export default function AdminAnalyticsClient({
         product,
         count,
       }));
-  }, [filteredZdsClaims, shopifyProducts]);
+  }, [successfulZdsClaims, shopifyProducts]);
 
   // ZDS claims by status (excluding "created" - not a final state)
   const zdsClaimsByStatus = useMemo(() => {
@@ -1031,6 +1035,7 @@ export default function AdminAnalyticsClient({
       if (s !== "created") {
         // Map status values to display names
         if (s === "completed") s = "Completed";
+        else if (s === "fulfilled") s = "Fulfilled";
         else if (s === "rejected_invalid_user") s = "Rejected Invalid User";
         else if (s === "rejected_monthly_limit") s = "Rejected Monthly Limit";
         else if (s === "cancelled") s = "Cancelled";
@@ -1050,112 +1055,66 @@ export default function AdminAnalyticsClient({
     [nfwPerkRedemptions, isInRange],
   );
 
+  // Admins' own activity (testing) is left out of every engagement number.
+  const adminIds = useMemo(
+    () => new Set(profiles.filter((p) => p.is_admin).map((p) => p.id)),
+    [profiles],
+  );
+
+  // Engagement-tab activity: successful Store claims only (failed, rejected
+  // and abandoned checkouts aren't engagement), no admin activity.
+  const engagementGrants = useMemo(
+    () => filteredGrants.filter((g) => g.user_id && !adminIds.has(g.user_id)),
+    [filteredGrants, adminIds],
+  );
+  const engagementRedemptions = useMemo(
+    () => filteredRedemptions.filter((r) => r.user_id && !adminIds.has(r.user_id)),
+    [filteredRedemptions, adminIds],
+  );
+  const engagementZdsClaims = useMemo(
+    () => successfulZdsClaims.filter((c) => c.user_id && !adminIds.has(c.user_id)),
+    [successfulZdsClaims, adminIds],
+  );
+  const engagementNfwPerks = useMemo(
+    () => filteredNfwPerkRedemptions.filter((r) => r.user_id && !adminIds.has(r.user_id)),
+    [filteredNfwPerkRedemptions, adminIds],
+  );
+
   // Calculate unique active members (members with any activity in period)
   const activeMembers = useMemo(() => {
     const activeUserIds = new Set<string>();
-
-    // From grants (submitted applications)
-    filteredGrants.forEach((g) => {
-      if (g.user_id) activeUserIds.add(g.user_id);
-    });
-
-    // From redemptions
-    filteredRedemptions.forEach((r) => {
-      if (r.user_id) activeUserIds.add(r.user_id);
-    });
-
-    // From ZDS claims
-    filteredZdsClaims.forEach((c) => {
-      if (c.user_id) activeUserIds.add(c.user_id);
-    });
-
-    // From NFW perk redemptions
-    filteredNfwPerkRedemptions.forEach((r) => {
-      if (r.user_id) activeUserIds.add(r.user_id);
-    });
-
+    engagementGrants.forEach((g) => activeUserIds.add(g.user_id!));
+    engagementRedemptions.forEach((r) => activeUserIds.add(r.user_id!));
+    engagementZdsClaims.forEach((c) => activeUserIds.add(c.user_id!));
+    engagementNfwPerks.forEach((r) => activeUserIds.add(r.user_id!));
     return activeUserIds.size;
-  }, [filteredGrants, filteredRedemptions, filteredZdsClaims, filteredNfwPerkRedemptions]);
+  }, [engagementGrants, engagementRedemptions, engagementZdsClaims, engagementNfwPerks]);
 
-  // Weekly active members (last 7 days)
-  const weeklyActive = useMemo(() => {
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    const weekAgoStr = weekAgo.toISOString();
+  // Engagement-rate denominator: members who can use the programs (paid, or
+  // approved free), not every profile ever created (waitlist, incomplete).
+  const programEligibleCount = useMemo(
+    () =>
+      profiles.filter(
+        (p) =>
+          !p.is_admin &&
+          (p.membership_level === "contributing" ||
+            p.membership_level === "founding" ||
+            (p.membership_level === "free" && p.is_approved_free_member === true)),
+      ).length,
+    [profiles],
+  );
 
-    const activeUserIds = new Set<string>();
 
-    filteredGrants.forEach((g) => {
-      if (g.submitted_at && g.submitted_at >= weekAgoStr && g.user_id) {
-        activeUserIds.add(g.user_id);
-      }
-    });
-
-    filteredRedemptions.forEach((r) => {
-      if (r.created_at && r.created_at >= weekAgoStr && r.user_id) {
-        activeUserIds.add(r.user_id);
-      }
-    });
-
-    filteredZdsClaims.forEach((c) => {
-      if (c.claimed_at && c.claimed_at >= weekAgoStr && c.user_id) {
-        activeUserIds.add(c.user_id);
-      }
-    });
-
-    filteredNfwPerkRedemptions.forEach((r) => {
-      if (r.redeemed_at && r.redeemed_at >= weekAgoStr && r.user_id) {
-        activeUserIds.add(r.user_id);
-      }
-    });
-
-    return activeUserIds.size;
-  }, [filteredGrants, filteredRedemptions, filteredZdsClaims, filteredNfwPerkRedemptions]);
-
-  // Monthly active members (last 30 days)
-  const monthlyActive = useMemo(() => {
-    const monthAgo = new Date();
-    monthAgo.setDate(monthAgo.getDate() - 30);
-    const monthAgoStr = monthAgo.toISOString();
-
-    const activeUserIds = new Set<string>();
-
-    filteredGrants.forEach((g) => {
-      if (g.submitted_at && g.submitted_at >= monthAgoStr && g.user_id) {
-        activeUserIds.add(g.user_id);
-      }
-    });
-
-    filteredRedemptions.forEach((r) => {
-      if (r.created_at && r.created_at >= monthAgoStr && r.user_id) {
-        activeUserIds.add(r.user_id);
-      }
-    });
-
-    filteredZdsClaims.forEach((c) => {
-      if (c.claimed_at && c.claimed_at >= monthAgoStr && c.user_id) {
-        activeUserIds.add(c.user_id);
-      }
-    });
-
-    filteredNfwPerkRedemptions.forEach((r) => {
-      if (r.redeemed_at && r.redeemed_at >= monthAgoStr && r.user_id) {
-        activeUserIds.add(r.user_id);
-      }
-    });
-
-    return activeUserIds.size;
-  }, [filteredGrants, filteredRedemptions, filteredZdsClaims, filteredNfwPerkRedemptions]);
 
   // Total activities in period
   const totalActivities = useMemo(() => {
     return (
-      filteredRedemptions.length +
-      filteredZdsClaims.length +
-      filteredNfwPerkRedemptions.length +
-      filteredGrants.length
+      engagementRedemptions.length +
+      engagementZdsClaims.length +
+      engagementNfwPerks.length +
+      engagementGrants.length
     );
-  }, [filteredRedemptions, filteredZdsClaims, filteredNfwPerkRedemptions, filteredGrants]);
+  }, [engagementRedemptions, engagementZdsClaims, engagementNfwPerks, engagementGrants]);
 
   // Average actions per active member
   const avgActionsPerMember = useMemo(() => {
@@ -1177,9 +1136,7 @@ export default function AdminAnalyticsClient({
 
     profiles.forEach((p) => {
       if (!p.joined_at) return;
-      const date = new Date(p.joined_at);
       const key = siteDateKey(p.joined_at).slice(0, 7); // YYYY-MM in PT
-      const label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: SITE_TZ });
 
       if (!cohorts.has(key)) {
         cohorts.set(key, { total: 0, active: 0 });
@@ -1262,7 +1219,7 @@ export default function AdminAnalyticsClient({
         ["Product", "Claims"],
         ...topZdsProducts.map((r) => [r.product, String(r.count)]),
       ];
-    } else {
+    } else if (tab === "perks") {
       filename = "nfw-perks-analytics.csv";
       rows = [
         ["Date", "Redemptions"],
@@ -1271,9 +1228,42 @@ export default function AdminAnalyticsClient({
         ["Offer", "Redemptions"],
         ...topOffers.map((r) => [r.offer, String(r.count)]),
       ];
+    } else if (tab === "engagement") {
+      filename = "nfw-engagement-analytics.csv";
+      rows = [
+        ["Metric", "Value"],
+        ["Total active members", String(activeMembers)],
+        ["Total activities", String(totalActivities)],
+        ["Avg actions per active member", String(avgActionsPerMember)],
+        ["Current members (engagement rate denominator)", String(programEligibleCount)],
+        ["Perk redemptions", String(engagementRedemptions.length)],
+        ["ZDS claims (successful)", String(engagementZdsClaims.length)],
+        ["NFW perk redemptions", String(engagementNfwPerks.length)],
+        ["Grant applications", String(engagementGrants.length)],
+      ];
+    } else if (tab === "cohorts") {
+      filename = "nfw-cohorts-analytics.csv";
+      rows = [
+        ["Cohort", "Members", "Active now", "Active %"],
+        ...cohortData.map((r) => [r.cohort, String(r.members), String(r.retained), String(r.retentionRate)]),
+      ];
+    } else if (tab === "support") {
+      filename = "nfw-support-analytics.csv";
+      rows = freshdeskStats
+        ? [
+            ["Status", "Tickets"],
+            ["Total", String(freshdeskStats.total)],
+            ["Open", String(freshdeskStats.open)],
+            ["Pending", String(freshdeskStats.pending)],
+            ["Resolved", String(freshdeskStats.resolved)],
+            ["Closed", String(freshdeskStats.closed)],
+          ]
+        : [["Freshdesk data not loaded"]];
+    } else {
+      return;
     }
 
-    const csv = rows.map((r) => r.join(",")).join("\n");
+    const csv = rows.map((r) => r.map(escapeCsvField).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -1288,9 +1278,13 @@ export default function AdminAnalyticsClient({
     let url = "/api/admin/members/export";
     const params = new URLSearchParams();
 
-    if (dateRange === "custom" && customStartDate && customEndDate) {
-      params.set("start_date", customStartDate);
-      params.set("end_date", customEndDate);
+    if (dateRange === "custom") {
+      if (customStartDate) params.set("start_date", customStartDate);
+      if (customEndDate) params.set("end_date", customEndDate);
+    } else if (dateRange !== 9999) {
+      // Presets: the export route takes Pacific calendar dates.
+      params.set("start_date", siteDateKey(cutoff.toISOString()));
+      params.set("end_date", siteDateKey(new Date().toISOString()));
     }
 
     if (params.toString()) {
@@ -1419,8 +1413,8 @@ export default function AdminAnalyticsClient({
             text: "text-white",
           },
           {
-            label: "Retention Rate",
-            value: `${retentionRate}%`,
+            label: retentionRate === null ? "Retention Rate (needs 12 months of members)" : "Retention Rate (12+ months)",
+            value: retentionRate === null ? "—" : `${retentionRate}%`,
             icon: TrendingUp,
             color: "bg-nfw-aubergine",
             text: "text-white",
@@ -1433,7 +1427,7 @@ export default function AdminAnalyticsClient({
             text: "text-white",
           },
           {
-            label: "Churn",
+            label: `Churn (${churnCount} ended)`,
             value: `${churnRate}%`,
             icon: TrendingUp,
             color: "bg-nfw-aubergine",
@@ -1468,10 +1462,14 @@ export default function AdminAnalyticsClient({
             text: "text-white",
           },
           {
-            label: "DB vs Stripe Diff",
-            value: paidMembersCount - (stripeLiveStats?.total.count ?? 0),
+            label: "DB vs Stripe Diff (all time)",
+            value: stripeLiveStats ? paidMembersAllTime - stripeLiveStats.total.count : "—",
             icon: TrendingUp,
-            color: paidMembersCount - (stripeLiveStats?.total.count ?? 0) === 0 ? "bg-green-500" : "bg-red-500",
+            color: !stripeLiveStats
+              ? "bg-nfw-stone/40"
+              : paidMembersAllTime - stripeLiveStats.total.count === 0
+              ? "bg-green-500"
+              : "bg-red-500",
             text: "text-white",
           },
         ]
@@ -1485,7 +1483,7 @@ export default function AdminAnalyticsClient({
               text: "text-white",
             },
             {
-              label: "Approval Rate",
+              label: `Approval Rate (of ${decidedGrantsCount.toLocaleString()} decided)`,
               value: `${approvalRate}%`,
               icon: TrendingUp,
               color: "bg-nfw-wisteria",
@@ -1500,7 +1498,7 @@ export default function AdminAnalyticsClient({
             },
             {
               label: "Number of Approvals",
-              value: filteredGrants.filter((g) => ["approved", "payment_sent"].includes(g.status || "")).length,
+              value: approvedGrantsCount,
               icon: Gift,
               color: "bg-nfw-wisteria",
               text: "text-white",
@@ -2238,10 +2236,10 @@ export default function AdminAnalyticsClient({
                 </div>
                 <div className="text-center p-4 bg-nfw-wisteria">
                   <div className="text-3xl font-black text-white mb-1">
-                    {profiles.length > 0 ? Math.round((activeMembers / profiles.length) * 100) : 0}%
+                    {programEligibleCount > 0 ? Math.round((activeMembers / programEligibleCount) * 100) : 0}%
                   </div>
                   <div className="text-xs font-semibold text-white/70">
-                    Engagement Rate
+                    Engagement Rate (of current members)
                   </div>
                 </div>
               </div>
@@ -2254,7 +2252,7 @@ export default function AdminAnalyticsClient({
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="text-center p-4 bg-nfw-dove">
                   <div className="text-3xl font-black text-nfw-blackberry mb-1">
-                    {filteredRedemptions.length}
+                    {engagementRedemptions.length}
                   </div>
                   <div className="text-xs font-semibold text-nfw-blackberry/70">
                     Perk Redemptions
@@ -2262,7 +2260,7 @@ export default function AdminAnalyticsClient({
                 </div>
                 <div className="text-center p-4 bg-nfw-dove">
                   <div className="text-3xl font-black text-nfw-blackberry mb-1">
-                    {filteredZdsClaims.length}
+                    {engagementZdsClaims.length}
                   </div>
                   <div className="text-xs font-semibold text-nfw-blackberry/70">
                     ZDS Claims
@@ -2270,7 +2268,7 @@ export default function AdminAnalyticsClient({
                 </div>
                 <div className="text-center p-4 bg-nfw-dove">
                   <div className="text-3xl font-black text-nfw-blackberry mb-1">
-                    {filteredNfwPerkRedemptions.length}
+                    {engagementNfwPerks.length}
                   </div>
                   <div className="text-xs font-semibold text-nfw-blackberry/70">
                     NFW Perk Redemptions
@@ -2278,7 +2276,7 @@ export default function AdminAnalyticsClient({
                 </div>
                 <div className="text-center p-4 bg-nfw-dove">
                   <div className="text-3xl font-black text-nfw-blackberry mb-1">
-                    {filteredGrants.length}
+                    {engagementGrants.length}
                   </div>
                   <div className="text-xs font-semibold text-nfw-blackberry/70">
                     Grant Applications
@@ -2394,11 +2392,7 @@ export default function AdminAnalyticsClient({
                 <div className="text-center py-12">
                   <p className="text-red-500 mb-4">{freshdeskError}</p>
                   <button
-                    onClick={() => {
-                      setFreshdeskStats(null);
-                      setFreshdeskLoading(false);
-                      setFreshdeskError(null);
-                    }}
+                    onClick={() => setFreshdeskReload((n) => n + 1)}
                     className="px-4 py-2 bg-nfw-blackberry text-white text-sm font-semibold hover:bg-nfw-blackberry/90"
                   >
                     Retry
@@ -2448,9 +2442,14 @@ export default function AdminAnalyticsClient({
                       </div>
                     </div>
                   </div>
+                  {freshdeskStats.truncated && (
+                    <p className="text-xs text-red-600 text-center">
+                      Only the 5,000 most recent tickets were counted. Pick a shorter date range for exact totals.
+                    </p>
+                  )}
                   <p className="text-xs text-nfw-blackberry/50 text-center">
-                    Data from Freshdesk. Cached for 5 minutes. Last updated:{" "}
-                    {new Date().toLocaleTimeString(undefined, { timeZone: SITE_TZ })}
+                    Tickets created in the selected range, from Freshdesk. Fetched:{" "}
+                    {new Date(freshdeskStats.fetchedAt ?? Date.now()).toLocaleTimeString(undefined, { timeZone: SITE_TZ })}
                   </p>
                 </div>
               ) : (
