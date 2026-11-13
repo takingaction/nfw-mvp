@@ -19,19 +19,13 @@ interface PageProps {
 
 export default async function AcceptWaitlistPage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const token = params.token;
   const errorParam = params.error;
-
-  // If someone navigates to /auth/accept-waitlist without a token, send
-  // them to the welcome page (no useful state to show).
-  if (!token && !errorParam) {
-    redirect("/auth/welcome");
-  }
+  let token = params.token;
 
   // If we got here via the error redirect path (no token but with error),
   // render the error state directly.
-  if (!token) {
-    return renderErrorPage(errorParam || "invalid");
+  if (!token && errorParam) {
+    return renderErrorPage(errorParam);
   }
 
   // Require an authenticated session. The token is the credential, but
@@ -45,8 +39,34 @@ export default async function AcceptWaitlistPage({ searchParams }: PageProps) {
     // Send the user through login and return them to this page. The token
     // is not put in the next URL (it would show in the login page's address);
     // the proxy's URL vault holds it for this path and hands it back on return.
+    // If the vault entry is gone by then (15-min TTL, password reset detour,
+    // different browser), the no-token lookup below recovers the token.
     const nextUrl = `/auth/accept-waitlist`;
     redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
+  }
+
+  // No token in the request: the vault entry expired or never existed for
+  // this browser (e.g. link opened in an email app's in-app browser, login
+  // in another). Each user has at most one live token
+  // (idx_waitlist_tokens_one_live), so look it up by the logged-in user.
+  if (!token) {
+    const { data: liveToken } = await supabaseAdmin
+      .from("waitlist_acceptance_tokens")
+      .select("id")
+      .eq("user_id", user.id)
+      .is("used_at", null)
+      .is("expired_processed_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!liveToken) {
+      // Nothing to accept — send them to their dashboard, which shows
+      // their actual membership state.
+      redirect("/dashboard");
+    }
+    token = liveToken.id;
   }
 
   // Look up the token via service-role to determine its status

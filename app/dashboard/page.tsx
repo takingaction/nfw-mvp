@@ -252,6 +252,24 @@ export default async function DashboardPage({
     profile?.is_approved_free_member !== true &&
     profile?.free_membership_contact_submitted === true;
 
+  // Approved off the waitlist but not yet accepted: offer the claim link here
+  // too, so a member who lost the email link (or its token) can still accept.
+  // /auth/accept-waitlist finds the live token by user when none is passed.
+  let waitlistInviteExpiresAt: string | null = null;
+  if (!accessPaused && profile?.membership_level === "waitlist") {
+    const { data: liveInvite } = await supabaseAdmin
+      .from("waitlist_acceptance_tokens")
+      .select("expires_at")
+      .eq("user_id", effectiveUserId)
+      .is("used_at", null)
+      .is("expired_processed_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    waitlistInviteExpiresAt = liveInvite?.expires_at ?? null;
+  }
+
   const savings = await getSavings(effectiveUserId);
   const settings = dashboardSettingsResult?.data || {};
   const likedStores = likedStoresResult?.data || [];
@@ -342,7 +360,12 @@ export default async function DashboardPage({
           }
         />
       )}
-      {isPendingFreeMember && <PendingFreeMembershipBanner membershipLevel={profile?.membership_level} />}
+      {(isPendingFreeMember || waitlistInviteExpiresAt) && (
+        <PendingFreeMembershipBanner
+          membershipLevel={profile?.membership_level}
+          inviteExpiresAt={waitlistInviteExpiresAt}
+        />
+      )}
 
       <DashboardHero heroImage={settings.hero_image_url || "/images/landing.jpg"} />
 

@@ -3,13 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
+import { formatSiteDisplay } from "@/lib/dates";
 
 interface PendingFreeMembershipBannerProps {
   isDismissed?: boolean;
   membershipLevel?: string;
+  /** Set when the member has a live waitlist acceptance token. */
+  inviteExpiresAt?: string | null;
 }
 
-export function PendingFreeMembershipBanner({ isDismissed = false, membershipLevel }: PendingFreeMembershipBannerProps) {
+export function PendingFreeMembershipBanner({ isDismissed = false, membershipLevel, inviteExpiresAt = null }: PendingFreeMembershipBannerProps) {
   const [dismissed, setDismissed] = useState(isDismissed);
 
   const handleDismiss = () => {
@@ -26,7 +29,19 @@ export function PendingFreeMembershipBanner({ isDismissed = false, membershipLev
     <div className="w-full bg-nfw-wisteria py-3 px-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         <p className="text-white font-ui text-sm font-medium flex-1">
-          {isWaitlist ? (
+          {isWaitlist && inviteExpiresAt ? (
+            <>
+              Good news: a free, sponsored membership is reserved for you. Claim it by{" "}
+              {formatSiteDisplay(new Date(inviteExpiresAt))}{" "}
+              <Link
+                href="/auth/accept-waitlist"
+                className="text-white font-bold underline hover:text-nfw-citrine transition-colors"
+              >
+                here
+              </Link>
+              .
+            </>
+          ) : isWaitlist ? (
             <>
               You're on the free membership waitlist. We'll email you when a spot opens up. You can also upgrade at any time{" "}
               <Link
