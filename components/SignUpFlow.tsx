@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, Check, ChevronRight, ArrowLeft, Gift, ChevronDown } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -207,6 +207,18 @@ function setStoredGift(code: string | null) {
 
 const STEPS = ["Account", "Personal Info", "Identity", "Membership"];
 
+// The step lives in the address (?step=N) so the browser Back and Forward
+// buttons move between steps. Anything out of range falls back to step 0.
+function parseStep(value: string | null): number {
+  const n = parseInt(value || "0", 10);
+  return Number.isInteger(n) && n >= 0 && n < STEPS.length ? n : 0;
+}
+
+// Placeholders the profile API writes when a profile is created before the
+// member has filled these in. They are not real answers, so never pre-fill them.
+const PLACEHOLDER_NAME = "Member";
+const PLACEHOLDER_DOB = "1900-01-01";
+
 export interface SignupData {
   eyebrow: string;
   headline: string;
@@ -241,8 +253,26 @@ const defaultSignupData: SignupData = {
 export default function SignUpFlow({ signupData, initialGift = null }: SignUpFlowProps = {}) {
   const data = signupData ? { ...defaultSignupData, ...signupData } : defaultSignupData;
   const searchParams = useSearchParams();
-  const initialStep = parseInt(searchParams.get("step") || "0");
-  const [step, setStep] = useState(initialStep);
+  const urlStep = parseStep(searchParams.get("step"));
+  const [step, setStep] = useState(urlStep);
+
+  // Follow the address: Back/Forward (and goToStep below) change ?step=, and
+  // useSearchParams reports it, so the visible step always matches the URL.
+  useEffect(() => {
+    setStep(urlStep);
+  }, [urlStep]);
+
+  // Move to another step and record it in the browser history. Only `step`
+  // changes in the address: other parameters are kept as they are, and a gift
+  // code is never written back (the proxy's URL vault holds it).
+  const goToStep = (next: number) => {
+    setError(null);
+    setStep(next);
+    const params = new URLSearchParams(window.location.search);
+    params.set("step", String(next));
+    window.history.pushState(null, "", `${window.location.pathname}?${params.toString()}`);
+    window.scrollTo(0, 0);
+  };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Set when signUp hits an email that already has a confirmed account.
@@ -324,6 +354,57 @@ export default function SignUpFlow({ signupData, initialGift = null }: SignUpFlo
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
   };
+
+  // Pre-fill steps 1-2 from the saved profile, once, so answers come back after
+  // Back, a reload, or returning from Stripe. Only empty fields are filled, so
+  // nothing the member has typed in this visit is overwritten.
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (step < 1 || prefilled.current) return;
+    prefilled.current = true;
+
+    const loadProfile = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: p } = await supabase
+        .from("profiles")
+        .select(
+          "full_name, date_of_birth, phone_number, address_line1, address_line2, city, state, zip, household_income, identities, social_handles",
+        )
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!p) return;
+
+      const fill = (setter: (fn: (prev: string) => string) => void, saved: unknown) => {
+        if (typeof saved === "string" && saved) setter((prev) => prev || saved);
+      };
+      if (p.full_name !== PLACEHOLDER_NAME) fill(setFullName, p.full_name);
+      if (p.date_of_birth !== PLACEHOLDER_DOB) fill(setDateOfBirth, p.date_of_birth);
+      fill(setPhone, p.phone_number);
+      fill(setAddressLine1, p.address_line1);
+      fill(setAddressLine2, p.address_line2);
+      fill(setCity, p.city);
+      fill(setState, p.state);
+      fill(setZip, p.zip);
+      fill(setIncome, p.household_income);
+      if (Array.isArray(p.identities) && p.identities.length) {
+        setIdentities((prev) => (prev.length ? prev : p.identities));
+      }
+      if (p.social_handles && typeof p.social_handles === "object") {
+        setSocialHandles((prev) => {
+          const next = { ...prev };
+          for (const key of Object.keys(prev) as (keyof typeof prev)[]) {
+            const saved = (p.social_handles as Record<string, unknown>)[key];
+            if (!next[key] && typeof saved === "string") next[key] = saved;
+          }
+          return next;
+        });
+      }
+    };
+
+    loadProfile();
+  }, [step]);
 
   // Check if user has confirmed email when on steps 1-3
   useEffect(() => {
@@ -456,7 +537,7 @@ export default function SignUpFlow({ signupData, initialGift = null }: SignUpFlo
         state,
         zip,
       });
-      setStep(2);
+      goToStep(2);
     } catch (err: any) {
       setError(err.message || "Failed to save profile");
     } finally {
@@ -491,7 +572,7 @@ export default function SignUpFlow({ signupData, initialGift = null }: SignUpFlo
         social_handles: socialHandles,
         profile_completed: true,
       });
-      setStep(3);
+      goToStep(3);
     } catch (err: any) {
       setError(err.message || "Failed to save");
     } finally {
@@ -653,10 +734,7 @@ export default function SignUpFlow({ signupData, initialGift = null }: SignUpFlo
   const BackButton = ({ toStep }: { toStep: number }) => (
     <button
       type="button"
-      onClick={() => {
-        setError(null);
-        setStep(toStep);
-      }}
+      onClick={() => goToStep(toStep)}
       className="flex items-center gap-1.5 text-sm text-nfw-blackberry/50 hover:text-nfw-blackberry transition-colors mb-6"
     >
       <ArrowLeft className="w-4 h-4" />
@@ -1390,7 +1468,7 @@ export default function SignUpFlow({ signupData, initialGift = null }: SignUpFlo
                   type="button"
                   onClick={() => {
                     setShowProfileIncompleteModal(false);
-                    setStep(1);
+                    goToStep(1);
                   }}
                   className="w-full py-3 bg-nfw-citrine text-nfw-blackberry font-bold text-sm hover:bg-nfw-citrine/90 transition-colors"
                 >
