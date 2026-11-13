@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import MemberExperienceTab from "@/components/admin/MemberExperienceTab";
 import {
@@ -99,6 +99,36 @@ type Redemption = {
 // Same definitions as the Experience tab (migration 217).
 const APPROVED_GRANT_STATUSES = ["approved", "payment_pending", "payment_sent"];
 const SUCCESSFUL_ZDS_STATUSES = ["completed", "fulfilled"];
+// Test accounts left out of program and member metrics, like admins.
+const EXCLUDED_TEST_EMAILS = ["ronpassaro@gmail.com", "kdrisco2@gmail.com"];
+
+type DailyPoint = { key: string; date: string; dateFull: string; count: number };
+
+// Counts per Pacific calendar day, labelled the same way as the Members chart
+// (year added when the range spans more than one year).
+function buildDailySeries(timestamps: string[]): DailyPoint[] {
+  const counts: Record<string, number> = {};
+  const sample: Record<string, string> = {};
+  for (const ts of timestamps) {
+    const key = siteDateKey(ts);
+    counts[key] = (counts[key] || 0) + 1;
+    if (!sample[key]) sample[key] = ts;
+  }
+  const keys = Object.keys(counts).sort();
+  const spansMultipleYears = keys.length > 0 && keys[0].slice(0, 4) !== keys[keys.length - 1].slice(0, 4);
+  return keys.map((key) => {
+    const label = parseJoinedAt(sample[key]);
+    return {
+      key,
+      date: spansMultipleYears ? `${label} '${key.slice(2, 4)}` : label,
+      dateFull: formatJoinedAtFull(sample[key]),
+      count: counts[key],
+    };
+  });
+}
+
+const dailyTooltipLabel = (label: unknown, payload: readonly { payload?: { dateFull?: string } }[] | undefined) =>
+  payload?.[0]?.payload?.dateFull || String(label);
 
 const COLORS = [
   "#3E145F",
@@ -389,6 +419,38 @@ export default function AdminAnalyticsClient({
       return date >= cutoff;
     };
   }, [cutoff, endDate, dateRange]);
+
+  // Admins and test accounts: their activity is testing, not member use.
+  // Same exclusions as the Experience tab.
+  const excludedUserIds = useMemo(
+    () =>
+      new Set(
+        profiles
+          .filter((p) => p.is_admin || EXCLUDED_TEST_EMAILS.includes((p.email || "").toLowerCase()))
+          .map((p) => p.id),
+      ),
+    [profiles],
+  );
+  const isMemberActivity = useCallback(
+    (userId: string | null) => !!userId && !excludedUserIds.has(userId),
+    [excludedUserIds],
+  );
+
+  // Access Perks redemptions, one per member, offer and Pacific day: repeat
+  // clicks on the same offer the same day are one redemption (Experience tab
+  // definition). Earliest click wins.
+  const memberRedemptions = useMemo(() => {
+    const seen = new Set<string>();
+    return [...redemptions]
+      .filter((r) => r.created_at && isMemberActivity(r.user_id))
+      .sort((a, b) => (a.created_at! < b.created_at! ? -1 : a.created_at! > b.created_at! ? 1 : 0))
+      .filter((r) => {
+        const k = `${r.user_id}|${r.offer_key}|${siteDateKey(r.created_at!)}`;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+  }, [redemptions, isMemberActivity]);
 
   // ── MEMBERS ──────────────────────────────────────────────
   const filteredProfiles = useMemo(
@@ -713,22 +775,21 @@ export default function AdminAnalyticsClient({
     ).length;
   }, [filteredProfiles]);
 
-  // Paid vs free percentage (based on filtered profiles)
-  const paidPercent = useMemo(() => {
-    const total = filteredProfiles.length;
-    const paidFiltered = filteredProfiles.filter(
-      (p) => p.membership_level === "contributing" || p.membership_level === "founding"
-    ).length;
-    return total > 0 ? Math.round((paidFiltered / total) * 100) : 0;
-  }, [filteredProfiles]);
-
-  const freePercent = useMemo(() => {
-    const total = filteredProfiles.length;
-    const freeFiltered = filteredProfiles.filter(
-      (p) => p.membership_level === "free" && p.is_approved_free_member === true
-    ).length;
-    return total > 0 ? Math.round((freeFiltered / total) * 100) : 0;
-  }, [filteredProfiles]);
+  // Paid vs free: share of current members who joined in the period (paid,
+  // or approved free; no admins or test accounts). The two add up to 100%.
+  const { paidPercent, freePercent } = useMemo(() => {
+    let paid = 0;
+    let free = 0;
+    for (const p of filteredProfiles) {
+      if (excludedUserIds.has(p.id)) continue;
+      if (p.membership_level === "contributing" || p.membership_level === "founding") paid++;
+      else if (p.membership_level === "free" && p.is_approved_free_member === true) free++;
+    }
+    const total = paid + free;
+    if (total === 0) return { paidPercent: 0, freePercent: 0 };
+    const paidPct = Math.round((paid / total) * 100);
+    return { paidPercent: paidPct, freePercent: 100 - paidPct };
+  }, [filteredProfiles, excludedUserIds]);
 
   // Retention rate: members who joined 12+ months ago and are still active.
   // null until anyone has been a member for 12 months (shown as "—", not 0%).
@@ -813,30 +874,23 @@ export default function AdminAnalyticsClient({
     return map;
   }, [grantCycles]);
 
-  // Helper to check if grant's cycle is testing-only
-  const isGrantTestingOnly = (g: Grant) => {
-    const cycleTesting = cycleTestingMap.get(g.cycle_id);
-    return cycleTesting === true;
-  };
 
   const filteredGrants = useMemo(
     () =>
       grants.filter(
-        (g) => g.submitted_at && isInRange(g.submitted_at) && !isGrantTestingOnly(g),
+        (g) =>
+          g.submitted_at &&
+          isInRange(g.submitted_at) &&
+          cycleTestingMap.get(g.cycle_id) !== true &&
+          isMemberActivity(g.user_id),
       ),
-    [grants, isInRange, cycleTestingMap],
+    [grants, isInRange, cycleTestingMap, isMemberActivity],
   );
 
-  const grantsByDay = useMemo(() => {
-    const map: Record<string, number> = {};
-    filteredGrants.forEach((g) => {
-      const d = g.submitted_at!.slice(0, 10);
-      map[d] = (map[d] || 0) + 1;
-    });
-    return Object.entries(map)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, count]) => ({ date: date.slice(5), count }));
-  }, [filteredGrants]);
+  const grantsByDay = useMemo(
+    () => buildDailySeries(filteredGrants.map((x) => x.submitted_at!)),
+    [filteredGrants],
+  );
 
   const grantsByStatus = useMemo(() => {
     const map: Record<string, number> = {};
@@ -858,9 +912,15 @@ export default function AdminAnalyticsClient({
   const totalFunded = useMemo(
     () =>
       grants
-        .filter((g) => g.status === "payment_sent" && isInRange(g.funded_at) && !isGrantTestingOnly(g))
+        .filter(
+          (g) =>
+            g.status === "payment_sent" &&
+            isInRange(g.funded_at) &&
+            cycleTestingMap.get(g.cycle_id) !== true &&
+            isMemberActivity(g.user_id),
+        )
         .reduce((sum, g) => sum + (g.amount_approved || 0), 0),
-    [grants, isInRange, cycleTestingMap],
+    [grants, isInRange, cycleTestingMap, isMemberActivity],
   );
 
   // Approval rate counts decided applications only: applications still under
@@ -899,22 +959,14 @@ export default function AdminAnalyticsClient({
   // ── PERKS ────────────────────────────────────────────────
   const filteredRedemptions = useMemo(
     () =>
-      redemptions.filter(
-        (r) => r.created_at && isInRange(r.created_at),
-      ),
-    [redemptions, isInRange],
+      memberRedemptions.filter((r) => isInRange(r.created_at)),
+    [memberRedemptions, isInRange],
   );
 
-  const redemptionsByDay = useMemo(() => {
-    const map: Record<string, number> = {};
-    filteredRedemptions.forEach((r) => {
-      const d = r.created_at!.slice(0, 10);
-      map[d] = (map[d] || 0) + 1;
-    });
-    return Object.entries(map)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, count]) => ({ date: date.slice(5), count }));
-  }, [filteredRedemptions]);
+  const redemptionsByDay = useMemo(
+    () => buildDailySeries(filteredRedemptions.map((x) => x.created_at!)),
+    [filteredRedemptions],
+  );
 
   // Store names come from the Access Perks feed and can contain HTML
   // (e.g. "National<sup>®</sup>"). DOMParser builds an inert document: unlike
@@ -965,9 +1017,10 @@ export default function AdminAnalyticsClient({
       zdsClaims.filter(
         (c) =>
           c.claimed_at &&
-          isInRange(c.claimed_at),
+          isInRange(c.claimed_at) &&
+          isMemberActivity(c.user_id),
       ),
-    [zdsClaims, isInRange],
+    [zdsClaims, isInRange, isMemberActivity],
   );
 
   // Date + success filtered (for stat boxes)
@@ -985,9 +1038,9 @@ export default function AdminAnalyticsClient({
     () =>
       zdsClaims.filter(
         (c) =>
-          SUCCESSFUL_ZDS_STATUSES.includes(c.status || ""),
+          SUCCESSFUL_ZDS_STATUSES.includes(c.status || "") && isMemberActivity(c.user_id),
       ),
-    [zdsClaims],
+    [zdsClaims, isMemberActivity],
   );
 
   // Unique ZDS claimants
@@ -995,17 +1048,11 @@ export default function AdminAnalyticsClient({
     return new Set(successfulZdsClaims.map((c) => c.user_id).filter(Boolean)).size;
   }, [successfulZdsClaims]);
 
-  // ZDS claims by day
-  const zdsClaimsByDay = useMemo(() => {
-    const map: Record<string, number> = {};
-    successfulZdsClaims.forEach((c) => {
-      const d = c.claimed_at!.slice(0, 10);
-      map[d] = (map[d] || 0) + 1;
-    });
-    return Object.entries(map)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, count]) => ({ date: date.slice(5), count }));
-  }, [successfulZdsClaims]);
+  // ZDS claims by day (successful claims, Pacific days)
+  const zdsClaimsByDay = useMemo(
+    () => buildDailySeries(successfulZdsClaims.map((c) => c.claimed_at!)),
+    [successfulZdsClaims],
+  );
 
   // Top ZDS products
   const topZdsProducts = useMemo(() => {
@@ -1050,35 +1097,18 @@ export default function AdminAnalyticsClient({
   const filteredNfwPerkRedemptions = useMemo(
     () =>
       nfwPerkRedemptions.filter(
-        (r) => r.redeemed_at && isInRange(r.redeemed_at),
+        (r) => r.redeemed_at && isInRange(r.redeemed_at) && isMemberActivity(r.user_id),
       ),
-    [nfwPerkRedemptions, isInRange],
-  );
-
-  // Admins' own activity (testing) is left out of every engagement number.
-  const adminIds = useMemo(
-    () => new Set(profiles.filter((p) => p.is_admin).map((p) => p.id)),
-    [profiles],
+    [nfwPerkRedemptions, isInRange, isMemberActivity],
   );
 
   // Engagement-tab activity: successful Store claims only (failed, rejected
-  // and abandoned checkouts aren't engagement), no admin activity.
-  const engagementGrants = useMemo(
-    () => filteredGrants.filter((g) => g.user_id && !adminIds.has(g.user_id)),
-    [filteredGrants, adminIds],
-  );
-  const engagementRedemptions = useMemo(
-    () => filteredRedemptions.filter((r) => r.user_id && !adminIds.has(r.user_id)),
-    [filteredRedemptions, adminIds],
-  );
-  const engagementZdsClaims = useMemo(
-    () => successfulZdsClaims.filter((c) => c.user_id && !adminIds.has(c.user_id)),
-    [successfulZdsClaims, adminIds],
-  );
-  const engagementNfwPerks = useMemo(
-    () => filteredNfwPerkRedemptions.filter((r) => r.user_id && !adminIds.has(r.user_id)),
-    [filteredNfwPerkRedemptions, adminIds],
-  );
+  // and abandoned checkouts aren't engagement). Admin and test-account
+  // activity is already left out of every filtered set above.
+  const engagementGrants = filteredGrants;
+  const engagementRedemptions = filteredRedemptions;
+  const engagementZdsClaims = successfulZdsClaims;
+  const engagementNfwPerks = filteredNfwPerkRedemptions;
 
   // Calculate unique active members (members with any activity in period)
   const activeMembers = useMemo(() => {
@@ -1096,12 +1126,12 @@ export default function AdminAnalyticsClient({
     () =>
       profiles.filter(
         (p) =>
-          !p.is_admin &&
+          !excludedUserIds.has(p.id) &&
           (p.membership_level === "contributing" ||
             p.membership_level === "founding" ||
             (p.membership_level === "free" && p.is_approved_free_member === true)),
       ).length,
-    [profiles],
+    [profiles, excludedUserIds],
   );
 
 
@@ -1135,20 +1165,27 @@ export default function AdminAnalyticsClient({
     const cohorts = new Map<string, { total: number; active: number }>();
 
     profiles.forEach((p) => {
-      if (!p.joined_at) return;
-      const key = siteDateKey(p.joined_at).slice(0, 7); // YYYY-MM in PT
+      if (!p.joined_at || excludedUserIds.has(p.id)) return;
+      // Only people who became members: paid at some point, or approved free.
+      // Waitlist and incomplete signups never had a membership to keep.
+      const isPaidLevel = p.membership_level === "contributing" || p.membership_level === "founding";
+      const isApprovedFree = p.membership_level === "free" && p.is_approved_free_member === true;
+      const everMember = isPaidLevel || isApprovedFree || !!p.first_paid_at;
+      if (!everMember) return;
 
+      const key = siteDateKey(p.joined_at).slice(0, 7); // YYYY-MM in PT
       if (!cohorts.has(key)) {
         cohorts.set(key, { total: 0, active: 0 });
       }
       const cohort = cohorts.get(key)!;
       cohort.total++;
 
-      const isActive =
-        p.subscription_status === 'active' ||
-        p.subscription_status === 'contributing' ||
-        p.is_approved_free_member === true;
-      if (isActive) {
+      // Still a member: paid subscription active or set to cancel at period
+      // end (still paid through), or an approved free member.
+      const stillMember =
+        (isPaidLevel && (p.subscription_status === "active" || p.subscription_status === "canceling")) ||
+        isApprovedFree;
+      if (stillMember) {
         cohort.active++;
       }
     });
@@ -1172,7 +1209,7 @@ export default function AdminAnalyticsClient({
     });
 
     return rows;
-  }, [profiles]);
+  }, [profiles, excludedUserIds]);
 
   const overallRetention = useMemo(() => {
     const totalMembers = cohortData.reduce((sum, c) => sum + c.members, 0);
@@ -1205,7 +1242,7 @@ export default function AdminAnalyticsClient({
       filename = "nfw-grants-analytics.csv";
       rows = [
         ["Date", "Applications"],
-        ...grantsByDay.map((r) => [r.date, String(r.count)]),
+        ...grantsByDay.map((r) => [r.key, String(r.count)]),
         [],
         ["Status", "Count"],
         ...grantsByStatus.map((r) => [r.name, String(r.value)]),
@@ -1214,7 +1251,7 @@ export default function AdminAnalyticsClient({
       filename = "nfw-zds-analytics.csv";
       rows = [
         ["Date", "Claims"],
-        ...zdsClaimsByDay.map((r) => [r.date, String(r.count)]),
+        ...zdsClaimsByDay.map((r) => [r.key, String(r.count)]),
         [],
         ["Product", "Claims"],
         ...topZdsProducts.map((r) => [r.product, String(r.count)]),
@@ -1223,7 +1260,7 @@ export default function AdminAnalyticsClient({
       filename = "nfw-perks-analytics.csv";
       rows = [
         ["Date", "Redemptions"],
-        ...redemptionsByDay.map((r) => [r.date, String(r.count)]),
+        ...redemptionsByDay.map((r) => [r.key, String(r.count)]),
         [],
         ["Offer", "Redemptions"],
         ...topOffers.map((r) => [r.offer, String(r.count)]),
@@ -1244,7 +1281,7 @@ export default function AdminAnalyticsClient({
     } else if (tab === "cohorts") {
       filename = "nfw-cohorts-analytics.csv";
       rows = [
-        ["Cohort", "Members", "Active now", "Active %"],
+        ["Cohort", "Members", "Still members", "Retention %"],
         ...cohortData.map((r) => [r.cohort, String(r.members), String(r.retained), String(r.retentionRate)]),
       ];
     } else if (tab === "support") {
@@ -1514,7 +1551,7 @@ export default function AdminAnalyticsClient({
         : tab === "perks"
           ? [
               {
-                label: "Redemptions",
+                label: "Redemptions (1 per member, offer and day)",
                 value: filteredRedemptions.length,
                 icon: Gift,
                 color: "bg-nfw-wisteria",
@@ -1522,7 +1559,7 @@ export default function AdminAnalyticsClient({
               },
               {
                 label: "Total All Time",
-                value: redemptions.length,
+                value: memberRedemptions.length,
                 icon: Gift,
                 color: "bg-nfw-aubergine",
                 text: "text-white",
@@ -1582,11 +1619,11 @@ export default function AdminAnalyticsClient({
                       label: "Total Members",
                       value: overallRetention.totalMembers,
                       icon: Users,
-                      color: "bg-nfw-wisteria",
+                      color: "bg-nfw-aubergine",
                       text: "text-white",
                     },
                     {
-                      label: "Active Members",
+                      label: "Still Members",
                       value: overallRetention.totalRetained,
                       icon: TrendingUp,
                       color: "bg-nfw-aubergine",
@@ -1596,7 +1633,7 @@ export default function AdminAnalyticsClient({
                       label: "Overall Retention",
                       value: `${overallRetention.rate}%`,
                       icon: TrendingUp,
-                      color: "bg-nfw-wisteria",
+                      color: "bg-nfw-aubergine",
                       text: "text-white",
                     },
                   ]
@@ -1998,7 +2035,7 @@ export default function AdminAnalyticsClient({
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
+                    <Tooltip labelFormatter={dailyTooltipLabel} />
                     <Line
                       type="monotone"
                       dataKey="count"
@@ -2031,7 +2068,7 @@ export default function AdminAnalyticsClient({
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
+                    <Tooltip labelFormatter={dailyTooltipLabel} />
                     <Line
                       type="monotone"
                       dataKey="count"
@@ -2119,7 +2156,7 @@ export default function AdminAnalyticsClient({
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
+                    <Tooltip labelFormatter={dailyTooltipLabel} />
                     <Line
                       type="monotone"
                       dataKey="count"
@@ -2295,7 +2332,9 @@ export default function AdminAnalyticsClient({
                 Membership Cohorts by Join Month
               </h3>
               <p className="text-sm text-nfw-blackberry/60 mb-6">
-                Shows members grouped by the month they joined. Retention rate = members still active / total members in cohort.
+                Members grouped by the month they joined (paid at some point, or approved free; waitlist and incomplete
+                signups aren&apos;t counted). Retention = still a member today (paid and active or canceling at period end,
+                or approved free) / members in the cohort. Not affected by the date range.
               </p>
               {cohortData.length === 0 ? (
                 <p className="text-nfw-blackberry/40 text-sm text-center py-8">
@@ -2308,7 +2347,7 @@ export default function AdminAnalyticsClient({
                       <tr className="border-b border-nfw-blackberry/10">
                         <th className="text-left py-3 px-4 font-black text-nfw-blackberry">Cohort</th>
                         <th className="text-right py-3 px-4 font-black text-nfw-blackberry">Members</th>
-                        <th className="text-right py-3 px-4 font-black text-nfw-blackberry">Active</th>
+                        <th className="text-right py-3 px-4 font-black text-nfw-blackberry">Still members</th>
                         <th className="text-right py-3 px-4 font-black text-nfw-blackberry">Retention</th>
                       </tr>
                     </thead>
