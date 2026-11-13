@@ -29,7 +29,8 @@ export function isAccessPaused(profile: MemberAccessProfile | null | undefined):
 
 /**
  * Tier rule only (ignores a pause): paid tiers always have access, free members
- * need admin approval, waitlist / unknown / missing tier never.
+ * need admin approval, waitlist / cancelled / unknown / missing tier never.
+ * 'cancelled' = a paid membership whose period has ended (lib/membership-end.ts).
  */
 export function hasTierAccess(profile: MemberAccessProfile | null | undefined): boolean {
   const level = profile?.membership_level;
@@ -46,12 +47,15 @@ export function hasMemberAccess(profile: MemberAccessProfile | null | undefined)
 /**
  * Where a locked member should be sent from a benefits page.
  * Paused members go to the dashboard (which shows the paused banner) — never to
- * the membership step, so they aren't prompted to pay again.
+ * the membership step, so they aren't prompted to pay again. Cancelled members
+ * go to the dashboard too (the cancelled banner offers Rejoin).
  */
 export function lockedRedirectPath(
   profile: MemberAccessProfile | null | undefined,
   next?: string,
 ): string {
   if (isAccessPaused(profile)) return "/dashboard";
+  // Ended memberships see the dashboard banner, which has the Rejoin link.
+  if (profile?.membership_level === "cancelled") return "/dashboard";
   return next ? `/auth/sign-up?step=3&next=${encodeURIComponent(next)}` : "/auth/sign-up?step=3";
 }

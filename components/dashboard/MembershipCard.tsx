@@ -52,6 +52,8 @@ export default function MembershipCard({
         return "Contributing Member";
       case "founding":
         return "Founding Member";
+      case "cancelled":
+        return "Membership Ended";
       default:
         return "Free Member";
     }
@@ -61,8 +63,9 @@ export default function MembershipCard({
   const showUpgrade = membershipLevel !== "founding";
 
   const handleUpgrade = async () => {
-    if (membershipLevel === "free") {
-      // Free members go to step 3
+    if (membershipLevel === "free" || membershipLevel === "cancelled") {
+      // Free and cancelled members go to step 3 (cancelled = rejoin; there's
+      // no subscription left to upgrade)
       window.location.href = "/auth/sign-up?step=3";
       return;
     }
@@ -152,7 +155,7 @@ export default function MembershipCard({
             disabled={upgrading}
             className="px-4 py-2 text-sm font-bold font-ui bg-[#7786BE] text-white hover:bg-[#7786BE]/90 uppercase disabled:opacity-50"
           >
-            {upgrading ? "Redirecting..." : "Become a Founding Member"}
+            {upgrading ? "Redirecting..." : membershipLevel === "cancelled" ? "Rejoin NFW" : "Become a Founding Member"}
           </button>
         )}
       </div>

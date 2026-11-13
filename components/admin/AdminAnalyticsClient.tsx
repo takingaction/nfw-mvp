@@ -128,6 +128,7 @@ const PIE_COLORS: Record<string, string> = {
   Founding: "#5a3d7a",
   Contributing: "#9580b4",
   Waitlist: "#9CA3AF",
+  Cancelled: "#4B5563",
   Abandoned: "#6B7280",
   "Profile Incomplete": "#D1D5DB",
   Free: "#B693C0",
@@ -845,7 +846,8 @@ function AnalyticsDashboard({
 
     const oldMembers = profiles.filter((p) => {
       if (p.is_admin || !p.joined_at) return false;
-      if (p.membership_level !== "free" && p.membership_level !== "contributing" && p.membership_level !== "founding") return false;
+      // Cancelled members were members who didn't stay, so they count.
+      if (!["free", "contributing", "founding", "cancelled"].includes(p.membership_level ?? "")) return false;
       return new Date(p.joined_at) <= twelveMonthsAgo;
     });
 

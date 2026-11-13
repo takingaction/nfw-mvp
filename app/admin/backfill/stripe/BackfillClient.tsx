@@ -2941,6 +2941,7 @@ export default function BackfillClient() {
                             "Profile Incomplete": "bg-nfw-stone/40 text-nfw-stone",
                             Free: "bg-nfw-wisteria/20 text-nfw-wisteria",
                             Waitlist: "bg-nfw-stone/40 text-nfw-stone",
+                            Cancelled: "bg-nfw-blackberry/10 text-nfw-blackberry/70",
                             Unknown: "bg-nfw-stone/20 text-nfw-stone/70",
                           };
                           return (

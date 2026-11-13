@@ -6,7 +6,7 @@
 
 /**
  * Determines the membership category for a profile.
- * Categories: Admin, Founding, Contributing, Waitlist, Abandoned, Profile Incomplete, Free, Unknown
+ * Categories: Admin, Founding, Contributing, Cancelled, Waitlist, Abandoned, Profile Incomplete, Free, Unknown
  */
 export function getCategory(profile: Record<string, unknown>): string {
   const level = profile.membership_level as string | null;
@@ -18,6 +18,8 @@ export function getCategory(profile: Record<string, unknown>): string {
   if (isAdmin) return "Admin";
   if (level === "founding") return "Founding";
   if (level === "contributing") return "Contributing";
+  // A paid membership whose period ended (lib/membership-end.ts).
+  if (level === "cancelled") return "Cancelled";
   if (level === "waitlist") return "Waitlist";
   if (level === "free") {
     // Incomplete free members - differentiate between Abandoned and Profile Incomplete
@@ -38,7 +40,7 @@ export function getCategory(profile: Record<string, unknown>): string {
 
 /**
  * Determines the subscription sub-status for a profile.
- * Statuses: Active, Canceling, Free, Pending, None
+ * Statuses: Active, Canceling, Past Due, Cancelled, Free, Pending, None
  */
 export function getSubStatus(profile: Record<string, unknown>): string {
   const level = profile.membership_level as string | null;
@@ -49,6 +51,8 @@ export function getSubStatus(profile: Record<string, unknown>): string {
 
   if (subStatus === "active") return "Active";
   if (subStatus === "canceling") return "Canceling";
+  if (subStatus === "past_due" || subStatus === "unpaid") return "Past Due";
+  if (level === "cancelled") return "Cancelled";
   if (level === "free" && isApproved === true && profileCompleted === true && !["active", "canceling"].includes(subStatus || "")) {
     return "Free";
   }

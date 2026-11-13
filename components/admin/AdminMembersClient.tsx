@@ -82,7 +82,7 @@ export default function AdminMembersClient({
       setSearch(stored);
     }
   }, []);
-  const [filter, setFilter] = useState<"all" | "paid" | "free_approved" | "waitlist" | "admin" | "incomplete" | "paused">(
+  const [filter, setFilter] = useState<"all" | "paid" | "free_approved" | "waitlist" | "cancelled" | "admin" | "incomplete" | "paused">(
     "all",
   );
   const [selected, setSelected] = useState<Member | null>(null);
@@ -240,6 +240,7 @@ export default function AdminMembersClient({
         m.is_admin === false) ||
       (filter === "waitlist" &&
         m.membership_level === "waitlist") ||
+      (filter === "cancelled" && m.membership_level === "cancelled") ||
       (filter === "admin" && m.is_admin === true) ||
       (filter === "paused" && !!m.access_paused_at) ||
       (filter === "incomplete" && (
@@ -447,7 +448,7 @@ export default function AdminMembersClient({
     isApprovedFreeMember?: boolean | null,
     profileCompleted?: boolean | null
   ) => {
-    if (membershipLevel === "waitlist") {
+    if (membershipLevel === "waitlist" || membershipLevel === "cancelled") {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/20 text-nfw-blackberry/60">
           <XCircle className="w-3 h-3" /> None
@@ -538,6 +539,12 @@ export default function AdminMembersClient({
             Waitlist
           </span>
         );
+      case "Cancelled":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-blackberry/70 text-white">
+            Cancelled
+          </span>
+        );
       default:
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-nfw-stone/20 text-nfw-blackberry/60">
@@ -618,12 +625,13 @@ export default function AdminMembersClient({
             )}
           </div>
           <div className="flex gap-2 flex-wrap">
-            {(["all", "paid", "free_approved", "waitlist", "admin", "incomplete", "paused"] as const).map((f) => {
+            {(["all", "paid", "free_approved", "waitlist", "cancelled", "admin", "incomplete", "paused"] as const).map((f) => {
               const labelMap: Record<string, string> = {
                 all: "All",
                 paid: "Paid",
                 free_approved: "Free",
                 waitlist: "Waitlist",
+                cancelled: "Cancelled",
                 admin: "Admins",
                 incomplete: "Incomplete",
                 paused: "Paused",

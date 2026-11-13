@@ -6,6 +6,7 @@ import { sendGiftCodesEmail, sendWelcomeEmail } from "@/lib/email";
 import { generateGiftCode } from "@/lib/gift-codes";
 import { resolveInvoicePaymentIds } from "@/lib/stripe-payments";
 import { getScheduledCancelDate } from "@/lib/stripe-subscription";
+import { endMembershipForDeletedSubscription } from "@/lib/membership-end";
 import { recordPaymentReversal, findPaymentByStripeId, getReversedTotal, notifyRefundProcessed, notifyRefundNotMatched } from "@/lib/membership-tier";
 
 export const dynamic = "force-dynamic";
@@ -595,6 +596,24 @@ export async function POST(request: Request) {
             .single()
         ).data;
 
+        // A failed renewal: Stripe keeps retrying, and the member keeps access
+        // meanwhile. Record the status instead of overwriting it with
+        // "active" below. If Stripe gives up, customer.subscription.deleted
+        // ends the membership.
+        if (subscription.status === "past_due" || subscription.status === "unpaid") {
+          const { error: pastDueError } = await supabaseAdmin
+            .from("profiles")
+            .update({ subscription_status: subscription.status, updated_at: new Date().toISOString() })
+            .eq("id", authUserId)
+            .in("membership_level", ["contributing", "founding"]);
+          if (pastDueError) {
+            console.error("[webhook] customer.subscription.updated: Failed to record", subscription.status, pastDueError);
+          } else {
+            console.log("[webhook] customer.subscription.updated: Recorded", subscription.status, "for", authUserId);
+          }
+          break;
+        }
+
         const scheduledCancelAt = getScheduledCancelDate(subscription);
         const isScheduledToCancel =
           subscription.cancel_at_period_end || subscription.cancel_at != null;
@@ -784,77 +803,34 @@ export async function POST(request: Request) {
       }
 
       case "customer.subscription.deleted": {
+        // Sent when a subscription ends: at the end of the paid period for a
+        // member who cancelled, or at once for an immediate cancel/refund.
+        // The member keeps full access until then (status `canceling`).
         const subscription = event.data.object as Stripe.Subscription;
-        const customerId = subscription.customer as string;
+        console.log("[webhook] Processing customer.subscription.deleted:", subscription.id);
 
-        console.log("[webhook] Processing customer.subscription.deleted for customer:", customerId);
-
-        const customer = (await stripe.customers.retrieve(
-          customerId,
-        )) as Stripe.Customer;
-
-        if (customer.email) {
-          console.log("[webhook] Subscription deleted for:", customer.email, "- downgrading to free");
-
-          // Look up profile by stripe_customer_id (primary), fall back to email RPC.
-          // The previous listUsers() + .find() call was capped at 50 users per page and
-          // silently missed any user past the first page.
-          const { data: profileByCustomer } = await supabaseAdmin
-            .from("profiles")
-            .select("id")
-            .eq("stripe_customer_id", customerId)
-            .maybeSingle();
-
-          let authUserId: string | null = profileByCustomer?.id ?? null;
-
-          if (!authUserId) {
-            const { data: authUserRows } = await supabaseAdmin
-              .rpc("find_user_by_email", { target_email: customer.email });
-            const authUser = authUserRows && authUserRows.length > 0 ? authUserRows[0] : null;
-            if (authUser) {
-              authUserId = authUser.id;
-            } else {
-              console.error("[webhook] customer.subscription.deleted: Auth user not found for customer:", customerId);
-              break;
-            }
-          }
-
-          if (authUserId) {
-            console.log("[webhook] Found user:", authUserId, "- checking payment history before downgrade");
-
-            // Guard: refuse to demote a paying member to free. Requires admin manual
-            // review before any tier change. Slack alert via existing notifier.
-            const { data: successfulPayment } = await supabaseAdmin
-              .from("membership_payments")
-              .select("id")
-              .eq("user_id", authUserId)
-              .eq("status", "succeeded")
-              .limit(1);
-            if (successfulPayment && successfulPayment.length > 0) {
-              console.error(
-                `[webhook] customer.subscription.deleted blocked for ${authUserId} (${customer.email}) — has successful payments. Manual review required.`,
-              );
-              await notifyRefundNotMatched({
-                chargeId: customerId,
-                error: "subscription.deleted on a paying member",
-              });
-              break;
-            }
-
-            await supabaseAdmin
-              .from("profiles")
-              .update({
-                membership_level: "free",
-                subscription_status: "cancelled",
-                subscription_ends_at: null,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", authUserId);
-
-            console.log("[webhook] Profile downgraded to free for:", customer.email);
-          }
-        } else {
-          console.error("[webhook] customer.subscription.deleted: No email found for customer", customerId);
+        const result = await endMembershipForDeletedSubscription(stripe, supabaseAdmin, subscription);
+        switch (result.outcome) {
+          case "ended":
+            console.log(
+              `[webhook] customer.subscription.deleted: ${result.profileId} ${result.previousLevel} → cancelled (dashboard only)`,
+            );
+            break;
+          case "kept_other_subscription":
+            // The member still pays through another subscription (e.g. a
+            // duplicate checkout's extra subscription was the one deleted).
+            console.log(
+              `[webhook] customer.subscription.deleted: ${result.profileId} kept: other live subscription(s) ${result.subscriptionIds.join(", ")}`,
+            );
+            break;
+          case "not_paid":
+            console.log(
+              `[webhook] customer.subscription.deleted: ${result.profileId} is ${result.level ?? "no level"}, nothing to end`,
+            );
+            break;
+          case "profile_not_found":
+            console.error("[webhook] customer.subscription.deleted: no profile for customer", subscription.customer);
+            break;
         }
         break;
       }

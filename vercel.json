@@ -67,6 +67,10 @@
     {
       "path": "/api/cron/waitlist-acceptance",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/expire-memberships",
+      "schedule": "20 9 * * *"
     }
   ]
 }

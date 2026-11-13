@@ -15,6 +15,7 @@ import YourZeroDollarStoreSection from "@/components/dashboard/YourZeroDollarSto
 import { ProfileBanner } from "@/components/profile/ProfileBanner";
 import { AbandonedCheckoutBanner } from "@/components/dashboard/AbandonedCheckoutBanner";
 import { PendingFreeMembershipBanner } from "@/components/dashboard/PendingFreeMembershipBanner";
+import { CancelledMembershipBanner } from "@/components/dashboard/CancelledMembershipBanner";
 import { getImpersonationContext } from "@/lib/impersonation";
 import { compareCycleDisplayOrder } from "@/lib/grant-cycle-order";
 import { siteToday } from "@/lib/dates";
@@ -339,6 +340,12 @@ export default async function DashboardPage({
       <AccessPerksSync userId={effectiveUserId} />
       <ProfileBanner profile={profile} />
       {accessPaused && <AccessPausedBanner />}
+      {!accessPaused && profile?.membership_level === "cancelled" && (
+        <CancelledMembershipBanner
+          previousLevel={profile?.previous_membership_level}
+          endedAt={profile?.subscription_ends_at}
+        />
+      )}
       {!accessPaused && (
         <AbandonedCheckoutBanner
           showRequestFreeMembershipLink={
