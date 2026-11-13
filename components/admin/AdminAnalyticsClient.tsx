@@ -31,6 +31,11 @@ import {
   Check,
 } from "lucide-react";
 import { getCategory } from "@/lib/member-categories";
+import {
+  unpackAnalyticsDataset,
+  type AnalyticsProfile,
+  type PackedAnalyticsDataset,
+} from "@/lib/analytics-dataset";
 import { parseSiteDate, siteEndOfDay, startOfCurrentPeriod, parseJoinedAt, formatJoinedAtFull, siteDateKey, SITE_TZ } from "@/lib/dates";
 
 type DateRangeOption = {
@@ -53,28 +58,9 @@ const DATE_RANGE_OPTIONS: DateRangeOption[] = [
   { label: "Custom Range", value: "custom", description: "Choose dates" },
 ];
 
-type Profile = {
-  id: string;
-  full_name: string | null;
-  email: string | null;
-  joined_at: string | null;
-  subscription_status: string | null;
-  membership_level: string | null;
-  subscription_ends_at: string | null;
-  first_paid_at: string | null;
-  first_paid_level: string | null;
-  previous_membership_level: string | null;
-  is_approved_free_member: boolean | null;
-  free_membership_contact_submitted: boolean | null;
-  state: string | null;
-  city: string | null;
-  household_income: string | null;
-  date_of_birth: string | null;
-  is_admin: boolean | null;
-  profile_completed: boolean | null;
-  stripe_customer_id: string | null;
-  signup_source: string | null;
-};
+// Profiles arrive without names or emails (see lib/analytics-dataset.ts);
+// the upgrade list fetches those on demand.
+type Profile = AnalyticsProfile;
 
 type Grant = {
   id: string;
@@ -99,8 +85,6 @@ type Redemption = {
 // Same definitions as the Experience tab (migration 217).
 const APPROVED_GRANT_STATUSES = ["approved", "payment_pending", "payment_sent"];
 const SUCCESSFUL_ZDS_STATUSES = ["completed", "fulfilled"];
-// Test accounts left out of program and member metrics, like admins.
-const EXCLUDED_TEST_EMAILS = ["ronpassaro@gmail.com", "kdrisco2@gmail.com"];
 
 type DailyPoint = { key: string; date: string; dateFull: string; count: number };
 
@@ -240,7 +224,19 @@ function escapeCsvField(value: string | null | undefined): string {
   return s;
 }
 
-export default function AdminAnalyticsClient({
+/**
+ * Entry point: unpacks the compact dataset sent by the page (no member
+ * names, emails or other personal details) into the row shapes the
+ * dashboard works with.
+ */
+export default function AdminAnalyticsClient({ dataset }: { dataset: PackedAnalyticsDataset }) {
+  const data = useMemo(() => unpackAnalyticsDataset(dataset), [dataset]);
+  return <AnalyticsDashboard {...data} />;
+}
+
+type MemberContact = { full_name: string | null; email: string | null };
+
+function AnalyticsDashboard({
   profiles,
   grants,
   grantCycles,
@@ -271,6 +267,11 @@ export default function AdminAnalyticsClient({
   const [customEndDate, setCustomEndDate] = useState<string>("");
   const [expandedUpgrade, setExpandedUpgrade] = useState<UpgradeGroupKey | null>(null);
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+  // Names and emails for upgrade-card members, keyed by profile uuid, loaded
+  // when a card is opened.
+  const [memberContacts, setMemberContacts] = useState<Record<string, MemberContact>>({});
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const [contactsError, setContactsError] = useState<string | null>(null);
   const [freshdeskStats, setFreshdeskStats] = useState<{
     total: number;
     open: number;
@@ -426,7 +427,7 @@ export default function AdminAnalyticsClient({
     () =>
       new Set(
         profiles
-          .filter((p) => p.is_admin || EXCLUDED_TEST_EMAILS.includes((p.email || "").toLowerCase()))
+          .filter((p) => p.is_admin || p.is_test_account)
           .map((p) => p.id),
       ),
     [profiles],
@@ -638,6 +639,51 @@ export default function AdminAnalyticsClient({
     [upgradeGroups, expandedUpgrade]
   );
 
+  // Fetch names and emails for the open card's members that aren't loaded yet.
+  useEffect(() => {
+    if (!expandedUpgradeGroup) return;
+    const missing = expandedUpgradeGroup.members
+      .map(({ profile }) => profile.uid)
+      .filter((id): id is string => !!id && !(id in memberContacts));
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    setContactsLoading(true);
+    setContactsError(null);
+    fetch("/api/admin/analytics/upgrade-members", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: missing }),
+    })
+      .then(async (res) => {
+        const json = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(json?.error || "Failed to load member names and emails");
+        return json.members as Record<string, MemberContact>;
+      })
+      .then((members) => {
+        if (cancelled) return;
+        // Record misses too, so a deleted profile isn't requested again.
+        const merged: Record<string, MemberContact> = {};
+        for (const id of missing) merged[id] = members[id] ?? { full_name: null, email: null };
+        setMemberContacts((prev) => ({ ...prev, ...merged }));
+        setContactsLoading(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setContactsError(err.message);
+        setContactsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // memberContacts is read only to skip loaded ids; refetching when it
+    // changes would loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedUpgradeGroup]);
+
+  const contactOf = (profile: Profile): MemberContact =>
+    (profile.uid && memberContacts[profile.uid]) || { full_name: null, email: null };
+
   const copyUpgradeEmail = async (email: string) => {
     try {
       await navigator.clipboard.writeText(email);
@@ -652,8 +698,8 @@ export default function AdminAnalyticsClient({
     const rows: string[][] = [
       ["Name", "Email", "Joined", "Upgraded"],
       ...group.members.map(({ profile, upgradedAt }) => [
-        profile.full_name ?? "",
-        profile.email ?? "",
+        contactOf(profile).full_name ?? "",
+        contactOf(profile).email ?? "",
         formatUtcDate(profile.joined_at),
         formatUtcDate(upgradedAt),
       ]),
@@ -1867,7 +1913,8 @@ export default function AdminAnalyticsClient({
                       <button
                         type="button"
                         onClick={() => exportUpgradeGroupCSV(expandedUpgradeGroup)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-ui font-bold uppercase tracking-wide bg-nfw-aubergine text-white hover:bg-nfw-aubergine/90 transition-colors"
+                        disabled={contactsLoading}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-ui font-bold uppercase tracking-wide bg-nfw-aubergine text-white hover:bg-nfw-aubergine/90 transition-colors disabled:opacity-50 disabled:cursor-wait"
                       >
                         <Download className="w-3.5 h-3.5" />
                         Export CSV
@@ -1881,6 +1928,11 @@ export default function AdminAnalyticsClient({
                       </button>
                     </div>
                   </div>
+                  {(contactsLoading || contactsError) && (
+                    <p className={`px-4 py-2 text-xs font-ui ${contactsError ? "text-red-600" : "text-nfw-blackberry/60"}`}>
+                      {contactsError ?? "Loading names and emails…"}
+                    </p>
+                  )}
                   <div className="max-h-96 overflow-y-auto">
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 bg-white">
@@ -1893,7 +1945,9 @@ export default function AdminAnalyticsClient({
                         </tr>
                       </thead>
                       <tbody>
-                        {expandedUpgradeGroup.members.map(({ profile, upgradedAt }, idx) => (
+                        {expandedUpgradeGroup.members.map(({ profile, upgradedAt }, idx) => {
+                          const contact = contactOf(profile);
+                          return (
                           <tr
                             key={profile.id}
                             className={`border-t border-nfw-blackberry/5 ${
@@ -1901,27 +1955,27 @@ export default function AdminAnalyticsClient({
                             }`}
                           >
                             <td className="px-4 py-2 text-nfw-blackberry font-medium">
-                              {profile.full_name || (
+                              {contact.full_name || (
                                 <span className="text-nfw-blackberry/40 italic">No name</span>
                               )}
                             </td>
                             <td className="px-4 py-2">
-                              {profile.email ? (
+                              {contact.email ? (
                                 <div className="flex items-center gap-1.5">
                                   <a
-                                    href={`mailto:${profile.email}`}
+                                    href={`mailto:${contact.email}`}
                                     className="text-nfw-aubergine hover:underline truncate max-w-[220px]"
-                                    title={profile.email}
+                                    title={contact.email}
                                   >
-                                    {profile.email}
+                                    {contact.email}
                                   </a>
                                   <button
                                     type="button"
-                                    onClick={() => copyUpgradeEmail(profile.email!)}
+                                    onClick={() => copyUpgradeEmail(contact.email!)}
                                     className="p-1 text-nfw-blackberry/40 hover:text-nfw-aubergine transition-colors"
                                     title="Copy email"
                                   >
-                                    {copiedEmail === profile.email ? (
+                                    {copiedEmail === contact.email ? (
                                       <Check className="w-3.5 h-3.5 text-green-600" />
                                     ) : (
                                       <Copy className="w-3.5 h-3.5" />
@@ -1942,8 +1996,8 @@ export default function AdminAnalyticsClient({
                               <Link
                                 href="/admin/members"
                                 onClick={() => {
-                                  if (profile.email) {
-                                    sessionStorage.setItem("membersSearch", profile.email);
+                                  if (contact.email) {
+                                    sessionStorage.setItem("membersSearch", contact.email);
                                   }
                                 }}
                                 className="text-xs font-ui font-bold text-nfw-aubergine hover:underline"
@@ -1952,7 +2006,8 @@ export default function AdminAnalyticsClient({
                               </Link>
                             </td>
                           </tr>
-                        ))}
+                        );
+                        })}
                       </tbody>
                     </table>
                   </div>

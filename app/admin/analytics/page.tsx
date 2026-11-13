@@ -2,6 +2,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/middleware/adminCheck";
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
+import { packAnalyticsDataset } from "@/lib/analytics-dataset";
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,12 +27,16 @@ const PAGE_SIZE = 1000;
  * `buildQuery` must return a fresh query builder each call: supabase-js
  * builders are mutable, so reusing one would stack .order() params per page.
  */
+type AnalyticsRow = Record<string, unknown>;
+
 async function fetchAllWithPagination(
   tableName: string,
+  // supabase-js's builder types don't survive being passed around generically.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   buildQuery: () => any,
   orderColumn: string = "created_at"
-): Promise<any[]> {
-  const allData: any[] = [];
+): Promise<AnalyticsRow[]> {
+  const allData: AnalyticsRow[] = [];
   let page = 0;
 
   while (true) {
@@ -44,8 +49,10 @@ async function fetchAllWithPagination(
       .range(from, from + PAGE_SIZE - 1);
 
     if (error) {
+      // Throw rather than return a partial table: partial data would show
+      // as real (too-low) numbers with no sign anything went wrong.
       console.error(`[analytics] Error fetching ${tableName}:`, error);
-      break;
+      throw new Error(`Failed to load ${tableName} for analytics`);
     }
     if (!data || data.length === 0) break;
 
@@ -84,12 +91,13 @@ async function AdminAnalyticsContent() {
         supabaseAdmin
           .from("profiles")
           .select(
-            "id, full_name, email, joined_at, subscription_status, membership_level, subscription_ends_at, first_paid_at, first_paid_level, is_approved_free_member, free_membership_contact_submitted, state, city, household_income, date_of_birth, is_admin, profile_completed, previous_membership_level, stripe_customer_id, signup_source"
+            // email is read only to flag the test accounts; it is not sent to the browser.
+            "id, email, joined_at, subscription_status, membership_level, subscription_ends_at, first_paid_at, first_paid_level, is_approved_free_member, free_membership_contact_submitted, state, is_admin, profile_completed, previous_membership_level"
           ),
       "joined_at",
     ),
     fetchAllWithPagination("membership_payments", () =>
-      supabaseAdmin.from("membership_payments").select("id, user_id, amount, payment_type, created_at"),
+      supabaseAdmin.from("membership_payments").select("id, amount, created_at"),
     ),
     fetchAllWithPagination("membership_upgrades", () =>
       supabaseAdmin.from("membership_upgrades").select("id, user_id, from_level, to_level, amount, created_at"),
@@ -129,7 +137,7 @@ async function AdminAnalyticsContent() {
     ),
     fetchAllWithPagination(
       "nfw_perk_redemptions",
-      () => supabaseAdmin.from("nfw_perk_redemptions").select("id, user_id, perk_id, redeemed_at"),
+      () => supabaseAdmin.from("nfw_perk_redemptions").select("id, user_id, redeemed_at"),
       "redeemed_at",
     ),
     supabaseAdmin
@@ -138,8 +146,30 @@ async function AdminAnalyticsContent() {
       .not("title", "is", null),
   ]);
 
+  if (grantCyclesResult.error) {
+    // Without cycles, test-cycle grants can't be excluded from every number.
+    console.error("[analytics] Error fetching grant_cycles:", grantCyclesResult.error);
+    throw new Error("Failed to load grant_cycles for analytics");
+  }
+  if (shopifyProductsResult.error) {
+    console.error("[analytics] Error fetching shopify_product_mappings:", shopifyProductsResult.error);
+  }
   const grantCycles = grantCyclesResult.data;
   const shopifyProducts = shopifyProductsResult.data;
+
+  const dataset = packAnalyticsDataset({
+    profiles,
+    membershipPayments,
+    membershipUpgrades,
+    waitlistAcceptances,
+    grants,
+    grantCycles: grantCycles || [],
+    redemptions,
+    newsletterEmails,
+    zdsClaims,
+    nfwPerkRedemptions,
+    shopifyProducts: shopifyProducts || [],
+  });
 
   console.log(
     `[analytics] Loaded ${profiles.length} profiles, ${grants.length} grants, ${redemptions.length} redemptions, ` +
@@ -168,19 +198,7 @@ async function AdminAnalyticsContent() {
           </div>
         </div>
 
-        <AdminAnalyticsClient
-          profiles={profiles || []}
-          grants={grants || []}
-          grantCycles={grantCycles || []}
-          redemptions={redemptions || []}
-          newsletterEmails={newsletterEmails || []}
-          zdsClaims={zdsClaims || []}
-          shopifyProducts={shopifyProducts || []}
-          nfwPerkRedemptions={nfwPerkRedemptions || []}
-          membershipPayments={membershipPayments || []}
-          membershipUpgrades={membershipUpgrades || []}
-          waitlistAcceptances={waitlistAcceptances || []}
-        />
+        <AdminAnalyticsClient dataset={dataset} />
       </div>
     </main>
   );
