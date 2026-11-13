@@ -43,6 +43,8 @@ export type ReconProfile = {
   subscription_status: string | null;
   stripe_customer_id: string | null;
   is_admin: boolean | null;
+  /** Set when an admin marked the membership complimentary (migration 223). */
+  comped_at?: string | null;
 };
 
 export type ReasonKey =
@@ -53,6 +55,7 @@ export type ReasonKey =
   | "no_stripe_record"
   | "shares_subscription"
   | "gift_no_subscription"
+  | "comped"
   | "paid_in_stripe_not_in_db"
   | "stripe_no_profile"
   | "admin_subscription"
@@ -102,6 +105,12 @@ export const REASONS: Record<ReasonKey, { label: string; description: string; si
     side: "db",
     expected: true,
   },
+  comped: {
+    label: "Comped members (expected)",
+    description: "Marked complimentary by an admin, so there's no Stripe subscription by design.",
+    side: "db",
+    expected: true,
+  },
   paid_in_stripe_not_in_db: {
     label: "Paying in Stripe, free/waitlist in DB",
     description: "Active subscription, but the matching profile isn't contributing/founding. The payment never updated the profile.",
@@ -119,8 +128,9 @@ export const REASONS: Record<ReasonKey, { label: string; description: string; si
     expected: true,
   },
   duplicate_subscriptions: {
-    label: "More than one active subscription",
-    description: "One member holds several active subscriptions; each extra one is counted in Stripe but not in the DB.",
+    label: "Extra active subscriptions",
+    description:
+      "Members paying through more than one active subscription. One row per extra subscription; the one kept is the subscription on their saved Stripe customer, else the oldest.",
     side: "stripe",
   },
   tier_mismatch: {
@@ -240,12 +250,16 @@ export function reconcileMembers(input: {
     const goodFree = good.filter((s) => !consumed.has(s.id));
 
     if (goodFree.length > 0) {
-      goodFree.sort((a, b) => b.created - a.created);
+      // Keep the subscription on their saved customer, else the oldest.
+      goodFree.sort(
+        (a, b) =>
+          Number(b.customer === p.stripe_customer_id) - Number(a.customer === p.stripe_customer_id) || a.created - b.created,
+      );
       const primary = goodFree[0];
       goodFree.forEach((s) => consumed.add(s.id));
-      if (goodFree.length > 1) {
-        duplicateExtras += goodFree.length - 1;
-        rows.push(row("duplicate_subscriptions", p, primary, `${goodFree.length} active subscriptions: ${goodFree.map((s) => s.id).join(", ")}`));
+      for (const extra of goodFree.slice(1)) {
+        duplicateExtras++;
+        rows.push(row("duplicate_subscriptions", p, extra, `Keeps ${primary.id}; ${goodFree.length} active in total`));
       }
       if (primary.tier !== p.membership_level) {
         rows.push(row("tier_mismatch", p, primary, `Stripe ${primary.tier} ($${(primary.amount ?? 0) / 100}), DB ${p.membership_level}`));
@@ -286,6 +300,8 @@ export function reconcileMembers(input: {
 
     if (giftUserIds.has(p.id)) {
       rows.push(row("gift_no_subscription", p, null));
+    } else if (p.comped_at) {
+      rows.push(row("comped", p, null));
     } else if (p.stripe_customer_id) {
       rows.push(row("customer_without_subscription", p, null));
     } else {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReasonKey, ReconResult, ReconRow } from "@/lib/stripe-member-reconciliation";
 
 type ReportResponse = ReconResult & {
@@ -21,6 +21,18 @@ function fmtDate(sec: number | null): string {
 
 const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
 
+type RowAction = "cancel_refund" | "cancel_only" | "comp" | "uncomp";
+type RowState = { busy?: boolean; done?: string; error?: string };
+const rowKey = (r: ReconRow) => `${r.reason}|${r.profile_id ?? ""}|${r.stripe_subscription_id ?? ""}`;
+
+// Repair actions, shared with the nested tables without prop drilling.
+const RepairContext = createContext<{
+  rowState: Record<string, RowState>;
+  runRowAction: (r: ReconRow, action: RowAction) => void;
+  saveCustomerIds: () => void;
+  saveIdsState: RowState;
+} | null>(null);
+
 /**
  * "Why aren't we in sync with Stripe?" Paid members in our database vs
  * Stripe subscriptions in good standing, with the gap broken down by reason.
@@ -32,6 +44,8 @@ export default function StripeSyncReport() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<ReasonKey | null>(null);
+  const [rowState, setRowState] = useState<Record<string, RowState>>({});
+  const [saveIdsState, setSaveIdsState] = useState<RowState>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,6 +80,56 @@ export default function StripeSyncReport() {
       setError(e instanceof Error ? e.message : "Refresh failed");
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const postJson = async (url: string, body: unknown) => {
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const json = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(json?.error || `Request failed (${res.status})`);
+    return json;
+  };
+
+  const runRowAction = async (r: ReconRow, action: RowAction) => {
+    const who = r.email ?? r.profile_id ?? "this member";
+    const confirmText: Record<RowAction, string> = {
+      cancel_refund: `Cancel extra subscription ${r.stripe_subscription_id} for ${who} now AND refund its latest payment? Their other subscription keeps their membership active.`,
+      cancel_only: `Cancel extra subscription ${r.stripe_subscription_id} for ${who} now, without a refund? Their other subscription keeps their membership active.`,
+      comp: `Mark ${who} as comped (complimentary membership)? This is a label only; their access doesn't change.`,
+      uncomp: `Remove the comped label from ${who}?`,
+    };
+    if (!window.confirm(confirmText[action])) return;
+
+    const key = rowKey(r);
+    setRowState((s) => ({ ...s, [key]: { busy: true } }));
+    try {
+      if (action === "cancel_refund" || action === "cancel_only") {
+        const json = await postJson("/api/admin/backfill/stripe/repair/duplicate-subscription", {
+          subscriptionId: r.stripe_subscription_id,
+          refund: action === "cancel_refund",
+        });
+        const done = json.refunded != null ? `Cancelled, refunded $${json.refunded}` : "Cancelled";
+        setRowState((s) => ({ ...s, [key]: { done: `${done}. Refresh from Stripe to update the counts.` } }));
+      } else {
+        await postJson("/api/admin/backfill/stripe/repair/comped", { profileId: r.profile_id, comped: action === "comp" });
+        setRowState((s) => ({ ...s, [key]: { done: action === "comp" ? "Marked comped" : "Comped label removed" } }));
+        await load();
+      }
+    } catch (e) {
+      setRowState((s) => ({ ...s, [key]: { error: e instanceof Error ? e.message : "Failed" } }));
+    }
+  };
+
+  const saveCustomerIds = async () => {
+    if (!window.confirm("Save the matching Stripe customer id on every member listed here that doesn't have one? Members won't see any change.")) return;
+    setSaveIdsState({ busy: true });
+    try {
+      const json = await postJson("/api/admin/backfill/stripe/repair/save-customer-ids", {});
+      const skipped = json.skippedDifferent + json.skippedTaken;
+      setSaveIdsState({ done: `Saved ${json.saved}${skipped ? `; ${skipped} left for review (a different id is already saved)` : ""}` });
+      await load();
+    } catch (e) {
+      setSaveIdsState({ error: e instanceof Error ? e.message : "Failed" });
     }
   };
 
@@ -105,6 +169,7 @@ export default function StripeSyncReport() {
   const unexpected = gapGroups.filter((g) => !g.expected).reduce((sum, g) => sum + g.effect, 0);
 
   return (
+    <RepairContext.Provider value={{ rowState, runRowAction, saveCustomerIds, saveIdsState }}>
     <section className="bg-white border border-nfw-blackberry/10 p-6 mb-8">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
         <div>
@@ -189,6 +254,7 @@ export default function StripeSyncReport() {
         </>
       )}
     </section>
+    </RepairContext.Provider>
   );
 }
 
@@ -260,6 +326,7 @@ function ReasonRows({
   onToggle: () => void;
   onExport: () => void;
 }) {
+  const repair = useContext(RepairContext);
   return (
     <>
       <tr className="border-b border-nfw-blackberry/5 align-top">
@@ -283,6 +350,21 @@ function ReasonRows({
           </button>
         </td>
       </tr>
+      {g.key === "linked_by_email_only" && repair && (
+        <tr>
+          <td colSpan={5} className="px-3 pb-3">
+            <button
+              type="button"
+              onClick={repair.saveCustomerIds}
+              disabled={repair.saveIdsState.busy}
+              className="px-3 py-1.5 text-xs font-ui font-bold uppercase bg-nfw-aubergine text-white hover:bg-nfw-aubergine/90 disabled:opacity-50"
+            >
+              {repair.saveIdsState.busy ? "Saving…" : "Save customer IDs"}
+            </button>
+            <RowStatus state={repair.saveIdsState} />
+          </td>
+        </tr>
+      )}
       {isOpen && (
         <tr>
           <td colSpan={5} className="p-0">
@@ -294,6 +376,7 @@ function ReasonRows({
                     <th className="px-3 py-2">DB</th>
                     <th className="px-3 py-2">Stripe</th>
                     <th className="px-3 py-2">Note</th>
+                    <th className="px-3 py-2" />
                   </tr>
                 </thead>
                 <tbody>
@@ -323,6 +406,9 @@ function ReasonRows({
                         {r.ended_at ? <span className="text-nfw-blackberry/50"> · ended {fmtDate(r.ended_at)}</span> : null}
                       </td>
                       <td className="px-3 py-1.5 text-nfw-blackberry/60">{r.note}</td>
+                      <td className="px-3 py-1.5 whitespace-nowrap text-right">
+                        <RowActions r={r} />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -333,4 +419,48 @@ function ReasonRows({
       )}
     </>
   );
+}
+
+function RowStatus({ state }: { state: RowState | undefined }) {
+  if (!state) return null;
+  if (state.error) return <span className="ml-2 text-red-600">{state.error}</span>;
+  if (state.done) return <span className="ml-2 text-green-700">{state.done}</span>;
+  return null;
+}
+
+/** Per-member repair buttons, by reason. */
+function RowActions({ r }: { r: ReconRow }) {
+  const repair = useContext(RepairContext);
+  if (!repair) return null;
+  const state = repair.rowState[rowKey(r)];
+  if (state?.done || state?.error) return <RowStatus state={state} />;
+  const btn = "ml-2 px-2 py-1 font-ui font-bold uppercase text-[10px] disabled:opacity-50";
+
+  if (r.reason === "duplicate_subscriptions" && r.stripe_subscription_id) {
+    return (
+      <>
+        <button type="button" disabled={state?.busy} onClick={() => repair.runRowAction(r, "cancel_refund")} className={`${btn} bg-nfw-aubergine text-white`}>
+          Cancel &amp; refund
+        </button>
+        <button type="button" disabled={state?.busy} onClick={() => repair.runRowAction(r, "cancel_only")} className={`${btn} border border-nfw-aubergine text-nfw-aubergine`}>
+          Cancel only
+        </button>
+      </>
+    );
+  }
+  if (r.reason === "no_stripe_record" && r.profile_id) {
+    return (
+      <button type="button" disabled={state?.busy} onClick={() => repair.runRowAction(r, "comp")} className={`${btn} border border-nfw-aubergine text-nfw-aubergine`}>
+        Mark comped
+      </button>
+    );
+  }
+  if (r.reason === "comped" && r.profile_id) {
+    return (
+      <button type="button" disabled={state?.busy} onClick={() => repair.runRowAction(r, "uncomp")} className={`${btn} border border-nfw-blackberry/30 text-nfw-blackberry/60`}>
+        Remove comped
+      </button>
+    );
+  }
+  return null;
 }

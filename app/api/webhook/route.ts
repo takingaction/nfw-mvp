@@ -6,7 +6,7 @@ import { sendGiftCodesEmail, sendWelcomeEmail } from "@/lib/email";
 import { generateGiftCode } from "@/lib/gift-codes";
 import { resolveInvoicePaymentIds } from "@/lib/stripe-payments";
 import { getScheduledCancelDate } from "@/lib/stripe-subscription";
-import { endMembershipForDeletedSubscription } from "@/lib/membership-end";
+import { endMembershipForDeletedSubscription, findOtherLiveSubscriptions } from "@/lib/membership-end";
 import { recordPaymentReversal, findPaymentByStripeId, getReversedTotal, notifyRefundProcessed, notifyRefundNotMatched } from "@/lib/membership-tier";
 
 export const dynamic = "force-dynamic";
@@ -1072,14 +1072,49 @@ export async function POST(request: Request) {
           ? `Partial refund received: $${refundAmountDollars.toFixed(2)} of $${originalAmountDollars.toFixed(2)}`
           : `Full refund received`;
 
+        // A full refund normally recalculates the tier, which restores
+        // previous_membership_level (often free or waitlist). Membership now
+        // follows the subscription (lib/membership-end.ts), so skip that while
+        // the member still has a live Stripe subscription (e.g. a refunded
+        // duplicate charge) or once their membership has already ended
+        // (cancelled). If the lookup fails, keep the tier: no automated
+        // demotion without a clear answer.
+        let keepTierAfterRefund = false;
+        if (!isPartialRefund) {
+          const { data: refundedProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("email, membership_level, stripe_customer_id")
+            .eq("id", payment.user_id)
+            .maybeSingle();
+          if (refundedProfile?.membership_level === "cancelled") {
+            keepTierAfterRefund = true;
+          } else {
+            try {
+              const chargeCustomer = typeof charge.customer === "string" ? charge.customer : charge.customer?.id ?? null;
+              const live = await findOtherLiveSubscriptions(stripe, {
+                customerIds: [chargeCustomer, refundedProfile?.stripe_customer_id],
+                email: refundedProfile?.email,
+              });
+              keepTierAfterRefund = live.length > 0;
+            } catch (err) {
+              console.error("[webhook] charge.refunded: live-subscription check failed, keeping tier:", err);
+              keepTierAfterRefund = true;
+            }
+          }
+          if (keepTierAfterRefund) {
+            console.log(`[webhook] charge.refunded: keeping tier for ${payment.user_id} (live subscription or already cancelled)`);
+          }
+        }
+
         const result = await recordPaymentReversal(
           payment.id,  // Pass internal payment ID, not charge ID
           "refunded",
           reversalReason,
           {
             actualRefundAmount: newRefundDollars,
-            // Only recalculate tier on full refund — partials leave tier untouched
-            recalculateTier: !isPartialRefund,
+            // Only recalculate tier on a full refund with no live subscription
+            // left; partials leave tier untouched.
+            recalculateTier: !isPartialRefund && !keepTierAfterRefund,
           },
         );
 
