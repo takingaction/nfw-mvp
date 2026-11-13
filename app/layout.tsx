@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Playfair_Display, DM_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import { headers } from "next/headers";
 import Script from "next/script";
 import { getCachedGtmId } from "@/lib/cms-cache";
@@ -13,29 +13,42 @@ import PromotionalPopupWrapper from "@/components/popup/PromotionalPopupWrapper"
 import FloatingAdminButton from "@/components/admin/FloatingAdminButton";
 import ViewingAsMemberBanner from "@/components/admin/ViewingAsMemberBanner";
 
-const geistSans = Geist({
+// Fonts are bundled in app/fonts (Fontsource variable files, latin subset,
+// SIL OFL — see app/fonts/OFL.txt) instead of next/font/google. Google Fonts
+// sometimes answers with /l/font?kit=…&skey=… URLs that Turbopack can't parse,
+// which failed production builds (vercel/next.js#99114). Bundling also means
+// neither the build nor visitors' browsers contact Google.
+const geistSans = localFont({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  src: "./fonts/geist-latin-wght-normal.woff2",
+  weight: "100 900",
+  style: "normal",
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  src: "./fonts/geist-mono-latin-wght-normal.woff2",
+  weight: "100 900",
+  style: "normal",
 });
 
-const playfairDisplay = Playfair_Display({
+const playfairDisplay = localFont({
   variable: "--font-playfair",
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  style: ["normal", "italic"],
+  src: [
+    { path: "./fonts/playfair-display-latin-wght-normal.woff2", weight: "400 900", style: "normal" },
+    { path: "./fonts/playfair-display-latin-wght-italic.woff2", weight: "400 900", style: "italic" },
+  ],
   display: "swap",
+  fallback: ["Georgia", "serif"],
 });
 
-const dmSans = DM_Sans({
+const dmSans = localFont({
   variable: "--font-dm-sans",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "700", "900"],
+  src: "./fonts/dm-sans-latin-wght-normal.woff2",
+  weight: "100 1000",
+  style: "normal",
   display: "swap",
+  fallback: ["system-ui", "sans-serif"],
 });
 
 export const metadata: Metadata = {
