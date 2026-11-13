@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import DashboardHero from "@/components/dashboard/DashboardHero";
 import MembershipCard from "@/components/dashboard/MembershipCard";
 import MembershipImpactCard from "@/components/dashboard/MembershipImpactCard";
-import PopularAcrossNFW from "@/components/dashboard/PopularAcrossNFW";
+import PopularAcrossNFW, { type FeaturedItem } from "@/components/dashboard/PopularAcrossNFW";
 import BottomActions from "@/components/dashboard/BottomActions";
 import AccessPerksSync from "@/components/AccessPerksSync";
 import DashboardPerksSection from "@/components/dashboard/DashboardPerksSection";
@@ -134,8 +134,6 @@ export default async function DashboardPage({
   // validated by the helper; if invalid or absent, we render as the caller.
   // No URL params needed on the read path — the cookie is the source of truth.
   const viewAsUserId = viewAsCtx?.targetUserId ?? null;
-  const viewAsTargetName = viewAsCtx?.targetFullName ?? null;
-  const viewAsTargetEmail = viewAsCtx?.targetEmail ?? null;
 
   const effectiveUserId = viewAsUserId ?? user.id;
   const isViewingAs = viewAsUserId !== null;
@@ -145,7 +143,7 @@ export default async function DashboardPage({
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const [profileResult, dashboardSettingsResult, likedStoresResult, grantsResult, claimsResult, cyclesResult, abandonedCheckoutResult] = await Promise.all([
+  const [profileResult, dashboardSettingsResult, likedStoresResult, grantsResult, claimsResult, cyclesResult] = await Promise.all([
     supabase
       .from("profiles")
       .select("*, joined_at")
@@ -186,12 +184,6 @@ export default async function DashboardPage({
       .order("display_order", { ascending: true })
       .order("created_at", { ascending: false }),
     // .limit(6) intentionally removed — applied after filtering below
-    supabaseAdmin
-      .from("abandoned_checkouts")
-      .select("id")
-      .eq("user_id", effectiveUserId)
-      .is("recovered_at", null)
-      .limit(1),
   ]);
 
   // Fetch shopify product mappings for enrichment
@@ -204,7 +196,7 @@ export default async function DashboardPage({
   );
 
   // Join claims with mappings in JavaScript
-  const userClaims = (claimsResult?.data || []).map((claim: any) => ({
+  const userClaims = (claimsResult?.data || []).map((claim) => ({
     ...claim,
     shopify_product_mappings: mappingMap.get(claim.shopify_product_id) || null
   }));
@@ -233,14 +225,9 @@ export default async function DashboardPage({
   }
 
   // Check for abandoned checkout for the banner display
-  // Suppress banner entirely for paid members — orphaned abandoned_checkouts rows can exist
-  // after a successful checkout due to webhook race conditions (e.g., checkout.session.expired
-  // firing after checkout.session.completed, or session_id drift on resume). Paid members
-  // shouldn't see "incomplete purchase" banners.
-  const isPaidMember =
-    profile?.membership_level === "contributing" || profile?.membership_level === "founding";
-  const hasAbandonedCheckout =
-    !isPaidMember && (abandonedCheckoutResult?.data?.length ?? 0) > 0;
+  // AbandonedCheckoutBanner fetches /api/checkout/abandoned itself; that route
+  // suppresses the banner for paid members (orphaned abandoned_checkouts rows
+  // can outlive a successful checkout due to webhook races).
 
   // Admin-paused members see only the paused banner (lib/member-access.ts)
   const accessPaused = isAccessPaused(profile);
@@ -277,7 +264,7 @@ export default async function DashboardPage({
 
   // Check if user has approved or paid grants with cycle ending after July 12, 2026 (for showing bank connection banner)
   const paidOrApprovedGrants = (userGrants || []).filter(
-    (g: any) =>
+    (g) =>
       (g.status === "approved" || g.status === "payment_sent") &&
       g.grant_cycles?.end_date > '2026-07-12'
   );
@@ -289,19 +276,19 @@ export default async function DashboardPage({
   // sort to match /admin/grants, then cap at 6.
   const todayStr = siteToday();
   const availableCycles = (cyclesResult?.data || [])
-    .filter((cycle: any) => profile?.is_admin || !cycle.is_testing_only)
-    .filter((cycle: any) => String(cycle.end_date).split("T")[0] >= todayStr)
+    .filter((cycle) => profile?.is_admin || !cycle.is_testing_only)
+    .filter((cycle) => String(cycle.end_date).split("T")[0] >= todayStr)
     .sort(compareCycleDisplayOrder)
     .slice(0, 6);
 
   // Start with featured items from settings
-  let featuredItems = (settings.featured_items || []).slice(0, 5);
+  let featuredItems: FeaturedItem[] = (settings.featured_items || []).slice(0, 5);
 
   // Enrich ALL microgrant items with fresh image URLs from grant_cycles
-  const micrograntItems = featuredItems.filter((item: any) => item.type === "microgrant");
+  const micrograntItems = featuredItems.filter((item) => item.type === "microgrant");
 
   if (micrograntItems.length > 0) {
-    const grantIds = micrograntItems.map((item: any) => item.id.replace("grant_", ""));
+    const grantIds = micrograntItems.map((item) => item.id.replace("grant_", ""));
     const { data: grantCycles } = await supabaseAdmin
       .from("grant_cycles")
       .select("id, cycle_name, featured_image")
@@ -309,7 +296,7 @@ export default async function DashboardPage({
 
     if (grantCycles && grantCycles.length > 0) {
       const grantInfoMap = new Map(grantCycles.map(g => [g.id, g]));
-      featuredItems = featuredItems.map((item: any) => {
+      featuredItems = featuredItems.map((item) => {
         if (item.type === "microgrant") {
           const grantId = item.id.replace("grant_", "");
           const grantInfo = grantInfoMap.get(grantId);
@@ -325,15 +312,15 @@ export default async function DashboardPage({
   }
 
   // Enrich shopify_product items with fresh image URLs from API
-  const shopifyItems = featuredItems.filter((item: any) => item.type === "shopify_product");
+  const shopifyItems = featuredItems.filter((item) => item.type === "shopify_product");
   if (shopifyItems.length > 0) {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nationalfundforwomen.org";
       const productsRes = await fetch(`${baseUrl}/api/shopify/products`);
       if (productsRes.ok) {
-        const products = await productsRes.json();
-        const productMap = new Map(products.map((p: any) => [p.shopifyProductId, p.imageUrl]));
-        featuredItems = featuredItems.map((item: any) => {
+        const products: { shopifyProductId: string; imageUrl: string }[] = await productsRes.json();
+        const productMap = new Map(products.map((p) => [p.shopifyProductId, p.imageUrl]));
+        featuredItems = featuredItems.map((item) => {
           if (item.type === "shopify_product") {
             const productId = item.id.replace("shopify_", "");
             const imageUrl = productMap.get(productId) || item.image;

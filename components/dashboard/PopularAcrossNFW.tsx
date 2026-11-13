@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-type FeaturedItem = {
+export type FeaturedItem = {
   id: string;
   type: "shopify_product" | "microgrant" | "article" | "perk";
   title: string;
@@ -63,6 +63,9 @@ export default function PopularAcrossNFW({ featuredItems }: PopularAcrossNFWProp
             className="relative group block aspect-square sm:aspect-[3/4]"
           >
             {item.image ? (
+              // Plain <img> on purpose: featured images can come from hosts not in
+              // next.config images.remotePatterns (e.g. auth.nationalfundforwomen.org).
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={item.image}
                 alt={item.title}

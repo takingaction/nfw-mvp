@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Check, XCircle } from "lucide-react";
+import Image from "next/image";
+import { XCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
@@ -196,10 +197,12 @@ function renderErrorPage(errorType: string) {
   return (
     <main className="min-h-screen bg-nfw-aubergine flex items-center justify-center px-4 relative overflow-hidden">
       <div className="relative max-w-lg w-full text-center">
-        <img
+        <Image
           src="/images/nfw-symbol-brandmark-wisteria.png"
           alt="NFW"
-          className="w-40 object-contain mx-auto mb-8"
+          width={900}
+          height={310}
+          className="w-40 h-auto object-contain mx-auto mb-8"
         />
 
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-nfw-lilac/20 border border-nfw-lilac/30 text-sm mb-6">

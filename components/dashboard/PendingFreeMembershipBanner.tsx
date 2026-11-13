@@ -43,7 +43,7 @@ export function PendingFreeMembershipBanner({ isDismissed = false, membershipLev
             </>
           ) : isWaitlist ? (
             <>
-              You're on the free membership waitlist. We'll email you when a spot opens up. You can also upgrade at any time{" "}
+              You&apos;re on the free membership waitlist. We&apos;ll email you when a spot opens up. You can also upgrade at any time{" "}
               <Link
                 href="/auth/sign-up?step=3"
                 className="text-white font-bold underline hover:text-nfw-citrine transition-colors"
