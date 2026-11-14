@@ -31,6 +31,8 @@ const RepairContext = createContext<{
   runRowAction: (r: ReconRow, action: RowAction) => void;
   saveCustomerIds: () => void;
   saveIdsState: RowState;
+  syncCancelStatus: () => void;
+  cancelSyncState: RowState;
 } | null>(null);
 
 /**
@@ -46,6 +48,7 @@ export default function StripeSyncReport() {
   const [open, setOpen] = useState<ReasonKey | null>(null);
   const [rowState, setRowState] = useState<Record<string, RowState>>({});
   const [saveIdsState, setSaveIdsState] = useState<RowState>({});
+  const [cancelSyncState, setCancelSyncState] = useState<RowState>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -133,6 +136,25 @@ export default function StripeSyncReport() {
     }
   };
 
+  const syncCancelStatus = async () => {
+    if (
+      !window.confirm(
+        "Copy Stripe's cancellation status to every member listed here? Members set to cancel in Stripe become 'canceling' with their end date; members renewing in Stripe become 'active'. Access doesn't change.",
+      )
+    )
+      return;
+    setCancelSyncState({ busy: true });
+    try {
+      const json = await postJson("/api/admin/backfill/stripe/repair/sync-cancel-status", {});
+      setCancelSyncState({
+        done: `${json.markedCanceling} set to canceling, ${json.markedActive} set to active${json.errors ? `, ${json.errors} failed` : ""}`,
+      });
+      await load();
+    } catch (e) {
+      setCancelSyncState({ error: e instanceof Error ? e.message : "Failed" });
+    }
+  };
+
   const rowsByReason = useMemo(() => {
     const m = new Map<ReasonKey, ReconRow[]>();
     for (const r of data?.rows ?? []) {
@@ -169,7 +191,7 @@ export default function StripeSyncReport() {
   const unexpected = gapGroups.filter((g) => !g.expected).reduce((sum, g) => sum + g.effect, 0);
 
   return (
-    <RepairContext.Provider value={{ rowState, runRowAction, saveCustomerIds, saveIdsState }}>
+    <RepairContext.Provider value={{ rowState, runRowAction, saveCustomerIds, saveIdsState, syncCancelStatus, cancelSyncState }}>
     <section className="bg-white border border-nfw-blackberry/10 p-6 mb-8">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
         <div>
@@ -362,6 +384,21 @@ function ReasonRows({
               {repair.saveIdsState.busy ? "Saving…" : "Save customer IDs"}
             </button>
             <RowStatus state={repair.saveIdsState} />
+          </td>
+        </tr>
+      )}
+      {g.key === "cancel_status_mismatch" && repair && (
+        <tr>
+          <td colSpan={5} className="px-3 pb-3">
+            <button
+              type="button"
+              onClick={repair.syncCancelStatus}
+              disabled={repair.cancelSyncState.busy}
+              className="px-3 py-1.5 text-xs font-ui font-bold uppercase bg-nfw-aubergine text-white hover:bg-nfw-aubergine/90 disabled:opacity-50"
+            >
+              {repair.cancelSyncState.busy ? "Syncing… (up to a minute)" : "Sync from Stripe"}
+            </button>
+            <RowStatus state={repair.cancelSyncState} />
           </td>
         </tr>
       )}
