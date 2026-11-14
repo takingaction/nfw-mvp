@@ -115,37 +115,6 @@ interface ReconciliationResponse {
   missing_from_db?: string[];
 }
 
-interface DuplicateEmail {
-  email: string;
-  count: number;
-  rows: Array<{
-    id: string;
-    status: string;
-    stripe_customer_id: string | null;
-    lifetime_value: number | null;
-    processed_at: string | null;
-    error_message: string | null;
-    full_name: string | null;
-    membership_level: string | null;
-  }>;
-}
-
-interface StripeDuplicateSubscription {
-  subscription_id: string;
-  customer_id: string;
-  tier: string;
-  amount: number;
-  status: string;
-  current_period_start: number;
-  current_period_end: number;
-}
-
-interface StripeDuplicate {
-  email: string;
-  subscription_count: number;
-  subscriptions: StripeDuplicateSubscription[];
-}
-
 interface MemberSearchResult {
   error?: string;
   profile: {
@@ -322,23 +291,11 @@ export default function BackfillClient() {
   const [refreshingLive, setRefreshingLive] = useState(false);
 
   // Payment sync
-  const [syncingPayments, setSyncingPayments] = useState(false);
-  const [syncProgress, setSyncProgress] = useState<string>("");
   const [expandedPayments, setExpandedPayments] = useState<any | null>(null);
   const [syncingCustomerId, setSyncingCustomerId] = useState<string | null>(null);
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'database_only' | 'succeeded' | 'no_payment' | 'paid_database_only' | 'paid_db_only' | 'gift_card'>('all');
   const [errorModalMessage, setErrorModalMessage] = useState<string | null>(null);
   const [errorModalOpen, setErrorModalOpen] = useState(false);
-
-  // Duplicate emails
-  const [duplicates, setDuplicates] = useState<DuplicateEmail[]>([]);
-  const [duplicatesLoading, setDuplicatesLoading] = useState(false);
-  const [expandedDuplicate, setExpandedDuplicate] = useState<string | null>(null);
-
-  // Duplicates in Stripe
-  const [stripeDuplicates, setStripeDuplicates] = useState<StripeDuplicate[]>([]);
-  const [stripeDuplicatesLoading, setStripeDuplicatesLoading] = useState(false);
-  const [expandedStripeDuplicate, setExpandedStripeDuplicate] = useState<string | null>(null);
 
   // Member search
   const [searchQuery, setSearchQuery] = useState("");
@@ -374,63 +331,10 @@ export default function BackfillClient() {
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
   const [bulkDeleteIds, setBulkDeleteIds] = useState<string[]>([]);
 
-  // Stripe Only
-  const [stripeOnly, setStripeOnly] = useState<any[]>([]);
-  const [stripeOnlyLoading, setStripeOnlyLoading] = useState(false);
-  const [stripeOnlyTotal, setStripeOnlyTotal] = useState(0);
-  const [stripeOnlyGeneratedAt, setStripeOnlyGeneratedAt] = useState<number | null>(null);
-
   // Export Email CSV
   const [exportCsvLoading, setExportCsvLoading] = useState(false);
   const [exportCsvReady, setExportCsvReady] = useState(false);
   const [exportCsvGeneratedAt, setExportCsvGeneratedAt] = useState<number | null>(null);
-
-  // Load cached Stripe Only data on mount
-  useEffect(() => {
-    const cached = sessionStorage.getItem("stripeOnlyCharges");
-    const cachedTotal = sessionStorage.getItem("stripeOnlyTotal");
-    const cachedGeneratedAt = sessionStorage.getItem("stripeOnlyGeneratedAt");
-    if (cached) {
-      try {
-        setStripeOnly(JSON.parse(cached));
-        setStripeOnlyTotal(cachedTotal ? parseFloat(cachedTotal) : 0);
-        setStripeOnlyGeneratedAt(cachedGeneratedAt ? parseInt(cachedGeneratedAt) : null);
-      } catch {
-        // ignore
-      }
-    }
-  }, []);
-
-  // Fetch latest Stripe Only data from API on mount so the card populates
-  // automatically on page load. sessionStorage takes precedence if already
-  // populated (e.g., user clicked "Generate Stripe Data" earlier in the session).
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/admin/backfill/stripe/stripe-only-jobs");
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-        // Don't overwrite valid sessionStorage values from this session.
-        if (sessionStorage.getItem("stripeOnlyCharges")) return;
-        if (data.status === "completed" && Array.isArray(data.charges)) {
-          setStripeOnly(data.charges);
-          setStripeOnlyTotal(data.total || 0);
-          setStripeOnlyGeneratedAt(
-            data.completedAt ? new Date(data.completedAt).getTime() : Date.now(),
-          );
-          sessionStorage.setItem("stripeOnlyCharges", JSON.stringify(data.charges));
-          sessionStorage.setItem("stripeOnlyTotal", String(data.total || 0));
-          sessionStorage.setItem("stripeOnlyGeneratedAt", String(Date.now()));
-        }
-      } catch (err) {
-        console.error("[backfill] Failed to fetch Stripe Only data on mount:", err);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Load cached Export Email CSV data
   useEffect(() => {
@@ -463,185 +367,6 @@ export default function BackfillClient() {
     } finally {
       setRefreshingStats(false);
     }
-  }, []);
-
-  // Trigger Stripe Only job (creates job in queue, returns immediately)
-  const triggerStripeOnlyJob = useCallback(async () => {
-    setStripeOnlyLoading(true);
-    setIsOperationRunning(true);
-    try {
-      const res = await fetch("/api/admin/backfill/stripe/stripe-only-jobs", { method: "POST" });
-      if (res.ok) {
-        const data = await res.json();
-        // Start polling for results
-        pollStripeOnlyJob(data.jobId);
-      } else {
-        const err = await res.json();
-        setMessage(`Error: ${err.error || res.statusText}`);
-        setStripeOnlyLoading(false);
-        setIsOperationRunning(false);
-      }
-    } catch (error) {
-      console.error("Failed to trigger stripe-only:", error);
-      setStripeOnlyLoading(false);
-      setIsOperationRunning(false);
-    }
-  }, []);
-
-  // Poll for stripe-only job completion
-  const pollStripeOnlyJob = useCallback(async (jobId: string) => {
-    // The Stripe Only job is processed by a cron running every 5 min, and the
-    // worker can take several cron ticks (300 s budget each) to finish a full
-    // cycle. 12 min gives ~2 cron ticks + headroom.
-    const maxPolls = 360; // 12 min at 2 s/poll
-    let polls = 0;
-
-    const poll = async () => {
-      if (polls >= maxPolls) {
-        setMessage("Stripe Only polling timed out. Check back in 10-15 minutes — the cron may still be processing.");
-        setStripeOnlyLoading(false);
-        setIsOperationRunning(false);
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/admin/backfill/stripe/stripe-only-jobs?jobId=${jobId}`);
-        if (res.ok) {
-          const data = await res.json();
-
-          if (data.status === "completed") {
-            setStripeOnly(data.charges || []);
-            setStripeOnlyTotal(data.total || 0);
-            setStripeOnlyGeneratedAt(Date.now());
-            // Store in sessionStorage for export
-            sessionStorage.setItem("stripeOnlyCharges", JSON.stringify(data.charges || []));
-            sessionStorage.setItem("stripeOnlyTotal", String(data.total || 0));
-            sessionStorage.setItem("stripeOnlyGeneratedAt", String(Date.now()));
-            setMessage(`Stripe Only generated: ${data.total} charges`);
-            setStripeOnlyLoading(false);
-            setIsOperationRunning(false);
-          } else if (data.status === "failed") {
-            setMessage(`Job failed: ${data.error}`);
-            setStripeOnlyLoading(false);
-            setIsOperationRunning(false);
-          } else {
-            polls++;
-            setTimeout(poll, 2000);
-          }
-        } else {
-          setMessage(`Error polling job: ${res.status}`);
-          setStripeOnlyLoading(false);
-          setIsOperationRunning(false);
-        }
-      } catch (error) {
-        console.error("Poll error:", error);
-        polls++;
-        setTimeout(poll, 2000);
-      }
-    };
-
-    poll();
-  }, []);
-
-  // Poll for sync-all job completion
-  const pollSyncAllJob = useCallback(async (jobId: string) => {
-    const maxPolls = 180; // 6 minutes max (cron runs every 5 min, give buffer)
-    let polls = 0;
-
-    const poll = async () => {
-      if (polls >= maxPolls) {
-        setMessage("Sync All polling timed out. Check back in a few minutes.");
-        setSyncingPayments(false);
-        setIsOperationRunning(false);
-        setSyncProgress("");
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/admin/backfill/stripe/sync-all?jobId=${jobId}`);
-        if (res.ok) {
-          const data = await res.json();
-
-          if (data.status === "completed") {
-            setMessage(`Sync Complete: ${data.synced_count || 0} synced, ${data.failed_count || 0} failed`);
-            setSyncingPayments(false);
-            setIsOperationRunning(false);
-            setSyncProgress("");
-            // Refresh all sections
-            await Promise.all([
-              fetchStatus(),
-              fetchLiveStats(),
-              fetchReconciliation(),
-              fetchOurDb(),
-            ]);
-          } else if (data.status === "failed") {
-            setMessage(`Job failed: ${data.error_message || "Unknown error"}`);
-            setSyncingPayments(false);
-            setIsOperationRunning(false);
-            setSyncProgress("");
-          } else {
-            // pending or processing - update progress
-            const processed = data.processed_records || 0;
-            const total = data.total_records || 0;
-            setSyncProgress(`Processing: ${processed}/${total} records...`);
-            polls++;
-            setTimeout(poll, 2000);
-          }
-        } else {
-          setMessage(`Error polling job: ${res.status}`);
-          setSyncingPayments(false);
-          setIsOperationRunning(false);
-          setSyncProgress("");
-        }
-      } catch (error) {
-        console.error("Poll error:", error);
-        polls++;
-        setTimeout(poll, 2000);
-      }
-    };
-
-    poll();
-  }, []);
-
-  // Legacy: Fetch Stripe Only data (now uses job polling)
-  const fetchStripeOnly = useCallback(async () => {
-    showConfirm(
-      "Generate Stripe Data",
-      "Generate Stripe Data from Stripe?",
-      async () => {
-        await triggerStripeOnlyJob();
-      }
-    );
-  }, [triggerStripeOnlyJob]);
-
-  // Download Stripe Only CSV from cache
-  const downloadStripeOnlyCSV = useCallback(() => {
-    const cached = sessionStorage.getItem("stripeOnlyCharges");
-    if (!cached) {
-      showError("No Data", "Please click 'Generate CSV' first to generate the data.");
-      return;
-    }
-    const charges = JSON.parse(cached);
-    const headers = ["Email", "Full Name", "Tier", "Status", "Charge ID", "Customer ID", "Amount", "Currency", "Date"];
-    const rows = charges.map((c: any) => [
-      c.email || "",
-      c.name || "",
-      c.tier || "",
-      c.status || "",
-      c.charge_id || "",
-      c.customer_id || "",
-      c.amount || 0,
-      c.currency || "",
-      c.created || "",
-    ]);
-    const csv = [headers, ...rows].map((row: string[]) => row.map((cell: string) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `stripe-only-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
   }, []);
 
   // Export Email CSV
@@ -1004,86 +729,6 @@ export default function BackfillClient() {
     );
   }, []);
 
-  // Find Duplicates - triggers background job to find Stripe subscription duplicates
-  const handleFindDuplicates = useCallback(async () => {
-    setStripeDuplicatesLoading(true);
-    setIsOperationRunning(true);
-    setMessage("Creating duplicates job...");
-
-    try {
-      const createRes = await fetch("/api/admin/backfill/stripe/duplicates", { method: "POST" });
-      if (!createRes.ok) {
-        const err = await createRes.json();
-        setMessage(`Error creating job: ${err.error || createRes.statusText}`);
-        setStripeDuplicatesLoading(false);
-        setIsOperationRunning(false);
-        return;
-      }
-      const { jobId, status, message } = await createRes.json();
-      
-      if (status === "pending" || status === "processing") {
-        setMessage(`Job ${jobId} created. Waiting for cron to process (runs every 5 min)...`);
-
-        // Poll for completion - cron runs every 5 min, so wait up to 7 min
-        const maxPolls = 210; // 7 minutes max (cron fires every 5 min)
-        let polls = 0;
-
-        const poll = async () => {
-          if (polls >= maxPolls) {
-            setMessage("Timed out waiting for cron. Check Vercel cron is enabled, or try again later.");
-            setStripeDuplicatesLoading(false);
-            setIsOperationRunning(false);
-            return;
-          }
-
-          try {
-            const statusRes = await fetch(`/api/admin/backfill/stripe/duplicates`);
-            if (!statusRes.ok) {
-              setMessage(`Error polling job: ${statusRes.status}`);
-              setStripeDuplicatesLoading(false);
-              setIsOperationRunning(false);
-              return;
-            }
-            const status = await statusRes.json();
-
-            if (status.duplicates && status.duplicates.length > 0) {
-              setStripeDuplicates(status.duplicates || []);
-              setMessage(`Found ${status.duplicateCount || 0} duplicate emails`);
-              setStripeDuplicatesLoading(false);
-              setIsOperationRunning(false);
-              return;
-            } else if (status.cached) {
-              // Job completed with results
-              setStripeDuplicates(status.duplicates || []);
-              setMessage(`Found ${status.duplicateCount || 0} duplicate emails (cached)`);
-              setStripeDuplicatesLoading(false);
-              setIsOperationRunning(false);
-              return;
-            } else {
-              polls++;
-              setTimeout(poll, 2000);
-            }
-          } catch (error) {
-            console.error("Poll error:", error);
-            polls++;
-            setTimeout(poll, 2000);
-          }
-        };
-
-        poll();
-      } else {
-        setMessage(message || "Unknown response");
-        setStripeDuplicatesLoading(false);
-        setIsOperationRunning(false);
-      }
-    } catch (error) {
-      console.error("Failed to find duplicates:", error);
-      setMessage(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
-      setStripeDuplicatesLoading(false);
-      setIsOperationRunning(false);
-    }
-  }, []);
-
   // Delete Cache - deletes all reconciliation cache and triggers fresh jobs
   const handleDeleteCache = useCallback(async () => {
     showConfirm(
@@ -1169,74 +814,6 @@ export default function BackfillClient() {
     a.click();
     URL.revokeObjectURL(url);
   };
-
-  // Sync all payments from Stripe (background job pattern)
-  const handleSyncAllPayments = async () => {
-    showConfirm(
-      "Sync All Payments",
-      "This will sync payment details from Stripe and insert missing payments. This uses a background job and may take several minutes. Continue?",
-      async () => {
-        setSyncingPayments(true);
-        setIsOperationRunning(true);
-        setSyncProgress("Starting payment sync...");
-        try {
-          const res = await fetch("/api/admin/backfill/stripe/sync-all", { method: "POST" });
-          const data = await res.json();
-          if (data.jobId) {
-            // Job created, start polling
-            setMessage("Sync job started. Polling for results...");
-            pollSyncAllJob(data.jobId);
-          } else if (data.message?.includes("already")) {
-            // Existing job, poll that
-            setMessage(`Existing job found. Polling for results...`);
-            pollSyncAllJob(data.jobId);
-          } else {
-            showError("Sync Failed", data.error || "Unknown error");
-            setSyncingPayments(false);
-            setIsOperationRunning(false);
-            setSyncProgress("");
-          }
-        } catch (error) {
-          showError("Sync Failed", error instanceof Error ? error.message : "Unknown error");
-          setSyncingPayments(false);
-          setIsOperationRunning(false);
-          setSyncProgress("");
-        }
-      }
-    );
-  };
-
-  // Fetch duplicates
-  const fetchDuplicates = useCallback(async () => {
-    setDuplicatesLoading(true);
-    try {
-      const res = await fetch("/api/admin/backfill/stripe/duplicates");
-      if (res.ok) {
-        const data = await res.json();
-        setDuplicates(data.duplicates || []);
-      }
-    } catch (error) {
-      console.error("Failed to fetch duplicates:", error);
-    } finally {
-      setDuplicatesLoading(false);
-    }
-  }, []);
-
-  // Fetch duplicates in Stripe (reads from stripe_duplicates_jobs table)
-  const fetchStripeDuplicates = useCallback(async () => {
-    setStripeDuplicatesLoading(true);
-    try {
-      const res = await fetch("/api/admin/backfill/stripe/duplicates");
-      if (res.ok) {
-        const data = await res.json();
-        setStripeDuplicates(data.duplicates || []);
-      }
-    } catch (error) {
-      console.error("Failed to fetch stripe duplicates:", error);
-    } finally {
-      setStripeDuplicatesLoading(false);
-    }
-  }, []);
 
   // Fetch missing from backfill
   const fetchMissingFromBackfill = useCallback(async () => {
@@ -1541,8 +1118,6 @@ export default function BackfillClient() {
             showSuccess("Sync Complete", data.message);
             fetchStatus();
             fetchLiveStats();
-            fetchDuplicates();
-            fetchStripeDuplicates();
             fetchMissingFromBackfill();
             fetchGiftCodes();
           } else {
@@ -1580,9 +1155,8 @@ export default function BackfillClient() {
     fetchGiftCodes();
     fetchMissingPaymentsFromCache();
     fetchOurDb();
-    fetchDuplicates();
     fetchMissingFromBackfill();
-  }, [fetchStatus, fetchGiftCodes, fetchMissingPaymentsFromCache, fetchOurDb, fetchDuplicates, fetchMissingFromBackfill]);
+  }, [fetchStatus, fetchGiftCodes, fetchMissingPaymentsFromCache, fetchOurDb, fetchMissingFromBackfill]);
 
   // Delete single payment
   const handleDeletePayment = async () => {
@@ -1849,41 +1423,32 @@ export default function BackfillClient() {
           </button>
           <div className="ml-auto flex gap-2 items-center pr-4">
             <div className="w-px h-6 bg-nfw-dove mr-2" />
-            <button
-              onClick={handleSyncAll}
-              disabled={syncingAll}
-              className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
-            >
-              {syncingAll ? "Working..." : "Insert Missing Payments"}
-            </button>
-            <button
-              onClick={handleSyncAllPayments}
-              disabled={syncingPayments}
-              className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
-            >
-              {syncingPayments ? "Working..." : "Sync All Payments"}
-            </button>
-            <button
-              onClick={handleVerifyPayments}
-              disabled={verifyPaymentsLoading}
-              className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
-            >
-              {verifyPaymentsLoading ? "Working..." : "Verify Payments"}
-            </button>
-            <button
-              onClick={fetchStripeOnly}
-              disabled={stripeOnlyLoading}
-              className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
-            >
-              {stripeOnlyLoading ? "Working..." : "Generate Stripe Data"}
-            </button>
-            <button
-              onClick={handleFindDuplicates}
-              disabled={stripeDuplicatesLoading}
-              className="text-sm border-2 border-amber-500 text-amber-600 px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-amber-50 disabled:opacity-50"
-            >
-              {stripeDuplicatesLoading ? "Working..." : "Find Duplicates"}
-            </button>
+            {/* Payment-record tools. Membership sync is the panel above; the
+                hourly payment-sync cron keeps payment records current. */}
+            <details className="relative">
+              <summary className="cursor-pointer list-none px-3 py-2 text-xs font-ui font-bold text-nfw-blackberry/60 hover:text-nfw-aubergine">
+                Advanced ▾
+              </summary>
+              <div className="absolute right-0 mt-2 z-20 flex flex-col gap-2 bg-white border border-nfw-blackberry/10 p-3 shadow-lg w-64">
+                <p className="text-xs text-nfw-blackberry/50">
+                  Payment records only. Use after a webhook outage, or to audit revenue.
+                </p>
+                <button
+                  onClick={handleSyncAll}
+                  disabled={syncingAll}
+                  className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
+                >
+                  {syncingAll ? "Working..." : "Insert Missing Payments"}
+                </button>
+                <button
+                  onClick={handleVerifyPayments}
+                  disabled={verifyPaymentsLoading}
+                  className="text-sm border-2 border-nfw-aubergine text-nfw-aubergine px-3 py-1.5 rounded-lg font-ui font-bold hover:bg-nfw-aubergine/10 disabled:opacity-50"
+                >
+                  {verifyPaymentsLoading ? "Working..." : "Verify Payments"}
+                </button>
+              </div>
+            </details>
           </div>
         </div>
       </div>
@@ -2166,108 +1731,6 @@ export default function BackfillClient() {
       {/* TAB 3: Payments */}
       {activeTab === 'payments' && (
       <>
-      {/* Stripe Only Section */}
-      <div className="bg-white rounded-lg border border-nfw-aubergine/20 overflow-hidden">
-        <div className="flex justify-between items-center p-4 border-b border-nfw-dove">
-          <div>
-            <h3 className="font-ui font-bold text-nfw-aubergine">
-              Stripe Only ({stripeOnly.length})
-            </h3>
-            <p className="text-xs text-nfw-blackberry/60 mt-1">
-              Charges in Stripe not matched to any DB payment • Total: ${stripeOnlyTotal.toFixed(2)}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            {stripeOnlyGeneratedAt && !stripeOnlyLoading && (
-              <button
-                onClick={downloadStripeOnlyCSV}
-                className="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
-              >
-                Download CSV ({stripeOnly.length} charges)
-              </button>
-            )}
-            <button
-              onClick={() => window.open("/api/admin/backfill/stripe/all-transactions/export", "_blank")}
-              className="text-sm bg-nfw-aubergine text-white px-3 py-1 rounded hover:bg-nfw-aubergine/90"
-            >
-              Download All Stripe Transactions CSV
-            </button>
-          </div>
-        </div>
-        {stripeOnlyGeneratedAt && (
-          <div className="px-4 py-2 bg-green-50 border-b border-green-200 text-xs text-green-700">
-            CSV generated at {new Date(stripeOnlyGeneratedAt).toLocaleTimeString(undefined, { timeZone: SITE_TZ })}. Download link is valid until you generate a new CSV.
-          </div>
-        )}
-        {stripeOnly.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-nfw-aubergine/5">
-                <tr>
-                  <th className="text-left px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Email</th>
-                  <th className="text-right px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Amount</th>
-                  <th className="text-left px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Charge ID</th>
-                  <th className="text-left px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Customer ID</th>
-                  <th className="text-left px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Date</th>
-                  <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Matched By</th>
-                  <th className="text-center px-4 py-3 font-ui text-sm font-bold text-nfw-aubergine">Gift</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-nfw-dove">
-                {stripeOnly.map((charge) => (
-                  <tr key={charge.charge_id} className="hover:bg-nfw-dove/30">
-                    <td className="px-4 py-3 font-ui text-sm">{charge.email || "—"}</td>
-                    <td className="px-4 py-3 font-ui text-sm text-right font-bold">${charge.amount}</td>
-                    <td className="px-4 py-3 font-ui text-sm font-mono text-xs">
-                      <a
-                        href={`https://dashboard.stripe.com/payments/${charge.charge_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-nfw-aubergine hover:underline"
-                      >
-                        {charge.charge_id?.slice(0, 20) || '—'}...
-                      </a>
-                    </td>
-                    <td className="px-4 py-3 font-ui text-sm font-mono text-xs">{charge.customer_id?.slice(0, 20)}...</td>
-                    <td className="px-4 py-3 font-ui text-sm">
-                      {new Date(charge.created).toLocaleDateString("en-US", { timeZone: SITE_TZ,
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
-                        charge.matched_by ? "bg-yellow-100 text-yellow-700" : "bg-orange-100 text-orange-700"
-                      }`}>
-                        {charge.matched_by || "No Match"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {charge.is_gift_purchase ? (
-                        <span className="inline-flex items-center justify-center text-green-600" title={`Gift purchase by ${charge.buyer_email}`}>
-                          ✓
-                        </span>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="p-8 text-center text-nfw-blackberry/50 font-ui text-sm">
-            {stripeOnlyLoading
-              ? "Loading..."
-              : stripeOnlyGeneratedAt
-                ? "No Stripe-only charges found"
-                : "No data yet. Click \"Generate Stripe Data\" to scan Stripe for unmatched charges."}
-          </div>
-        )}
-      </div>
-
       {/* Missing from DB (Stripe subscriptions not in membership_payments) - empty state placeholder when no job has ever run */}
       {missingPayments === null && !missingPaymentsLoading && (
         <div className="bg-white rounded-lg border border-orange-200 overflow-hidden">
@@ -2702,136 +2165,6 @@ export default function BackfillClient() {
                       </a>
                     )}
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Duplicate Emails Section */}
-      {duplicates.length > 0 && (
-        <div className="bg-white rounded-lg border border-purple-200 overflow-hidden">
-          <div className="p-4 border-b border-nfw-dove bg-purple-50">
-            <h3 className="font-ui font-bold text-purple-700">Duplicate Emails ({duplicates.length})</h3>
-            <p className="text-xs text-purple-600 mt-1">
-              Multiple backfill rows with same email. Click to expand.
-            </p>
-          </div>
-          <div className="p-4">
-            <div className="space-y-2">
-              {duplicates.map((dup) => (
-                <div key={dup.email} className="border border-nfw-dove rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => setExpandedDuplicate(expandedDuplicate === dup.email ? null : dup.email)}
-                    className="w-full flex items-center justify-between p-3 bg-nfw-dove/30 hover:bg-nfw-dove/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono text-sm">{dup.email}</span>
-                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
-                        {dup.count} rows
-                      </span>
-                    </div>
-                    <span className="text-xs text-nfw-blackberry/50">
-                      {expandedDuplicate === dup.email ? "▲" : "▼"}
-                    </span>
-                  </button>
-                  {expandedDuplicate === dup.email && (
-                    <div className="p-3 bg-white border-t border-nfw-dove">
-                      <table className="w-full text-xs">
-                        <thead className="bg-nfw-dove/30">
-                          <tr>
-                            <th className="text-left p-2">Profile ID</th>
-                            <th className="text-left p-2">Name</th>
-                            <th className="text-left p-2">Tier</th>
-                            <th className="text-left p-2">Stripe ID</th>
-                            <th className="text-left p-2">LTV</th>
-                            <th className="text-left p-2">Status</th>
-                            <th className="text-left p-2">Processed</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-nfw-dove/50">
-                          {dup.rows.map((row) => (
-                            <tr key={row.id}>
-                              <td className="p-2 font-mono">{row.id?.slice(0, 8) || '—'}...</td>
-                              <td className="p-2">{row.full_name || "—"}</td>
-                              <td className="p-2">{row.membership_level || "—"}</td>
-                              <td className="p-2 font-mono">{row.stripe_customer_id?.slice(0, 12) || "—"}...</td>
-                              <td className="p-2">${(row.lifetime_value || 0).toFixed(2)}</td>
-                              <td className="p-2">
-                                <StatusBadge status={row.status} />
-                              </td>
-                              <td className="p-2">{row.processed_at ? new Date(row.processed_at).toLocaleDateString(undefined, { timeZone: SITE_TZ }) : "—"}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Duplicates in Stripe Section */}
-      {stripeDuplicates.length > 0 && (
-        <div className="bg-white rounded-lg border border-amber-200 overflow-hidden">
-          <div className="p-4 border-b border-nfw-dove bg-amber-50">
-            <h3 className="font-ui font-bold text-amber-700">Duplicates in Stripe ({stripeDuplicates.length})</h3>
-            <p className="text-xs text-amber-600 mt-1">
-              Same email with multiple Stripe subscriptions. Click to expand.
-            </p>
-          </div>
-          <div className="p-4">
-            <div className="space-y-2">
-              {stripeDuplicates.map((dup) => (
-                <div key={dup.email} className="border border-amber-200 rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => setExpandedStripeDuplicate(expandedStripeDuplicate === dup.email ? null : dup.email)}
-                    className="w-full flex items-center justify-between p-3 bg-amber-50/50 hover:bg-amber-100/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono text-sm">{dup.email}</span>
-                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">
-                        {dup.subscription_count} subs
-                      </span>
-                    </div>
-                    <span className="text-xs text-nfw-blackberry/50">
-                      {expandedStripeDuplicate === dup.email ? "▲" : "▼"}
-                    </span>
-                  </button>
-                  {expandedStripeDuplicate === dup.email && (
-                    <div className="p-3 bg-white border-t border-amber-200">
-                      <table className="w-full text-xs">
-                        <thead className="bg-amber-50">
-                          <tr>
-                            <th className="text-left p-2">Subscription ID</th>
-                            <th className="text-left p-2">Customer ID</th>
-                            <th className="text-left p-2">Tier</th>
-                            <th className="text-left p-2">Amount</th>
-                            <th className="text-left p-2">Status</th>
-                            <th className="text-left p-2">Period Start</th>
-                            <th className="text-left p-2">Period End</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-amber-100">
-                          {dup.subscriptions.map((sub) => (
-                            <tr key={sub.subscription_id}>
-                              <td className="p-2 font-mono text-xs break-all">{sub.subscription_id}</td>
-                              <td className="p-2 font-mono text-xs break-all">{sub.customer_id}</td>
-                              <td className="p-2">{sub.tier}</td>
-                              <td className="p-2">${sub.amount.toFixed(2)}</td>
-                              <td className="p-2">{sub.status}</td>
-                              <td className="p-2">{sub.current_period_start ? new Date(sub.current_period_start * 1000).toLocaleDateString(undefined, { timeZone: SITE_TZ }) : "—"}</td>
-                              <td className="p-2">{sub.current_period_end ? new Date(sub.current_period_end * 1000).toLocaleDateString(undefined, { timeZone: SITE_TZ }) : "—"}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
